@@ -72,7 +72,9 @@ public static class TestAppHostFactory
         _ = appHost.Services.GetRequiredService<PostgreSqlPoolCleaner>(); // Force instantiation to ensure it's disposed in the end
 
         if (options.MustInitializeDb)
-            await appHost.InvokeDbInitializers();
+            // TODO: Improve initializers init code.
+            // Issue: Not granular or too specific.
+            await appHost.InvokeInitializers();
         if (options.MustStart)
             await appHost.Start();
         return appHost;
