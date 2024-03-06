@@ -31,6 +31,7 @@ public class NatsCommandQueueTest(ITestOutputHelper @out)
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand(null));
 
+        await host.WaitForProcessingOfAlreadyQueuedCommands();
         await countComputed.WhenInvalidated();
 
         testService.ProcessedEvents.Count.Should().BeGreaterThanOrEqualTo(1);
@@ -58,6 +59,8 @@ public class NatsCommandQueueTest(ITestOutputHelper @out)
         testService.ProcessedEvents.Count.Should().Be(0);
         for (int i = 0; i < 100; i++)
             await queues.Enqueue(new TestEvent(null));
+
+        await host.WaitForProcessingOfAlreadyQueuedCommands();
 
         await countComputed.When(i => i >= 100).WaitAsync(TimeSpan.FromSeconds(10));
 
@@ -91,7 +94,7 @@ public class NatsCommandQueueTest(ITestOutputHelper @out)
 
         await queues.Enqueue(new TestCommand3 { ShardKey = 7 });
 
-        await queueScheduler.ProcessAlreadyQueued(TimeSpan.FromSeconds(1), CancellationToken.None);
+        await host.WaitForProcessingOfAlreadyQueuedCommands();
 
         testService.ProcessedEvents.Count.Should().Be(2);
     }

@@ -17,7 +17,7 @@ public class TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor ou
     }
 
     public Task WaitForProcessingOfAlreadyQueuedCommands()
-        => WaitForProcessingOfAlreadyQueuedCommands(TimeSpan.FromSeconds(2));
+        => WaitForProcessingOfAlreadyQueuedCommands(TimeSpan.FromSeconds(1));
 
     public async Task WaitForProcessingOfAlreadyQueuedCommands(TimeSpan timeout)
     {

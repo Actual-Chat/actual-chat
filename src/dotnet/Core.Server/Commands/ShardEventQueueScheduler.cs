@@ -39,6 +39,7 @@ public sealed class ShardEventQueueScheduler(HostRole hostRole, IServiceProvider
             if (currentTicks - lastCommandTicks > timeout.Ticks)
                 break;
         }
+        await Clock.Delay(timeout, cancellationToken).ConfigureAwait(false);
     }
 
     protected override Task OnRun(int shardIndex, CancellationToken cancellationToken)
