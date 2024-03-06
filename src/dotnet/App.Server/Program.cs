@@ -42,7 +42,7 @@ internal static class Program
         if (Constants.DebugMode.Npgsql)
             Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(),true);
 
-        await appHost.InvokeDbInitializers().ConfigureAwait(false);
+        await appHost.InvokeInitializers().ConfigureAwait(false);
         await appHost.Run().ConfigureAwait(false);
 
         // We preserve default thread pool settings only if they are bigger of our minimals
