@@ -34,7 +34,8 @@
     @apply gap-x-4 text-headline-1;
     @apply text-06;
 }
-.banner.add-members-banner .banner-buttons .btn.btn-transparent .btn-content {
+.banner.add-members-banner .banner-buttons .btn.btn-transparent .btn-content,
+.banner.add-members-banner .banner-buttons .btn-h i {
     @apply text-06;
 }
 

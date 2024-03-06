@@ -122,6 +122,7 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
                 searchResults.Offset.Should().Be(0);
                 searchResults.Hits.Should().HaveCount(expectedCount);
             },
+            Intervals.Exponential(TimeSpan.FromMilliseconds(100), 1.5, TimeSpan.FromMilliseconds(500)),
             TimeSpan.FromSeconds(10));
         return searchResults.Hits;
     }

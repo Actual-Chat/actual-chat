@@ -81,7 +81,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     public async Task<ApiArray<UserId>> ListChanged(
         long minVersion,
         long maxVersion,
-        ApiSet<UserId> lastIdsWithSameVersion,
+        UserId lastId,
         int limit,
         CancellationToken cancellationToken)
     {
@@ -89,17 +89,35 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbAccounts = await dbContext.Accounts
-            .Where(x => x.Version >= minVersion && x.Version <= maxVersion)
-            .Where(x => !Constants.User.SSystemUserIds.Contains(x.Id))
+            .Where(x => x.Version >= minVersion && x.Version <= maxVersion && !Constants.User.SSystemUserIds.Contains(x.Id))
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
             .Take(limit)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var userIds = dbAccounts.Select(x => new UserId(x.Id)).ToApiArray();
-        return lastIdsWithSameVersion.Count == 0
-            ? userIds
-            : userIds.Where(x => !lastIdsWithSameVersion.Contains(x)).ToApiArray();
+        var accounts = dbAccounts.ConvertAll(x => new {
+            Id = new UserId(x.Id), x.Version,
+        });
+        if (lastId.IsNone || Constants.User.SystemUserIds.Contains(lastId))
+            return accounts.Select(x => x.Id).ToApiArray();
+
+        var lastIdIndex = GetLastIndex();
+        return lastIdIndex < 0
+            ? accounts.Select(x => x.Id).ToApiArray()
+            : accounts[(lastIdIndex + 1)..].Select(x => x.Id).ToApiArray();
+
+        int GetLastIndex()
+        {
+            for (int i = 0; i < accounts.Count; i++) {
+                var account = accounts[i];
+                if (account.Version > minVersion)
+                    return -1;
+
+                if (account.Id == lastId)
+                    return i;
+            }
+            return -1;
+        }
     }
 
     public async Task<AccountFull?> GetLastChanged(CancellationToken cancellationToken)

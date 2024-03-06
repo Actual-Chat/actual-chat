@@ -1,12 +1,25 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 
-<div class="@Class embedded-message-editor">
+@{
+    var cls = "embedded-message-editor";
+    if (IsTransparent)
+        cls += " transparent-editor";
+}
+
+<div class="@Class @cls">
     <label>
+        @if (Text.IsNullOrEmpty()) {
+            <div class="c-placeholder">
+                @if (!PlaceholderIcon.IsNullOrEmpty()) {
+                    <i class="@PlaceholderIcon"></i>
+                }
+                <span>@Placeholder</span>
+            </div>
+        }
         <TextInput
             @ref="_inputRef"
             Class="dialog-unstyled"
             Text="@Text"
-            Placeholder="@Placeholder"
             TextChanged="OnInput"
             KeyUp="OnKeyUp">
         </TextInput>
@@ -14,10 +27,6 @@
             <ButtonRound Class="transparent" Click="OnPost">
                 <i class="icon-message-ellipse"></i>
             </ButtonRound>
-        } else {
-            <div class="glyph">
-                <i class="icon-message-ellipse"></i>
-            </div>
         }
     </label>
 </div>
@@ -28,7 +37,9 @@
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Placeholder { get; set; } = "";
+    [Parameter] public string PlaceholderIcon { get; set; } = "";
     [Parameter] public string Text { get; set; } = "";
+    [Parameter] public bool IsTransparent { get; set; }
     [Parameter] public EventCallback<string> TextChanged { get; set; }
     [Parameter] public EventCallback<string> Post { get; set; }
 

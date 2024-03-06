@@ -253,3 +253,17 @@
 .form-radio-hidden input:checked + .radio::before{
     @apply bg-primary;
 }
+
+.form-block.with-contact-list {
+    @apply p-0;
+    @apply overflow-hidden;
+}
+.form-block.with-contact-list > div {
+    @apply px-2;
+}
+.form-block.with-contact-list > .contact-selector-list,
+.form-block.with-contact-list > .c-contact-list {
+    @apply w-full;
+    @apply px-2;
+
+}

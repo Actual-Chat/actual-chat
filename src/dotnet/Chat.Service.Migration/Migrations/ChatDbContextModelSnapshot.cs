@@ -163,8 +163,8 @@ namespace ActualChat.Chat.Migrations
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("ix_chats_created_at");
 
-                    b.HasIndex("Version")
-                        .HasDatabaseName("ix_chats_version");
+                    b.HasIndex("Version", "Id")
+                        .HasDatabaseName("ix_chats_version_id");
 
                     b.ToTable("chats");
                 });

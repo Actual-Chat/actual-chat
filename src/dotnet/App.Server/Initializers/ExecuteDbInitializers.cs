@@ -3,7 +3,8 @@ using ActualChat.Hosting;
 namespace ActualChat.App.Server.Initializers;
 
 public class ExecuteDbInitializers(IServiceProvider services): IAggregateInitializer
-{   public async Task InvokeAll(CancellationToken cancellationToken)
+{
+    public async Task InvokeAll(CancellationToken cancellationToken)
     {
         // InitializeSchema
         await InvokeDbInitializers(

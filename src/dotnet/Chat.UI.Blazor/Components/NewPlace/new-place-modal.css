@@ -12,9 +12,3 @@
 .new-place-modal .tile-item-icon i {
     @apply text-2xl;
 }
-.new-place-modal .contact-selector-list-item {
-    @apply pl-0 pr-1;
-}
-.new-place-modal .contact-selector-list {
-    @apply pt-0;
-}

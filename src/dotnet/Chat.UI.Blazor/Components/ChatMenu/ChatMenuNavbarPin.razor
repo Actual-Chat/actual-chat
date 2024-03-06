@@ -1,0 +1,17 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits FusionComponentBase
+
+<MenuEntry
+    Icon="icon-pin"
+    Text="@(ChatState.Info.IsPinnedToNavbar ? "Unpin from Navbar" : "Pin to Navbar")"
+    Click="@OnClick">
+</MenuEntry>
+
+@code {
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
+
+    private void OnClick()
+        => ChatUI.SetNavbarPinState(ChatState.Id, !ChatState.Info.IsPinnedToNavbar);
+}

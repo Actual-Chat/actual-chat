@@ -150,6 +150,9 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply flex-1 flex-y items-stretch;
     @apply overflow-y-auto custom-scrollbar;
 }
+.dialog-body:has(.form-block.with-contact-list) + .dialog-buttons {
+    @apply pt-2;
+}
 
 .dialog-footer {
     @apply px-4;

@@ -1,5 +1,4 @@
 using ActualChat.App.Server.Initializers;
-using ActualChat.Hosting;
 using ActualChat.Mesh;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration.Json;
@@ -82,34 +81,30 @@ public class AppHost : IDisposable
 
     public virtual async Task InvokeInitializers(CancellationToken cancellationToken = default)
         => await InvokeInitializers([
-                    new ExecuteDbInitializers(Services),
-                    new ExecuteModuleInitializers(Services),
-                ],
-                cancellationToken
-            )
-            .ConfigureAwait(false);
+                new ExecuteDbInitializers(Services),
+                new ExecuteModuleInitializers(Services),
+            ],
+            cancellationToken
+        )
+        .ConfigureAwait(false);
 
     private async Task InvokeInitializers(IEnumerable<IAggregateInitializer> initializers, CancellationToken cancellationToken = default)
     {
-        var tasks = new List<Task>();
-        foreach (var initializer in  initializers) {
 #if DEBUG
-            // See MeshLockBase.DefaultLockOptions - locks expire much longer in DEBUG
-            var mustLock = false;
+        // See MeshLockBase.DefaultLockOptions - locks expire much longer in DEBUG
+        var mustLock = false;
 #else
-            var hostInfo = Services.HostInfo();
-            var mustLock = hostInfo.IsTested;
+        var hostInfo = Services.HostInfo();
+        var mustLock = hostInfo.IsTested;
 #endif
-            if (!mustLock) {
-                // Just to speed up tests
-                tasks.Add(InvokeInitializersUnsafe(initializer, cancellationToken));
-            }
-            else {
-                tasks.Add(InvokeInitializersProtected(initializer, cancellationToken));
-            }
-        }
+
+        var tasks = initializers.Select(initializer => mustLock
+            ? InvokeInitializersProtected(initializer, cancellationToken)
+            : InvokeInitializersUnsafe(initializer, cancellationToken));
+
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
+
     private async Task InvokeInitializersProtected(IAggregateInitializer initializer, CancellationToken cancellationToken = default)
     {
         var meshLocks = Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(AppHost));
@@ -172,5 +167,4 @@ public class AppHost : IDisposable
         WebHostBuilderContext webHost,
         IServiceCollection services)
         => AppServicesBuilder?.Invoke(webHost, services);
-
 }

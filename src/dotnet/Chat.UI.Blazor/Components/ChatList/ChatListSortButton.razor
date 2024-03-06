@@ -20,6 +20,8 @@
 @code {
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
+    [Parameter, EditorRequired] public ChatListView ChatListView { get; set; } = null!;
+
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.Loading,
@@ -27,7 +29,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var settings = await ChatListUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+        var settings = await ChatListView.GetSettings(cancellationToken);
         return new Model {
             SortOrder = settings.Order,
         };

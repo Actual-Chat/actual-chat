@@ -4,7 +4,6 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-// TODO: merge with ChatOperationsTest
 [Collection(nameof(ChatCollection))]
 public class ChatListingTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
@@ -80,19 +79,8 @@ public class ChatListingTest(ChatCollection.AppHostFixture fixture, ITestOutputH
     {
         // arrange
         var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
-        var commander = AppHost.Services.Commander();
-        var allChats = new List<Chat>();
         await _tester.SignInAsBob();
-        for (int i = 0; i < chatCount; i++) {
-            var diff = new ChatDiff {
-                Title = $"Chat{i}",
-                IsPublic = i % 2 == 0,
-                Kind = ChatKind.Group,
-            };
-            var cmd = new Chats_Change(_tester.Session, ChatId.None, null, new () { Create = diff, });
-            var chat = await commander.Call(cmd);
-            allChats.Add(chat);
-        }
+        var allChats = await CreateChats(chatCount);
         var minCreatedAt = allChats[^1].CreatedAt;
         var lastChatId = allChats[^1].Id;
 
@@ -101,5 +89,44 @@ public class ChatListingTest(ChatCollection.AppHostFixture fixture, ITestOutputH
 
         // assert
         batches.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(1, 10)]
+    [InlineData(2, 2)]
+    [InlineData(10, 3)]
+    [InlineData(10, 10)]
+    public async Task ShouldListChanged(int chatCount, int limit)
+    {
+        // arrange
+        var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
+        var lastChanged = await chatsBackend.GetLastChanged(CancellationToken.None);
+        await _tester.SignInAsBob();
+        var created = await CreateChats(chatCount);
+
+        // act
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var cancellationToken = cts.Token;
+        var retrieved = await chatsBackend.BatchChanged(lastChanged?.Version ?? 0,
+                long.MaxValue,
+                lastChanged?.Id ?? ChatId.None,
+                limit,
+                cancellationToken)
+            .ToApiArrayAsync(cancellationToken)
+            .Flatten();
+
+        // assert
+        retrieved.Select(x => x.Id).Should().Contain(created.Select(x => x.Id));
+    }
+
+    private async Task<Chat[]> CreateChats(int count)
+    {
+        var chats = new Chat[count];
+        for (int i = 0; i < count; i++) {
+            var (chatId, _) = await _tester.CreateChat(i % 2 == 0, $"Chat {i}");
+            chats[i] = await _tester.Chats.Get(_tester.Session, chatId, CancellationToken.None).Require();
+        }
+
+        return chats;
     }
 }

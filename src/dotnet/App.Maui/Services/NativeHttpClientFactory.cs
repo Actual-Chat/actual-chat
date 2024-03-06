@@ -13,8 +13,8 @@ public partial class NativeHttpClientFactory(IServiceProvider services)
     private readonly ConcurrentDictionary<string, HttpMessageHandler> _messageHandlers = new (StringComparer.Ordinal);
 
     private IServiceProvider Services { get; } = services;
-    private IOptionsSnapshot<HttpClientFactoryOptions> Options { get; } = ServiceProviderServiceExtensions.GetRequiredService<IOptionsSnapshot<HttpClientFactoryOptions>>(services);
-    private List<IHttpMessageHandlerBuilderFilter> Filters { get; } = ServiceProviderServiceExtensions.GetRequiredService<IEnumerable<IHttpMessageHandlerBuilderFilter>>(services).ToList();
+    private IOptionsSnapshot<HttpClientFactoryOptions> Options { get; } = services.GetRequiredService<IOptionsSnapshot<HttpClientFactoryOptions>>();
+    private List<IHttpMessageHandlerBuilderFilter> Filters { get; } = services.GetRequiredService<IEnumerable<IHttpMessageHandlerBuilderFilter>>().ToList();
 
     public HttpClient CreateClient(string name)
         // Each call to CreateClient(String) is guaranteed to return a new HttpClient instance.
