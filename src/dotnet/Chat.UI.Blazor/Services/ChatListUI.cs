@@ -15,8 +15,8 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     private readonly List<ChatId> _activeItems = new List<ChatId>().AddMany(default, ActiveItemCountWhenLoading);
     private readonly List<ChatId> _allItems = new List<ChatId>().AddMany(default, AllItemCountWhenLoading);
     private readonly IMutableState<bool> _isSelectedChatUnlisted;
-    private readonly IStoredState<ChatListSettings> _settings;
     private readonly IMutableState<int> _loadLimit;
+    private readonly IMutableState<ChatListView?> _activeChatListView;
 
     private bool _isFirstLoad = true;
     private IComputedState<Trimmed<int>>? _unreadChatCount;
@@ -31,13 +31,13 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     private UICommander UICommander => Hub.UICommander();
     private new ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
-    public IMutableState<ChatListSettings> Settings => _settings;
 #pragma warning disable CA1721 // Confusing w/ GetUnreadChatCount
     public IState<Trimmed<int>> UnreadChatCount => _unreadChatCount!;
 #pragma warning restore CA1721
-    public Task WhenLoaded => _settings.WhenRead;
 
     private Moment CpuNow => Clocks.CpuClock.Now;
+
+    public IState<ChatListView?> ActiveChatListView => _activeChatListView;
 
     public ChatListUI(ChatUIHub hub) : base(hub)
     {
@@ -46,11 +46,8 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
             StateCategories.Get(type, nameof(_loadLimit)));
         _isSelectedChatUnlisted = StateFactory.NewMutable(false,
             StateCategories.Get(type, nameof(_isSelectedChatUnlisted)));
-        _settings = StateFactory.NewKvasStored<ChatListSettings>(
-            new (AccountSettings, nameof(ChatListSettings)) {
-                InitialValue = new(),
-                Category = StateCategories.Get(type, nameof(Settings)),
-            });
+        _activeChatListView = StateFactory.NewMutable((ChatListView?)null,
+            StateCategories.Get(type, nameof(ActiveChatListView)));
     }
 
     void INotifyInitialized.Initialized()
@@ -64,6 +61,13 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
             ComputeUnreadChatCount);
         Hub.RegisterDisposable(_unreadChatCount);
         this.Start();
+    }
+
+    public ChatListView ActivateChatList(PlaceId placeId)
+    {
+        if (_activeChatListView.Value == null || _activeChatListView.Value.PlaceId != placeId)
+            _activeChatListView.Value = new ChatListView(placeId, CreateSettingsState(placeId));
+        return _activeChatListView.Value;
     }
 
 #pragma warning disable CA1822 // Can be static
@@ -135,10 +139,12 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     public virtual async Task<IReadOnlyList<ChatInfo>> ListAll(
         CancellationToken cancellationToken = default)
     {
-        await ChatUI.WhenActivePlaceRestored.ConfigureAwait(false);
-        var placeId = await ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
-        var settings = await Settings.Use(cancellationToken).ConfigureAwait(false);
-        return await ListAll(placeId, settings, cancellationToken).ConfigureAwait(false);
+        var listView = await ActiveChatListView.Use(cancellationToken).ConfigureAwait(false);
+        if (listView == null)
+            return ImmutableList<ChatInfo>.Empty;
+
+        var settings = await listView.GetSettings(cancellationToken).ConfigureAwait(false);
+        return await ListAll(listView.PlaceId, settings, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
@@ -311,5 +317,17 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         var chatById = await ListOverallUnordered(cancellationToken).ConfigureAwait(false);
         var count = chatById.Values.UnmutedUnreadChatCount();
         return count;
+    }
+
+    private IStoredState<ChatListSettings> CreateSettingsState(PlaceId placeId)
+    {
+        var type = GetType();
+        var key = ChatListSettings.GetKvasKey(placeId);
+        var settings = StateFactory.NewKvasStored<ChatListSettings>(
+            new (LocalSettings, key) {
+                InitialValue = new(),
+                Category = StateCategories.Get(type, key),
+            });
+        return settings;
     }
 }

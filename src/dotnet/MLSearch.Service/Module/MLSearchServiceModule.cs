@@ -7,10 +7,10 @@ using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
+using ActualChat.MLSearch.Engine.Indexing;
+using ActualChat.MLSearch.Engine.Indexing.Spout;
 using ActualChat.MLSearch.Engine.OpenSearch;
-using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
-using ActualChat.MLSearch.Engine.OpenSearch.Indexing.Spout;
 using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
@@ -68,53 +68,26 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             ?? throw new InvalidOperationException("OpenSearchClusterUri is not set");
         var modelGroupName = Settings.OpenSearchModelGroup
             ?? throw new InvalidOperationException("OpenSearchModelGroup is not set");
-        services.AddSingleton<IOpenSearchClient>(_ => {
-            var connectionSettings = new ConnectionSettings(
-                new SingleNodeConnectionPool(new Uri(openSearchClusterUri)),
-                sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
-            return new OpenSearchClient(connectionSettings);
-        });
-        services.AddSingleton<ClusterSetup>(e =>
-                new ClusterSetup(
-                    modelGroupName,
-                    e.GetRequiredService<IOpenSearchClient>(),
-                    e.GetService<ILoggerSource>(),
-                    e.GetService<ITracerSource>()
-                )
-            )
+
+        var connectionSettings = new ConnectionSettings(
+            new SingleNodeConnectionPool(new Uri(openSearchClusterUri)),
+            sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
+
+        services.AddSingleton<IOpenSearchClient>(_ => new OpenSearchClient(connectionSettings));
+        services.AddSingleton(e => ActivatorUtilities.CreateInstance<ClusterSetup>(e, modelGroupName))
             .AddAlias<IModuleInitializer, ClusterSetup>();
 
         services.AddSingleton<IIndexSettingsSource, IndexSettingsSource>();
-        services.AddSingleton<ISearchEngine<ChatSlice>, OpenSearchEngine<ChatSlice>>();
+        // ChatSlice engine registrations
+        services.AddSingleton<ISearchEngine<ChatSlice>>(static services
+            => services.CreateInstanceWith<OpenSearchEngine<ChatSlice>>(IndexNames.ChatSlice));
+        services.AddSingleton<ICursorStates<ChatEntriesIndexer.Cursor>>(static services
+            => services.CreateInstanceWith<CursorStates<ChatEntriesIndexer.Cursor>>(IndexNames.ChatSliceCursor));
+        services.AddSingleton<ISink<ChatEntry, ChatEntry>>(static services
+            => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
+        services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
+        services.AddSingleton<ChatEntriesIndexer>();
 
-        services.AddSingleton<ChatEntriesIndexing>(
-            e => new ChatEntriesIndexing(
-                chats: e.GetRequiredService<IChatsBackend>(),
-                cursors: new IndexingCursors<ChatEntriesIndexing.Cursor>(
-                    e.GetRequiredService<IOpenSearchClient>(),
-                    // Note: weak logic.
-                    e.GetRequiredService<ClusterSetup>()
-                        .Result
-                        .IntoFullCursorIndexName(ClusterSetup.ChatSliceIndexName)
-                    //e.GetRequiredService<IIndexSettingsSource>()
-                    //    .GetSettings<ChatEntriesIndexing.Cursor>()
-                    //    .CursorIndexName
-                ),
-                sink: new Sink<ChatEntry, ChatEntry>(
-                    e.GetRequiredService<IOpenSearchClient>(),
-                    ingestPipelineId: e.GetRequiredService<ClusterSetup>()
-                        .Result
-                        .IntoFullIngestPipelineName(ClusterSetup.ChatSliceIndexName),
-                    indexName: e.GetRequiredService<ClusterSetup>()
-                        .Result
-                        .IntoFullSearchIndexName(ClusterSetup.ChatSliceIndexName),
-                    ChatSliceExt.IntoIndexedDocument,
-                    ChatSliceExt.IntoDocumentId,
-                    e.GetRequiredService<ILoggerSource>()
-                ),
-                loggerSource: e.GetRequiredService<ILoggerSource>()
-            )
-        );
         // TODO: remove workaround. Reason: NodesByRole.TryGetValue(shardScheme.Id, out var nodes)
         Symbol ShardingSchemeId = HostRole.MLSearchIndexing;
         services.AddShardScheme(ShardingSchemeId, HostRole.MLSearchIndexing, shardCount: 12);
@@ -123,7 +96,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             (e, key) => new ShardWorkerFunc(
                 shardingSchemeId: ShardingSchemeId,
                 e,
-                e.GetRequiredService<ChatEntriesIndexing>().Execute
+                e.GetRequiredService<ChatEntriesIndexer>().Execute
             )
         );
         services.AddHostedService(e => e

@@ -96,12 +96,12 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices) : HostMo
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
-        redisModule.AddRedisDb<UsersDbContext>(services, Settings.Redis);
+        redisModule.AddRedisDb<UsersDbContext>(services);
 
         // DB
         var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, UsersDbInitializer>();
-        dbModule.AddDbContextServices<UsersDbContext>(services, Settings.Db, db => {
+        dbModule.AddDbContextServices<UsersDbContext>(services, db => {
             // Overriding / adding extra DbAuthentication services
             services.AddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
             db.AddEntityConverter<DbSessionInfo, SessionInfo, DbSessionInfoConverter>();
@@ -185,7 +185,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices) : HostMo
         fusion.AddService<IAvatarsBackend, AvatarsBackend>();
         fusion.AddService<IChatPositions, ChatPositions>();
         fusion.AddService<IChatPositionsBackend, ChatPositionsBackend>();
-        fusion.AddService<IUserMigratorBackend, UserMigratorBackend>();
         fusion.AddService<IServerKvas, ServerKvas>();
         fusion.AddService<IServerKvasBackend, ServerKvasBackend>();
         fusion.AddService<IPhoneAuth, PhoneAuth>();

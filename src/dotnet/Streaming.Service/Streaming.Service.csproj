@@ -6,16 +6,21 @@
     <ProjectReference Include="..\SignalR.Client\SignalR.Client.csproj" />
     <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
     <ProjectReference Include="..\Streaming.Contracts\Streaming.Contracts.csproj" />
-    <ProjectReference Include="..\Transcription.Contracts\Transcription.Contracts.csproj" />
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Deepgram" />
+    <PackageReference Include="Google.Cloud.Speech.V2" />
+    <PackageReference Include="Google.Api.Gax" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Audio.IntegrationTests" />
+    <InternalsVisibleTo Include="$(BaseName).Audio.IntegrationTests" />
+    <InternalsVisibleTo Include="$(BaseName).Transcription.UnitTests" />
+    <InternalsVisibleTo Include="$(BaseName).Transcription.IntegrationTests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -46,6 +51,10 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>MatroskaSpecification.tt</DependentUpon>
     </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="data\silence.opuss" />
   </ItemGroup>
 
 </Project>

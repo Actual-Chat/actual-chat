@@ -90,6 +90,7 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     public static implicit operator string(ChatId source) => source.Id.Value;
     public static implicit operator ChatId(PeerChatId source) => new(source.Id, source, PlaceChatId.None, AssumeValid.Option);
     public static implicit operator ChatId(PlaceChatId source) => new(source.Id, PeerChatId.None, source, AssumeValid.Option);
+    public static explicit operator ChatId(string source) => new (source);
 
     // Equality
 

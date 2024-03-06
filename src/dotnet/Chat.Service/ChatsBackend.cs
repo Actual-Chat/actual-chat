@@ -14,7 +14,7 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChatsBackend
+public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChatsBackend
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
     private static readonly Dictionary<MediaId, Media.Media> EmptyMediaMap = new ();
@@ -45,6 +45,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     private IServerKvasBackend ServerKvasBackend => _serverKvasBackend ??= Services.GetRequiredService<IServerKvasBackend>();
 
     private HostInfo HostInfo { get; } = services.HostInfo();
+    private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; } = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
@@ -388,15 +389,17 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     // Not a [ComputeMethod]!
     public async Task<ApiArray<Chat>> ListChanged(
         long minVersion,
-        ApiSet<ChatId> lastIdsWithSameVersion,
+        long maxVersion,
+        ChatId lastId,
         int limit,
         CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
         var dbChats = await dbContext.Chats
-            .Where(x => x.Version >= minVersion)
-            .Where(x => !Constants.Chat.SystemChatSids.Contains(x.Id))
+            .Where(x => x.Version >= minVersion
+                && x.Version <= maxVersion
+                && !Constants.Chat.SystemChatSids.Contains(x.Id))
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
             .Take(limit)
@@ -405,13 +408,41 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (dbChats.Count == 0)
             return ApiArray<Chat>.Empty;
 
-        if (lastIdsWithSameVersion.Count == 0)
+        var chats = dbChats.ConvertAll(x => x.ToModel());
+        if (lastId.IsNone)
             // no chats created at minCreatedAt that we need to skip
-            return dbChats.Select(x => x.ToModel()).ToApiArray();
+            return chats.ToApiArray();
 
-        return dbChats.Where(x => !lastIdsWithSameVersion.Contains(new ChatId(x.Id)))
-            .Select(x => x.ToModel())
-            .ToApiArray();
+        var lastIdIndex = GetLastIndex();
+        return lastIdIndex < 0 ? chats.ToApiArray() : chats[(lastIdIndex + 1)..].ToApiArray();
+
+        int GetLastIndex()
+        {
+            for (int i = 0; i < chats.Count; i++) {
+                var chat = chats[i];
+                if (chat.Version > minVersion)
+                    return -1;
+
+                if (chat.Id == lastId)
+                    return i;
+            }
+            return -1;
+        }
+    }
+
+    // Not a [ComputeMethod]!
+    public async Task<Chat?> GetLastChanged(CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbChat = await dbContext.Chats
+            .OrderByDescending(x => x.Version)
+            .ThenByDescending(x => x.Id)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return dbChat?.ToModel();
     }
 
     public async Task<ApiList<ChatEntry>> ListChangedEntries(

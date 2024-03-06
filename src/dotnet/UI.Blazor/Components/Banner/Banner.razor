@@ -21,13 +21,13 @@
         <div class="banner-buttons">
             @Buttons
             @if (ShowDismissButton) {
-                <Button
-                    Class="btn-transparent blackout close-banner"
+                <HeaderButton
+                    Class="blackout close-banner"
                     Click="OnClose"
                     Tooltip="Dismiss"
                     TooltipPosition="FloatingPosition.Top">
                     <i class="icon-close text-2xl"></i>
-                </Button>
+                </HeaderButton>
             }
         </div>
     }

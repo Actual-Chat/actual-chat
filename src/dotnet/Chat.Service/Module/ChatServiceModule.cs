@@ -11,22 +11,21 @@ using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Chat.Module;
 
-public sealed class ChatServiceModule(IServiceProvider moduleServices) : HostModule<ChatSettings>(moduleServices)
+public sealed class ChatServiceModule(IServiceProvider moduleServices) : HostModule(moduleServices)
 {
     protected override void InjectServices(IServiceCollection services)
     {
-        base.InjectServices(services);
         if (!HostInfo.HostKind.IsServer())
             return; // Server-side only module
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
-        redisModule.AddRedisDb<ChatDbContext>(services, Settings.Redis);
+        redisModule.AddRedisDb<ChatDbContext>(services);
 
         // DB
         var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, ChatDbInitializer>();
-        dbModule.AddDbContextServices<ChatDbContext>(services, Settings.Db, db => {
+        dbModule.AddDbContextServices<ChatDbContext>(services, db => {
             // DbChat
             db.AddEntityResolver<string, DbChat>();
 
@@ -72,8 +71,6 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices) : HostMod
 
         // Places
         fusion.AddService<IPlaces, Places>();
-        fusion.AddService<IChatMigrator, ChatMigrator>();
-        fusion.AddService<IChatMigratorBackend, ChatMigratorBackend>();
 
         // Authors
         fusion.AddService<IAuthors, Authors>();

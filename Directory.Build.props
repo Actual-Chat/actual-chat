@@ -195,6 +195,8 @@
     <NoWarn>$(NoWarn);CA1707;CA1711;CA1720;CA1724;CA1725</NoWarn>
     <NoWarn>$(NoWarn);CA1802;CA1805;CA1810;CA1815;CA1816;CA1819;CA1848;CA1859</NoWarn>
     <NoWarn>$(NoWarn);CA2000;CA2213;CA2225;CA2234;CA5394</NoWarn>
+    <!-- IDE0160: Use block-scoped namespace declarations -->
+    <NoWarn>$(NoWarn);IDE0160</NoWarn>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(DeterministicSourcePaths)' =='true'">

@@ -1,45 +1,50 @@
-using MemoryPack;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ActualChat.Commands;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record QueuedCommand(
-    [property: DataMember, MemoryPackOrder(0)] Symbol Id,
-    [property: DataMember, MemoryPackOrder(1)] long Version
-) : IHasId<Symbol>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+public abstract record QueuedCommand(Ulid Id) : IHasId<Ulid>
 {
+    private static readonly MethodInfo CreateFromCommandMethod = typeof(QueuedCommand)
+        .GetMethod(nameof(CreateFromCommand), BindingFlags.Static | BindingFlags.NonPublic)!;
+    private static readonly ConcurrentDictionary<Type, Func<Ulid, ICommand, QueuedCommand>> CommandFactoryMethods = new();
+
     public static IMomentClock Clock { get; set; } = MomentClockSet.Default.CoarseSystemClock;
 
-    // TODO(AK): ICommand serialization looks suspicious
-    [DataMember, MemoryPackOrder(2)] [MemoryPackAllowSerialize] public ICommand Command { get; init; } = null!;
-    [DataMember, MemoryPackOrder(3)] public QueueId QueueId { get; init; }
-    [DataMember, MemoryPackOrder(4)] public Moment CreatedAt { get; init; }
-    [DataMember, MemoryPackOrder(5)] public Moment? StartedAt { get; init; }
-    [DataMember, MemoryPackOrder(6)] public Moment? CompletedAt { get; init; }
-    [DataMember, MemoryPackOrder(7)] public int TryIndex { get; init; }
-    [DataMember, MemoryPackOrder(8)] public string Error { get; init; } = "";
+    public abstract ICommand UntypedCommand { get; }
+    public Moment CreatedAt => Id.Time;
+    public Moment? StartedAt { get; init; }
+    public Moment? CompletedAt { get; init; }
+    public int TryIndex { get; init; }
 
-    public static Symbol NewId()
-        => Ulid.NewUlid().ToString();
-
-    public static QueuedCommand New(ICommand command, QueuedCommandPriority priority = QueuedCommandPriority.Normal)
+    public static QueuedCommand New<T>(T command)
+        where T : ICommand
     {
-        var now = Clock.Now;
-        var id = NewId();
-        var version = now.EpochOffsetTicks;
-        // ReSharper disable once SuspiciousTypeConversion.Global
-
-        var shardKeyResolver = ShardKeyResolvers.GetUntyped(command.GetType());
-        var shardKey = shardKeyResolver?.Invoke(command) ?? command.GetHashCode();
-        var result = new QueuedCommand(id, version) {
-            Command = command,
-            QueueId = new QueueId(shardKey, priority),
-            CreatedAt = now,
-        };
+        var id = Ulid.NewUlid(Clock.UtcNow);
+        var result = new QueuedCommand<T>(id, command);
         return result;
     }
 
+    public static QueuedCommand FromCommand(Ulid ulid, ICommand command)
+    {
+        var factoryMethod = CommandFactoryMethods.GetOrAdd(command.GetType(),
+            static t => (Func<Ulid, ICommand, QueuedCommand>)CreateFromCommandMethod
+                .MakeGenericMethod(t)
+                .Invoke(null, [])!);
+
+        return factoryMethod(ulid, command);
+    }
+
     // Equality is based solely on Id property
-    public bool Equals(QueuedCommand? other) => other != null && Id.Equals(other.Id);
+    public virtual bool Equals(QueuedCommand? other) => other != null && Id.Equals(other.Id);
     public override int GetHashCode() => Id.GetHashCode();
+
+    private static Func<Ulid, ICommand, QueuedCommand> CreateFromCommand<T>() where T : ICommand
+        => (ulid, command) => new QueuedCommand<T>(ulid, (T)command);
+}
+
+public sealed record QueuedCommand<T>(Ulid Id, T Command) : QueuedCommand(Id)
+    where T: ICommand
+{
+    public override ICommand UntypedCommand => Command;
 }

@@ -17,6 +17,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private readonly IMutableState<PlaceId> _selectedPlaceId;
     private readonly IStoredState<IImmutableDictionary<PlaceId, ChatId>> _selectedChatIds;
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
+    private readonly ISyncedState<UserNavbarSettings> _navbarSettings;
     private ChatId _searchEnabledChatId;
     private readonly object _lock = new();
     private readonly TaskCompletionSource _whenActivePlaceRestored = TaskCompletionSourceExt.New();
@@ -48,6 +49,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     public IState<PlaceId> SelectedPlaceId => _selectedPlaceId;
     public IState<IImmutableDictionary<PlaceId, ChatId>> SelectedChatIds => _selectedChatIds;
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
+    public IState<UserNavbarSettings> NavbarSettings => _navbarSettings;
     public Task WhenLoaded => _selectedChatId.WhenRead;
     public Task WhenActivePlaceRestored => _whenActivePlaceRestored.Task;
 
@@ -69,6 +71,13 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         _highlightedEntryId = StateFactory.NewMutable(
             ChatEntryId.None,
             StateCategories.Get(type, nameof(HighlightedEntryId)));
+        _navbarSettings = StateFactory.NewKvasSynced<UserNavbarSettings>(
+            new (AccountSettings, UserNavbarSettings.KvasKey) {
+                InitialValue = new UserNavbarSettings(),
+                UpdateDelayer = FixedDelayer.Instant,
+                Category = StateCategories.Get(GetType(), nameof(NavbarSettings)),
+            });
+        Hub.RegisterDisposable(_navbarSettings);
 
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
@@ -106,6 +115,8 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             hasUnreadMentions = lastMentionEntryId > readEntryLid;
         }
 
+        var navbarSettings = await NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
+
         var lastTextEntryText = "";
         if (news.LastTextEntry is { } lastTextEntry) {
             if (lastTextEntry.IsStreaming)
@@ -127,6 +138,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             UnreadCount = unreadCount,
             HasUnreadMentions = hasUnreadMentions,
             LastTextEntryText = lastTextEntryText,
+            IsPinnedToNavbar = navbarSettings.PinnedChats.Contains(chatId),
         };
         return result;
     }
@@ -259,6 +271,25 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         await UICommander.Run(command).ConfigureAwait(false);
     }
 
+    public void SetNavbarPinState(ChatId chatId, bool mustPin)
+    {
+        if (chatId.IsNone)
+            return;
+
+        var pinnedChats = NavbarSettings.Value.PinnedChats;
+        var isPinned = pinnedChats.Contains(chatId);
+        if (isPinned == mustPin)
+            return;
+
+        var newPinnedChats = mustPin
+            ? pinnedChats.Add(chatId, true)
+            : pinnedChats.RemoveAll(chatId);
+        SetNavbarPinnedChats(newPinnedChats);
+    }
+
+    public void SetNavbarPinnedChats(IReadOnlyCollection<ChatId> pinnedChats)
+        => _navbarSettings.Value = _navbarSettings.Value with { PinnedChats = pinnedChats.ToApiArray() };
+
     // Helpers
 
     // This method fixes provided ChatId w/ PeerChatId.FixOwnerId, which replaces
@@ -351,12 +382,17 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
         if (chatId.Kind == ChatKind.Peer &&
             !SelectedPlaceId.Value.IsNone &&
-            OrdinalEquals(NavbarUI.SelectedGroupId, SelectedPlaceId.Value.GetNavbarGroupId()) &&
-            ChatListUI.Settings.Value.Filter == ChatListFilter.People) {
-            // Check if peer chat was shown for place people view
-            var chats = await ChatListUI.ListAllUnordered(SelectedPlaceId.Value).ConfigureAwait(false);
-            if (chats.ContainsKey(chatId))
-                return; // Keep selected group
+            OrdinalEquals(NavbarUI.SelectedGroupId, SelectedPlaceId.Value.GetNavbarGroupId())) {
+            var listView = ChatListUI.ActiveChatListView.Value;
+            if (listView != null && listView.PlaceId == SelectedPlaceId.Value) {
+                var settings = await listView.GetSettings().ConfigureAwait(false);
+                if (settings.Filter == ChatListFilter.People) {
+                    // Check if peer chat was shown for place people view
+                    var chats = await ChatListUI.ListAllUnordered(SelectedPlaceId.Value).ConfigureAwait(false);
+                    if (chats.ContainsKey(chatId))
+                        return; // Keep selected group
+                }
+            }
         }
 
         NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
@@ -454,11 +490,19 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
     {
         var placeId = PlaceId.None;
-        var isChats = OrdinalEquals(NavbarUI.SelectedGroupId, NavbarGroupIds.Chats) || NavbarUI.IsPlaceSelected(out placeId);
+        var isChats = OrdinalEquals(NavbarUI.SelectedGroupId, NavbarGroupIds.Chats)|| NavbarUI.IsPlaceSelected(out placeId);
+        if (!NavbarUI.SelectedChatId.IsNone) {
+            isChats = true;
+            placeId = NavbarUI.SelectedChatId.PlaceId;
+        }
+
         if (!isChats)
             return;
 
         SelectPlaceInternal(placeId);
+        if (!NavbarUI.SelectedChatId.IsNone)
+            SelectChatInternal(NavbarUI.SelectedChatId);
+
         if (!e.IsUserAction)
             return;
 

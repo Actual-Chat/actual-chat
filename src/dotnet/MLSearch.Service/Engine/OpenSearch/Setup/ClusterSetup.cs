@@ -3,7 +3,7 @@ using OpenSearch.Client;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Documents;
-using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
+using ActualChat.MLSearch.Engine.Indexing;
 using OpenSearchModelGroupName = string;
 using OpenSearchModelGroupId = string;
 using OpenSearchModelId = string;
@@ -17,21 +17,19 @@ internal class ClusterSetup(
     ITracerSource? tracing
     ) : IModuleInitializer
 {
-    public const string ChatSliceIndexName = "chat-slice";
-
     //private ILogger? _log;
     //private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
-    private ClusterSettings? result;
-    public ClusterSettings Result => result ?? throw new InvalidOperationException(
+    private ClusterSettings? _result;
+    public ClusterSettings Result => _result ?? throw new InvalidOperationException(
         "Initialization script was not called."
     );
 
     public Task Initialize(CancellationToken cancellationToken) => EnsureChatSliceIndex(cancellationToken);
 
-    public async Task<ClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)
+    private async Task<ClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)
     {
-        if (result != null) {
-            return result;
+        if (_result != null) {
+            return _result;
         }
 
         using var _1 = tracing.TraceRegion();
@@ -117,7 +115,7 @@ internal class ClusterSetup(
                 "Failed to retrieve model all_config value."
             );
         }
-        return result = new ClusterSettings(modelAllConfig, modelId, modelEmbeddingDimension);
+        return _result = new ClusterSettings(modelAllConfig, modelId, modelEmbeddingDimension);
     }
     private async Task EnsureChatSliceIndex(CancellationToken cancellationToken)
     {
@@ -128,10 +126,9 @@ internal class ClusterSetup(
         // It has to succeed once and only once to setup an OpenSearch cluster.
         // After the initial setup this would never be called again.
         using var _1 = tracing.TraceRegion();
-        var name = ChatSliceIndexName;
         var settings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
-        var searchIndexId = settings.IntoFullSearchIndexName(name);
-        var ingestCursorIndexId = settings.IntoFullCursorIndexName(name);
+        var searchIndexId = settings.IntoFullIndexName(IndexNames.ChatSlice);
+        var ingestCursorIndexId = settings.IntoFullIndexName(IndexNames.ChatSliceCursor);
 
         var isSearchIndexExistsResult = await openSearch
             .Indices
@@ -142,7 +139,7 @@ internal class ClusterSetup(
             return;
         }
 
-        var ingestPipelineId = settings.IntoFullIngestPipelineName(name);
+        var ingestPipelineId = settings.IntoFullIngestPipelineName(IndexNames.ChatSlice);
         var modelId = settings.ModelId;
         var modelDimension = settings.ModelEmbeddingDimension.ToString("D", CultureInfo.InvariantCulture);
 
@@ -170,6 +167,9 @@ internal class ClusterSetup(
         // ChatSliceAttachment fields
         var attachmentIdField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Id));
         var attachmentSummaryField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Summary));
+        // Cursor fields
+        var lastEntryVersionField = namingPolicy.ConvertName(nameof(ChatEntriesIndexer.Cursor.LastEntryVersion));
+        var lastEntryLocalIdField = namingPolicy.ConvertName(nameof(ChatEntriesIndexer.Cursor.LastEntryLocalId));
 
         var ingestResult = await openSearch.RunAsync(
             $$"""
@@ -190,7 +190,7 @@ internal class ClusterSetup(
         ).ConfigureAwait(false);
         if (!ingestResult.Success) {
             throw new InvalidOperationException(
-                $"Failed to update '{name}' ingest pipeline",
+                $"Failed to update '{IndexNames.ChatSlice}' ingest pipeline",
                 ingestResult.OriginalException
             );
         }
@@ -201,10 +201,10 @@ internal class ClusterSetup(
               {
                 "mappings": {
                     "properties": {
-                        "{{nameof( ChatEntriesIndexing.Cursor.LastEntryVersion)}}": {
+                        "{{lastEntryVersionField}}": {
                             "type": "text"
                         },
-                        "{{nameof(ChatEntriesIndexing.Cursor.LastEntryLocalId)}}": {
+                        "{{lastEntryLocalIdField}}": {
                             "type": "text"
                         }
                     }
@@ -284,7 +284,7 @@ internal class ClusterSetup(
         ).ConfigureAwait(false);
         if (!searchIndexResult.Success) {
             throw new InvalidOperationException(
-                $"Failed to update '{name}'search index",
+                $"Failed to update '{IndexNames.ChatSlice}'search index",
                 searchIndexResult.OriginalException
             );
         }

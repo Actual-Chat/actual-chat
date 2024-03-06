@@ -1,6 +1,9 @@
+using ActualChat.Chat;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
+using ActualChat.MLSearch.Engine.Indexing;
 using ActualChat.MLSearch.Engine.OpenSearch;
+using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.Performance;
 using ActualChat.Testing.Host;
 using OpenSearch.Client;
@@ -19,9 +22,10 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
     protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
-        var settings = AppHost.Services.GetRequiredService<IIndexSettingsSource>().GetSettings<ChatSlice>();
-        var searchIndexName = settings.SearchIndexName;
-        var cursorIndexName = settings.CursorIndexName;
+        var cursorIndexName = AppHost.Services.GetRequiredService<IIndexSettingsSource>()
+            .GetSettings(IndexNames.ChatSliceCursor).IndexName;
+        var settings = AppHost.Services.GetRequiredService<IIndexSettingsSource>().GetSettings(IndexNames.ChatSlice);
+        var searchIndexName = settings.IndexName;
         var pipelineId = settings.IngestPipelineId;
 
         var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
@@ -111,5 +115,16 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
         var query3Count = queryResult3.Documents.Count;
         Assert.True(query3Count > 0);
         Assert.True(query2Count > query3Count);
+    }
+
+    [Fact]
+    public void ResolvesOfIndexingServicesWorkCorrectly()
+    {
+        Assert.NotNull(AppHost.Services.GetService<ICursorStates<ChatEntriesIndexer.Cursor>>());
+        Assert.NotNull(AppHost.Services.GetService<ISink<ChatEntry, ChatEntry>>());
+        Assert.NotNull(AppHost.Services.GetService<IDocumentMapper<ChatEntry, ChatSlice>>());
+
+        var chatEntriesIndexing = AppHost.Services.GetService<ChatEntriesIndexer>();
+        Assert.NotNull(chatEntriesIndexing);
     }
 }

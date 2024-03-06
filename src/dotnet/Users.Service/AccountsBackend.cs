@@ -81,7 +81,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     public async Task<ApiArray<UserId>> ListChanged(
         long minVersion,
         long maxVersion,
-        ApiSet<UserId> lastIdsWithSameVersion,
+        UserId lastId,
         int limit,
         CancellationToken cancellationToken)
     {
@@ -89,17 +89,35 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbAccounts = await dbContext.Accounts
-            .Where(x => x.Version >= minVersion && x.Version <= maxVersion)
-            .Where(x => !Constants.User.SSystemUserIds.Contains(x.Id))
+            .Where(x => x.Version >= minVersion && x.Version <= maxVersion && !Constants.User.SSystemUserIds.Contains(x.Id))
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
             .Take(limit)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var userIds = dbAccounts.Select(x => new UserId(x.Id)).ToApiArray();
-        return lastIdsWithSameVersion.Count == 0
-            ? userIds
-            : userIds.Where(x => !lastIdsWithSameVersion.Contains(x)).ToApiArray();
+        var accounts = dbAccounts.ConvertAll(x => new {
+            Id = new UserId(x.Id), x.Version,
+        });
+        if (lastId.IsNone || Constants.User.SystemUserIds.Contains(lastId))
+            return accounts.Select(x => x.Id).ToApiArray();
+
+        var lastIdIndex = GetLastIndex();
+        return lastIdIndex < 0
+            ? accounts.Select(x => x.Id).ToApiArray()
+            : accounts[(lastIdIndex + 1)..].Select(x => x.Id).ToApiArray();
+
+        int GetLastIndex()
+        {
+            for (int i = 0; i < accounts.Count; i++) {
+                var account = accounts[i];
+                if (account.Version > minVersion)
+                    return -1;
+
+                if (account.Id == lastId)
+                    return i;
+            }
+            return -1;
+        }
     }
 
     public async Task<AccountFull?> GetLastChanged(CancellationToken cancellationToken)
@@ -203,6 +221,36 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         await Commander.Call(removeAuthorsCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
+    // [CommandHandler]
+    public virtual async Task<bool> OnMoveChatToPlace(
+        AccountsBackend_MoveChatToPlace command,
+        CancellationToken cancellationToken)
+    {
+        var (chatId, placeId) = command;
+        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
+        var newChatId = (ChatId)placeChatId;
+        var chatSid = chatId.Value;
+
+        if (Computed.IsInvalidating()) {
+            // Skip invalidation. Value for old chat should no longer be requested.
+            return default;
+        }
+
+        Log.LogInformation("OnMoveChatToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'", chatSid, placeId);
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var hasChanges = false;
+        hasChanges |= await UpdateUserChatSettings(dbContext, chatId, newChatId, cancellationToken).ConfigureAwait(false);
+        hasChanges |= await UpdateChatPositions(dbContext, chatId, newChatId, cancellationToken).ConfigureAwait(false);
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("OnMoveChatToPlace: completed");
+        return hasChanges;
+    }
+
+    // Event handlers
+
     [EventHandler]
     public virtual Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken)
     {
@@ -255,4 +303,50 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             AvatarKey = DefaultUserPicture.GetAvatarKey(account.Id),
             Bio = "",
         };
+
+    private async Task<bool> UpdateUserChatSettings(
+        UsersDbContext dbContext,
+        ChatId oldChatId,
+        ChatId newChatId,
+        CancellationToken cancellationToken)
+    {
+        var oldChatSettingsSuffix = UserChatSettings.GetKvasKey(oldChatId);
+        var newChatSettingsSuffix = UserChatSettings.GetKvasKey(newChatId);
+
+        // Update UserChatSettings
+#pragma warning disable CA1307
+        var updateCount = await dbContext.KvasEntries
+            .Where(c => c.Key.EndsWith(oldChatSettingsSuffix))
+            .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(c => c.Key, c => c.Key.Replace(oldChatSettingsSuffix, newChatSettingsSuffix)),
+                cancellationToken)
+            .ConfigureAwait(false);
+#pragma warning restore CA1307
+
+        Log.LogInformation("Updated {Count} UserChatSettings kvas records", updateCount);
+        return updateCount > 0;
+    }
+
+    private async Task<bool> UpdateChatPositions(
+        UsersDbContext dbContext,
+        ChatId oldChatId,
+        ChatId newChatId,
+        CancellationToken cancellationToken)
+    {
+        var oldChatPositionSuffix = $" {oldChatId.Value}:0";
+        var newChatPositionSuffix = $" {newChatId.Value}:0";
+
+        // Update UserChatSettings
+#pragma warning disable CA1307
+        var updateCount = await dbContext.ChatPositions
+            .Where(c => c.Id.EndsWith(oldChatPositionSuffix))
+            .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(c => c.Id, c => c.Id.Replace(oldChatPositionSuffix, newChatPositionSuffix)),
+                cancellationToken)
+            .ConfigureAwait(false);
+#pragma warning restore CA1307
+
+        Log.LogInformation("Updated {Count} ChatPositions records", updateCount);
+        return updateCount > 0;
+    }
 }

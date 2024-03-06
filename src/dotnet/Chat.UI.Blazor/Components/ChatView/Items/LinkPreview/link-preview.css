@@ -1,6 +1,7 @@
 .link-preview {
+    @apply relative;
     @apply flex-y md:flex-x h-60 md:h-34;
-    @apply rounded-lg border border-solid border-counter;
+    @apply rounded-lg border border-separator;
     @apply overflow-hidden;
 }
 .link-preview:not(:has(.c-thumbnail)) {
@@ -75,3 +76,23 @@
     @apply flex flex-x h-15 w-15 -mt-7.5 -ml-7.5 rounded-full items-center justify-center;
     @apply backdrop-brightness-50;
 }
+
+/* Link Buttons */
+.link-preview .link-buttons {
+    @apply absolute bottom-1 right-1;
+    @apply flex-x gap-x-1;
+}
+.link-preview .link-buttons .btn.btn-round {
+    @apply bg-transparent;
+}
+.link-preview .link-buttons .btn.btn-round:hover,
+.link-preview .link-buttons .btn.btn-round:hover .btn-content {
+    @apply bg-transparent;
+}
+.link-preview .link-buttons .btn.btn-round i {
+    @apply text-xl;
+}
+body.hoverable .link-preview .link-buttons .btn.btn-round:hover i {
+    @apply text-primary;
+}
+

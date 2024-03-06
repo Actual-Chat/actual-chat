@@ -1,5 +1,4 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inject FeedbackUI FeedbackUI;
 @{
     var panelCls = _panelState switch {
         PanelState.Closed => "panel-closed",
@@ -17,7 +16,7 @@
     }
     <div class="notify-call-content">
         <div class="actions">
-            <Button Class="notify-btn" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("notify", "Notify"))">
+            <Button Class="notify-btn" Click="@OnNotifyClick">
                 <div class="w-full flex-x items-center gap-x-2 mx-2">
                     <i class="icon-at text-2xl"></i>
                     <div>
@@ -62,6 +61,9 @@
             _ => PanelState.Closed,
         };
     }
+
+    private void OnNotifyClick()
+        => Close();
 
     private void OnCloseClick()
         => Close();

@@ -26,7 +26,10 @@ public abstract class ContactIndexer(IServiceProvider services)
         => this.Start();
 
     public void OnSyncNeeded()
-        => NeedsSync.SetDelayed();
+    {
+        Log.LogDebug("OnSyncNeeded");
+        NeedsSync.SetDelayed();
+    }
 
     protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {
@@ -38,9 +41,11 @@ public abstract class ContactIndexer(IServiceProvider services)
 
         while (!cancellationToken.IsCancellationRequested)
             try {
+                Log.LogDebug("Syncing contacts");
                 NeedsSync.Reset();
                 await Sync(cancellationToken).ConfigureAwait(false);
 
+                Log.LogDebug("Became idle waiting for any event");
                 await NeedsSync.WhenSet(MaxIdleInterval, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }

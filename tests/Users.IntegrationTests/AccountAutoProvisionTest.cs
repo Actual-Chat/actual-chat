@@ -1,4 +1,5 @@
 using ActualChat.App.Server;
+using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Users.IntegrationTests;
@@ -13,7 +14,7 @@ public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper 
 
     protected override async Task InitializeAsync()
     {
-        _appHost = await NewAppHost();
+        _appHost = await NewAppHost("new-user");
         _tester = _appHost.NewWebClientTester(Out);
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
     }
@@ -51,7 +52,8 @@ public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper 
 
         // assert
         account2.Should().BeEquivalentTo(account, options => options
+            .ExcludingSystemProperties()
             .Excluding(x => x.User)
-            .Excluding(x => x.IsGreetingCompleted ));
+            .Excluding(x => x.IsGreetingCompleted));
     }
 }

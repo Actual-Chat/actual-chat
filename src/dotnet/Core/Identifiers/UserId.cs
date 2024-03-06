@@ -58,6 +58,7 @@ public readonly partial struct UserId : ISymbolIdentifier<UserId>,
     public override string ToString() => Id;
     public static implicit operator Symbol(UserId source) => source.Id;
     public static implicit operator string(UserId source) => source.Id.Value;
+    public static explicit operator UserId(string source) => new (source);
 
     // Comparison
 

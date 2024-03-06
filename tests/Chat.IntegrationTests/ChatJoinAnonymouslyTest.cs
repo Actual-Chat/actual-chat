@@ -4,7 +4,7 @@ using ActualChat.Users;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection))]
-public class ChatJoinAnonymouslyTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class ChatJoinAnonymouslyTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]

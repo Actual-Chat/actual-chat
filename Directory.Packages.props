@@ -69,7 +69,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.StaticFiles" Version="2.2.0" />
     <PackageVersion Include="Microsoft.Extensions.FileSystemGlobbing" Version="7.0.0" />
     <PackageVersion Include="Mono.Profiler.Android" Version="7.0.0" />
-    <PackageVersion Include="Mono.AotProfiler.Android" Version="7.0.0" />
+    <PackageVersion Include="Mono.AotProfiler.Android" Version="7.0.0-preview1" />
     <PackageVersion Include="OpenGraph-Net" Version="4.0.1" />
     <PackageVersion Include="SauceControl.Blake2Fast" Version="2.0.0" />
     <PackageVersion Include="Serilog.Extensions.Logging.File" Version="3.0.0" />
@@ -118,6 +118,7 @@
     <PackageVersion Include="Microsoft.IO.RecyclableMemoryStream" Version="3.0.0" />
     <PackageVersion Include="Microsoft.JSInterop" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.Toolkit.HighPerformance" Version="7.1.2" />
+    <PackageVersion Include="NATS.Net" Version="2.1.0-preview.5" />
     <PackageVersion Include="Npgsql" Version="$(NpgsqlVersion)" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreNpgsqlVersion)" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.2" />
@@ -134,7 +135,7 @@
     <PackageVersion Include="Serilog.Extensions.Logging" Version="3.1.0" />
     <PackageVersion Include="Serilog.Sinks.Xamarin" Version="1.0.0" />
     <PackageVersion Include="Serilog.Sinks.Debug" Version="2.0.0" />
-    <PackageVersion Include="SixLabors.ImageSharp" Version="3.0.2" />
+    <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.3" />
     <PackageVersion Include="StackExchange.Redis" Version="$(RedisVersion)" />
     <PackageVersion Include="ActualLab.Core" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.CommandR" Version="$(ActualLabFusionVersion)" />

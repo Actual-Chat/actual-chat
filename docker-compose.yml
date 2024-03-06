@@ -108,3 +108,20 @@ services:
         limits:
           memory: 1G
           cpus: '0.2'
+  nats:
+    image: nats:2.10.10-alpine3.19
+    expose:
+      - 4222
+    ports:
+      - 4222:4222
+      - 8222:8222
+    volumes:
+      - ./.config/local.actual.chat/nats:/etc/nats
+    command:
+      - "-js"
+      - "--http_port"
+      - "8222"
+      - "--port"
+      - "4222"
+      - "-c"
+      - "/etc/nats/nats-server.conf"

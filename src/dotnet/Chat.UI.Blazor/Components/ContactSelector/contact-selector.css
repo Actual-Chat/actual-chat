@@ -1,14 +1,14 @@
 /* List */
 .contact-selector-list {
     @apply flex-y grow;
-    @apply py-1;
     @apply overflow-y-auto custom-scrollbar;
 }
 
 /* List item */
 .contact-selector-list-item {
-    @apply flex-x items-center;
-    @apply gap-x-1 py-1 px-4;
+    @apply flex-none flex-x items-center gap-x-1;
+    @apply h-12;
+    @apply px-2;
     @apply rounded-md;
     @apply hover:bg-hover;
 }
@@ -66,7 +66,7 @@ body.hoverable .contact-selector-badges-contact:hover .avatar-circle {
 }
 .contact-selector-place-picker .tab-panel-tabs .btn-group:first-child,
 .contact-selector-place-picker .tab-panel-tabs .btn-group:last-child {
-    @apply mx-4;
+    @apply mx-2;
 }
 
 .contact-selector-place-picker .tab-panel-tabs .btn-group-container {

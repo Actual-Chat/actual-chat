@@ -1,32 +1,35 @@
 using ActualChat.Commands;
 using ActualChat.Commands.Internal;
+using ActualChat.Hosting;
 
 namespace ActualChat.Core.UnitTests.Commands;
 
 public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
 {
+    private static readonly QueueId _queueId = new (HostRole.OneBackendServer, 0);
+
     [Fact]
     public async Task EnqueueEventOnCommandCompletion()
     {
         await using var services = new ServiceCollection()
             .AddLogging()
             .AddLocalCommandQueues()
-            .AddCommandQueueScheduler()
             .AddFusion()
             .AddService<ScheduledCommandTestService>()
             .Services
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
-        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[default];
+        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[_queueId];
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
+        var scheduler = services.GetRequiredService<ICommandQueueScheduler>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand(null));
         testService.ProcessedEvents.Count.Should().Be(0);
 
-        await Awaiter.WaitFor(() => queue.SuccessCount != 0);
+        await scheduler.ProcessAlreadyQueued(TimeSpan.FromSeconds(3), CancellationToken.None);
 
         testService.ProcessedEvents.Count.Should().Be(1);
     }
@@ -37,7 +40,6 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
         await using var services = new ServiceCollection()
             .AddLogging()
             .AddLocalCommandQueues()
-            .AddCommandQueueScheduler()
             .AddSingleton<DedicatedInterfaceEventHandler>()
             .AddCommander(c => c.AddHandlers<DedicatedInterfaceEventHandler>())
             .AddFusion()
@@ -47,14 +49,15 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
-        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[default];
+        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[_queueId];
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
+        var scheduler = services.GetRequiredService<ICommandQueueScheduler>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand2());
 
-        await Awaiter.WaitFor(() => queue.SuccessCount == 2);
+        await scheduler.ProcessAlreadyQueued(TimeSpan.FromSeconds(3), CancellationToken.None);
 
         foreach (var eventCommand in testService.ProcessedEvents)
             Out.WriteLine(eventCommand.ToString());
@@ -68,7 +71,6 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
         await using var services = new ServiceCollection()
             .AddLogging()
             .AddLocalCommandQueues()
-            .AddCommandQueueScheduler()
             .AddSingleton<DedicatedInterfaceEventHandler>()
             .AddCommander(c => c.AddHandlers<DedicatedInterfaceEventHandler>())
             .AddFusion()
@@ -78,14 +80,15 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
-        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[default];
+        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[_queueId];
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
+        var scheduler = services.GetRequiredService<ICommandQueueScheduler>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand3());
 
-        await Awaiter.WaitFor(() => queue.SuccessCount == 2);
+        await scheduler.ProcessAlreadyQueued(TimeSpan.FromSeconds(3), CancellationToken.None);
 
         foreach (var eventCommand in testService.ProcessedEvents)
             Out.WriteLine(eventCommand.ToString());

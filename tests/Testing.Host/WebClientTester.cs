@@ -14,6 +14,8 @@ public interface IWebTester : IDisposable, IAsyncDisposable
     IServiceProvider AppServices { get; }
     ICommander Commander { get; }
     IAuth Auth { get; }
+    IChats Chats { get; }
+    IPlaces Places { get; }
     IAuthBackend AuthBackend { get; }
     Session Session { get; }
     UrlMapper UrlMapper { get; }

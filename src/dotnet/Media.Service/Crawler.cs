@@ -1,6 +1,5 @@
 using System.Text;
 using ActualChat.Hashing;
-using ActualChat.Media.Module;
 using ActualChat.Uploads;
 using OpenGraphNet;
 using OpenGraphNet.Metadata;
@@ -8,17 +7,18 @@ using ActualLab.IO;
 
 namespace ActualChat.Media;
 
-public class Crawler(IServiceProvider services)
+public sealed class Crawler(IServiceProvider services)
 {
+    public TimeSpan GraphParseTimeout { get; set; } = TimeSpan.FromSeconds(10);
+    public TimeSpan ImageDownloadTimeout { get; set; } = TimeSpan.FromSeconds(5);
+
     private IContentSaver? _contentSaver;
-    private MediaSettings? _settings;
     private IMediaBackend? _mediaBackend;
     private IReadOnlyList<IUploadProcessor>? _uploadProcessors;
     private ICommander? _commander;
     private ILogger? _log;
 
     private IServiceProvider Services { get; } = services;
-    private MediaSettings Settings => _settings ??= Services.GetRequiredService<MediaSettings>();
     private IMediaBackend MediaBackend => _mediaBackend ??= Services.GetRequiredService<IMediaBackend>();
     private IContentSaver ContentSaver => _contentSaver ??= Services.GetRequiredService<IContentSaver>();
     private HttpClient HttpClient { get; }
@@ -91,7 +91,7 @@ public class Crawler(IServiceProvider services)
         async Task<OpenGraph> GetGraph(HttpClient httpClient)
         {
             using var cts = cancellationToken.CreateLinkedTokenSource();
-            cts.CancelAfter(Settings.CrawlerGraphParsingTimeout);
+            cts.CancelAfter(GraphParseTimeout);
             var html = await httpClient.GetStringAsync(url, cts.Token).ConfigureAwait(false);
             return OpenGraph.ParseHtml(html);
         }
@@ -151,7 +151,7 @@ public class Crawler(IServiceProvider services)
     private Task<ProcessedFile?> DownloadImageToFile(Uri imageUri, CancellationToken cancellationToken)
     {
         using var cts = cancellationToken.CreateLinkedTokenSource();
-        cts.CancelAfter(Settings.CrawlerImageDownloadTimeout);
+        cts.CancelAfter(ImageDownloadTimeout);
         return Download(cts.Token);
 
         async Task<ProcessedFile?> Download(CancellationToken cancellationToken1)

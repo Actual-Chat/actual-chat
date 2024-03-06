@@ -10,11 +10,15 @@
     var size = ScreenSize.IsNarrow() ? SquareSize.Size10 : SquareSize.Size12;
 }
 
+@if (places.Any() || previewPlace != null) {
+    <div class=c-delimiter></div>
+}
+
 <div @ref="Ref" class="navbar-place-buttons">
     @if (previewPlace != null) {
         <NavbarGroupSelectionButton
             @key="@previewPlace.Id"
-            AdditionalAttributes="@(new Dictionary<string, object>() { { "data-place-id", previewPlace.Id } })"
+            data-place-id="@previewPlace.Id"
             CanMove="@false"
             Title="@previewPlace.Title"
             Id="@previewPlace.Id.GetNavbarGroupId()"
@@ -33,7 +37,7 @@
     @foreach (var place in places) {
         <NavbarGroupSelectionButton
             @key="@place.Id"
-            AdditionalAttributes="@(new Dictionary<string, object>() { { "data-place-id", place.Id } })"
+            data-place-id="@place.Id"
             CanMove="@true"
             Title="@place.Title"
             Id="@place.Id.GetNavbarGroupId()"
@@ -66,7 +70,7 @@
     private Session Session => Hub.Session();
 
     private PlacesSettings? _placesSettings;
-    private PlacesSettings PlacesSettings => _placesSettings ??= new(Hub.Services, Hub.AccountSettings());
+    private PlacesSettings PlacesSettings => _placesSettings ??= new(Hub.AccountSettings());
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 

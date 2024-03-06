@@ -16,9 +16,7 @@
     <UseMauiNuGets>false</UseMauiNuGets>
     <SkipValidateMauiImplicitPackageReferences>true</SkipValidateMauiImplicitPackageReferences>
 
-    <!--
-    <ImplicitUsings>enable</ImplicitUsings>
-    -->
+    <!-- Other build properties -->
     <EnableDefaultCssItems>false</EnableDefaultCssItems>
     <InvariantGlobalization>true</InvariantGlobalization>
     <!--
@@ -50,8 +48,15 @@
     <TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</TargetPlatformMinVersion>
   </PropertyGroup>
 
-  <!-- Here we can alter either app is build to connect to dev or prod environment -->
-  <!-- Comment property group below to build an app connecting to prod -->
+  <!-- Profiling & tracing -->
+  <PropertyGroup Condition="'$(IsProfilingEnabled)' == ''">
+    <IsProfilingEnabled>false</IsProfilingEnabled>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(IsTracingEnabled)' == ''">
+    <IsTracingEnabled>false</IsTracingEnabled>
+  </PropertyGroup>
+
+  <!-- IsDevMaui controls whether the app talks to prod or dev instance -->
   <PropertyGroup Condition="'$(IsDevMaui)' == ''">
     <IsDevMaui>true</IsDevMaui>
   </PropertyGroup>
@@ -62,8 +67,6 @@
     <!-- App Identifier -->
     <ApplicationId>chat.actual.dev.app</ApplicationId>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(IsDevMaui)' != 'true'">
-  </PropertyGroup>
 
   <!-- Environment -->
   <PropertyGroup>
@@ -72,15 +75,7 @@
     <AnalysisLevel>preview</AnalysisLevel>
   </PropertyGroup>
   <PropertyGroup Condition="'$(FixedEnvironment)' == 'Production'">
-    <DefineConstants>$(DefineConstants);IS_FIXED_ENVIRONMENT_PRODUCTION</DefineConstants>
-  </PropertyGroup>
-
-  <!-- Profiling & tracing -->
-  <PropertyGroup Condition="'$(IsProfilingEnabled)' == ''">
-    <IsProfilingEnabled>false</IsProfilingEnabled>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(IsTracingEnabled)' == ''">
-    <IsTracingEnabled>false</IsTracingEnabled>
+    <DefineConstants>$(DefineConstants);IS_PRODUCTION_ENV</DefineConstants>
   </PropertyGroup>
 
   <!-- Project references -->
@@ -194,7 +189,7 @@
 
   <!-- Android: Debug configuration -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
-    <EmbedAssembliesIntoApk>False</EmbedAssembliesIntoApk>
+    <EmbedAssembliesIntoApk Condition="'$(EmbedAssembliesIntoApk)' == ''">False</EmbedAssembliesIntoApk>
   </PropertyGroup>
 
   <!-- Android: Release configuration -->
@@ -256,12 +251,15 @@
   </PropertyGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release' and !$(IsProfilingEnabled)">
     <!--
-    // This profile makes things much worse:
-    <AndroidAotProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android-v1.aprof" />
+    // .mibc profile (recorded with IsTracingEnabled & converted to .mibc) - that's what we use now:
+    <AndroidMibcProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android.mibc" />
+    <AndroidMibcProfile Include="$(MSBuildThisFileDirectory)/_Profiling/merged.mibc" />
+    // .aprof profile (recorded with IsProfilingEnabled) - doesn't work well:
+    <AndroidAotProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android.aprof" />
     // And this causes crash on startup:
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)/_Profiling/maui-blazor.aotprofile" />
     -->
-    <AndroidMibcProfile Include="$(MSBuildThisFileDirectory)/_Profiling/merged.mibc" />
+    <AndroidMibcProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android.mibc" />
   </ItemGroup>
 
   <!-- Android: AOT profiling mode -->
@@ -281,11 +279,11 @@
     <AndroidEnablePreloadAssemblies>false</AndroidEnablePreloadAssemblies>
   </PropertyGroup>
   <ItemGroup Condition="$(IsProfilingEnabled) and $(TargetFramework.Contains('-android'))">
-    <PackageReference Include="Mono.Profiler.Android" />
     <PackageReference Include="Mono.AotProfiler.Android" />
   </ItemGroup>
   <!-- Android: Tracing mode -->
   <PropertyGroup Condition="$(IsTracingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies> <!-- Required to produce .mibc -->
     <AndroidEnableProfiler>true</AndroidEnableProfiler>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
     <AndroidUseDefaultAotProfile>false</AndroidUseDefaultAotProfile>

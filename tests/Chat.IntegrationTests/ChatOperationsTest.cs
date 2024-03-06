@@ -10,7 +10,7 @@ using ActualLab.Fusion.EntityFramework;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection))]
-public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Theory]
@@ -140,8 +140,8 @@ public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact]
     public async Task NotesChatCreatedOnSignIn()
     {
-        using var appHost = await NewAppHost(options => options with {
-            ChatDbInitializerOptions = new ChatDbInitializer.Options {
+        using var appHost = await NewAppHost("notes-chats", options => options with {
+            ChatDbInitializerOptions = ChatDbInitializer.Options.Default with {
                 AddNotesChat = true,
             },
         });
@@ -153,7 +153,7 @@ public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
         var chatsBackend = services.GetRequiredService<IChatsBackend>();
         var authors = services.GetRequiredService<IAuthors>();
 
-        await services.Clocks().SystemClock.Delay(2000);
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         var dbHub = services.DbHub<ChatDbContext>();
         var dbContext = dbHub.CreateDbContext();
@@ -409,6 +409,8 @@ public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         var (chatId, _) = await ownerTester.CreateChat(true);
 
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
+
         var contacts = ownerTester.AppServices.GetRequiredService<IContacts>();
         await TestExt.WhenMetAsync(async () => {
                 var contactIds = await contacts.ListIds(session, PlaceId.None, default);
@@ -424,6 +426,8 @@ public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
         var chats = ownerTester.AppServices.GetRequiredService<IChats>();
         var chat = await chats.Get(session, chatId, default);
         chat.Should().BeNull();
+
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         await TestExt.WhenMetAsync(async () => {
                 var contactIds = await contacts.ListIds(session, PlaceId.None, default);

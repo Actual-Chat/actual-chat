@@ -62,9 +62,12 @@ public interface IChatsBackend : IComputeService
 
     Task<ApiArray<Chat>> ListChanged(
         long minVersion,
-        ApiSet<ChatId> lastIdsWithSameVersion,
+        long maxVersion,
+        ChatId lastId,
         int limit,
         CancellationToken cancellationToken);
+
+    Task<Chat?> GetLastChanged(CancellationToken cancellationToken);
 
     Task<ApiList<ChatEntry>> ListChangedEntries(
         ChatId chatId,
@@ -95,6 +98,8 @@ public interface IChatsBackend : IComputeService
     Task OnRemoveOwnEntries(ChatsBackend_RemoveOwnEntries command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnCreateNotesChat(ChatsBackend_CreateNotesChat command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnMoveToPlace(ChatBackend_MoveChatToPlace command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -145,3 +150,10 @@ public sealed partial record ChatsBackend_RemoveOwnEntries(
 public sealed partial record ChatsBackend_CreateNotesChat(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
 ) : ICommand<ChatEntry>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatBackend_MoveChatToPlace(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId
+) : ICommand<Unit>, IBackendCommand;

@@ -23,19 +23,30 @@ public class ChatContactIndexer(IServiceProvider services) : ContactIndexer(serv
         var batches = ChatsBackend
             .BatchChanged(
                 state.LastUpdatedVersion,
-                ApiSet.New(state.LastUpdatedChatId),
+                MaxVersion,
+                state.LastUpdatedChatId,
                 SyncBatchSize,
                 cancellationToken);
         var hasPublicChatChanges = false;
         var hasPrivateChatChanges = false;
         await foreach (var chats in batches.ConfigureAwait(false)) {
+            var first = chats[0];
+            var last = chats[^1];
+            Log.LogDebug(
+                "Indexing {BatchSize} chats [(v={FirstVersion}, #{FirstId})..(v={LastVersion}, #{LastId})]",
+                chats.Count,
+                first.Version,
+                first.Id,
+                last.Version,
+                last.Id);
             NeedsSync.Reset();
-            var updates = chats.Select(x => x.ToIndexedChatContact()).ToApiArray();
+            var placeMap = await GetPlaceMap(chats).ConfigureAwait(false);
+            var updates = chats.Select(x => x.ToIndexedChatContact(placeMap.GetValueOrDefault(x.Id.PlaceId)))
+                .ToApiArray();
             var indexCmd = new SearchBackend_ChatContactBulkIndex(updates, []);
             await Commander.Call(indexCmd, cancellationToken)
                 .ConfigureAwait(false);
 
-            var last = chats[^1];
             state = state with { LastUpdatedId = last.Id, LastUpdatedVersion = last.Version };
             state = await SaveState(state, cancellationToken).ConfigureAwait(false);
             if (!hasPrivateChatChanges)
@@ -44,5 +55,16 @@ public class ChatContactIndexer(IServiceProvider services) : ContactIndexer(serv
                 hasPublicChatChanges = updates.Any(x => x.IsPublic);
         }
         return (hasPublicChatChanges, hasPrivateChatChanges);
+
+        async Task<Dictionary<PlaceId, Place>> GetPlaceMap(ApiArray<Chat.Chat> chats)
+        {
+            var places = await chats.Where(x => x.Id.IsPlaceChat)
+                .Select(x => x.Id.PlaceId)
+                .Distinct()
+                .Select(x => ChatsBackend.GetPlace(x, cancellationToken))
+                .Collect()
+                .ConfigureAwait(false);
+            return places.SkipNullItems().ToDictionary(x => x.Id);
+        }
     }
 }

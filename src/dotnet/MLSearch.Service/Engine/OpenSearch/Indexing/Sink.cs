@@ -2,6 +2,7 @@ using ActualChat.MLSearch.ApiAdapters;
 using OpenSearch.Client;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
+using ActualChat.MLSearch.Engine.Indexing;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 
@@ -19,42 +20,42 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 //   pipeline.
 // - All deletes MUST NOT fail if document was already
 //   deleted.
-internal class Sink<TUpdateDocument, TDeleteDocument>(
+
+internal class Sink<TSource, TDocument>(
+    string docIndexName,
     IOpenSearchClient client,
-    string ingestPipelineId,
-    IndexName indexName,
-    Func<TUpdateDocument, ChatSlice> intoUpdate,
-    Func<TDeleteDocument, Id> intoDelete,
+    IIndexSettingsSource indexSettingsSource,
+    IDocumentMapper<TSource, TDocument> mapper,
     ILoggerSource loggerSource
-)
+) : ISink<TSource, TSource> where TDocument: class, IHasDocId
 {
+    private IndexSettings? _indexSettings;
+    private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings(docIndexName);
+
     private ILogger? _log;
     private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
 
     private IOpenSearchClient OpenSearch => client;
 
-    public virtual async Task Execute(
-        IEnumerable<TUpdateDocument>? updatedDocuments,
-        IEnumerable<TDeleteDocument>? deletedDocuments,
+    public async Task ExecuteAsync(
+        IEnumerable<TSource>? updatedDocuments,
+        IEnumerable<TSource>? deletedDocuments,
         CancellationToken cancellationToken)
     {
-        var updates = (updatedDocuments ?? Array.Empty<TUpdateDocument>())
-            .Select(intoUpdate)
-            .ToList();
-        var deletes = (deletedDocuments ?? Array.Empty<TDeleteDocument>())
-            .Select(intoDelete)
-            .ToList();
+        var updates = updatedDocuments?.Select(mapper.Map) ?? Enumerable.Empty<TDocument>();
+        var deletes = deletedDocuments?.Select(mapper.MapId) ?? Enumerable.Empty<Id>();
+
         var result = await OpenSearch
             .BulkAsync(r => r
                     .IndexMany(
                         updates,
                         (op, document) =>
                             op
-                                .Pipeline(ingestPipelineId)
-                                .Index(indexName)
-                                .Id(document.Id())
+                                .Pipeline(IndexSettings.IngestPipelineId)
+                                .Index(IndexSettings.IndexName)
+                                .Id(document.Id)
                     )
-                    .DeleteMany(deletes, (op, _) => op.Index(indexName)),
+                    .DeleteMany(deletes, (op, _) => op.Index(IndexSettings.IndexName)),
                 cancellationToken
             ).ConfigureAwait(false);
         Log.LogErrors(result);

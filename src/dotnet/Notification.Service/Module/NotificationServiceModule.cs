@@ -10,25 +10,23 @@ using ActualLab.Fusion.EntityFramework.Operations;
 namespace ActualChat.Notification.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class NotificationServiceModule(IServiceProvider moduleServices)
-    : HostModule<NotificationSettings>(moduleServices)
+public sealed class NotificationServiceModule(IServiceProvider moduleServices) : HostModule(moduleServices)
 {
     private static readonly object FirebaseAppFactoryLock = new();
 
     protected override void InjectServices(IServiceCollection services)
     {
-        base.InjectServices(services);
         if (!HostInfo.HostKind.IsServer())
             return; // Server-side only module
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
-        redisModule.AddRedisDb<NotificationDbContext>(services, Settings.Redis);
+        redisModule.AddRedisDb<NotificationDbContext>(services);
 
         // DB
         var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, NotificationDbInitializer>();
-        dbModule.AddDbContextServices<NotificationDbContext>(services, Settings.Db,
+        dbModule.AddDbContextServices<NotificationDbContext>(services,
             db => db.AddEntityResolver<string, DbNotification>());
 
         // Commander & Fusion

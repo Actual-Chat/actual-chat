@@ -30,12 +30,6 @@
 @code {
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
-    private void OnClick(ChatListOrder order) {
-        ChatListUI.Settings.Set(order, static (order1, r) => {
-            var settings = r.Value;
-            if (settings.Order != order1)
-                settings = settings with { Order = order1 };
-            return settings;
-        });
-    }
+    private void OnClick(ChatListOrder order)
+        => ChatListUI.ActiveChatListView.Value?.SetOrder(order);
 }

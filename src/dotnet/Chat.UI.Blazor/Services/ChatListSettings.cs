@@ -10,6 +10,8 @@ public sealed partial record ChatListSettings(
 {
     public static readonly ChatListSettings None = new ();
 
+    public static string GetKvasKey(string placeId) => $"ChatListSettings({placeId})";
+
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ChatListFilter Filter => ChatListFilter.Parse(FilterId);
 }

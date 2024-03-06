@@ -4,6 +4,15 @@
 .embedded-message-editor label {
     @apply relative flex-x;
 }
+.embedded-message-editor label:has(input) .c-placeholder {
+    @apply absolute left-4;
+    @apply flex-x gap-x-2 items-center justify-start;
+    @apply h-full;
+    @apply text-placeholder;
+}
+.embedded-message-editor label:has(input:focus) .c-placeholder {
+    @apply hidden;
+}
 .embedded-message-editor button {
     @apply absolute right-1;
     @apply flex items-center justify-center;
@@ -25,4 +34,24 @@
 }
 .embedded-message-editor input::placeholder {
     @apply text-left;
+}
+
+.embedded-message-editor.transparent-editor {
+    @apply h-12;
+    @apply bg-transparent;
+    @apply border-none;
+}
+.embedded-message-editor.transparent-editor input {
+    @apply h-12;
+    @apply pl-4 pr-12;
+    @apply rounded-full;
+    @apply bg-input;
+    @apply text-02 font-normal;
+    @apply border border-transparent;
+}
+.embedded-message-editor.transparent-editor input:focus {
+    @apply border-primary;
+}
+.embedded-message-editor.transparent-editor .glyph {
+    @apply h-12;
 }

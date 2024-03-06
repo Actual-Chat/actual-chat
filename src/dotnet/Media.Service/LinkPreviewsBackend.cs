@@ -11,20 +11,17 @@ namespace ActualChat.Media;
 public class LinkPreviewsBackend(IServiceProvider services)
     : DbServiceBase<MediaDbContext>(services), ILinkPreviewsBackend
 {
-    private const string RedisKeyPrefix = ".LinkCrawlerLocks.";
+    public TimeSpan LinkPreviewUpdatePeriod { get; set; } = TimeSpan.FromDays(1);
 
-    // all backend services should be requested lazily to avoid circular references!
     private IMediaBackend? _mediaBackend;
     private IChatsBackend? _chatsBackend;
-    private Crawler? _crawler;
-    private IMeshLocks<MediaDbContext>? _meshLocks;
+
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
     private IMediaBackend MediaBackend => _mediaBackend ??= Services.GetRequiredService<IMediaBackend>();
-    private IMeshLocks<MediaDbContext> MeshLocks => _meshLocks ??= Services.GetRequiredService<IMeshLocks<MediaDbContext>>();
-
-    private MediaSettings Settings { get; } = services.GetRequiredService<MediaSettings>();
     private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
-    private Crawler Crawler => _crawler ??= Services.GetRequiredService<Crawler>();
+    private Crawler Crawler { get; } = services.GetRequiredService<Crawler>();
+    private IMeshLocks CrawlLocks { get; }
+        = services.GetRequiredService<IMeshLocks<MediaDbContext>>().WithKeyPrefix(nameof(CrawlLocks));
     private Moment SystemNow => Clocks.SystemClock.Now;
 
     // [ComputeMethod]
@@ -44,7 +41,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
             return linkPreview;
 
         // Regenerate link preview in background in case there is no preview yet (or it was wiped)
-        _ = BackgroundTask.Run(() => GenerateForEntry(entry, CancellationToken.None), CancellationToken.None);
+        _ = BackgroundTask.Run(() => GetOrGenerateForEntry(entry, CancellationToken.None), CancellationToken.None);
         return null;
     }
 
@@ -58,23 +55,23 @@ public class LinkPreviewsBackend(IServiceProvider services)
         if (Computed.IsInvalidating()) {
             var wasChanged = context.Operation().Items.GetOrDefault(false);
             if (wasChanged)
-                _ = Get(id, default);
+                _ = GetFromDb(id, default);
             return default!;
         }
 
         if (id.IsEmpty)
             return null;
 
-        var lockHolder = await MeshLocks.TryLock(ToRedisKey(id),
-                "",
-                new MeshLockOptions(Settings.CrawlingTimeout),
-                cancellationToken)
+        var runOptions = new RunLockedOptions(3, RetryDelaySeq.Exp(1.5, 5), Log);
+        var resultOpt = await CrawlLocks
+            .TryRunLocked(id, runOptions, RefreshTaskFactory, cancellationToken)
             .ConfigureAwait(false);
-        if (lockHolder == null)
-            return LinkPreview.UseExisting;
+        return resultOpt.IsSome(out var result)
+            ? result
+            : LinkPreview.UseExisting;
 
-        await using var __ = lockHolder.ConfigureAwait(false);
-        return await RefreshUnsafe(id, url, cancellationToken).ConfigureAwait(false);
+        async Task<LinkPreview> RefreshTaskFactory(CancellationToken ct)
+            => await RefreshUnsafe(id, url, ct).ConfigureAwait(false);
     }
 
     // [EventHandler]
@@ -87,7 +84,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         if (changeKind is ChangeKind.Remove)
             return Task.CompletedTask;
 
-        return GenerateForEntry(entry, cancellationToken);
+        return GetOrGenerateForEntry(entry, cancellationToken);
     }
 
     // Private methods
@@ -155,7 +152,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         return dbLinkPreview.ToModel();
     }
 
-    private async Task<LinkPreview?> GenerateForEntry(ChatEntry entry, CancellationToken cancellationToken)
+    private async Task<LinkPreview?> GetOrGenerateForEntry(ChatEntry entry, CancellationToken cancellationToken)
     {
         var linkPreview = await GetAndRefreshIfRequired(entry, false, cancellationToken).ConfigureAwait(false);
         var linkPreviewId = linkPreview?.Id ?? Symbol.Empty;
@@ -186,19 +183,12 @@ public class LinkPreviewsBackend(IServiceProvider services)
         if (id.IsEmpty)
             return null;
 
-        var dbContext = CreateDbContext();
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbLinkPreview = await dbContext.LinkPreviews
-            .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
-            .ConfigureAwait(false);
-
-        var linkPreview = dbLinkPreview?.ToModel();
+        var linkPreview = await GetFromDb(id, cancellationToken).ConfigureAwait(false);
         url ??= linkPreview?.Url;
         var mustRefresh = !url.IsNullOrEmpty()
-            && (linkPreview == null || linkPreview.ModifiedAt + Settings.LinkPreviewUpdatePeriod < SystemNow);
+            && (linkPreview == null || linkPreview.ModifiedAt + LinkPreviewUpdatePeriod < SystemNow);
         if (mustRefresh) {
-            if (await IsAlreadyCrawling(id, cancellationToken).ConfigureAwait(false))
+            if (await IsCrawling(id, cancellationToken).ConfigureAwait(false))
                 return linkPreview;
 
             // Intentionally not passing CancellationToken to avoid cancellation on exit
@@ -219,6 +209,19 @@ public class LinkPreviewsBackend(IServiceProvider services)
         };
     }
 
+    [ComputeMethod]
+    protected virtual async Task<LinkPreview?> GetFromDb(Symbol id, CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbLinkPreview = await dbContext.LinkPreviews
+            .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
+            .ConfigureAwait(false);
+
+        return dbLinkPreview?.ToModel();
+    }
+
     private HashSet<string> ExtractUrls(ChatEntry entry)
     {
         var markup = MarkupParser.Parse(entry.Content);
@@ -227,9 +230,6 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
     // redis helpers
 
-    private static string ToRedisKey(Symbol id)
-        => $"{RedisKeyPrefix}{id.Value}";
-
-    private async Task<bool> IsAlreadyCrawling(Symbol id, CancellationToken cancellationToken)
-        => await MeshLocks.GetInfo(ToRedisKey(id), cancellationToken).ConfigureAwait(false) != null;
+    private async Task<bool> IsCrawling(Symbol id, CancellationToken cancellationToken)
+        => await CrawlLocks.GetInfo(id, cancellationToken).ConfigureAwait(false) != null;
 }

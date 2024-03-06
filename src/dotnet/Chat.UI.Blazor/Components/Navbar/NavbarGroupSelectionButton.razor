@@ -58,6 +58,8 @@
     private void OnNavbarSelectedGroupChanged(object? s, EventArgs e) {
         if (PanelsUI.Left.IsSearchMode)
             PanelsUI.Left.SearchToggle();
+        if (!NavbarUI.SelectedChatId.IsNone)
+            PanelsUI.HidePanels();
         StateHasChanged();
     }
 }

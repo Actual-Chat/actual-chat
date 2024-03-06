@@ -1,10 +1,12 @@
+using ActualChat.Commands;
+
 namespace ActualChat.Testing.Host;
 
 public abstract class SharedAppHostTestBase<TAppHostFixture>(
     TAppHostFixture fixture,
     ITestOutputHelper @out,
     ILogger? log = null
-    ) : TestBase(@out, log)
+) : TestBase(@out, log)
     where TAppHostFixture : AppHostFixture
 {
     private ITestOutputHelper? _originalAppHostOutput;
@@ -12,6 +14,7 @@ public abstract class SharedAppHostTestBase<TAppHostFixture>(
     protected TAppHostFixture Fixture { get; } = fixture;
     protected TestAppHost AppHost { get; } = fixture.AppHost;
     protected ICommander Commander { get; } = fixture.AppHost.Services.Commander();
+    protected MomentClockSet Clocks { get; } = fixture.AppHost.Services.Clocks();
 
     protected override Task InitializeAsync()
     {
@@ -20,18 +23,22 @@ public abstract class SharedAppHostTestBase<TAppHostFixture>(
         return base.InitializeAsync();
     }
 
-    protected override Task DisposeAsync()
+    protected override async Task DisposeAsync()
     {
+        var queues = AppHost.Services.GetRequiredService<ICommandQueues>();
+        await queues.Purge(CancellationToken.None).ConfigureAwait(false);
         AppHost.Output = _originalAppHostOutput;
-        return base.DisposeAsync();
+        await base.DisposeAsync();
     }
 
     // Just a shortcut
     protected virtual async Task<TestAppHost> NewAppHost(
+        string instanceName,
         Func<TestAppHostOptions, TestAppHostOptions>? optionOverrider = null)
     {
         var appHost = await Fixture.NewAppHost(options => {
             options = options with { Output = Out };
+            options = options with { InstanceName = instanceName };
             options = optionOverrider?.Invoke(options) ?? options;
             return options;
         });

@@ -174,6 +174,10 @@ public partial class ChatUI
         }
         finally {
             _whenActivePlaceRestored.TrySetResult();
+            await Hub.Dispatcher.InvokeAsync(() => {
+                    ChatListUI.ActivateChatList(SelectedPlaceId.Value);
+                })
+                .ConfigureAwait(false);
         }
     }
 }

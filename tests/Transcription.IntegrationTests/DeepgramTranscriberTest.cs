@@ -1,7 +1,8 @@
 ﻿using ActualChat.Audio;
 using ActualChat.IO;
-using ActualChat.Transcription.DeepGram;
-using ActualChat.Transcription.Module;
+using ActualChat.Streaming;
+using ActualChat.Streaming.Module;
+using ActualChat.Streaming.Services.Transcribers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using ActualLab.IO;
@@ -23,7 +24,7 @@ public class DeepgramTranscriberTest(ITestOutputHelper @out, ILogger<DeepgramTra
     public async Task TranscribeWorks(string fileName, bool withDelay)
     {
         var services = CreateServices();
-        var transcriber = new DeepGramTranscriber(services);
+        var transcriber = new DeepgramTranscriber(services);
         var options = new TranscriptionOptions {
             Language = "ru-RU",
         };
@@ -82,9 +83,11 @@ public class DeepgramTranscriberTest(ITestOutputHelper @out, ILogger<DeepgramTra
 
     private IServiceProvider CreateServices()
         => new ServiceCollection()
-            .AddSingleton<IConfiguration>(c => new ConfigurationManager{ Sources = { new EnvironmentVariablesConfigurationSource() }})
+            .AddSingleton<IConfiguration>(_ => new ConfigurationManager {
+                Sources = { new EnvironmentVariablesConfigurationSource() },
+            })
             .AddSingleton(MomentClockSet.Default)
-            .AddSingleton<TranscriptSettings>(c => new TranscriptionServiceModule(c).Settings)
+            .AddSingleton<StreamingSettings>(c => new StreamingServiceModule(c).Settings)
             .AddLogging(logging => {
                 logging.ClearProviders();
                 logging.SetMinimumLevel(LogLevel.Debug);

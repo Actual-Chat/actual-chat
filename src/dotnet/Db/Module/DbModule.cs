@@ -22,6 +22,11 @@ public sealed class DbModule(IServiceProvider moduleServices)
 
     public void AddDbContextServices<TDbContext>(
         IServiceCollection services,
+        Action<DbContextBuilder<TDbContext>>? configure = null)
+        where TDbContext : DbContext
+        => AddDbContextServices(services, null, configure);
+    public void AddDbContextServices<TDbContext>(
+        IServiceCollection services,
         string? connectionString,
         Action<DbContextBuilder<TDbContext>>? configure = null)
         where TDbContext : DbContext

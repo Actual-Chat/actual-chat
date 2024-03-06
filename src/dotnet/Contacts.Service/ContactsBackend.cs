@@ -3,6 +3,8 @@ using ActualChat.Chat.Events;
 using ActualChat.Commands;
 using ActualChat.Contacts.Db;
 using ActualChat.Contacts.Module;
+using ActualChat.Db;
+using ActualChat.Mesh;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
@@ -13,24 +15,22 @@ namespace ActualChat.Contacts;
 
 public class ContactsBackend(IServiceProvider services) : DbServiceBase<ContactsDbContext>(services), IContactsBackend
 {
+    public static readonly TimeSpan GreetTimeout = TimeSpan.FromSeconds(20);
+
     private const string RedisKeyPrefix = ".ContactGreetingLocks.";
-    private ContactsSettings? _settings;
     private IAccountsBackend? _accountsBackend;
     private IChatsBackend? _chatsBackend;
     private IExternalContactsBackend? _externalContactsBackend;
-    private IDbEntityResolver<string, DbContact>? _dbContactResolver;
     private RedisDb<ContactsDbContext>? _redisDb;
-    private InternalsAccessor? _internals;
 
-    private ContactsSettings Settings => _settings ??= Services.GetRequiredService<ContactsSettings>();
     private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-
-    private IExternalContactsBackend ExternalContactsBackend => _externalContactsBackend ??= Services.GetRequiredService<IExternalContactsBackend>();
-
-    private IDbEntityResolver<string, DbContact> DbContactResolver => _dbContactResolver ??= Services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
-
-    internal InternalsAccessor Internals => _internals ??= new InternalsAccessor(this);
+    private IExternalContactsBackend ExternalContactsBackend
+        => _externalContactsBackend ??= Services.GetRequiredService<IExternalContactsBackend>();
+    private IDbEntityResolver<string, DbContact> DbContactResolver { get; }
+        = services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
+    private IMeshLocks GreetLocks { get; }
+        = services.MeshLocks<ContactsDbContext>().WithKeyPrefix(nameof(GreetLocks));
 
     public RedisDb<ContactsDbContext> RedisDb => _redisDb ??= Services.GetRequiredService<RedisDb<ContactsDbContext>>();
 
@@ -346,10 +346,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invPlaceId = context.Operation().Items.GetOrDefault<PlaceId>();
+            var invPlaceId = context.Operation().Items.GetId<PlaceId>();
             if (!invPlaceId.IsNone)
                 _ = PseudoPlaceContact(invPlaceId);
-            var invChatId = context.Operation().Items.GetOrDefault<ChatId>();
+            var invChatId = context.Operation().Items.GetId<ChatId>();
             if (!invChatId.IsNone)
                 _ = PseudoChatContact(invChatId);
             return;
@@ -367,7 +367,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 .ConfigureAwait(false);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation().Items.Set(placeId);
+            context.Operation().Items.SetId(placeId);
         }
         else {
             var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
@@ -379,7 +379,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 .ConfigureAwait(false);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation().Items.Set(chatId);
+            context.Operation().Items.SetId(chatId);
         }
     }
 
@@ -389,24 +389,28 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var userToGreetId = command.UserId;
-        var account = await AccountsBackend.Get(userToGreetId, cancellationToken).ConfigureAwait(false);
+        var account = await AccountsBackend.Get(command.UserId, cancellationToken).ConfigureAwait(false);
         if (account is null || account.IsGreetingCompleted)
             return;
+
+        var h = await GreetLocks.TryLock(account.Id.Value, cancellationToken).ConfigureAwait(false);
+        if (h == null)
+            return; // Another host is already greeting
+        await using var _ = h.ConfigureAwait(false);
 
         var alreadyGreetingKey = ToRedisKey(account.Id);
         var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
         var canStart = await database.StringSetAsync(
             alreadyGreetingKey,
             Clocks.SystemClock.Now.ToString(),
-            Settings.GreetingTimeout,
+            GreetTimeout,
             When.NotExists
             ).ConfigureAwait(false);
         if (!canStart)
             return;
 
         try {
-            var referencingUserIds = await ExternalContactsBackend.ListReferencingUserIds(userToGreetId, cancellationToken)
+            var referencingUserIds = await ExternalContactsBackend.ListReferencingUserIds(account.Id, cancellationToken)
                 .ConfigureAwait(false);
             await referencingUserIds
                 .Where(userId => userId != account.Id)
@@ -423,7 +427,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         return;
 
         Task<Contact?> CreateContact(UserId ownerId) {
-            var contact = new Contact(ContactId.Peer(ownerId, userToGreetId));
+            var contact = new Contact(ContactId.Peer(ownerId, account.Id));
             var cmd = new ContactsBackend_Change(contact.Id, null, Change.Create(contact));
             return Commander.Call(cmd, true, cancellationToken);
         }
@@ -438,7 +442,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invOwnerId = context.Operation().Items.GetOrDefault<UserId>();
+            var invOwnerId = context.Operation().Items.GetId<UserId>();
             if (!invOwnerId.IsNone)
                 _ = ListPlaceIds(invOwnerId, default);
             return;
@@ -469,7 +473,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(ownerId);
+        context.Operation().Items.SetId(ownerId);
     }
 
     // Events
@@ -553,7 +557,55 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
-    // protected methods
+    public virtual async Task OnMoveChatToPlace(ContactsBackend_MoveChatToPlace command, CancellationToken cancellationToken)
+    {
+        var (chatId, placeId) = command;
+        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
+        var newChatId = (ChatId)placeChatId;
+
+        if (Computed.IsInvalidating()) {
+            _ = PseudoChatContact(chatId);
+            _ = PseudoChatContact(newChatId);
+            _ = PseudoPlaceContact(placeId);
+            return;
+        }
+
+        var chatSid = chatId.Value;
+        var placeSid = placeId.Value;
+
+        Log.LogInformation("OnMoveChatToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'", chatSid, placeSid);
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbContacts = await dbContext.Contacts
+            .Where(c => c.ChatId == chatSid)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        // Update DbContacts
+        foreach (var dbContact in dbContacts) {
+            var contactSid = dbContact.Id;
+            var ownerId = new UserId(dbContact.OwnerId);
+            var newContactSid = ContactId.Format(ownerId, newChatId);
+            var newChatSid = newChatId.Value;
+
+            _ = await dbContext.Contacts
+                .Where(c => c.Id == contactSid)
+                .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(c => c.Id, _ => newContactSid)
+                        .SetProperty(c => c.ChatId, _ => newChatSid)
+                        .SetProperty(c => c.PlaceId, _ => placeSid),
+                    cancellationToken)
+                .RequireOneUpdated()
+                .ConfigureAwait(false);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        // Place contacts should be added on adding authors to place root chat during processing ChatsMigrationBackend_MoveToPlace.
+        Log.LogInformation("OnMoveChatToPlace: completed");
+    }
+
+    // Protected methods
 
     [ComputeMethod]
     protected virtual Task<Unit> PseudoPlaceContact(PlaceId placeId)
@@ -563,19 +615,8 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     protected virtual Task<Unit> PseudoChatContact(ChatId chatId)
         => ActualLab.Async.TaskExt.UnitTask;
 
-    // private methods
+    // Private methods
 
     private static string ToRedisKey(UserId userId)
         => $"{RedisKeyPrefix}{userId.Value}";
-
-    // Workaround for issue that I can't make protected internal computed methods.
-    // Proxy does not intercept such methods.
-    internal class InternalsAccessor(ContactsBackend contactsBackend)
-    {
-        public Task<Unit> PseudoPlaceContact(PlaceId placeId)
-            => contactsBackend.PseudoPlaceContact(placeId);
-
-        public Task<Unit> PseudoChatContact(ChatId chatId)
-            => contactsBackend.PseudoChatContact(chatId);
-    }
 }

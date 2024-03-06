@@ -19,4 +19,8 @@ public sealed partial record ChatPositionsBackend_Set(
     [property: DataMember, MemoryPackOrder(2)] ChatPositionKind Kind,
     [property: DataMember, MemoryPackOrder(3)] ChatPosition Position,
     [property: DataMember, MemoryPackOrder(4)] bool Force = false
-) : ICommand<Unit>, IBackendCommand;
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public UserId ShardKey => UserId;
+}

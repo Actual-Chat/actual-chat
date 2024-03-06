@@ -37,10 +37,9 @@
 .search-box input:focus::placeholder {
     @apply text-transparent;
 }
-.search-box:has(input:focus) {
-    @apply border-primary;
+.search-box input:focus {
+    @apply border border-primary;
 }
-
 .search-box.icon-alight-right i {
     @apply right-0;
 }

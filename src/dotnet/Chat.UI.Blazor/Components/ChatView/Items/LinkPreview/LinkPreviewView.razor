@@ -48,14 +48,33 @@
             <a href="@(uri.Scheme)://@(uri.Authority)" target="_blank" class="c-domain">@uri.Host</a>
         }
     </div>
+
+    <div class="link-buttons">
+        @if (uri != null) {
+            <CopyTrigger Tooltip="@Entry.Content" CopyText="@Entry.Content">
+                <ButtonRound Class="btn-sm">
+                    <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
+                    <i class="copied-hint fa fa-check" aria-hidden="true"></i>
+                </ButtonRound>
+            </CopyTrigger>
+        }
+        <ButtonRound
+            Tooltip="Forward"
+            Class="btn-sm"
+            Click="@(() => SelectionUI.Forward(Entry.Id))">
+            <i class="icon-share"></i>
+        </ButtonRound>
+    </div>
 </div>
 
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
+
     private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
     private ILinkPreviews MediaLinkPreviews => Hub.MediaLinkPreviews;
     private UrlMapper UrlMapper => Hub.UrlMapper();
     private ICommander Commander => Hub.Commander();
+    private SelectionUI SelectionUI => Hub.SelectionUI;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }

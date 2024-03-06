@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
-    <ProjectReference Include="..\Users\Users.csproj" />
   </ItemGroup>
 
 </Project>

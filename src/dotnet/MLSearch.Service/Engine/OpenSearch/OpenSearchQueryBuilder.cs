@@ -85,10 +85,10 @@ internal class OpenSearchQueryBuilder(IndexSettings settings) : IQueryBuilder
         }
     }
 
-    internal ISearchRequest Build(SearchQuery query)
+    internal ISearchRequest Build(SearchQuery searchQuery)
     {
         _metadataFilters.Clear();
-        foreach (var metadataFiler in query.MetadataFilters ?? Enumerable.Empty<IMetadataFilter>()) {
+        foreach (var metadataFiler in searchQuery.MetadataFilters ?? Enumerable.Empty<IMetadataFilter>()) {
             metadataFiler.Apply(this);
         }
         var queries = new List<QueryContainer> { new QueryContainerDescriptor<ChatSlice>()
@@ -98,7 +98,7 @@ internal class OpenSearchQueryBuilder(IndexSettings settings) : IQueryBuilder
                           {
                               "neural": {
                                   "{{EmbeddingFieldName}}": {
-                                      "query_text": "{{query.FreeTextFilter}}",
+                                      "query_text": "{{searchQuery.FreeTextFilter}}",
                                       "model_id": "{{settings.ModelId}}",
                                       "k": 100
                                   }
@@ -108,7 +108,7 @@ internal class OpenSearchQueryBuilder(IndexSettings settings) : IQueryBuilder
                     .Script(script => script.Source("_score * 1.5"))),
         };
 
-        foreach (var keyword in query.Keywords ?? Enumerable.Empty<string>()) {
+        foreach (var keyword in searchQuery.Keywords ?? Enumerable.Empty<string>()) {
             queries.Add(new QueryContainerDescriptor<ChatSlice>()
                 .ScriptScore(scoredQuery => scoredQuery
                     .Query(q => q.Match(m => m.Field(f => f.Text).Query(keyword)))
@@ -117,7 +117,7 @@ internal class OpenSearchQueryBuilder(IndexSettings settings) : IQueryBuilder
         }
 
         return new SearchDescriptor<ChatSlice>()
-            .Index(settings.SearchIndexName)
+            .Index(settings.IndexName)
             .Source(src => src.Excludes(excl => excl.Field(EmbeddingFieldName)))
             .Query(query => query
                 .Bool(boolQuery => boolQuery

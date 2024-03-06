@@ -43,7 +43,6 @@ internal static class Program
         if (Constants.DebugMode.Npgsql)
             Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(),true);
 
-
         await appHost.InvokeInitializers().ConfigureAwait(false);
         await appHost.Run().ConfigureAwait(false);
 

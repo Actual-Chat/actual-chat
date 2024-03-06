@@ -8,7 +8,7 @@
         @<div class="left-panel-content-header">
             <div class="c-content">
                 <div class="c-title">
-                    @NavbarUI.SelectedGroupTitle
+                    Chats
                 </div>
                 <div class="c-ending">
                     @if (!_enableIncompleteUI) {
@@ -34,7 +34,7 @@
             <div class="c-content">
                 <div class="c-start">
                     <div class="c-title">
-                        @NavbarUI.SelectedGroupTitle
+                        @place.Title
                     </div>
                     <PlaceMenuButton PlaceId="@place.Id" />
                 </div>
@@ -110,10 +110,12 @@
     }
 
     private async Task UpdatePlace() {
-        Place? place = null;
-        if (NavbarUI.IsPlaceSelected(out var placeId))
-            place = await Hub.Places.Get(Hub.Session(), placeId, default).ConfigureAwait(false);
-        _place = place;
+        var placeId = NavbarUI.IsPlaceSelected(out var selectedPlaceId)
+            ? selectedPlaceId
+            : NavbarUI.SelectedChatId.PlaceId;
+        _place = placeId.IsNone
+            ? null
+            : await Hub.Places.Get(Hub.Session(), placeId, default).ConfigureAwait(false);
     }
 
     private void OnSearchClick()

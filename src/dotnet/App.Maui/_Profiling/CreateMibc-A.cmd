@@ -1,1 +1,1 @@
-dotnet-pgo create-mibc --trace android.nettrace --output android.mibc --compressed --reference "../../../../artifacts/obj/App.Maui/debug_net8.0-android/android/assets/*.dll"
+dotnet-pgo create-mibc --trace android.nettrace --output android.mibc --compressed --reference "../../../../artifacts/obj/App.Maui/debug_net8.0-android/android/assets/*.dll" --reference "../../../../artifacts/obj/App.Maui/debug_net8.0-android/android/assets/arm64-v8a/*.dll"

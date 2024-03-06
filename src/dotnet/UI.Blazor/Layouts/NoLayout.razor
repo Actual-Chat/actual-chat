@@ -13,7 +13,7 @@
                         @foreach (var failure in failures) {
                             <ErrorToast @key="@failure"
                                    Title="Action failed!"
-                                   Dismissed="@(_ => UIActionFailureTracker.Remove(failure))">
+                                   Dismissed="@(_ => { UIActionFailureTracker.Remove(failure); return Task.CompletedTask; })">
                                 @failure.Error!.Message
                             </ErrorToast>
                         }

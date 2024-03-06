@@ -4,7 +4,7 @@ namespace ActualChat;
 
 public sealed class Queue(Symbol id, ShardScheme shardScheme) : IHasId<Symbol>
 {
-    private static readonly ConcurrentDictionary<object, DefaultQueueAttribute?> _defaultQueueAttributes = new();
+    private static readonly ConcurrentDictionary<object, CommandQueueAttribute?> _commandQueueAttributes = new();
 
     public static readonly Queue None = new(nameof(None), ShardScheme.None);
     public static readonly Queue Undefined = new(nameof(Undefined), ShardScheme.Undefined);
@@ -35,12 +35,12 @@ public sealed class Queue(Symbol id, ShardScheme shardScheme) : IHasId<Symbol>
         => ForType(typeof(T));
     public static Queue? ForType(Type type)
     {
-        var attr = _defaultQueueAttributes.GetOrAdd(type,
+        var attr = _commandQueueAttributes.GetOrAdd(type,
             static (_, t) => t
-                .GetCustomAttributes<DefaultQueueAttribute>()
+                .GetCustomAttributes<CommandQueueAttribute>()
                 .SingleOrDefault(),
             type);
-        var queue = attr != null ? ById[attr.Queue] : null;
+        var queue = attr != null ? ById[attr.QueueRole] : null;
         return queue ?? ForAssembly(type.Assembly);
     }
 
@@ -48,11 +48,11 @@ public sealed class Queue(Symbol id, ShardScheme shardScheme) : IHasId<Symbol>
 
     private static Queue? ForAssembly(Assembly assembly)
     {
-        var attr = _defaultQueueAttributes.GetOrAdd(assembly,
+        var attr = _commandQueueAttributes.GetOrAdd(assembly,
             static (_, t) => t
-                .GetCustomAttributes<DefaultQueueAttribute>()
+                .GetCustomAttributes<CommandQueueAttribute>()
                 .SingleOrDefault(),
             assembly);
-        return attr != null ? ById[attr.Queue] : null;
+        return attr != null ? ById[attr.QueueRole] : null;
     }
 }

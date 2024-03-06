@@ -55,9 +55,13 @@
     </BadgeContent>
 </NavbarGroupSelectionButton>
 
-@if (m.EnablePlacesUI) {
-    <NavbarPlaceButtons/>
-}
+<div class="navbar-buttons">
+    @if (m.EnablePlacesUI) {
+        <NavbarPlaceButtons/>
+    }
+
+    <NavbarChatButtons/>
+</div>
 
 @if (ownAccount.IsAdmin) {
     <NavbarGroupSelectionButton

@@ -7,7 +7,7 @@ public abstract class ShardWorker : WorkerBase
     private ILogger? _log;
 
     protected IServiceProvider Services { get; }
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
+    protected virtual ILogger Log => _log ??= Services.Logs().CreateLogger($"{GetType()}({ShardScheme.Id})");
 
     protected MeshWatcher MeshWatcher { get; }
     protected ShardScheme ShardScheme { get; }

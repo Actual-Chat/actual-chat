@@ -1,4 +1,6 @@
 using ActualChat.App.Server;
+using ActualChat.Commands;
+using ActualChat.Hosting;
 using ActualLab.Fusion.EntityFramework.Operations;
 using ActualLab.Testing.Output;
 
@@ -14,10 +16,30 @@ public class TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor ou
         set => OutputAccessor.Output = value;
     }
 
+    public Task WaitForProcessingOfAlreadyQueuedCommands()
+        => WaitForProcessingOfAlreadyQueuedCommands(TimeSpan.FromSeconds(2));
+
+    public async Task WaitForProcessingOfAlreadyQueuedCommands(TimeSpan timeout)
+    {
+        var hostRoles = Services.GetRequiredService<HostInfo>().Roles;
+        var backendHostRoles = hostRoles.Where(hr => hr.IsBackend || hr.IsQueue);
+        var schedulers = new List<ICommandQueueScheduler>();
+        foreach (var hostRole in backendHostRoles) {
+            var serviceKey = hostRole.Id.Value;
+            var commandQueueSchedulers = Services.GetKeyedServices<ICommandQueueScheduler>(serviceKey);
+            schedulers.AddRange(commandQueueSchedulers);
+        }
+
+        await Task.WhenAll(schedulers.Select(s => s.ProcessAlreadyQueued(timeout, CancellationToken.None)));
+    }
+
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing) {
             DisposeDbOperationCompletionNotifiers();
+            var queues = Services.GetRequiredService<ICommandQueues>();
+            _ = queues.Purge(CancellationToken.None);
+        }
         base.Dispose(disposing);
     }
 

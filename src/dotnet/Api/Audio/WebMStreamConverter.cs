@@ -80,6 +80,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
                 throw;
             }
             finally {
+                readBuffer.Release();
                 target.Writer.TryComplete();
                 if (!formatTask.IsCompleted)
                     formatSource.TrySetException(new InvalidOperationException("Format wasn't parsed."));

@@ -1,6 +1,6 @@
 name: Build test and deploy
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 on:
@@ -125,7 +125,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ github.workspace }}/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}
+          key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
           restore-keys: |
             ${{ runner.os }}-nuget-
 
@@ -190,6 +190,18 @@ jobs:
           ELASTIC_PASSWORD: elastic
           xpack.security.enabled: false
           discovery.type: single-node
+      nats:
+        image: ghcr.io/actual-chat/nats-jetstream:2.10.10-alpine3.19
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd "wget --no-verbose --tries=1 --spider 'http://localhost:8222/healthz?js-enabled-only=true' || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          # Maps port 4222 and 8222 on service container to the host
+          - 4222:4222
+          - 8222:8222
     steps:
       - name: Install postgresql-client
         run: |
@@ -226,7 +238,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ github.workspace }}/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}
+          key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
           restore-keys: |
             ${{ runner.os }}-nuget-
 

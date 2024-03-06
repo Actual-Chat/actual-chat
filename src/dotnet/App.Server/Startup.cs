@@ -2,23 +2,23 @@ using ActualChat.App.Server.Logging;
 using ActualChat.App.Server.Module;
 using ActualChat.Chat.Module;
 using ActualChat.Chat.UI.Blazor.Module;
+using ActualChat.Commands;
 using ActualChat.Contacts.Module;
 using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Db.Module;
-using ActualChat.Feedback.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Module;
 using ActualChat.Kubernetes.Module;
 using ActualChat.Media.Module;
 using ActualChat.MLSearch.Module;
 using ActualChat.Module;
+using ActualChat.Nats.Module;
 using ActualChat.Notification.Module;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Search.Module;
 using ActualChat.Streaming.Module;
 using ActualChat.Streaming.UI.Blazor.Module;
-using ActualChat.Transcription.Module;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
@@ -63,6 +63,17 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
             }
         });
 
+        var serverRole = HostRoles.Server.Parse(hostSettings.ServerRole);
+        var roles = HostRoles.Server.GetAllRoles(serverRole);
+        var commandQueueRoles = hostSettings.CommandQueueRoles
+            .Split(',')
+            .Select(sr => HostRoles.Queue.Parse(sr.Trim()))
+            .Where(hr => hr.IsQueue)
+            .ToHashSet();
+        var combinedRoles = roles
+            .Concat(commandQueueRoles)
+            .ToImmutableHashSet();
+
         // HostInfo
         services.AddSingleton(c => {
             var baseUrl = hostSettings.BaseUri;
@@ -74,16 +85,12 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 if (baseUrl.IsNullOrEmpty())
                     throw StandardError.Internal("Can't resolve BaseUrl.");
             }
-
-            var serverRole = HostRoles.Server.Parse(hostSettings.ServerRole);
-            var roles = HostRoles.Server.GetAllRoles(serverRole);
-
-            return new HostInfo() {
+            return new HostInfo {
                 HostKind = appKind,
                 AppKind = AppKind.Unknown,
                 Environment = Env.EnvironmentName,
                 Configuration = Cfg,
-                Roles = roles,
+                Roles = combinedRoles,
                 IsTested = isTested,
                 BaseUrl = baseUrl,
             };
@@ -101,18 +108,17 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 new CoreServerModule(moduleServices),
                 new KubernetesModule(moduleServices),
                 new RedisModule(moduleServices),
+                new NatsModule(moduleServices),
                 new DbModule(moduleServices),
                 // API modules
                 new ApiModule(moduleServices),
                 // Service-specific & service modules
                 new StreamingServiceModule(moduleServices),
-                new FeedbackServiceModule(moduleServices),
                 new MediaServiceModule(moduleServices),
                 new ContactsServiceModule(moduleServices),
                 new InviteServiceModule(moduleServices),
                 new UsersServiceModule(moduleServices),
                 new ChatServiceModule(moduleServices),
-                new TranscriptionServiceModule(moduleServices),
                 new NotificationServiceModule(moduleServices),
                 new SearchServiceModule(moduleServices),
                 new MLSearchServiceModule(moduleServices),
@@ -127,6 +133,9 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 // This module should be the last one
                 new AppServerModule(moduleServices)
             ).Build(services);
+
+        // Default configuration for command/event queues
+        services.AddCommandQueues(roles);
     }
 
     public void Configure(IApplicationBuilder app)

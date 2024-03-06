@@ -39,6 +39,7 @@
     @apply absolute z-10 left-1;
     @apply hidden;
     @apply opacity-50;
+    @apply cursor-move;
 }
 .navbar-button:hover > .c-dots {
     @apply lg:flex;
@@ -85,11 +86,11 @@
     @apply relative;
     @apply flex-x justify-start items-center gap-x-1;
     @apply min-h-12 h-12;
+    @apply px-2;
     @apply rounded-lg;
 }
 .navbar-item .navbar-item-content {
     @apply flex-1 flex-x;
-    @apply pl-1;
     @apply h-full;
     @apply overflow-hidden;
     @apply text-02;
@@ -125,18 +126,30 @@ body.hoverable .navbar-item:hover {
     @apply visible;
 }
 
+.navbar-buttons {
+    @apply flex-y items-end gap-y-3 md:gap-y-2;
+    @apply gap-y-3 md:gap-y-2;
+    @apply w-full overflow-x-hidden overflow-y-auto;
+    @apply custom-scrollbar-hide;
+}
+
 .navbar-place-buttons {
     @apply relative;
     @apply flex-y items-center gap-y-3 md:gap-y-2;
-    @apply w-full overflow-y-auto;
+    @apply w-full;
     @apply pt-2 -mt-2;
-    @apply custom-scrollbar-hide;
 }
 .navbar-place-buttons:empty {
     @apply m-0 -mb-3 md:-mb-2 p-0;
 }
-.navbar-place-buttons::-webkit-scrollbar {
-    display: none;
+
+.navbar-chat-buttons {
+    @apply flex-y items-center gap-y-2 md:gap-y-1;
+    @apply w-full;
+    @apply pt-2 -mt-2;
+}
+.navbar-chat-buttons .btn.btn-square {
+    @apply bg-transparent;
 }
 
 .right-line {
@@ -185,4 +198,7 @@ body.narrow .navbar-button.ghost-btn .btn.btn-square .navbar-button-content.btn-
     100% {
         transform: rotate(0);
     }
+}
+.sortable-target {
+    animation: twitch 200ms 2 forwards;
 }

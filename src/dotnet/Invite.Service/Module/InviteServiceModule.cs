@@ -8,22 +8,21 @@ using ActualLab.Fusion.EntityFramework.Operations;
 namespace ActualChat.Invite.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class InviteServiceModule(IServiceProvider moduleServices) : HostModule<InviteSettings>(moduleServices)
+public sealed class InviteServiceModule(IServiceProvider moduleServices) : HostModule(moduleServices)
 {
     protected override void InjectServices(IServiceCollection services)
     {
-        base.InjectServices(services);
         if (!HostInfo.HostKind.IsServer())
             return; // Server-side only module
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
-        redisModule.AddRedisDb<InviteDbContext>(services, Settings.Redis);
+        redisModule.AddRedisDb<InviteDbContext>(services);
 
         // DB
         var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, InviteDbInitializer>();
-        dbModule.AddDbContextServices<InviteDbContext>(services, Settings.Db, db => {
+        dbModule.AddDbContextServices<InviteDbContext>(services, db => {
             // DbInvite
             db.AddEntityResolver<string, DbInvite>();
             db.AddEntityResolver<string, DbActivationKey>();

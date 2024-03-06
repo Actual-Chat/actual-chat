@@ -19,14 +19,14 @@
     Title="@(ModalModel.Title.NullIfEmpty() ?? "Share")"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Stretch">
     <Body>
-    <FormBlock>
+    <FormBlock class="with-contact-list">
         @if (_selectorKind == SelectorKind.Contact) {
             <ContactSelector
                 @ref="@_contactSelectorRef"
                 SearchPhrase="_searchPhrase"
                 ChatListPreOrder="@ChatListPreOrder.ChatList"
                 Changed="@StateHasChanged">
-                <SearchBoxNew
+                <SearchBox
                     Placeholder="Who would you like to share with"
                     MaxLength="@Constants.Chat.MaxSearchFilterLength"
                     TextChanged="@OnFilter"/>
@@ -46,7 +46,9 @@
     <Footer>
         <EmbeddedMessageEditor
             Text="@_comment"
+            IsTransparent="@true"
             Placeholder="Add your comment (optional)"
+            PlaceholderIcon="icon-message-ellipse"
             TextChanged="OnCommentChanged" />
         @if (ModalModel.Request.HasLink(out var link)) {
             <input type="hidden" @ref="@_copyTextSourceRef" value="@RequestWithComment.GetShareTextAndLink(UrlMapper)" />

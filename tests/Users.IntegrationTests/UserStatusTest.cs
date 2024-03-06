@@ -5,8 +5,7 @@ using ActualLab.Versioning;
 namespace ActualChat.Users.IntegrationTests;
 
 [Collection(nameof(UserCollection))]
-public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
+public class UserStatusTest(ITestOutputHelper @out): AppHostTestBase("user-status", @out)
 {
     private WebClientTester _tester = null!;
     private IAccounts _accounts = null!;

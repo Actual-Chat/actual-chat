@@ -116,7 +116,6 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
 
         // Actual Chat-specific UI services
         services.AddScoped(c => new ThemeUI(c.UIHub()));
-        services.AddScoped(c => new FeedbackUI(c.UIHub()));
         services.AddScoped(c => new VisualMediaViewerUI(c.UIHub()));
         fusion.AddService<AccountUI>(ServiceLifetime.Scoped);
         fusion.AddService<SearchUI>(ServiceLifetime.Scoped);
@@ -129,7 +128,6 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
 
         // IModalViews
         services.AddTypeMapper<IModalView>(map => map
-            .Add<FeatureRequestModal.Model, FeatureRequestModal>()
             .Add<VisualMediaViewerModal.Model, VisualMediaViewerModal>()
             .Add<DemandUserInteractionModal.Model, DemandUserInteractionModal>()
             .Add<DiveInModal.Model, DiveInModal>()
