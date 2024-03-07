@@ -290,6 +290,9 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     public void SetNavbarPinnedChats(IReadOnlyCollection<ChatId> pinnedChats)
         => _navbarSettings.Value = _navbarSettings.Value with { PinnedChats = pinnedChats.ToApiArray() };
 
+    public void SetNavbarPlacesOrder(IReadOnlyCollection<PlaceId> places)
+        => _navbarSettings.Value = _navbarSettings.Value with { PlacesOrder = places.ToApiArray() };
+
     // Helpers
 
     // This method fixes provided ChatId w/ PeerChatId.FixOwnerId, which replaces

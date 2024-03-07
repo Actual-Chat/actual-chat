@@ -10,4 +10,5 @@ public sealed partial record UserNavbarSettings : IHasOrigin
 
     [DataMember, MemoryPackOrder(0)] public string Origin { get; init; } = "";
     [DataMember, MemoryPackOrder(1)] public ApiArray<ChatId> PinnedChats { get; init; }
+    [DataMember, MemoryPackOrder(2)] public ApiArray<PlaceId> PlacesOrder { get; init; }
 }
