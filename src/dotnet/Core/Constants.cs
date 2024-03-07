@@ -61,7 +61,7 @@ public static partial class Constants
         {
             public static readonly UserId UserId = new("ml-search", AssumeValid.Option);
             public static readonly long AuthorLocalId = -2;
-            public static readonly string Name =  "Bot";
+            public static readonly string Name =  "AI Search Bot";
             public static readonly string Picture = "https://api.dicebear.com/7.x/bottts/svg?seed=12";
         }
 
