@@ -87,11 +87,9 @@ export class SideNav extends DisposableBag {
                 stateObserver.disconnect();
             },
         });
-        fastRaf({
-                    write: () => {
-                        this.updateBodyClassList();
-                    },
-                });
+
+        this.updateBodyClassList();
+
         delayAsync(250).then(async () => {
             // No transitions immediately after the first render
             await fastWriteRaf();
@@ -270,20 +268,18 @@ class SideNavPullDetectGesture extends Gesture {
             this.dispose();
         };
 
-        fastRaf(() => {
-            const chatViewDiv = document.querySelector('.chat-view.virtual-list');
-            this.addDisposables(
-                DocumentEvents.capturedPassive.touchCancel$.subscribe(_ => this.dispose()),
-                DocumentEvents.capturedPassive.touchEnd$.subscribe(e => {
-                    move(e);
-                    this.dispose();
-                }),
-                DocumentEvents.capturedPassive.touchMove$.subscribe(e => move(e)),
-                chatViewDiv
-                ? fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(_ => this.dispose()))
-                : null,
-            );
-        });
+        const chatViewDiv = document.querySelector('.chat-view.virtual-list');
+        this.addDisposables(
+            DocumentEvents.capturedPassive.touchCancel$.subscribe(_ => this.dispose()),
+            DocumentEvents.capturedPassive.touchEnd$.subscribe(e => {
+                move(e);
+                this.dispose();
+            }),
+            DocumentEvents.capturedPassive.touchMove$.subscribe(e => move(e)),
+            chatViewDiv
+            ? fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(_ => this.dispose()))
+            : null,
+        );
     }
 }
 
@@ -414,7 +410,7 @@ class SideNavPullGesture extends Gesture {
                             // This doesn't work on Safari - i.e. it still drags the chat view while you move:
                             // chatViewDiv.scrollTop = initialChatViewScrollTop;
                             if (Math.abs(chatViewDiv.scrollTop - initialChatViewScrollTop) > MaxChatViewScroll)
-                                endMove(null, true);
+                                void endMove(null, true);
                         }))
                         : null,
                     );
