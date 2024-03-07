@@ -1,5 +1,4 @@
 using ActualChat.Testing.Host;
-using ActualLab.Generators;
 
 namespace ActualChat.Users.IntegrationTests;
 
@@ -9,7 +8,6 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out, 
 {
     private IWebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
     private IAccountsBackend Sut { get; } = fixture.AppHost.Services.GetRequiredService<IAccountsBackend>();
-    private RandomSymbolGenerator RandomSymbolGenerator { get; } = new RandomSymbolGenerator(length: 5, alphabet: Alphabet.AlphaNumeric);
 
     protected override async Task DisposeAsync()
     {
@@ -23,25 +21,28 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out, 
     public async Task ShouldListBatches(int count, int batchSize)
     {
         // arrange
-        var suffix = RandomSymbolGenerator.Next();
+        await Tester.SignInAsAlice();
         var lastChanged = await Sut.GetLastChanged(CancellationToken.None);
-        var accounts = await Tester.CreateAccounts(count, i => $"User_{i}_{suffix}");
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        var cancellationToken = cts.Token;
+        var minVersion = lastChanged?.Version ?? 0;
+        var accounts = await Tester.CreateAccounts(count);
 
         // act
-        var minVersion = lastChanged?.Version ?? 0;
-        log.LogInformation("Selecting account batches minVersion={MinVersion}(#{LastId})]",
-            minVersion,
-            lastChanged?.Id);
-        var retrieved = await Sut.BatchChanged(minVersion,
-                long.MaxValue,
-                lastChanged?.Id ?? UserId.None,
-                batchSize,
-                cancellationToken)
-            .ToApiArrayAsync(cancellationToken)
-            .Flatten();
-        Log.LogInformation("{Retrieved}", retrieved);
-        retrieved.Select(x => x.User.Name).Should().Contain(accounts.Select(x => x.User.Name));
+        await TestExt.WhenMetAsync(async () => {
+                log.LogInformation("Selecting account batches minVersion={MinVersion}(#{LastId})]",
+                    minVersion,
+                    lastChanged?.Id);
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var cancellationToken = cts.Token;
+                var retrieved = await Sut.BatchChanged(minVersion,
+                        long.MaxValue,
+                        lastChanged?.Id ?? UserId.None,
+                        batchSize,
+                        cancellationToken)
+                    .ToApiArrayAsync(cancellationToken)
+                    .Flatten();
+                Log.LogInformation("{Retrieved}", retrieved);
+                retrieved.Select(x => x.User.Name).Should().Contain(accounts.Select(x => x.User.Name));
+            },
+            TimeSpan.FromSeconds(20));
     }
 }

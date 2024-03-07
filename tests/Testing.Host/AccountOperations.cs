@@ -13,7 +13,7 @@ public static class AccountOperations
         Func<int, string>? secondNameFactory = null)
     {
         var userToRestore = await tester.Auth.GetUser(tester.Session);
-        userNameFactory ??= i => $"User {i}";
+        userNameFactory ??= UniqueNames.User;
         nameFactory ??= _ => "User";
         secondNameFactory ??= i => $"{i}";
         var accounts = new AccountFull[count];

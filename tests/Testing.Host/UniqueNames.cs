@@ -15,4 +15,14 @@ public static class UniqueNames
 
     public static string Elastic(string prefix)
         => prefix.EnsureSuffix("-") + Rsg.Next();
+
+    public static string User(int i)
+        => User($"User_{i}");
+
+    public static string User(string prefix)
+    {
+        if (!prefix.IsNullOrEmpty())
+            prefix = prefix.EnsureSuffix("_");
+        return prefix + Rsg.Next();
+    }
 }
