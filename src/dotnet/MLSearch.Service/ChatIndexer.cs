@@ -24,7 +24,7 @@ internal class ChatIndexer(ICommander commander, IChatIndexerWorker indexerWorke
         var peerChatId = eventCommand.Entry.ChatId.PeerChatId;
         if (peerChatId.IsNone || !peerChatId.HasUser(Constants.User.MLSearchBot.UserId)) {
             // A normal conversation.
-            var e = new MLSearch_TriggerChatIndexing(eventCommand.Entry.ChatId);
+            var e = new MLSearch_TriggerChatIndexing(eventCommand.Entry.Id, eventCommand.ChangeKind);
             await commander.Call(e, cancellationToken).ConfigureAwait(false);
         }
     }

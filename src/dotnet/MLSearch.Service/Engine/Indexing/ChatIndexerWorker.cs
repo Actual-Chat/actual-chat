@@ -24,8 +24,6 @@ internal class ChatIndexerWorker(
     private readonly Channel<MLSearch_TriggerChatIndexing> _channel =
         Channel.CreateBounded<MLSearch_TriggerChatIndexing>(ChannelCapacity);
 
-//    protected virtual Channel<MLSearch_TriggerContinueChatIndexing> TriggersChannel => _channel;
-
     public ChannelWriter<MLSearch_TriggerChatIndexing> Trigger => _channel.Writer;
 
     private async Task<IList<ChatEntry>> ListNewEntries(ChatId chatId, Cursor cursor, CancellationToken cancellationToken)
@@ -80,15 +78,15 @@ internal class ChatIndexerWorker(
 
     private async Task<IndexingResult> IndexNext(ChatId chatId, CancellationToken cancellationToken)
     {
-        var state = await cursorStates.Load(
+        var cursor = await cursorStates.Load(
             IdOf(chatId),
             cancellationToken
             )
             .ConfigureAwait(false);
-        state ??= NewFor(chatId);
-        var creates = await ListNewEntries(chatId, state, cancellationToken)
+        cursor ??= NewFor(chatId);
+        var creates = await ListNewEntries(chatId, cursor, cancellationToken)
             .ConfigureAwait(false);
-        var (updates, deletes) = await ListUpdatedAndRemovedEntries(chatId, state, cancellationToken)
+        var (updates, deletes) = await ListUpdatedAndRemovedEntries(chatId, cursor, cancellationToken)
             .ConfigureAwait(false);
 
         // TODO: Ask @frol
@@ -109,6 +107,16 @@ internal class ChatIndexerWorker(
         return new IndexingResult(IsEndReached: false);
     }
 
+    private async Task<IndexingResult> IndexChatTail(ChatEntryId entryId, CancellationToken cancellationToken)
+    {
+        return await IndexNext(entryId.ChatId, cancellationToken).ConfigureAwait(false);
+    }
+    private async Task<IndexingResult> IndexChatRange(ChatEntryId entryId, CancellationToken cancellationToken)
+    {
+        // Fall back to chat tail indexing
+        return await IndexChatTail(entryId, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task ExecuteAsync(int shardIndex, CancellationToken cancellationToken)
     {
         // This method is a single unit of work.
@@ -122,17 +130,19 @@ internal class ChatIndexerWorker(
         // a cursor. TLDR: prevent stale cursor data.
         while (!cancellationToken.IsCancellationRequested) {
             try {
-                var e = await _channel
-                    .Reader
-                    .ReadAsync(cancellationToken)
-                    .ConfigureAwait(false);
-                var result = await IndexNext(e.Id, cancellationToken).ConfigureAwait(false);
+                var e = await _channel.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+
+                var result = await (e.ChangeKind switch {
+                    ChangeKind.Create => IndexChatTail(e.Id, cancellationToken),
+                    _ => IndexChatRange(e.Id, cancellationToken)
+                }).ConfigureAwait(false);
+
                 if (!result.IsEndReached) {
                     // Enqueue event to continue indexing.
-                    if (!Trigger.TryWrite(new MLSearch_TriggerChatIndexing(e.Id))) {
+                    if (!Trigger.TryWrite(new MLSearch_TriggerChatIndexing(e.Id, ChangeKind.Create))) {
                         Log.LogWarning("Event queue is full: We can't process till this indexing is fully complete.");
                         while (!result.IsEndReached) {
-                            result = await IndexNext(e.Id, cancellationToken).ConfigureAwait(false);
+                            result = await IndexChatTail(e.Id, cancellationToken).ConfigureAwait(false);
                         }
                         Log.LogWarning("Event queue is full: exiting an element.");
                     }
