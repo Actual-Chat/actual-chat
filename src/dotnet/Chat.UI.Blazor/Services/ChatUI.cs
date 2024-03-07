@@ -372,6 +372,9 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
     private async Task SelectPlaceNavbarGroup(ChatId chatId)
     {
+        if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId) && chatId.Equals(pinnedChatId))
+            return;
+
         var placeId = chatId.PlaceChatId.PlaceId;
         if (!placeId.IsNone) {
             var place = await Places.Get(Session, placeId, default).ConfigureAwait(true); // Continue on blazor context.
@@ -491,17 +494,17 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     {
         var placeId = PlaceId.None;
         var isChats = OrdinalEquals(NavbarUI.SelectedGroupId, NavbarGroupIds.Chats)|| NavbarUI.IsPlaceSelected(out placeId);
-        if (!NavbarUI.SelectedChatId.IsNone) {
+        if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId)) {
             isChats = true;
-            placeId = NavbarUI.SelectedChatId.PlaceId;
+            placeId = pinnedChatId.PlaceId;
         }
 
         if (!isChats)
             return;
 
         SelectPlaceInternal(placeId);
-        if (!NavbarUI.SelectedChatId.IsNone)
-            SelectChatInternal(NavbarUI.SelectedChatId);
+        if (!pinnedChatId.IsNone)
+            SelectChatInternal(pinnedChatId);
 
         if (!e.IsUserAction)
             return;
