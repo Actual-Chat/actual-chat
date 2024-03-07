@@ -27,7 +27,8 @@ body.narrow .link-preview.compact {
 }
 .link-preview .c-info {
     @apply flex-1 flex-y justify-between gap-y-4;
-    @apply p-2 md:p-0;
+    @apply h-full;
+    @apply p-2 md:py-4;
 }
 .link-preview.compact .c-info {
     @apply gap-y-1;
