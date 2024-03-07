@@ -68,7 +68,7 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices) : HostM
         fusion.AddService<IIndexedChatsBackend, IndexedChatsBackend>();
         fusion.AddService<IContactIndexStatesBackend, ContactIndexStateBackend>();
         services.AddSingleton<ElasticConfigurator>().AddAlias<IHostedService, ElasticConfigurator>();
-        services.AddSingleton<EntriesIndexer>().AddHostedService(c => c.GetRequiredService<EntriesIndexer>());
+        services.AddSingleton<TextEntryIndexer>().AddHostedService(c => c.GetRequiredService<TextEntryIndexer>());
         services.AddSingleton<ElasticNames>();
         services.AddSingleton<UserContactIndexer>().AddHostedService(c => c.GetRequiredService<UserContactIndexer>());
         services.AddSingleton<ChatContactIndexer>().AddHostedService(c => c.GetRequiredService<ChatContactIndexer>());
