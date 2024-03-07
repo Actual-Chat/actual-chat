@@ -7,9 +7,9 @@
     var m = State.Value;
     var placeId = PlaceId.None;
     var isChats = NavbarUI.SelectedGroupId == NavbarGroupIds.Chats || NavbarUI.IsPlaceSelected(out placeId);
-    if (!NavbarUI.SelectedChatId.IsNone) {
+    if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId)) {
         isChats = true;
-        placeId = NavbarUI.SelectedChatId.PlaceId;
+        placeId = pinnedChatId.PlaceId;
     }
     var isAdministration = NavbarUI.SelectedGroupId == NavbarGroupIds.Administration;
     var isTestPages = NavbarUI.SelectedGroupId == NavbarGroupIds.TestPages;
