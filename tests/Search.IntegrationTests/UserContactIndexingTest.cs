@@ -34,7 +34,7 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
     protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
-        await _tester.DisposeAsync().AsTask();
+        await _tester.DisposeAsync();
         await base.DisposeAsync();
     }
 

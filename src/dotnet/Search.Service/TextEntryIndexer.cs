@@ -7,7 +7,7 @@ using ActualLab.Interception;
 
 namespace ActualChat.Search;
 
-public class EntriesIndexer(IServiceProvider services) : WorkerBase, IHasServices, INotifyInitialized
+public class TextEntryIndexer(IServiceProvider services) : WorkerBase, IHasServices, INotifyInitialized
 {
     private const int ChatDispatchBatchSize = 20;
     private const int IndexChatSyncBatchSize = 1000;
