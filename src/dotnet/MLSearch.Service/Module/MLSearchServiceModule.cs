@@ -60,7 +60,9 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         // Module's own services
         var fusion = services.AddFusion();
-        fusion.AddService<IMLSearchBackend, MLSearchBackend>();
+        fusion.AddService<IChatBot, ChatBot>();
+        fusion.AddService<IChatIndexer, ChatIndexer>();
+
         services.AddSingleton<IHistoryExtractor, HistoryExtractor>();
         services.AddSingleton<IResponseBuilder, ResponseBuilder>();
 
@@ -81,12 +83,12 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // ChatSlice engine registrations
         services.AddSingleton<ISearchEngine<ChatSlice>>(static services
             => services.CreateInstanceWith<OpenSearchEngine<ChatSlice>>(IndexNames.ChatSlice));
-        services.AddSingleton<ICursorStates<ChatEntriesIndexer.Cursor>>(static services
-            => services.CreateInstanceWith<CursorStates<ChatEntriesIndexer.Cursor>>(IndexNames.ChatSliceCursor));
+        services.AddSingleton<ICursorStates<ChatIndexerWorker.Cursor>>(static services
+            => services.CreateInstanceWith<CursorStates<ChatIndexerWorker.Cursor>>(IndexNames.ChatSliceCursor));
         services.AddSingleton<ISink<ChatEntry, ChatEntry>>(static services
             => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
         services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
-        services.AddSingleton<ChatEntriesIndexer>();
+        services.AddSingleton<IChatIndexerWorker, ChatIndexerWorker>();
 
         // TODO: remove workaround. Reason: NodesByRole.TryGetValue(shardScheme.Id, out var nodes)
         Symbol ShardingSchemeId = HostRole.MLSearchIndexing;
@@ -96,18 +98,11 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             (e, key) => new ShardWorkerFunc(
                 shardingSchemeId: ShardingSchemeId,
                 e,
-                e.GetRequiredService<ChatEntriesIndexer>().Execute
+                e.GetRequiredService<IChatIndexerWorker>().ExecuteAsync
             )
         );
         services.AddHostedService(e => e
             .GetRequiredKeyedService<ShardWorkerFunc>("OpenSearch Chat Index")
         );
-
-        // TODO: remove once events are settled:
-        // -- start of TODO item --
-        fusion.AddService<IChatEntriesSpout, ChatEntriesSpout>();
-        // Note: this singleton must work in the main app backend.
-        fusion.AddService<ChatEntriesEventsDispatcher>();
-        // -- end of TODO item --
     }
 }

@@ -168,8 +168,8 @@ internal class ClusterSetup(
         var attachmentIdField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Id));
         var attachmentSummaryField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Summary));
         // Cursor fields
-        var lastEntryVersionField = namingPolicy.ConvertName(nameof(ChatEntriesIndexer.Cursor.LastEntryVersion));
-        var lastEntryLocalIdField = namingPolicy.ConvertName(nameof(ChatEntriesIndexer.Cursor.LastEntryLocalId));
+        var lastEntryVersionField = namingPolicy.ConvertName(nameof(ChatIndexerWorker.Cursor.LastEntryVersion));
+        var lastEntryLocalIdField = namingPolicy.ConvertName(nameof(ChatIndexerWorker.Cursor.LastEntryLocalId));
 
         var ingestResult = await openSearch.RunAsync(
             $$"""
@@ -197,13 +197,13 @@ internal class ClusterSetup(
         // TODO: fix init scripts (python): it reinitializes ML model even if nothing has changed.
         // TODO: Check what's available
         // Note: https://opensearch.org/docs/latest/api-reference/index-apis/put-mapping/
-        /* 
-        If you want to create or add mappings and fields to an index, you can use the put mapping 
+        /*
+        If you want to create or add mappings and fields to an index, you can use the put mapping
         API operation. For an existing mapping, this operation updates the mapping.
 
         You can’t use this operation to update mappings that already map to existing data in the index.
-        You must first create a new index with your desired mappings, and then use the reindex API 
-        operation to map all the documents from your old index to the new index. If you don’t want 
+        You must first create a new index with your desired mappings, and then use the reindex API
+        operation to map all the documents from your old index to the new index. If you don’t want
         any downtime while you re-index your indexes, you can use aliases.
         */
         var ingestCursorIndexResult = await openSearch.RunAsync(

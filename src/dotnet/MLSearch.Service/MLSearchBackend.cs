@@ -1,5 +1,3 @@
-using ActualChat.Chat.Events;
-using ActualChat.Commands;
 
 namespace ActualChat.MLSearch;
 
@@ -19,29 +17,5 @@ internal class MLSearchBackend: IMLSearchBackend
         // On vector search completion
         // build answer using chat history and vector search response as an input
         // post response
-    }
-
-    public virtual async Task OnUpsertIndex(MLSearchBackend_UpsertIndex command, CancellationToken cancellationToken)
-    {
-        // Marks chat as updated
-        // Schedules indexing
-        // If indexing job is already waiding in a queue, does nothing
-
-        // App converts its data to an abstract doc for the vector search eng
-        // Sends it for indexing
-        // Document includes text part as well as metadata (Date, ChatId, PlaceId, Author, etc)
-    }
-
-    // Events
-
-    [EventHandler]
-    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
-    {
-        // if (isSearchChat) {
-            // run MLSearchBackend_Start command
-        //}
-
-        // In parallel we are going to run MLSearchBackend_UpsertIndex command on every incoming update
-        // The question is should we index search chats as well? (Probably yes)
     }
 }
