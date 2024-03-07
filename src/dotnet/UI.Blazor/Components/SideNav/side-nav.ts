@@ -277,8 +277,8 @@ class SideNavPullDetectGesture extends Gesture {
             }),
             DocumentEvents.capturedPassive.touchMove$.subscribe(e => move(e)),
             chatViewDiv
-            ? fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(_ => this.dispose()))
-            : null,
+                ? fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(_ => this.dispose()))
+                : null,
         );
     }
 }
