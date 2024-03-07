@@ -1,8 +1,8 @@
+using ActualChat.Chat.Events;
+using ActualChat.Commands;
 using MemoryPack;
 
 namespace ActualChat.MLSearch;
-
-
 
 /// <summary>
 /// This command is what passes event from an app code
@@ -11,8 +11,7 @@ namespace ActualChat.MLSearch;
 /// <param name="Id"></param>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-
-public sealed partial record MLSearch_TriggerContinueConversationWithBot (
+public sealed partial record MLSearch_TriggerChatIndexing(
     [property: DataMember, MemoryPackOrder(0)] ChatId Id
 ) : IBackendCommand, IHasShardKey<ChatId>, ICommand<Unit>
 {
@@ -20,9 +19,11 @@ public sealed partial record MLSearch_TriggerContinueConversationWithBot (
     public ChatId ShardKey => Id;
 }
 
-public interface IChatBot
+public interface IChatIndexer
 {
     [CommandHandler]
-    Task OnContinueConversation(MLSearch_TriggerContinueConversationWithBot e, CancellationToken cancellationToken);
+    Task OnCommand(MLSearch_TriggerChatIndexing e, CancellationToken cancellationToken);
 
+    [EventHandler]
+    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }
