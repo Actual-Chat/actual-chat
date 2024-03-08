@@ -20,6 +20,7 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
 {
     private WebClientTester _tester = null!;
     private ISearchBackend _searchBackend = null!;
+    private UserContactIndexer _userContactIndexer = null!;
     private ICommander _commander = null!;
 
     protected override async Task InitializeAsync()
@@ -28,6 +29,7 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
         Tracer.Default = Out.NewTracer();
         _tester = AppHost.NewWebClientTester(Out);
         _searchBackend = AppHost.Services.GetRequiredService<ISearchBackend>();
+        _userContactIndexer = AppHost.Services.GetRequiredService<UserContactIndexer>();
         _commander = AppHost.Services.Commander();
     }
 
@@ -47,6 +49,7 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
 
         // act
         var userId = accounts[^1].Id;
+        await _userContactIndexer.WhenInitialized.WaitAsync(TimeSpan.FromSeconds(10));
 
         // assert
         await Find(userId, "User", 20);
@@ -102,9 +105,6 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
             TimeSpan.FromSeconds(10));
         return searchResults.Hits;
     }
-
-    private static ContactSearchResult BuildSearchResult(UserId ownerId, AccountFull other)
-        => BuildSearchResult(ownerId, other.Id, other.FullName);
 
     private static ContactSearchResult BuildSearchResult(UserId ownerId, UserId otherUserId, string fullName)
         => new (new ContactId(ownerId, new PeerChatId(ownerId, otherUserId).ToChatId()), SearchMatch.New(fullName));
