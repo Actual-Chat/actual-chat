@@ -8,11 +8,13 @@ public abstract class ContactIndexer(IServiceProvider services)
 {
     protected const int SyncBatchSize = 1000;
     private static readonly TimeSpan MaxIdleInterval = TimeSpan.FromMinutes(5);
+    private readonly TaskCompletionSource _whenInitialized = new ();
     private SearchSettings? _settings;
     private IContactIndexStatesBackend? _indexedChatsBackend;
     private ElasticConfigurator? _elasticConfigurator;
     private ICommander? _commander;
 
+    public Task WhenInitialized => _whenInitialized.Task;
     protected ContactIndexingSignal NeedsSync { get; } = new (services);
     private MomentClockSet Clocks { get; } = services.Clocks();
     // we assume that ClockBasedVersionGenerator.DefaultCoarse is used
@@ -39,6 +41,7 @@ public abstract class ContactIndexer(IServiceProvider services)
         if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
 
+        _whenInitialized.TrySetResult();
         while (!cancellationToken.IsCancellationRequested)
             try {
                 Log.LogDebug("Syncing contacts");
