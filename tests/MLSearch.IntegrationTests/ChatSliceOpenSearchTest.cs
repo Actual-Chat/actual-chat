@@ -4,6 +4,7 @@ using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.Indexing;
 using ActualChat.MLSearch.Engine.OpenSearch;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
+using ActualChat.MLSearch.Indexing;
 using ActualChat.Performance;
 using ActualChat.Testing.Host;
 using OpenSearch.Client;
@@ -65,7 +66,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
                 var (id, text) = args;
                 var metadata = new ChatSliceMetadata(
                     authorId,
-                    [id], null, null,
+                    [new (id, 1)], null, null,
                     [], [], [], [], [],
                     false,
                     "en-US",
@@ -120,7 +121,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
     [Fact]
     public void ResolvesOfIndexingServicesWorkCorrectly()
     {
-        Assert.NotNull(AppHost.Services.GetService<ICursorStates<ChatIndexerWorker.Cursor>>());
+        Assert.NotNull(AppHost.Services.GetService<ICursorStates<ChatHistoryExtractor.Cursor>>());
         Assert.NotNull(AppHost.Services.GetService<ISink<ChatEntry, ChatEntry>>());
         Assert.NotNull(AppHost.Services.GetService<IDocumentMapper<ChatEntry, ChatSlice>>());
 

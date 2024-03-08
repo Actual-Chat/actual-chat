@@ -7,7 +7,7 @@ internal readonly record struct ChatSliceMetadata(
     // An id of the author of the document.
     PrincipalId AuthorId,
     // Ordered list of all involved chat entry ids.
-    ImmutableArray<ChatEntryId> ChatEntries,
+    ImmutableArray<ChatSliceEntry> ChatEntries,
     // Offset from the beginning of the text of 1st entry in the chat entry list.
     // This is the place where document starts.
     int? StartOffset,
@@ -30,6 +30,6 @@ internal readonly record struct ChatSliceMetadata(
     DateTime Timestamp
 )
 {
-    public ChatId ChatId => ChatEntries.IsDefaultOrEmpty ? ChatId.None : ChatEntries[0].ChatId;
+    public ChatId ChatId => ChatEntries.IsDefaultOrEmpty ? ChatId.None : ChatEntries[0].Id.ChatId;
     public PlaceId PlaceId => ChatId.PlaceId;
 }
