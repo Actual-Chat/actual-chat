@@ -164,6 +164,9 @@ internal class ClusterSetup(
         var timestampField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Timestamp));
         var chatIdField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ChatId));
         var placeIdField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.PlaceId));
+        // ChatSliceEntry fields
+        var chatSliceEntryIdField = namingPolicy.ConvertName(nameof(ChatSliceEntry.Id));
+        var chatSliceEntryVersionField = namingPolicy.ConvertName(nameof(ChatSliceEntry.Version));
         // ChatSliceAttachment fields
         var attachmentIdField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Id));
         var attachmentSummaryField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Summary));
@@ -255,7 +258,13 @@ internal class ClusterSetup(
                                 "{{authorIdField}}": { "type": "keyword" },
                                 "{{chatIdField}}": { "type": "keyword" },
                                 "{{placeIdField}}": { "type": "keyword" },
-                                "{{chatEntriesField}}": { "type": "keyword" },
+                                "{{chatEntriesField}}": {
+                                    "type": "object",
+                                    "properties": {
+                                        "{{chatSliceEntryIdField}}":  { "type": "keyword" },
+                                        "{{chatSliceEntryVersionField}}": { "type": "integer" }
+                                    }
+                                },
                                 "{{startOffsetField}}": { "type": "integer" },
                                 "{{endOffsetField}}": { "type": "integer" },
                                 "{{replyToEntriesField}}": { "type": "keyword" },

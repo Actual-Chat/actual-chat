@@ -25,7 +25,7 @@ internal static class ChatSliceExt
         var metadata = new ChatSliceMetadata(
             // TODO: verify
             AuthorId: new PrincipalId(chatEntry.AuthorId.Id),
-            ChatEntries: [chatEntry.Id],
+            ChatEntries: [new (chatEntry.Id, chatEntry.Version)],
             // TODO: ensure everything is correct here.
             StartOffset: null,
             EndOffset: null,
