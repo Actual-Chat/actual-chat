@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using ActualChat.App.Server;
 using ActualChat.Testing.Host;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
@@ -11,12 +10,10 @@ public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private WebClientTester _tester = null!;
-    private IAccountsBackend _accounts = null!;
 
     protected override Task InitializeAsync()
     {
         _tester = AppHost.NewWebClientTester(Out);
-        _accounts = AppHost.Services.GetRequiredService<IAccountsBackend>();
         return Task.CompletedTask;
     }
 
