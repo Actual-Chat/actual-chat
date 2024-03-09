@@ -2,8 +2,8 @@ using System.Threading.Tasks.Dataflow;
 using ActualChat.Chat;
 using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.DataFlow;
-using TInput = (ActualChat.ChatEntryId Id, ActualChat.ChangeKind ChangeKind);
-using TOutput = (
+using TPipelineInput = (ActualChat.ChatEntryId Id, ActualChat.ChangeKind ChangeKind);
+using TPipelineOutput = (
     System.Collections.Generic.IEnumerable<ActualChat.Chat.ChatEntry>?,
     System.Collections.Generic.IEnumerable<ActualChat.Chat.ChatEntry>?
 );
@@ -30,17 +30,17 @@ internal class ChatIndexerWorker : IChatIndexerWorker
         public Content(ChatId id) => (Id, _payload, _hasPayload) = (id, default, false);
         public Content(ChatId id, TPayload payload) => (Id, _payload, _hasPayload) = (id, payload, true);
     };
-    private record class Envelop<TPayload>(Content<TPayload> Payload, CancellationToken CancellationToken);
+    private record class Envelope<TPayload>(Content<TPayload> Content, CancellationToken CancellationToken);
     private record class JobMetadata(CancellationTokenSource CancellationSource);
     private const int EntryBatchSize = 100;
     private const int ChannelCapacity = 10;
     private readonly IChatsBackend _chats;
     private readonly ICursorStates<Cursor> _cursorStates;
-    private readonly ISink<TOutput> _sink;
+    private readonly ISink<TPipelineOutput> _sink;
     private readonly ILoggerSource _loggerSource;
-    private readonly BufferBlock<TInput> _inputBlock;
-    private readonly TransformBlock<TInput, Envelop<TInput>> _initBlock;
-    private readonly ActionBlock<Envelop<Unit>> _completeBlock;
+    private readonly BufferBlock<TPipelineInput> _inputBlock;
+    private readonly TransformBlock<TPipelineInput, Envelope<TPipelineInput>> _initBlock;
+    private readonly ActionBlock<Envelope<Unit>> _completeBlock;
     private readonly ConcurrentDictionary<ChatId, JobMetadata> _runningJobs;
     private ILogger? _log;
     private ILogger Log => _log ??= _loggerSource.GetLogger(GetType());
@@ -57,6 +57,8 @@ internal class ChatIndexerWorker : IChatIndexerWorker
         _sink = sink;
         _loggerSource = loggerSource;
 
+        _runningJobs = new();
+
         _inputBlock = new(new() {
             BoundedCapacity = ChannelCapacity,
         });
@@ -65,22 +67,53 @@ internal class ChatIndexerWorker : IChatIndexerWorker
 
         _completeBlock = new(Complete);
 
-        _sinkBlock = new(item => _sink.ExecuteAsync(item, default));
+        var sinkBlock = new TransformBlock<Envelope<TPipelineOutput>, Envelope<Unit>>(
+            item => SinkAsync(item, _sink));
     }
 
-    private Envelop<TInput> Init(TInput input)
+    private Envelope<TPipelineInput> Init(TPipelineInput input)
     {
         var (jobId, cancellationSource) = (input.Id.ChatId, new CancellationTokenSource());
         if (_runningJobs.TryAdd(jobId, new(cancellationSource))) {
-            return new(new Content<TInput>(jobId, input), cancellationSource.Token);
+            return new(new Content<TPipelineInput>(jobId, input), cancellationSource.Token);
         }
         // We do not start indexing of the same chat in parallel
         cancellationSource.DisposeSilently();
-        return new(Content<TInput>.None, default);
+        return new(Content<TPipelineInput>.None, default);
     }
-    private void Complete(Envelop<Unit> envelop)
+    private Task<Envelope<TOutput>> TransformAsync<TInput, TOutput>(
+        Envelope<TInput> envelope, ITransform<TInput,TOutput> transform)
+        => TransformAsync(envelope, transform.ExecuteAsync);
+
+    private Task<Envelope<Unit>> SinkAsync<TInput>(Envelope<TInput> envelope, ISink<TInput> sink)
+        => TransformAsync(envelope, async (input, cancellationToken) => {
+            await sink.ExecuteAsync(input, cancellationToken).ConfigureAwait(false);
+            return Unit.Default;
+        });
+
+    private async Task<Envelope<TOutput>> TransformAsync<TInput, TOutput>(
+        Envelope<TInput> envelope, Func<TInput,CancellationToken,Task<TOutput>> transform)
     {
-        var jobId = envelop.Payload.Id;
+        var (jobId, cancellationToken) = (envelope.Content.Id, envelope.CancellationToken);
+        if (!envelope.Content.IsEmpty && !cancellationToken.IsCancellationRequested) {
+            try {
+                var result = await transform(envelope.Content.Payload, cancellationToken).ConfigureAwait(false);
+                return new Envelope<TOutput>(new Content<TOutput>(jobId, result), cancellationToken);
+            }
+            catch (OperationCanceledException) {
+                Log.LogInformation($"Operation {jobId} is cancelled.");
+            }
+            catch (Exception e) {
+                Log.LogError(e, $"Operation {jobId} is failed.");
+            }
+        }
+        // Just propagate emply envelop via pipeline
+        return new Envelope<TOutput>(new Content<TOutput>(jobId), cancellationToken);
+    }
+
+    private void Complete(Envelope<Unit> envelope)
+    {
+        var jobId = envelope.Content.Id;
         if (_runningJobs.TryRemove(jobId, out var jobMetadata)) {
             // TODO: Log and Trace
             jobMetadata.CancellationSource.DisposeSilently();
