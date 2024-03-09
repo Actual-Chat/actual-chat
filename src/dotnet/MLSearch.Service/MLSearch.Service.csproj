@@ -6,5 +6,6 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="OpenSearch.Client" />
+    <PackageReference Include="System.Threading.Tasks.Dataflow" />
   </ItemGroup>
 </Project>

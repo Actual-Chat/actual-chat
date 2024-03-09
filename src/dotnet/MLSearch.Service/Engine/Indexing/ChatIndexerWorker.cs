@@ -1,18 +1,18 @@
 using ActualChat.Chat;
 using ActualChat.MLSearch.ApiAdapters;
+using ActualChat.MLSearch.DataFlow;
 
 namespace ActualChat.MLSearch.Engine.Indexing;
 
-internal interface IChatIndexerWorker
+internal interface IChatIndexerWorker: ISpout<(ChatEntryId, ChangeKind)>
 {
-    ChannelWriter<MLSearch_TriggerChatIndexing> Trigger { get; }
     Task ExecuteAsync(int shardIndex, CancellationToken cancellationToken);
 }
 
 internal class ChatIndexerWorker(
     IChatsBackend chats,
     ICursorStates<ChatIndexerWorker.Cursor> cursorStates,
-    ISink<ChatEntry, ChatEntry> sink,
+    ISink<(IEnumerable<ChatEntry>?, IEnumerable<ChatEntry>?)> sink,
     ILoggerSource loggerSource
 ) : IChatIndexerWorker
 {
@@ -21,10 +21,11 @@ internal class ChatIndexerWorker(
     private ILogger? _log;
     private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
 
-    private readonly Channel<MLSearch_TriggerChatIndexing> _channel =
-        Channel.CreateBounded<MLSearch_TriggerChatIndexing>(ChannelCapacity);
+    private readonly Channel<(ChatEntryId Id, ChangeKind ChangeKind)> _channel =
+        Channel.CreateBounded<(ChatEntryId, ChangeKind)>(ChannelCapacity);
 
-    public ChannelWriter<MLSearch_TriggerChatIndexing> Trigger => _channel.Writer;
+    public async Task PostAsync((ChatEntryId, ChangeKind) input, CancellationToken cancellationToken)
+        => await _channel.Writer.WriteAsync(input, cancellationToken).ConfigureAwait(false);
 
     private async Task<IList<ChatEntry>> ListNewEntries(ChatId chatId, Cursor cursor, CancellationToken cancellationToken)
     {
@@ -100,7 +101,7 @@ internal class ChatIndexerWorker(
             // This is a simple logic to determine the end of changes currently available.
             return new IndexingResult(IsEndReached: true);
         }
-        await sink.ExecuteAsync(creates.Concat(updates), deletes, cancellationToken)
+        await sink.ExecuteAsync((creates.Concat(updates), deletes), cancellationToken)
             .ConfigureAwait(false);
         var next = new Cursor(lastTouchedEntry.LocalId, lastTouchedEntry.Version);
         await cursorStates.Save(IdOf(chatId), next, cancellationToken).ConfigureAwait(false);
@@ -139,7 +140,7 @@ internal class ChatIndexerWorker(
 
                 if (!result.IsEndReached) {
                     // Enqueue event to continue indexing.
-                    if (!Trigger.TryWrite(new MLSearch_TriggerChatIndexing(e.Id, ChangeKind.Create))) {
+                    if (!_channel.Writer.TryWrite((e.Id, ChangeKind.Create))) {
                         Log.LogWarning("Event queue is full: We can't process till this indexing is fully complete.");
                         while (!result.IsEndReached) {
                             result = await IndexChatTail(e.Id, cancellationToken).ConfigureAwait(false);
@@ -148,7 +149,7 @@ internal class ChatIndexerWorker(
                     }
                 }
             }
-            catch (Exception e){
+            catch (Exception e) {
                 Log.LogError(e.Message);
                 throw;
             }

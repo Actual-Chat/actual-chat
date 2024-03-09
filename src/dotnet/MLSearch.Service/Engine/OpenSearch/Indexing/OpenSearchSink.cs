@@ -2,7 +2,7 @@ using ActualChat.MLSearch.ApiAdapters;
 using OpenSearch.Client;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
-using ActualChat.MLSearch.Engine.Indexing;
+using ActualChat.MLSearch.DataFlow;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 
@@ -21,13 +21,13 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 // - All deletes MUST NOT fail if document was already
 //   deleted.
 
-internal class Sink<TSource, TDocument>(
+internal class OpenSearchSink<TSource, TDocument>(
     string docIndexName,
     IOpenSearchClient client,
     IIndexSettingsSource indexSettingsSource,
     IDocumentMapper<TSource, TDocument> mapper,
     ILoggerSource loggerSource
-) : ISink<TSource, TSource> where TDocument: class, IHasDocId
+) : ISink<(IEnumerable<TSource>?, IEnumerable<TSource>?)> where TDocument: class, IHasDocId
 {
     private IndexSettings? _indexSettings;
     private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings(docIndexName);
@@ -38,10 +38,10 @@ internal class Sink<TSource, TDocument>(
     private IOpenSearchClient OpenSearch => client;
 
     public async Task ExecuteAsync(
-        IEnumerable<TSource>? updatedDocuments,
-        IEnumerable<TSource>? deletedDocuments,
+        (IEnumerable<TSource>?, IEnumerable<TSource>?) input,
         CancellationToken cancellationToken)
     {
+        var (updatedDocuments, deletedDocuments) = input;
         var updates = updatedDocuments?.Select(mapper.Map) ?? Enumerable.Empty<TDocument>();
         var deletes = deletedDocuments?.Select(mapper.MapId) ?? Enumerable.Empty<Id>();
 

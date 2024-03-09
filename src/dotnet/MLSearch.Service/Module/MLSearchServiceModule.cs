@@ -4,6 +4,7 @@ using ActualChat.Chat.Events;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
+using ActualChat.MLSearch.DataFlow;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
@@ -85,8 +86,8 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             => services.CreateInstanceWith<OpenSearchEngine<ChatSlice>>(IndexNames.ChatSlice));
         services.AddSingleton<ICursorStates<ChatIndexerWorker.Cursor>>(static services
             => services.CreateInstanceWith<CursorStates<ChatIndexerWorker.Cursor>>(IndexNames.ChatSliceCursor));
-        services.AddSingleton<ISink<ChatEntry, ChatEntry>>(static services
-            => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
+        services.AddSingleton<ISink<(IEnumerable<ChatEntry>?, IEnumerable<ChatEntry>?)>>(static services
+            => services.CreateInstanceWith<OpenSearchSink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
         services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
         services.AddSingleton<IChatIndexerWorker, ChatIndexerWorker>();
 
