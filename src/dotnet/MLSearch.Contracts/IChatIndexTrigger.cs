@@ -19,11 +19,12 @@ public sealed partial record MLSearch_TriggerChatIndexing(
     public ChatId ShardKey => Id;
 }
 
-public interface IChatIndexer
+public interface IChatIndexTrigger
 {
-    [CommandHandler]
-    Task OnCommand(MLSearch_TriggerChatIndexing e, CancellationToken cancellationToken);
-
     [EventHandler]
     Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+
+
+    [CommandHandler]
+    Task OnCommand(MLSearch_TriggerChatIndexing e, CancellationToken cancellationToken);    
 }

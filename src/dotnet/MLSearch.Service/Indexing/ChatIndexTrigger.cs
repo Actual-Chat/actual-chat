@@ -1,15 +1,16 @@
 
 using ActualChat.Chat.Events;
+using ActualChat.MLSearch.Indexing;
 
-namespace ActualChat.MLSearch.Engine.Indexing.Spout;
+namespace ActualChat.MLSearch.Indexing;
 
 // NOTE: solution drawback
 // There is a chance that the receiving counter part will fail to complete
 // event handling while the event will be marked as complete.
 // This means: At most once logic.
 
-internal class ChatIndexer(ICommander commander, IChatIndexerWorker indexerWorker)
-    : IChatIndexer, IComputeService
+internal class ChatIndexTrigger(ICommander commander, IChatIndexerWorker indexerWorker)
+    : IChatIndexTrigger, IComputeService
 {
     // ReSharper disable once UnusedMember.Global
     // [CommandHandler]

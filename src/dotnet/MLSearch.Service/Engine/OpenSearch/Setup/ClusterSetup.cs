@@ -7,6 +7,7 @@ using ActualChat.MLSearch.Engine.Indexing;
 using OpenSearchModelGroupName = string;
 using OpenSearchModelGroupId = string;
 using OpenSearchModelId = string;
+using ActualChat.MLSearch.Indexing;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
@@ -168,8 +169,8 @@ internal class ClusterSetup(
         var attachmentIdField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Id));
         var attachmentSummaryField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Summary));
         // Cursor fields
-        var lastEntryVersionField = namingPolicy.ConvertName(nameof(ChatIndexerWorker.Cursor.LastEntryVersion));
-        var lastEntryLocalIdField = namingPolicy.ConvertName(nameof(ChatIndexerWorker.Cursor.LastEntryLocalId));
+        var lastEntryVersionField = namingPolicy.ConvertName(nameof(ChatHistoryExtractor.Cursor.LastEntryVersion));
+        var lastEntryLocalIdField = namingPolicy.ConvertName(nameof(ChatHistoryExtractor.Cursor.LastEntryLocalId));
 
         var ingestResult = await openSearch.RunAsync(
             $$"""
