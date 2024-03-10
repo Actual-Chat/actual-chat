@@ -19,6 +19,12 @@ public sealed partial record MLSearch_TriggerChatIndexing(
     public ChatId ShardKey => Id;
 }
 
+/// <summary>
+/// Note:
+/// This is a temporary solution before sharded Events are fully available.
+/// Its responsibility is to translate incoming events into corresponding shards
+/// through commands.
+/// </summary>
 public interface IChatIndexTrigger
 {
     [EventHandler]
