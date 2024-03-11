@@ -378,6 +378,15 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId) && chatId.Equals(pinnedChatId))
             return;
 
+        var navbarSettings = await NavbarSettings.Use().ConfigureAwait(true);
+        if (navbarSettings.PinnedChats.Contains(chatId)) {
+            var chat = await Chats.Get(Session, chatId, default).ConfigureAwait(true);
+            if (chat != null) {
+                NavbarUI.SelectGroup(chatId.GetNavbarGroupId(), false);
+                return;
+            }
+        }
+
         var placeId = chatId.PlaceChatId.PlaceId;
         if (!placeId.IsNone) {
             var place = await Places.Get(Session, placeId, default).ConfigureAwait(true); // Continue on blazor context.

@@ -125,7 +125,7 @@ public partial class ChatUI
     private async Task SynchronizeSelectedChatIdAndActivePlaceId(CancellationToken cancellationToken)
     {
         await WhenLoaded.ConfigureAwait(false);
-        _ = RestoreSelectedPlace(cancellationToken);
+        _ = RestoreSelectedNavbarGroup(cancellationToken);
         _ = SynchronizeSelectedChatIds();
     }
 
@@ -145,29 +145,37 @@ public partial class ChatUI
         }
     }
 
-    private async Task RestoreSelectedPlace(CancellationToken cancellationToken)
+    private async Task RestoreSelectedNavbarGroup(CancellationToken cancellationToken)
     {
         try {
             var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
             if (selectedChatId.IsNone)
                 return;
 
+            var chat = await Chats.Get(Session, selectedChatId, cancellationToken).ConfigureAwait(false);
+            if (chat == null)
+                return;
+
+            var navbarSettings = await NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
+            if (navbarSettings.PinnedChats.Contains(selectedChatId)) {
+                await Hub.Dispatcher.InvokeAsync(() => {
+                        Hub.NavbarUI.SelectGroup(selectedChatId.GetNavbarGroupId(), false);
+                    })
+                    .ConfigureAwait(false);
+                return;
+            }
+
             if (!selectedChatId.IsPlaceChat)
                 return;
 
-            var placeId = selectedChatId.PlaceId;
-            var chat = await Chats.Get(Session, selectedChatId, cancellationToken).ConfigureAwait(false);
-            if (chat == null)
-                placeId = PlaceId.None;
-            Place? place = null;
-            if (!placeId.IsNone)
-                place = await Hub.Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+            var place = await Hub.Places.Get(Session, selectedChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+            if (place == null)
+                return;
 
-            if (place != null)
-                await Hub.Dispatcher.InvokeAsync(() => {
-                        Hub.NavbarUI.SelectGroup(place.Id.GetNavbarGroupId(), false);
-                    })
-                    .ConfigureAwait(false);
+            await Hub.Dispatcher.InvokeAsync(() => {
+                    Hub.NavbarUI.SelectGroup(place.Id.GetNavbarGroupId(), false);
+                })
+                .ConfigureAwait(false);
         }
         catch (Exception ex) {
             Log.LogError(ex, "RestoreSelectedPlace failed");
