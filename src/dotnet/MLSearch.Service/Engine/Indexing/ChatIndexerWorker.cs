@@ -35,7 +35,7 @@ internal class ChatIndexerWorker : IChatIndexerWorker
     private const int EntryBatchSize = 100;
     private const int ChannelCapacity = 10;
     private readonly IChatsBackend _chats;
-    private readonly ICursorStates<Cursor> _cursorStates;
+    private readonly ICursorStates<ChatEntryCursor> _cursorStates;
     private readonly ISink<TPipelineOutput> _sink;
     private readonly ILoggerSource _loggerSource;
     private readonly BufferBlock<TPipelineInput> _inputBlock;
@@ -47,7 +47,7 @@ internal class ChatIndexerWorker : IChatIndexerWorker
 
     public ChatIndexerWorker(
         IChatsBackend chats,
-        ICursorStates<Cursor> cursorStates,
+        IChatEntryCursorStates cursorStates,
         ISink<(IEnumerable<ChatEntry>?, IEnumerable<ChatEntry>?)> sink,
         ILoggerSource loggerSource
     )
@@ -123,7 +123,7 @@ internal class ChatIndexerWorker : IChatIndexerWorker
     public async Task PostAsync((ChatEntryId, ChangeKind) input, CancellationToken cancellationToken)
         => await _inputBlock.SendAsync(input, cancellationToken).ConfigureAwait(false);
 
-    private async Task<IList<ChatEntry>> ListNewEntries(ChatId chatId, Cursor cursor, CancellationToken cancellationToken)
+    private async Task<IList<ChatEntry>> ListNewEntries(ChatId chatId, ChatEntryCursor cursor, CancellationToken cancellationToken)
     {
         // Note: Copied from IndexingQueue
         var result = new List<ChatEntry>();
@@ -148,7 +148,7 @@ internal class ChatIndexerWorker : IChatIndexerWorker
         return result;
     }
 
-    private async Task<(IList<ChatEntry> updates, IList<ChatEntry> deletes)> ListUpdatedAndRemovedEntries(ChatId chatId, Cursor cursor, CancellationToken cancellationToken)
+    private async Task<(IList<ChatEntry> updates, IList<ChatEntry> deletes)> ListUpdatedAndRemovedEntries(ChatId chatId, ChatEntryCursor cursor, CancellationToken cancellationToken)
     {
         // Note: Copied from IndexingQueue
         var updates = new List<ChatEntry>();
@@ -199,7 +199,7 @@ internal class ChatIndexerWorker : IChatIndexerWorker
         }
         await _sink.ExecuteAsync((creates.Concat(updates), deletes), cancellationToken)
             .ConfigureAwait(false);
-        var next = new Cursor(lastTouchedEntry.LocalId, lastTouchedEntry.Version);
+        var next = new ChatEntryCursor(lastTouchedEntry.LocalId, lastTouchedEntry.Version);
         await _cursorStates.Save(IdOf(chatId), next, cancellationToken).ConfigureAwait(false);
         return new IndexingResult(IsEndReached: false);
     }
@@ -264,10 +264,92 @@ internal class ChatIndexerWorker : IChatIndexerWorker
 
     private static Symbol IdOf(in ChatId chatId) => chatId.Id;
 
-    private static Cursor NewFor(in ChatId _)
+    private static ChatEntryCursor NewFor(in ChatId _)
         => new (0, 0);
 
     internal record IndexingResult(bool IsEndReached);
 
-    internal record Cursor(long LastEntryLocalId, long LastEntryVersion);
+}
+
+internal record ChatEntryCursor(long LastEntryLocalId, long LastEntryVersion);
+
+internal interface IChatEntryCursorStates
+    : ITransform<ChatId, ChatEntryCursor>, ISink<(ChatId, ChatEntryCursor)>;
+
+internal class ChatEntryCursorStates(ICursorStates<ChatEntryCursor> cursorStates): IChatEntryCursorStates
+{
+    async Task<ChatEntryCursor> ITransform<ChatId, ChatEntryCursor>.ExecuteAsync(ChatId key, CancellationToken cancellationToken)
+        => (await cursorStates.Load(key, cancellationToken).ConfigureAwait(false)) ?? new(0, 0);
+
+    async Task ISink<(ChatId, ChatEntryCursor)>.ExecuteAsync((ChatId, ChatEntryCursor) input, CancellationToken cancellationToken)
+    {
+        var (key, state) = input;
+        await cursorStates.Save(key, state, cancellationToken).ConfigureAwait(false);
+    }
+}
+
+internal interface INewChatEntryLoader: ITransform<(ChatId, ChatEntryCursor), IReadOnlyList<ChatEntry>>;
+
+internal class NewChatEntryLoader(IChatsBackend chats): INewChatEntryLoader
+{
+    public async Task<IReadOnlyList<ChatEntry>> ExecuteAsync((ChatId, ChatEntryCursor) input, CancellationToken cancellationToken)
+    {
+        var (chatId, cursor) = input;
+        var result = new List<ChatEntry>();
+        var lastIndexedLid = cursor.LastEntryLocalId;
+        var news = await chats.GetNews(chatId, cancellationToken).ConfigureAwait(false);
+        var lastLid = (news.TextEntryIdRange.End - 1).Clamp(0, long.MaxValue);
+        if (lastIndexedLid >= lastLid) {
+            return result;
+        }
+
+        var idTiles =
+            Constants.Chat.ServerIdTileStack.LastLayer.GetCoveringTiles(
+                news.TextEntryIdRange.WithStart(lastIndexedLid));
+        foreach (var tile in idTiles) {
+            var chatTile = await chats.GetTile(chatId,
+                    ChatEntryKind.Text,
+                    tile.Range,
+                    false,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            result.AddRange(chatTile.Entries.Where(x => !x.Content.IsNullOrEmpty()));
+        }
+        return result;
+    }
+}
+
+internal interface IUpdatedAndRemovedEntryLoader
+    : ITransform<(ChatId, ChatEntryCursor), (IReadOnlyList<ChatEntry>, IReadOnlyList<ChatEntry>)>;
+
+internal class UpdatedAndRemovedEntryLoader(IChatsBackend chats): IUpdatedAndRemovedEntryLoader
+{
+    private const int EntryBatchSize = 100;
+
+    public async Task<(IReadOnlyList<ChatEntry>, IReadOnlyList<ChatEntry>)> ExecuteAsync(
+        (ChatId, ChatEntryCursor) input, CancellationToken cancellationToken)
+    {
+        var (chatId, cursor) = input;
+        // Note: Copied from IndexingQueue
+        var updates = new List<ChatEntry>();
+        var deletes = new List<ChatEntry>();
+        var maxEntryVersion = await chats.GetMaxEntryVersion(chatId, cancellationToken).ConfigureAwait(false) ?? 0;
+        if (cursor.LastEntryVersion >= maxEntryVersion)
+            return (updates, deletes);
+
+        var changedEntries = await chats
+            .ListChangedEntries(chatId,
+                EntryBatchSize,
+                cursor.LastEntryLocalId,
+                cursor.LastEntryVersion,
+                cancellationToken)
+            .ConfigureAwait(false);
+        updates.AddRange(
+            changedEntries.Where(x => !x.IsRemoved && !x.Content.IsNullOrEmpty())
+        );
+        deletes.AddRange(
+            changedEntries.Where(x => x.IsRemoved || x.Content.IsNullOrEmpty())
+        );
+        return (updates, deletes);
+    }
 }
