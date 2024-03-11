@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 import time
 from opensearchpy import OpenSearch
@@ -13,11 +14,15 @@ class API:
         headers = {
             'Content-Type': 'application/json',
         }
-        return method(
+        result = method(
             self._cluster_url + path,
             headers=headers,
             json=data,
         )
+        print(path)
+        print(result)
+        print(result.json())
+        return result
 
     def register_model_group(self, model_group_name, *, cluster_url, description=""):
         # Notes:
@@ -27,6 +32,7 @@ class API:
             # Return an existing model group id if it already exists.
             return self.call_opensearch(
                 "/_plugins/_ml/model_groups/_search",
+                method = requests.post,
                 data = {
                     "query": {
                         "match": {
@@ -35,7 +41,7 @@ class API:
                     }
                 }
             ).json()['hits']['hits'][0]['_id']
-        except KeyError:
+        except (KeyError, IndexError):
             # Python EAFP principle
             pass
         return self.call_opensearch(
@@ -60,6 +66,32 @@ class API:
             }
         ).json()
 
+    def get_model_group_model_id(self, model_group_id, *, cluster_url):
+        # Notes:
+        # For some reason current opensearch_py_ml client
+        # does not have methods to register a model group
+        try:
+            # Return an existing model group id if it already exists.
+            return self.call_opensearch(
+                "/_plugins/_ml/models/_search",
+                method = requests.post,
+                data = {
+                    "query": {
+                        "match": {
+                            "model_group_id": model_group_id
+                        }
+                    },
+                    "sort": [{
+                        "_seq_no": { "order": "desc" }
+                    }],
+                    "size": 1
+                }
+            ).json()['hits']['hits'][0]['_id']
+        except IndexError:
+            # Python EAFP principle
+            return None
+
+
 def main():
     cluster_url = os.getenv('OPENSEARCH_CLUSTER_URL')
     model_group_name = os.getenv('OPENSEARCH_ML_MODEL_GROUP')
@@ -76,10 +108,31 @@ def main():
         description = "A model group for NLP models",
         cluster_url = cluster_url
     )
+    current_model_id = api.get_model_group_model_id(
+        model_group_id,
+        cluster_url = cluster_url
+    )
     client = OpenSearch(
         hosts=[cluster_url],
     )
     ml_client = MLCommonClient(client)
+    if current_model_id is not None:
+        current_model_info = ml_client.get_model_info(current_model_id)
+        current_model_content_hash_value = current_model_info['model_content_hash_value']
+        current_model_all_config = current_model_info['model_config']['all_config']
+        with open(os.getenv('TORCHSCRIPT_MODEL_CONFIG_PATH'), 'r') as f:
+            next_config = json.load(f)
+        # Note: No exception handling. Therse fields must be present
+        next_model_content_hash_value = next_config['model_content_hash_value']
+        next_model_all_config = next_config['model_config']['all_config']
+        if (
+            current_model_content_hash_value == next_model_content_hash_value
+            and current_model_all_config == next_model_all_config
+        ):
+            print("Current model and config have no changes")
+            return
+
+
     model_id = ml_client.register_model(
         model_group_id = model_group_id,
         model_path = os.getenv('TORCHSCRIPT_MODEL_PATH'),
@@ -88,6 +141,9 @@ def main():
         wait_until_deployed = True
     )
     print(model_id)
+    current_model_info = ml_client.get_model_info(model_id)
+    print(current_model_info)
+
 
 if __name__ == '__main__':
     try:

@@ -83,6 +83,10 @@ services:
         RUN pip install pandas==2.0.3 deprecated opensearch-py opensearch-py-ml requests
         WORKDIR /workdir
         CMD python ./opensearch-setup.py
+    develop:
+      watch:
+        - path: ./opensearch-setup.py
+          action: rebuild
     environment:
       OPENSEARCH_CLUSTER_URL: 'http://opensearch-node1:9200'
       OPENSEARCH_ML_MODEL_GROUP: 'NLP_model_group'
