@@ -112,7 +112,7 @@
         => PanelsUI.Left.SearchToggle();
 
     public sealed record Model {
-        public static readonly Model None = new() { Place = null };
+        public static readonly Model None = new() { Place = Place.None };
 
         public Place? Place { get; init; }
     }
