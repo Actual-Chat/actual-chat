@@ -58,14 +58,17 @@
         if (AuthorId.IsNone)
             return Model.None;
 
-        var presence = await Authors.GetPresence(Session, AuthorId.ChatId, AuthorId, cancellationToken);
-        if (ShowRecording && ChatRecordingActivity != null) {
-            var isStreaming = await ChatRecordingActivity.IsAuthorStreaming(AuthorId, cancellationToken);
+        var streamingActivity = ShowRecording && ChatRecordingActivity != null
+            ? ChatRecordingActivity
+            : null;
+        var presence = await Authors.GetPresence(Session, AuthorId.ChatId, AuthorId, cancellationToken).ConfigureAwait(false);
+        if (streamingActivity != null) {
+            var isStreaming = await streamingActivity.IsAuthorStreaming(AuthorId, cancellationToken).ConfigureAwait(false);
             if (isStreaming)
                 presence = Presence.Recording;
         }
 
-        var lastCheckIn = await Authors.GetLastCheckIn(Session, AuthorId.ChatId, AuthorId, cancellationToken);
+        var lastCheckIn = await Authors.GetLastCheckIn(Session, AuthorId.ChatId, AuthorId, cancellationToken).ConfigureAwait(false);
         return new Model {
             Presence = presence,
             LastCheckIn = lastCheckIn,
@@ -73,7 +76,7 @@
     }
 
     public sealed record Model {
-        public static Model None = new() {
+        public static readonly Model None = new() {
             Presence = Presence.Unknown,
             LastCheckIn = null,
         };
