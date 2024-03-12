@@ -92,7 +92,9 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var selectedPlaceId = await Hub.ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
-        var place = await Hub.Places.Get(Hub.Session(), selectedPlaceId, default).ConfigureAwait(false);
+        var place = !selectedPlaceId.IsNone
+            ? await Hub.Places.Get(Hub.Session(), selectedPlaceId, default).ConfigureAwait(false)
+            : null;
         return new Model {
             Place = place,
         };
