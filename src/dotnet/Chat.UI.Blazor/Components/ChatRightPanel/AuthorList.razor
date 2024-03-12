@@ -47,7 +47,7 @@
 
             foreach (var group in groups) {
                 var title = $"{group.Item1} — {group.Item2.Count}";
-                <Collapsed Title="@title" IsCollapsed="@group.Item3">
+                <Collapsed @key="@group.Item1" Title="@title" IsCollapsed="@group.Item3">
                     @foreach (var authorId in group.Item2) {
                         <AuthorBadge
                             @key="@authorId"
@@ -85,28 +85,34 @@
         => new() {
             InitialValue = Model.None,
             Category = GetStateCategory(),
+            UpdateDelayer = FixedDelayer.Instant,
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var allAuthorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
-        var ownerIds = !Chat.Id.IsPeerChat(out _)
-            ? await Roles.ListOwnerIds(Session, Chat.Id, cancellationToken)
-            : ApiArray<AuthorId>.Empty;
+        var session = Session;
+        var chatId = Chat.Id;
+        var allAuthorIds = await Authors.ListAuthorIds(session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownerIds = !chatId.IsPeerChat(out _)
+            ? [..await Roles.ListOwnerIds(session, chatId, cancellationToken).ConfigureAwait(false)]
+            : new HashSet<AuthorId>();
         var ownerAuthors = new List<(AuthorId,string)>();
         var onlineAuthors = new List<(AuthorId,string)>();
         var offlineAuthors = new List<(AuthorId,string)>();
         var unreportedAuthors = new List<(AuthorId,string)>();
+        var ownAuthor = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         var presences = await allAuthorIds
             .Select(async authorId => {
-                var presenceTask = Authors.GetPresence(Session, Chat.Id, authorId, cancellationToken);
-                var authorTask = Authors.Get(Session, Chat.Id, authorId, cancellationToken);
+                var presenceTask = Authors.GetPresence(session, chatId, authorId, cancellationToken);
+                var authorTask = Authors.Get(session, chatId, authorId, cancellationToken);
+                await Task.WhenAll(presenceTask, authorTask).ConfigureAwait(false);
                 var presence = await presenceTask.ConfigureAwait(false);
                 var author = await authorTask.ConfigureAwait(false);
                 var isAnonymous = author?.IsAnonymous ?? false;
                 var authorName = author?.Avatar.Name ?? "";
                 return (authorId, isAnonymous, presence, authorName);
             })
-            .Collect(); // Add concurrency
+            .Collect(256)
+            .ConfigureAwait(false);
         foreach (var (authorId, isAnonymous, presence, authorName) in presences) {
             var collection = ownerIds.Contains(authorId)
                 ? ownerAuthors
@@ -119,22 +125,26 @@
         }
 
         Comparison<(AuthorId, string)> comparison = (info1, info2)
-            => String.Compare(info1.Item2, info2.Item2, StringComparison.Ordinal);
+            => (info1, info2) switch {
+                (_, _) when info1.Item1 == ownAuthor?.Id => -1,
+                (_, _) when info2.Item1 == ownAuthor?.Id => 1,
+                _ => string.Compare(info1.Item2, info2.Item2, StringComparison.Ordinal),
+            };
+
         ownerAuthors.Sort(comparison);
         onlineAuthors.Sort(comparison);
         offlineAuthors.Sort(comparison);
         unreportedAuthors.Sort(comparison);
 
-        var ownAuthor = await Authors.GetOwn(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
         var allAreAnonymous = presences.Length > 0 && presences.All(c => c.isAnonymous);
         return new() {
             AllAuthorIds = allAuthorIds,
             OwnAuthorId = ownAuthor?.Id ?? AuthorId.None,
-            OwnerAuthorIds = ownerAuthors.Select(c => c.Item1).ToApiArray(),
-            OnlineAuthorIds = onlineAuthors.Select(c => c.Item1).ToApiArray(),
-            OfflineAuthorIds = offlineAuthors.Select(c => c.Item1).ToApiArray(),
-            UnreportedAuthorIds = unreportedAuthors.Select(c => c.Item1).ToApiArray(),
-            AllAreAnonymous = allAreAnonymous
+            OwnerAuthorIds = ownerAuthors.Select(c => c.Item1).ToList(),
+            OnlineAuthorIds = onlineAuthors.Select(c => c.Item1).ToList(),
+            OfflineAuthorIds = offlineAuthors.Select(c => c.Item1).ToList(),
+            UnreportedAuthorIds = unreportedAuthors.Select(c => c.Item1).ToList(),
+            AllAreAnonymous = allAreAnonymous,
         };
     }
 
@@ -142,11 +152,11 @@
         public static readonly Model None = new();
 
         public AuthorId OwnAuthorId { get; init; } = AuthorId.None;
-        public ApiArray<AuthorId> AllAuthorIds { get; init; }
-        public ApiArray<AuthorId> OwnerAuthorIds { get; init; }
-        public ApiArray<AuthorId> OnlineAuthorIds { get; init; }
-        public ApiArray<AuthorId> OfflineAuthorIds { get; init; }
-        public ApiArray<AuthorId> UnreportedAuthorIds { get; init; }
+        public IReadOnlyList<AuthorId> AllAuthorIds { get; init; } = [];
+        public List<AuthorId> OwnerAuthorIds { get; init; } = [];
+        public List<AuthorId> OnlineAuthorIds { get; init; } = [];
+        public List<AuthorId> OfflineAuthorIds { get; init; } = [];
+        public List<AuthorId> UnreportedAuthorIds { get; init; } = [];
         public bool AllAreAnonymous { get; init; }
         public bool IsOwner => !OwnAuthorId.IsNone && OwnerAuthorIds.Contains(OwnAuthorId);
     }

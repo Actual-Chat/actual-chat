@@ -52,16 +52,19 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (AuthorId.IsNone)
+        var session = Session;
+        var authorId = AuthorId;
+        var chatId = ChatId;
+        if (authorId.IsNone)
             return Model.None;
 
-        var author = await Authors.Get(Session, AuthorId.ChatId, AuthorId, cancellationToken);
+        var author = await Authors.Get(session, authorId.ChatId, authorId, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return Model.None;
 
-        var ownAuthor = await Authors.GetOwn(Session, ChatId, cancellationToken);
+        var ownAuthor = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         var isOwn = ownAuthor != null && author.Id == ownAuthor.Id;
-        return new(author, isOwn);
+        return new Model(author, isOwn);
     }
 
     public sealed record Model(
