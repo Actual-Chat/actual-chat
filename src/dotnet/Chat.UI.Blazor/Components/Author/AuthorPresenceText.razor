@@ -61,6 +61,8 @@
         var streamingActivity = ShowRecording && ChatRecordingActivity != null
             ? ChatRecordingActivity
             : null;
+
+        // Code below doesn't use any component prop, so we can use .ConfigureAwait(false)
         var presence = await Authors.GetPresence(Session, AuthorId.ChatId, AuthorId, cancellationToken).ConfigureAwait(false);
         if (streamingActivity != null) {
             var isStreaming = await streamingActivity.IsAuthorStreaming(AuthorId, cancellationToken).ConfigureAwait(false);

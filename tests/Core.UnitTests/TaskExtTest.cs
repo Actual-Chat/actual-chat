@@ -10,19 +10,14 @@ public class TaskExtTest(ITestOutputHelper @out)
         const int limit = 10;
         var clocks = MomentClockSet.Default.CpuClock;
         var activeTaskCount = 0;
-        var parallelismInTime = await GetTestTasks(100)
+        var parallelismInTime = await Enumerable.Repeat(0, 100)
+            .Select(_ => IncrementWhileRunning())
             .Collect(limit);
         parallelismInTime.Should().Contain(10);
 
         Out.WriteLine(parallelismInTime.ToDelimitedString(", "));
 
         return;
-
-        IEnumerable<Task<int>> GetTestTasks(int count)
-        {
-            for (int i = 0; i < count; i++)
-                yield return IncrementWhileRunning();
-        }
 
         async Task<int> IncrementWhileRunning()
         {
