@@ -16,33 +16,28 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out, 
     }
 
     [Theory]
-    [InlineData(10, 3)]
-    [InlineData(55, 7)]
+    [InlineData(30, 15)]
+    [InlineData(150, 29)]
     public async Task ShouldListBatches(int count, int batchSize)
     {
         // arrange
-        await Tester.SignInAsAlice();
-        var lastChanged = await Sut.GetLastChanged(CancellationToken.None);
-        var minVersion = lastChanged?.Version ?? 0;
+        var alice = await Tester.SignInAsNew("Alice");
+        var minVersion = alice.Version;
+        var lastChangedId = alice.Id;
         var accounts = await Tester.CreateAccounts(count);
 
         // act
-        await TestExt.WhenMetAsync(async () => {
-                log.LogInformation("Selecting account batches minVersion={MinVersion}(#{LastId})]",
-                    minVersion,
-                    lastChanged?.Id);
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                var cancellationToken = cts.Token;
-                var retrieved = await Sut.BatchChanged(minVersion,
-                        long.MaxValue,
-                        lastChanged?.Id ?? UserId.None,
-                        batchSize,
-                        cancellationToken)
-                    .ToApiArrayAsync(cancellationToken)
-                    .Flatten();
-                Log.LogInformation("{Retrieved}", retrieved);
-                retrieved.Select(x => x.User.Name).Should().Contain(accounts.Select(x => x.User.Name));
-            },
-            TimeSpan.FromSeconds(20));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var cancellationToken = cts.Token;
+        var retrieved = await Sut.BatchChanged(minVersion,
+                long.MaxValue,
+                lastChangedId,
+                batchSize,
+                cancellationToken)
+            .ToApiArrayAsync(cancellationToken)
+            .Flatten();
+
+        // assert
+        retrieved.Select(x => x.User.Name).Should().Contain(accounts.Select(x => x.User.Name));
     }
 }
