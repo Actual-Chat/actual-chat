@@ -81,7 +81,7 @@ public class NavbarUI : ScopedServiceBase<ChatUIHub>
     public void SetNavbarPlacesOrder(IReadOnlyCollection<PlaceId> places)
         => _navbarSettings.Value = _navbarSettings.Value with { PlacesOrder = places.ToApiArray() };
 
-    private bool IsGroupSelected(string id)
+    public bool IsGroupSelected(string id)
         => OrdinalEquals(SelectedNavbarGroupId.Value, id);
 
     public bool IsPlaceSelected(out PlaceId placeId)

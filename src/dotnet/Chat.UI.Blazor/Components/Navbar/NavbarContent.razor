@@ -8,7 +8,7 @@
     if (m == Model.None)
         return;
     var placeId = PlaceId.None;
-    var isChats = m.SelectedNavbarGroupId == NavbarGroupIds.Chats || NavbarUI.IsPlaceSelected(out placeId);
+    var isChats = NavbarUI.IsGroupSelected(NavbarGroupIds.Chats) || NavbarUI.IsPlaceSelected(out placeId);
     if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId)) {
         isChats = true;
         placeId = pinnedChatId.PlaceId;
