@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ActualChat.App.Server;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -13,6 +14,12 @@ public static class TestAuthExt
         User user,
         CancellationToken cancellationToken = default)
         => tester.AppHost.SignIn(tester.Session, user, cancellationToken);
+
+    public static Task<AccountFull> SignInAsNew(
+        this IWebTester tester,
+        string namePrefix,
+        CancellationToken cancellationToken = default)
+        => tester.AppHost.SignIn(tester.Session, new User("", UniqueNames.User(namePrefix)).WithClaim(ClaimTypes.GivenName, namePrefix), cancellationToken);
 
     public static async Task<AccountFull> SignIn(
         this AppHost appHost,

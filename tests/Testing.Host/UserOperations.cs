@@ -20,6 +20,7 @@ public static class UserOperations
     public static Task<AccountFull> SignInAsBobAdmin(this IWebTester tester)
         => tester.SignIn(NewAdmin());
 
+
     public static User NewAdmin(string name = "BobAdmin", string email = "bob@actual.chat", string googleId = "123")
         => new User("", name)
             .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, googleId))
