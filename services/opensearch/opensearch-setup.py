@@ -134,7 +134,21 @@ def main():
             and current_model_all_config == next_model_all_config
         ):
             print("Current model and config have no changes")
-            return
+            current_model_state = current_model_info['model_state']
+            if current_model_state == 'DEPLOYED':
+                # OK state. Exiting
+                print("Model is deployed")
+                return
+            if current_model_state == 'DEPLOY_FAILED':
+                # Attempt to execute deploy
+                print("Redeploying a model")
+                deploy_result = ml_client.deploy_model(
+                    current_model_id,
+                    wait_until_deployed = True
+                )
+                assert deploy_result['state'] == 'COMPLETED'
+                return
+            assert False, f"Unexpected model state {current_model_state}"
 
 
     model_id = ml_client.register_model(
