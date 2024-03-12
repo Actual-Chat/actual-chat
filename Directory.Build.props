@@ -197,6 +197,8 @@
     <NoWarn>$(NoWarn);CA2000;CA2213;CA2225;CA2234;CA5394</NoWarn>
     <!-- IDE0160: Use block-scoped namespace declarations -->
     <NoWarn>$(NoWarn);IDE0160</NoWarn>
+    <!--    TODO: enable CA2007 when issue is fixed https://github.com/dotnet/roslyn-analyzers/issues/5712 -->
+    <NoWarn>$(NoWarn);CA2007</NoWarn>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(DeterministicSourcePaths)' =='true'">
