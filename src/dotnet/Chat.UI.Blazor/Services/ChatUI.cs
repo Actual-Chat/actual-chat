@@ -392,8 +392,8 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             var listView = ChatListUI.ActiveChatListView.Value;
             if (listView != null && listView.PlaceId == SelectedPlaceId.Value) {
                 var settings = await listView.GetSettings().ConfigureAwait(false);
-                if (settings.Filter == ChatListFilter.People) {
-                    // Check if peer chat was shown for place people view
+                if (settings.Filter == ChatListFilter.People || settings.Filter == ChatListFilter.None) {
+                    // Check if peer chat was shown for place chat list view
                     var chats = await ChatListUI.ListAllUnordered(SelectedPlaceId.Value).ConfigureAwait(false);
                     if (chats.ContainsKey(chatId))
                         return; // Keep selected group
