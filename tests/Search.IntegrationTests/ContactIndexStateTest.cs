@@ -1,3 +1,4 @@
+using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualLab.Versioning;
 
@@ -15,6 +16,7 @@ public class ContactIndexStateTest(AppHostFixture fixture, ITestOutputHelper @ou
     {
         await Run(() => ContactIndexStatesBackend.GetForChats(CancellationToken.None), () => new ChatId(Generate.Option));
         await Run(() => ContactIndexStatesBackend.GetForUsers(CancellationToken.None), () => UserId.New());
+        return;
 
         async Task Run(Func<Task<ContactIndexState>> get, Func<Symbol> generateLastUpdatedId)
         {
@@ -31,11 +33,13 @@ public class ContactIndexStateTest(AppHostFixture fixture, ITestOutputHelper @ou
             };
             var createCmd = new ContactIndexStatesBackend_Change(initialState.Id, null, Change.Create(stateToCreate));
             var createdState = await Commander.Call(createCmd);
+            var retrievedCreatedState = await get();
 
             // assert
             createdState.IsStored().Should().BeTrue();
-            createdState.Should().BeEquivalentTo(stateToCreate, o => o.Excluding(x => x.Version));
+            createdState.Should().BeEquivalentTo(stateToCreate, o => o.ExcludingSystemProperties());
             createdState.Version.Should().BeGreaterThan(initialState.Version);
+            retrievedCreatedState.Should().BeEquivalentTo(createdState, o => o.ExcludingSystemProperties());
 
             // act
             var stateToUpdate = createdState with {
@@ -44,10 +48,12 @@ public class ContactIndexStateTest(AppHostFixture fixture, ITestOutputHelper @ou
             };
             var updateCmd = new ContactIndexStatesBackend_Change(initialState.Id, createdState.Version, Change.Update(stateToUpdate));
             var updatedState = await Commander.Call(updateCmd);
+            var retrievedUpdatedState = await get();
 
             // assert
-            updatedState.Should().BeEquivalentTo(stateToUpdate, o => o.Excluding(x => x.Version));
+            updatedState.Should().BeEquivalentTo(stateToUpdate, o => o.ExcludingSystemProperties());
             updatedState.Version.Should().BeGreaterThan(stateToUpdate.Version);
+            retrievedUpdatedState.Should().BeEquivalentTo(updatedState);
         }
     }
 }
