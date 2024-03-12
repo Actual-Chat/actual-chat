@@ -13,6 +13,8 @@ public sealed partial record Place(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
     ) : IHasId<PlaceId>, IHasVersion<long>, IRequirementTarget
 {
+    public static Place None => new(PlaceId.None);
+
     [DataMember, MemoryPackOrder(2)] public string Title { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(4)] public bool IsPublic { get; init; }
