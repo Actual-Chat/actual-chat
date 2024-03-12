@@ -26,8 +26,9 @@
             @key="@chatInfo.Id"
             CanMove="true"
             Title="@chatInfo.Chat.Title"
-            AdditionalAttributes="@attributes"
-            Id="@chatInfo.Id.GetNavbarGroupId()">
+            Id="@chatInfo.Id.GetNavbarGroupId()"
+            IsSelected="@(m.SelectedNavbarGroupId == chatInfo.Id.GetNavbarGroupId())"
+            AdditionalAttributes="@attributes">
             <ChildContent>
                 <ChatIcon Chat="chatInfo.Chat" ShowPresence="@true" Size="@iconSize"/>
             </ChildContent>

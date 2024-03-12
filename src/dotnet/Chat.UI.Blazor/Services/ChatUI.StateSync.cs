@@ -181,7 +181,6 @@ public partial class ChatUI
             Log.LogError(ex, "RestoreSelectedPlace failed");
         }
         finally {
-            _whenActivePlaceRestored.TrySetResult();
             await Hub.Dispatcher.InvokeAsync(() => {
                     ChatListUI.ActivateChatList(SelectedPlaceId.Value);
                 })

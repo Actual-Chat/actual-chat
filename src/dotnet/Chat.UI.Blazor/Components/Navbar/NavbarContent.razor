@@ -2,17 +2,19 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits OwnAccountComponentBase
+@inherits ComputedStateComponent<NavbarContent.Model>
 @{
     var m = State.Value;
+    if (m == Model.None)
+        return;
     var placeId = PlaceId.None;
-    var isChats = NavbarUI.SelectedGroupId == NavbarGroupIds.Chats || NavbarUI.IsPlaceSelected(out placeId);
+    var isChats = m.SelectedNavbarGroupId == NavbarGroupIds.Chats || NavbarUI.IsPlaceSelected(out placeId);
     if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId)) {
         isChats = true;
         placeId = pinnedChatId.PlaceId;
     }
-    var isAdministration = NavbarUI.SelectedGroupId == NavbarGroupIds.Administration;
-    var isTestPages = NavbarUI.SelectedGroupId == NavbarGroupIds.TestPages;
+    var isAdministration = m.SelectedNavbarGroupId == NavbarGroupIds.Administration;
+    var isTestPages = m.SelectedNavbarGroupId == NavbarGroupIds.TestPages;
     var cls = isChats ? "navbar-chats" : "navbar-pages";
 }
 
@@ -21,11 +23,11 @@
         @if (isChats) {
             <ChatListNavbarWidget PlaceId="@placeId" />
         }
-        else if (isAdministration && m.IsAdmin) {
+        else if (isAdministration && m.AccountFull.IsAdmin) {
             <NavbarItem ReplaceOnPrefix="/admin/" Url="/admin/user-invites">Invite Users</NavbarItem>
             <NavbarItem ReplaceOnPrefix="/admin/" Url="/admin/move-chat2place">Move chat to place</NavbarItem>
         }
-        else if (isTestPages && m.IsAdmin) {
+        else if (isTestPages && m.AccountFull.IsAdmin) {
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/virtual-list">Virtual List</NavbarItem>
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-player">Audio Player</NavbarItem>
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-recorder">Audio Recorder</NavbarItem>
@@ -62,21 +64,25 @@
 
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] protected AccountUI AccountUI { get; init; } = null!;
+    [Inject] protected HostInfo HostInfo { get; init; } = null!;
 
-    private EventHandler<NavbarGroupChangedEventArgs> _navbarUIOnSelectedGroupChanged = null!;
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            Category = GetStateCategory(),
+        };
 
-    protected override void OnInitialized() {
-        _navbarUIOnSelectedGroupChanged = NavbarUIOnSelectedGroupChanged;
-        NavbarUI.SelectedGroupChanged += _navbarUIOnSelectedGroupChanged;
-        base.OnInitialized();
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var selectedNavbarGroupId = await NavbarUI.SelectedNavbarGroupId.Use(cancellationToken).ConfigureAwait(false);
+        var accountFull = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        return new Model(accountFull, selectedNavbarGroupId);
     }
 
-    public override ValueTask DisposeAsync() {
-        NavbarUI.SelectedGroupChanged -= _navbarUIOnSelectedGroupChanged;
-        return base.DisposeAsync();
+    public sealed record Model(
+        AccountFull AccountFull,
+        Symbol SelectedNavbarGroupId)
+    {
+        public static readonly Model None = new(AccountFull.None, "");
     }
-
-    private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
-        => StateHasChanged();
 }

@@ -20,7 +20,6 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private readonly ISyncedState<UserNavbarSettings> _navbarSettings;
     private ChatId _searchEnabledChatId;
     private readonly object _lock = new();
-    private readonly TaskCompletionSource _whenActivePlaceRestored = TaskCompletionSourceExt.New();
     private List<ChatId>? _pendingSelectedChatIdChanges = new ();
 
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
@@ -46,12 +45,12 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private NavbarUI NavbarUI { get; }
 
     public IState<ChatId> SelectedChatId => _selectedChatId;
+
     public IState<PlaceId> SelectedPlaceId => _selectedPlaceId;
     public IState<IImmutableDictionary<PlaceId, ChatId>> SelectedChatIds => _selectedChatIds;
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
     public IState<UserNavbarSettings> NavbarSettings => _navbarSettings;
     public Task WhenLoaded => _selectedChatId.WhenRead;
-    public Task WhenActivePlaceRestored => _whenActivePlaceRestored.Task;
 
     public ChatUI(ChatUIHub hub) : base(hub)
     {
@@ -314,7 +313,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     {
         var hasChanged = SelectChatInternal(chatId);
         if (!chatId.IsNone || hasChanged)
-            _ = SelectPlaceNavbarGroup(chatId).SuppressExceptions();
+            _ = SelectNavbarGroup(chatId).SuppressExceptions();
         return hasChanged;
     }
 
@@ -373,13 +372,16 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         return true;
     }
 
-    private async Task SelectPlaceNavbarGroup(ChatId chatId)
+    private async Task SelectNavbarGroup(ChatId chatId)
     {
         if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId) && chatId.Equals(pinnedChatId))
             return;
 
+        var selectedNavbarGroupId = await NavbarUI.SelectedNavbarGroupId.Use().ConfigureAwait(true);
+
         var navbarSettings = await NavbarSettings.Use().ConfigureAwait(true);
-        if (navbarSettings.PinnedChats.Contains(chatId)) {
+        var isPinnedChat = navbarSettings.PinnedChats.Contains(chatId);
+        if (isPinnedChat) {
             var chat = await Chats.Get(Session, chatId, default).ConfigureAwait(true);
             if (chat != null) {
                 NavbarUI.SelectGroup(chatId.GetNavbarGroupId(), false);
@@ -397,7 +399,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
         if (chatId.Kind == ChatKind.Peer &&
             !SelectedPlaceId.Value.IsNone &&
-            OrdinalEquals(NavbarUI.SelectedGroupId, SelectedPlaceId.Value.GetNavbarGroupId())) {
+            OrdinalEquals(selectedNavbarGroupId, SelectedPlaceId.Value.GetNavbarGroupId())) {
             var listView = ChatListUI.ActiveChatListView.Value;
             if (listView != null && listView.PlaceId == SelectedPlaceId.Value) {
                 var settings = await listView.GetSettings().ConfigureAwait(false);

@@ -31,7 +31,7 @@ public sealed class ChatBlazorUIModule(IServiceProvider moduleServices)
 
         // Scoped / Blazor Circuit services
         services.AddScoped(c => new ChatUIHub(c));
-        services.AddScoped(c => new NavbarUI(c));
+        services.AddScoped(c => new NavbarUI(c.UIHub()));
         services.AddScoped(c => new PanelsUI(c.UIHub()));
         services.AddScoped(c => new AuthorUI(c.ChatUIHub()));
         services.AddScoped(c => new EditMembersUI(c.ChatUIHub()));
