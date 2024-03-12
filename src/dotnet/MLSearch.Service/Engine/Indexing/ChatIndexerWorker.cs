@@ -31,16 +31,17 @@ internal class ChatIndexerWorker : IChatIndexerWorker
         public Content(ChatId id, TPayload payload) => (Id, _payload, _hasPayload) = (id, payload, true);
     };
     private record class Envelope<TPayload>(Content<TPayload> Content, CancellationToken CancellationToken);
+    private record class PipelineOutput(ChatId ChatId, (IReadOnlyList<ChatEntry> New, IReadOnlyList<ChatEntry> Updated, IReadOnlyList<ChatEntry> Removed) Entries);
+
     private record class JobMetadata(CancellationTokenSource CancellationSource);
-    private const int EntryBatchSize = 100;
     private const int ChannelCapacity = 10;
     private readonly IChatsBackend _chats;
-    private readonly ICursorStates<ChatEntryCursor> _cursorStates;
+    private readonly IChatEntryCursorStates _cursorStates;
     private readonly ISink<TPipelineOutput> _sink;
     private readonly ILoggerSource _loggerSource;
     private readonly BufferBlock<TPipelineInput> _inputBlock;
     private readonly TransformBlock<TPipelineInput, Envelope<TPipelineInput>> _initBlock;
-    private readonly ActionBlock<Envelope<Unit>> _completeBlock;
+    private readonly ActionBlock<Envelope<IndexingResult>> _completeBlock;
     private readonly ConcurrentDictionary<ChatId, JobMetadata> _runningJobs;
     private ILogger? _log;
     private ILogger Log => _log ??= _loggerSource.GetLogger(GetType());
@@ -48,6 +49,8 @@ internal class ChatIndexerWorker : IChatIndexerWorker
     public ChatIndexerWorker(
         IChatsBackend chats,
         IChatEntryCursorStates cursorStates,
+        INewChatEntryLoader newEntriesLoader,
+        IUpdatedAndRemovedEntryLoader entryUpdatesLoader,
         ISink<(IEnumerable<ChatEntry>?, IEnumerable<ChatEntry>?)> sink,
         ILoggerSource loggerSource
     )
@@ -63,12 +66,86 @@ internal class ChatIndexerWorker : IChatIndexerWorker
             BoundedCapacity = ChannelCapacity,
         });
 
+        var linkOptions = new DataflowLinkOptions { PropagateCompletion = true };
+
         _initBlock = new(Init);
+        var getChatId = new TransformBlock<Envelope<TPipelineInput>, Envelope<ChatId>>(
+            envelope => ExecuteTransformAsync(envelope, (input, _) => Task.FromResult(input.Id.ChatId)));
+        var broadcastChatId = new BroadcastBlock<Envelope<ChatId>>(chatId => chatId);
+        var loadCursor = new TransformBlock<Envelope<ChatId>, Envelope<ChatEntryCursor>>(
+            envelope => TransformAsync(envelope, _cursorStates));
+        var joinChatIdAndCursor = new JoinBlock<Envelope<ChatId>, Envelope<ChatEntryCursor>>();
+        var envelopeChatIdAndCursor = new TransformBlock<Tuple<Envelope<ChatId>,Envelope<ChatEntryCursor>>, Envelope<(ChatId, ChatEntryCursor)>>(
+            input => {
+                var (chatIdEnvelope, cursorEnvelope) = (input.Item1, input.Item2);
+                var payload = (chatIdEnvelope.Content.Payload, cursorEnvelope.Content.Payload);
+                var content = new Content<(ChatId, ChatEntryCursor)>(chatIdEnvelope.Content.Id, payload);
+                return Task.FromResult(new Envelope<(ChatId, ChatEntryCursor)>(content, chatIdEnvelope.CancellationToken));
+            });
+        var broadcastCursor = new BroadcastBlock<Envelope<(ChatId, ChatEntryCursor)>>(cursor => cursor);
+        var loadNewChatEntries = new TransformBlock<Envelope<(ChatId, ChatEntryCursor)>, Envelope<IReadOnlyList<ChatEntry>>>(
+            envelope => TransformAsync(envelope, newEntriesLoader));
+        var loadUpdatedAndRemovedEntries =
+            new TransformBlock<Envelope<(ChatId, ChatEntryCursor)>, Envelope<(IReadOnlyList<ChatEntry>, IReadOnlyList<ChatEntry>)>>(
+            envelope => TransformAsync(envelope, entryUpdatesLoader));
+        var joinChatIdAndResults = new JoinBlock<Envelope<ChatId>, Envelope<IReadOnlyList<ChatEntry>>, Envelope<(IReadOnlyList<ChatEntry>, IReadOnlyList<ChatEntry>)>>();
+        var envelopeChatIdAndResults = new TransformBlock<
+            Tuple<Envelope<ChatId>, Envelope<IReadOnlyList<ChatEntry>>, Envelope<(IReadOnlyList<ChatEntry>, IReadOnlyList<ChatEntry>)>>,
+            Envelope<PipelineOutput>>(
+            input => {
+                var (chatIdEnvelope, newEntryEnvelope, updatedAndRemovedEnvelope) = (input.Item1, input.Item2, input.Item3);
+                var payload = new PipelineOutput(
+                    chatIdEnvelope.Content.Payload, (
+                        newEntryEnvelope.Content.Payload,
+                        updatedAndRemovedEnvelope.Content.Payload.Item1,
+                        updatedAndRemovedEnvelope.Content.Payload.Item2
+                ));
+                var content = new Content<PipelineOutput>(chatIdEnvelope.Content.Id, payload);
+                return Task.FromResult(new Envelope<PipelineOutput>(content, chatIdEnvelope.CancellationToken));
+            });
+
+        var sinkBlock = new TransformBlock<Envelope<PipelineOutput>, Envelope<PipelineOutput>>(
+            envelope => ExecuteTransformAsync(envelope, async (pipelineOutput, cancellationToken) => {
+                var inserts = Enumerable.Concat(
+                    pipelineOutput.Entries.New ?? [],
+                    pipelineOutput.Entries.Updated ?? []
+                );
+                await _sink.ExecuteAsync((inserts, pipelineOutput.Entries.Removed ?? []), cancellationToken).ConfigureAwait(false);
+                return pipelineOutput;
+            }));
+
+        var saveCursorBlock = new TransformBlock<Envelope<PipelineOutput>, Envelope<IndexingResult>>(
+            envelope => ExecuteTransformAsync(envelope, async (pipelineOutput, cancellationToken) => {
+                var (created, updated, removed) = pipelineOutput.Entries;
+                var lastTouchedEntry = created.Concat(updated).Concat(removed).MaxBy(e=>e.Version);
+                if (lastTouchedEntry is null) {
+                    return new IndexingResult(IsEndReached: true);
+                }
+
+                var next = new ChatEntryCursor(lastTouchedEntry.LocalId, lastTouchedEntry.Version);
+                await _cursorStates.ExecuteAsync((pipelineOutput.ChatId, next), cancellationToken).ConfigureAwait(false);
+                return new IndexingResult(IsEndReached: true);
+            }));
 
         _completeBlock = new(Complete);
 
-        var sinkBlock = new TransformBlock<Envelope<TPipelineOutput>, Envelope<Unit>>(
-            item => SinkAsync(item, _sink));
+        _inputBlock.LinkTo(_initBlock, linkOptions);
+        _initBlock.LinkTo(getChatId, linkOptions);
+        getChatId.LinkTo(broadcastChatId, linkOptions);
+        broadcastChatId.LinkTo(loadCursor, linkOptions);
+        broadcastChatId.LinkTo(joinChatIdAndCursor.Target1, linkOptions);
+        broadcastChatId.LinkTo(joinChatIdAndResults.Target1, linkOptions);
+        loadCursor.LinkTo(joinChatIdAndCursor.Target2, linkOptions);
+        joinChatIdAndCursor.LinkTo(envelopeChatIdAndCursor, linkOptions);
+        envelopeChatIdAndCursor.LinkTo(broadcastCursor, linkOptions);
+        broadcastCursor.LinkTo(loadNewChatEntries, linkOptions);
+        broadcastCursor.LinkTo(loadUpdatedAndRemovedEntries, linkOptions);
+        loadNewChatEntries.LinkTo(joinChatIdAndResults.Target2, linkOptions);
+        loadUpdatedAndRemovedEntries.LinkTo(joinChatIdAndResults.Target3, linkOptions);
+        joinChatIdAndResults.LinkTo(envelopeChatIdAndResults, linkOptions);
+        envelopeChatIdAndResults.LinkTo(sinkBlock, linkOptions);
+        sinkBlock.LinkTo(saveCursorBlock, linkOptions);
+        saveCursorBlock.LinkTo(_completeBlock, linkOptions);
     }
 
     private Envelope<TPipelineInput> Init(TPipelineInput input)
@@ -83,15 +160,15 @@ internal class ChatIndexerWorker : IChatIndexerWorker
     }
     private Task<Envelope<TOutput>> TransformAsync<TInput, TOutput>(
         Envelope<TInput> envelope, ITransform<TInput,TOutput> transform)
-        => TransformAsync(envelope, transform.ExecuteAsync);
+        => ExecuteTransformAsync(envelope, transform.ExecuteAsync);
 
-    private Task<Envelope<Unit>> SinkAsync<TInput>(Envelope<TInput> envelope, ISink<TInput> sink)
-        => TransformAsync(envelope, async (input, cancellationToken) => {
+    private Task<Envelope<TInput>> SinkAsync<TInput>(Envelope<TInput> envelope, ISink<TInput> sink)
+        => ExecuteTransformAsync(envelope, async (input, cancellationToken) => {
             await sink.ExecuteAsync(input, cancellationToken).ConfigureAwait(false);
-            return Unit.Default;
+            return input;
         });
 
-    private async Task<Envelope<TOutput>> TransformAsync<TInput, TOutput>(
+    private async Task<Envelope<TOutput>> ExecuteTransformAsync<TInput, TOutput>(
         Envelope<TInput> envelope, Func<TInput,CancellationToken,Task<TOutput>> transform)
     {
         var (jobId, cancellationToken) = (envelope.Content.Id, envelope.CancellationToken);
@@ -111,7 +188,7 @@ internal class ChatIndexerWorker : IChatIndexerWorker
         return new Envelope<TOutput>(new Content<TOutput>(jobId), cancellationToken);
     }
 
-    private void Complete(Envelope<Unit> envelope)
+    private void Complete(Envelope<IndexingResult> envelope)
     {
         var jobId = envelope.Content.Id;
         if (_runningJobs.TryRemove(jobId, out var jobMetadata)) {
@@ -123,97 +200,6 @@ internal class ChatIndexerWorker : IChatIndexerWorker
     public async Task PostAsync((ChatEntryId, ChangeKind) input, CancellationToken cancellationToken)
         => await _inputBlock.SendAsync(input, cancellationToken).ConfigureAwait(false);
 
-    private async Task<IList<ChatEntry>> ListNewEntries(ChatId chatId, ChatEntryCursor cursor, CancellationToken cancellationToken)
-    {
-        // Note: Copied from IndexingQueue
-        var result = new List<ChatEntry>();
-        var lastIndexedLid = cursor.LastEntryLocalId;
-        var news = await _chats.GetNews(chatId, cancellationToken).ConfigureAwait(false);
-        var lastLid = (news.TextEntryIdRange.End - 1).Clamp(0, long.MaxValue);
-        if (lastIndexedLid >= lastLid)
-            return result;
-
-        var idTiles =
-            Constants.Chat.ServerIdTileStack.LastLayer.GetCoveringTiles(
-                news.TextEntryIdRange.WithStart(lastIndexedLid));
-        foreach (var tile in idTiles) {
-            var chatTile = await _chats.GetTile(chatId,
-                    ChatEntryKind.Text,
-                    tile.Range,
-                    false,
-                    cancellationToken)
-                .ConfigureAwait(false);
-            result.AddRange(chatTile.Entries.Where(x => !x.Content.IsNullOrEmpty()));
-        }
-        return result;
-    }
-
-    private async Task<(IList<ChatEntry> updates, IList<ChatEntry> deletes)> ListUpdatedAndRemovedEntries(ChatId chatId, ChatEntryCursor cursor, CancellationToken cancellationToken)
-    {
-        // Note: Copied from IndexingQueue
-        var updates = new List<ChatEntry>();
-        var deletes = new List<ChatEntry>();
-        var maxEntryVersion = await _chats.GetMaxEntryVersion(chatId, cancellationToken).ConfigureAwait(false) ?? 0;
-        if (cursor.LastEntryVersion >= maxEntryVersion)
-            return (updates, deletes);
-
-        var changedEntries = await _chats
-            .ListChangedEntries(chatId,
-                EntryBatchSize,
-                cursor.LastEntryLocalId,
-                cursor.LastEntryVersion,
-                cancellationToken)
-            .ConfigureAwait(false);
-        updates.AddRange(
-            changedEntries.Where(x => !x.IsRemoved && !x.Content.IsNullOrEmpty())
-        );
-        deletes.AddRange(
-            changedEntries.Where(x => x.IsRemoved || x.Content.IsNullOrEmpty())
-        );
-        return (updates, deletes);
-    }
-
-    private async Task<IndexingResult> IndexNext(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var cursor = await _cursorStates.Load(
-            IdOf(chatId),
-            cancellationToken
-            )
-            .ConfigureAwait(false);
-        cursor ??= NewFor(chatId);
-        var creates = await ListNewEntries(chatId, cursor, cancellationToken)
-            .ConfigureAwait(false);
-        var (updates, deletes) = await ListUpdatedAndRemovedEntries(chatId, cursor, cancellationToken)
-            .ConfigureAwait(false);
-
-        // TODO: Ask @frol
-        // - If an entry was added to a chat would it have larger version than every other existing item there?
-        var lastTouchedEntry =
-            creates.Concat(updates).Concat(deletes).MaxBy(e=>e.Version);
-        // -- End of logic that depends on the answer above
-
-        // It can only be null if all lists are empty.
-        if (lastTouchedEntry == null) {
-            // This is a simple logic to determine the end of changes currently available.
-            return new IndexingResult(IsEndReached: true);
-        }
-        await _sink.ExecuteAsync((creates.Concat(updates), deletes), cancellationToken)
-            .ConfigureAwait(false);
-        var next = new ChatEntryCursor(lastTouchedEntry.LocalId, lastTouchedEntry.Version);
-        await _cursorStates.Save(IdOf(chatId), next, cancellationToken).ConfigureAwait(false);
-        return new IndexingResult(IsEndReached: false);
-    }
-
-    private async Task<IndexingResult> IndexChatTail(ChatEntryId entryId, CancellationToken cancellationToken)
-    {
-        return await IndexNext(entryId.ChatId, cancellationToken).ConfigureAwait(false);
-    }
-    private async Task<IndexingResult> IndexChatRange(ChatEntryId entryId, CancellationToken cancellationToken)
-    {
-        // Fall back to chat tail indexing
-        return await IndexChatTail(entryId, cancellationToken).ConfigureAwait(false);
-    }
-
     public async Task ExecuteAsync(int shardIndex, CancellationToken cancellationToken)
     {
         // Infinitely wait for cancellation while dataflow pipeline processes
@@ -224,7 +210,7 @@ internal class ChatIndexerWorker : IChatIndexerWorker
         // and also it propagates completion through the pipeline.
         _inputBlock.Complete();
 
-        await _sinkBlock.Completion.ConfigureAwait(false);
+        await _completeBlock.Completion.ConfigureAwait(false);
 
         // // This method is a single unit of work.
         // // As far as I understood there's an embedded assumption made

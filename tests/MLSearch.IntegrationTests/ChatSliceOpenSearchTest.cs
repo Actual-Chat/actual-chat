@@ -121,7 +121,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
     [Fact]
     public void ResolvesOfIndexingServicesWorkCorrectly()
     {
-        Assert.NotNull(AppHost.Services.GetService<ICursorStates<ChatIndexerWorker.Cursor>>());
+        Assert.NotNull(AppHost.Services.GetService<IChatEntryCursorStates>());
         Assert.NotNull(AppHost.Services.GetService<ISink<(IEnumerable<ChatEntry>?, IEnumerable<ChatEntry>?)>>());
         Assert.NotNull(AppHost.Services.GetService<IDocumentMapper<ChatEntry, ChatSlice>>());
 
