@@ -7,7 +7,7 @@ using ActualLab.Fusion.EntityFramework;
 namespace ActualChat.Chat;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public class Authors : DbServiceBase<ChatDbContext>, IAuthors
+public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IAuthors
 {
     private IAuthorsBackend? _backend;
     private IAvatars? _avatars;
@@ -16,24 +16,16 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     private IRoles? _roles;
     private IRolesBackend? _rolesBackend;
 
-    private IAccounts Accounts { get; }
-    private IAccountsBackend AccountsBackend { get; }
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-    private IUserPresences UserPresences { get; }
-    private IServerKvas ServerKvas { get; }
+    private IUserPresences UserPresences { get; } = services.GetRequiredService<IUserPresences>();
+    private IServerKvas ServerKvas { get; } = services.ServerKvas();
     private IAuthorsBackend Backend => _backend ??= Services.GetRequiredService<IAuthorsBackend>();
     private IAvatars Avatars => _avatars ??= Services.GetRequiredService<IAvatars>();
     private IRoles Roles => _roles ??= Services.GetRequiredService<IRoles>();
     private IRolesBackend RolesBackend => _rolesBackend ??= Services.GetRequiredService<IRolesBackend>();
-
-    public Authors(IServiceProvider services) : base(services)
-    {
-        Accounts = services.GetRequiredService<IAccounts>();
-        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
-        UserPresences = services.GetRequiredService<IUserPresences>();
-        ServerKvas = services.ServerKvas();
-    }
 
     // [ComputeMethod]
     public virtual async Task<Author?> Get(
@@ -159,6 +151,21 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             return null; // Important: we shouldn't report anonymous author presence
 
         return await UserPresences.GetLastCheckIn(author.UserId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<AuthorTile> GetTile(
+        Session session,
+        ChatId chatId,
+        Presence presence,
+        Range<int> positionTileRange,
+        CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return AuthorTile.Empty;
+
+        return await Backend.GetTile(chatId, presence, positionTileRange, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

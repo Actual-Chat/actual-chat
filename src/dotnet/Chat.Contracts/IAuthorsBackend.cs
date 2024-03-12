@@ -1,3 +1,4 @@
+using ActualChat.Users;
 using MemoryPack;
 
 namespace ActualChat.Chat;
@@ -8,6 +9,14 @@ public interface IAuthorsBackend : IComputeService
     Task<AuthorFull?> Get(ChatId chatId, AuthorId authorId, AuthorsBackend_GetAuthorOption option, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<AuthorFull?> GetByUserId(ChatId chatId, UserId userId, AuthorsBackend_GetAuthorOption option, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<AuthorTile> GetTile(
+        ChatId chatId,
+        Presence presence,
+        Range<int> positionTileRange,
+        CancellationToken cancellationToken);
+
     [ComputeMethod]
     Task<ApiArray<AuthorId>> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]

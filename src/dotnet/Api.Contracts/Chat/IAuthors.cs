@@ -18,6 +18,14 @@ public interface IAuthors : IComputeService
     [ComputeMethod]
     Task<Moment?> GetLastCheckIn(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
 
+    [ComputeMethod(MinCacheDuration = 10), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
+    Task<AuthorTile> GetTile(
+        Session session,
+        ChatId chatId,
+        Presence presence,
+        Range<int> positionTileRange,
+        CancellationToken cancellationToken);
+
     [ComputeMethod]
     Task<ApiArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]

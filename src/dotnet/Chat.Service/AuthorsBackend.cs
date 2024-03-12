@@ -9,25 +9,16 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
+public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IAuthorsBackend
 {
     private IChatsBackend? _chatsBackend;
 
-    private IAccountsBackend AccountsBackend { get; }
-    private IAvatarsBackend AvatarsBackend { get; }
+    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
+    private IAvatarsBackend AvatarsBackend { get; } = services.GetRequiredService<IAvatarsBackend>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-    private IDbEntityResolver<string, DbAuthor> DbAuthorResolver { get; }
-    private IDbShardLocalIdGenerator<DbAuthor, string> DbAuthorLocalIdGenerator { get; }
-    private DiffEngine DiffEngine { get; }
-
-    public AuthorsBackend(IServiceProvider services) : base(services)
-    {
-        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
-        DbAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbAuthor>>();
-        DbAuthorLocalIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbAuthor, string>>();
-        AvatarsBackend = services.GetRequiredService<IAvatarsBackend>();
-        DiffEngine = services.GetRequiredService<DiffEngine>();
-    }
+    private IDbEntityResolver<string, DbAuthor> DbAuthorResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbAuthor>>();
+    private IDbShardLocalIdGenerator<DbAuthor, string> DbAuthorLocalIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbAuthor, string>>();
+    private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
 
     // [ComputeMethod]
     public virtual async Task<AuthorFull?> Get(
@@ -87,6 +78,18 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         // If it's a private Chat on the Place, then we should have explicit author on the Chat.
         var author = await GetByUserIdInternal(chatId, userId, cancellationToken).ConfigureAwait(false);
         return CreatePrivateChatAuthor(author, rootAuthor);
+    }
+
+    // [ComputeMethod]
+    public virtual Task<AuthorTile> GetTile(
+        ChatId chatId,
+        Presence presence,
+        Range<int> positionTileRange,
+        CancellationToken cancellationToken)
+    {
+
+
+        throw new NotImplementedException();
     }
 
     // [ComputeMethod]
