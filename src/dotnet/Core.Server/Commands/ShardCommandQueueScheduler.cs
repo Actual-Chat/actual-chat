@@ -21,17 +21,17 @@ public class ShardCommandQueueScheduler(HostRole hostRole, IServiceProvider serv
     private ICommandQueues Queues { get; } = services.GetRequiredService<ICommandQueues>();
     private ICommander Commander { get; } = services.GetRequiredService<ICommander>();
 
-    public async Task ProcessAlreadyQueued(TimeSpan timeout, CancellationToken cancellationToken)
+    public async Task ProcessAlreadyQueued(TimeSpan maxIdleInterval, CancellationToken cancellationToken)
     {
         while (true) {
-            await Clock.Delay(timeout, cancellationToken).ConfigureAwait(false);
+            await Clock.Delay(maxIdleInterval, cancellationToken).ConfigureAwait(false);
 
             var lastCommandTicks = Interlocked.Read(ref _lastCommandTicks);
             var currentTicks = Clock.UtcNow.Ticks;
-            if (currentTicks - lastCommandTicks > timeout.Ticks)
+            if (currentTicks - lastCommandTicks > maxIdleInterval.Ticks)
                 break;
         }
-        await Clock.Delay(timeout, cancellationToken).ConfigureAwait(false);
+        await Clock.Delay(maxIdleInterval, cancellationToken).ConfigureAwait(false);
     }
 
     protected override Task OnRun(int shardIndex, CancellationToken cancellationToken)
