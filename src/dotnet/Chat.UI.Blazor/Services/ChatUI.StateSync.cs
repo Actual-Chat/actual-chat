@@ -156,7 +156,7 @@ public partial class ChatUI
             if (chat == null)
                 return;
 
-            var navbarSettings = await NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
+            var navbarSettings = await NavbarUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
             if (navbarSettings.PinnedChats.Contains(selectedChatId)) {
                 await Hub.Dispatcher.InvokeAsync(() => {
                         Hub.NavbarUI.SelectGroup(selectedChatId.GetNavbarGroupId(), false);

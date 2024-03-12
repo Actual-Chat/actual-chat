@@ -99,20 +99,18 @@
     protected HostInfo HostInfo => Hub.HostInfo();
     protected Features Features => Hub.Features();
     protected ModalUI ModalUI => Hub.ModalUI;
-    protected NavbarUI NavbarUI => Hub.NavbarUI;
     protected PanelsUI PanelsUI => Hub.PanelsUI;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new (AccountUI.OwnAccount.Value, false, ""),
+            InitialValue = new (AccountUI.OwnAccount.Value, false),
             Category = GetStateCategory(),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken);
-        var selectedNavbarGroupId = await NavbarUI.SelectedNavbarGroupId.Use(cancellationToken);
         var enablePlacesUI = await Features.Get<Features_EnablePlacesUI, bool>(cancellationToken);
-        return new Model(ownAccount, enablePlacesUI, selectedNavbarGroupId);
+        return new Model(ownAccount, enablePlacesUI);
     }
 
     private Task OnCreateChatClick()
@@ -120,10 +118,6 @@
 
     private void OnReloadUIClick()
         => Services.GetRequiredService<ReloadUI>().Reload();
-
-    private void OnNavbarSelectedGroupChanged(object? s, EventArgs e) {
-
-    }
 
     public record Model(AccountFull OwnAccount, bool EnablePlacesUI);
 }

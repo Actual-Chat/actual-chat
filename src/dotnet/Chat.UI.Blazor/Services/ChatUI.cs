@@ -17,7 +17,6 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private readonly IMutableState<PlaceId> _selectedPlaceId;
     private readonly IStoredState<IImmutableDictionary<PlaceId, ChatId>> _selectedChatIds;
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
-    private readonly ISyncedState<UserNavbarSettings> _navbarSettings;
     private ChatId _searchEnabledChatId;
     private readonly object _lock = new();
     private List<ChatId>? _pendingSelectedChatIdChanges = new ();
@@ -42,21 +41,16 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private UICommander UICommander => Hub.UICommander();
     private UIEventHub UIEventHub => Hub.UIEventHub();
-    private NavbarUI NavbarUI { get; }
+    private NavbarUI NavbarUI => Hub.NavbarUI;
 
     public IState<ChatId> SelectedChatId => _selectedChatId;
-
     public IState<PlaceId> SelectedPlaceId => _selectedPlaceId;
     public IState<IImmutableDictionary<PlaceId, ChatId>> SelectedChatIds => _selectedChatIds;
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
-    public IState<UserNavbarSettings> NavbarSettings => _navbarSettings;
     public Task WhenLoaded => _selectedChatId.WhenRead;
 
     public ChatUI(ChatUIHub hub) : base(hub)
     {
-        NavbarUI = Hub.Services.GetRequiredService<NavbarUI>();
-        NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;
-
         var type = GetType();
         _selectedChatId = StateFactory.NewKvasStored<ChatId>(new(LocalSettings, nameof(SelectedChatId)) {
             Corrector = FixSelectedChatId,
@@ -70,13 +64,6 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         _highlightedEntryId = StateFactory.NewMutable(
             ChatEntryId.None,
             StateCategories.Get(type, nameof(HighlightedEntryId)));
-        _navbarSettings = StateFactory.NewKvasSynced<UserNavbarSettings>(
-            new (AccountSettings, UserNavbarSettings.KvasKey) {
-                InitialValue = new UserNavbarSettings(),
-                UpdateDelayer = FixedDelayer.Instant,
-                Category = StateCategories.Get(GetType(), nameof(NavbarSettings)),
-            });
-        Hub.RegisterDisposable(_navbarSettings);
 
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
@@ -114,7 +101,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             hasUnreadMentions = lastMentionEntryId > readEntryLid;
         }
 
-        var navbarSettings = await NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
+        var navbarSettings = await NavbarUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
 
         var lastTextEntryText = "";
         if (news.LastTextEntry is { } lastTextEntry) {
@@ -248,10 +235,60 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         return true;
     }
 
+    public void SelectChat(ChatId chatId, PlaceId placeId)
+    {
+        SelectPlaceInternal(placeId);
+        SelectChatInternal(chatId);
+
+        _ = DisplayLastUsedChat();
+
+        async Task DisplayLastUsedChat(CancellationToken cancellationToken = default)
+        {
+            try {
+                var lastSelectedChatId = await GetChatIdToDisplay(cancellationToken)
+                    .ConfigureAwait(true); // Continue on the Blazor Dispatcher
+
+                if (lastSelectedChatId == ChatId.None)
+                    DebugLog?.LogDebug("ResetSelectedChatOnPlaceChange");
+                else
+                    DebugLog?.LogDebug("Restoring SelectedChatOnPlace. ChatId: '{ChatId}'", lastSelectedChatId);
+
+                SelectChatInternal(lastSelectedChatId);
+                if (Hub.PanelsUI.IsWide()) {
+                    // Do not navigate on narrow screen to prevent hiding panels
+                    // Navigate to selected chat only after delay to make ChatLists update smoother.
+                    await Task.Delay(500, default).ConfigureAwait(true); // Continue on the Blazor Dispatcher
+                    if (SelectedChatId.Value == lastSelectedChatId) {
+                        var mustReplace = History.LocalUrl.IsChat();
+                        await History.NavigateTo(Links.Chat(lastSelectedChatId), mustReplace).ConfigureAwait(false);
+                    }
+                }
+            }
+            catch (Exception ex) {
+                Log.LogError(ex, "DisplayLastUsedChat failed");
+            }
+        }
+
+        async Task<ChatId> GetChatIdToDisplay(CancellationToken cancellationToken)
+        {
+            var selectedChatIds = SelectedChatIds.Value;
+            if (!selectedChatIds.TryGetValue(placeId, out var lastSelectedChatId)) {
+                var contactIds = await Contacts.ListIds(Session, placeId, cancellationToken).ConfigureAwait(false);
+                if (contactIds.Count > 0)
+                    lastSelectedChatId = contactIds[0].ChatId;
+            }
+            Chat? readChat = null;
+            if (!lastSelectedChatId.IsNone)
+                readChat = await Chats.Get(Session, lastSelectedChatId, cancellationToken)
+                    .ConfigureAwait(false);
+            if (readChat == null)
+                lastSelectedChatId = !placeId.IsNone ? ChatId.None : Constants.Chat.AnnouncementsChatId;
+            return lastSelectedChatId;
+        }
+    }
+
     // SetXxx & Add/RemoveXxx
 
-    public ValueTask Pin(ChatId chatId) => SetPinState(chatId, true);
-    public ValueTask Unpin(ChatId chatId) => SetPinState(chatId, false);
     public async ValueTask SetPinState(ChatId chatId, bool mustPin)
     {
         if (chatId.IsNone)
@@ -263,34 +300,12 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
         var changedContact = contact with { IsPinned = mustPin };
         var change = contact.IsStored()
-            ? new Change<Contact>() { Update = changedContact }
-            : new Change<Contact>() { Create = changedContact };
+            ? new Change<Contact> { Update = changedContact }
+            : new Change<Contact> { Create = changedContact };
         var command = new Contacts_Change(Session, contact.Id, contact.Version, change);
         _ = TuneUI.Play(Tune.PinUnpinChat);
         await UICommander.Run(command).ConfigureAwait(false);
     }
-
-    public void SetNavbarPinState(ChatId chatId, bool mustPin)
-    {
-        if (chatId.IsNone)
-            return;
-
-        var pinnedChats = NavbarSettings.Value.PinnedChats;
-        var isPinned = pinnedChats.Contains(chatId);
-        if (isPinned == mustPin)
-            return;
-
-        var newPinnedChats = mustPin
-            ? pinnedChats.Add(chatId, true)
-            : pinnedChats.RemoveAll(chatId);
-        SetNavbarPinnedChats(newPinnedChats);
-    }
-
-    public void SetNavbarPinnedChats(IReadOnlyCollection<ChatId> pinnedChats)
-        => _navbarSettings.Value = _navbarSettings.Value with { PinnedChats = pinnedChats.ToApiArray() };
-
-    public void SetNavbarPlacesOrder(IReadOnlyCollection<PlaceId> places)
-        => _navbarSettings.Value = _navbarSettings.Value with { PlacesOrder = places.ToApiArray() };
 
     // Helpers
 
@@ -374,12 +389,8 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
     private async Task SelectNavbarGroup(ChatId chatId)
     {
-        if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId) && chatId.Equals(pinnedChatId))
-            return;
-
         var selectedNavbarGroupId = await NavbarUI.SelectedNavbarGroupId.Use().ConfigureAwait(true);
-
-        var navbarSettings = await NavbarSettings.Use().ConfigureAwait(true);
+        var navbarSettings = await NavbarUI.NavbarSettings.Use().ConfigureAwait(true);
         var isPinnedChat = navbarSettings.PinnedChats.Contains(chatId);
         if (isPinnedChat) {
             var chat = await Chats.Get(Session, chatId, default).ConfigureAwait(true);
@@ -503,70 +514,4 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
     private static IImmutableDictionary<PlaceId, ChatId> SetItem(IImmutableDictionary<PlaceId, ChatId> selectedChatIds, ChatId chatId)
         => selectedChatIds.SetItem(chatId.PlaceId, chatId);
-
-    private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
-    {
-        var placeId = PlaceId.None;
-        var isChats = OrdinalEquals(NavbarUI.SelectedGroupId, NavbarGroupIds.Chats)|| NavbarUI.IsPlaceSelected(out placeId);
-        if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId)) {
-            isChats = true;
-            placeId = pinnedChatId.PlaceId;
-        }
-
-        if (!isChats)
-            return;
-
-        SelectPlaceInternal(placeId);
-        if (!pinnedChatId.IsNone)
-            SelectChatInternal(pinnedChatId);
-
-        if (!e.IsUserAction)
-            return;
-
-        _ = DisplayLastUsedChat();
-
-        async Task DisplayLastUsedChat(CancellationToken cancellationToken = default)
-        {
-            try {
-                var lastSelectedChatId = await GetChatIdToDisplay(cancellationToken)
-                    .ConfigureAwait(true); // Continue on the Blazor Dispatcher
-
-                if (lastSelectedChatId == ChatId.None)
-                    DebugLog?.LogDebug("ResetSelectedChatOnPlaceChange");
-                else
-                    DebugLog?.LogDebug("Restoring SelectedChatOnPlace. ChatId: '{ChatId}'", lastSelectedChatId);
-
-                SelectChatInternal(lastSelectedChatId);
-                if (Hub.PanelsUI.IsWide()) {
-                    // Do not navigate on narrow screen to prevent hiding panels
-                    // Navigate to selected chat only after delay to make ChatLists update smoother.
-                    await Task.Delay(500, default).ConfigureAwait(true); // Continue on the Blazor Dispatcher
-                    if (SelectedChatId.Value == lastSelectedChatId) {
-                        var mustReplace = History.LocalUrl.IsChat();
-                        await History.NavigateTo(Links.Chat(lastSelectedChatId), mustReplace).ConfigureAwait(false);
-                    }
-                }
-            }
-            catch (Exception ex) {
-                Log.LogError(ex, "DisplayLastUsedChat failed");
-            }
-        }
-
-        async Task<ChatId> GetChatIdToDisplay(CancellationToken cancellationToken)
-        {
-            var selectedChatIds = SelectedChatIds.Value;
-            if (!selectedChatIds.TryGetValue(placeId, out var lastSelectedChatId)) {
-                var contactIds = await Contacts.ListIds(Session, placeId, cancellationToken).ConfigureAwait(false);
-                if (contactIds.Count > 0)
-                    lastSelectedChatId = contactIds[0].ChatId;
-            }
-            Chat? readChat = null;
-            if (!lastSelectedChatId.IsNone)
-                readChat = await Chats.Get(Session, lastSelectedChatId, cancellationToken)
-                    .ConfigureAwait(false);
-            if (readChat == null)
-                lastSelectedChatId = !placeId.IsNone ? ChatId.None : Constants.Chat.AnnouncementsChatId;
-            return lastSelectedChatId;
-        }
-    }
 }

@@ -1,9 +1,16 @@
-﻿@namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.Hosting
+﻿@using ActualChat.Hosting
 @using ActualChat.UI.Blazor.Services
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<NavbarGroupSelectionButton.Model>
 @{
-    var selectedClass = IsSelected ? "selected" : "";
-    var buttonClass = $"{(IsSelected ? "on" : "")}";
+    var m = State.Value;
+    if (m == Model.None)
+        return;
+    var isSelected = m.SelectedNavbarGroupId == Id;
+}
+@{
+    var selectedClass = isSelected ? "selected" : "";
+    var buttonClass = $"{(isSelected ? "on" : "")}";
 }
 
 <NavbarButton
@@ -23,22 +30,40 @@
 </NavbarButton>
 
 @code {
-    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private TuneUI TuneUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter] public string Tooltip { get; set; } = "";
     [Parameter] public bool CanMove { get; set; }
-    [Parameter] public bool IsSelected { get; set; }
     [Parameter] public FloatingPosition TooltipPosition { get; set; } = FloatingPosition.Right;
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? BadgeContent { get; set; }
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var selectedNavbarGroupId = await Hub.NavbarUI.SelectedNavbarGroupId.Use(cancellationToken);
+        return new Model {
+            SelectedNavbarGroupId = selectedNavbarGroupId,
+        };
+    }
+
     private void OnClick() {
-        NavbarUI.SelectGroup(Id, true);
+        Hub.NavbarUI.SelectGroup(Id, true);
         _ = TuneUI.Play(Tune.SelectNavbarItem).SilentAwait();
+    }
+
+    public record Model {
+        public static Model None = new();
+
+        public Symbol SelectedNavbarGroupId { get; init; }
     }
 }

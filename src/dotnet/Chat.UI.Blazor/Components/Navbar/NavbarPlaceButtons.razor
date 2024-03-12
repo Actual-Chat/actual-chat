@@ -92,7 +92,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var navbarSettings = await Hub.ChatUI.NavbarSettings.Use(cancellationToken);
+        var navbarSettings = await Hub.NavbarUI.NavbarSettings.Use(cancellationToken);
         var placeIds = await Hub.Contacts.ListPlaceIds(Session, cancellationToken);
 
         var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
@@ -124,7 +124,7 @@
 
     [JSInvokable]
     public void OnOrderChanged(PlaceId[] places)
-        => Hub.ChatUI.SetNavbarPlacesOrder(places);
+        => Hub.NavbarUI.SetNavbarPlacesOrder(places);
 
     public record Model {
         public ApiArray<Place> Places { get; init; } = ApiArray.Empty<Place>();

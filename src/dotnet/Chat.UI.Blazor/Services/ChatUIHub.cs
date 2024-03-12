@@ -42,6 +42,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     private IPlaybackFactory? _playbackFactory;
     private KeyedFactory<IChatMarkupHub, ChatId>? _chatMarkupHubFactory;
     private IStreamClient? _streamClient;
+    private NavbarUI? _navbarUI;
 
     public IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     public IChatPositions ChatPositions => _chatPositions ??= Services.GetRequiredService<IChatPositions>();
@@ -74,6 +75,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     public KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
         => _chatMarkupHubFactory ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
     public IStreamClient StreamClient => _streamClient ??= Services.GetRequiredService<IStreamClient>();
+    public NavbarUI NavbarUI => _navbarUI ??= Services.GetRequiredService<NavbarUI>();
 
     // Some handy helpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

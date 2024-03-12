@@ -1,77 +1,74 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
-@implements IDisposable
 @using ActualChat.Chat.UI.Blazor.Events
 @using ActualChat.Media
 
+@inherits ComputedStateComponent<LeftPanelContentHeader.Model>
 @{
-    RenderFragment RenderChat() =>
-        @<div class="left-panel-content-header">
-            <div class="c-content">
-                <div class="c-title">
-                    Chats
-                </div>
-                <div class="c-ending">
-                    @if (!_enableIncompleteUI) {
-                        <ChatSearchBox
-                            @ref="_searchBoxRef"
-                            Placeholder="Find chat..."
-                            IsCollapsed="true"
-                            ShowSpinner="true"
-                            ShowClose="true"
-                            MaxLength="@Constants.Chat.MaxSearchFilterLength"
-                            TextChanged="@_onSearchBoxTextChanged"/>
-                    } else {
-                        <HeaderButton Click="@OnSearchClick">
-                            <i class="icon-search text-2xl"></i>
-                        </HeaderButton>
-                    }
-                </div>
-            </div>
-        </div>;
-
-    RenderFragment RenderPlace(Place place) {
-        return @<div class="left-panel-content-header place">
-            <div class="c-content">
-                <div class="c-start">
-                    <div class="c-title">
-                        @place.Title
-                    </div>
-                    <PlaceMenuButton PlaceId="@place.Id" />
-                </div>
-                <div class="c-ending">
-                    <ChatSearchBox
-                        @ref="_searchBoxRef"
-                        Placeholder="Search"
-                        ShowSpinner="true"
-                        MaxLength="@Constants.Chat.MaxSearchFilterLength"
-                        TextChanged="@_onSearchBoxTextChanged"/>
-                </div>
-                <div class="c-icon">
-                    <Pic
-                        Title="@place.Title"
-                        Picture="@place.Picture.ToPicture()"
-                        Size="@SquareSize.SizeFull"
-                        IsSquare="@true"
-                        IsBlurred="@true"
-                        AvatarKind="@AvatarKind.Marble"
-                        AvatarKey="@place.Id.Value"/>
-                </div>
-            </div>
-        </div>;
-    }
+    var m = State.Value;
+    if (m == Model.None)
+        return;
+    var place = m.Place;
 }
 
-<OnUIEvent TEvent="@SelectedChatChangedEvent" Handler="@OnSelectedChatChangedEvent" />
-@if (_place != null) {
-    @RenderPlace(_place);
+<OnUIEvent TEvent="@SelectedChatChangedEvent" Handler="@OnSelectedChatChangedEvent"/>
+@if (place == null) {
+    <div class="left-panel-content-header">
+        <div class="c-content">
+            <div class="c-title">
+                Chats
+            </div>
+            <div class="c-ending">
+                @if (!_enableIncompleteUI) {
+                    <ChatSearchBox
+                        @ref="_searchBoxRef"
+                        Placeholder="Find chat..."
+                        IsCollapsed="true"
+                        ShowSpinner="true"
+                        ShowClose="true"
+                        MaxLength="@Constants.Chat.MaxSearchFilterLength"
+                        TextChanged="@_onSearchBoxTextChanged"/>
+                } else {
+                    <HeaderButton Click="@OnSearchClick">
+                        <i class="icon-search text-2xl"></i>
+                    </HeaderButton>
+                }
+            </div>
+        </div>
+    </div>
 } else {
-    @RenderChat();
+    <div class="left-panel-content-header place">
+        <div class="c-content">
+            <div class="c-start">
+                <div class="c-title">
+                    @place.Title
+                </div>
+                <PlaceMenuButton PlaceId="@place.Id"/>
+            </div>
+            <div class="c-ending">
+                <ChatSearchBox
+                    @ref="_searchBoxRef"
+                    Placeholder="Search"
+                    ShowSpinner="true"
+                    MaxLength="@Constants.Chat.MaxSearchFilterLength"
+                    TextChanged="@_onSearchBoxTextChanged"/>
+            </div>
+            <div class="c-icon">
+                <Pic
+                    Title="@place.Title"
+                    Picture="@place.Picture.ToPicture()"
+                    Size="@SquareSize.SizeFull"
+                    IsSquare="@true"
+                    IsBlurred="@true"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@place.Id.Value"/>
+            </div>
+        </div>
+    </div>
 }
 
 @code {
     private ChatSearchBox? _searchBoxRef = null;
     private EventCallback<string> _onSearchBoxTextChanged;
-    private Place? _place = null;
     private bool _enableIncompleteUI;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -85,41 +82,36 @@
     protected override async Task OnInitializedAsync() {
         _onSearchBoxTextChanged = NoStateHasChanged.EventCallback<string>(OnSearchBoxTextChanged);
         _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
-        NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupOrTitleChanged;
-        NavbarUI.SelectedGroupTitleUpdated += OnNavbarSelectedGroupOrTitleChanged;
-        await UpdatePlace();
     }
 
-    public void Dispose() {
-        NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupOrTitleChanged;
-        NavbarUI.SelectedGroupTitleUpdated -= OnNavbarSelectedGroupOrTitleChanged;
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var selectedPlaceId = await Hub.ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
+        var place = await Hub.Places.Get(Hub.Session(), selectedPlaceId, default).ConfigureAwait(false);
+        return new Model {
+            Place = place,
+        };
     }
 
     private void OnSearchBoxTextChanged(string text)
         => SearchUI.Text.Value = text;
 
-    private async void OnNavbarSelectedGroupOrTitleChanged(object? s, EventArgs e) {
-        await UpdatePlace();
-        await InvokeAsync(StateHasChanged);
-    }
-
     private async Task OnSelectedChatChangedEvent(SelectedChatChangedEvent @event, CancellationToken cancellationToken) {
         if (_searchBoxRef != null)
             await _searchBoxRef.Cancel();
-        await UpdatePlace();
-    }
-
-    private async Task UpdatePlace() {
-        var placeId = NavbarUI.IsPlaceSelected(out var selectedPlaceId)
-            ? selectedPlaceId
-            : NavbarUI.IsPinnedChatSelected(out var pinnedChatId)
-                ? pinnedChatId.PlaceId
-                : PlaceId.None;
-        _place = placeId.IsNone
-            ? null
-            : await Hub.Places.Get(Hub.Session(), placeId, default).ConfigureAwait(false);
     }
 
     private void OnSearchClick()
         => PanelsUI.Left.SearchToggle();
+
+    public sealed record Model {
+        public static readonly Model None = new() { Place = null };
+
+        public Place? Place { get; init; }
+    }
 }

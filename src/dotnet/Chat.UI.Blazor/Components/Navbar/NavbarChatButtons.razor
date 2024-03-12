@@ -27,7 +27,6 @@
             CanMove="true"
             Title="@chatInfo.Chat.Title"
             Id="@chatInfo.Id.GetNavbarGroupId()"
-            IsSelected="@(m.SelectedNavbarGroupId == chatInfo.Id.GetNavbarGroupId())"
             AdditionalAttributes="@attributes">
             <ChildContent>
                 <ChatIcon Chat="chatInfo.Chat" ShowPresence="@true" Size="@iconSize"/>
@@ -75,7 +74,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var navbarSettings = await Hub.ChatUI.NavbarSettings.Use(cancellationToken);
+        var navbarSettings = await Hub.NavbarUI.NavbarSettings.Use(cancellationToken);
         var chats = (await navbarSettings.PinnedChats
                 .Select(id => Hub.ChatUI.Get(id, cancellationToken))
                 .Collect())
@@ -89,7 +88,7 @@
 
     [JSInvokable]
     public void OnOrderChanged(ChatId[] chats)
-        => Hub.ChatUI.SetNavbarPinnedChats(chats);
+        => Hub.NavbarUI.SetNavbarPinnedChats(chats);
 
     public record Model {
         public ApiArray<ChatInfo> Chats { get; init; } = ApiArray.Empty<ChatInfo>();

@@ -26,7 +26,6 @@ public class UIHub(IServiceProvider services) : Hub(services)
     private TuneUI? _tuneUI;
     private ToastUI? _toastUI;
     private BannerUI? _bannerUI;
-    private NavbarUI? _navbarUI;
     private VisualMediaViewerUI? _visualMediaViewerUI;
     private Escapist? _escapist;
     private UICommander? _uiCommander;
@@ -62,7 +61,6 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
     public ToastUI ToastUI => _toastUI ??= Services.GetRequiredService<ToastUI>();
     public BannerUI BannerUI => _bannerUI ??= Services.GetRequiredService<BannerUI>();
-    public NavbarUI NavbarUI => _navbarUI ??= Services.GetRequiredService<NavbarUI>();
     public VisualMediaViewerUI VisualMediaViewerUI => _visualMediaViewerUI ??= Services.GetRequiredService<VisualMediaViewerUI>();
     public Escapist Escapist => _escapist ??= Services.GetRequiredService<Escapist>();
     public RenderVars RenderVars => _renderVars ??= Services.GetRequiredService<RenderVars>();
