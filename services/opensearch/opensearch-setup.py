@@ -72,7 +72,7 @@ class API:
         # does not have methods to register a model group
         try:
             # Return an existing model group id if it already exists.
-            return self.call_opensearch(
+            response = self.call_opensearch(
                 "/_plugins/_ml/models/_search",
                 method = requests.post,
                 data = {
@@ -86,7 +86,11 @@ class API:
                     }],
                     "size": 1
                 }
-            ).json()['hits']['hits'][0]['_id']
+            )
+            if response.status_code == 404:
+                # .plugin ml index not found error.
+                return None
+            return response.json()['hits']['hits'][0]['_id']
         except IndexError:
             # Python EAFP principle
             return None
