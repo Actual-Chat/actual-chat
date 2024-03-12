@@ -1,6 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Events
+@using Microsoft.AspNetCore.Components.Web.Virtualization
 @inherits ComputedStateComponent<AuthorList.Model>
 @{
     var m = State.Value;
@@ -32,7 +33,7 @@
                     Click="@_onClickCallback"/>
             }
         } else {
-            var groups = new List<(string, IReadOnlyCollection<AuthorId>, bool)>();
+            var groups = new List<(string, ICollection<AuthorId>, bool)>();
             if (m.OwnerAuthorIds.Count > 0)
                 groups.Add(("Owners", m.OwnerAuthorIds, false));
             if (m.AllAreAnonymous) {
@@ -48,14 +49,14 @@
             foreach (var group in groups) {
                 var title = $"{group.Item1} — {group.Item2.Count}";
                 <Collapsed @key="@group.Item1" Title="@title" IsCollapsed="@group.Item3">
-                    @foreach (var authorId in group.Item2) {
+                    <Virtualize Items="@group.Item2" Context="authorId">
                         <AuthorBadge
                             @key="@authorId"
                             AuthorSid="@authorId"
                             ShowPresence="true"
                             ShowPresenceText="true"
                             Click="@_onClickCallback"/>
-                    }
+                    </Virtualize>
                 </Collapsed>
             }
         }
