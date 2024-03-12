@@ -1,8 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.Chat.UI.Blazor.Module
-@using ActualChat.UI.Blazor.Events
 @using Microsoft.AspNetCore.Components.Web.Virtualization
 @inherits ComputedStateComponent<AuthorList.Model>
+
 @{
     var m = State.Value;
     var isPeerChat = Chat.Id.IsPeerChat(out _);
@@ -46,10 +45,10 @@
                 groups.Add(("Offline", m.OfflineAuthorIds, true));
             }
 
-            foreach (var group in groups) {
-                var title = $"{group.Item1} — {group.Item2.Count}";
-                <Collapsed @key="@group.Item1" Title="@title" IsCollapsed="@group.Item3">
-                    <Virtualize Items="@group.Item2" Context="authorId">
+            foreach (var (name, authorIds, isCollapsed) in groups) {
+                var title = $"{name} — {authorIds.Count}";
+                <Collapsed @key="@name" Title="@title" IsCollapsed="@isCollapsed">
+                    <Virtualize Items="@authorIds" Context="authorId">
                         <AuthorBadge
                             @key="@authorId"
                             AuthorSid="@authorId"
@@ -92,14 +91,16 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var session = Session;
         var chatId = Chat.Id;
+
+        // Code below doesn't use any component prop, so we can use .ConfigureAwait(false)
         var allAuthorIds = await Authors.ListAuthorIds(session, chatId, cancellationToken).ConfigureAwait(false);
         var ownerIds = !chatId.IsPeerChat(out _)
             ? [..await Roles.ListOwnerIds(session, chatId, cancellationToken).ConfigureAwait(false)]
             : new HashSet<AuthorId>();
-        var ownerAuthors = new List<(AuthorId,string)>();
-        var onlineAuthors = new List<(AuthorId,string)>();
-        var offlineAuthors = new List<(AuthorId,string)>();
-        var unreportedAuthors = new List<(AuthorId,string)>();
+        var ownerAuthors = new List<AuthorInfo>();
+        var onlineAuthors = new List<AuthorInfo>();
+        var offlineAuthors = new List<AuthorInfo>();
+        var unreportedAuthors = new List<AuthorInfo>();
         var ownAuthor = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         var presences = await allAuthorIds
             .Select(async authorId => {
@@ -122,14 +123,14 @@
                     : presence is Presence.Online or Presence.Recording or Presence.Away
                         ? onlineAuthors
                         : offlineAuthors;
-            collection.Add((authorId, authorName));
+            collection.Add(new (authorId, authorName));
         }
 
-        Comparison<(AuthorId, string)> comparison = (info1, info2)
-            => (info1, info2) switch {
-                (_, _) when info1.Item1 == ownAuthor?.Id => -1,
-                (_, _) when info2.Item1 == ownAuthor?.Id => 1,
-                _ => string.Compare(info1.Item2, info2.Item2, StringComparison.Ordinal),
+        Comparison<AuthorInfo> comparison = (a, b)
+            => (info1: a, info2: b) switch {
+                (_, _) when a.Id == ownAuthor?.Id => -1,
+                (_, _) when b.Id == ownAuthor?.Id => 1,
+                _ => string.Compare(a.Name, b.Name, StringComparison.Ordinal),
             };
 
         ownerAuthors.Sort(comparison);
@@ -141,10 +142,10 @@
         return new() {
             AllAuthorIds = allAuthorIds,
             OwnAuthorId = ownAuthor?.Id ?? AuthorId.None,
-            OwnerAuthorIds = ownerAuthors.Select(c => c.Item1).ToList(),
-            OnlineAuthorIds = onlineAuthors.Select(c => c.Item1).ToList(),
-            OfflineAuthorIds = offlineAuthors.Select(c => c.Item1).ToList(),
-            UnreportedAuthorIds = unreportedAuthors.Select(c => c.Item1).ToList(),
+            OwnerAuthorIds = ownerAuthors.Select(c => c.Id).ToList(),
+            OnlineAuthorIds = onlineAuthors.Select(c => c.Id).ToList(),
+            OfflineAuthorIds = offlineAuthors.Select(c => c.Id).ToList(),
+            UnreportedAuthorIds = unreportedAuthors.Select(c => c.Id).ToList(),
             AllAreAnonymous = allAreAnonymous,
         };
     }
@@ -161,4 +162,7 @@
         public bool AllAreAnonymous { get; init; }
         public bool IsOwner => !OwnAuthorId.IsNone && OwnerAuthorIds.Contains(OwnAuthorId);
     }
+
+    public record struct AuthorInfo(AuthorId Id, string Name);
+
 }
