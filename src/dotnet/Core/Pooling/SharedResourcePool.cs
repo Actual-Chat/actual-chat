@@ -7,18 +7,18 @@ public partial class SharedResourcePool<TKey, TResource>(
     where TResource : class
 {
     private readonly ConcurrentDictionary<TKey, Lease> _leases = new ();
-    private volatile bool _isDisposed;
+    private volatile int _isDisposed;
 
     private Func<TKey, CancellationToken, Task<TResource>> ResourceFactory { get; } = resourceFactory;
     private Func<TKey, TResource, ValueTask> ResourceDisposer { get; } = resourceDisposer ?? DefaultResourceDisposer;
 
     public TimeSpan ResourceDisposeDelay { get; init; } = TimeSpan.FromSeconds(10);
+    public bool IsDisposed => _isDisposed != 0;
     public ILogger Log { get; init; } = NullLogger.Instance;
 
     public async ValueTask<Lease> Rent(TKey key, CancellationToken cancellationToken = default)
     {
-        if (_isDisposed)
-            throw new ObjectDisposedException(nameof(SharedResourcePool<TKey, TResource>));
+        ObjectDisposedException.ThrowIf(IsDisposed, this);
 
         while (true) {
             var lease = _leases.GetOrAdd(key, static (key1, state) => {
@@ -35,10 +35,10 @@ public partial class SharedResourcePool<TKey, TResource>(
 
     public async ValueTask DisposeAsync()
     {
-        _isDisposed = true;
-        Thread.MemoryBarrier();
+        if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) != 0)
+            return;
 
-        while (_leases.Count > 0)
+        while (!_leases.IsEmpty)
             try {
                 List<TKey> keys = [.._leases.Keys];
                 foreach (var key in keys) {
