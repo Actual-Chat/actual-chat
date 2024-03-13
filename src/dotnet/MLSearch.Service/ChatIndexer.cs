@@ -14,7 +14,7 @@ internal class ChatIndexer(ICommander commander, IChatIndexerWorker indexerWorke
     // ReSharper disable once UnusedMember.Global
     // [CommandHandler]
     public virtual async Task OnCommand(MLSearch_TriggerChatIndexing e, CancellationToken cancellationToken)
-        => await indexerWorker.PostAsync((e.Id, e.ChangeKind), cancellationToken).ConfigureAwait(false);
+        => await indexerWorker.PostAsync(new(e.Id, e.ChangeKind), cancellationToken).ConfigureAwait(false);
 
     // ReSharper disable once UnusedMember.Global
     // [EventHandler]
