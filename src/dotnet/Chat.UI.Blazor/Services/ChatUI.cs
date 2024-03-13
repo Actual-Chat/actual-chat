@@ -324,12 +324,12 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         return chatId;
     }
 
-    public bool SelectChatOnNavigation(ChatId chatId)
+    public void SelectChatOnNavigation(ChatId chatId)
     {
-        var hasChanged = SelectChatInternal(chatId);
-        if (!chatId.IsNone || hasChanged)
-            _ = SelectNavbarGroup(chatId).SuppressExceptions();
-        return hasChanged;
+        var placeChanged = SelectPlaceInternal(chatId.PlaceId);
+        var chatChanged = SelectChatInternal(chatId);
+        // if (!chatId.IsNone || hasChanged)
+            // _ = SelectNavbarGroup(chatId).SuppressExceptions();
     }
 
     public void HighlightEntry(ChatEntryId entryId, bool navigate, bool updateUI = true)

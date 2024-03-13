@@ -147,44 +147,44 @@ public partial class ChatUI
 
     private async Task RestoreSelectedNavbarGroup(CancellationToken cancellationToken)
     {
-        try {
-            var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-            if (selectedChatId.IsNone)
-                return;
-
-            var chat = await Chats.Get(Session, selectedChatId, cancellationToken).ConfigureAwait(false);
-            if (chat == null)
-                return;
-
-            var navbarSettings = await NavbarUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
-            if (navbarSettings.PinnedChats.Contains(selectedChatId)) {
-                await Hub.Dispatcher.InvokeAsync(() => {
-                        Hub.NavbarUI.SelectGroup(selectedChatId.GetNavbarGroupId(), false);
-                    })
-                    .ConfigureAwait(false);
-                return;
-            }
-
-            if (!selectedChatId.IsPlaceChat)
-                return;
-
-            var place = await Hub.Places.Get(Session, selectedChatId.PlaceId, cancellationToken).ConfigureAwait(false);
-            if (place == null)
-                return;
-
-            await Hub.Dispatcher.InvokeAsync(() => {
-                    Hub.NavbarUI.SelectGroup(place.Id.GetNavbarGroupId(), false);
-                })
-                .ConfigureAwait(false);
-        }
-        catch (Exception ex) {
-            Log.LogError(ex, "RestoreSelectedPlace failed");
-        }
-        finally {
-            await Hub.Dispatcher.InvokeAsync(() => {
-                    ChatListUI.ActivateChatList(SelectedPlaceId.Value);
-                })
-                .ConfigureAwait(false);
-        }
+        // try {
+        //     var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        //     if (selectedChatId.IsNone)
+        //         return;
+        //
+        //     var chat = await Chats.Get(Session, selectedChatId, cancellationToken).ConfigureAwait(false);
+        //     if (chat == null)
+        //         return;
+        //
+        //     var navbarSettings = await NavbarUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
+        //     if (navbarSettings.PinnedChats.Contains(selectedChatId)) {
+        //         await Hub.Dispatcher.InvokeAsync(() => {
+        //                 Hub.NavbarUI.SelectGroup(selectedChatId.GetNavbarGroupId(), false);
+        //             })
+        //             .ConfigureAwait(false);
+        //         return;
+        //     }
+        //
+        //     if (!selectedChatId.IsPlaceChat)
+        //         return;
+        //
+        //     var place = await Hub.Places.Get(Session, selectedChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+        //     if (place == null)
+        //         return;
+        //
+        //     await Hub.Dispatcher.InvokeAsync(() => {
+        //             Hub.NavbarUI.SelectGroup(place.Id.GetNavbarGroupId(), false);
+        //         })
+        //         .ConfigureAwait(false);
+        // }
+        // catch (Exception ex) {
+        //     Log.LogError(ex, "RestoreSelectedPlace failed");
+        // }
+        // finally {
+        //     await Hub.Dispatcher.InvokeAsync(() => {
+        //             ChatListUI.ActivateChatList(SelectedPlaceId.Value);
+        //         })
+        //         .ConfigureAwait(false);
+        // }
     }
 }

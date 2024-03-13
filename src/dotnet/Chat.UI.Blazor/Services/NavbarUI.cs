@@ -15,7 +15,7 @@ public class NavbarUI : ScopedServiceBase<ChatUIHub>
     {
         _selectedNavbarGroupId = StateFactory.NewKvasStored<Symbol>(
             new (LocalSettings, nameof(SelectedNavbarGroupId)) {
-                InitialValue = "chats",
+                InitialValue = "",
             });
         _navbarSettings = StateFactory.NewKvasSynced<UserNavbarSettings>(
             new (AccountSettings, UserNavbarSettings.KvasKey) {
@@ -52,11 +52,11 @@ public class NavbarUI : ScopedServiceBase<ChatUIHub>
             return;
 
         Hub.ChatUI.SelectChat(pinnedChatId, placeId);
-
-        if (Hub.PanelsUI.Left.IsSearchMode)
-            Hub.PanelsUI.Left.SearchToggle();
-        if (IsPinnedChatSelected(out _))
-            Hub.PanelsUI.HidePanels();
+        //
+        // if (Hub.PanelsUI.Left.IsSearchMode)
+        //     Hub.PanelsUI.Left.SearchToggle();
+        // if (IsPinnedChatSelected(out _))
+        //     Hub.PanelsUI.HidePanels();
     }
 
     public void SetNavbarPinState(ChatId chatId, bool mustPin)
