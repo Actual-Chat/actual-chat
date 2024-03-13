@@ -9,7 +9,7 @@ using ActualLab.Interception;
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
+public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized, IAsyncDisposable
 {
     private readonly SharedResourcePool<Symbol, ISyncedState<ReadPosition>> _readPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
@@ -344,6 +344,13 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             lease.Dispose();
             throw;
         }
+    }
+
+
+    public async ValueTask DisposeAsync()
+    {
+        await _readPositionStates.DisposeAsync();
+        _navbarSettings.Dispose();
     }
 
     // Private methods
