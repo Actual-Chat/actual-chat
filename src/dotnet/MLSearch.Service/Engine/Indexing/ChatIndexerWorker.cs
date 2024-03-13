@@ -39,10 +39,11 @@ internal class ChatIndexerWorker : IChatIndexerWorker
     private readonly IChatEntryCursorStates _cursorStates;
     private readonly ISink<TPipelineOutput> _sink;
     private readonly ILoggerSource _loggerSource;
-    private readonly BufferBlock<TPipelineInput> _inputBlock;
+    private readonly BufferBlock<Envelope<TPipelineInput>> _inputBlock;
     private readonly TransformBlock<TPipelineInput, Envelope<TPipelineInput>> _initBlock;
     private readonly ActionBlock<Envelope<IndexingResult>> _completeBlock;
     private readonly ConcurrentDictionary<ChatId, JobMetadata> _runningJobs;
+    private readonly SemaphoreSlim _semaphore;
     private ILogger? _log;
     private ILogger Log => _log ??= _loggerSource.GetLogger(GetType());
 
@@ -61,14 +62,10 @@ internal class ChatIndexerWorker : IChatIndexerWorker
         _loggerSource = loggerSource;
 
         _runningJobs = new();
-
-        _inputBlock = new(new() {
-            BoundedCapacity = ChannelCapacity,
-        });
-
-        var linkOptions = new DataflowLinkOptions { PropagateCompletion = true };
+        _semaphore = new(0, ChannelCapacity);
 
         _initBlock = new(Init);
+        _inputBlock = new(); // Unbounded buffer
         var getChatId = new TransformBlock<Envelope<TPipelineInput>, Envelope<ChatId>>(
             envelope => ExecuteTransformAsync(envelope, (input, _) => Task.FromResult(input.Id.ChatId)));
         var broadcastChatId = new BroadcastBlock<Envelope<ChatId>>(chatId => chatId);
@@ -127,10 +124,11 @@ internal class ChatIndexerWorker : IChatIndexerWorker
                 return new IndexingResult(IsEndReached: true);
             }));
 
-        _completeBlock = new(Complete);
+        _completeBlock = new(CompleteAsync);
 
-        _inputBlock.LinkTo(_initBlock, linkOptions);
-        _initBlock.LinkTo(getChatId, linkOptions);
+        var linkOptions = new DataflowLinkOptions { PropagateCompletion = true };
+        _initBlock.LinkTo(_inputBlock, linkOptions);
+        _inputBlock.LinkTo(getChatId, linkOptions);
         getChatId.LinkTo(broadcastChatId, linkOptions);
         broadcastChatId.LinkTo(loadCursor, linkOptions);
         broadcastChatId.LinkTo(joinChatIdAndCursor.Target1, linkOptions);
@@ -188,17 +186,29 @@ internal class ChatIndexerWorker : IChatIndexerWorker
         return new Envelope<TOutput>(new Content<TOutput>(jobId), cancellationToken);
     }
 
-    private void Complete(Envelope<IndexingResult> envelope)
+    private async Task CompleteAsync(Envelope<IndexingResult> envelope)
     {
-        var jobId = envelope.Content.Id;
-        if (_runningJobs.TryRemove(jobId, out var jobMetadata)) {
-            // TODO: Log and Trace
-            jobMetadata.CancellationSource.DisposeSilently();
+        // TODO: Log and Trace
+        var (jobId, result) = (envelope.Content.Id, envelope.Content.Payload);
+        if (!result.IsEndReached) {
+            // TODO: Reschedule right after init block
+            var msg = new Content<TPipelineInput>(jobId, default);
+            await _inputBlock.SendAsync(new Envelope<TPipelineInput>(msg, envelope.CancellationToken)).ConfigureAwait(false);
+        }
+        else {
+            if (_runningJobs.TryRemove(jobId, out var jobMetadata)) {
+                jobMetadata.CancellationSource.DisposeSilently();
+            }
+            _semaphore.Release();
         }
     }
 
     public async Task PostAsync((ChatEntryId, ChangeKind) input, CancellationToken cancellationToken)
-        => await _inputBlock.SendAsync(input, cancellationToken).ConfigureAwait(false);
+    {
+        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        await _initBlock.SendAsync(input, cancellationToken).ConfigureAwait(false);
+    }
 
     public async Task ExecuteAsync(int shardIndex, CancellationToken cancellationToken)
     {
@@ -211,50 +221,9 @@ internal class ChatIndexerWorker : IChatIndexerWorker
         _inputBlock.Complete();
 
         await _completeBlock.Completion.ConfigureAwait(false);
-
-        // // This method is a single unit of work.
-        // // As far as I understood there's an embedded assumption made
-        // // that it is possible to rehash shards attached to the host
-        // // between OnRun method executions.
-        // //
-        // // We calculate stream cursor each call to prevent
-        // // issues in case of re-sharding or new cluster rollouts.
-        // // It might have some other concurrent worker has updated
-        // // a cursor. TLDR: prevent stale cursor data.
-        // while (!cancellationToken.IsCancellationRequested) {
-        //     try {
-        //         var e = await _channel.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
-
-        //         var result = await (e.ChangeKind switch {
-        //             ChangeKind.Create => IndexChatTail(e.Id, cancellationToken),
-        //             _ => IndexChatRange(e.Id, cancellationToken)
-        //         }).ConfigureAwait(false);
-
-        //         if (!result.IsEndReached) {
-        //             // Enqueue event to continue indexing.
-        //             if (!_channel.Writer.TryWrite((e.Id, ChangeKind.Create))) {
-        //                 Log.LogWarning("Event queue is full: We can't process till this indexing is fully complete.");
-        //                 while (!result.IsEndReached) {
-        //                     result = await IndexChatTail(e.Id, cancellationToken).ConfigureAwait(false);
-        //                 }
-        //                 Log.LogWarning("Event queue is full: exiting an element.");
-        //             }
-        //         }
-        //     }
-        //     catch (Exception e) {
-        //         Log.LogError(e.Message);
-        //         throw;
-        //     }
-        // }
     }
 
-    private static Symbol IdOf(in ChatId chatId) => chatId.Id;
-
-    private static ChatEntryCursor NewFor(in ChatId _)
-        => new (0, 0);
-
     internal record IndexingResult(bool IsEndReached);
-
 }
 
 internal record ChatEntryCursor(long LastEntryLocalId, long LastEntryVersion);
