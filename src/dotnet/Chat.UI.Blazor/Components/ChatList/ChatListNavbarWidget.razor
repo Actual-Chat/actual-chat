@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits FusionComponentBase
 @{
-    RenderFragment RenderTab(ChatListFilter filter, double order) {
+    RenderFragment RenderTab(ChatListFilter filter, double order, Dictionary<string, object>? attributes) {
         var id = filter.Id.Value;
         var title = filter.Title;
         var contentVersion = (id, title);
@@ -11,7 +11,8 @@
             Title="@title"
             ContentVersion="@contentVersion"
             Order="@order"
-            Class="chats-tab">
+            Class="chats-tab"
+            AdditionalAttributes="@attributes">
             <TitleContent>
                 <span>@title</span>
             </TitleContent>
@@ -37,13 +38,18 @@
             <ChildContent>
                 @for (var i = 0; i < ChatListFilter.All.Count; i++) {
                     var filter = ChatListFilter.All[i];
-                    @RenderTab(filter, i)
+                    var placePeopleTab = !PlaceId.IsNone && Equals(ChatListFilter.People, filter);
+                    var attributes = placePeopleTab
+                        ? new Dictionary<string, object> {
+                            { "data-bubble", BubbleRef.New<PlacePeopleBubble>() },
+                            { "data-bubble-priority", "204" },
+                            { "data-bubble-placement", FloatingPosition.Bottom.ToPositionString() },
+                        }
+                        : null;
+                    @RenderTab(filter, i, attributes)
                 }
             </ChildContent>
             <TabContent>
-                @if (!PlaceId.IsNone && OrdinalEquals(ChatListFilter.People.Id.Value, context)) {
-                    <PlacePeopleBanner />
-                }
                 <ChatList Kind="ChatListKind.All"/>
             </TabContent>
         </TabPanel>
