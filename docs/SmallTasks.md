@@ -8,6 +8,7 @@ Audio and transcription:
 - ~~[AK] Add in-memory buffering: sometimes the beginning of your phrase isn't transcribed due to VAD / disconnect~~
 - Investigate why the transcript is sometimes wiped out / gets rewritten
 - ~~[AK]Don't play "new message" sound if the event happened >= 30 seconds ago (it frequently plays when the app awakes)~~
+- [AK] Configure listening turn-off period for chat
 
 Onboarding:
 - ~~No preselected default chats (all [x] to [ ])~~
@@ -24,7 +25,7 @@ Chat:
 - Add support for @u:userId mentions
   - Render them as authors if this author exists in chat
   - Otherwise render them as user mentions
-  - Extend author info modal to show user info
+  - Extend author info modal to show user info???
 
 Permissions:
 - Owners must be able to delete other people's messages
