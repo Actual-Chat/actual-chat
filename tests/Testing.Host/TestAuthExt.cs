@@ -19,7 +19,9 @@ public static class TestAuthExt
         this IWebTester tester,
         string namePrefix,
         CancellationToken cancellationToken = default)
-        => tester.AppHost.SignIn(tester.Session, new User("", UniqueNames.User(namePrefix)).WithClaim(ClaimTypes.GivenName, namePrefix), cancellationToken);
+        => tester.AppHost.SignIn(tester.Session,
+            new User("", UniqueNames.Name(namePrefix)).WithClaim(ClaimTypes.GivenName, namePrefix),
+            cancellationToken);
 
     public static async Task<AccountFull> SignIn(
         this AppHost appHost,

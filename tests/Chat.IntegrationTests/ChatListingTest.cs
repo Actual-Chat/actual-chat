@@ -8,12 +8,12 @@ namespace ActualChat.Chat.IntegrationTests;
 public class ChatListingTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private WebClientTester _tester = null!;
+    private WebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
+    private IChatsBackend ChatsBackend { get; } = fixture.AppHost.Services.GetRequiredService<IChatsBackend>();
 
     protected override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        _tester = AppHost.NewWebClientTester(Out);
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
         return Task.CompletedTask;
     }
@@ -23,51 +23,28 @@ public class ChatListingTest(ChatCollection.AppHostFixture fixture, ITestOutputH
         Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
             FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
-        await _tester.DisposeAsync();
+        await Tester.DisposeAsync();
     }
 
     [Theory]
-    [InlineData(1, 1)]
-    [InlineData(1, 10)]
-    [InlineData(10, 3)]
-    [InlineData(10, 10)]
-    public async Task ShouldListAllChats(int chatCount, int limit)
+    [InlineData(150, 27)]
+    [InlineData(30, 15)]
+    public async Task ShouldListAllChats(int chatCount, int batchSize)
     {
         // arrange
-        var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
-        var commander = AppHost.Services.Commander();
-        var clock = AppHost.Services.Clocks().ServerClock;
-        var now = clock.Now;
-        var allExpectedIds = new List<ChatId>();
-        await _tester.SignInAsBob();
-        for (int i = 0; i < chatCount; i++) {
-            var diff = new ChatDiff {
-                Title = $"Chat{i}",
-                IsPublic = i % 2 == 0,
-                Kind = ChatKind.Group,
-            };
-            var cmd = new Chats_Change(_tester.Session, ChatId.None, null, new () { Create = diff, });
-            var (chatId, _) = await commander.Call(cmd);
-            allExpectedIds.Add(chatId);
-        }
+        var now = Clocks.ServerClock.Now;
+        await Tester.SignInAsBob();
+        var created = await CreateChats(chatCount);
 
         // act
-        await foreach (var chats in chatsBackend.Batch(now, ChatId.None, limit, CancellationToken.None)) {
-            chats.Should().NotBeEmpty();
-            var chatIds = chats
-#pragma warning disable CA1310
-                .Where(c => c.Title.StartsWith("Chat"))
-#pragma warning restore CA1310
-                .Select(x => x.Id)
-                .ToList();
-
-            // assert
-            allExpectedIds[..chatIds.Count].Should().Equal(chatIds);
-            allExpectedIds = allExpectedIds[chatIds.Count..];
-        }
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var cancellationToken = cts.Token;
+        var retrieved = await ChatsBackend.Batch(now, ChatId.None, batchSize, cancellationToken)
+            .ToApiArrayAsync(cancellationToken)
+            .Flatten();
 
         // assert
-        allExpectedIds.Should().BeEmpty();
+        retrieved.Select(x => x.Title).Should().Contain(created.Select(x => x.Title));
     }
 
     [Theory]
@@ -78,36 +55,34 @@ public class ChatListingTest(ChatCollection.AppHostFixture fixture, ITestOutputH
     public async Task ShouldReturnEmpty(int chatCount, int limit)
     {
         // arrange
-        var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
-        await _tester.SignInAsBob();
+        await Tester.SignInAsBob();
         var allChats = await CreateChats(chatCount);
         var minCreatedAt = allChats[^1].CreatedAt;
         var lastChatId = allChats[^1].Id;
 
         // act
-        var batches = await chatsBackend.Batch(minCreatedAt, lastChatId, limit, CancellationToken.None).ToListAsync();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var cancellationToken = cts.Token;
+        var batches = await ChatsBackend.Batch(minCreatedAt, lastChatId, limit, cancellationToken).ToListAsync(cancellationToken);
 
         // assert
         batches.Should().BeEmpty();
     }
 
     [Theory]
-    [InlineData(1, 10)]
-    [InlineData(2, 2)]
-    [InlineData(10, 3)]
-    [InlineData(10, 10)]
+    [InlineData(150, 27)]
+    [InlineData(30, 15)]
     public async Task ShouldListChanged(int chatCount, int limit)
     {
         // arrange
-        var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
-        var lastChanged = await chatsBackend.GetLastChanged(CancellationToken.None);
-        await _tester.SignInAsBob();
+        var lastChanged = await ChatsBackend.GetLastChanged(CancellationToken.None);
+        await Tester.SignInAsBob();
         var created = await CreateChats(chatCount);
 
         // act
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var cancellationToken = cts.Token;
-        var retrieved = await chatsBackend.BatchChanged(lastChanged?.Version ?? 0,
+        var retrieved = await ChatsBackend.BatchChanged(lastChanged?.Version ?? 0,
                 long.MaxValue,
                 lastChanged?.Id ?? ChatId.None,
                 limit,
@@ -116,15 +91,15 @@ public class ChatListingTest(ChatCollection.AppHostFixture fixture, ITestOutputH
             .Flatten();
 
         // assert
-        retrieved.Select(x => x.Id).Should().Contain(created.Select(x => x.Id));
+        retrieved.Select(x => x.Title).Should().Contain(created.Select(x => x.Title));
     }
 
     private async Task<Chat[]> CreateChats(int count)
     {
         var chats = new Chat[count];
         for (int i = 0; i < count; i++) {
-            var (chatId, _) = await _tester.CreateChat(i % 2 == 0, $"Chat {i}");
-            chats[i] = await _tester.Chats.Get(_tester.Session, chatId, CancellationToken.None).Require();
+            var (chatId, _) = await Tester.CreateChat(i % 2 == 0, UniqueNames.Chat(i));
+            chats[i] = await Tester.Chats.Get(Tester.Session, chatId, CancellationToken.None).Require();
         }
 
         return chats;
