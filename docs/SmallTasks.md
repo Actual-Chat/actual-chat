@@ -6,7 +6,7 @@ Places:
 
 Audio and transcription:
 - ~~[AK] Add in-memory buffering: sometimes the beginning of your phrase isn't transcribed due to VAD / disconnect~~
-- Investigate why the transcript is sometimes wiped out / gets rewritten
+- [AK] Investigate why the transcript is sometimes wiped out / gets rewritten
 - ~~[AK]Don't play "new message" sound if the event happened >= 30 seconds ago (it frequently plays when the app awakes)~~
 - [AK] Configure listening turn-off period for chat
 
@@ -38,5 +38,5 @@ iOS/Android:
 
 Infrastructure / codebase:
 - SettingsPanel / SettingsTab - make sure they inherit or use TabPanel / Tab
-- SharedResourcePool must be IAsyncDisposable
+- ~~SharedResourcePool must be IAsyncDisposable~~
 - Remove Kubernetes project?
