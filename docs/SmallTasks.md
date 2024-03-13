@@ -13,7 +13,7 @@ Audio and transcription:
 Onboarding:
 - ~~No preselected default chats (all [x] to [ ])~~
 - Allow name edits for each of default chats
-- Remove "Alumni" + change "Classmates" to "Classmates / Alumni"
+- ~~[EK] Remove "Alumni" + change "Classmates" to "Classmates / Alumni"~~
 - Add "[Your Last Name] Clan" (+ ask Grisha to come up with an icon)
 
 Chat:
@@ -21,14 +21,14 @@ Chat:
 - Show bios in Members list
 - Show anonymous chat members as a single "group" while their count is < 5 -- unless it's a peer chat
 - Max. message length = 64K symbols?
-- "Copy" action for multiple messages should include contain author names.
+- [EK] "Copy" action for multiple messages should include contain author names.
 - Add support for @u:userId mentions
   - Render them as authors if this author exists in chat
   - Otherwise render them as user mentions
   - Extend author info modal to show user info???
 
 Permissions:
-- Owners must be able to delete other people's messages
+- [EK] Owners must be able to delete other people's messages
 
 Performance:
 - ~~[AK] Find out why collapsing items in Chat Members cause the panel to jitter while dragged~~ 
