@@ -4,17 +4,19 @@ using ActualChat.Chat.Events;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
+using ActualChat.MLSearch.Bot;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.Indexing;
-using ActualChat.MLSearch.Engine.Indexing.Spout;
 using ActualChat.MLSearch.Engine.OpenSearch;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using OpenSearch.Client;
 using OpenSearch.Net;
 
@@ -61,7 +63,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         // Module's own services
         var fusion = services.AddFusion();
-        fusion.AddService<IChatBot, ChatBot>();
         fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
 
         services.AddSingleton<IDataIndexer<ChatId>, ChatHistoryExtractor>();
@@ -102,8 +103,31 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 e.GetRequiredService<IChatIndexerWorker>().ExecuteAsync
             )
         );
-        services.AddHostedService(e => e
-            .GetRequiredKeyedService<ShardWorkerFunc>("OpenSearch Chat Index")
+        
+        // -- Register ML bot --
+        fusion.AddService<IChatBotConversationTrigger, ChatBotConversationTrigger>();
+
+        services.AddKeyedSingleton<IBotConversationHandler, SampleChatBot>("Sample Chat Bot");
+        services.AddKeyedSingleton(
+            typeof(IDataIndexer<ChatId>), 
+            "Bot chat", 
+            (e, _key) => e.CreateInstanceWith<ChatHistoryExtractor>(
+                e.GetRequiredKeyedService<IBotConversationHandler>("Sample Chat Bot")
+            )
         );
+        services.AddSingleton<IChatBotWorker>(e=>
+            e.CreateInstanceWith<ChatBotWorker>(
+                e.GetRequiredKeyedService<IDataIndexer<ChatId>>("Bot chat")
+            )
+        );
+        services.AddKeyedSingleton(
+            "Goo",
+            (e,k) => new ShardWorkerFunc(
+                shardingSchemeId: ShardingSchemeId,
+                e,
+                e.GetRequiredService<IChatBotWorker>().ExecuteAsync
+            )
+        );
+        services.AddSingleton<IHostedService>(e=>e.GetRequiredKeyedService<ShardWorkerFunc>("Goo"));
     }
 }

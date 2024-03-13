@@ -19,11 +19,11 @@ public sealed partial record MLSearch_TriggerContinueConversationWithBot (
     public ChatId ShardKey => Id;
 }
 
-public interface IChatBot
+public interface IChatBotConversationTrigger
 {
-    [CommandHandler]
-    Task OnCommand(MLSearch_TriggerContinueConversationWithBot e, CancellationToken cancellationToken);
-
     [EventHandler]
     Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnCommand(MLSearch_TriggerContinueConversationWithBot e, CancellationToken cancellationToken);
 }

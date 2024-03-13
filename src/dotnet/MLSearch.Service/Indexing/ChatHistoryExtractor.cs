@@ -5,9 +5,9 @@ using ActualChat.MLSearch.Engine.Indexing;
 namespace ActualChat.MLSearch.Indexing;
 
 internal class ChatHistoryExtractor (
+    ISink<ChatEntry, ChatEntry> sink,
     IChatsBackend chats,
-    ICursorStates<ChatHistoryExtractor.Cursor> cursorStates,
-    ISink<ChatEntry, ChatEntry> sink
+    ICursorStates<ChatHistoryExtractor.Cursor> cursorStates
 ): IDataIndexer<ChatId>
 {
     private const int EntryBatchSize = 100;

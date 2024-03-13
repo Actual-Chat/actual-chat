@@ -1,18 +1,17 @@
 
+using ActualChat.Chat;
 using ActualChat.Chat.Events;
 
-namespace ActualChat.MLSearch.Engine.Indexing.Spout;
+namespace ActualChat.MLSearch.Bot;
 
-internal class ChatBot(ICommander commander)
-    : IChatBot, IComputeService
+internal class ChatBotConversationTrigger(ICommander commander, IChatBotWorker worker)
+    : IChatBotConversationTrigger, IComputeService
 {
     // ReSharper disable once UnusedMember.Global
     // [CommandHandler]
-    public virtual Task OnCommand(MLSearch_TriggerContinueConversationWithBot e, CancellationToken cancellationToken)
-    {
-        return Task.CompletedTask;
-    }
-
+    public virtual async Task OnCommand(MLSearch_TriggerContinueConversationWithBot e, CancellationToken cancellationToken)
+        => await worker.Trigger.WriteAsync(e, cancellationToken).ConfigureAwait(false);
+    
     // ReSharper disable once UnusedMember.Global
     // [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)

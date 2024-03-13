@@ -26,6 +26,11 @@ public static class ShardSchemeExplicit
     ) => services.AddKeyedSingleton(shardingSchemeId, new ShardScheme(shardingSchemeId, shardCount, role));
 }
 
+public class ShardWorkerFunc<TName>(
+    Symbol shardingSchemeId,
+    IServiceProvider services,
+    Func<int, CancellationToken, Task> run
+): ShardWorkerFunc(shardingSchemeId, services, run);
 
 public class ShardWorkerFunc(
     Symbol shardingSchemeId,
