@@ -33,6 +33,10 @@ body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
     transform: translate3d(-100%, 0, 0);
 }
 
+body.narrow .side-nav.side-nav-left[data-side-nav="closed"]:has(.wide-left-skeleton-panel) {
+    transform: translate3d(0, 0, 0);
+}
+
 /* Right SideNav */
 .side-nav.side-nav-right {
     @apply md:w-1/2 lg:w-90;

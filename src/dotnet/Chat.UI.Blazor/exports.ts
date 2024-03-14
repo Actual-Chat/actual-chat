@@ -7,6 +7,7 @@ export * from './Components/ChatMessageEditor/attachment-list';
 export * from './Components/ChatMessageEditor/chat-message-editor';
 export * from './Components/ChatNotFound/chat-not-found-svg.lit';
 export * from './Components/ChatView/EmptyChatContent/empty-chat-svg.lit';
+export * from './Components/InaccessiblePlace/not-member-yet-svg.lit';
 export * from './Components/LeftPanel/logo-button-svg.lit';
 export * from './Components/MarkupEditor/markup-editor';
 export * from './Components/MarkupParts/CodeBlockMarkupView/code-block-markup-view';

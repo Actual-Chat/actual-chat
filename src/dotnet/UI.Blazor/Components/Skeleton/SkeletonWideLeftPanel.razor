@@ -1,8 +1,22 @@
 @namespace ActualChat.UI.Blazor.Components
+@{
+    var cls = "wide-left-skeleton-panel";
+}
 
-<div class="wide-left-skeleton-panel">
-    <SkeletonPanelHeader/>
+<div class="@cls">
+    <SkeletonPanelHeader>
+        <div class="c-title">
+            <string-skeleton firstWidth="3" secondWidth="7"/>
+        </div>
+        <div class="c-content"></div>
+    </SkeletonPanelHeader>
     <SkeletonPanelBody>
+        <tab-skeleton/>
         <chat-list-skeleton count="12"></chat-list-skeleton>
     </SkeletonPanelBody>
+    @ChildContent
 </div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

@@ -14,8 +14,22 @@
     // Log.LogDebug("Rendered for #{ChatId}", chat.Id);
 }
 
+@if (ReferenceEquals(chat, SpecialChat.Unavailable) && m.IsInaccessiblePlace) {
+     <RenderIntoSlot Name="MainLeftDrawer">
+         <LeftPanel IsSkeletonWidePanel="@true">
+             <WidePanelBottomContent>
+                 <InaccessiblePlaceLeftPanelBottom/>
+             </WidePanelBottomContent>
+         </LeftPanel>
+     </RenderIntoSlot>
+}
+
 <RenderIntoSlot Name="MainHeader">
-    <ChatHeader @key="@chatKey" ChatContext="@chatContext" />
+    @if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
+        <SkeletonChatHeader/>
+    } else {
+        <ChatHeader @key="@chatKey" ChatContext="@chatContext"/>
+    }
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="MainFooter">
@@ -31,7 +45,9 @@
 </RenderIntoStack>
 
 <RenderIntoSlot Name="MainRightDrawer">
-    @if (chatContext.HasChat) {
+    @if (ReferenceEquals(chat, SpecialChat.Unavailable) && m.IsInaccessiblePlace) {
+        <SkeletonRightPanel/>
+    } else if (chatContext.HasChat) {
         <ChatRightPanel @key="@chatKey" ChatContext="@chatContext"/>
     }
 </RenderIntoSlot>
@@ -43,7 +59,11 @@
 @if (ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
     <NoChatSelected/>
 } else if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
-    <ChatNotFound ShowSignIn="@(!chatContext.OwnAccount.IsActive())"/>
+    if (m.IsInaccessiblePlace) {
+        <InaccessiblePlace ShowSignIn="@(!chatContext.OwnAccount.IsActive())"/>
+    } else {
+        <ChatNotFound ShowSignIn="@(!chatContext.OwnAccount.IsActive())"/>
+    }
 } else {
     <ChatView @ref="ChatViewRef" @key="@chatKey" ChatContext="@chatContext"/>
 }
@@ -102,6 +122,9 @@
         var lastState = State.ValueOrDefault;
         var lastContext = lastState?.ChatContext;
         var lastChatId = lastContext?.Chat.Id ?? ChatId.None;
+
+        var pChatId = new ChatId(ChatSid, ParseOrNone.Option);
+        var isInaccessiblePlace = !pChatId.PlaceChatId.PlaceId.IsNone;
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
         if (_isVeryFirstLoad) {
@@ -142,7 +165,7 @@
             }
             var footerModel = await GetFooterModel(chat, account, cancellationToken);
             var chatContext = new ChatContext(Hub, chat, account);
-            return new Model(chatContext, footerModel);
+            return new Model(chatContext, footerModel, isInaccessiblePlace);
         }
         catch (TimeoutException) {
             Computed.GetCurrent()?.Invalidate(LoadTimeoutToReloadDelay);
@@ -154,7 +177,7 @@
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
             this.NotifyStateHasChanged();
-            return Model.Unavailable(Hub, account);
+            return Model.Unavailable(Hub, account, isInaccessiblePlace);
         }
     }
 
@@ -227,16 +250,17 @@
 
     public sealed record Model(
         ChatContext ChatContext,
-        FooterModel FooterModel
+        FooterModel FooterModel,
+        bool IsInaccessiblePlace
     ) {
         public static Model Loading(ChatUIHub hub) {
             var chatContext = new ChatContext(hub, SpecialChat.Loading, AccountFull.Loading);
-            return new(chatContext, FooterModel.None);
+            return new(chatContext, FooterModel.None, false);
         }
 
-        public static Model Unavailable(ChatUIHub hub, AccountFull account) {
+        public static Model Unavailable(ChatUIHub hub, AccountFull account, bool isInaccessiblePlace) {
             var chatContext = new ChatContext(hub, SpecialChat.Unavailable, account);
-            return new(chatContext, new FooterModel());
+            return new(chatContext, new FooterModel(), isInaccessiblePlace);
         }
     }
 
