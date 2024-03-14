@@ -1,5 +1,3 @@
-using ActualChat.MLSearch.ApiAdapters;
-
 
 namespace ActualChat.MLSearch.Indexing;
 
@@ -11,6 +9,6 @@ namespace ActualChat.MLSearch.Indexing;
 /// </summary>
 internal interface IChatIndexerWorker
 {
-    ChannelWriter<MLSearch_TriggerChatIndexing> Trigger { get; }
+    ValueTask PostAsync(MLSearch_TriggerChatIndexing input, CancellationToken cancellationToken);
     Task ExecuteAsync(int shardIndex, CancellationToken cancellationToken);
 }

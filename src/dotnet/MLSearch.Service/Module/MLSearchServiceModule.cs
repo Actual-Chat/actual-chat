@@ -103,14 +103,15 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 e.GetRequiredService<IChatIndexerWorker>().ExecuteAsync
             )
         );
-        
+        services.AddSingleton<IHostedService>(e=>e.GetRequiredKeyedService<ShardWorkerFunc>("OpenSearch Chat Index"));
+
         // -- Register ML bot --
         fusion.AddService<IChatBotConversationTrigger, ChatBotConversationTrigger>();
 
         services.AddKeyedSingleton<IBotConversationHandler, SampleChatBot>("Sample Chat Bot");
         services.AddKeyedSingleton(
-            typeof(IDataIndexer<ChatId>), 
-            "Bot chat", 
+            typeof(IDataIndexer<ChatId>),
+            "Bot chat",
             (e, _key) => e.CreateInstanceWith<ChatHistoryExtractor>(
                 e.GetRequiredKeyedService<IBotConversationHandler>("Sample Chat Bot")
             )

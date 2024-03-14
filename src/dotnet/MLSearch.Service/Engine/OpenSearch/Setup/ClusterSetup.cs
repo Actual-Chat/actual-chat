@@ -273,7 +273,7 @@ internal class ClusterSetup(
                                         "type": "object",
                                         "properties": {
                                             "{{chatSliceEntryIdField}}":  { "type": "keyword" },
-                                            "{{chatSliceEntryVersionField}}": { "type": "integer" }
+                                            "{{chatSliceEntryVersionField}}": { "type": "long" }
                                         }
                                     },
                                     "{{startOffsetField}}": { "type": "integer" },
