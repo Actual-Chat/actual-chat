@@ -17,7 +17,9 @@ public static class EditChatMemberCommands
         var ownAuthor = await hub.Authors.GetOwn(session, chatId, cancellationToken);
         var isOwn = ownAuthor != null && ownAuthor.Id == author.Id;
         var isOwner = ownerIds.Contains(author.Id);
-        var canPromoteToOwner = !isOwner && chat != null && chat.Rules.IsOwner();
+        var isAnonymous = author.IsAnonymous;
+        var ownIsAnonymous = ownAuthor?.IsAnonymous ?? false;
+        var canPromoteToOwner = !isOwner && chat != null && chat.Rules.IsOwner() && !(isAnonymous ^ ownIsAnonymous);
         var canRemoveFromGroup = !isOwner && !isOwn;
         return new EditChatMemberModel(author, isOwner, isOwn, canPromoteToOwner, canRemoveFromGroup);
     }
