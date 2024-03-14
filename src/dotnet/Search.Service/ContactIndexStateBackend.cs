@@ -10,27 +10,22 @@ public class ContactIndexStateBackend(IServiceProvider services) : DbServiceBase
 
     private IDbEntityResolver<string, DbContactIndexState> DbUserContactStateResolver => _dbContactIndexStateResolver ??= Services.GetRequiredService<IDbEntityResolver<string, DbContactIndexState>>();
 
-    public virtual async Task<ContactIndexState> GetForUsers(CancellationToken cancellationToken)
-    {
-        var id = DbContactIndexState.UserContactIndexStateId;
-        var state = await Get(id, cancellationToken).ConfigureAwait(false);
-        return state ?? new ContactIndexState(id);
-    }
+    // [ComputeMethod]
+    public virtual Task<ContactIndexState> GetForUsers(CancellationToken cancellationToken)
+        => Get(DbContactIndexState.UserContactIndexStateId, cancellationToken);
 
-    public virtual async Task<ContactIndexState> GetForChats(CancellationToken cancellationToken)
-    {
-        var id = DbContactIndexState.ChatContactIndexStateId;
-        var state = await Get(id, cancellationToken).ConfigureAwait(false);
-        return state ?? new ContactIndexState(id);
-    }
+    // [ComputeMethod]
+    public virtual Task<ContactIndexState> GetForChats(CancellationToken cancellationToken)
+        => Get(DbContactIndexState.ChatContactIndexStateId, cancellationToken);
 
+    // [CommandHandler]
     public virtual async Task<ContactIndexState> OnChange(
         ContactIndexStatesBackend_Change command,
         CancellationToken cancellationToken)
     {
         var (id, expectedVersion, change) = command;
         if (Computed.IsInvalidating()) {
-            _ = GetForUsers(default);
+            _ = Get(id, default);
             return default!;
         }
 
@@ -57,13 +52,12 @@ public class ContactIndexStateBackend(IServiceProvider services) : DbServiceBase
         return dbState!.ToModel();
     }
 
-    // Private methods
-
-    private async Task<ContactIndexState?> Get(string id, CancellationToken cancellationToken)
+    [ComputeMethod]
+    protected virtual async Task<ContactIndexState> Get(Symbol id, CancellationToken cancellationToken)
     {
         var dbState = await DbUserContactStateResolver
-            .Get(id, cancellationToken)
+            .Get(id.Value, cancellationToken)
             .ConfigureAwait(false);
-        return dbState?.ToModel();
+        return dbState?.ToModel() ?? new ContactIndexState(id);
     }
 }

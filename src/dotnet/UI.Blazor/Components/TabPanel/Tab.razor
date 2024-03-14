@@ -23,6 +23,9 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public object? ContentVersion { get; set; }
 
+    [Parameter(CaptureUnmatchedValues = false)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
     protected override void OnInitialized() {
         if (Panel == null)
             throw StandardError.Constraint("<Tab> component must be nested into <TabPanel> component.");
