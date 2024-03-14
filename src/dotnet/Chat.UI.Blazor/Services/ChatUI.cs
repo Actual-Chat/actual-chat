@@ -314,7 +314,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     {
         var hasChanged = SelectChatInternal(chatId);
         if (!chatId.IsNone || hasChanged)
-            _ = SelectPlaceNavbarGroup(chatId).SuppressExceptions();
+            _ = SelectNavbarGroup(chatId).SuppressExceptions();
         return hasChanged;
     }
 
@@ -380,10 +380,24 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         return true;
     }
 
-    private async Task SelectPlaceNavbarGroup(ChatId chatId)
+    private async Task SelectNavbarGroup(ChatId chatId)
     {
         if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId) && chatId.Equals(pinnedChatId))
             return;
+
+        var isChatsSelected = NavbarUI.IsGroupSelected(NavbarGroupIds.Chats);
+        var isPlaceSelected = NavbarUI.IsPlaceSelected(out var selectedPlaceId);
+        var isPeerChat = chatId.Kind == ChatKind.Peer;
+        var isChatPlaceSelected = chatId.IsPlaceChat
+            && isPlaceSelected
+            && selectedPlaceId.Equals(chatId.PlaceId);
+        if (!isChatsSelected && !(isPeerChat && isPlaceSelected) && !isChatPlaceSelected) {
+            var navbarSettings = await NavbarSettings.Use().ConfigureAwait(false);
+            if (navbarSettings.PinnedChats.Contains(chatId)) {
+                Hub.NavbarUI.SelectGroup(chatId.GetNavbarGroupId(), false);
+                return;
+            }
+        }
 
         var placeId = chatId.PlaceChatId.PlaceId;
         if (!placeId.IsNone) {
