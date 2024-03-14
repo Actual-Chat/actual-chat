@@ -397,8 +397,11 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             !SelectedPlaceId.Value.IsNone &&
             OrdinalEquals(NavbarUI.SelectedGroupId, SelectedPlaceId.Value.GetNavbarGroupId())) {
             var listView = ChatListUI.ActiveChatListView.Value;
+            // When peer chat is selected in url, we should keep selected place nav group if the chat belongs to
+            // place chat list.
             if (listView != null && listView.PlaceId == SelectedPlaceId.Value) {
                 var settings = await listView.GetSettings().ConfigureAwait(false);
+                // Peer chat can be included in the chat list only within People and None filters.
                 if (settings.Filter == ChatListFilter.People || settings.Filter == ChatListFilter.None) {
                     // Check if peer chat was shown for place chat list view
                     var chats = await ChatListUI.ListAllUnordered(SelectedPlaceId.Value).ConfigureAwait(false);
