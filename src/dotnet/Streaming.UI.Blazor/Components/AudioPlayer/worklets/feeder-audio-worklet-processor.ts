@@ -39,6 +39,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private bufferState: BufferState = 'ok';
     private lastReportedState: FeederState = null;
     private isEnding = false;
+    private bufferSizeToStartPlayback = PlayableBufferSize;
+    private lastStarvingEventAt: number = 0;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
@@ -78,7 +80,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     }
 
     public pause(_noWait?: RpcNoWait): Promise<void> {
-        if (this.playbackState !== 'playing')
+        if (this.playbackState === 'paused' || this.playbackState === 'ended')
             return;
 
         debugLog?.log(`#${this.id}.pause`);
@@ -132,21 +134,32 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         warnLog?.assert(channel.length === 128, `#${this.id}.process: WebAudio's render quantum size must be 128`);
 
         if (this.playbackState !== 'playing') {
-            // Write silence, because we aren't playing
+            // Write silence, because we aren't playing (even when starving)
             channel.fill(0);
             // Keep worklet up and running even in ended state for reuse
             return true;
         }
 
         // We're in 'playing' state anywhere below this point
-
+        // @ts-ignore - accessible from the AudioWorkletGlobalScope
+        const time =  currentTime;
         for (let channelOffset = 0; channelOffset < channel.length;) {
             let chunk = this.chunks.peekFront();
             if (chunk === undefined) {
                 // Not enough data to continue playing => starving
                 channel.fill(0, channelOffset);
+                this.playbackState = 'starving';
+
+                if (time - this.lastStarvingEventAt > 1000)
+                    // increase buffer size to prevent starving if previous event has happened earlier than 1s before
+                    this.bufferSizeToStartPlayback += PlayableBufferSize;
+                this.lastStarvingEventAt = time;
                 break;
             }
+
+            // decrease buffer size when there were no starving events during last 5s
+            if (time - this.lastStarvingEventAt > 5000)
+                this.bufferSizeToStartPlayback = Math.max(this.bufferSizeToStartPlayback - PlayableBufferSize, PlayableBufferSize);
 
             if (chunk === 'end') {
                 channel.fill(0, channelOffset);
@@ -213,7 +226,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     }
 
     private tryBeginPlaying(): void {
-        if (this.playbackState === 'playing' || this.bufferedDuration < PlayableBufferSize)
+        if (this.playbackState === 'playing' || this.bufferedDuration < this.bufferSizeToStartPlayback)
             return;
 
         debugLog?.log(`#${this.id}.tryBeginPlaying: starting playback`);

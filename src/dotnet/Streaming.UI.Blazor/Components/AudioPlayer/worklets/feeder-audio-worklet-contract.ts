@@ -22,4 +22,5 @@ export interface FeederState {
 }
 
 export type BufferState = 'low' | 'ok';
-export type PlaybackState = 'playing' | 'paused' | 'ended';
+export type PlaybackState = 'playing' | 'paused' | 'ended' | 'starving';
+
