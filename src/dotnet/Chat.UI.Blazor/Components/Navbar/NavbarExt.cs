@@ -10,6 +10,9 @@ public static class NavbarExt
     public static string GetNavbarGroupId(this PlaceId placeId)
         => PlacePrefix + placeId.Value;
 
+    public static bool IsGroupSelected(this NavbarUI navbarUI, string group)
+        => navbarUI.SelectedGroupId.Equals(group, StringComparison.Ordinal);
+
     public static bool IsPlaceSelected(this NavbarUI navbarUI, out PlaceId placeId)
     {
         placeId = PlaceId.None;

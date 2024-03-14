@@ -8,7 +8,7 @@ public class NavbarUI(IServiceProvider services)
     private IServiceProvider Services { get; } = services;
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
-    public string SelectedGroupId { get; private set; } = "chats";
+    public string SelectedGroupId { get; private set; } = "";
     public string SelectedGroupTitle { get; private set; } = "";
     public event EventHandler<NavbarGroupChangedEventArgs>? SelectedGroupChanged;
     public event EventHandler? SelectedGroupTitleUpdated;
