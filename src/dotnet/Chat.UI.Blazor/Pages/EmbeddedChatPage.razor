@@ -74,6 +74,8 @@
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
         var account = await Accounts.GetOwn(Session, cancellationToken);
+        var pChatId = new ChatId(ChatSid, ParseOrNone.Option);
+        var isInaccessiblePlace = !pChatId.PlaceChatId.PlaceId.IsNone;
         try {
             var chat = SpecialChat.NoChatSelected;
             if (!chatId.IsNone) {
@@ -83,7 +85,7 @@
             if (chat is not { IsTemplate: true }) {
                 var footerModel = await GetFooterModel(chat, account, cancellationToken);
                 var chatContext = new ChatContext(Hub, chat, account);
-                return new Model(chatContext, footerModel);
+                return new Model(chatContext, footerModel, isInaccessiblePlace);
             }
 
             // Create new chat based on a template and redirect to the new clone
@@ -104,13 +106,13 @@
                 chat = await Chats.Get(Session, newChat.Id, cancellationToken).Require();
                 var footerModel = await GetFooterModel(chat, account, cancellationToken);
                 var chatContext = new ChatContext(Hub, chat, account);
-                return new Model(chatContext, footerModel);
+                return new Model(chatContext, footerModel, isInaccessiblePlace);
             }
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
             this.NotifyStateHasChanged();
-            return Model.Unavailable(Hub, account);
+            return Model.Unavailable(Hub, account, isInaccessiblePlace);
         }
     }
 }

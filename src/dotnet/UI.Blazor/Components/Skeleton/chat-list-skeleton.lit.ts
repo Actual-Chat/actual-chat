@@ -5,6 +5,10 @@ import {messageStyles} from "./styles.lit";
 
 @customElement('chat-list-skeleton')
 class ChatListSkeleton extends LitElement {
+    @property({type: Boolean})
+    visible = true;
+
+    private observer: IntersectionObserver;
 
     static styles = [messageStyles, css`
         :host {
@@ -21,7 +25,7 @@ class ChatListSkeleton extends LitElement {
             width: 2.5rem;
             height: 2.5rem;
             border-radius: 9999px;
-            background-color: var(--background-04);
+            background-color: var(--skeleton);
         }
     `];
 
@@ -37,9 +41,11 @@ class ChatListSkeleton extends LitElement {
     }
 
     render() {
+        let animatedCls = this.visible ? "animated-skeleton" : "";
+
         return html`
             ${[...new Array(Number(this.count))].map(() => html`
-                <div class="message-skeleton">
+                <div class="message-skeleton ${animatedCls}">
                     <div class="avatar-wrapper">
                         <div class="avatar"></div>
                     </div>
@@ -50,5 +56,23 @@ class ChatListSkeleton extends LitElement {
                 </div>
             `)}
         `;
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        const root = document.querySelector('.left-panel');
+        this.observer = new IntersectionObserver((entries, observer) => {
+            entries.some(e => {
+                this.visible = e.isIntersecting;
+            });
+        }, {
+                                                     root: root,
+                                                 });
+        this.observer.observe(this);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        this.observer.disconnect();
     }
 }

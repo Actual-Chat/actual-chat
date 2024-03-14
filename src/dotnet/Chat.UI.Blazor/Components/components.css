@@ -180,6 +180,9 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 .chat-not-found-container > .c-wrapper {
     @apply flex-y items-center justify-center gap-y-4;
 }
+.chat-not-found-container.inaccessible-place > .c-wrapper {
+    @apply flex-1 flex-y items-start justify-center gap-y-4;
+}
 .chat-not-found-container > .c-wrapper > .text-wrapper {
     @apply flex-y items-center;
     @apply text-headline-6 text-03;

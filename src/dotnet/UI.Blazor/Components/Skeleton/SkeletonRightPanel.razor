@@ -1,6 +1,44 @@
 @namespace ActualChat.UI.Blazor.Components
+@{
+    var cls = "right-skeleton-panel";
+}
 
-<div class="right-skeleton-panel">
+<div class="@cls">
     <SkeletonPanelHeader/>
-    <SkeletonPanelBody/>
+    <SkeletonPanelBody>
+        <SkeletonBlock Class="c-buttons">
+            <round-skeleton radius="16" rootCls="@cls"/>
+            <div class="c-right">
+                <round-skeleton rootCls="@cls"/>
+                <round-skeleton rootCls="@cls"/>
+                <round-skeleton rootCls="@cls"/>
+            </div>
+        </SkeletonBlock>
+
+        <SkeletonBlock Class="c-description">
+            <string-skeleton firstWidth="4" secondWidth="4" rootCls="@cls"/>
+            <string-skeleton firstWidth="10" secondWidth="10" rootCls="@cls"/>
+            <string-skeleton firstWidth="10" secondWidth="10" rootCls="@cls"/>
+            <string-skeleton firstWidth="10" secondWidth="10" rootCls="@cls"/>
+        </SkeletonBlock>
+
+        <SkeletonBlock Class="c-notification">
+            <string-skeleton firstWidth="4" secondWidth="4" rootCls="@cls"/>
+        </SkeletonBlock>
+
+        <SkeletonBlock Class="c-tab">
+            <tab-skeleton />
+        </SkeletonBlock>
+
+        <div class="members-container">
+            @for (var i = 0; i < 3; i++) {
+                <SkeletonBlock Class="c-members">
+                    <string-skeleton firstWidth="3" secondWidth="3" rootCls="@cls"/>
+                    <chat-list-skeleton/>
+                    <chat-list-skeleton/>
+                </SkeletonBlock>
+            }
+        </div>
+
+    </SkeletonPanelBody>
 </div>

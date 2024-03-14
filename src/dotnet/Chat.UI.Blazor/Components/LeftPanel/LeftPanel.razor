@@ -8,15 +8,25 @@
     VisibilityChanged="@(NoStateHasChanged.EventCallback<bool>(isOpen => PanelsUI.Left.SetIsVisible(isOpen)))">
     <div class="left-panel">
         <ErrorBarrier Name="LeftPanelContent" Kind="@ErrorBarrierKind.Full">
-        <LeftPanelButtons/>
-        <div class="left-panel-content">
-            <LeftPanelContentHeader/>
-            <DownloadAppBanner CanBeClosed="true"/>
-            <NavbarContent/>
-            @if (_isSearchPanelOpen) {
-                <LeftSearchPanel OnAISearchClick="@OpenRightSearchPanel"/>
+            @if (IsSkeletonThinPanel) {
+                <SkeletonThinLeftPanel/>
+            } else {
+                <LeftPanelButtons/>
             }
-        </div>
+            @if (IsSkeletonWidePanel) {
+                <SkeletonWideLeftPanel>
+                    @WidePanelBottomContent
+                </SkeletonWideLeftPanel>
+            } else {
+                <div class="left-panel-content">
+                    <LeftPanelContentHeader/>
+                    <DownloadAppBanner CanBeClosed="true"/>
+                    <NavbarContent/>
+                    @if (_isSearchPanelOpen) {
+                        <LeftSearchPanel OnAISearchClick="@OpenRightSearchPanel"/>
+                    }
+                </div>
+            }
         </ErrorBarrier>
     </div>
 </SideNav>
@@ -32,6 +42,10 @@
     // [Inject] private Dispatcher Dispatcher { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter] public bool IsSkeletonThinPanel { get; set; }
+    [Parameter] public bool IsSkeletonWidePanel { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? WidePanelBottomContent { get; set; }
 
     protected override void OnInitialized() {
         _isOpen = PanelsUI.Left.IsVisible.Value;
