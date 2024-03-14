@@ -28,6 +28,7 @@ public class NavbarUI : ScopedServiceBase<ChatUIHub>
         Hub.RegisterDisposable(_navbarSettings);
     }
 
+    public Task WhenLoaded => _selectedNavbarGroupId.WhenRead;
     public IState<Symbol> SelectedNavbarGroupId => _selectedNavbarGroupId;
     public IState<UserNavbarSettings> NavbarSettings => _navbarSettings;
 
