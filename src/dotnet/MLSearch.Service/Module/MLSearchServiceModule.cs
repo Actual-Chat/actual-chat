@@ -93,41 +93,44 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IChatIndexerWorker, ChatIndexerWorker>();
 
         // TODO: remove workaround. Reason: NodesByRole.TryGetValue(shardScheme.Id, out var nodes)
+        const string IndexServiceGroup = "OpenSearch Chat Index";
         Symbol ShardingSchemeId = HostRole.MLSearchIndexing;
         services.AddShardScheme(ShardingSchemeId, HostRole.MLSearchIndexing, shardCount: 12);
         services.AddKeyedSingleton<ShardWorkerFunc>(
-            "OpenSearch Chat Index",
+            IndexServiceGroup,
             (e, key) => new ShardWorkerFunc(
                 shardingSchemeId: ShardingSchemeId,
                 e,
                 e.GetRequiredService<IChatIndexerWorker>().ExecuteAsync
             )
         );
+        services.AddSingleton<IHostedService>(e=>e.GetRequiredKeyedService<ShardWorkerFunc>(IndexServiceGroup));
         
         // -- Register ML bot --
+        const string ConversationBotServiceGroup = "ML Chat Bot";
         fusion.AddService<IChatBotConversationTrigger, ChatBotConversationTrigger>();
 
-        services.AddKeyedSingleton<IBotConversationHandler, SampleChatBot>("Sample Chat Bot");
+        services.AddKeyedSingleton<IBotConversationHandler, SampleChatBot>(ConversationBotServiceGroup);
         services.AddKeyedSingleton(
             typeof(IDataIndexer<ChatId>), 
-            "Bot chat", 
+            ConversationBotServiceGroup, 
             (e, _key) => e.CreateInstanceWith<ChatHistoryExtractor>(
-                e.GetRequiredKeyedService<IBotConversationHandler>("Sample Chat Bot")
+                e.GetRequiredKeyedService<IBotConversationHandler>(ConversationBotServiceGroup)
             )
         );
         services.AddSingleton<IChatBotWorker>(e=>
             e.CreateInstanceWith<ChatBotWorker>(
-                e.GetRequiredKeyedService<IDataIndexer<ChatId>>("Bot chat")
+                e.GetRequiredKeyedService<IDataIndexer<ChatId>>(ConversationBotServiceGroup)
             )
         );
         services.AddKeyedSingleton(
-            "Goo",
+            ConversationBotServiceGroup,
             (e,k) => new ShardWorkerFunc(
                 shardingSchemeId: ShardingSchemeId,
                 e,
                 e.GetRequiredService<IChatBotWorker>().ExecuteAsync
             )
         );
-        services.AddSingleton<IHostedService>(e=>e.GetRequiredKeyedService<ShardWorkerFunc>("Goo"));
+        services.AddSingleton<IHostedService>(e=>e.GetRequiredKeyedService<ShardWorkerFunc>(ConversationBotServiceGroup));
     }
 }

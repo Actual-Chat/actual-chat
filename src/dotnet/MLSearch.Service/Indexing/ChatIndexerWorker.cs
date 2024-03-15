@@ -6,12 +6,10 @@ namespace ActualChat.MLSearch.Indexing;
 
 internal class ChatIndexerWorker(
     IDataIndexer<ChatId> dataIndexer,
-    ILoggerSource loggerSource
+    ILogger<ChatIndexerWorker> log
 ) : IChatIndexerWorker
 {
     private const int ChannelCapacity = 10;
-    private ILogger? _log;
-    private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
 
     private readonly Channel<MLSearch_TriggerChatIndexing> _channel =
         Channel.CreateBounded<MLSearch_TriggerChatIndexing>(new BoundedChannelOptions(ChannelCapacity){
@@ -43,16 +41,16 @@ internal class ChatIndexerWorker(
                 if (!result.IsEndReached) {
                     // Enqueue event to continue indexing.
                     if (!Trigger.TryWrite(new MLSearch_TriggerChatIndexing(e.Id))) {
-                        Log.LogWarning("Event queue is full: We can't process till this indexing is fully complete.");
+                        log.LogWarning("Event queue is full: We can't process till this indexing is fully complete.");
                         while (!result.IsEndReached) {
                             result = await dataIndexer.IndexNextAsync(e.Id, cancellationToken).ConfigureAwait(false);
                         }
-                        Log.LogWarning("Event queue is full: exiting an element.");
+                        log.LogWarning("Event queue is full: exiting an element.");
                     }
                 }
             }
             catch (Exception e){
-                Log.LogError(e.Message);
+                log.LogError(e.Message);
                 throw;
             }
         }
