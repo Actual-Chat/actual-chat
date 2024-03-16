@@ -28,7 +28,7 @@ Chat:
   - Extend author info modal to show user info???
 
 Permissions:
-- [EK] Owners must be able to delete other people's messages
+- ~~[EK] Owners must be able to delete other people's messages~~
 
 Performance:
 - ~~[AK] Find out why collapsing items in Chat Members cause the panel to jitter while dragged~~ 
