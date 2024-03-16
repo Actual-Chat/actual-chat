@@ -11,7 +11,7 @@ Potential fixes:
 - iOS: investigate weird "Back" click behavior (sometimes it does not work when you touch it, maybe related to Safari click event propagation or nearby clickable header)
 
 UX improvements:
-- [EK] Pin chat/user to the left panel
+- ~~[EK] Pin chat/user to the left panel~~
 - Historical playback speedup
 - Allow to rename contacts + use your custom contact name for any author of a given user (unless anonymous)
 - "New message [in another chat]" notification banner
