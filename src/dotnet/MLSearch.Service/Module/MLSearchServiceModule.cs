@@ -93,8 +93,8 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IChatIndexerWorker, ChatIndexerWorker>();
 
         // TODO: remove workaround. Reason: NodesByRole.TryGetValue(shardScheme.Id, out var nodes)
-        Symbol ShardingSchemeId = HostRole.MLSearchIndexing;
-        services.AddShardScheme(ShardingSchemeId, HostRole.MLSearchIndexing, shardCount: 12);
+        Symbol ShardingSchemeId = HostRole.MLSearchBackend;
+        services.AddShardScheme(ShardingSchemeId, HostRole.MLSearchBackend, shardCount: 12);
         services.AddKeyedSingleton<ShardWorkerFunc>(
             "OpenSearch Chat Index",
             (e, key) => new ShardWorkerFunc(

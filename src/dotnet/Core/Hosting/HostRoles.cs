@@ -59,7 +59,7 @@ public static class HostRoles
                         roles.Add(HostRole.TranscriptionBackend);
                         roles.Add(HostRole.UsersBackend);
                         roles.Add(HostRole.ContactIndexingWorker);
-                        roles.Add(HostRole.MLSearchIndexing);
+                        roles.Add(HostRole.MLSearchBackend);
                         roles.Add(HostRole.EventQueue);
                     }
                     return roles;

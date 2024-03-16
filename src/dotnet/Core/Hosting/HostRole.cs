@@ -33,11 +33,10 @@ public partial record struct HostRole(
     public static readonly HostRole TranscriptionBackend = nameof(TranscriptionBackend);
     public static readonly HostRole UsersBackend = nameof(UsersBackend);
     public static readonly HostRole ContactIndexingWorker = nameof(ContactIndexingWorker);
+    public static readonly HostRole MLSearchBackend = nameof(MLSearchBackend);
 
     // Queues
     public static readonly HostRole DefaultQueue = nameof(DefaultQueue);
-    public static readonly HostRole MLSearchBackendClusterSetup = nameof(MLSearchBackendClusterSetup);
-    public static readonly HostRole MLSearchIndexing = nameof(MLSearchIndexing);
     public static readonly HostRole EventQueue = nameof(EventQueue);
 
     // The only role any app has
