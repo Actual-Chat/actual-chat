@@ -90,7 +90,11 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<ISink<ChatEntry, ChatEntry>>(static services
             => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
         services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
-        services.AddSingleton<IChatIndexerWorker, ChatIndexerWorker>();
+
+        services.AddSingleton(typeof(IShardIndexResolver<>), typeof(ShardIndexResolver<>));
+        services.AddSingleton<IChatIndexerDispatcher, ChatIndexerDispatcher>(static services
+            => services.CreateInstanceWith<ChatIndexerDispatcher>(ShardScheme.MLSearchBackend));
+        services.AddSingleton<IChatIndexerWorkerFactory, ChatIndexerWorkerFactory>();
 
         // TODO: remove workaround. Reason: NodesByRole.TryGetValue(shardScheme.Id, out var nodes)
         Symbol ShardingSchemeId = HostRole.MLSearchBackend;
@@ -100,7 +104,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             (e, key) => new ShardWorkerFunc(
                 shardingSchemeId: ShardingSchemeId,
                 e,
-                e.GetRequiredService<IChatIndexerWorker>().ExecuteAsync
+                e.GetRequiredService<IChatIndexerDispatcher>().ExecuteAsync
             )
         );
         services.AddSingleton<IHostedService>(e=>e.GetRequiredKeyedService<ShardWorkerFunc>("OpenSearch Chat Index"));

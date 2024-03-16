@@ -1,8 +1,13 @@
-
 namespace ActualChat.MLSearch.Indexing;
 
+internal interface IChatIndexerWorker
+{
+    ValueTask PostAsync(MLSearch_TriggerChatIndexing input, CancellationToken cancellationToken);
+    Task ExecuteAsync(CancellationToken cancellationToken);
+}
 
 internal class ChatIndexerWorker(
+    int shardIndex,
     IDataIndexer<ChatId> dataIndexer,
     ILogger<ChatIndexerWorker> log
 ) : IChatIndexerWorker
@@ -19,13 +24,15 @@ internal class ChatIndexerWorker(
     private readonly ConcurrentDictionary<ChatId, Job?> _runningJobs = new(-1, ChannelCapacity);
     private readonly SemaphoreSlim _semaphore = new(ChannelCapacity, ChannelCapacity);
 
+    public int ShardIndex => shardIndex;
+
     public async ValueTask PostAsync(MLSearch_TriggerChatIndexing input, CancellationToken cancellationToken)
     {
         await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         await _channel.Writer.WriteAsync(input, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task ExecuteAsync(int _shardIndex, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested) {
             try {
@@ -74,7 +81,9 @@ internal class ChatIndexerWorker(
         // It might have some other concurrent worker has updated
         // a cursor. TLDR: prevent stale cursor data.
 
-        // TODO: add more logging and tracing
+        var jobName = dataIndexer.GetType().Name;
+        log.LogInformation("Starting job {JobType} #{JobId} at shard #{ShardIndex}.",
+            jobName, input.Id, shardIndex);
         try {
             var continueIndexing = false;
             do {
@@ -82,12 +91,16 @@ internal class ChatIndexerWorker(
                 continueIndexing = !(result.IsEndReached || cancellationToken.IsCancellationRequested);
             }
             while (continueIndexing);
+            log.LogInformation("Job {JobType} #{JobId} at shard #{ShardIndex} is completed.",
+                jobName, input.Id, shardIndex);
         }
         catch (OperationCanceledException) {
-            log.LogInformation("Indexing job for chat '{Id}' is cancelled.", input.Id);
+            log.LogInformation("Job {JobType} #{JobId} at shard #{ShardIndex} is cancelled.",
+                jobName, input.Id, shardIndex);
         }
         catch (Exception e) {
-            log.LogError(e, "Indexing job for chat '{Id}' is failed.", input.Id);
+            log.LogError(e, "Job {JobType} #{JobId} at shard #{ShardIndex} is failed.",
+                jobName, input.Id, shardIndex);
         }
         finally {
             if (_runningJobs.TryRemove(input.Id, out var job)) {
