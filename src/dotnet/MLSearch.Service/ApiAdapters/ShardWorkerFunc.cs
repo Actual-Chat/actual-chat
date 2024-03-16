@@ -20,10 +20,8 @@ public static class ShardSchemeExplicit
 {
     public static IServiceCollection AddShardScheme(
         this IServiceCollection services,
-        Symbol shardingSchemeId,
-        HostRole role,
-        int shardCount
-    ) => services.AddKeyedSingleton(shardingSchemeId, new ShardScheme(shardingSchemeId, shardCount, role));
+        Symbol shardingSchemeId
+    ) => services.AddKeyedSingleton(shardingSchemeId, ShardScheme.ById[shardingSchemeId]);
 }
 
 public class ShardWorkerFunc<TName>(

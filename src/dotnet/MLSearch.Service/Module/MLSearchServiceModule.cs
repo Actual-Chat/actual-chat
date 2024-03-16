@@ -94,7 +94,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         // TODO: remove workaround. Reason: NodesByRole.TryGetValue(shardScheme.Id, out var nodes)
         Symbol ShardingSchemeId = HostRole.MLSearchBackend;
-        services.AddShardScheme(ShardingSchemeId, HostRole.MLSearchBackend, shardCount: 12);
+        services.AddShardScheme(ShardingSchemeId);
         services.AddKeyedSingleton<ShardWorkerFunc>(
             "OpenSearch Chat Index",
             (e, key) => new ShardWorkerFunc(
