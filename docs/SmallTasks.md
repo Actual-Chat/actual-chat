@@ -21,7 +21,7 @@ Chat:
 - Show bios in Members list
 - Show anonymous chat members as a single "group" while their count is < 5 -- unless it's a peer chat
 - Max. message length = 64K symbols?
-- [EK] "Copy" action for multiple messages should include contain author names.
+- ~~[EK] "Copy" action for multiple messages should include contain author names.~~
 - Add support for @u:userId mentions
   - Render them as authors if this author exists in chat
   - Otherwise render them as user mentions
