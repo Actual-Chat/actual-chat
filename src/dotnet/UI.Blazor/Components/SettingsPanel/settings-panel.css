@@ -109,12 +109,16 @@ body.hoverable .tile:hover {
     @apply h-10 w-full;
     @apply rounded-lg;
     @apply hover:bg-hover;
+    @apply pr-2;
 }
 .tile-item.not-hover {
     @apply hover:bg-transparent;
 }
 .tile-item.unselected {
     @apply hover:bg-transparent;
+}
+.tile-item.unselected:not(.tile-item.first-tile-item) {
+    @apply pr-0;
 }
 .tile-item.clickable {
     @apply cursor-pointer;
@@ -126,6 +130,9 @@ body.hoverable .tile:hover {
     @apply flex-none flex justify-center;
     @apply min-w-10 max-w-10;
     @apply text-03;
+}
+.tile-item.unselected:not(.tile-item.first-tile-item) .tile-item-icon {
+    @apply -ml-2;
 }
 .tile-item.first-tile-item {
     @apply h-14;
@@ -140,7 +147,7 @@ body.hoverable .tile:hover {
 .tile-item-body-content {
     @apply w-full min-h-5 max-h-5;
     @apply truncate;
-    @apply leading-5 text-sm text-02;
+    @apply leading-5 text-02;
 }
 .tile-item-body-caption {
     @apply text-xs font-normal text-03;
@@ -177,13 +184,14 @@ body.hoverable .tile-btn:hover {
 }
 .settings-tab-content {
     @apply flex-y gap-y-4;
-    @apply w-full md:w-80;
+    @apply w-full md:w-88;
+    @apply w-full md:w-88;
     @apply p-2 md:p-0;
 }
 .settings-tab-header {
     @apply ordinary-header;
     @apply px-4 md:px-0;
-    @apply w-full md:w-80;
+    @apply w-full md:w-88;
     @apply text-title-1;
     @apply bg-02 md:bg-transparent;
 }
