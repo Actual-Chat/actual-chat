@@ -16,7 +16,8 @@ class StringSkeletonLit extends LitElement {
     static styles = [messageStyles, css`
         :host {
             display: flex;
-            flex: 1;
+            flex-direction: row;
+            flex: 1 1 0;
         }
     `];
 

@@ -618,7 +618,7 @@
     --active-chats: var(--ash-30);
 
     --place-cat-background: var(--ash-50);
-    --place-cat-tank: var(--gray-30);
+    --place-cat-tank: var(--ash-30);
     --place-cat-border: var(--ash-40);
     --place-cat-face: var(--ash-80);
 }
@@ -819,8 +819,8 @@
     --verify-cat-display: var(--blue-80);
     --active-chats: var(--white-50);
 
-    --place-cat-background: var(--gray-80);
-    --place-cat-tank: var(--gray-60);
-    --place-cat-border: var(--gray-70);
+    --place-cat-background: var(--ash-90);
+    --place-cat-tank: var(--ash-60);
+    --place-cat-border: var(--ash-80);
     --place-cat-face: var(--white);
 }
