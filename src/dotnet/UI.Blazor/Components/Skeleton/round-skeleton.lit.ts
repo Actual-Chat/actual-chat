@@ -14,7 +14,7 @@ class RoundSkeletonLit extends LitElement {
     static styles = [messageStyles, css`
         :host {
             display: flex;
-            width: 100%;
+            flex: 1;
         }
     `];
 
