@@ -86,7 +86,7 @@ body.narrow .wide-left-skeleton-panel:has(.inaccessible-place-request) {
     @apply p-4 mt-6;
 }
 .right-skeleton-panel .skeleton-panel-body .c-notification {
-    @apply flex-y items-center;
+    @apply flex-x items-center;
     @apply px-4 py-8;
 }
 .right-skeleton-panel .skeleton-panel-body .c-tab {
@@ -150,4 +150,7 @@ body.narrow .chat-skeleton-panel .skeleton-panel-footer {
 }
 .inaccessible-place-request > .c-text {
     @apply text-center text-headline-1 text-03;
+}
+.inaccessible-place-request .btn {
+    @apply mt-4;
 }
