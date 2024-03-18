@@ -7,6 +7,8 @@ import {messageStyles} from "./styles.lit";
 class ChatListSkeleton extends LitElement {
     @property({type: Boolean})
     visible = true;
+    @property({type: String})
+    rootCls = "left-panel";
 
     private observer: IntersectionObserver;
 
@@ -60,14 +62,14 @@ class ChatListSkeleton extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
-        const root = document.querySelector('.left-panel');
+        const root = document.querySelector(`.${this.rootCls}`);
         this.observer = new IntersectionObserver((entries, observer) => {
             entries.some(e => {
                 this.visible = e.isIntersecting;
             });
         }, {
-                                                     root: root,
-                                                 });
+            root: root,
+        });
         this.observer.observe(this);
     }
 

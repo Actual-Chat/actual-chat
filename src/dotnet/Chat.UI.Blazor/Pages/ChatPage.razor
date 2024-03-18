@@ -123,8 +123,7 @@
         var lastContext = lastState?.ChatContext;
         var lastChatId = lastContext?.Chat.Id ?? ChatId.None;
 
-        var pChatId = new ChatId(ChatSid, ParseOrNone.Option);
-        var isInaccessiblePlace = !pChatId.PlaceChatId.PlaceId.IsNone;
+        var isInaccessiblePlace = !chatId.PlaceChatId.PlaceId.IsNone;
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
         if (_isVeryFirstLoad) {

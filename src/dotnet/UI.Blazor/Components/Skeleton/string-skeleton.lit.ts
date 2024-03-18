@@ -16,15 +16,13 @@ class StringSkeletonLit extends LitElement {
     static styles = [messageStyles, css`
         :host {
             display: flex;
-            width: 100%;
+            flex: 1;
         }
     `];
 
     render(): unknown {
-        // noinspection JSMismatchedCollectionQueryUpdate
-
         return html`
-            <div class="message animated-skeleton string-skeleton ${this.getWidth(this.getFirstWidth(), this.getSecondWidth())}"></div>
+            <div class="message string-skeleton ${this.getWidth(this.getNumber(), this.getNumber(false))}"></div>
         `;
     }
 
@@ -33,21 +31,11 @@ class StringSkeletonLit extends LitElement {
         return MessageWidth[num];
     }
 
-    private getFirstWidth() : number {
-        let width = this.firstWidth;
-        if (Math.round(this.firstWidth) < 1 || Math.round(this.firstWidth) > 10)
-            width = 1;
+    private getNumber(isFirst: boolean = true) : number {
+        let width = isFirst ? Math.round(this.firstWidth) : Math.round(this.secondWidth);
+        if (width < 1 || width > 10)
+            return isFirst ? 1 : 10;
         else
-            width = Math.round(this.firstWidth);
-        return width;
-    }
-
-    private getSecondWidth() : number {
-        let width = this.secondWidth;
-        if (Math.round(this.secondWidth) < 1 || Math.round(this.secondWidth) > 10)
-            width = 10;
-        else
-            width = Math.round(this.secondWidth);
-        return width;
+            return width;
     }
 }

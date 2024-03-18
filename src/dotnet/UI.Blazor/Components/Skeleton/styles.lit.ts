@@ -80,8 +80,9 @@ export const messageStyles = css`
         height: 0.75rem;
         background-color: var(--skeleton);
         border-radius: 9999px;
+        animation: pulse 2s infinite;
     }
-    .animated-skeleton.string-skeleton,
+    .header-skeleton,
     .animated-skeleton.round-skeleton {
         animation: pulse 2s infinite;
     }
