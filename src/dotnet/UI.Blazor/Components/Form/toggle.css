@@ -1,5 +1,5 @@
 .toggle {
-    @apply flex-1 flex-x items-center gap-x-2;
+    @apply flex-1 flex-x justify-end items-center gap-x-2;
     @apply overflow-hidden;
 }
 .toggle:hover {

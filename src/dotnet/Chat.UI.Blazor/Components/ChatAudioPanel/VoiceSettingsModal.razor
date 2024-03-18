@@ -1,9 +1,23 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IModalView<VoiceSettingsModal.Model>
+@using ActualChat.Audio
 @inherits ComputedStateComponent<VoiceSettingsModal.ComputedModel>
 @{
     var m = State.Value;
-    var status = !m.CanChangeMustStreamVoice ? "Disabled for anonymous users" : "";
+    var voiceStatus = !m.CanChangeMustStreamVoice
+        ? "Disabled for anonymous users"
+        : m.MustStreamVoice
+            ? "On"
+            : "Off";
+
+    var defaultTurnOffPeriod = (int)Math.Floor(AudioSettings.IdleListeningTimeout.TotalMinutes);
+    var (listenStatus, listenPeriod) = m.ListeningMode switch {
+        ListeningMode.Default => ("Off", $"{defaultTurnOffPeriod} {"minute".Pluralize(defaultTurnOffPeriod)}"),
+        ListeningMode.TurnOffAfter15Minutes => ("On", "15 minutes"),
+        ListeningMode.TurnOffAfter2Hours => ("On", "2 hours"),
+        ListeningMode.KeepListening => ("On", "When running"),
+        _ => throw new ArgumentOutOfRangeException(nameof(ListeningMode)),
+    };
 }
 
 <DialogFrame Title="Voice settings" Class="transcription-options-modal modal-sm" HasCloseButton="true">
@@ -11,16 +25,26 @@
     <FormBlock>
         <LanguageButtonGroup ChatId="@ModalModel.ChatId" Click="@(() => Modal.Close())"/>
 
-        <OptionsItem Status="@status">
-            <Left><i class="icon-radio-button-on-fill text-2xl"></i></Left>
-            <Title>Voice streaming</Title>
+        <TileItem Click="OnVoiceStreamingClick">
+            <Icon><i class="icon-radio-button-on-fill text-2xl"></i></Icon>
+            <Content>Voice streaming</Content>
+            <Caption>@voiceStatus</Caption>
             <Right>
                 <Toggle
                     IsDisabled="@(!m.CanChangeMustStreamVoice)"
-                    IsChecked="@m.MustStreamVoice"
-                    IsCheckedChanged="OnMustStreamVoiceChanged"/>
+                    IsChecked="@m.MustStreamVoice" />
             </Right>
-        </OptionsItem>
+        </TileItem>
+
+        <TileItem Click="OnListenClick">
+            <Icon><i class="icon-listen text-2xl"></i></Icon>
+            <Content>Extended listening</Content>
+            <Caption>@listenStatus</Caption>
+            <Right>
+                <span class="text-primary text-sm">@listenPeriod</span>
+            </Right>
+        </TileItem>
+
     </FormBlock>
     </Body>
 </DialogFrame>
@@ -31,23 +55,27 @@
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
     private ChatId ChatId => ModalModel.ChatId;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private AudioSettings AudioSettings => Hub.AudioSettings;
     private ChatVoiceSettings ChatVoiceSettings => _chatVoiceSettings ??= new(Hub.Services, Hub.AccountSettings());
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
-
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
-            InitialValue = new (false, false),
+            InitialValue = new (false, false, ListeningMode.Default),
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var settings = await ChatVoiceSettings.Get(Session, ChatId, cancellationToken);
+        var chatInfo = await ChatUI.Get(ModalModel.ChatId, cancellationToken);
+
+        var listeningMode = chatInfo?.UserSettings.ListeningMode ?? ListeningMode.Default;
         var mustStreamVoice = settings.VoiceMode.HasVoice();
-        return new (mustStreamVoice, settings.CanChange);
+        return new (mustStreamVoice, settings.CanChange, listeningMode);
     }
 
     private async Task OnMustStreamVoiceChanged(bool mustStreamVoice) {
@@ -57,7 +85,13 @@
         await ChatVoiceSettings.Set(Session, ChatId, voiceMode);
     }
 
-    public sealed record ComputedModel(bool MustStreamVoice, bool CanChangeMustStreamVoice);
+    private Task OnVoiceStreamingClick()
+        => OnMustStreamVoiceChanged(!State.Value.MustStreamVoice);
+
+    private Task OnListenClick()
+        => Hub.ModalUI.Show(new ListeningSettingsModal.Model(ChatId));
+
+    public sealed record ComputedModel(bool MustStreamVoice, bool CanChangeMustStreamVoice, ListeningMode ListeningMode);
 
     public sealed record Model(ChatId ChatId);
 }

@@ -1,0 +1,86 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@implements IModalView<ListeningSettingsModal.Model>
+@using ActualChat.Kvas
+@using ActualChat.Audio
+@inherits ComputedStateComponent<ListeningSettingsModal.ComputedModel>
+@{
+    var m = State.Value;
+    var listeningMode = m.ListeningMode;
+    var defaultTimeout = (int)Math.Floor(AudioSettings.IdleListeningTimeout.TotalMinutes);
+}
+<DialogFrame Title="Listening settings" Class="transcription-options-modal modal-sm" HasCloseButton="false">
+    <Body>
+    <FormBlock>
+        <TileItem Click="() => UpdateListeningMode(ListeningMode.Default)">
+            <Content>Turn off after <b>@defaultTimeout minutes</b> of inactivity</Content>
+            <Right>
+                @if (listeningMode == ListeningMode.Default) {
+                    <i class="icon-checkmark-simple text-primary text-2xl"></i>
+                }
+            </Right>
+        </TileItem>
+        <TileItem Click="() => UpdateListeningMode(ListeningMode.TurnOffAfter15Minutes)">
+            <Content>Turn off after <b>15 minutes</b> of inactivity</Content>
+            <Right>
+                @if (listeningMode == ListeningMode.TurnOffAfter15Minutes) {
+                    <i class="icon-checkmark-simple text-primary text-2xl"></i>
+                }
+            </Right>
+        </TileItem>
+        <TileItem Click="() => UpdateListeningMode(ListeningMode.TurnOffAfter2Hours)">
+            <Content>Turn off after <b>2 hour</b> of inactivity</Content>
+            <Right>
+                @if (listeningMode == ListeningMode.TurnOffAfter2Hours) {
+                    <i class="icon-checkmark-simple text-primary text-2xl"></i>
+                }
+            </Right>
+        </TileItem>
+        <TileItem Click="() => UpdateListeningMode(ListeningMode.KeepListening)">
+            <Content><b>Keep listening</b> when app is running</Content>
+            <Right>
+                @if (listeningMode == ListeningMode.KeepListening) {
+                    <i class="icon-checkmark-simple text-primary text-2xl"></i>
+                }
+            </Right>
+        </TileItem>
+    </FormBlock>
+    </Body>
+</DialogFrame>
+
+@code {
+    [Inject] public ChatUIHub Hub { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private AudioSettings AudioSettings => Hub.AudioSettings;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private AccountSettings AccountSettings => Hub.AccountSettings();
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+            InitialValue = new (ListeningMode.Default),
+        };
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var chatInfo = await ChatUI.Get(ModalModel.ChatId, cancellationToken);
+
+        return new (chatInfo?.UserSettings.ListeningMode ?? ListeningMode.Default);
+    }
+
+    private async Task UpdateListeningMode(ListeningMode listeningMode) {
+
+        var chatId = ModalModel.ChatId;
+        var userChatSettings = await AccountSettings
+            .GetUserChatSettings(chatId, default);
+        userChatSettings = userChatSettings with { ListeningMode = listeningMode };
+        await AccountSettings.SetUserChatSettings(chatId, userChatSettings, default);
+
+        Modal.Close();
+    }
+
+    public sealed record ComputedModel(ListeningMode ListeningMode);
+
+    public sealed record Model(ChatId ChatId);
+}
