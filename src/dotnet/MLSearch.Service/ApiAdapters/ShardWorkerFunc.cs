@@ -1,6 +1,3 @@
-using ActualChat.Hosting;
-using ActualLab.Interception;
-using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.MLSearch.ApiAdapters;
 
@@ -15,27 +12,20 @@ namespace ActualChat.MLSearch.ApiAdapters;
 // - modify how this workers are getting registered:
 //   services.AddWorker<HostRole, TWorker / TShardWorker>
 // -
-//
-public static class ShardSchemeExplicit
-{
-    public static IServiceCollection AddShardScheme(
-        this IServiceCollection services,
-        Symbol shardingSchemeId
-    ) => services.AddKeyedSingleton(shardingSchemeId, ShardScheme.ById[shardingSchemeId]);
-}
 
-public class ShardWorkerFunc<TName>(
-    Symbol shardingSchemeId,
+internal class ShardWorkerFunc<TName>(
     IServiceProvider services,
+    ShardScheme shardScheme,
     Func<int, CancellationToken, Task> run
-): ShardWorkerFunc(shardingSchemeId, services, run);
+): ShardWorkerFunc(services, shardScheme, typeof(TName).Name, run);
 
-public class ShardWorkerFunc(
-    Symbol shardingSchemeId,
+internal class ShardWorkerFunc(
     IServiceProvider services,
+    ShardScheme shardScheme,
+    string shardKeySuffix,
     Func<int, CancellationToken, Task> run
 ) :
-    ShardWorker(services, services.GetRequiredKeyedService<ShardScheme>(shardingSchemeId))
+    ShardWorker(services, shardScheme, shardKeySuffix)
 {
     protected override Task OnRun(int shardIndex, CancellationToken cancellationToken)
         => run(shardIndex, cancellationToken);

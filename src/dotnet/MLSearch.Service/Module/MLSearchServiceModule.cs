@@ -96,18 +96,10 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             => services.CreateInstanceWith<ChatIndexerDispatcher>(ShardScheme.MLSearchBackend));
         services.AddSingleton<IChatIndexerWorkerFactory, ChatIndexerWorkerFactory>();
 
-        // TODO: remove workaround. Reason: NodesByRole.TryGetValue(shardScheme.Id, out var nodes)
-        Symbol ShardingSchemeId = HostRole.MLSearchBackend;
-        services.AddShardScheme(ShardingSchemeId);
-        services.AddKeyedSingleton<ShardWorkerFunc>(
-            "OpenSearch Chat Index",
-            (e, key) => new ShardWorkerFunc(
-                shardingSchemeId: ShardingSchemeId,
-                e,
-                e.GetRequiredService<IChatIndexerDispatcher>().ExecuteAsync
-            )
-        );
-        services.AddSingleton<IHostedService>(e=>e.GetRequiredKeyedService<ShardWorkerFunc>("OpenSearch Chat Index"));
+        var shardSchemeId = HostRole.MLSearchBackend.Id;
+        services.AddSingleton<IHostedService>(services
+            => new ShardWorkerFunc<IChatIndexerDispatcher>(
+                services, ShardScheme.ById[shardSchemeId], services.GetRequiredService<IChatIndexerDispatcher>().ExecuteAsync));
 
         // -- Register ML bot --
         fusion.AddService<IChatBotConversationTrigger, ChatBotConversationTrigger>();
@@ -125,14 +117,8 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 e.GetRequiredKeyedService<IDataIndexer<ChatId>>("Bot chat")
             )
         );
-        services.AddKeyedSingleton(
-            "Goo",
-            (e,k) => new ShardWorkerFunc(
-                shardingSchemeId: ShardingSchemeId,
-                e,
-                e.GetRequiredService<IChatBotWorker>().ExecuteAsync
-            )
-        );
-        services.AddSingleton<IHostedService>(e=>e.GetRequiredKeyedService<ShardWorkerFunc>("Goo"));
+        services.AddSingleton<IHostedService>(services
+            => new ShardWorkerFunc<IChatBotWorker>(
+                services, ShardScheme.ById[shardSchemeId], services.GetRequiredService<IChatBotWorker>().ExecuteAsync));
     }
 }
