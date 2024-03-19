@@ -3,13 +3,13 @@ using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.MLSearch.ApiAdapters.ShardWorker;
 
-internal static class ShardWorkerServicesExt
+internal static class WorkerServicesExt
 {
     public static IServiceCollection AddShardWorkerAdapter(this IServiceCollection services)
     {
         services.AddSingleton(typeof(IShardIndexResolver<>), typeof(ShardIndexResolver<>));
-        services.AddSingleton(typeof(IShardWorkerProcessFactory<,,,>), typeof(ShardWorkerProcessFactory<,,,>));
-        services.AddSingleton(typeof(IShardWorkerProcess<,,,>), typeof(ShardWorkerProcess<,,,>));
+        services.AddSingleton(typeof(IWorkerProcessFactory<,,,>), typeof(WorkerProcessFactory<,,,>));
+        services.AddSingleton(typeof(IWorkerProcess<,,,>), typeof(WorkerProcess<,,,>));
 
         return services;
     }
@@ -25,10 +25,10 @@ internal static class ShardWorkerServicesExt
         where TShardKey : notnull
     {
         services.AddSingleton(services
-            => services.CreateInstanceWith<ShardWorkerDispatcher<TService, TCommand, TJobId, TShardKey>>(
+            => services.CreateInstanceWith<WorkerDispatcher<TService, TCommand, TJobId, TShardKey>>(
                 ShardScheme.MLSearchBackend, duplicateJobPolicy))
-            .AddAlias<IShardWorkerDispatcher<TCommand>, ShardWorkerDispatcher<TService, TCommand, TJobId, TShardKey>>()
-            .AddAlias<IHostedService, ShardWorkerDispatcher<TService, TCommand, TJobId, TShardKey>>();
+            .AddAlias<IWorkerDispatcher<TCommand>, WorkerDispatcher<TService, TCommand, TJobId, TShardKey>>()
+            .AddAlias<IHostedService, WorkerDispatcher<TService, TCommand, TJobId, TShardKey>>();
 
         services.AddSingleton<TService, TImplementation>();
 

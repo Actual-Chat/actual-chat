@@ -1,24 +1,24 @@
 
 namespace ActualChat.MLSearch.ApiAdapters.ShardWorker;
 
-internal interface IShardWorkerDispatcher<TCommand>
+internal interface IWorkerDispatcher<TCommand>
 {
     ValueTask DispatchAsync(TCommand input, CancellationToken cancellationToken);
 }
 
-internal class ShardWorkerDispatcher<TWorker, TCommand, TJobId, TShardKey>(
+internal class WorkerDispatcher<TWorker, TCommand, TJobId, TShardKey>(
     IServiceProvider services,
     ShardScheme shardScheme,
     DuplicateJobPolicy duplicateJobPolicy,
     IShardIndexResolver<TShardKey> shardIndexResolver,
-    IShardWorkerProcessFactory<TWorker, TCommand, TJobId, TShardKey> workerFactory
-) : ActualChat.ShardWorker(services, shardScheme, typeof(TWorker).Name), IShardWorkerDispatcher<TCommand>
+    IWorkerProcessFactory<TWorker, TCommand, TJobId, TShardKey> workerFactory
+) : ActualChat.ShardWorker(services, shardScheme, typeof(TWorker).Name), IWorkerDispatcher<TCommand>
     where TWorker : class, IWorker<TCommand>
     where TCommand : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
     where TJobId : notnull
     where TShardKey : notnull
 {
-    private readonly ConcurrentDictionary<int, IShardWorkerProcess<TWorker, TCommand, TJobId, TShardKey>> _workerProcesses = new();
+    private readonly ConcurrentDictionary<int, IWorkerProcess<TWorker, TCommand, TJobId, TShardKey>> _workerProcesses = new();
 
     public async ValueTask DispatchAsync(TCommand input, CancellationToken cancellationToken)
     {
@@ -40,7 +40,7 @@ internal class ShardWorkerDispatcher<TWorker, TCommand, TJobId, TShardKey>(
         }
         finally {
             // Clean up dictionary of workers if it still contains worker being stopped
-            _workerProcesses.TryRemove(new KeyValuePair<int, IShardWorkerProcess<TWorker, TCommand, TJobId, TShardKey>>(shardIndex, workerProcess));
+            _workerProcesses.TryRemove(new KeyValuePair<int, IWorkerProcess<TWorker, TCommand, TJobId, TShardKey>>(shardIndex, workerProcess));
         }
     }
 }

@@ -1,7 +1,7 @@
 
 namespace ActualChat.MLSearch.ApiAdapters.ShardWorker;
 
-internal interface IShardWorkerProcess<TWorker, TCommand, TJobId, TShardKey>
+internal interface IWorkerProcess<TWorker, TCommand, TJobId, TShardKey>
     where TWorker : class, IWorker<TCommand>
     where TCommand : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
     where TJobId : notnull
@@ -11,12 +11,12 @@ internal interface IShardWorkerProcess<TWorker, TCommand, TJobId, TShardKey>
     Task RunAsync(CancellationToken cancellationToken);
 }
 
-internal class ShardWorkerProcess<TWorker, TCommand, TJobId, TShardKey>(
+internal class WorkerProcess<TWorker, TCommand, TJobId, TShardKey>(
     int shardIndex,
     DuplicateJobPolicy duplicateJobPolicy,
     TWorker worker,
     ILogger<TWorker> log
-) : IShardWorkerProcess<TWorker, TCommand, TJobId, TShardKey>
+) : IWorkerProcess<TWorker, TCommand, TJobId, TShardKey>
     where TWorker : class, IWorker<TCommand>
     where TCommand : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
     where TJobId : notnull
