@@ -8,4 +8,8 @@
     <PackageReference Include="NATS.Net" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Module\" />
+  </ItemGroup>
+
 </Project>

@@ -13,6 +13,7 @@ public abstract class ShardWorker : WorkerBase
     protected ShardScheme ShardScheme { get; }
     protected IMeshLocks ShardLocks { get; }
     protected ShardState[] ShardStates { get; }
+    protected string KeyPrefix { get; }
 
     public MeshNode ThisNode { get; }
     public MeshLockOptions LockOptions { get; init; }
@@ -20,20 +21,26 @@ public abstract class ShardWorker : WorkerBase
     public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.1, 5);
     public IMomentClock Clock => ShardLocks.Clock;
 
-    protected ShardWorker(IServiceProvider services, ShardScheme shardScheme, string? keySuffix = null)
+    protected ShardWorker(IServiceProvider services, ShardScheme shardScheme, string? keyPrefix = null)
     {
         Services = services;
         ShardScheme = shardScheme;
         MeshWatcher = services.MeshWatcher();
         ThisNode = MeshWatcher.MeshNode;
 
-        keySuffix ??= GetType().Name;
-        if (keySuffix.Length != 0)
-            keySuffix = "." + keySuffix;
-        var fullKeySuffix = $"{nameof(ShardLocks)}.{shardScheme.Id.Value}{keySuffix}";
-        ShardLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(fullKeySuffix);
+        KeyPrefix = keyPrefix ?? GetType().Name;
+        ShardLocks = GetMeshLocks(nameof(ShardLocks));
         LockOptions = ShardLocks.LockOptions;
         ShardStates = Enumerable.Range(0, shardScheme.ShardCount).Select(i => new ShardState(this, i)).ToArray();
+    }
+
+    protected IMeshLocks GetMeshLocks(string name)
+    {
+        var keyPrefix = KeyPrefix;
+        if (keyPrefix.Length != 0)
+            keyPrefix += ".";
+        var fullKeyPrefix = $"{keyPrefix}{name}.{ShardScheme.Id.Value}";
+        return Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(fullKeyPrefix);
     }
 
     protected abstract Task OnRun(int shardIndex, CancellationToken cancellationToken);

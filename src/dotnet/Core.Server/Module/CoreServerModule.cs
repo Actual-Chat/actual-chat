@@ -1,19 +1,12 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using System.Net;
 using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
-using ActualChat.Mesh;
 using ActualChat.AspNetCore;
-using ActualChat.Commands;
-using ActualChat.Rpc;
-using ActualLab.Fusion.Server;
-using ActualLab.Fusion.Server.Middlewares;
-using ActualLab.Fusion.Server.Rpc;
-using ActualLab.Rpc;
-using ActualLab.Rpc.Clients;
-using ActualLab.Rpc.Diagnostics;
+using ActualChat.Queues.Internal;
+using ActualChat.Queues.Nats;
 using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+using NATS.Client.Core;
+using NATS.Client.Hosting;
 
 namespace ActualChat.Module;
 
@@ -33,7 +26,36 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         if (!hostKind.IsServer())
             throw StandardError.Internal("This module can be used on server side only.");
 
+        // RPC
         services.AddRpcHost(HostInfo, Log);
+
+        // Command queues
+        services.AddSingleton(c => new EventHandlerRegistry(c));
+        var useInMemoryQueues = HostInfo.IsProductionInstance && HostInfo.HasRole(HostRole.OneServer);
+        if (useInMemoryQueues)
+            services.AddInMemoryQueues();
+        else {
+            var natsSettings = Cfg.GetSettings<NatsSettings>();
+            var natsTimeout = TimeSpan.FromSeconds(IsDevelopmentInstance ? 300 : 10);
+            services.AddNats(
+                poolSize: 1,
+                options => options with {
+                    Url = natsSettings.Url,
+                    TlsOpts = new NatsTlsOpts {
+                        Mode = TlsMode.Auto,
+                    },
+                    AuthOpts = natsSettings.Seed.IsNullOrEmpty() || natsSettings.NKey.IsNullOrEmpty()
+                        ? NatsAuthOpts.Default
+                        : new NatsAuthOpts {
+                            Seed = natsSettings.Seed,
+                            NKey = natsSettings.NKey,
+                        },
+                    CommandTimeout = natsTimeout,
+                    ConnectTimeout = natsTimeout,
+                    RequestTimeout = natsTimeout,
+                });
+            services.AddNatsQueues();
+        }
 
         // Controllers, etc.
         services.AddRouting();
@@ -54,6 +76,5 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         }
         else
             services.AddSingleton<IBlobStorages>(_ => new GoogleCloudBlobStorages(storageBucket));
-        services.AddSingleton<EventHandlerResolver>(c => new EventHandlerResolver(c));
     }
 }

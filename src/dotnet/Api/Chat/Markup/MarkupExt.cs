@@ -7,7 +7,6 @@ public static partial class MarkupExt
 {
     [GeneratedRegex(@"\s+")]
     private static partial Regex WhitespaceRegexFactory();
-
     private static readonly Regex WhitespaceRegex = WhitespaceRegexFactory();
 
     public static string ToReadableText(this Markup markup, MarkupConsumer consumer)

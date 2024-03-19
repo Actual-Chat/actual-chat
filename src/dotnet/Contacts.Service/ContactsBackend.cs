@@ -1,6 +1,5 @@
 using ActualChat.Chat;
 using ActualChat.Chat.Events;
-using ActualChat.Commands;
 using ActualChat.Contacts.Db;
 using ActualChat.Contacts.Module;
 using ActualChat.Db;

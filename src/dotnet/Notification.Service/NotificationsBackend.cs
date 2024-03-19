@@ -1,7 +1,7 @@
 using ActualChat.Chat;
 using ActualChat.Chat.Events;
 using ActualChat.Notification.Db;
-using ActualChat.Commands;
+using ActualChat.Queues;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;

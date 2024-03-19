@@ -11,27 +11,25 @@ public sealed class ShardScheme(Symbol id, int shardCount, HostRole hostRole) : 
 
     public static readonly ShardScheme None = new(nameof(None), 0, HostRole.None);
     public static readonly ShardScheme Undefined = new(nameof(Undefined), 0, HostRole.None);
-    public static readonly ShardScheme AnyServer = new(nameof(AnyServer), 10, HostRole.AnyServer); // Mostly for testing
-    public static readonly ShardScheme OneBackendServer = new(nameof(OneBackendServer), 10, HostRole.OneBackendServer); // encapsulates all backends
+    public static readonly ShardScheme EventQueue = new(nameof(EventQueue), 10, HostRole.EventQueue);
     public static readonly ShardScheme MediaBackend = new(nameof(MediaBackend), 10, HostRole.MediaBackend);
     public static readonly ShardScheme AudioBackend = new(nameof(AudioBackend), 10, HostRole.AudioBackend);
     public static readonly ShardScheme ChatBackend = new(nameof(ChatBackend), 30, HostRole.ChatBackend);
     public static readonly ShardScheme ContactsBackend = new(nameof(ContactsBackend), 10, HostRole.ContactsBackend);
+    public static readonly ShardScheme ContactIndexerBackend = new(nameof(ContactIndexerBackend), 1, HostRole.ContactIndexerBackend);
     public static readonly ShardScheme InviteBackend = new(nameof(InviteBackend), 1, HostRole.InviteBackend);
     public static readonly ShardScheme NotificationBackend = new(nameof(NotificationBackend), 10, HostRole.NotificationBackend);
     public static readonly ShardScheme SearchBackend = new(nameof(SearchBackend), 10, HostRole.SearchBackend);
     public static readonly ShardScheme TranscriptionBackend = new(nameof(TranscriptionBackend), 10, HostRole.TranscriptionBackend);
     public static readonly ShardScheme UsersBackend = new(nameof(UsersBackend), 10, HostRole.UsersBackend);
-    public static readonly ShardScheme ContactIndexingWorker = new(nameof(ContactIndexingWorker), 1, HostRole.ContactIndexingWorker);
-    public static readonly ShardScheme DefaultQueue = new(nameof(DefaultQueue), 1, HostRole.DefaultQueue);
-    public static readonly ShardScheme EventQueue = new(nameof(EventQueue), 1, HostRole.EventQueue);
+    public static readonly ShardScheme TestBackend = new(nameof(TestBackend), 10, HostRole.TestBackend); // Should be used only for testing
 
     // A reverse map of ShardScheme.Id to ShardScheme
     public static readonly IReadOnlyDictionary<Symbol, ShardScheme> ById = new Dictionary<Symbol, ShardScheme>() {
         { None.Id, None },
         // { Undefined.Id, Undefined }, // Shouldn't be listed here
-        { AnyServer.Id, AnyServer },
-        { OneBackendServer.Id, OneBackendServer },
+        // { AnyServer.Id, AnyServer }, // Shouldn't be listed here
+        { EventQueue.Id, EventQueue },
         { MediaBackend.Id, MediaBackend },
         { AudioBackend.Id, AudioBackend },
         { ChatBackend.Id, ChatBackend },
@@ -41,10 +39,8 @@ public sealed class ShardScheme(Symbol id, int shardCount, HostRole hostRole) : 
         { SearchBackend.Id, SearchBackend },
         { TranscriptionBackend.Id, TranscriptionBackend },
         { UsersBackend.Id, UsersBackend },
-        { ContactIndexingWorker.Id, ContactIndexingWorker },
-        // Queues
-        { DefaultQueue.Id, DefaultQueue },
-        { EventQueue.Id, EventQueue },
+        { ContactIndexerBackend.Id, ContactIndexerBackend },
+        { TestBackend.Id, TestBackend },
     };
 
     private string? _toString;
@@ -55,6 +51,7 @@ public sealed class ShardScheme(Symbol id, int shardCount, HostRole hostRole) : 
     public bool IsValid => ShardCount > 0;
     public bool IsNone => ReferenceEquals(this, None);
     public bool IsUndefined => ReferenceEquals(this, Undefined);
+    public bool IsQueue => Id.Value.OrdinalEndsWith("Queue");
 
     public IEnumerable<int> ShardIndexes { get; } = Enumerable.Range(0, shardCount);
 

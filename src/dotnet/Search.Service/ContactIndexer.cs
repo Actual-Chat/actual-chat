@@ -4,7 +4,7 @@ using ActualLab.Interception;
 namespace ActualChat.Search;
 
 public abstract class ContactIndexer(IServiceProvider services)
-    : ShardWorker(services, ShardScheme.ContactIndexingWorker), INotifyInitialized
+    : ShardWorker(services, ShardScheme.ContactIndexerBackend), INotifyInitialized
 {
     protected const int SyncBatchSize = 1000;
     private static readonly TimeSpan MaxIdleInterval = TimeSpan.FromMinutes(5);

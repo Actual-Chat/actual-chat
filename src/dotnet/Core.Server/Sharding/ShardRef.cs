@@ -1,3 +1,5 @@
+using Cysharp.Text;
+
 namespace ActualChat;
 
 [StructLayout(LayoutKind.Auto)]
@@ -33,8 +35,13 @@ public readonly struct ShardRef(ShardScheme scheme, int key)
         var shardScheme = Scheme;
         return shardScheme.IsNone
             ? $"{nameof(ShardRef)}.{nameof(None)}"
-            : $"{shardScheme.Id.Value}[{Key.Format()} % {shardScheme.ShardCount}]";
+            : $"{shardScheme.Id.Value}[{Key.Format()} -> {TryGetShardIndex()?.Format() ?? "na"}/{shardScheme.ShardCount}]";
     }
+
+    public string Format()
+        => IsValid
+            ? ZString.Concat(Scheme.Id.Value, "-S", GetShardIndex().Format())
+            : Scheme.Id.Value;
 
     // Helpers
 
@@ -54,6 +61,10 @@ public readonly struct ShardRef(ShardScheme scheme, int key)
             ? this
             : shardScheme.IsUndefined ? new(scheme, Key) : this;
     }
+
+    public ShardRef RequireValid()
+        => IsValid ? this
+            : throw new ArgumentOutOfRangeException(null, $"Invalid {nameof(ShardRef)}: {this}.");
 
     // Equality
 

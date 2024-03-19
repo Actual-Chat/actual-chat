@@ -16,27 +16,28 @@ public partial record struct HostRole(
     public static readonly HostRole AnyServer = nameof(AnyServer); // Any server has it
     public static readonly HostRole OneServer = nameof(OneServer); // + OneFrontendServer, OneBackendServer
     public static readonly HostRole OneApiServer = nameof(OneApiServer); // + Api
-    public static readonly HostRole OneBackendServer = nameof(OneBackendServer); // + MediaBackendServer, DefaultQueue
+    public static readonly HostRole OneBackendServer = nameof(OneBackendServer); // + XxxBackend, DefaultQueue
 
     // Actual front-end roles
     public static readonly HostRole Api = nameof(Api); // + BlazorHost
     public static readonly HostRole BlazorHost = nameof(BlazorHost); // Used on both sides (server & client)
 
     // Actual backend roles
+    public static readonly HostRole EventQueue = nameof(EventQueue);
     public static readonly HostRole AudioBackend = nameof(AudioBackend);
     public static readonly HostRole MediaBackend = nameof(MediaBackend);
     public static readonly HostRole ChatBackend = nameof(ChatBackend);
     public static readonly HostRole ContactsBackend = nameof(ContactsBackend);
+    public static readonly HostRole ContactIndexerBackend = nameof(ContactIndexerBackend);
     public static readonly HostRole InviteBackend = nameof(InviteBackend);
     public static readonly HostRole NotificationBackend = nameof(NotificationBackend);
     public static readonly HostRole SearchBackend = nameof(SearchBackend);
     public static readonly HostRole TranscriptionBackend = nameof(TranscriptionBackend);
     public static readonly HostRole UsersBackend = nameof(UsersBackend);
-    public static readonly HostRole ContactIndexingWorker = nameof(ContactIndexingWorker);
+    public static readonly HostRole TestBackend = nameof(TestBackend);
 
     // Queues
     public static readonly HostRole DefaultQueue = nameof(DefaultQueue);
-    public static readonly HostRole EventQueue = nameof(EventQueue);
 
     // The only role any app has
     public static readonly HostRole App = nameof(App); // Implies BlazorUI

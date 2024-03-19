@@ -13,8 +13,8 @@
     <PackageReference Include="Google.Cloud.Storage.V1" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" />
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
+    <PackageReference Include="NATS.Net" />
     <PackageReference Include="OpenGraph-Net" />
     <PackageReference Include="SixLabors.ImageSharp" />
-    <PackageReference Include="NATS.Net" />
   </ItemGroup>
 </Project>

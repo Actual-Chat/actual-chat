@@ -67,8 +67,13 @@ public readonly struct MeshRef : ICanBeNone<MeshRef>, IEquatable<MeshRef>
 
     public MeshRef Normalize()
         => ShardRef.IsNone ? this : ShardRef.Normalize();
+
     public MeshRef WithSchemeIfUndefined(ShardScheme scheme)
         => ShardRef.IsNone ? this : ShardRef.WithSchemeIfUndefined(scheme);
+
+    public MeshRef RequireValid()
+        => IsValid ? this
+            : throw new ArgumentOutOfRangeException(null, $"Invalid {nameof(MeshRef)}: {this}.");
 
     // Equality
 

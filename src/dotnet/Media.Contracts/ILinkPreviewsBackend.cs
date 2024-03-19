@@ -1,5 +1,4 @@
 using ActualChat.Chat.Events;
-using ActualChat.Commands;
 using ActualLab.Rpc;
 using MemoryPack;
 

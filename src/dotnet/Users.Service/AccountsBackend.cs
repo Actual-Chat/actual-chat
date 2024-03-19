@@ -1,6 +1,6 @@
 using System.Net.Mail;
 using ActualChat.Chat;
-using ActualChat.Commands;
+using ActualChat.Queues;
 using ActualChat.Users.Db;
 using ActualChat.Users.Events;
 using Microsoft.AspNetCore.Authentication.Google;

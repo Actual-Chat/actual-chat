@@ -2,7 +2,6 @@ using ActualChat.App.Server.Logging;
 using ActualChat.App.Server.Module;
 using ActualChat.Chat.Module;
 using ActualChat.Chat.UI.Blazor.Module;
-using ActualChat.Commands;
 using ActualChat.Contacts.Module;
 using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Db.Module;
@@ -11,7 +10,6 @@ using ActualChat.Invite.Module;
 using ActualChat.Kubernetes.Module;
 using ActualChat.Media.Module;
 using ActualChat.Module;
-using ActualChat.Nats.Module;
 using ActualChat.Notification.Module;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Redis.Module;
@@ -63,15 +61,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
         });
 
         var serverRole = HostRoles.Server.Parse(hostSettings.ServerRole);
-        var roles = HostRoles.Server.GetAllRoles(serverRole);
-        var commandQueueRoles = hostSettings.CommandQueueRoles
-            .Split(',')
-            .Select(sr => HostRoles.Queue.Parse(sr.Trim()))
-            .Where(hr => hr.IsQueue)
-            .ToHashSet();
-        var combinedRoles = roles
-            .Concat(commandQueueRoles)
-            .ToImmutableHashSet();
+        var roles = HostRoles.Server.GetAllRoles(serverRole, isTested);
 
         // HostInfo
         services.AddSingleton(c => {
@@ -89,7 +79,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 AppKind = AppKind.Unknown,
                 Environment = Env.EnvironmentName,
                 Configuration = Cfg,
-                Roles = combinedRoles,
+                Roles = roles,
                 IsTested = isTested,
                 BaseUrl = baseUrl,
             };
@@ -107,7 +97,6 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 new CoreServerModule(moduleServices),
                 new KubernetesModule(moduleServices),
                 new RedisModule(moduleServices),
-                new NatsModule(moduleServices),
                 new DbModule(moduleServices),
                 // API modules
                 new ApiModule(moduleServices),
@@ -131,9 +120,6 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 // This module should be the last one
                 new AppServerModule(moduleServices)
             ).Build(services);
-
-        // Default configuration for command/event queues
-        services.AddCommandQueues(roles);
     }
 
     public void Configure(IApplicationBuilder app)

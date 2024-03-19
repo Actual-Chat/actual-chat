@@ -1,7 +1,7 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Events;
-using ActualChat.Commands;
 using ActualChat.Db;
+using ActualChat.Queues;
 using ActualChat.Users;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;

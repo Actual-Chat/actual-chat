@@ -1,4 +1,3 @@
-using ActualChat.Commands;
 using MemoryPack;
 
 namespace ActualChat.Users.Events;

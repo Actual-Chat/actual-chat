@@ -1,6 +1,6 @@
 using MemoryPack;
 
-namespace ActualChat.Commands;
+namespace ActualChat;
 
 [DataContract]
 public abstract partial record EventCommand : IEventCommand

@@ -27,7 +27,7 @@ public class MeshRefTest(ITestOutputHelper @out) : TestBase(@out)
         r.Scheme.IsNone.Should().BeTrue();
         r.Scheme.IsUndefined.Should().BeFalse();
         r.Key.Should().Be(0);
-        r.WithSchemeIfUndefined(ShardScheme.AnyServer).IsNone.Should().BeTrue();
+        r.WithSchemeIfUndefined(ShardScheme.TestBackend).IsNone.Should().BeTrue();
         r.TryGetShardIndex().Should().BeNull();
         Assert.Throws<ArgumentOutOfRangeException>(() => r.GetShardIndex());
 
@@ -41,8 +41,8 @@ public class MeshRefTest(ITestOutputHelper @out) : TestBase(@out)
         r.Key.Should().Be(0);
         r.TryGetShardIndex().Should().BeNull();
 
-        r = r.WithSchemeIfUndefined(ShardScheme.AnyServer);
-        r.Should().Be(new ShardRef(ShardScheme.AnyServer, 0));
+        r = r.WithSchemeIfUndefined(ShardScheme.TestBackend);
+        r.Should().Be(new ShardRef(ShardScheme.TestBackend, 0));
 
         r = new ShardRef(1);
         r.Should().Be(new ShardRef(ShardScheme.Undefined, 1));
@@ -53,17 +53,17 @@ public class MeshRefTest(ITestOutputHelper @out) : TestBase(@out)
         r.Key.Should().Be(1);
         r.TryGetShardIndex().Should().BeNull();
 
-        r = r.WithSchemeIfUndefined(ShardScheme.AnyServer);
-        r.Should().Be(new ShardRef(ShardScheme.AnyServer, 1));
+        r = r.WithSchemeIfUndefined(ShardScheme.TestBackend);
+        r.Should().Be(new ShardRef(ShardScheme.TestBackend, 1));
         r.IsNone.Should().BeFalse();
         r.IsValid.Should().BeTrue();
         r.Scheme.IsUndefined.Should().BeFalse();
-        r.Scheme.Should().BeSameAs(ShardScheme.AnyServer);
+        r.Scheme.Should().BeSameAs(ShardScheme.TestBackend);
         r.Key.Should().Be(1);
         r.TryGetShardIndex().Should().Be(1);
         r.GetShardIndex().Should().Be(1);
 
-        r = new ShardRef(ShardScheme.AnyServer, ShardScheme.AnyServer.ShardCount + 1);
+        r = new ShardRef(ShardScheme.TestBackend, ShardScheme.TestBackend.ShardCount + 1);
         r.IsValid.Should().BeTrue();
         r.Key.Should().NotBe(1);
         r.TryGetShardIndex().Should().Be(1);
@@ -96,19 +96,19 @@ public class MeshRefTest(ITestOutputHelper @out) : TestBase(@out)
         r.ShardRef.TryGetShardIndex().Should().Be(null);
         Assert.Throws<ArgumentOutOfRangeException>(() => r.ShardRef.GetShardIndex().Should().Be(1));
 
-        r = r.WithSchemeIfUndefined(ShardScheme.AnyServer);
-        r.Should().Be(MeshRef.Shard(ShardScheme.AnyServer, 1));
+        r = r.WithSchemeIfUndefined(ShardScheme.TestBackend);
+        r.Should().Be(MeshRef.Shard(ShardScheme.TestBackend, 1));
         r.ShardRef.Scheme.IsUndefined.Should().BeFalse();
-        r.ShardRef.Scheme.Should().BeSameAs(ShardScheme.AnyServer);
+        r.ShardRef.Scheme.Should().BeSameAs(ShardScheme.TestBackend);
         r.ShardRef.Key.Should().Be(1);
         r.ShardRef.GetShardIndex().Should().Be(1);
 
-        r = MeshRef.Shard(ShardScheme.AnyServer, ShardScheme.AnyServer.ShardCount + 1);
+        r = MeshRef.Shard(ShardScheme.TestBackend, ShardScheme.TestBackend.ShardCount + 1);
         r.ShardRef.GetShardIndex().Should().Be(1);
         r.Normalize().ShardRef.Key.Should().Be(1);
         r = r.WithSchemeIfUndefined(ShardScheme.Undefined);
-        r.ShardRef.Scheme.Should().BeSameAs(ShardScheme.AnyServer);
-        r.ShardRef.Key.Should().Be(ShardScheme.AnyServer.ShardCount + 1);
+        r.ShardRef.Scheme.Should().BeSameAs(ShardScheme.TestBackend);
+        r.ShardRef.Key.Should().Be(ShardScheme.TestBackend.ShardCount + 1);
         r.ShardRef.TryGetShardIndex().Should().Be(1);
         r.ShardRef.GetShardIndex().Should().Be(1);
 

@@ -1,7 +1,7 @@
 using ActualChat.App.Server;
 using ActualChat.Blobs.Internal;
-using ActualChat.Commands;
-using ActualChat.Nats;
+using ActualChat.Queues;
+using ActualChat.Queues.Nats;
 using ActualChat.Search;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -35,11 +35,6 @@ public static class TestAppHostFactory
                 options.HostConfigurationExtender?.Invoke(cfg);
             },
             AppServicesBuilder = (host, services) => {
-                // register prefix for NATS queues
-                services.AddSingleton(new NatsCommandQueues.Options {
-                    CommonPrefix = instanceName,
-                });
-
                 options.AppServicesExtender?.Invoke(host, services);
 
                 // The code below runs after module service registration & everything else
@@ -49,6 +44,9 @@ public static class TestAppHostFactory
                 services.AddSingleton(options.ChatDbInitializerOptions);
                 services.AddSingleton<IBlobStorages, TempFolderBlobStorages>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
+                services.AddSingleton(new NatsQueues.Options {
+                    InstanceName = instanceName,
+                });
                 services.AddSingleton<ElasticNames>(_ => new ElasticNames {
                     IndexPrefix = UniqueNames.Elastic("test"),
                 });
@@ -70,7 +68,7 @@ public static class TestAppHostFactory
             await appHost.InvokeInitializers();
 
         // Cleanup existing queues
-        var queues = appHost.Services.GetRequiredService<ICommandQueues>();
+        var queues = appHost.Services.GetRequiredService<IQueues>();
         await queues.Purge(CancellationToken.None);
 
         if (options.MustStart)

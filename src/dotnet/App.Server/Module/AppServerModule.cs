@@ -1,14 +1,12 @@
 using System.IO.Compression;
 using ActualChat.App.Server.Health;
 using ActualChat.Chat.Module;
-using ActualChat.Commands;
 using ActualChat.Contacts.Module;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Module;
 using ActualChat.Media.Module;
 using ActualChat.Module;
-using ActualChat.Nats.Module;
 using ActualChat.Notification.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Search.Module;
@@ -152,10 +150,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<InfrastructureDbContext>(services);
-
-        // NATS
-        var natsModule = Host.GetModule<NatsModule>();
-        natsModule.AddNatsQueues(services);
 
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;
