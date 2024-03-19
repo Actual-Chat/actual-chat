@@ -28,7 +28,6 @@ public sealed class ShardScheme(Symbol id, int shardCount, HostRole hostRole) : 
     public static readonly IReadOnlyDictionary<Symbol, ShardScheme> ById = new Dictionary<Symbol, ShardScheme>() {
         { None.Id, None },
         // { Undefined.Id, Undefined }, // Shouldn't be listed here
-        // { AnyServer.Id, AnyServer }, // Shouldn't be listed here
         { EventQueue.Id, EventQueue },
         { MediaBackend.Id, MediaBackend },
         { AudioBackend.Id, AudioBackend },
