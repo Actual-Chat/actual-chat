@@ -337,6 +337,7 @@
     --selected: var(--blue-50-20);
     --hover: var(--blue-50-10);
     --separator: var(--gray-90);
+    --nav-separator: var(--gray-80);
     --placeholder: var(--text-04);
     --counter: var(--background-05);
     --rating: var(--warning);
@@ -527,6 +528,7 @@
     --selected: var(--white-10);
     --hover: var(--white-05);
     --separator: var(--ash-26);
+    --nav-separator: var(--ash-26);
     --placeholder: var(--gray-15);
     --counter: var(--background-05);
     --rating: var(--sienna-40);
@@ -719,6 +721,7 @@
     --selected: var(--blue-50-20);
     --hover: var(--blue-50-10);
     --separator: var(--ash-95);
+    --nav-separator: var(--ash-90);
     --placeholder: var(--ash-60);
     --counter: var(--background-05);
     --rating: var(--warning);
