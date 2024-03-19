@@ -9,13 +9,13 @@ namespace ActualChat.MLSearch.Indexing;
 // event handling while the event will be marked as complete.
 // This means: At most once logic.
 
-internal class ChatIndexTrigger(ICommander commander, IWorkerDispatcher<MLSearch_TriggerChatIndexing> dispatcher)
+internal class ChatIndexTrigger(ICommander commander, IWorkerPool<MLSearch_TriggerChatIndexing> workerPool)
     : IChatIndexTrigger, IComputeService
 {
     // ReSharper disable once UnusedMember.Global
     // [CommandHandler]
     public virtual async Task OnCommand(MLSearch_TriggerChatIndexing e, CancellationToken cancellationToken)
-        => await dispatcher.DispatchAsync(e, cancellationToken).ConfigureAwait(false);
+        => await workerPool.PostAsync(e, cancellationToken).ConfigureAwait(false);
 
     // ReSharper disable once UnusedMember.Global
     // [EventHandler]

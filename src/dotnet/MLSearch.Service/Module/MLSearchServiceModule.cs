@@ -89,14 +89,14 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
         services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
 
-        services.AddShardWorkerAdapter();
+        services.AddWorkerPoolDependencies();
 
         // Register chat indexer
         fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
 
         services.AddSingleton<IDataIndexer<ChatId>, ChatHistoryExtractor>();
-        services.AddShardWorker<IChatIndexerWorker, ChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>(
-            DuplicateJobPolicy.Drop, singleShardConcurrencyLevel: 10
+        services.AddWorkerPool<IChatIndexerWorker, ChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>(
+            DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
 
         // -- Register ML bot --
