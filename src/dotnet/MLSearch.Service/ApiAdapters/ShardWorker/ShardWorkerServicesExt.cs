@@ -25,10 +25,10 @@ internal static class ShardWorkerServicesExt
         where TShardKey : notnull
     {
         services.AddSingleton(services
-            => services.CreateInstanceWith<ShardCommandWorker<TService, TCommand, TJobId, TShardKey>>(
+            => services.CreateInstanceWith<ShardWorkerDispatcher<TService, TCommand, TJobId, TShardKey>>(
                 ShardScheme.MLSearchBackend, duplicateJobPolicy))
-            .AddAlias<IShardCommandDispatcher<TCommand>, ShardCommandWorker<TService, TCommand, TJobId, TShardKey>>()
-            .AddAlias<IHostedService, ShardCommandWorker<TService, TCommand, TJobId, TShardKey>>();
+            .AddAlias<IShardWorkerDispatcher<TCommand>, ShardWorkerDispatcher<TService, TCommand, TJobId, TShardKey>>()
+            .AddAlias<IHostedService, ShardWorkerDispatcher<TService, TCommand, TJobId, TShardKey>>();
 
         services.AddSingleton<TService, TImplementation>();
 
