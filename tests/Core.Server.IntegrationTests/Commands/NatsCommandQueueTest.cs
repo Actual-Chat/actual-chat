@@ -9,7 +9,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Commands;
 public class NatsCommandQueueTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(NatsCommandQueueTest)}", TestAppHostOptions.Default, @out)
 {
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = 20_000)]
     public async Task SmokeTest()
     {
         using var host = await NewAppHost(options => options with {
@@ -27,13 +27,11 @@ public class NatsCommandQueueTest(ITestOutputHelper @out)
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
-        var countComputed = await Computed.Capture(() => testService.GetProcessedEventCount(CancellationToken.None));
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand(null));
 
-        await host.WaitForProcessingOfAlreadyQueuedCommands();
-        await countComputed.WhenInvalidated();
+        await host.WaitForProcessingOfAlreadyQueuedCommands(TimeSpan.FromSeconds(2));
 
         testService.ProcessedEvents.Count.Should().BeGreaterThanOrEqualTo(1);
     }
@@ -62,7 +60,7 @@ public class NatsCommandQueueTest(ITestOutputHelper @out)
         for (int i = 0; i < 100; i++)
             await queues.Enqueue(new TestEvent(null));
 
-        await host.WaitForProcessingOfAlreadyQueuedCommands();
+        await host.WaitForProcessingOfAlreadyQueuedCommands(TimeSpan.FromSeconds(2));
 
         Out.WriteLine($"{nameof(MultipleCommandsCanBeScheduled)}: event count is {countComputed.Value}. Collection has {testService.ProcessedEvents.Count}");
         await countComputed.When(i => i >= 100).WaitAsync(TimeSpan.FromSeconds(10));

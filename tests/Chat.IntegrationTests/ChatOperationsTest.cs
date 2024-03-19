@@ -154,6 +154,9 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         // act
         var account = await tester.SignInAsNew("NotesTest");
+        account.Should().NotBeNull();
+
+        await Clocks.CoarseSystemClock.Delay(2000);
 
         // assert
         await TestExt.WhenMetAsync(async () => {
