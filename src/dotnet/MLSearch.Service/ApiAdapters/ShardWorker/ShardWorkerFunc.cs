@@ -36,8 +36,10 @@ internal class ShardCommandWorker<TWorker, TCommand, TJobId, TShardKey>(
     IShardIndexResolver<TShardKey> shardIndexResolver,
     IShardWorkerProcessFactory<TWorker, TCommand, TJobId, TShardKey> workerFactory
 ) : ActualChat.ShardWorker(services, shardScheme, typeof(TWorker).Name), IShardCommandDispatcher<TCommand>
-    where TCommand : IHasId<TJobId>, IHasShardKey<TShardKey>
-    where TWorker : IWorker<TCommand>
+    where TWorker : class, IWorker<TCommand>
+    where TCommand : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
+    where TJobId : notnull
+    where TShardKey : notnull
 {
     private readonly ConcurrentDictionary<int, IShardWorkerProcess<TWorker, TCommand, TJobId, TShardKey>> _workerProcesses = new();
 
@@ -67,13 +69,16 @@ internal class ShardCommandWorker<TWorker, TCommand, TJobId, TShardKey>(
 }
 
 internal interface IWorker<TCommand>
+    where TCommand: notnull
 {
     Task ExecuteAsync(TCommand input, CancellationToken cancellationToken);
 }
 
 internal interface IShardWorkerProcess<TWorker, TCommand, TJobId, TShardKey>
-    where TCommand : IHasId<TJobId>, IHasShardKey<TShardKey>
-    where TWorker : IWorker<TCommand>
+    where TWorker : class, IWorker<TCommand>
+    where TCommand : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
+    where TJobId : notnull
+    where TShardKey : notnull
 {
     ValueTask PostAsync(TCommand input, CancellationToken cancellationToken);
     Task RunAsync(CancellationToken cancellationToken);
@@ -85,8 +90,10 @@ internal class ShardWorkerProcess<TWorker, TCommand, TJobId, TShardKey>(
     TWorker worker,
     ILogger<TWorker> log
 ) : IShardWorkerProcess<TWorker, TCommand, TJobId, TShardKey>
-    where TCommand : IHasId<TJobId>, IHasShardKey<TShardKey>
-    where TWorker : IWorker<TCommand>
+    where TWorker : class, IWorker<TCommand>
+    where TCommand : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
+    where TJobId : notnull
+    where TShardKey : notnull
 {
     private record class Job(Task Completion, CancellationTokenSource Cancellation);
     private const int ChannelCapacity = 10;
@@ -183,25 +190,21 @@ internal class ShardWorkerProcess<TWorker, TCommand, TJobId, TShardKey>(
     }
 }
 
-
-internal enum DuplicateJobPolicy
-{
-    Drop,
-    Run,
-    Cancel,
-}
-
 internal interface IShardWorkerProcessFactory<TWorker, TCommand, TJobId, TShardKey>
-    where TCommand : IHasId<TJobId>, IHasShardKey<TShardKey>
-    where TWorker : IWorker<TCommand>
+    where TWorker : class, IWorker<TCommand>
+    where TCommand : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
+    where TJobId : notnull
+    where TShardKey : notnull
 {
     IShardWorkerProcess<TWorker, TCommand, TJobId, TShardKey> Create(int shardIndex, DuplicateJobPolicy duplicateJobPolicy);
 }
 
 internal class ShardWorkerProcessFactory<TWorker, TCommand, TJobId, TShardKey>(IServiceProvider services)
     : IShardWorkerProcessFactory<TWorker, TCommand, TJobId, TShardKey>
-    where TCommand : IHasId<TJobId>, IHasShardKey<TShardKey>
-    where TWorker : IWorker<TCommand>
+    where TWorker : class, IWorker<TCommand>
+    where TCommand : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
+    where TJobId : notnull
+    where TShardKey : notnull
 {
     private readonly ObjectFactory<ShardWorkerProcess<TWorker, TCommand, TJobId, TShardKey>> factoryMethod =
         ActivatorUtilities.CreateFactory<ShardWorkerProcess<TWorker, TCommand, TJobId, TShardKey>>([typeof(int), typeof(DuplicateJobPolicy)]);

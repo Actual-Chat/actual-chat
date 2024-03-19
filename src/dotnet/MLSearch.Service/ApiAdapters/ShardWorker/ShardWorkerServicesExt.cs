@@ -20,7 +20,9 @@ internal static class ShardWorkerServicesExt
     )
         where TService : class, IWorker<TCommand>
         where TImplementation : class, TService
-        where TCommand : IHasId<TJobId>, IHasShardKey<TShardKey>
+        where TCommand : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
+        where TJobId : notnull
+        where TShardKey : notnull
     {
         services.AddSingleton(services
             => services.CreateInstanceWith<ShardCommandWorker<TService, TCommand, TJobId, TShardKey>>(
