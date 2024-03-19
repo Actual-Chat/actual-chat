@@ -41,7 +41,7 @@
     @apply py-2;
 }
 .left-panel-buttons .c-delimiter {
-    @apply mx-1 w-10 md:w-12 border-t border-separator;
+    @apply mx-1 w-10 md:w-12 border-t border-nav-separator;
 }
 .navbar-button.c-logo-btn {
     @apply my-3 md:my-2;

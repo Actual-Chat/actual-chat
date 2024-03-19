@@ -93,6 +93,7 @@ module.exports = {
         'online': 'var(--online)',
         'away': 'var(--away)',
         'separator': 'var(--separator)',
+        'nav-separator': 'var(--nav-separator)',
         'placeholder': 'var(--placeholder)',
         'white': 'var(--white)',
         'black': 'var(--black)',
