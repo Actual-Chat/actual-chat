@@ -11,6 +11,7 @@
 <DialogFrame Title="Listening settings" Class="transcription-options-modal modal-sm" HasCloseButton="false">
     <Body>
     <FormBlock>
+        <Tile>
         <TileItem Click="() => UpdateListeningMode(ListeningMode.Default)">
             <Content>Turn off after <b>@defaultTimeout minutes</b> of inactivity</Content>
             <Right>
@@ -43,6 +44,7 @@
                 }
             </Right>
         </TileItem>
+        </Tile>
     </FormBlock>
     </Body>
 </DialogFrame>
