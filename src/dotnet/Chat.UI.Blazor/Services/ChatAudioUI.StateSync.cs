@@ -1,6 +1,8 @@
+using ActualChat.Contacts;
 using ActualChat.Streaming.UI.Blazor.Components;
 using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -12,6 +14,7 @@ public partial class ChatAudioUI
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var baseChains = new[] {
+            AsyncChain.From(InitializeListening),
             AsyncChain.From(InvalidateActiveChatDependencies),
             AsyncChain.From(InvalidateHistoricalPlaybackDependencies),
             AsyncChain.From(PushRecordingState),
@@ -34,6 +37,19 @@ public partial class ChatAudioUI
     }
 
     // Private methods
+    private async Task InitializeListening(CancellationToken cancellationToken)
+    {
+        await Hub.ChatUI.WhenLoaded.ConfigureAwait(false);
+        var contacts = await Hub.Contacts.ListContacts(Session, cancellationToken).ConfigureAwait(false);
+        foreach (var chatId in contacts.Select(contact => contact.ChatId)) {
+            var userChatSettings = await AccountSettings
+                .GetUserChatSettings(chatId, cancellationToken)
+                .ConfigureAwait(false);
+            var listeningMode = userChatSettings.ListeningMode;
+            if (listeningMode == ListeningMode.KeepListening)
+                await SetListeningState(chatId, true).ConfigureAwait(false);
+        }
+    }
 
     private async Task InvalidateActiveChatDependencies(CancellationToken cancellationToken)
     {
@@ -285,7 +301,19 @@ public partial class ChatAudioUI
             await stopTasks.Collect().ConfigureAwait(false);
 
             foreach (var chatId in toStart) {
-                var watcher = FuncWorker.Start(ct => StopListeningWhenIdle(chatId, options, ct), cancellationToken);
+                var userChatSettings = await AccountSettings
+                    .GetUserChatSettings(chatId, cancellationToken)
+                    .ConfigureAwait(false);
+                var chatOptions = options with {
+                    IdleTimeout = userChatSettings.ListeningMode switch {
+                        ListeningMode.Default => AudioSettings.IdleListeningTimeout,
+                        ListeningMode.TurnOffAfter15Minutes => TimeSpan.FromMinutes(15),
+                        ListeningMode.TurnOffAfter2Hours => TimeSpan.FromHours(2),
+                        ListeningMode.KeepListening => TimeSpan.MaxValue,
+                        _ => throw new ArgumentOutOfRangeException(nameof(ListeningMode)),
+                    },
+                };
+                var watcher = FuncWorker.Start(ct => StopListeningWhenIdle(chatId, chatOptions, ct), cancellationToken);
                 monitors.Add(chatId, watcher);
             }
         }

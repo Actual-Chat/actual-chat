@@ -1,4 +1,5 @@
 using ActualChat.Kvas;
+using ActualChat.Users;
 using ActualLab.Locking;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
@@ -47,24 +48,37 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
         => chatId.IsNone ? default
             : UpdateActiveChats(c => c.RemoveAll(chatId));
 
-    private ValueTask<ApiArray<ActiveChat>> FixStoredActiveChats(
+    private async ValueTask<ApiArray<ActiveChat>> FixStoredActiveChats(
         ApiArray<ActiveChat> activeChats,
         CancellationToken cancellationToken = default)
     {
         // Turn off stored recording on restoring state during app start
-        activeChats = activeChats
-            .Select(chat => {
+        activeChats = await activeChats
+            .Select(async chat => {
                 if (chat.IsRecording)
                     chat = chat with { IsRecording = false };
 
+                var userChatSettings = await AccountSettings
+                    .GetUserChatSettings(chat.ChatId, cancellationToken);
+                var listeningMode = userChatSettings.ListeningMode;
+                var continueListeningRecency = listeningMode switch {
+                    ListeningMode.Default => MaxContinueListeningRecency,
+                    ListeningMode.TurnOffAfter15Minutes => TimeSpan.FromMinutes(15),
+                    ListeningMode.TurnOffAfter2Hours => TimeSpan.FromHours(2),
+                    ListeningMode.KeepListening => TimeSpan.MaxValue,
+                    _ => throw new ArgumentOutOfRangeException(nameof(ListeningMode)),
+                };
                 var listeningRecency = Moment.Max(chat.Recency, chat.ListeningRecency);
-                if (chat.IsListening && CpuNow - listeningRecency > MaxContinueListeningRecency)
+                if (chat.IsListening && CpuNow - listeningRecency > continueListeningRecency)
                     chat = chat with { IsListening = false };
+                else if (listeningMode == ListeningMode.KeepListening)
+                    chat = chat with { IsListening = true };
 
                 return chat;
             })
+            .Collect()
             .ToApiArray();
-        return FixActiveChats(activeChats, cancellationToken);
+        return await FixActiveChats(activeChats, cancellationToken).ConfigureAwait(false);
     }
 
     private async ValueTask<ApiArray<ActiveChat>> FixActiveChats(
