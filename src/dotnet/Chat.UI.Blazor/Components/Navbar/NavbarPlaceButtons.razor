@@ -38,7 +38,7 @@
         <NavbarGroupSelectionButton
             @key="@place.Id"
             data-place-id="@place.Id"
-            CanMove="@true"
+            CanMove="@(!Hub.BrowserInfo.IsTouchCapable)"
             Title="@place.Title"
             Id="@place.Id.GetNavbarGroupId()"
             Tooltip="@place.Title">
