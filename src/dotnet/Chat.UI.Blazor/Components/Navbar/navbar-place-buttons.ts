@@ -16,7 +16,7 @@ export class NavbarPlaceButtons {
         this.list = list;
         this.blazorRef = blazorRef;
 
-        const options: Sortable.Options = DeviceInfo.isMobile
+        const options: Sortable.Options = DeviceInfo.isTouchCapable
             ? {
                 animation: 150,
                 delay: 500,
