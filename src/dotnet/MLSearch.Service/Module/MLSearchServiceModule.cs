@@ -96,7 +96,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         services.AddSingleton<IDataIndexer<ChatId>, ChatHistoryExtractor>();
         services.AddShardWorker<IChatIndexerWorker, ChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>(
-            DuplicateJobPolicy.Drop
+            DuplicateJobPolicy.Drop, singleShardConcurrencyLevel: 10
         );
 
         // -- Register ML bot --

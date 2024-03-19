@@ -16,7 +16,8 @@ internal static class WorkerServicesExt
 
     public static IServiceCollection AddShardWorker<TService, TImplementation, TCommand, TJobId, TShardKey>(
         this IServiceCollection services,
-        DuplicateJobPolicy duplicateJobPolicy
+        DuplicateJobPolicy duplicateJobPolicy,
+        int singleShardConcurrencyLevel
     )
         where TService : class, IWorker<TCommand>
         where TImplementation : class, TService
@@ -26,7 +27,7 @@ internal static class WorkerServicesExt
     {
         services.AddSingleton(services
             => services.CreateInstanceWith<WorkerDispatcher<TService, TCommand, TJobId, TShardKey>>(
-                ShardScheme.MLSearchBackend, duplicateJobPolicy))
+                duplicateJobPolicy, singleShardConcurrencyLevel))
             .AddAlias<IWorkerDispatcher<TCommand>, WorkerDispatcher<TService, TCommand, TJobId, TShardKey>>()
             .AddAlias<IHostedService, WorkerDispatcher<TService, TCommand, TJobId, TShardKey>>();
 

@@ -14,6 +14,7 @@ internal interface IWorkerProcess<TWorker, TCommand, TJobId, TShardKey>
 internal class WorkerProcess<TWorker, TCommand, TJobId, TShardKey>(
     int shardIndex,
     DuplicateJobPolicy duplicateJobPolicy,
+    int concurrencyLevel,
     TWorker worker,
     ILogger<TWorker> log
 ) : IWorkerProcess<TWorker, TCommand, TJobId, TShardKey>
@@ -23,16 +24,15 @@ internal class WorkerProcess<TWorker, TCommand, TJobId, TShardKey>(
     where TShardKey : notnull
 {
     private record class Job(Task Completion, CancellationTokenSource Cancellation);
-    private const int ChannelCapacity = 10;
 
     private readonly Channel<TCommand> _channel =
-        Channel.CreateBounded<TCommand>(new BoundedChannelOptions(ChannelCapacity) {
+        Channel.CreateBounded<TCommand>(new BoundedChannelOptions(concurrencyLevel) {
             FullMode = BoundedChannelFullMode.Wait,
             SingleReader = true,
             SingleWriter = false,
         });
-    private readonly ConcurrentDictionary<TJobId, Job?> _runningJobs = new(-1, ChannelCapacity);
-    private readonly SemaphoreSlim _semaphore = new(ChannelCapacity, ChannelCapacity);
+    private readonly ConcurrentDictionary<TJobId, Job?> _runningJobs = new(-1, concurrencyLevel);
+    private readonly SemaphoreSlim _semaphore = new(concurrencyLevel, concurrencyLevel);
 
     public int ShardIndex => shardIndex;
     public DuplicateJobPolicy DuplicateJobPolicy => duplicateJobPolicy;
@@ -65,7 +65,7 @@ internal class WorkerProcess<TWorker, TCommand, TJobId, TShardKey>(
                 throw;
             }
         }
-        var indexingTasks = new List<Task>(ChannelCapacity);
+        var indexingTasks = new List<Task>(concurrencyLevel);
         var jobs = _runningJobs.Values.Where(job => job is not null).Select(job => job!);
         foreach (var (completion, cancellation) in jobs) {
             cancellation.DisposeSilently();

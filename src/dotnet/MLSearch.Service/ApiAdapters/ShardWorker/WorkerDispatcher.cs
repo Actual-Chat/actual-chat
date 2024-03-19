@@ -8,11 +8,11 @@ internal interface IWorkerDispatcher<TCommand>
 
 internal class WorkerDispatcher<TWorker, TCommand, TJobId, TShardKey>(
     IServiceProvider services,
-    ShardScheme shardScheme,
     DuplicateJobPolicy duplicateJobPolicy,
+    int singleShardConcurrencyLevel,
     IShardIndexResolver<TShardKey> shardIndexResolver,
     IWorkerProcessFactory<TWorker, TCommand, TJobId, TShardKey> workerFactory
-) : ActualChat.ShardWorker(services, shardScheme, typeof(TWorker).Name), IWorkerDispatcher<TCommand>
+) : ActualChat.ShardWorker(services, ShardScheme.MLSearchBackend, typeof(TWorker).Name), IWorkerDispatcher<TCommand>
     where TWorker : class, IWorker<TCommand>
     where TCommand : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
     where TJobId : notnull
@@ -32,9 +32,9 @@ internal class WorkerDispatcher<TWorker, TCommand, TJobId, TShardKey>(
     protected async override Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {
         var workerProcess = _workerProcesses.AddOrUpdate(shardIndex,
-            (key, arg) => arg.Factory.Create(key, arg.DuplicateJobPolicy),
-            (key, _, arg) => arg.Factory.Create(key, arg.DuplicateJobPolicy),
-            (Factory: workerFactory, DuplicateJobPolicy: duplicateJobPolicy));
+            (key, arg) => arg.Factory.Create(key, arg.DuplicateJobPolicy, arg.ConcurrencyLevel),
+            (key, _, arg) => arg.Factory.Create(key, arg.DuplicateJobPolicy, arg.ConcurrencyLevel),
+            (Factory: workerFactory, DuplicateJobPolicy: duplicateJobPolicy, ConcurrencyLevel: singleShardConcurrencyLevel));
         try {
             await workerProcess.RunAsync(cancellationToken).ConfigureAwait(false);
         }
