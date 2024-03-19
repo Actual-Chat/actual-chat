@@ -4,6 +4,7 @@ using ActualChat.Chat.Events;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
+using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.MLSearch.Bot;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
@@ -92,14 +93,16 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
 
         services.AddSingleton(typeof(IShardIndexResolver<>), typeof(ShardIndexResolver<>));
-        services.AddSingleton<IChatIndexerDispatcher, ChatIndexerDispatcher>(static services
-            => services.CreateInstanceWith<ChatIndexerDispatcher>(ShardScheme.MLSearchBackend));
-        services.AddSingleton<IChatIndexerWorkerFactory, ChatIndexerWorkerFactory>();
+        services.AddSingleton(typeof(IShardWorkerProcessFactory<,,,>), typeof(ShardWorkerProcessFactory<,,,>));
+        services.AddSingleton(typeof(IShardWorkerProcess<,,,>), typeof(ShardWorkerProcess<,,,>));
 
-        var shardSchemeId = HostRole.MLSearchBackend.Id;
-        services.AddSingleton<IHostedService>(services
-            => new ShardWorkerFunc<IChatIndexerDispatcher>(
-                services, ShardScheme.ById[shardSchemeId], services.GetRequiredService<IChatIndexerDispatcher>().ExecuteAsync));
+        services.AddSingleton(services
+            => services.CreateInstanceWith<ShardCommandWorker<IChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>>(
+                ShardScheme.MLSearchBackend, DuplicateJobPolicy.Drop))
+            .AddAlias<IShardCommandDispatcher<MLSearch_TriggerChatIndexing>, ShardCommandWorker<IChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>>()
+            .AddAlias<IHostedService, ShardCommandWorker<IChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>>();
+
+        services.AddSingleton<IChatIndexerWorker, ChatIndexerWorker>();
 
         // -- Register ML bot --
         fusion.AddService<IChatBotConversationTrigger, ChatBotConversationTrigger>();
@@ -119,6 +122,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         );
         services.AddSingleton<IHostedService>(services
             => new ShardWorkerFunc<IChatBotWorker>(
-                services, ShardScheme.ById[shardSchemeId], services.GetRequiredService<IChatBotWorker>().ExecuteAsync));
+                services, ShardScheme.MLSearchBackend, services.GetRequiredService<IChatBotWorker>().ExecuteAsync));
     }
 }

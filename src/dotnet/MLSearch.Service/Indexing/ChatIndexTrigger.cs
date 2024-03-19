@@ -1,5 +1,6 @@
 
 using ActualChat.Chat.Events;
+using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 
 namespace ActualChat.MLSearch.Indexing;
 
@@ -8,7 +9,7 @@ namespace ActualChat.MLSearch.Indexing;
 // event handling while the event will be marked as complete.
 // This means: At most once logic.
 
-internal class ChatIndexTrigger(ICommander commander, IChatIndexerDispatcher dispatcher)
+internal class ChatIndexTrigger(ICommander commander, IShardCommandDispatcher<MLSearch_TriggerChatIndexing> dispatcher)
     : IChatIndexTrigger, IComputeService
 {
     // ReSharper disable once UnusedMember.Global
