@@ -64,9 +64,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         // Module's own services
         var fusion = services.AddFusion();
-        fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
-
-        services.AddSingleton<IDataIndexer<ChatId>, ChatHistoryExtractor>();
         services.AddSingleton<IResponseBuilder, ResponseBuilder>();
 
         var openSearchClusterUri = Settings.OpenSearchClusterUri
@@ -92,17 +89,15 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
         services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
 
-        services.AddSingleton(typeof(IShardIndexResolver<>), typeof(ShardIndexResolver<>));
-        services.AddSingleton(typeof(IShardWorkerProcessFactory<,,,>), typeof(ShardWorkerProcessFactory<,,,>));
-        services.AddSingleton(typeof(IShardWorkerProcess<,,,>), typeof(ShardWorkerProcess<,,,>));
+        services.AddShardWorkerAdapter();
 
-        services.AddSingleton(services
-            => services.CreateInstanceWith<ShardCommandWorker<IChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>>(
-                ShardScheme.MLSearchBackend, DuplicateJobPolicy.Drop))
-            .AddAlias<IShardCommandDispatcher<MLSearch_TriggerChatIndexing>, ShardCommandWorker<IChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>>()
-            .AddAlias<IHostedService, ShardCommandWorker<IChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>>();
+        // Register chat indexer
+        fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
 
-        services.AddSingleton<IChatIndexerWorker, ChatIndexerWorker>();
+        services.AddSingleton<IDataIndexer<ChatId>, ChatHistoryExtractor>();
+        services.AddShardWorker<IChatIndexerWorker, ChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>(
+            DuplicateJobPolicy.Drop
+        );
 
         // -- Register ML bot --
         fusion.AddService<IChatBotConversationTrigger, ChatBotConversationTrigger>();

@@ -1,4 +1,4 @@
-namespace ActualChat.MLSearch.Module;
+namespace ActualChat.MLSearch.ApiAdapters;
 
 internal static class ServiceProviderExtensions
 {
