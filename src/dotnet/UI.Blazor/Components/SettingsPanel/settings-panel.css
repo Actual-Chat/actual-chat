@@ -134,9 +134,6 @@ body.hoverable .tile:hover {
 .tile-item.unselected:not(.tile-item.first-tile-item) .tile-item-icon {
     @apply -ml-2;
 }
-.tile-item.first-tile-item {
-    @apply h-14;
-}
 .first-tile-item .tile-item-icon {
     @apply justify-start;
 }
