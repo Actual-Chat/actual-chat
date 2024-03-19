@@ -92,4 +92,13 @@ public static class ArrayExt
 
     public static void Deconstruct<T>(this T[] array, out T? first, out T? second, out T? third, out T? fourth, out T? fifth, out T[] rest)
         => (first, second, third, fourth, (fifth, rest)) = array;
+
+    public static ApiArray<T> ToApiArray<T>(this T[] array)
+        => new (array);
+
+    public static async Task<ApiArray<T>> ToApiArray<T>(this Task<T[]> arrayTask)
+    {
+        var array = await arrayTask.ConfigureAwait(false);
+        return new ApiArray<T>(array);
+    }
 }
