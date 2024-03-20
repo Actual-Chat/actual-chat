@@ -13,22 +13,22 @@ internal static class WorkerPoolServicesExt
         return services;
     }
 
-    public static IServiceCollection AddWorkerPool<TService, TImplementation, TCommand, TJobId, TShardKey>(
+    public static IServiceCollection AddWorkerPool<TService, TImplementation, TJob, TJobId, TShardKey>(
         this IServiceCollection services,
         DuplicateJobPolicy duplicateJobPolicy,
         int shardConcurrencyLevel
     )
-        where TService : class, IWorker<TCommand>
+        where TService : class, IWorker<TJob>
         where TImplementation : class, TService
-        where TCommand : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
+        where TJob : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
         where TJobId : notnull
         where TShardKey : notnull
     {
         services.AddSingleton(services
-            => services.CreateInstanceWith<WorkerPool<TService, TCommand, TJobId, TShardKey>>(
+            => services.CreateInstanceWith<WorkerPool<TService, TJob, TJobId, TShardKey>>(
                 duplicateJobPolicy, shardConcurrencyLevel))
-            .AddAlias<IWorkerPool<TCommand>, WorkerPool<TService, TCommand, TJobId, TShardKey>>()
-            .AddAlias<IHostedService, WorkerPool<TService, TCommand, TJobId, TShardKey>>();
+            .AddAlias<IWorkerPool<TJob, TJobId, TShardKey>, WorkerPool<TService, TJob, TJobId, TShardKey>>()
+            .AddAlias<IHostedService, WorkerPool<TService, TJob, TJobId, TShardKey>>();
 
         services.AddSingleton<TService, TImplementation>();
 

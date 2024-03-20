@@ -8,6 +8,7 @@ internal interface IWorkerPoolShard<TWorker, TJob, TJobId, TShardKey>
     where TShardKey : notnull
 {
     ValueTask PostAsync(TJob job, CancellationToken cancellationToken);
+    ValueTask CancelAsync(TJobId jobId, CancellationToken cancellationToken);
     Task UseAsync(CancellationToken cancellationToken);
 }
 
@@ -23,16 +24,24 @@ internal class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
     where TJobId : notnull
     where TShardKey : notnull
 {
-    private record class RunningJob(Task Completion, CancellationTokenSource Cancellation);
+    private record RunningJob(Task CompletionTask, CancellationTokenSource Cancellation, Task? CancellationTask = null);
 
-    private readonly Channel<TJob> _jobBuffer =
-        Channel.CreateBounded<TJob>(new BoundedChannelOptions(concurrencyLevel) {
+    private record Assignment {
+        private Assignment() { }
+
+        public record RunJob(TJob Job) : Assignment();
+        public record CancelJob(TJobId JobId) : Assignment();
+    }
+
+    private readonly Channel<Assignment> _assignments =
+        Channel.CreateBounded<Assignment>(new BoundedChannelOptions(concurrencyLevel+1) {
             FullMode = BoundedChannelFullMode.Wait,
             SingleReader = true,
             SingleWriter = false,
         });
     private readonly ConcurrentDictionary<TJobId, RunningJob?> _runningJobs = new(-1, concurrencyLevel);
     private readonly SemaphoreSlim _semaphore = new(concurrencyLevel, concurrencyLevel);
+    private readonly SemaphoreSlim _cancellatonSemaphore = new(1, 1);
 
     public int ShardIndex => shardIndex;
     public DuplicateJobPolicy DuplicateJobPolicy => duplicateJobPolicy;
@@ -40,24 +49,46 @@ internal class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
     public async ValueTask PostAsync(TJob job, CancellationToken cancellationToken)
     {
         await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-        await _jobBuffer.Writer.WriteAsync(job, cancellationToken).ConfigureAwait(false);
+        await _assignments.Writer.WriteAsync(new Assignment.RunJob(job), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async ValueTask CancelAsync(TJobId jobId, CancellationToken cancellationToken)
+    {
+        await _cancellatonSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _assignments.Writer.WriteAsync(new Assignment.CancelJob(jobId), cancellationToken).ConfigureAwait(false);
     }
 
     public async Task UseAsync(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested) {
             try {
-                var job = await _jobBuffer.Reader
+                var assignment = await _assignments.Reader
                     .ReadAsync(cancellationToken)
                     .ConfigureAwait(false);
-                if (_runningJobs.TryAdd(job.Id, null)) {
-                    var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                    _runningJobs[job.Id] = new(
-                        RunJobAsync(job, cancellation.Token),
-                        cancellation);
-                }
-                else {
-                    _semaphore.Release();
+                switch (assignment) {
+                    case Assignment.RunJob(var job):
+                        if (_runningJobs.TryAdd(job.Id, null)) {
+                            var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                            _runningJobs[job.Id] = new(
+                                RunJobAsync(job, cancellation.Token),
+                                cancellation);
+                        }
+                        else {
+                            _semaphore.Release();
+                        }
+                        break;
+                    case Assignment.CancelJob(var jobId):
+                        if (_runningJobs.TryGetValue(jobId, out var runningJob)) {
+                            // runningJob can't be null here because if it is in the dictionary
+                            // then previous iteration of the outer cycle is completely done
+                            if (runningJob!.CancellationTask is null) {
+                                _runningJobs[jobId] = runningJob with {
+                                    CancellationTask = runningJob.Cancellation.CancelAsync()
+                                };
+                            }
+                        }
+                        _cancellatonSemaphore.Release();
+                        break;
                 }
             }
             catch (Exception e){
@@ -67,9 +98,9 @@ internal class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
         }
         var completions = new List<Task>(concurrencyLevel);
         var jobs = _runningJobs.Values.Where(job => job is not null).Select(job => job!);
-        foreach (var (completion, cancellation) in jobs) {
+        foreach (var (completionTask, cancellation, _) in jobs) {
             cancellation.DisposeSilently();
-            completions.Add(completion);
+            completions.Add(completionTask);
         }
         using var delayCancellation = new CancellationTokenSource();
         var delayTask = Task.Delay(TimeSpan.FromSeconds(10), delayCancellation.Token);

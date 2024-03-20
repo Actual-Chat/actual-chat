@@ -1,9 +1,14 @@
 
 namespace ActualChat.MLSearch.ApiAdapters.ShardWorker;
 
-internal interface IWorkerPool<TJob>
+internal interface IWorkerPool<TJob, TJobId, TShardKey>
+    where TJob : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
+    where TJobId : notnull
+    where TShardKey : notnull
 {
     ValueTask PostAsync(TJob job, CancellationToken cancellationToken);
+    ValueTask CancelAsync<TCancellation>(TCancellation jobCancellation, CancellationToken cancellationToken)
+        where TCancellation : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>;
 }
 
 /// <summary>
@@ -16,7 +21,7 @@ internal class WorkerPool<TWorker, TJob, TJobId, TShardKey>(
     int shardConcurrencyLevel,
     IShardIndexResolver<TShardKey> shardIndexResolver,
     IWorkerPoolShardFactory<TWorker, TJob, TJobId, TShardKey> workerPoolFactory
-) : ActualChat.ShardWorker(services, ShardScheme.MLSearchBackend, typeof(TWorker).Name), IWorkerPool<TJob>
+) : ActualChat.ShardWorker(services, ShardScheme.MLSearchBackend, typeof(TWorker).Name), IWorkerPool<TJob, TJobId, TShardKey>
     where TWorker : class, IWorker<TJob>
     where TJob : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
     where TJobId : notnull
@@ -26,13 +31,17 @@ internal class WorkerPool<TWorker, TJob, TJobId, TShardKey>(
 
     public async ValueTask PostAsync(TJob job, CancellationToken cancellationToken)
     {
-        var shardIndex = shardIndexResolver.Resolve(job, ShardScheme);
-        if (!_workerPoolShards.TryGetValue(shardIndex, out var poolShard)) {
-            throw StandardError.NotFound<TWorker>(
-                $"Shard #{shardIndex.Format()} of {nameof(TWorker)} pool is not found.");
-        }
+        var poolShard = GetShard(job);
         await poolShard.PostAsync(job, cancellationToken).ConfigureAwait(false);
     }
+
+    public async ValueTask CancelAsync<TCancellation>(TCancellation jobCancellation, CancellationToken cancellationToken)
+        where TCancellation : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
+    {
+        var poolShard = GetShard(jobCancellation);
+        await poolShard.CancelAsync(jobCancellation.Id, cancellationToken).ConfigureAwait(false);
+    }
+
     protected async override Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {
         var poolShard = _workerPoolShards.AddOrUpdate(shardIndex,
@@ -46,5 +55,17 @@ internal class WorkerPool<TWorker, TJob, TJobId, TShardKey>(
             // Clean up dictionary of worker pools if it still contains the pool being stopped
             _workerPoolShards.TryRemove(new KeyValuePair<int, IWorkerPoolShard<TWorker, TJob, TJobId, TShardKey>>(shardIndex, poolShard));
         }
+    }
+
+    private IWorkerPoolShard<TWorker, TJob, TJobId, TShardKey> GetShard<TItem>(TItem item)
+        where TItem : IHasShardKey<TShardKey>
+    {
+        var shardIndex = shardIndexResolver.Resolve(item, ShardScheme);
+        if (!_workerPoolShards.TryGetValue(shardIndex, out var poolShard)) {
+            throw StandardError.NotFound<TWorker>(
+                $"Shard #{shardIndex.Format()} of {nameof(TWorker)} pool is not found.");
+        }
+
+        return poolShard;
     }
 }
