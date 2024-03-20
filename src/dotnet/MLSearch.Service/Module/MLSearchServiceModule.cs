@@ -16,7 +16,6 @@ using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using OpenSearch.Client;
 using OpenSearch.Net;
@@ -100,19 +99,20 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         );
 
         // -- Register ML bot --
+        const string ConversationBotServiceGroup = "ML Chat Bot";
         fusion.AddService<IChatBotConversationTrigger, ChatBotConversationTrigger>();
 
-        services.AddKeyedSingleton<IBotConversationHandler, SampleChatBot>("Sample Chat Bot");
+        services.AddKeyedSingleton<IBotConversationHandler, SampleChatBot>(ConversationBotServiceGroup);
         services.AddKeyedSingleton(
             typeof(IDataIndexer<ChatId>),
-            "Bot chat",
+            ConversationBotServiceGroup,
             (e, _key) => e.CreateInstanceWith<ChatHistoryExtractor>(
-                e.GetRequiredKeyedService<IBotConversationHandler>("Sample Chat Bot")
+                e.GetRequiredKeyedService<IBotConversationHandler>(ConversationBotServiceGroup)
             )
         );
         services.AddSingleton<IChatBotWorker>(e=>
             e.CreateInstanceWith<ChatBotWorker>(
-                e.GetRequiredKeyedService<IDataIndexer<ChatId>>("Bot chat")
+                e.GetRequiredKeyedService<IDataIndexer<ChatId>>(ConversationBotServiceGroup)
             )
         );
         services.AddSingleton<IHostedService>(services
