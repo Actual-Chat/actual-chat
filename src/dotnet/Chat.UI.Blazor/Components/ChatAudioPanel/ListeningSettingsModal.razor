@@ -78,6 +78,8 @@
             .GetUserChatSettings(chatId, default);
         userChatSettings = userChatSettings with { ListeningMode = listeningMode };
         await AccountSettings.SetUserChatSettings(chatId, userChatSettings, default);
+        if (listeningMode == ListeningMode.KeepListening)
+            await Hub.ChatAudioUI.SetListeningState(chatId, true);
 
         Modal.Close();
     }
