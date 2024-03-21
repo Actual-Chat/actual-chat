@@ -32,6 +32,7 @@ internal class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
         public record CancelJob(TJobId JobId) : Assignment;
     }
 
+    private readonly string jobName = worker.GetType().Name;
     private readonly Channel<Assignment> _assignments =
         Channel.CreateBounded<Assignment>(new BoundedChannelOptions(concurrencyLevel+1) {
             FullMode = BoundedChannelFullMode.Wait,
@@ -65,18 +66,29 @@ internal class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
                     .ReadAsync(cancellationToken)
                     .ConfigureAwait(false);
                 switch (assignment) {
-                    case Assignment.RunJob(var job):
-                        if (_runningJobs.TryAdd(job.Id, null)) {
+                    case Assignment.RunJob(var job): {
+                        if (duplicateJobPolicy==DuplicateJobPolicy.Drop) {
+                            if (_runningJobs.TryAdd(job.Id, null)) {
+                                var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                                _runningJobs[job.Id] = new RunningJob(
+                                    RunJobAsync(job, cancellation.Token),
+                                    cancellation);
+                            }
+                            else {
+                                _semaphore.Release();
+                            }
+                        }
+                        if (duplicateJobPolicy==DuplicateJobPolicy.Cancel) {
                             var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                            _runningJobs[job.Id] = new RunningJob(
-                                RunJobAsync(job, cancellation.Token),
-                                cancellation);
+                            var completionTask = _runningJobs.TryRemove(job.Id, out var runningJob)
+                                ? CancelAndRunJobAsync(job, runningJob!, cancellation.Token)
+                                : RunJobAsync(job, cancellation.Token);
+
+                            _runningJobs[job.Id] = new RunningJob(completionTask, cancellation);
                         }
-                        else {
-                            _semaphore.Release();
-                        }
-                        break;
-                    case Assignment.CancelJob(var jobId):
+                    }
+                    break;
+                    case Assignment.CancelJob(var jobId): {
                         if (_runningJobs.TryGetValue(jobId, out var runningJob)) {
                             // runningJob can't be null here because if it is in the dictionary
                             // then previous iteration of the outer cycle is completely done
@@ -87,7 +99,8 @@ internal class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
                             }
                         }
                         _cancellationSemaphore.Release();
-                        break;
+                    }
+                    break;
                 }
             }
             catch (Exception e){
@@ -108,6 +121,24 @@ internal class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
         }
     }
 
+    private async Task CancelAndRunJobAsync(TJob job, RunningJob runningJob, CancellationToken cancellationToken)
+    {
+        await Task.Yield();
+        try {
+            var cancellationSource = runningJob.Cancellation;
+            if (!cancellationSource.IsCancellationRequested && !cancellationSource.IsDisposed()) {
+                await runningJob.Cancellation.CancelAsync().ConfigureAwait(false);
+            }
+        }
+        catch (Exception e) {
+            log.LogError(e, "Unexpected error on cancelling {JobType} #{JobId} at shard #{ShardIndex}.",
+                jobName, job.Id, shardIndex);
+        }
+        finally {
+            await RunJobAsync(job, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     private async Task RunJobAsync(TJob job, CancellationToken cancellationToken)
     {
         await Task.Yield();
@@ -122,11 +153,12 @@ internal class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
         // It might have some other concurrent worker has updated
         // a cursor. TLDR: prevent stale cursor data.
 
-        var jobName = worker.GetType().Name;
-        log.LogInformation("Starting job {JobType} #{JobId} at shard #{ShardIndex}.",
-            jobName, job.Id, shardIndex);
         try {
+            log.LogInformation("Starting job {JobType} #{JobId} at shard #{ShardIndex}.",
+                jobName, job.Id, shardIndex);
+
             await worker.ExecuteAsync(job, cancellationToken).ConfigureAwait(false);
+
             log.LogInformation("Job {JobType} #{JobId} at shard #{ShardIndex} is completed.",
                 jobName, job.Id, shardIndex);
         }
