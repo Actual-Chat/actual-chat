@@ -40,6 +40,8 @@
     <!-- RCS1090: Call 'ConfigureAwait(false)' -->
     <!-- VSTHRD002: .Wait() deadlock -->
     <NoWarn>$(NoWarn);RCS1090;VSTHRD002</NoWarn>
+    <!-- xUnit1041: Fixture argument 'log' does not  have a fixture source -->
+    <NoWarn>$(NoWarn);xUnit1041</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
