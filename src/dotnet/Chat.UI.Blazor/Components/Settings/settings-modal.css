@@ -1,4 +1,7 @@
-﻿.settings-tab .app-settings .tile-item {
+﻿body.hoverable .settings-modal .btn.btn-x .btn-content {
+    @apply bg-02;
+}
+.settings-tab .app-settings .tile-item {
     @apply h-auto;
 }
 .settings-tab .app-settings .tile-item-body {

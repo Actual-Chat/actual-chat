@@ -109,6 +109,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 }
 .layout-header > .c-content {
     @apply ordinary-header;
+    @apply gap-x-2;
     @apply justify-items-stretch;
     @apply border-b border-separator;
 }

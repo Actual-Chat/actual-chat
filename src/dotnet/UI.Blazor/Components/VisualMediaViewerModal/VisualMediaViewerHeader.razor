@@ -10,7 +10,7 @@
 
 <div class="image-viewer-header">
     @if (ChatEntry != null && _author != null) {
-        <HeaderButton Class="inverted mobile" Click="CloseClick">
+        <HeaderButton Class="mobile bleached" Click="CloseClick">
             <i class="icon-close"></i>
         </HeaderButton>
         <div class="c-author">
@@ -25,26 +25,26 @@
     }
     <div class="c-control-panel">
         @if (_enableIncompleteUI) {
-            <HeaderButton Class="inverted">
+            <HeaderButton Class="bleached">
                 <i class="icon-share"></i>
             </HeaderButton>
         }
         @if (!DownloadUrl.IsNullOrEmpty()) {
             if (Saver != null && canSave) {
                 <a href="#" download class="c-link" @onclick="@(_ => Saver.Save(DownloadUrl, ContentType))" @onclick:preventDefault>
-                    <HeaderButton Class="inverted">
+                    <HeaderButton Class="bleached">
                         <i class="icon-download"></i>
                     </HeaderButton>
                 </a>
             } else {
                 <a href="@DownloadUrl" target="_blank" download class="c-link">
-                    <HeaderButton Class="inverted">
+                    <HeaderButton Class="bleached">
                         <i class="icon-download"></i>
                     </HeaderButton>
                 </a>
             }
         }
-        <HeaderButton Class="inverted desktop" Click="CloseClick">
+        <HeaderButton Class="desktop bleached" Click="CloseClick">
             <i class="icon-close"></i>
         </HeaderButton>
     </div>

@@ -15,7 +15,7 @@
     var showQuit = HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows;
 }
 
-<ModalFrame>
+<ModalFrame Class="settings-modal">
     <ButtonX Click="OnCloseClick"/>
     <SettingsPanel Title="Settings" CloseModalClick="OnCloseClick">
         @if (showMyAccount) {
