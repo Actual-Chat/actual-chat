@@ -4,6 +4,7 @@ using ActualChat.Chat.Events;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
+using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.MLSearch.Bot;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
@@ -15,7 +16,6 @@ using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using OpenSearch.Client;
 using OpenSearch.Net;
@@ -63,9 +63,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         // Module's own services
         var fusion = services.AddFusion();
-        fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
-
-        services.AddSingleton<IDataIndexer<ChatId>, ChatHistoryExtractor>();
         services.AddSingleton<IResponseBuilder, ResponseBuilder>();
 
         var openSearchClusterUri = Settings.OpenSearchClusterUri
@@ -85,52 +82,47 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // ChatSlice engine registrations
         services.AddSingleton<ISearchEngine<ChatSlice>>(static services
             => services.CreateInstanceWith<OpenSearchEngine<ChatSlice>>(IndexNames.ChatSlice));
+
+        services.AddWorkerPoolDependencies();
+
+        // -- Register chat indexer --
+        const string IndexServiceGroup = "OpenSearch Chat Index";
+        fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
+
+        services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
         services.AddSingleton<ICursorStates<ChatHistoryExtractor.Cursor>>(static services
             => services.CreateInstanceWith<CursorStates<ChatHistoryExtractor.Cursor>>(IndexNames.ChatSliceCursor));
         services.AddSingleton<ISink<ChatEntry, ChatEntry>>(static services
             => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
-        services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
-        services.AddSingleton<IChatIndexerWorker, ChatIndexerWorker>();
 
-        // TODO: remove workaround. Reason: NodesByRole.TryGetValue(shardScheme.Id, out var nodes)
-        const string IndexServiceGroup = "OpenSearch Chat Index";
-        Symbol ShardingSchemeId = HostRole.MLSearchIndexing;
-        services.AddShardScheme(ShardingSchemeId, HostRole.MLSearchIndexing, shardCount: 12);
-        services.AddKeyedSingleton<ShardWorkerFunc>(
-            IndexServiceGroup,
-            (e, key) => new ShardWorkerFunc(
-                shardingSchemeId: ShardingSchemeId,
-                e,
-                e.GetRequiredService<IChatIndexerWorker>().ExecuteAsync
+        services.AddKeyedSingleton<IDataIndexer<ChatId>, ChatHistoryExtractor>(IndexServiceGroup);
+        services.AddSingleton<IChatIndexerWorker>(static services
+            => services.CreateInstanceWith<ChatIndexerWorker>(
+                services.GetRequiredKeyedService<IDataIndexer<ChatId>>(IndexServiceGroup)
             )
         );
-        services.AddSingleton<IHostedService>(e=>e.GetRequiredKeyedService<ShardWorkerFunc>(IndexServiceGroup));
-        
+        services.AddWorkerPool<IChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>(
+            DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
+        );
+
         // -- Register ML bot --
         const string ConversationBotServiceGroup = "ML Chat Bot";
         fusion.AddService<IChatBotConversationTrigger, ChatBotConversationTrigger>();
 
         services.AddKeyedSingleton<IBotConversationHandler, SampleChatBot>(ConversationBotServiceGroup);
-        services.AddKeyedSingleton(
-            typeof(IDataIndexer<ChatId>), 
-            ConversationBotServiceGroup, 
-            (e, _key) => e.CreateInstanceWith<ChatHistoryExtractor>(
-                e.GetRequiredKeyedService<IBotConversationHandler>(ConversationBotServiceGroup)
-            )
-        );
-        services.AddSingleton<IChatBotWorker>(e=>
-            e.CreateInstanceWith<ChatBotWorker>(
-                e.GetRequiredKeyedService<IDataIndexer<ChatId>>(ConversationBotServiceGroup)
-            )
-        );
-        services.AddKeyedSingleton(
+        services.AddKeyedSingleton<IDataIndexer<ChatId>>(
             ConversationBotServiceGroup,
-            (e,k) => new ShardWorkerFunc(
-                shardingSchemeId: ShardingSchemeId,
-                e,
-                e.GetRequiredService<IChatBotWorker>().ExecuteAsync
+            static (services, serviceKey) => services.CreateInstanceWith<ChatHistoryExtractor>(
+                services.GetRequiredKeyedService<IBotConversationHandler>(serviceKey)
             )
         );
-        services.AddSingleton<IHostedService>(e=>e.GetRequiredKeyedService<ShardWorkerFunc>(ConversationBotServiceGroup));
+        services.AddSingleton<IChatBotWorker>(static services
+            => services.CreateInstanceWith<ChatBotWorker>(
+                services.GetRequiredKeyedService<IDataIndexer<ChatId>>(ConversationBotServiceGroup)
+            )
+        );
+        services.AddWorkerPool<IChatBotWorker, MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId>(
+            DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
+        );
     }
 }

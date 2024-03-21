@@ -13,7 +13,7 @@ namespace ActualChat.MLSearch;
 // ReSharper disable once InconsistentNaming
 public sealed partial record MLSearch_TriggerContinueConversationWithBot (
     [property: DataMember, MemoryPackOrder(0)] ChatId Id
-) : IBackendCommand, IHasShardKey<ChatId>, ICommand<Unit>
+) : IBackendCommand, IHasId<ChatId>, IHasShardKey<ChatId>, ICommand<Unit>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => Id;
