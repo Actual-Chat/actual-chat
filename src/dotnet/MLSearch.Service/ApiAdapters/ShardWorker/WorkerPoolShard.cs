@@ -1,9 +1,8 @@
 
 namespace ActualChat.MLSearch.ApiAdapters.ShardWorker;
 
-internal interface IWorkerPoolShard<TWorker, TJob, TJobId, TShardKey>
-    where TWorker : class, IWorker<TJob>
-    where TJob : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
+internal interface IWorkerPoolShard<in TJob, in TJobId, in TShardKey>
+    where TJob : IHasId<TJobId>, IHasShardKey<TShardKey>
     where TJobId : notnull
     where TShardKey : notnull
 {
@@ -18,9 +17,9 @@ internal class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
     int concurrencyLevel,
     TWorker worker,
     ILogger<TWorker> log
-) : IWorkerPoolShard<TWorker, TJob, TJobId, TShardKey>
+) : IWorkerPoolShard<TJob, TJobId, TShardKey>
     where TWorker : class, IWorker<TJob>
-    where TJob : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
+    where TJob : IHasId<TJobId>, IHasShardKey<TShardKey>
     where TJobId : notnull
     where TShardKey : notnull
 {
@@ -29,8 +28,8 @@ internal class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
     private record Assignment {
         private Assignment() { }
 
-        public record RunJob(TJob Job) : Assignment();
-        public record CancelJob(TJobId JobId) : Assignment();
+        public record RunJob(TJob Job) : Assignment;
+        public record CancelJob(TJobId JobId) : Assignment;
     }
 
     private readonly Channel<Assignment> _assignments =
@@ -41,7 +40,7 @@ internal class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
         });
     private readonly ConcurrentDictionary<TJobId, RunningJob?> _runningJobs = new(-1, concurrencyLevel);
     private readonly SemaphoreSlim _semaphore = new(concurrencyLevel, concurrencyLevel);
-    private readonly SemaphoreSlim _cancellatonSemaphore = new(1, 1);
+    private readonly SemaphoreSlim _cancellationSemaphore = new(1, 1);
 
     public int ShardIndex => shardIndex;
     public DuplicateJobPolicy DuplicateJobPolicy => duplicateJobPolicy;
@@ -54,7 +53,7 @@ internal class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
 
     public async ValueTask CancelAsync(TJobId jobId, CancellationToken cancellationToken)
     {
-        await _cancellatonSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _cancellationSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         await _assignments.Writer.WriteAsync(new Assignment.CancelJob(jobId), cancellationToken).ConfigureAwait(false);
     }
 
@@ -69,7 +68,7 @@ internal class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
                     case Assignment.RunJob(var job):
                         if (_runningJobs.TryAdd(job.Id, null)) {
                             var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                            _runningJobs[job.Id] = new(
+                            _runningJobs[job.Id] = new RunningJob(
                                 RunJobAsync(job, cancellation.Token),
                                 cancellation);
                         }
@@ -87,7 +86,7 @@ internal class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
                                 };
                             }
                         }
-                        _cancellatonSemaphore.Release();
+                        _cancellationSemaphore.Release();
                         break;
                 }
             }

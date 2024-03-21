@@ -1,26 +1,29 @@
 
 namespace ActualChat.MLSearch.ApiAdapters.ShardWorker;
 
-internal interface IWorkerPoolShardFactory<TWorker, TCommand, TJobId, TShardKey>
-    where TWorker : class, IWorker<TCommand>
-    where TCommand : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
+// ReSharper disable once UnusedTypeParameter
+internal interface IWorkerPoolShardFactory<TWorker, in TJob, in TJobId, in TShardKey>
+    where TWorker : class, IWorker<TJob>
+    where TJob : IHasId<TJobId>, IHasShardKey<TShardKey>
     where TJobId : notnull
     where TShardKey : notnull
 {
-    IWorkerPoolShard<TWorker, TCommand, TJobId, TShardKey> Create(int shardIndex, DuplicateJobPolicy duplicateJobPolicy, int concurrencyLevel);
+    IWorkerPoolShard<TJob, TJobId, TShardKey> Create(int shardIndex, DuplicateJobPolicy duplicateJobPolicy, int concurrencyLevel);
 }
 
-internal class WorkerPoolShardFactory<TWorker, TCommand, TJobId, TShardKey>(IServiceProvider services)
-    : IWorkerPoolShardFactory<TWorker, TCommand, TJobId, TShardKey>
-    where TWorker : class, IWorker<TCommand>
-    where TCommand : notnull, IHasId<TJobId>, IHasShardKey<TShardKey>
+internal class WorkerPoolShardFactory<TWorker, TJob, TJobId, TShardKey>(IServiceProvider services)
+    : IWorkerPoolShardFactory<TWorker, TJob, TJobId, TShardKey>
+    where TWorker : class, IWorker<TJob>
+    where TJob : IHasId<TJobId>, IHasShardKey<TShardKey>
     where TJobId : notnull
     where TShardKey : notnull
 {
-    private readonly ObjectFactory<WorkerPoolShard<TWorker, TCommand, TJobId, TShardKey>> factoryMethod =
-        ActivatorUtilities.CreateFactory<WorkerPoolShard<TWorker, TCommand, TJobId, TShardKey>>([typeof(int), typeof(DuplicateJobPolicy), typeof(int)]);
+    private readonly ObjectFactory<WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>> _factoryMethod =
+        ActivatorUtilities.CreateFactory<WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>>(
+            [typeof(int), typeof(DuplicateJobPolicy), typeof(int)]
+        );
 
-    public IWorkerPoolShard<TWorker, TCommand, TJobId, TShardKey> Create(
+    public IWorkerPoolShard<TJob, TJobId, TShardKey> Create(
         int shardIndex, DuplicateJobPolicy duplicateJobPolicy, int concurrencyLevel)
-        => factoryMethod(services, [shardIndex, duplicateJobPolicy, concurrencyLevel]);
+        => _factoryMethod(services, [shardIndex, duplicateJobPolicy, concurrencyLevel]);
 }

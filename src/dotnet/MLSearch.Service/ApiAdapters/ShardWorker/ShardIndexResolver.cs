@@ -1,6 +1,6 @@
-namespace ActualChat.MLSearch.ApiAdapters;
+namespace ActualChat.MLSearch.ApiAdapters.ShardWorker;
 
-internal interface IShardIndexResolver<TShardKey>
+internal interface IShardIndexResolver<in TShardKey>
 {
     int Resolve<TItem>(TItem item, ShardScheme shardScheme) where TItem: IHasShardKey<TShardKey>;
 }
