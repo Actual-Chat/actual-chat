@@ -1,4 +1,3 @@
-using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using OpenSearch.Client;
@@ -9,15 +8,12 @@ internal class OpenSearchEngine<TDocument>(
     string docIndexName,
     IOpenSearchClient openSearch,
     IIndexSettingsSource indexSettingsSource,
-    ILoggerSource loggerSource)
+    ILogger<OpenSearchEngine<TDocument>> log)
     : ISearchEngine<TDocument>
     where TDocument : class, IHasDocId
 {
     private IndexSettings? _indexSettings;
     private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings(docIndexName);
-    private ILogger? _log;
-    private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
-
     public async Task<SearchResult<TDocument>> Find(SearchQuery query, CancellationToken cancellationToken)
     {
         var queryBuilder = new OpenSearchQueryBuilder(IndexSettings);
@@ -26,7 +22,7 @@ internal class OpenSearchEngine<TDocument>(
         // TODO: Make this serialization optional
         var json = await searchRequest.ToJsonAsync(openSearch, cancellationToken).ConfigureAwait(false);
 
-        Log.LogInformation(json);
+        log.LogInformation(json);
 
         var response = await openSearch.SearchAsync<TDocument>(searchRequest, cancellationToken).ConfigureAwait(false);
 

@@ -1,4 +1,3 @@
-using ActualChat.MLSearch.ApiAdapters;
 using OpenSearch.Client;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
@@ -26,14 +25,11 @@ internal class Sink<TSource, TDocument>(
     IOpenSearchClient client,
     IIndexSettingsSource indexSettingsSource,
     IDocumentMapper<TSource, TDocument> mapper,
-    ILoggerSource loggerSource
+    ILogger<Sink<TSource, TDocument>> log
 ) : ISink<TSource, TSource> where TDocument: class, IHasDocId
 {
     private IndexSettings? _indexSettings;
     private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings(docIndexName);
-
-    private ILogger? _log;
-    private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
 
     private IOpenSearchClient OpenSearch => client;
 
@@ -58,7 +54,7 @@ internal class Sink<TSource, TDocument>(
                     .DeleteMany(deletes, (op, _) => op.Index(IndexSettings.IndexName)),
                 cancellationToken
             ).ConfigureAwait(false);
-        Log.LogErrors(result);
+        log.LogErrors(result);
         result.AssertSuccess();
     }
 }

@@ -16,7 +16,6 @@ using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
-using Microsoft.Extensions.Hosting;
 using OpenSearch.Client;
 using OpenSearch.Net;
 
@@ -33,7 +32,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         }
 
         // Api Adapters
-        services.AddSingleton<ILoggerSource, LoggerSource>();
         services.AddSingleton<ITracerSource, TracerSource>();
 
         // Redis
