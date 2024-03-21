@@ -48,5 +48,5 @@ public interface IChatIndexTrigger
     Task OnCommand(MLSearch_TriggerChatIndexing e, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task OnCommand(MLSearch_CancelChatIndexing e, CancellationToken cancellationToken);
+    Task OnCancelCommand(MLSearch_CancelChatIndexing e, CancellationToken cancellationToken);
 }
