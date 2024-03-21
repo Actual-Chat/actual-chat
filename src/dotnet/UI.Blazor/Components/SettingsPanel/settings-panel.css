@@ -84,7 +84,7 @@ body.hoverable .settings-panel > .c-tabs .c-tab-item:hover i {
 .settings-tab {
     @apply flex-1 flex-x overflow-y-auto;
     @apply pb-4;
-    @apply bg-03 md:bg-02;
+    @apply bg-02 md:bg-01;
     @apply custom-scrollbar;
 }
 .tab-inner {
@@ -184,7 +184,6 @@ body.hoverable .tile-btn:hover {
 }
 .settings-tab-content {
     @apply flex-y gap-y-4;
-    @apply w-full md:w-88;
     @apply w-full md:w-88;
     @apply p-2 md:p-0;
 }
