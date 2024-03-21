@@ -75,11 +75,8 @@ public sealed class RealtimeChatPlayer : ChatPlayer
             if (playAt >= entry.BeginsAt + Constants.Chat.MaxEntryDuration) // no EndsAt for streaming entries
                 continue;
 
-            if (entry.BeginsAt - lastEntryBeginsAt > Hub.AudioSettings.IdleListeningNewMessageTrigger) {
+            if (entry.BeginsAt - lastEntryBeginsAt > Hub.AudioSettings.IdleListeningNewMessageTrigger)
                 await Hub.TuneUI.PlayAndWait(Tune.NotifyOnNewAudioMessageAfterDelay).ConfigureAwait(false);
-                // small delay after tune
-                await Clocks.CoarseSystemClock.Delay(500, cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
 
             var skipTo = (playAt - entry.BeginsAt).Positive();
             DebugLog?.LogDebug("Play: enqueuing #{EntryId} @ {SkipTo}", entry.Id, skipTo.ToShortString());
