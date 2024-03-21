@@ -9,6 +9,7 @@
     if (_isAnonymous && _form.Picture is null) {
         noPictureRenderFragment = @<AvatarCircle Size="SquareSize.Size24" Avatar="_avatar"></AvatarCircle>;
     }
+    var additionalAttributes = new Dictionary<string, object> { { "maxLength", 160 } };
 }
 
 <Form @ref="_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
@@ -36,7 +37,7 @@
             </FormSection>
 
             <FormSection For="() => _form.Bio" InputId="@_form.BioFieldId" Label="Bio" IsLabelInsideInput="true">
-                <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId" ClearButton="true"/>
+                <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId" ClearButton="true" AdditionalAttributes="@additionalAttributes"/>
             </FormSection>
         </FormBlock>
 

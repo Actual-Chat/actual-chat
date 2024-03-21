@@ -21,7 +21,9 @@
     }
     <div class="chat-header-center" @onclick="@OnToggleRightPanelClick">
         @if (!ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
-            <ChatIcon Chat="@chat"/>
+            @if (!ReferenceEquals(chat, SpecialChat.Unavailable)) {
+                <ChatIcon Chat="@chat"/>
+            }
             <div class="chat-header-title">
                 <div class="c-title">@chat.Title</div>
                 <StatusBadge ChatContext="@ChatContext" Colorful="@false"/>
