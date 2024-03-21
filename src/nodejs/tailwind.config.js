@@ -93,6 +93,7 @@ module.exports = {
         'online': 'var(--online)',
         'away': 'var(--away)',
         'separator': 'var(--separator)',
+        'nav-separator': 'var(--nav-separator)',
         'placeholder': 'var(--placeholder)',
         'white': 'var(--white)',
         'black': 'var(--black)',
@@ -742,6 +743,7 @@ module.exports = {
       'caption-3': ['0.85rem', { lineHeight: '0.875rem', fontWeight: '500' }],
       'caption-4': ['0.875rem', { lineHeight: '1rem', fontWeight: '400' }],
       'caption-6': ['0.75rem', { lineHeight: '0.875rem', fontWeight: '500' }],
+      'caption-7': ['0.85rem', { lineHeight: '0.875rem', fontWeight: '600' }],
     },
     fontWeight: {
       thin: '100',

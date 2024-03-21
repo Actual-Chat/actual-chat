@@ -9,17 +9,6 @@ public static class ChatOperations
     private const string DefaultChatTitle = "test chat";
     private const string DefaultPlaceTitle = "test place";
 
-    public static Task<AccountFull> SignInAsAlice(this IWebTester tester)
-        => tester.SignIn(new User("", "Alice"));
-
-    public static Task<AccountFull> SignInAsBob(this IWebTester tester, string identity = "")
-    {
-        var user = new User("", "Bob");
-        if (!identity.IsNullOrEmpty())
-            user = user.WithIdentity(identity);
-        return tester.SignIn(user);
-    }
-
     public static Task<(ChatId, Symbol)> CreateChat(
         this IWebTester tester,
         bool isPublicChat,

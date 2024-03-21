@@ -3,7 +3,6 @@ using ActualChat.Blobs.Internal;
 using ActualChat.Commands;
 using ActualChat.Nats;
 using ActualChat.Search;
-using ActualLab.Generators;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
@@ -50,11 +49,8 @@ public static class TestAppHostFactory
                 services.AddSingleton(options.ChatDbInitializerOptions);
                 services.AddSingleton<IBlobStorages, TempFolderBlobStorages>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
-                services.AddSingleton<ElasticNames>(_ => {
-                    var rsg = new RandomStringGenerator(6, RandomStringGenerator.Base32Alphabet);
-                    return new () {
-                        IndexPrefix = "test-" + rsg.Next(6).ToLowerInvariant() + "-",
-                    };
+                services.AddSingleton<ElasticNames>(_ => new ElasticNames {
+                    IndexPrefix = UniqueNames.Elastic("test"),
                 });
             },
             AppConfigurationBuilder = cfg => {
@@ -63,9 +59,6 @@ public static class TestAppHostFactory
             },
         };
         appHost.Build();
-        // Cleanup existing queues
-        var queues = appHost.Services.GetRequiredService<ICommandQueues>();
-        await queues.Purge(CancellationToken.None);
 
         if (Constants.DebugMode.Npgsql)
             Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(), true);
@@ -75,8 +68,14 @@ public static class TestAppHostFactory
             // TODO: Improve initializers init code.
             // Issue: Not granular or too specific.
             await appHost.InvokeInitializers();
+
+        // Cleanup existing queues
+        var queues = appHost.Services.GetRequiredService<ICommandQueues>();
+        await queues.Purge(CancellationToken.None);
+
         if (options.MustStart)
             await appHost.Start();
+
         return appHost;
     }
 

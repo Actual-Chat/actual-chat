@@ -6,6 +6,8 @@ namespace ActualChat.Streaming;
 
 public class StreamClient(IServiceProvider services) : IStreamClient
 {
+    private static readonly int StreamBufferSize = 64;
+
     private ILogger? _log;
     private ILogger? _audioSourceLog;
     private IStreamServer? _streamServer;
@@ -23,7 +25,9 @@ public class StreamClient(IServiceProvider services) : IStreamClient
         Log.LogDebug("GetAudio({StreamId}, SkipTo = {SkipTo})", streamId.Value, skipTo.ToShortString());
         var rpcStream = await StreamServer.GetAudio(streamId, skipTo, cancellationToken).ConfigureAwait(false);
         var stream = rpcStream?.AsAsyncEnumerable() ?? AsyncEnumerable.Empty<byte[]>();
-        var (headerDataTask, dataStream) = stream.SplitHead(cancellationToken);
+        var (headerDataTask, dataStream) = stream
+            .WithBuffer(StreamBufferSize, cancellationToken)
+            .SplitHead(cancellationToken);
         var frameStream = dataStream
             .Select((data, i) => new AudioFrame {
                 Data = data,

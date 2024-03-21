@@ -1,5 +1,8 @@
 using ActualChat.Commands;
 using ActualChat.Hosting;
+using NATS.Client.Core;
+using NATS.Client.JetStream;
+using NATS.Client.JetStream.Models;
 
 namespace ActualChat.Nats;
 
@@ -15,6 +18,10 @@ public class NatsCommandQueues(NatsCommandQueues.Options settings, IServiceProvi
         public int MaxTryCount { get; set; } = 2;
     }
 
+    private readonly object _lock = new ();
+    private NatsConnection? _nats;
+    protected NatsConnection Nats => _nats ??= GetConnection();
+
     public IServiceProvider Services { get; } = services;
     public IMomentClock Clock { get; } = services.Clocks().SystemClock;
     public Options Settings { get; } = settings;
@@ -26,11 +33,19 @@ public class NatsCommandQueues(NatsCommandQueues.Options settings, IServiceProvi
 
     public async Task Purge(CancellationToken cancellationToken)
     {
-        foreach (var queue in _queues.Values)
-            await queue.Purge(cancellationToken).ConfigureAwait(false);
+        var js = new NatsJSContext(Nats);
+        await foreach (var jsStream in js.ListStreamsAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
+            await jsStream.PurgeAsync(new StreamPurgeRequest(), cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
+
+    private NatsConnection GetConnection()
+    {
+        lock (_lock)
+            return _nats = Services.GetRequiredService<NatsConnection>();
+    }
+
 
     private NatsCommandQueue Get(QueueId queueId)
         => _queues.GetOrAdd(

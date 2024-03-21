@@ -20,6 +20,7 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
 {
     private WebClientTester _tester = null!;
     private ISearchBackend _searchBackend = null!;
+    private ChatContactIndexer _chatContactIndexer = null!;
 
     protected override async Task InitializeAsync()
     {
@@ -27,6 +28,7 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
         Tracer.Default = Out.NewTracer();
         _tester = AppHost.NewWebClientTester(Out);
         _searchBackend = AppHost.Services.GetRequiredService<ISearchBackend>();
+        _chatContactIndexer = AppHost.Services.GetRequiredService<ChatContactIndexer>();
     }
 
     protected override async Task DisposeAsync()
@@ -58,6 +60,7 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
 
         // assert
         var userId = bob.Id;
+        await _chatContactIndexer.WhenInitialized.WaitAsync(TimeSpan.FromSeconds(10));
         var searchResults = await Find(userId, true, "chat", 4);
         searchResults.Should()
             .BeEquivalentTo(

@@ -112,7 +112,9 @@
     private async Task UpdatePlace() {
         var placeId = NavbarUI.IsPlaceSelected(out var selectedPlaceId)
             ? selectedPlaceId
-            : NavbarUI.SelectedChatId.PlaceId;
+            : NavbarUI.IsPinnedChatSelected(out var pinnedChatId)
+                ? pinnedChatId.PlaceId
+                : PlaceId.None;
         _place = placeId.IsNone
             ? null
             : await Hub.Places.Get(Hub.Session(), placeId, default).ConfigureAwait(false);

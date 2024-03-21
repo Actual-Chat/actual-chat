@@ -99,6 +99,18 @@
     protected HostInfo HostInfo => Hub.HostInfo();
     protected Features Features => Hub.Features();
     protected ModalUI ModalUI => Hub.ModalUI;
+    protected NavbarUI NavbarUI => Hub.NavbarUI;
+    protected PanelsUI PanelsUI => Hub.PanelsUI;
+
+    protected override void OnInitialized() {
+        NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;
+        base.OnInitialized();
+    }
+
+    public override ValueTask DisposeAsync() {
+        NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupChanged;
+        return base.DisposeAsync();
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -117,6 +129,13 @@
 
     private void OnReloadUIClick()
         => Services.GetRequiredService<ReloadUI>().Reload();
+
+    private void OnNavbarSelectedGroupChanged(object? s, EventArgs e) {
+        if (PanelsUI.Left.IsSearchMode)
+            PanelsUI.Left.SearchToggle();
+        if (NavbarUI.IsPinnedChatSelected(out _))
+            PanelsUI.HidePanels();
+    }
 
     public record Model(AccountFull OwnAccount, bool EnablePlacesUI);
 }

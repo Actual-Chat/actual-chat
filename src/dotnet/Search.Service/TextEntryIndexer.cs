@@ -7,7 +7,7 @@ using ActualLab.Interception;
 
 namespace ActualChat.Search;
 
-public class EntriesIndexer(IServiceProvider services) : WorkerBase, IHasServices, INotifyInitialized
+public class TextEntryIndexer(IServiceProvider services) : WorkerBase, IHasServices, INotifyInitialized
 {
     private const int ChatDispatchBatchSize = 20;
     private const int IndexChatSyncBatchSize = 1000;
@@ -123,6 +123,7 @@ public class EntriesIndexer(IServiceProvider services) : WorkerBase, IHasService
         var idTiles =
             Constants.Chat.ServerIdTileStack.LastLayer.GetCoveringTiles(
                 news.TextEntryIdRange.WithStart(lastIndexedLid));
+        var hasChanges = false;
         foreach (var tile in idTiles) {
             var chatTile = await ChatsBackend.GetTile(chatId,
                     ChatEntryKind.Text,
@@ -130,6 +131,9 @@ public class EntriesIndexer(IServiceProvider services) : WorkerBase, IHasService
                     false,
                     cancellationToken)
                 .ConfigureAwait(false);
+            if (chatTile.IsEmpty)
+                break;
+
             var entries = chatTile.Entries.Where(x => !x.Content.IsNullOrEmpty())
                 .Select(x => new IndexedEntry {
                     Id = new TextEntryId(chatId, x.LocalId, AssumeValid.Option),
@@ -137,14 +141,17 @@ public class EntriesIndexer(IServiceProvider services) : WorkerBase, IHasService
                     ChatId = chatId,
                 })
                 .ToApiArray();
-            await Commander.Call(new SearchBackend_EntryBulkIndex(chatId, entries, ApiArray<IndexedEntry>.Empty), cancellationToken)
-                .ConfigureAwait(false);
+            if (!entries.IsEmpty) {
+                var indexCmd = new SearchBackend_EntryBulkIndex(chatId, entries, ApiArray<IndexedEntry>.Empty);
+                await Commander.Call((ICommand)indexCmd, cancellationToken).ConfigureAwait(false);
+            }
 
             indexedChat = await SaveIndexedChat(indexedChat with { LastEntryLocalId = chatTile.Entries[^1].LocalId, },
                     cancellationToken)
                 .ConfigureAwait(false);
+            hasChanges = true;
         }
-        return true;
+        return hasChanges;
     }
 
     private async Task<bool> IndexUpdatedAndRemovedEntries(ChatId chatId, CancellationToken cancellationToken)

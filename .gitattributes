@@ -73,6 +73,7 @@
 *.snupkg filter=lfs diff=lfs merge=lfs -text
 *.nettrace filter=lfs diff=lfs merge=lfs -text
 *.etlx filter=lfs diff=lfs merge=lfs -text
+*.aotprofile filter=lfs diff=lfs merge=lfs -text
 *.aprof filter=lfs diff=lfs merge=lfs -text
 *.aprofile filter=lfs diff=lfs merge=lfs -text
 *.mibc filter=lfs diff=lfs merge=lfs -text

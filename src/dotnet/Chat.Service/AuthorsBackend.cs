@@ -226,9 +226,18 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             }
             var account = await AccountsBackend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
 
-            var localId = await DbAuthorLocalIdGenerator
-                .Next(dbContext, chatId, cancellationToken)
-                .ConfigureAwait(false);
+            long localId;
+            if (chatId is { IsPlaceChat: true, IsPlaceRootChat: false }) {
+                var placeId = chatId.PlaceId;
+                var placeAuthor = await GetByUserId(placeId.ToRootChatId(), userId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
+                if (placeAuthor == null)
+                    throw StandardError.Internal("Place root chat author must exist.");
+                localId = placeAuthor.LocalId;
+            }
+            else
+                localId = await DbAuthorLocalIdGenerator
+                    .Next(dbContext, chatId, cancellationToken)
+                    .ConfigureAwait(false);
             var id = new AuthorId(chatId, localId, AssumeValid.Option);
             var author = new AuthorFull(id, VersionGenerator.NextVersion()) {
                 UserId = userId,

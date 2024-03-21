@@ -34,15 +34,15 @@ public class LocalCommandQueueScheduler : WorkerBase, ICommandQueueScheduler
             Settings.MaxKnownCommandAge);
     }
 
-    public async Task ProcessAlreadyQueued(TimeSpan timeout, CancellationToken cancellationToken)
+    public async Task ProcessAlreadyQueued(TimeSpan maxIdleInterval, CancellationToken cancellationToken)
     {
         var clock = Services.Clocks().SystemClock;
         while (true) {
-            await clock.Delay(timeout, cancellationToken).ConfigureAwait(false);
+            await clock.Delay(maxIdleInterval, cancellationToken).ConfigureAwait(false);
 
             var lastCommandTicks = Interlocked.Read(ref _lastCommandTicks);
             var currentTicks = clock.UtcNow.Ticks;
-            if (currentTicks - lastCommandTicks > timeout.Ticks)
+            if (currentTicks - lastCommandTicks > maxIdleInterval.Ticks)
                 break;
         }
     }

@@ -8,6 +8,7 @@ import { Gesture, Gestures } from 'gestures';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { Log } from 'logging';
 import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
+import { fastRaf, fastReadRaf, fastWriteRaf } from 'fast-raf';
 
 const { debugLog } = Log.get('SideNav');
 
@@ -53,7 +54,7 @@ export class SideNav extends DisposableBag {
     public static create(
         element: HTMLDivElement,
         blazorRef: DotNet.DotNetObject,
-        options: SideNavOptions
+        options: SideNavOptions,
     ): SideNav {
         return new SideNav(element, blazorRef, options);
     }
@@ -76,32 +77,32 @@ export class SideNav extends DisposableBag {
         const sideNav = this;
 
         const pullGestureDisposer = SideNavPullDetectGesture.use(this);
-        this.addDisposables(pullGestureDisposer, { dispose() {
-            if (SideNav.left === sideNav)
-                SideNav.left = null;
-            else if (SideNav.right === sideNav)
-                SideNav.right = null;
-            document.body.classList.remove(sideNav.bodyClassWhenOpen)
-            stateObserver.disconnect();
-        }});
+        this.addDisposables(pullGestureDisposer, {
+            dispose() {
+                if (SideNav.left === sideNav)
+                    SideNav.left = null;
+                else if (SideNav.right === sideNav)
+                    SideNav.right = null;
+                document.body.classList.remove(sideNav.bodyClassWhenOpen);
+                stateObserver.disconnect();
+            },
+        });
+
         this.updateBodyClassList();
-        delayAsync(250).then(() => {
+
+        delayAsync(250).then(async () => {
             // No transitions immediately after the first render
+            await fastWriteRaf();
             this.element.classList.add('animated');
         });
     }
 
-    public updateBodyClassList(): void {
-        if (this.isOpen)
-            document.body.classList.add(this.bodyClassWhenOpen);
-        else
-            document.body.classList.remove(this.bodyClassWhenOpen);
-    }
-
+    /** Call during RAF */
     public resetTransform(): void {
         this.setTransform(this.isOpen ? 1 : 0);
     }
 
+    /** Call during RAF */
     public setTransform(openRatio: number): void {
         const mustTransform = !ScreenSize.isWide() && (this.isOpen ? openRatio < 1 : openRatio > 0);
         if (!mustTransform) {
@@ -118,8 +119,8 @@ export class SideNav extends DisposableBag {
         const translateRatio = closeDirectionSign * closeRatio;
         const opacity = Math.min(1, (DeviceInfo.isWebKit ? 0.2 : 0.05) + Math.pow(openRatio, 0.35));
         this.element.style.transform = `translate3d(${100 * translateRatio}%, 0, 0)`;
-        this.element.style.backdropFilter = `blur(3px)`
-        this.element.style.backgroundColor = `rgba(1,1,1,0)`;
+        this.element.style.backdropFilter = `blur(3px)`;
+        this.element.style.backgroundColor = `rgba(1, 1, 1, 0)`;
         this.contentDiv.style.opacity = opacity.toString();
     }
 
@@ -130,6 +131,14 @@ export class SideNav extends DisposableBag {
         debugLog?.log(`setVisibility:`, isOpen);
         await this.blazorRef.invokeMethodAsync('OnVisibilityChanged', isOpen);
     });
+
+    /** Call during RAF */
+    private updateBodyClassList(): void {
+        if (this.isOpen)
+            document.body.classList.add(this.bodyClassWhenOpen);
+        else
+            document.body.classList.remove(this.bodyClassWhenOpen);
+    }
 }
 
 // Gestures
@@ -142,9 +151,11 @@ class SideNavPullDetectGesture extends Gesture {
             ? DocumentEvents.capturedActive.touchStart$
             : DocumentEvents.capturedPassive.touchStart$;
 
-        return fromSubscription(touchStartEvent.subscribe((event: TouchEvent) => {
+        return fromSubscription(touchStartEvent.subscribe(async (event: TouchEvent) => {
             if (ScreenSize.isWide())
                 return;
+
+            await fastReadRaf();
 
             if (document.querySelector('.modal')) // Modal is shown
                 return;
@@ -255,7 +266,7 @@ class SideNavPullDetectGesture extends Gesture {
 
             Gestures.addActive(new SideNavPullGesture(sideNav, origin, initialState, touchStartEvent, event));
             this.dispose();
-        }
+        };
 
         const chatViewDiv = document.querySelector('.chat-view.virtual-list');
         this.addDisposables(
@@ -288,15 +299,21 @@ class SideNavPullGesture extends Gesture {
         const isOpenSign = sideNav.isOpen ? 1 : -1;
         const openDirectionSign = isLeft ? 1 : -1;
         const allowedDirectionSign = openDirectionSign * -isOpenSign;
-        const chatViewDiv = document.querySelector('.chat-view.virtual-list');
-        const initialChatViewScrollTop = chatViewDiv?.scrollTop;
         this.state = initialState;
 
-        const endMove = (event: TouchEvent | null, isCancelled: boolean) => {
+        const endMove = async (event: TouchEvent | null, isCancelled: boolean): Promise<void> => {
             if (this.state === null)
                 return;
 
-            debugLog?.log(`SideNavPullGesture[${sideNav.side}].endMove:`, event, ', isCancelled:', isCancelled, ', state:', this.state);
+            debugLog?.log(
+                `SideNavPullGesture[${sideNav.side}].endMove:`,
+                event,
+                ', isCancelled:',
+                isCancelled,
+                ', state:',
+                this.state);
+
+            tryPreventDefaultForEvent(event);
 
             const moveDuration = Date.now() - this.state.startedAt;
             if (event === null || event.type === 'touchstart' || moveDuration < MinPullDurationMs)
@@ -304,7 +321,7 @@ class SideNavPullGesture extends Gesture {
 
             const coords = getCoords(event);
             if (coords && !isCancelled) {
-                move(event);
+                await move(event);
                 if (this.state === null!) // move(event) may call endMove(..., true)
                     return;
             }
@@ -315,36 +332,35 @@ class SideNavPullGesture extends Gesture {
 
             debugLog?.log(`SideNavPullGesture[${sideNav.side}].endMove: ending w/ mustBeOpen:`, mustBeOpen);
             this.state = null; // Ended
-            (async () => {
-                try {
-                    sideNav.isPulling = false;
-                    if (sideNav.isOpen == mustBeOpen)
-                        return; // Note that we call sideNav.resetTransform() in finally { ... }
+            try {
+                await fastWriteRaf();
+                sideNav.isPulling = false;
+                if (sideNav.isOpen == mustBeOpen)
+                    return; // Note that we call sideNav.resetTransform() in finally { ... }
 
-                    // "Pre-apply" visibility change
-                    sideNav.setTransform(mustBeOpen ? 1 : 0);
+                // "Pre-apply" visibility change
+                sideNav.setTransform(mustBeOpen ? 1 : 0);
 
-                    // Trigger server-side visibility change
-                    await sideNav.setVisibility(mustBeOpen);
+                // Trigger server-side visibility change
+                await sideNav.setVisibility(mustBeOpen);
 
-                    // Wait when the changes are applied to DOM
-                    const endTime = Date.now() + MaxSetVisibilityWaitDurationMs;
-                    while (sideNav.isOpen != mustBeOpen && Date.now() < endTime)
-                        await delayAsync(50);
-                }
-                finally {
-                    sideNav.resetTransform();
-                    this.dispose();
-                }
-            })();
-        }
+                // Wait when the changes are applied to DOM
+                const endTime = Date.now() + MaxSetVisibilityWaitDurationMs;
+                while (sideNav.isOpen != mustBeOpen && Date.now() < endTime)
+                    await delayAsync(50);
+            } finally {
+                await fastWriteRaf();
+                sideNav.resetTransform();
+                this.dispose();
+            }
+        };
 
-        const move = (event: TouchEvent) => {
+        const move = async (event: TouchEvent): Promise<void> => {
             if (this.state === null)
                 return;
 
             if (ScreenSize.isWide()) {
-                endMove(event, true);
+                await endMove(event, true);
                 return;
             }
 
@@ -353,45 +369,58 @@ class SideNavPullGesture extends Gesture {
             const coords = getCoords(event);
             const offset = coords.sub(origin);
             if (!offset.isHorizontal()) { // >45 deg. vertical
-                endMove(event, true);
+                await endMove(event, true);
                 return;
             }
 
-            const dx = isOpen ? offset.x : coords.x - (isLeft ? 0 : ScreenSize.width);
-            const pdx = dx * allowedDirectionSign; // Must be positive
-            const pullRatio = clamp(pdx / (sideNav.element.clientWidth + 0.01), 0, 1);
-            const openRatio = isOpen ? 1 - pullRatio : pullRatio;
-            this.state = new MoveState(pullRatio, openRatio, this.state);
-            sideNav.setTransform(this.state.openRatio);
-        }
+            fastRaf({
+                read: () => {
+                    const dx = isOpen ? offset.x : coords.x - (isLeft ? 0 : ScreenSize.width);
+                    const pdx = dx * allowedDirectionSign; // Must be positive
+                    const pullRatio = clamp(pdx / (sideNav.element.clientWidth + 0.01), 0, 1);
+                    const openRatio = isOpen ? 1 - pullRatio : pullRatio;
+                    this.state = new MoveState(pullRatio, openRatio, this.state);
+                },
+                write: () => {
+                    sideNav.setTransform(this.state.openRatio);
+                },
+            });
+        };
 
-        sideNav.isPulling = true;
-        sideNav.setTransform(isOpen ? 1 : 0);
-        if (firstMoveEvent.type === 'touchend') {
-            endMove(firstMoveEvent, false);
-        } else {
-            try {
-                move(firstMoveEvent);
-            }
-            catch (e) {
-                endMove(firstMoveEvent, true);
-                throw e;
-            }
-            this.addDisposables(
-                DocumentEvents.active.touchEnd$.subscribe(e => endMove(e, false)),
-                DocumentEvents.active.touchCancel$.subscribe(e => endMove(e, true)),
-                DocumentEvents.active.touchStart$.subscribe(e => endMove(e, true)), // Just in case
-                DocumentEvents.active.touchMove$.subscribe(move),
-                chatViewDiv
-                    ? fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(_ => {
-                        // This doesn't work on Safari - i.e. it still drags the chat view while you move:
-                        // chatViewDiv.scrollTop = initialChatViewScrollTop;
-                        if (Math.abs(chatViewDiv.scrollTop - initialChatViewScrollTop) > MaxChatViewScroll)
-                            endMove(null, true);
-                    }))
-                    : null,
-            );
-        }
+        fastRaf({
+            read: async () => {
+                const chatViewDiv = document.querySelector('.chat-view.virtual-list');
+                const initialChatViewScrollTop = chatViewDiv?.scrollTop;
+                if (firstMoveEvent.type === 'touchend') {
+                    await endMove(firstMoveEvent, false);
+                } else {
+                    try {
+                        await move(firstMoveEvent);
+                    } catch (e) {
+                        await endMove(firstMoveEvent, true);
+                        throw e;
+                    }
+                    this.addDisposables(
+                        DocumentEvents.active.touchEnd$.subscribe(e => endMove(e, false)),
+                        DocumentEvents.active.touchCancel$.subscribe(e => endMove(e, true)),
+                        DocumentEvents.active.touchStart$.subscribe(e => endMove(e, true)), // Just in case
+                        DocumentEvents.active.touchMove$.subscribe(move),
+                        chatViewDiv
+                        ? fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(_ => {
+                            // This doesn't work on Safari - i.e. it still drags the chat view while you move:
+                            // chatViewDiv.scrollTop = initialChatViewScrollTop;
+                            if (Math.abs(chatViewDiv.scrollTop - initialChatViewScrollTop) > MaxChatViewScroll)
+                                void endMove(null, true);
+                        }))
+                        : null,
+                    );
+                }
+            },
+            write: () => {
+                sideNav.isPulling = true;
+                sideNav.setTransform(isOpen ? 1 : 0);
+            },
+        });
     }
 }
 
@@ -399,7 +428,7 @@ class SideNavPullGesture extends Gesture {
 
 class MoveState {
     public readonly startedAt: number;
-    public readonly capturedAt: number
+    public readonly capturedAt: number;
     public readonly velocity: number;
     public readonly terminalOpenRatio: number;
 

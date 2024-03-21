@@ -156,32 +156,6 @@ body.hoverable .navbar-item:hover {
     @apply w-[5px];
 }
 
-.navbar-button.drag-btn .btn.btn-square .navbar-button-content.btn-content,
-.navbar-button.ghost-btn .btn.btn-square .navbar-button-content.btn-content {
-    @apply h-12 w-12;
-}
-
-body.narrow .navbar-button.drag-btn .btn.btn-square .navbar-button-content.btn-content,
-body.narrow .navbar-button.ghost-btn .btn.btn-square .navbar-button-content.btn-content {
-    @apply h-10 w-10;
-}
-
-.ghost-btn {
-    @apply fixed z-[1000];
-    @apply flex-x items-center justify-center;
-}
-.ghost-btn > .navbar-button {
-    animation: twitch 200ms 2 forwards;
-}
-.ghost-btn > .navbar-button > .c-dots {
-    @apply opacity-100;
-}
-.ghost-btn > .navbar-button .btn.btn-square {
-    @apply opacity-50;
-}
-.ghost-btn .btn.btn-square .navbar-button-content.btn-content {
-    @apply h-10 w-10 md:h-12 md:w-12;
-}
 @keyframes twitch {
     0% {
         transform: rotate(0);
@@ -199,6 +173,7 @@ body.narrow .navbar-button.ghost-btn .btn.btn-square .navbar-button-content.btn-
         transform: rotate(0);
     }
 }
+
 .sortable-target {
     animation: twitch 200ms 2 forwards;
 }

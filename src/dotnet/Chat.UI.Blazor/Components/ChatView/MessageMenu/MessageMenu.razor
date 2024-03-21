@@ -11,6 +11,7 @@
     ClickedLinkUrl="@m.Link"
     ClickedCode="@m.Code"
     IsOwnEntry="m.IsOwnEntry"
+    IsOwner="m.IsOwner"
     CanWrite="m.CanWrite"
     IsSystem="m.IsSystem">
 </MessageMenuContent>
@@ -49,14 +50,14 @@
 
         var requestAuthor = await Authors.GetOwn(Session, chatEntry.ChatId, CancellationToken.None);
         var rules = await Chats.GetRules(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
-        var canWrite = rules.CanWrite();
 
         return new Model {
             Link = _link,
             IsSystem = _isSystem,
             Code = _code,
             ChatEntry = chatEntry,
-            CanWrite = canWrite,
+            CanWrite = rules.CanWrite(),
+            IsOwner = rules.IsOwner(),
             IsOwnEntry = requestAuthor != null && requestAuthor.Id == chatEntry.AuthorId,
         };
     }
@@ -69,6 +70,7 @@
         public string? Code { get; set; }
         public bool IsOwnEntry { get; init; }
         public bool CanWrite { get; init; }
+        public bool IsOwner { get; init; }
         public ChatEntry ChatEntry { get; init; } = null!;
     }
 }

@@ -1,5 +1,5 @@
 import { customElement, property } from 'lit/decorators.js';
-import { html, LitElement } from 'lit';
+import { html, LitElement, svg } from 'lit';
 
 import { getRandomColor, getUnit, hashCode } from './avatar-utils';
 
@@ -12,12 +12,19 @@ let id = 0;
 class MarbleAvatar extends LitElement {
     @property() key: string;
     @property() title: string;
+    @property({ type: Boolean }) doNotBlur: boolean = false;
     @property() colors: string[] = ['F56095', 'F5CD65', '00B27D', '37D3F5', '2F89EB'];
 
     private maskId = `marble-avatar-${++id}`;
 
     render() {
         const properties = this.generateColors(this.key, this.colors);
+        const blurEffect = this.doNotBlur
+            ? svg``
+            : svg`
+                <feGaussianBlur stdDeviation='7' result='effect1_foregroundBlur' />
+            `;
+
         return html`
             <svg
                 viewBox='${'0 0 ' + SIZE + ' ' + SIZE}'
@@ -92,7 +99,7 @@ class MarbleAvatar extends LitElement {
                     >
                         <feFlood flood-opacity='0' result='BackgroundImageFix' />
                         <feBlend in='SourceGraphic' in2='BackgroundImageFix' result='shape' />
-                        <feGaussianBlur stdDeviation='7' result='effect1_foregroundBlur' />
+                        ${blurEffect}
                     </filter>
                 </defs>
             </svg>

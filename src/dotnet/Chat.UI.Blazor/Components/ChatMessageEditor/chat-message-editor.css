@@ -202,7 +202,7 @@ body.hoverable .post-panel-btn:hover {
 }
 
 .text-mode .post-panel-btn.post-message {
-    @apply flex md:hidden;
+    @apply flex;
     @apply animate-display-from-left;
 }
 body.wide .attachment-mode .post-panel-btn.post-message {

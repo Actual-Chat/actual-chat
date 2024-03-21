@@ -15,12 +15,19 @@
 
 <div @ref="Ref" class="navbar-chat-buttons">
     @foreach (var chatInfo in chats) {
+        var attributes = new Dictionary<string, object> {
+            { "data-chat-id", chatInfo.Id },
+        };
+        if (!Hub.BrowserInfo.IsTouchCapable) {
+            attributes.Add("data-menu", MenuRef.New<ChatMenu>(chatInfo.Id, ChatListKind.All.Format()).ToString());
+            attributes.Add("data-menu-placement", FloatingPosition.Right.ToPositionString());
+        }
         <NavbarGroupSelectionButton
             @key="@chatInfo.Id"
-            data-chat-id="@chatInfo.Id"
-            CanMove="true"
+            CanMove="@(!Hub.BrowserInfo.IsTouchCapable)"
             Title="@chatInfo.Chat.Title"
-            Id="@chatInfo.Id">
+            AdditionalAttributes="@attributes"
+            Id="@chatInfo.Id.GetNavbarGroupId()">
             <ChildContent>
                 <ChatIcon Chat="chatInfo.Chat" ShowPresence="@true" Size="@iconSize"/>
             </ChildContent>
@@ -36,6 +43,7 @@
 
 @code {
     private static readonly string JSCreateMethod = $"{ChatBlazorUIModule.ImportName}.NavbarChatButtons.create";
+
     private DotNetObjectReference<NavbarChatButtons> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }

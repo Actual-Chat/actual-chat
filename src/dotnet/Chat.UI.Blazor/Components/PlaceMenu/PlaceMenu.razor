@@ -19,15 +19,9 @@
         Text="Settings"
         Click="OnPlaceSettingsClick">
     </MenuEntry>
-    <MenuEntrySeparator />
-    <MenuEntry
-        Class="warning-item"
-        Icon="icon-log-out"
-        Text="Leave place & delete"
-        Click="OnPlaceDeleteClick">
-    </MenuEntry>
 }
-else if (_canLeave) {
+@if (_canLeave) {
+    <MenuEntrySeparator />
     <MenuEntry
         Class="warning-item"
         Icon="icon-log-out"
@@ -54,9 +48,16 @@ else if (_canLeave) {
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
         _placeId = new PlaceId(placeSid);
-        var place = await Places.Get(Session, _placeId, default).ConfigureAwait(false);
+        var session = Session;
+        var place = await Places.Get(session, _placeId, default).ConfigureAwait(false);
         _isOwner = place?.Rules.IsOwner() ?? false;
-        _canLeave = place != null && place.Rules.CanLeave();
+        var canLeave = place != null && place.Rules.CanLeave();
+        if (canLeave && _isOwner) {
+            var ownerIds = await Places.ListOwnerIds(session, _placeId, default).ConfigureAwait(false);
+            _canLeave = ownerIds.Any(id => id != place!.Rules.Author!.Id);
+        } else {
+            _canLeave = canLeave;
+        }
     }
 
     private void OnCreateChatClick()
@@ -67,14 +68,6 @@ else if (_canLeave) {
 
     private void OnPlaceSettingsClick()
         => _ = ModalUI.Show(new PlaceSettingsModal.Model(_placeId));
-
-    private async Task OnPlaceDeleteClick() {
-        var (_, error) = await UICommander.Run(new Places_Delete(Session, _placeId));
-        if (error != null)
-            return;
-
-        NavbarUI.SelectGroup(NavbarGroupIds.Chats, true);
-    }
 
     private async Task OnPlaceLeaveClick() {
         var (_, error) = await UICommander.Run(new Places_Leave(Session, _placeId));
