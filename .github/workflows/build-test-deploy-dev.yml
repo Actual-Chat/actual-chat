@@ -64,9 +64,6 @@ jobs:
       - name: Replace git+ssh://git@ to https://
         run: sed -i 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
 
-      - name: Replace npm creds
-        run: sed -i -E 's/(_authToken=)(.*)$/\1${{ secrets.NPM_READ_TOKEN }}/g' src/nodejs/.npmrc
-
       - name: Generate version variables
         id: nbgv
         uses: dotnet/nbgv@master
@@ -98,6 +95,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
+          build-args: "NPM_READ_TOKEN=${{secrets.NPM_READ_TOKEN}}"
           tags: |
             ghcr.io/actual-chat/actual-chat-app:${{ steps.nbgv.outputs.SemVer2 }}
           push: ${{github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/release/')}}
@@ -376,3 +374,177 @@ jobs:
           src: ghcr.io/actual-chat/actual-chat-app:${{needs.build.outputs.semver2}}
           dst: |
             us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-app:${{needs.build.outputs.simple-version}}
+
+  build-android-pkg:
+    name: Build app package for ${{ github.ref_name }}
+    if: |
+      github.ref == 'refs/heads/master' ||
+      github.ref == 'refs/heads/dev' ||
+      startsWith(github.ref, 'refs/heads/release/')
+    runs-on: macos-latest
+    env:
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+      NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
+      ActualChat_AndroidSigningKeyPass: ${{secrets.ANDROIDSIGNINGKEYPASS}}
+      ActualChat_AndroidSigningStorePass: ${{secrets.ANDROIDSIGNINGSTOREPASS}}
+      IS_DEV_MAUI: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
+      APP_ID: chat.actual.${{ !startsWith(github.ref, 'refs/heads/release/') && 'dev.' || '' }}app
+      PACKAGE_FILE_NAME: chat.actual.${{ !startsWith(github.ref, 'refs/heads/release/') && 'dev.' || '' }}app-Signed.aab
+    outputs:
+      APP_ID: ${{env.APP_ID}}
+      ARTIFACT_NAME: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.aab
+      PACKAGE_FILE_NAME: ${{env.PACKAGE_FILE_NAME}}
+      MAJOR_MINOR_VERSION: ${{steps.nbgv.outputs.MajorMinorVersion}}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: true
+
+      - name: Install dotnet 8.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
+          dotnet-quality: 'ga'
+
+      - name: Use cached dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/.nuget/packages
+          key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Replace git+ssh://git@ to https://
+        run: sed -i -E 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
+
+      - name: Install workloads
+        run: |-
+          dotnet workload restore
+
+      - name: Generate version variables
+        id: nbgv
+        uses: dotnet/nbgv@master
+        with:
+          setAllVars: true
+
+      - name: Restore nuget packages
+        run: |-
+          ./run-build.cmd restore
+
+      - name: Prepare GoogleServices file for dev
+        if: ${{env.IS_DEV_MAUI}}
+        run: |-
+          tee src/dotnet/App.Maui/Platforms/Android/Resources/google-services.json.dev <<EOF
+          ${{ secrets.GOOGLE_SERVICES_JSON_DEV }}
+          EOF
+
+      - name: Prepare GoogleServices file for prod
+        if: ${{!env.IS_DEV_MAUI}}
+        run: |-
+          tee src/dotnet/App.Maui/Platforms/Android/Resources/google-services.json.prod <<EOF
+          ${{ secrets.GOOGLE_SERVICES_JSON_PROD }}
+          EOF
+
+      - name: Build app package
+        run: |-
+          ./run-build.cmd publish-android --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}"
+
+      - name: Upload package to artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.aab
+          path: artifacts/publish/App.Maui/release_net8.0-android/${{env.PACKAGE_FILE_NAME}}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 10
+
+  deploy-android-dev-to-drive:
+    name: Deploy app package for ${{ github.ref_name }} to googlde drive
+    if: |
+      github.ref == 'refs/heads/master' ||
+      github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    needs:
+      - build-android-pkg
+      - unit-tests
+      - integration-tests
+    env:
+      APP_ID: ${{needs.build-android-pkg.outputs.APP_ID}}
+      ARTIFACT_NAME: ${{needs.build-android-pkg.outputs.ARTIFACT_NAME}}
+      PACKAGE_FILE_NAME: ${{needs.build-android-pkg.outputs.PACKAGE_FILE_NAME}}
+      MAJOR_MINOR_VERSION: ${{needs.build-android-pkg.outputs.MAJOR_MINOR_VERSION}}
+    steps:
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/1074465586741/locations/global/workloadIdentityPools/actual-identity-pool/providers/github-actual-chat
+          service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
+          create_credentials_file: 'true'
+
+      - name: Download package file from artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{env.ARTIFACT_NAME}}
+          path: v${{env.MAJOR_MINOR_VERSION}}/
+
+      - name: Prepare google service account json variable
+        run: |-
+          saJson=$(cat ${{ steps.auth.outputs.credentials_file_path }})
+          echo ::add-mask::$saJson
+          echo "SERVICE_ACCOUNT_JSON=$saJson" >> $GITHUB_ENV
+
+      - name: Upload app package to google drive
+        uses: logickoder/g-drive-upload@main
+        with:
+          filename: v${{env.MAJOR_MINOR_VERSION}}/${{env.PACKAGE_FILE_NAME}}
+          name: ${{env.ARTIFACT_NAME}}
+          folderId: ${{secrets.GDRIVE_BUILDS_FOLDER_ID}}
+          credentials: ${{env.SERVICE_ACCOUNT_JSON}}
+          mirrorDirectoryStructure: true
+          overwrite: true
+
+
+  deploy-android-to-play-store:
+    name: Deploy app package for ${{ github.ref_name }} to google play store
+    if: |
+      github.ref == 'refs/heads/master' ||
+      startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
+    needs:
+      - build-android-pkg
+      - unit-tests
+      - integration-tests
+    environment: prod
+    env:
+      APP_ID: ${{needs.build-android-pkg.outputs.APP_ID}}
+      ARTIFACT_NAME: ${{needs.build-android-pkg.outputs.ARTIFACT_NAME}}
+      PACKAGE_FILE_NAME: ${{needs.build-android-pkg.outputs.PACKAGE_FILE_NAME}}
+    steps:
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/1074465586741/locations/global/workloadIdentityPools/actual-identity-pool/providers/github-actual-chat
+          service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
+          create_credentials_file: 'true'
+
+      - name: Download package file from artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{env.ARTIFACT_NAME}}
+
+      - run: test -f ${{env.PACKAGE_FILE_NAME}} || exit /b 1
+
+      - name: Deploy to internal testing
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
+          packageName: ${{env.APP_ID}}
+          releaseFiles: ${{env.PACKAGE_FILE_NAME}}
+          track: internal
