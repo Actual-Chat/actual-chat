@@ -82,19 +82,26 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // ChatSlice engine registrations
         services.AddSingleton<ISearchEngine<ChatSlice>>(static services
             => services.CreateInstanceWith<OpenSearchEngine<ChatSlice>>(IndexNames.ChatSlice));
+
+        services.AddWorkerPoolDependencies();
+
+        // -- Register chat indexer --
+        const string IndexServiceGroup = "OpenSearch Chat Index";
+        fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
+
+        services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
         services.AddSingleton<ICursorStates<ChatHistoryExtractor.Cursor>>(static services
             => services.CreateInstanceWith<CursorStates<ChatHistoryExtractor.Cursor>>(IndexNames.ChatSliceCursor));
         services.AddSingleton<ISink<ChatEntry, ChatEntry>>(static services
             => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
-        services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
 
-        services.AddWorkerPoolDependencies();
-
-        // Register chat indexer
-        fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
-
-        services.AddSingleton<IDataIndexer<ChatId>, ChatHistoryExtractor>();
-        services.AddWorkerPool<IChatIndexerWorker, ChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>(
+        services.AddKeyedSingleton<IDataIndexer<ChatId>, ChatHistoryExtractor>(IndexServiceGroup);
+        services.AddSingleton<IChatIndexerWorker>(static services
+            => services.CreateInstanceWith<ChatIndexerWorker>(
+                services.GetRequiredKeyedService<IDataIndexer<ChatId>>(IndexServiceGroup)
+            )
+        );
+        services.AddWorkerPool<IChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>(
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
 
