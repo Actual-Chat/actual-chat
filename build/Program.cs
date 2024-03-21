@@ -24,6 +24,7 @@ internal static class Program
         public const string Clean = "clean";
         public const string Watch = "watch";
         public const string NpmInstall = "npm-install";
+        public const string NpmBuild = "npm-build";
         public const string UnitTests = "unit-tests";
         public const string GenerateVersion = "generate-version";
         public const string GenerateCISolutionFilter = "slnf";
@@ -33,6 +34,7 @@ internal static class Program
         public const string Tests = "tests";
         public const string Build = "build";
         public const string Maui = "maui";
+        public const string PublishAndroid = "publish-android";
         public const string PublishWin = "publish-win";
         public const string RestoreTools = "restore-tools";
         public const string Restore = "restore";
@@ -55,6 +57,7 @@ internal static class Program
     /// <param name="verbose">Enable verbose output.</param>
     /// <param name="cancellationToken">The terminate program cancellation</param>
     /// <param name="configuration">The configuration for building</param>
+    /// <param name="isDevMaui">If false then app connects to actual.chat, it true - to dev.actual.chat</param>
     private static async Task<int> Main(
         string[] arguments,
         bool clear,
@@ -71,7 +74,8 @@ internal static class Program
         bool verbose,
         CancellationToken cancellationToken,
         // our options here
-        string configuration = "Debug"
+        string configuration = "Debug",
+        bool? isDevMaui = null
         )
     {
         Console.OutputEncoding = Encoding.UTF8;
@@ -292,17 +296,33 @@ internal static class Program
             }
         });
 
-        Target(Targets.PublishWin, DependsOn(Targets.CleanDist, Targets.RestoreTools, Targets.NpmInstall), async () => {
-            await Npm()
+        Target(Targets.NpmBuild, DependsOn(Targets.CleanDist, Targets.NpmInstall),
+            () => Npm()
                 .WithArguments($"run build:{configuration}")
                 .ToConsole(Blue("webpack: "))
-                .ExecuteAsync(cancellationToken).Task
-                .ConfigureAwait(false);
+                .ExecuteAsync(cancellationToken).Task);
 
+        Target(Targets.PublishWin, DependsOn(Targets.NpmBuild), async () => {
             var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
             await AppxManifestGenerator.Generate(
                 isProduction,
                 cancellationToken)
+                .ConfigureAwait(false);
+            isDevMaui ??= !isProduction;
+            await Cli
+                .Wrap(dotnet)
+                .WithArguments("build",
+                    "-noLogo",
+                    "-maxCpuCount",
+                    "-nodeReuse:false",
+                    "-f net8.0-windows10.0.22000.0",
+                    @"/p:TargetFrameworks=\""net8.0-windows10.0.22000.0;net8.0\""", // otherwise needs maui-ios etc
+                    "-p:RuntimeIdentifierOverride=win10-x64",
+                    $"-p:IsDevMaui={isDevMaui}")
+                .WithWorkingDirectory("src/dotnet/App.Maui")
+                .ToConsole(Green("dotnet: "))
+                .ExecuteAsync(cancellationToken)
+                .Task
                 .ConfigureAwait(false);
             await Cli
                 .Wrap(dotnet)
@@ -311,9 +331,50 @@ internal static class Program
                     "-maxCpuCount",
                     "-nodeReuse:false",
                     "-f net8.0-windows10.0.22000.0",
+                    @"/p:TargetFrameworks=\""net8.0-windows10.0.22000.0;net8.0\""", // otherwise needs maui-ios etc
                     "-p:RuntimeIdentifierOverride=win10-x64",
                     $"-c {configuration}",
-                    isProduction ? "-p:IsDevMaui=false" : "")
+                    $"-p:IsDevMaui={isDevMaui}")
+                .WithWorkingDirectory("src/dotnet/App.Maui")
+                .ToConsole(Green("dotnet: "))
+                .ExecuteAsync(cancellationToken)
+                .Task
+                .ConfigureAwait(false);
+        });
+
+        Target(Targets.PublishAndroid, DependsOn(Targets.NpmBuild), async () => {
+            var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
+            var signingKeyPass = Utils.GetEnv("ActualChat_AndroidSigningKeyPass");
+            var signingStorePass = Utils.GetEnv("ActualChat_AndroidSigningStorePass");
+            isDevMaui ??= !isProduction;
+            await Cli
+                .Wrap(dotnet)
+                .WithArguments("build",
+                    "-noLogo",
+                    "-maxCpuCount",
+                    "-nodeReuse:false",
+                    "-f net8.0-android",
+                    @"/p:TargetFrameworks=\""net8.0-android;net8.0\""", // otherwise needs maui-ios etc
+                    $"/p:AndroidSigningKeyPass={signingKeyPass} /p:AndroidSigningStorePass={signingStorePass}",
+                    $"-c {configuration}",
+                    $"-p:IsDevMaui={isDevMaui}")
+                .WithWorkingDirectory("src/dotnet/App.Maui")
+                .ToConsole(Green("dotnet: "))
+                .ExecuteAsync(cancellationToken)
+                .Task
+                .ConfigureAwait(false);
+            // TODO: figure out how to publish and consistently perform post build targets in App.Maui.csproj
+            await Cli
+                .Wrap(dotnet)
+                .WithArguments("publish",
+                    "-noLogo",
+                    "-maxCpuCount",
+                    "-nodeReuse:false",
+                    "-f net8.0-android",
+                    @"/p:TargetFrameworks=\""net8.0-android;net8.0\""", // otherwise needs maui-ios etc
+                    $"/p:AndroidSigningKeyPass={signingKeyPass} /p:AndroidSigningStorePass={signingStorePass}",
+                    $"-c {configuration}",
+                    $"-p:IsDevMaui={isDevMaui}")
                 .WithWorkingDirectory("src/dotnet/App.Maui")
                 .ToConsole(Green("dotnet: "))
                 .ExecuteAsync(cancellationToken)

@@ -1,3 +1,4 @@
+using static Crayon.Output;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -11,12 +12,34 @@ internal static class Utils {
     public static string GithubLogger()
         => IsGitHubActions() ? "--logger GitHubActions " : "";
 
-    private static bool IsGitHubActions()
-        => bool.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"), out bool isGitHubActions) && isGitHubActions;
-
     public static string FindNpmExe()
         => TryFindCommandPath("npm")
             ?? throw new WithoutStackException(new FileNotFoundException("'npm' command isn't found. Install nodejs from https://nodejs.org/"));
+
+    public static string GetEnv(string name, string? @default = null)
+        => Environment.GetEnvironmentVariable(name)
+            ?? @default
+            ?? throw new WithoutStackException($"{name} variable not set");
+
+    public static void SetGithubOutput(string name, string value)
+    {
+        var s = $"{name}={value}";
+        if (!IsGitHubActions()) {
+            Console.WriteLine(Yellow("It is not github actions context, so this output is skipped: ") + Green(s));
+            return;
+        }
+
+        Console.WriteLine("Github output: " + Green(s));
+        var outputFile = Environment.GetEnvironmentVariable("GITHUB_OUTPUT");
+        if (string.IsNullOrEmpty(outputFile)) {
+            Console.Error.WriteLine("GITHUB_OUTPUT variable is not set");
+            return;
+        }
+        File.AppendAllLines(outputFile, [s]);
+    }
+
+    private static bool IsGitHubActions()
+        => bool.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"), out bool isGitHubActions) && isGitHubActions;
 
     private static string? TryFindDotNetExePath()
     {
