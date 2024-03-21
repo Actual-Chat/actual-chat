@@ -7,7 +7,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
     where TSettings : IShardQueueSettings
     where TQueues : IQueues
 {
-    private static bool DebugMode => Constants.DebugMode.CommandQueue;
+    private static bool DebugMode => Constants.DebugMode.QueueProcessor;
 
     private long _lastCommandCompletedAt;
 

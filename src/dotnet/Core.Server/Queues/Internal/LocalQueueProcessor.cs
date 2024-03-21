@@ -6,7 +6,7 @@ namespace ActualChat.Queues.Internal;
 public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQueueProcessor
     where TQueues : IQueues
 {
-    private static bool DebugMode => Constants.DebugMode.CommandQueue;
+    private static bool DebugMode => Constants.DebugMode.QueueProcessor;
 
     private long _lastCommandCompletedAt;
 
