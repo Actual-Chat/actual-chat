@@ -110,20 +110,19 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         fusion.AddService<IChatBotConversationTrigger, ChatBotConversationTrigger>();
 
         services.AddKeyedSingleton<IBotConversationHandler, SampleChatBot>(ConversationBotServiceGroup);
-        services.AddKeyedSingleton(
-            typeof(IDataIndexer<ChatId>),
+        services.AddKeyedSingleton<IDataIndexer<ChatId>>(
             ConversationBotServiceGroup,
-            (e, _key) => e.CreateInstanceWith<ChatHistoryExtractor>(
-                e.GetRequiredKeyedService<IBotConversationHandler>(ConversationBotServiceGroup)
+            static (services, serviceKey) => services.CreateInstanceWith<ChatHistoryExtractor>(
+                services.GetRequiredKeyedService<IBotConversationHandler>(serviceKey)
             )
         );
-        services.AddSingleton<IChatBotWorker>(e=>
-            e.CreateInstanceWith<ChatBotWorker>(
-                e.GetRequiredKeyedService<IDataIndexer<ChatId>>(ConversationBotServiceGroup)
+        services.AddSingleton<IChatBotWorker>(static services
+            => services.CreateInstanceWith<ChatBotWorker>(
+                services.GetRequiredKeyedService<IDataIndexer<ChatId>>(ConversationBotServiceGroup)
             )
         );
-        services.AddSingleton<IHostedService>(services
-            => new ShardWorkerFunc<IChatBotWorker>(
-                services, ShardScheme.MLSearchBackend, services.GetRequiredService<IChatBotWorker>().ExecuteAsync));
+        services.AddWorkerPool<IChatBotWorker, MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId>(
+            DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
+        );
     }
 }
