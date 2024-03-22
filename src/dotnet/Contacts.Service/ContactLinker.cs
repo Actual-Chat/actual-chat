@@ -24,6 +24,7 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
         await using var _ = dbContext.ConfigureAwait(false);
         var dbExternalContactLinks = await dbContext.ExternalContactLinks.ForUpdate()
             .Where(x => !x.IsChecked)
+            .OrderBy(x => x.DbExternalContactId)
             .Take(BatchSize)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
