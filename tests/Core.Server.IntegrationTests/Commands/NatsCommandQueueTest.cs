@@ -1,6 +1,4 @@
-using ActualChat.Hosting;
 using ActualChat.Queues;
-using ActualChat.Queues.Internal;
 using ActualChat.Queues.Nats;
 using ActualChat.Testing.Host;
 

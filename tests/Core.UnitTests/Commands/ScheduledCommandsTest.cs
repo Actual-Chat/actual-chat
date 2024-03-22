@@ -1,6 +1,5 @@
 using ActualChat.Queues;
 using ActualChat.Queues.InMemory;
-using ActualChat.Queues.Internal;
 
 namespace ActualChat.Core.UnitTests.Commands;
 

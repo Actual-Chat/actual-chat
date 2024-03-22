@@ -7,7 +7,6 @@ using ActualChat.Queues.Nats;
 using ActualChat.Rpc;
 using ActualLab.CommandR.Internal;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 
 namespace ActualChat;
 
