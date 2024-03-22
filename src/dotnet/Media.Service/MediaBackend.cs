@@ -1,5 +1,6 @@
 using ActualChat.Media.Db;
 using ActualLab.Fusion.EntityFramework;
+using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Media;
 
@@ -19,6 +20,22 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         var dbMedia = await DbMediaResolver.Get(mediaId, cancellationToken).ConfigureAwait(false);
         var media = dbMedia?.ToModel();
         return media;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Media?> GetByContentId(string contentId, CancellationToken cancellationToken)
+    {
+        if (contentId.IsNullOrEmpty())
+            return null;
+
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbMedia = await dbContext.Media
+            .Where(x => x.ContentId == contentId)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbMedia?.ToModel();
     }
 
     // [CommandHandler]
