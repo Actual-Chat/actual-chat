@@ -1,4 +1,4 @@
-name: Build test and deploy
+name: publish ios app - lab
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
