@@ -17,7 +17,12 @@ public readonly struct QueueRef : ICanBeNone<QueueRef>, IEquatable<QueueRef>
 
     // ReSharper disable once ConvertToPrimaryConstructor
     public QueueRef(ShardScheme shardScheme)
-        => _shardScheme = shardScheme;
+    {
+        if (!shardScheme.HasFlags(ShardSchemeFlags.Queue))
+            throw new ArgumentOutOfRangeException(nameof(shardScheme),
+                $"Specified ShardScheme doesn't have {nameof(ShardSchemeFlags.Queue)} flag.");
+        _shardScheme = shardScheme;
+    }
 
     public override string ToString()
     {

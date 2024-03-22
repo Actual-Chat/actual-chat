@@ -18,7 +18,7 @@ public static class CommandExt
         where TCommand : ICommand
     {
         var commandContext = CommandContext.GetCurrent();
-        var queues = commandContext.Services.GetRequiredService<IQueues>();
+        var queues = commandContext.Services.Queues();
         return queues.Enqueue(command, cancellationToken);
     }
 

@@ -25,8 +25,7 @@ public abstract class SharedAppHostTestBase<TAppHostFixture>(
 
     protected override async Task DisposeAsync()
     {
-        var queues = AppHost.Services.GetRequiredService<IQueues>();
-        await queues.Purge(CancellationToken.None).ConfigureAwait(false);
+        await AppHost.Services.Queues().Purge().ConfigureAwait(false);
         AppHost.Output = _originalAppHostOutput;
         await base.DisposeAsync();
     }

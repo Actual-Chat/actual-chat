@@ -23,7 +23,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
             },
         });
         var services = host.Services;
-        services.GetRequiredService<NatsQueues>().Start();
+        var queues = services.GetRequiredService<NatsQueues>().Start();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
@@ -31,8 +31,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand(null));
-
-        await host.WaitForProcessingOfAlreadyQueuedCommands();
+        await queues.WhenProcessing();
         await countComputed.WhenInvalidated();
 
         testService.ProcessedEvents.Count.Should().BeGreaterThanOrEqualTo(1);
@@ -59,8 +58,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
         testService.ProcessedEvents.Count.Should().Be(0);
         for (int i = 0; i < 100; i++)
             await queues.Enqueue(new TestEvent(null));
-
-        await host.WaitForProcessingOfAlreadyQueuedCommands();
+        await queues.WhenProcessing();
 
         Out.WriteLine($"{nameof(MultipleCommandsCanBeScheduled)}: event count is {countComputed.Value}. Collection has {testService.ProcessedEvents.Count}");
         await countComputed.When(i => i >= 100).WaitAsync(TimeSpan.FromSeconds(10));
@@ -90,8 +88,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
         testService.ProcessedEvents.Count.Should().Be(0);
 
         await queues.Enqueue(new TestCommand3 { ShardKey = 7 });
-
-        await host.WaitForProcessingOfAlreadyQueuedCommands();
+        await queues.WhenProcessing();
 
         testService.ProcessedEvents.Count.Should().Be(2);
     }

@@ -1,4 +1,5 @@
 using ActualChat.Mesh;
+using ActualChat.Queues;
 
 namespace ActualChat;
 
@@ -23,4 +24,8 @@ public static class ServiceProviderExt
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IBlobStorages BlobStorages(this IServiceProvider services)
         => services.GetRequiredService<IBlobStorages>();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IQueues Queues(this IServiceProvider services)
+        => services.GetRequiredService<IQueues>();
 }

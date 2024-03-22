@@ -5,13 +5,18 @@ namespace ActualChat;
 
 #pragma warning disable CA1000
 
-public sealed class ShardScheme(Symbol id, int shardCount, HostRole hostRole) : IHasId<Symbol>
+public sealed class ShardScheme(
+    Symbol id,
+    int shardCount,
+    HostRole hostRole,
+    ShardSchemeFlags flags = ShardSchemeFlags.Backend
+    ) : IHasId<Symbol>
 {
     private static readonly ConcurrentDictionary<object, BackendClientAttribute?> _backendClientAttributes = new();
 
-    public static readonly ShardScheme None = new(nameof(None), 0, HostRole.None);
-    public static readonly ShardScheme Undefined = new(nameof(Undefined), 0, HostRole.None);
-    public static readonly ShardScheme EventQueue = new(nameof(EventQueue), 10, HostRole.EventQueue);
+    public static readonly ShardScheme None = new(nameof(None), 0, HostRole.None, ShardSchemeFlags.Special | ShardSchemeFlags.Queue);
+    public static readonly ShardScheme Undefined = new(nameof(Undefined), 0, HostRole.None, ShardSchemeFlags.Special | ShardSchemeFlags.Queue);
+    public static readonly ShardScheme EventQueue = new(nameof(EventQueue), 10, HostRole.EventQueue, ShardSchemeFlags.Queue);
     public static readonly ShardScheme MediaBackend = new(nameof(MediaBackend), 10, HostRole.MediaBackend);
     public static readonly ShardScheme AudioBackend = new(nameof(AudioBackend), 10, HostRole.AudioBackend);
     public static readonly ShardScheme ChatBackend = new(nameof(ChatBackend), 30, HostRole.ChatBackend);
@@ -47,10 +52,10 @@ public sealed class ShardScheme(Symbol id, int shardCount, HostRole hostRole) : 
     public Symbol Id { get; } = id;
     public int ShardCount { get; } = shardCount;
     public HostRole HostRole { get; } = hostRole;
+    public ShardSchemeFlags Flags { get; } = flags;
     public bool IsValid => ShardCount > 0;
     public bool IsNone => ReferenceEquals(this, None);
     public bool IsUndefined => ReferenceEquals(this, Undefined);
-    public bool IsQueue => Id.Value.OrdinalEndsWith("Queue");
 
     public IEnumerable<int> ShardIndexes { get; } = Enumerable.Range(0, shardCount);
 

@@ -18,17 +18,16 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
-        services.GetRequiredService<IQueues>().Should().BeAssignableTo<InMemoryQueues>();
+        var queues = services.Queues();
+        queues.Should().BeAssignableTo<InMemoryQueues>();
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
-        var scheduler = services.GetRequiredService<IQueueProcessor>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand(null));
         testService.ProcessedEvents.Count.Should().Be(0);
 
-        await scheduler.WhenProcessing(TimeSpan.FromSeconds(3), CancellationToken.None);
-
+        await queues.WhenProcessing();
         testService.ProcessedEvents.Count.Should().Be(1);
     }
 
@@ -47,16 +46,15 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
-        services.GetRequiredService<IQueues>().Should().BeAssignableTo<InMemoryQueues>();
+        var queues = services.Queues();
+        queues.Should().BeAssignableTo<InMemoryQueues>();
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
-        var scheduler = services.GetRequiredService<IQueueProcessor>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand2());
 
-        await scheduler.WhenProcessing(TimeSpan.FromSeconds(3), CancellationToken.None);
-
+        await queues.WhenProcessing();
         foreach (var eventCommand in testService.ProcessedEvents)
             Out.WriteLine(eventCommand.ToString());
 
@@ -78,16 +76,15 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
-        services.GetRequiredService<IQueues>().Should().BeAssignableTo<InMemoryQueues>();
+        var queues = services.Queues();
+        queues.Should().BeAssignableTo<InMemoryQueues>();
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
-        var scheduler = services.GetRequiredService<IQueueProcessor>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand3());
 
-        await scheduler.WhenProcessing(TimeSpan.FromSeconds(3), CancellationToken.None);
-
+        await queues.WhenProcessing();
         foreach (var eventCommand in testService.ProcessedEvents)
             Out.WriteLine(eventCommand.ToString());
 

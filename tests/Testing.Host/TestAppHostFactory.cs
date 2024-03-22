@@ -68,8 +68,7 @@ public static class TestAppHostFactory
             await appHost.InvokeInitializers();
 
         // Cleanup existing queues
-        var queues = appHost.Services.GetRequiredService<IQueues>();
-        await queues.Purge(CancellationToken.None);
+        await appHost.Services.Queues().Purge();
 
         if (options.MustStart)
             await appHost.Start();

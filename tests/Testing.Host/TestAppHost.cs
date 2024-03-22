@@ -17,29 +17,11 @@ public class TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor ou
         set => OutputAccessor.Output = value;
     }
 
-    public Task WaitForProcessingOfAlreadyQueuedCommands()
-        => WaitForProcessingOfAlreadyQueuedCommands(TimeSpan.FromSeconds(1));
-
-    public async Task WaitForProcessingOfAlreadyQueuedCommands(TimeSpan timeout)
-    {
-        var hostRoles = Services.GetRequiredService<HostInfo>().Roles;
-        var backendHostRoles = hostRoles.Where(hr => hr.IsBackend || hr.IsQueue);
-        var schedulers = new List<IQueueProcessor>();
-        foreach (var hostRole in backendHostRoles) {
-            var serviceKey = hostRole.Id.Value;
-            var commandQueueSchedulers = Services.GetKeyedServices<IQueueProcessor>(serviceKey);
-            schedulers.AddRange(commandQueueSchedulers);
-        }
-
-        await Task.WhenAll(schedulers.Select(s => s.WhenProcessing(timeout, CancellationToken.None)));
-    }
-
     protected override void Dispose(bool disposing)
     {
         if (disposing) {
             DisposeDbOperationCompletionNotifiers();
-            var queues = Services.GetRequiredService<IQueues>();
-            _ = queues.Purge(CancellationToken.None);
+            _ = Services.Queues().Purge();
         }
         base.Dispose(disposing);
     }

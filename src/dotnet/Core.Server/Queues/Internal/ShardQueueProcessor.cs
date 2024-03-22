@@ -4,7 +4,7 @@ using ActualLab.Diagnostics;
 namespace ActualChat.Queues.Internal;
 
 public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardWorker, IQueueProcessor
-    where TSettings : IShardQueueSettings
+    where TSettings : QueueSettings
     where TQueues : IQueues
 {
     private static bool DebugMode => Constants.DebugMode.QueueProcessor;
@@ -17,7 +17,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
     protected ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     public TSettings Settings { get; }
-    IQueues IQueueProcessor.Queues => Queues;
+    IQueues IQueueSender.Queues => Queues;
     public TQueues Queues { get; }
     public QueueRef QueueRef { get; }
 

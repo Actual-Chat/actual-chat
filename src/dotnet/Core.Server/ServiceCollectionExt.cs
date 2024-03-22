@@ -37,7 +37,7 @@ public static class ServiceCollectionExt
         if (!services.HasService<IQueues>()) {
             services.AddSingleton<InMemoryQueues>(c => new InMemoryQueues(c.GetRequiredService<InMemoryQueues.Options>(), c));
             services.AddSingleton<IQueues>(c => c.GetRequiredService<InMemoryQueues>());
-            services.AddHostedService(c => c.GetRequiredService<IQueues>());
+            services.AddHostedService(c => c.Queues());
             services.AddSingleton<IQueueRefResolver>(c => new QueueRefResolver(c));
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IOperationCompletionListener, EnqueueOnCompletionProcessor>());
         }
@@ -54,7 +54,7 @@ public static class ServiceCollectionExt
         if (!services.HasService<IQueues>()) {
             services.AddSingleton<NatsQueues>(c => new NatsQueues(c.GetRequiredService<NatsQueues.Options>(), c));
             services.AddSingleton<IQueues>(c => c.GetRequiredService<NatsQueues>());
-            services.AddHostedService(c => c.GetRequiredService<IQueues>());
+            services.AddHostedService(c => c.Queues());
             services.AddSingleton<IQueueRefResolver>(c => new QueueRefResolver(c));
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IOperationCompletionListener, EnqueueOnCompletionProcessor>());
         }

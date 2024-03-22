@@ -170,8 +170,8 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             MaxDeliver = Settings.MaxTryCount,
             FilterSubject = GetConsumerFilter(shardIndex),
             AckPolicy = ConsumerConfigAckPolicy.Explicit,
-            AckWait = ShardScheme.IsQueue && ShardScheme != ShardScheme.EventQueue
-                ? TimeSpan.FromMinutes(15) // Any scheme with "Queue" suffix except EventQueue
+            AckWait = ShardScheme.HasFlags(ShardSchemeFlags.SlowQueue)
+                ? TimeSpan.FromMinutes(15)
                 : TimeSpan.FromSeconds(15),
             MaxAckPending = 100,
             MaxBatch = 10,
