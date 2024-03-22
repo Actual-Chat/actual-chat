@@ -386,7 +386,7 @@ jobs:
             us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-app:${{needs.build.outputs.simple-version}}
 
   build-android-pkg:
-    name: Build app package for ${{ github.ref_name }}
+    name: Build android app package for ${{ github.ref_name }}
     if: |
       github.ref == 'refs/heads/master' ||
       github.ref == 'refs/heads/dev' ||
