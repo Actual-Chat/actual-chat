@@ -472,7 +472,7 @@ jobs:
           retention-days: 10
 
   deploy-android-dev-to-drive:
-    name: Deploy app package for ${{ github.ref_name }} to googlde drive
+    name: Deploy android app package to googlde drive for ${{ github.ref_name }}
     if: |
       github.ref == 'refs/heads/master' ||
       github.ref == 'refs/heads/dev'
@@ -519,7 +519,7 @@ jobs:
           overwrite: true
 
   deploy-android-to-play-store:
-    name: Deploy app package for ${{ github.ref_name }} to google play store
+    name: Deploy app package to google play store for ${{ github.ref_name }}
     if: |
       github.ref == 'refs/heads/master' ||
       startsWith(github.ref, 'refs/heads/release/')
