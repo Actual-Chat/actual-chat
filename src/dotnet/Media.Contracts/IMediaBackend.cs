@@ -8,6 +8,9 @@ public interface IMediaBackend : IComputeService, IBackendService
     [ComputeMethod]
     public Task<Media?> Get(MediaId mediaId, CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    public Task<Media?> GetByContentId(string contentId, CancellationToken cancellationToken);
+
     [CommandHandler]
     public Task<Media?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken);
 }
