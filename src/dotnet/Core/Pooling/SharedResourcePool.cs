@@ -7,7 +7,8 @@ public partial class SharedResourcePool<TKey, TResource>(
     where TKey : notnull
     where TResource : class
 {
-    private readonly ConcurrentDictionary<TKey, Lease> _leases = new ();
+    private readonly ConcurrentDictionary<TKey,
+        LazySlim<TKey, (SharedResourcePool<TKey, TResource>, CancellationToken), Lease>> _leases = new ();
     private Func<TKey, CancellationToken, Task<TResource>> ResourceFactory { get; } = resourceFactory;
     private Func<TKey, TResource, ValueTask> ResourceDisposer { get; } = resourceDisposer ?? DefaultResourceDisposer;
 
