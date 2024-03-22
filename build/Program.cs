@@ -34,6 +34,7 @@ internal static class Program
         public const string Tests = "tests";
         public const string Build = "build";
         public const string Maui = "maui";
+        public const string PublishIos = "publish-ios";
         public const string PublishAndroid = "publish-android";
         public const string PublishWin = "publish-win";
         public const string RestoreTools = "restore-tools";
@@ -373,6 +374,44 @@ internal static class Program
                     "-f net8.0-android",
                     @"/p:TargetFrameworks=\""net8.0-android;net8.0\""", // otherwise needs maui-ios etc
                     $"/p:AndroidSigningKeyPass={signingKeyPass} /p:AndroidSigningStorePass={signingStorePass}",
+                    $"-c {configuration}",
+                    $"-p:IsDevMaui={isDevMaui}")
+                .WithWorkingDirectory("src/dotnet/App.Maui")
+                .ToConsole(Green("dotnet: "))
+                .ExecuteAsync(cancellationToken)
+                .Task
+                .ConfigureAwait(false);
+        });
+
+        Target(Targets.PublishIos, DependsOn(Targets.NpmBuild), async () => {
+            var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
+            isDevMaui ??= !isProduction;
+            await Cli
+                .Wrap(dotnet)
+                .WithArguments("build",
+                    "-noLogo",
+                    "-maxCpuCount",
+                    "-nodeReuse:false",
+                    "-f net8.0-ios",
+                    @"/p:TargetFrameworks=\""net8.0-ios;net8.0\""", // otherwise needs maui-android etc
+                    $"-c {configuration}",
+                    $"-p:IsDevMaui={isDevMaui}")
+                .WithWorkingDirectory("src/dotnet/App.Maui")
+                .ToConsole(Green("dotnet: "))
+                .ExecuteAsync(cancellationToken)
+                .Task
+                .ConfigureAwait(false);
+            // TODO: figure out how to publish and consistently perform post build targets in App.Maui.csproj
+            await Cli
+                .Wrap(dotnet)
+                .WithArguments("publish",
+                    "-noLogo",
+                    "-maxCpuCount",
+                    "-nodeReuse:false",
+                    "-f net8.0-ios",
+                    @"/p:TargetFrameworks=\""net8.0-ios;net8.0\""", // otherwise needs maui-android etc
+                    "-p:RuntimeIdentifier=ios-arm64",
+                    "-p:ArchiveOnBuild=true",
                     $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}")
                 .WithWorkingDirectory("src/dotnet/App.Maui")

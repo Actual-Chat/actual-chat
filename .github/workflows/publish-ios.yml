@@ -1,0 +1,152 @@
+name: Build test and deploy
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  create:
+  push:
+    branches:
+      - "**"
+      - master
+      - dev
+      - release/v*
+    paths-ignore:
+      - "**.md"
+  pull_request:
+    branches:
+      - master
+      - dev
+      - release/v*
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+  issues: read
+  checks: write
+  statuses: write
+
+jobs:
+
+  build-ios-pkg:
+    name: Build ios app package for ${{ github.ref_name }}
+    # TODO: remove feature branch
+    if: |
+      github.ref == 'refs/heads/master' ||
+      github.ref == 'refs/heads/dev' ||
+      startsWith(github.ref, 'refs/heads/feat/1873-') ||
+      startsWith(github.ref, 'refs/heads/release/')
+    runs-on: macos-latest
+    env:
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+      NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
+      ActualChat_AndroidSigningKeyPass: ${{secrets.ANDROIDSIGNINGKEYPASS}}
+      ActualChat_AndroidSigningStorePass: ${{secrets.ANDROIDSIGNINGSTOREPASS}}
+      IS_DEV_MAUI: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
+      APP_ID: chat.actual.${{ !startsWith(github.ref, 'refs/heads/release/') && 'dev.' || '' }}app
+      PACKAGE_FILE_NAME: ActualChat.ipa
+    outputs:
+      APP_ID: ${{env.APP_ID}}
+      ARTIFACT_NAME: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.aab
+      PACKAGE_FILE_NAME: ${{env.PACKAGE_FILE_NAME}}
+      MAJOR_MINOR_VERSION: ${{steps.nbgv.outputs.MajorMinorVersion}}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: true
+
+      - name: Install dotnet 8.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
+          dotnet-quality: 'ga'
+
+      - name: Use cached dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/.nuget/packages
+          key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Replace git+ssh://git@ to https://
+        run: sed -i -E 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
+
+      - name: Install workloads
+        run: |-
+          dotnet workload restore
+
+      - name: Generate version variables
+        id: nbgv
+        uses: dotnet/nbgv@master
+        with:
+          setAllVars: true
+
+      - name: Restore nuget packages
+        run: |-
+          ./run-build.cmd restore
+
+      - name: Prepare GoogleServices file for dev
+        if: ${{env.IS_DEV_MAUI}}
+        run: |-
+          tee src/dotnet/App.Maui/Platforms/iOS/GoogleService-Info.plist.dev <<EOF
+          ${{ secrets.GOOGLE_SERVICES_PLIST_DEV }}
+          EOF
+
+      - name: Prepare GoogleServices file for prod
+        if: ${{!env.IS_DEV_MAUI}}
+        run: |-
+          tee src/dotnet/App.Maui/Platforms/iOS/GoogleService-Info.plist.prod <<EOF
+          ${{ secrets.GOOGLE_SERVICES_PLIST_PROD }}
+          EOF
+
+      - name: Build app package
+        run: |-
+          ./run-build.cmd publish-ios --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}"
+          pushd artifacts/publish/App.Maui/release_net8.0-ios_ios-arm64
+          unzip ActualChat.ipa
+          rm -r Payload/ActualChat.app/_CodeSignature
+          rm -r Payload/ActualChat.app/Frameworks/*/_CodeSignature
+          codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" Payload/ActualChat.app/Frameworks/*
+          codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" --entitlements ${{github.workspace}}/src/dotnet/App.Maui/Platforms/iOS/Entitlements.plist Payload/ActualChat.app
+          zip -r App-signed.ipa Payload
+          popd
+
+      - name: Upload package to artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.ipa
+          path: artifacts/publish/App.Maui/release_net8.0-ios_ios-arm64/${{env.PACKAGE_FILE_NAME}}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 10
+
+
+  deploy-ios-to-appstore:
+    name: Deploy app package to apple app store for ${{ github.ref_name }}
+    if: |
+      github.ref == 'refs/heads/master' ||
+      startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
+    # TODO: uncomment dependencies
+    needs:
+      - build-ios-pkg
+#      - unit-tests
+#      - integration-tests
+    environment: prod
+    env:
+      APP_ID: ${{needs.build-ios-pkg.outputs.APP_ID}}
+      ARTIFACT_NAME: ${{needs.build-ios-pkg.outputs.ARTIFACT_NAME}}
+      PACKAGE_FILE_NAME: ${{needs.build-ios-pkg.outputs.PACKAGE_FILE_NAME}}
+    steps:
+      - name: Download package file from artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{env.ARTIFACT_NAME}}
+
+      - run: test -f ${{env.PACKAGE_FILE_NAME}} || exit /b 1
