@@ -10,7 +10,7 @@ public partial class NativeHttpClientFactory(IServiceProvider services)
     : IHttpClientFactory, IHttpMessageHandlerFactory
 {
     private static readonly Tracer Tracer = Tracer.Default[nameof(NativeHttpClientFactory)];
-    private readonly ConcurrentDictionary<string, HttpMessageHandler> _messageHandlers = new (StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, LazySlim<string, HttpMessageHandler>> _messageHandlers = new (StringComparer.Ordinal);
 
     private IServiceProvider Services { get; } = services;
     private IOptionsSnapshot<HttpClientFactoryOptions> Options { get; } = services.GetRequiredService<IOptionsSnapshot<HttpClientFactoryOptions>>();
@@ -20,10 +20,9 @@ public partial class NativeHttpClientFactory(IServiceProvider services)
         // Each call to CreateClient(String) is guaranteed to return a new HttpClient instance.
         // https://learn.microsoft.com/en-us/dotnet/api/system.net.http.ihttpclientfactory.createclient?view=dotnet-plat-ext-6.0#remarks
         => ConfigureClient(new HttpClient(CreateHandler(name), false) {
-                DefaultRequestVersion = HttpVersion.Version30,
-                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
-            },
-            name);
+            DefaultRequestVersion = HttpVersion.Version30,
+            DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
+        }, name);
 
     public HttpMessageHandler CreateHandler(string name)
         => _messageHandlers.GetOrAdd(name,

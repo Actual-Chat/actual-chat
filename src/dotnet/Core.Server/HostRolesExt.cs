@@ -14,10 +14,7 @@ public static class HostRolesExt
     public static ServiceMode GetBackendServiceMode(this IReadOnlySet<HostRole> hostRoles, Type type)
     {
         var attrs = _backendServiceAttributes.GetOrAdd(type,
-            static (_, t) => t
-                .GetCustomAttributes<BackendServiceAttribute>()
-                .OrderByDescending(x => x.Priority)
-                .ToArray(),
+            static (_, t) => t.GetCustomAttributes<BackendServiceAttribute>().OrderByDescending(x => x.Priority).ToArray(),
             type);
         if (attrs.Length == 0)
             return hostRoles.GetBackendServiceMode(type.Assembly);
@@ -31,10 +28,7 @@ public static class HostRolesExt
     private static ServiceMode GetBackendServiceMode(this IReadOnlySet<HostRole> hostRoles, Assembly assembly)
     {
         var attrs = _backendServiceAttributes.GetOrAdd(assembly,
-            static (_, a) => a
-                .GetCustomAttributes<BackendServiceAttribute>()
-                .OrderByDescending(x => x.Priority)
-                .ToArray(),
+            static (_, a) => a.GetCustomAttributes<BackendServiceAttribute>().OrderByDescending(x => x.Priority).ToArray(),
             assembly);
         var attr = attrs.FirstOrDefault(x => hostRoles.Contains(new HostRole(x.HostRole)));
         return attr?.ServiceMode ?? ServiceMode.Client;

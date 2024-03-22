@@ -70,9 +70,7 @@ public sealed class ShardScheme(
     public static ShardScheme? ForType(Type type)
     {
         var attr = _backendClientAttributes.GetOrAdd(type,
-            static (_, t) => t
-                .GetCustomAttributes<BackendClientAttribute>()
-                .SingleOrDefault(),
+            static (_, t) => t.GetCustomAttributes<BackendClientAttribute>().SingleOrDefault(),
             type);
         var shardScheme = attr != null ? ById[attr.ShardScheme] : null;
         return shardScheme ?? ForAssembly(type.Assembly);
@@ -83,9 +81,7 @@ public sealed class ShardScheme(
     private static ShardScheme? ForAssembly(Assembly assembly)
     {
         var attr = _backendClientAttributes.GetOrAdd(assembly,
-            static (_, t) => t
-                .GetCustomAttributes<BackendClientAttribute>()
-                .SingleOrDefault(),
+            static (_, t) => t.GetCustomAttributes<BackendClientAttribute>().SingleOrDefault(),
             assembly);
         return attr != null ? ById[attr.ShardScheme] : null;
     }

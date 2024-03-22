@@ -62,9 +62,7 @@ public sealed class QueueRefResolver(IServiceProvider services) : IQueueRefResol
     public static QueueRef ResolveAttribute(Type type)
     {
         var attr = _queueAttributes.GetOrAdd(type,
-            static (_, t) => t
-                .GetCustomAttributes<QueueAttribute>()
-                .SingleOrDefault(),
+            static (_, t) => t.GetCustomAttributes<QueueAttribute>().SingleOrDefault(),
             type);
         return attr != null
             ? ShardScheme.ById[attr.ShardScheme]
