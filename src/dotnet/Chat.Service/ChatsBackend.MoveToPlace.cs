@@ -1,114 +1,158 @@
 using ActualChat.Chat.Db;
-using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat;
 
 public partial class ChatsBackend
 {
-    public virtual async Task OnMoveToPlace(
+    public virtual async Task<ChatBackend_MoveChatToPlaceResult> OnMoveToPlace(
         ChatBackend_MoveChatToPlace command,
         CancellationToken cancellationToken)
     {
         var (chatId, placeId) = command;
+        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
+        var newChatId = (ChatId)placeChatId;
+        var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
             _ = Get(chatId, default);
             _ = GetPublicChatIdsFor(placeId, default);
-            return;
+            var lastEntryIdInv = context.Operation().Items.GetOrDefault(ChatEntryId.None);
+            if (!lastEntryIdInv.IsNone)
+                InvalidateTiles(newChatId, ChatEntryKind.Text, lastEntryIdInv.LocalId, ChangeKind.Create);
+            return default!;
         }
 
         Log.LogInformation("OnMoveToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'",
             chatId.Value,
             placeId);
 
-        var chatSid = chatId.Value;
-        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
-        var newChatId = (ChatId)placeChatId;
-        var newChatSid = newChatId.Value;
-
         var migratedRoles = new List<MigratedRole>();
         var migratedAuthors = new MigratedAuthors();
+        var didProgress = false;
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        dbContext.Database.SetCommandTimeout(TimeSpan.FromSeconds(30));
-        await using var __ = dbContext.ConfigureAwait(false);
+        var textEntryRange = new Range<long>();
+        {
+            var dbContext = CreateDbContext(true);
+            dbContext.Database.SetCommandTimeout(TimeSpan.FromSeconds(30));
+            await using var __ = dbContext.ConfigureAwait(false);
 
-        await UpdateChat(dbContext, chatSid, newChatSid, cancellationToken).ConfigureAwait(false);
+            var chat = await Get(chatId, cancellationToken).Require().ConfigureAwait(false);
+            var newChat = await CreateOrUpdateChat(dbContext, newChatId, chat, cancellationToken).ConfigureAwait(false);
 
-        await UpdateRoles(dbContext,
-                chatSid,
-                newChatId,
-                migratedRoles,
-                cancellationToken)
-            .ConfigureAwait(false);
+            var lastTextEntry = await GetLastEntry(dbContext, chatId, ChatEntryKind.Text, cancellationToken)
+                .ConfigureAwait(false);
+            if (lastTextEntry != null) {
+                var lastNewTextEntry = await GetLastEntry(dbContext, newChatId, ChatEntryKind.Text, cancellationToken)
+                    .ConfigureAwait(false);
+                var startEntryId = lastNewTextEntry != null ? lastNewTextEntry.LocalId + 1 : 1;
+                var endEntryId = lastTextEntry.LocalId;
+                if (endEntryId > startEntryId)
+                    textEntryRange = new Range<long>(startEntryId, endEntryId + 1);
+            }
 
-        await UpdateAuthors(dbContext,
-                chatSid,
-                newChatId,
-                migratedRoles,
-                migratedAuthors,
-                cancellationToken)
-            .ConfigureAwait(false);
+            var chatSid = chatId.Value;
 
-        await UpdateChatEntries(dbContext,
-                chatSid,
-                newChatId,
-                migratedAuthors,
-                cancellationToken)
-            .ConfigureAwait(false);
+            var didProgress1 = await CreateOrUpdateRoles(dbContext,
+                    chatSid,
+                    newChat,
+                    migratedRoles,
+                    cancellationToken)
+                .ConfigureAwait(false);
 
-        await UpdateTextEntryAttachments(dbContext, chatSid, newChatSid, cancellationToken).ConfigureAwait(false);
+            var didProgress2 = await CreateOrGetAuthors(dbContext,
+                    chatSid,
+                    newChatId,
+                    migratedRoles,
+                    migratedAuthors,
+                    cancellationToken)
+                .ConfigureAwait(false);
 
-        await UpdateMentions(dbContext,
-                chatSid,
-                newChatSid,
-                migratedAuthors,
-                cancellationToken)
-            .ConfigureAwait(false);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            didProgress |= didProgress1 | didProgress2;
+        }
 
-        await UpdateReactions(dbContext,
-                chatSid,
-                newChatSid,
-                migratedAuthors,
-                cancellationToken)
-            .ConfigureAwait(false);
+        // if (textEntryRange.Start > 1) {
+        //      TODO: update last N records from previous insert
+        // }
 
-        await UpdateReactionSummaries(dbContext,
-                chatSid,
-                newChatSid,
-                migratedAuthors,
-                cancellationToken)
-            .ConfigureAwait(false);
+        var proceed = true;
+        var hasErrors = false;
+        var lastEntryId = 0L;
+        CopyChatEntriesResult? result = null;
+        if (!textEntryRange.IsEmpty) {
+            var startEntryId = textEntryRange.Start;
+            var copyContext = new CopyChatEntriesContext(chatId, newChatId, migratedAuthors);
+            const int batchLimit = 10;
+
+            while (proceed) {
+                var batchRange = new Range<long>(startEntryId, textEntryRange.End);
+                try {
+                    result = await CopyChatEntries(copyContext,
+                            batchRange,
+                            batchLimit,
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                    if (result.ProcessedChatEntriesCount == 0)
+                        proceed = false;
+                    else {
+                        didProgress = true;
+                        startEntryId = result.LastEntryId.LocalId + 1;
+                        lastEntryId = result.LastEntryId.LocalId;
+                    }
+                }
+                catch (Exception e) {
+                    proceed = false;
+                    hasErrors = true;
+                    Log.LogInformation(e, "Failed to proceed chat entries insertion for range [{Start}, {End})", batchRange.Start, batchRange.End);
+                }
+            }
+        }
+
+        if (result != null && !result.LastEntryId.IsNone) {
+            var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            dbContext.Database.SetCommandTimeout(TimeSpan.FromSeconds(30));
+            await using var __ = dbContext.ConfigureAwait(false);
+
+            context.Operation().Items.Set(result.LastEntryId);
+        }
 
         Log.LogInformation("OnMoveToPlace: completed");
+        return new ChatBackend_MoveChatToPlaceResult(didProgress, hasErrors, lastEntryId);
     }
 
-    private async Task UpdateChat(
-        ChatDbContext dbContext,
-        string chatSid,
-        string newChatSid,
-        CancellationToken cancellationToken)
+    private async Task<Chat> CreateOrUpdateChat(ChatDbContext dbContext, ChatId newChatId, Chat chat, CancellationToken cancellationToken)
     {
-        _ = await dbContext.Chats
+        var chatSid = newChatId.Value;
+        var dbChat = await dbContext.Chats
             .Where(c => c.Id == chatSid)
-            .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(c => c.Id, c => newChatSid)
-                    .SetProperty(c => c.Kind, c => ChatKind.Place),
-                cancellationToken)
-            .RequireOneUpdated()
+            .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-
+        Chat newChat;
+        if (dbChat == null) {
+            newChat = chat with { Id = newChatId };
+            dbContext.Chats.Add(new DbChat(newChat));
+        }
+        else {
+            dbChat.Title = chat.Title;
+            dbChat.IsPublic = chat.IsPublic;
+            dbChat.MediaId = chat.MediaId;
+            dbChat.Version = chat.Version;
+            newChat = dbChat.ToModel();
+        }
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("Updated chat record");
+        return newChat;
     }
 
-    private async Task UpdateRoles(
+    private async Task<bool> CreateOrUpdateRoles(
         ChatDbContext dbContext,
         string chatSid,
-        ChatId newChatId,
+        Chat newChat,
         ICollection<MigratedRole> migratedRoles,
         CancellationToken cancellationToken)
     {
+        var didProgress = false;
         var dbRoles = await dbContext.Roles
             .Where(c => c.ChatId == chatSid)
             .OrderBy(c => c.LocalId)
@@ -117,25 +161,35 @@ public partial class ChatsBackend
 
         foreach (var dbRole in dbRoles) {
             var originalRole = dbRole.ToModel();
-            var newRoleId = new RoleId(RoleId.Format(newChatId, dbRole.LocalId));
-
-            _ = await dbContext.Roles
-                .Where(c => c.Id == dbRole.Id)
-                .ExecuteUpdateAsync(setters => setters
-                        .SetProperty(c => c.Id, c => newRoleId)
-                        .SetProperty(c => c.ChatId, c => newChatId),
-                    cancellationToken)
-                .RequireOneUpdated()
+            var newRoleId = new RoleId(RoleId.Format(newChat.Id, dbRole.LocalId));
+            var newRoleSid = newRoleId.Value;
+            var existentNewRole = await dbContext.Roles
+                .Where(c => c.Id == newRoleSid)
+                .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
-
             var newRole = originalRole with { Id = newRoleId };
+            if (existentNewRole == null) {
+                dbContext.Roles.Add(new DbRole(newRole));
+                didProgress = true;
+            } else {
+                if (existentNewRole.SystemRole != originalRole.SystemRole)
+                    throw StandardError.Constraint("Can't proceed migration. Role 'SystemRole' property has changed. "
+                        + $"Expected value: '{originalRole.SystemRole}', but actual value: '{existentNewRole.SystemRole}'.");
+                if (!OrdinalEquals(existentNewRole.Name, originalRole.Name))
+                    throw StandardError.Constraint("Can't proceed migration. Role 'Name' property has changed. "
+                        + $"Expected value: '{originalRole.Name}', but actual value: '{existentNewRole.Name}'.");
+                existentNewRole.UpdateFrom(newRole);
+            }
+
             migratedRoles.Add(new MigratedRole(originalRole, newRole));
         }
 
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("Updated {Count} role records", dbRoles.Count);
+        return didProgress;
     }
 
-    private async Task UpdateAuthors(
+    private async Task<bool> CreateOrGetAuthors(
         ChatDbContext dbContext,
         string chatSid,
         ChatId newChatId,
@@ -143,7 +197,9 @@ public partial class ChatsBackend
         MigratedAuthors migratedAuthors,
         CancellationToken cancellationToken)
     {
-        var placeRootChatId = newChatId.PlaceChatId.PlaceId.ToRootChatId();
+        var placeRootChatId = newChatId.PlaceId.ToRootChatId();
+        var createdAuthors = 0;
+        var didProgress = false;
 
         // Create place members and update chat authors.
         var dbAuthors = await dbContext.Authors
@@ -168,8 +224,6 @@ public partial class ChatsBackend
                     .ConfigureAwait(false);
                 if (!hasChatEntries) {
                     migratedAuthors.RegisterRemoved(originalAuthor);
-                    dbContext.Authors.Remove(dbAuthor);
-                    await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                     continue; // Skip anonymous author if there were no messages from them.
                 }
 
@@ -192,11 +246,20 @@ public partial class ChatsBackend
                     authorDiff);
                 placeMember = await Commander.Call(upsertPlaceMemberCmd, cancellationToken)
                     .ConfigureAwait(false);
+                didProgress = true;
             }
             {
                 var newLocalId = placeMember.LocalId;
+                var newAuthorId = new AuthorId(newChatId, newLocalId, AssumeValid.Option);
+                var existentAuthor = await AuthorsBackend.Get(newAuthorId.ChatId, newAuthorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
+                    .ConfigureAwait(false);
+                if (existentAuthor != null) {
+                    migratedAuthors.RegisterMigrated(originalAuthor, placeMember, existentAuthor);
+                    continue;
+                }
+
                 var newAuthor = originalAuthor with {
-                    Id = new AuthorId(newChatId, newLocalId, AssumeValid.Option),
+                    Id = newAuthorId,
                     RoleIds = new ApiArray<Symbol>()
                 };
                 if (newAuthor.Version <= 0) {
@@ -211,47 +274,117 @@ public partial class ChatsBackend
                 var roleIds = dbAuthor.Roles.Select(c => c.DbRoleId).ToList();
                 foreach (var roleId in roleIds) {
                     var migratedRole = migratedRoles.First(c => OrdinalEquals(roleId, c.OriginalRole.Id.Value));
-
-                    _ = await dbContext.AuthorRoles
-                        .Where(c => c.DbRoleId == roleId && c.DbAuthorId == originalAuthor.Id)
-                        .ExecuteUpdateAsync(setters => setters
-                                .SetProperty(c => c.DbRoleId, c => migratedRole.NewId.Value)
-                                .SetProperty(c => c.DbAuthorId, c => newAuthor.Id.Value),
-                            cancellationToken)
-                        .ConfigureAwait(false);
+                    dbContext.AuthorRoles.Add(new DbAuthorRole {
+                        DbAuthorId = newAuthorId,
+                        DbRoleId = migratedRole.NewId
+                    });
                 }
 
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+                createdAuthors++;
+                didProgress = true;
             }
         }
 
-        if (dbAuthors.Count > 0) {
-            var updateCount = await dbContext.Authors
-                .Where(c => c.ChatId == chatSid)
-                .ExecuteDeleteAsync(cancellationToken)
-                .RequireUpdated(dbAuthors.Count)
-                .ConfigureAwait(false);
-
-            Log.LogInformation("Updated {Count} author records", updateCount);
-        }
+        Log.LogInformation("Created {Count} authors", createdAuthors);
+        return didProgress;
     }
 
-    private async Task UpdateChatEntries(
-        ChatDbContext dbContext,
-        string chatSid,
-        ChatId newChatId,
-        MigratedAuthors migratedAuthors,
+    private async Task<CopyChatEntriesResult> CopyChatEntries(
+        CopyChatEntriesContext context,
+        Range<long> entryIdRange,
+        int batchLimit,
         CancellationToken cancellationToken)
     {
-        int updateCount;
-        var chatEntryAuthorSids = await dbContext.ChatEntries
-            .Where(c => c.ChatId == chatSid)
-            .Select(c => c.AuthorId)
-            .Distinct()
+        if (entryIdRange.IsEmpty)
+            return new CopyChatEntriesResult(0, ChatEntryId.None, new Range<long>());
+
+        var dbContext = CreateDbContext(true);
+        dbContext.Database.SetCommandTimeout(TimeSpan.FromSeconds(30));
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var textEntriesResult = await CopyChatEntries(dbContext,
+                context,
+                ChatEntryKind.Text,
+                entryIdRange,
+                batchLimit,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!textEntriesResult.AudioEntryId.IsEmpty)
+            await CopyChatEntries(dbContext,
+                    context,
+                    ChatEntryKind.Audio,
+                    textEntriesResult.AudioEntryId,
+                    batchLimit,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return textEntriesResult;
+    }
+
+    private async Task<CopyChatEntriesResult> CopyChatEntries(
+        ChatDbContext dbContext,
+        CopyChatEntriesContext context,
+        ChatEntryKind entryKind,
+        Range<long> entryIdRange,
+        int batchLimit,
+        CancellationToken cancellationToken)
+    {
+        var chatSid = context.ChatId.Value;
+        var newChatId = context.NewChatId;
+        var migratedAuthors = context.MigratedAuthors;
+        var mentionExtractor = new MentionExtractor();
+
+        var mentionUpdatesInsideContent = 0;
+        var mentionUpdatesInSystemEntries = 0;
+        var minRelatedAudioEntryId = long.MaxValue;
+        var maxRelatedAudioEntryId = 0L;
+
+        var minLocalId = entryIdRange.Start;
+        var maxLocalId = entryIdRange.End - 1;
+        var attachmentIds = new List<long>();
+        var reactionIds = new List<long>();
+
+        var entries = await dbContext.ChatEntries
+            .Where(c => c.ChatId == chatSid && c.Kind == entryKind)
+            .Where(c => c.LocalId >= minLocalId && c.LocalId <= maxLocalId)
+            .OrderBy(c => c.LocalId)
+            .Take(batchLimit)
+            .AsNoTracking()
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        foreach (var authorSid in chatEntryAuthorSids) {
+        if (entries.Count == 0)
+            return new CopyChatEntriesResult(0, ChatEntryId.None, new Range<long>());
+
+        DbChatEntry? lastEntry = entries[^1];
+
+        List<long> chatEntryWithMentionIds = new List<long>();
+        if (entryKind == ChatEntryKind.Text)
+            await InsertMentions(dbContext,
+                    chatSid,
+                    newChatId,
+                    new Range<long>(entryIdRange.Start, lastEntry.LocalId + 1),
+                    migratedAuthors,
+                    chatEntryWithMentionIds,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        else
+            chatEntryWithMentionIds = new List<long>();
+
+        lastEntry = null;
+
+        foreach (var dbChatEntry in entries) {
+            var skip = false;
+            var newEntryId = new ChatEntryId(newChatId, entryKind, dbChatEntry.LocalId, AssumeValid.Option);
+            dbChatEntry.Id = newEntryId;
+            dbChatEntry.ChatId = newChatId;
+
+            var authorSid = dbChatEntry.AuthorId;
             var authorId = new AuthorId(authorSid);
             AuthorId newAuthorId;
             if (authorId.LocalId > 0)
@@ -261,301 +394,228 @@ public partial class ChatsBackend
             else
                 throw StandardError.Internal($"Unexpected author local id. Local id is '{authorId.LocalId}'.");
 
-            var newAuthorSid = newAuthorId.Value;
-            updateCount = await dbContext.ChatEntries
-                .Where(c => c.ChatId == chatSid && c.AuthorId == authorId)
-                .ExecuteUpdateAsync(s => s.SetProperty(c => c.AuthorId, newAuthorSid), cancellationToken)
-                .RequireAtLeastOneUpdated()
-                .ConfigureAwait(false);
+            dbChatEntry.AuthorId = newAuthorId;
 
-            Log.LogInformation(
-                "Updated AuthorId for {Count} chat entry records with author id '{AuthorId}'."
-                + " New author id is '{NewAuthorId}'",
-                updateCount,
-                authorSid,
-                newAuthorSid);
-        }
+            if (dbChatEntry.Kind == ChatEntryKind.Text
+                && chatEntryWithMentionIds.Contains(dbChatEntry.LocalId)) {
+                var content = UpdateMentionsInContent(dbChatEntry.Content, migratedAuthors, mentionExtractor);
+                if (!OrdinalEquals(content, dbChatEntry.Content)) {
+                    dbChatEntry.Content = content;
+                    mentionUpdatesInsideContent++;
+                }
+            }
 
-        for (int i = 0; i < 2; i++) {
-            var entryKind = (ChatEntryKind)i;
-            var prefix = newChatId + ":" + i + ":";
-            updateCount = await dbContext.ChatEntries
-                .Where(c => c.ChatId == chatSid && c.Kind == entryKind)
-                .ExecuteUpdateAsync(setters => setters
-                        .SetProperty(c => c.Id, c => prefix + c.LocalId)
-                        .SetProperty(c => c.ChatId, newChatId),
-                    cancellationToken)
-                .ConfigureAwait(false);
+            if (dbChatEntry.IsSystemEntry) {
+                var chatEntry = dbChatEntry.ToModel();
+                var membersChangedOption = chatEntry.SystemEntry?.MembersChanged;
+                if (membersChangedOption != null) {
+                    var changeAuthorId = membersChangedOption.AuthorId;
+                    if (!string.IsNullOrEmpty(changeAuthorId)) {
+                        var isRemoved = migratedAuthors.IsRemoved(changeAuthorId);
+                        if (isRemoved) {
+                            // It's a system chat entry for removed author. So let's remove entry as well.
+                            skip = true;
+                        }
+                        else {
+                            var changeNewAuthorId = migratedAuthors.GetNewAuthorId(changeAuthorId);
+                            var newMembersChangedOption = new MembersChangedOption(changeNewAuthorId,
+                                membersChangedOption.AuthorName,
+                                membersChangedOption.HasLeft);
+                            chatEntry = chatEntry with { SystemEntry = newMembersChangedOption };
+                            dbChatEntry.UpdateFrom(chatEntry);
+                            mentionUpdatesInSystemEntries++;
+                        }
+                    }
+                }
+            }
 
-            Log.LogInformation("Updated Id and ChatId for {Count} '{Kind}' chat entry records",
-                updateCount,
-                entryKind.ToString());
-        }
+            if (entryKind == ChatEntryKind.Text && dbChatEntry.AudioEntryId.HasValue) {
+                var audioEntryId = dbChatEntry.AudioEntryId.Value;
+                if (audioEntryId < minRelatedAudioEntryId)
+                    minRelatedAudioEntryId = audioEntryId;
+                if (audioEntryId > maxRelatedAudioEntryId)
+                    maxRelatedAudioEntryId = audioEntryId;
+            }
 
-        // NOTE: I expect that we don't have many entries with forward fields filled in so far
-        // hence it's ok to fetch them all at once.
-        var chatEntriesToUpdateForwardFields = await dbContext.ChatEntries
-            .Where(c => c.ForwardedAuthorId != null && c.ForwardedAuthorId.StartsWith(chatSid))
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
+            if (!skip) {
+                dbContext.ChatEntries.Add(dbChatEntry);
+                lastEntry = dbChatEntry;
 
-        updateCount = 0;
-        foreach (var dbChatEntry in chatEntriesToUpdateForwardFields) {
-            var forwardedAuthorId =
-                dbChatEntry.ForwardedAuthorId.RequireNonEmpty(nameof(DbChatEntry.ForwardedAuthorId));
-            var newAuthorId = migratedAuthors.GetNewAuthorId(forwardedAuthorId);
-            dbChatEntry.ForwardedAuthorId = newAuthorId.Value;
-            var forwardedChatEntryId =
-                dbChatEntry.ForwardedChatEntryId.RequireNonEmpty(nameof(DbChatEntry.ForwardedChatEntryId));
-            var chatEntryId = new ChatEntryId(forwardedChatEntryId);
-            var newChatEntrySid = ChatEntryId.Format(newChatId, chatEntryId.Kind, chatEntryId.LocalId);
-            dbChatEntry.ForwardedChatEntryId = newChatEntrySid;
-            updateCount++;
+                if (dbChatEntry.HasAttachments)
+                    attachmentIds.Add(dbChatEntry.LocalId);
+                if (dbChatEntry.HasReactions)
+                    reactionIds.Add(dbChatEntry.LocalId);
+            }
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        Log.LogInformation("Updated ForwardedAuthorId and ForwardedChatEntryId for {Count} chat entry records",
-            updateCount);
-    }
+        if (attachmentIds.Count > 0)
+            await InsertTextEntryAttachments(dbContext, chatSid, newChatId, attachmentIds, cancellationToken).ConfigureAwait(false);
 
-    private async Task UpdateTextEntryAttachments(
-        ChatDbContext dbContext,
-        string chatSid,
-        string newChatSid,
-        CancellationToken cancellationToken)
-    {
-        // TODO(DF): should we update MediaId and ThumbnailMediaId somehow?
-        var attachmentIdPrefix = chatSid + ":0:";
-        var attachmentNewIdPrefix = newChatSid + ":0:";
-        var attachmentNewIdPrefixLength = attachmentIdPrefix.Length;
-        var updateCount = await dbContext.TextEntryAttachments
-            .Where(c => c.Id.StartsWith(attachmentIdPrefix))
-            .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(c => c.EntryId,
-                        c => string.Concat(attachmentNewIdPrefix,
-                            c.EntryId.Substring(attachmentNewIdPrefixLength)))
-                    .SetProperty(c => c.Id,
-                        c => string.Concat(attachmentNewIdPrefix,
-                            c.Id.Substring(attachmentNewIdPrefixLength))),
-                cancellationToken)
-            .ConfigureAwait(false);
+        if (reactionIds.Count > 0)
+            await InsertReactions(dbContext, chatSid, newChatId, reactionIds, migratedAuthors, cancellationToken).ConfigureAwait(false);
 
-        Log.LogInformation("Updated {Count} text entry attachment records", updateCount);
-    }
+        Log.LogInformation(
+            "Inserted {Count} {Kind} chat entry records with local ids [{From},{To}]",
+            entries.Count,
+            entryKind,
+            minLocalId,
+            maxLocalId);
 
-    private async Task UpdateMentions(
-        ChatDbContext dbContext,
-        string chatSid,
-        string newChatSid,
-        MigratedAuthors migratedAuthors,
-        CancellationToken cancellationToken)
-    {
-        int updateCount = 0;
+        if (entryKind == ChatEntryKind.Text)
+            Log.LogInformation("Updated author mentions inside DbChatEntry.Content. {Count} records are affected",
+                mentionUpdatesInsideContent);
 
-        // Update author mentions inside DbChatEntry.Content
-        var chatEntryWithMentionIds = await dbContext.Mentions
-            .Where(c => c.ChatId == chatSid)
-            .Select(c => c.EntryId)
-            .Distinct()
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        var mentionExtractor = new MentionExtractor();
-        foreach (var entryLocalIdsChunk in chatEntryWithMentionIds.Chunk(20)) {
-            var chatEntries = await dbContext.ChatEntries
-                .Where(c => c.ChatId == newChatSid && c.Kind == ChatEntryKind.Text)
-                .Where(c => entryLocalIdsChunk.Contains(c.LocalId))
-                .ToListAsync(cancellationToken)
-                .ConfigureAwait(false);
-            foreach (var dbChatEntry in chatEntries) {
-                var content = dbChatEntry.Content;
-                var markup = MarkupParser.Parse(content);
-                var mentionIds = mentionExtractor.GetMentionIds(markup);
-                foreach (var mentionId in mentionIds) {
-                    if (!mentionId.IsAuthor(out var authorId))
-                        continue;
-
-                    var newAuthorId = migratedAuthors.GetNewAuthorId(authorId);
-                    var newMentionId = new MentionId(newAuthorId, AssumeValid.Option);
-                    content = content.Replace(mentionId.Id.Value, newMentionId.Id.Value, StringComparison.Ordinal);
-                }
-                if (OrdinalEquals(content, dbChatEntry.Content))
-                    continue;
-
-                dbChatEntry.Content = content;
-                updateCount++;
-            }
-
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        Log.LogInformation("Updated author mentions inside DbChatEntry.Content. {Count} records are affected",
-            updateCount);
-
-        // Update MembersChangedOption inside system chat entries
-        updateCount = 0;
-        var systemChatEntries = await dbContext.ChatEntries
-            .Where(c => c.ChatId == newChatSid && c.Kind == ChatEntryKind.Text && c.IsSystemEntry)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        foreach (var dbChatEntry in systemChatEntries) {
-            var chatEntry = dbChatEntry.ToModel();
-            var membersChangedOption = chatEntry.SystemEntry?.MembersChanged;
-            if (membersChangedOption != null) {
-                var authorId = membersChangedOption.AuthorId;
-                if (string.IsNullOrEmpty(authorId))
-                    continue; // Nothing to migrate.
-                var isRemoved = migratedAuthors.IsRemoved(authorId);
-                if (isRemoved) {
-                    // It's a system chat entry for removed author. So let's remove entry as well.
-                    dbContext.ChatEntries.Remove(dbChatEntry);
-                    await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-                    continue;
-                }
-                var newAuthorId = migratedAuthors.GetNewAuthorId(authorId);
-                var newMembersChangedOption = new MembersChangedOption(newAuthorId,
-                    membersChangedOption.AuthorName,
-                    membersChangedOption.HasLeft);
-                chatEntry = chatEntry with { SystemEntry = newMembersChangedOption };
-                dbChatEntry.UpdateFrom(chatEntry);
-                updateCount++;
-            }
-        }
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("Updated MembersChangedOption inside system chat entries. {Count} records are affected",
-            updateCount);
+            mentionUpdatesInSystemEntries);
 
-        var mentionSids = await dbContext.Mentions
-            .Where(c => c.ChatId == chatSid)
-            .Select(c => c.MentionId)
-            .Distinct()
-            .ToListAsync(cancellationToken)
+        var lastEntryId = lastEntry != null ? ChatEntryId.Parse(lastEntry.Id) : ChatEntryId.None;
+        var audioRange = minRelatedAudioEntryId <= maxRelatedAudioEntryId
+            ? new Range<long>(minRelatedAudioEntryId, maxRelatedAudioEntryId + 1)
+            : new Range<long>();
+        return new CopyChatEntriesResult(entries.Count, lastEntryId, audioRange);
+    }
+
+
+        // Что делать с форвардами, когда мы копируем записи?
+
+        // // NOTE: I expect that we don't have many entries with forward fields filled in so far
+        // // hence it's ok to fetch them all at once.
+        // var chatEntriesToUpdateForwardFields = await dbContext.ChatEntries
+        //     .Where(c => c.ForwardedAuthorId != null && c.ForwardedAuthorId.StartsWith(chatSid))
+        //     .ToListAsync(cancellationToken)
+        //     .ConfigureAwait(false);
+        //
+        // updateCount = 0;
+        // foreach (var dbChatEntry in chatEntriesToUpdateForwardFields) {
+        //     var forwardedAuthorId =
+        //         dbChatEntry.ForwardedAuthorId.RequireNonEmpty(nameof(DbChatEntry.ForwardedAuthorId));
+        //     var newAuthorId = migratedAuthors.GetNewAuthorId(forwardedAuthorId);
+        //     dbChatEntry.ForwardedAuthorId = newAuthorId.Value;
+        //     var forwardedChatEntryId =
+        //         dbChatEntry.ForwardedChatEntryId.RequireNonEmpty(nameof(DbChatEntry.ForwardedChatEntryId));
+        //     var chatEntryId = new ChatEntryId(forwardedChatEntryId);
+        //     var newChatEntrySid = ChatEntryId.Format(newChatId, chatEntryId.Kind, chatEntryId.LocalId);
+        //     dbChatEntry.ForwardedChatEntryId = newChatEntrySid;
+        //     updateCount++;
+        // }
+        //
+        // await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        // Log.LogInformation("Updated ForwardedAuthorId and ForwardedChatEntryId for {Count} chat entry records",
+        //     updateCount);
+
+    private async Task<DbChatEntry?> GetLastEntry(
+        ChatDbContext dbContext,
+        ChatId chatId,
+        ChatEntryKind entryKind,
+        CancellationToken cancellationToken)
+    {
+        var entry = await dbContext.ChatEntries
+            .Where(c => c.ChatId == chatId.Value && c.Kind == entryKind)
+            .OrderByDescending(c => c.LocalId)
+            .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
+        return entry;
+    }
 
-        const string mentionIdAuthorPrefix = "a:";
-        foreach (var mentionSid in mentionSids) {
-            if (!mentionSid.StartsWith(mentionIdAuthorPrefix, StringComparison.Ordinal))
+    private string UpdateMentionsInContent(string content, MigratedAuthors migratedAuthors,
+        MentionExtractor mentionExtractor)
+    {
+        var markup = MarkupParser.Parse(content);
+        var mentionIds = mentionExtractor.GetMentionIds(markup);
+        foreach (var mentionId in mentionIds) {
+            if (!mentionId.IsAuthor(out var authorId))
                 continue;
 
-            var authorSid = mentionSid.Substring(mentionIdAuthorPrefix.Length);
-            var newAuthorId = migratedAuthors.GetNewAuthorId(authorSid);
+            var newAuthorId = migratedAuthors.GetNewAuthorId(authorId);
             var newMentionId = new MentionId(newAuthorId, AssumeValid.Option);
-            var newMentionSid = newMentionId.Value;
-#pragma warning disable CA1307
-            updateCount = await dbContext.Mentions
-                .Where(c => c.ChatId == chatSid)
-                .Where(c => c.MentionId == mentionSid)
-                .ExecuteUpdateAsync(setters => setters
-                        .SetProperty(c => c.Id,
-                            c => c.Id.Replace(mentionSid, newMentionSid))
-                        .SetProperty(c => c.MentionId,
-                            newMentionSid),
-                    cancellationToken)
-                .ConfigureAwait(false);
-#pragma warning restore CA1307
-            Log.LogInformation(
-                "Updated MentionId for {Count} mention records with old mention id '{MentionId}'."
-                + " New mention id is '{NewMentionId}'",
-                updateCount,
-                mentionSid,
-                newMentionSid);
+            content = content.Replace(mentionId.Id.Value, newMentionId.Id.Value, StringComparison.Ordinal);
         }
-
-#pragma warning disable CA1307
-        updateCount = await dbContext.Mentions
-            .Where(c => c.ChatId == chatSid)
-            .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(c => c.ChatId,
-                        c => newChatSid)
-                    .SetProperty(c => c.Id,
-                        c => c.Id.Replace(chatSid, newChatSid)),
-                cancellationToken)
-            .ConfigureAwait(false);
-#pragma warning restore CA1307
-
-        Log.LogInformation("Updated ChatId and Id for {Count} mention records", updateCount);
+        return content;
     }
 
-    private async Task UpdateReactions(
-        ChatDbContext dbContext,
-        string chatSid,
-        string newChatSid,
-        MigratedAuthors migratedAuthors,
-        CancellationToken cancellationToken)
+    private async Task InsertTextEntryAttachments(ChatDbContext dbContext, string chatSid, ChatId newChatId, List<long> attachmentsIds, CancellationToken cancellationToken)
     {
-        int updateCount;
-
-        var authorSids = await dbContext.Reactions
-            .Where(c => c.Id.StartsWith(chatSid))
-            .Select(c => c.AuthorId)
-            .Distinct()
+        var attachmentIdPrefix = chatSid + ":0:";
+        List<string> ids = attachmentsIds.Select(c => attachmentIdPrefix + c).ToList();
+        var attachments = await dbContext.TextEntryAttachments
+            .Where(c => c.Id.StartsWith(attachmentIdPrefix))
+ #pragma warning disable CA1310
+            .Where(c => ids.Any(x => c.Id.StartsWith(x)))
+ #pragma warning restore CA1310
+            .AsNoTracking()
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        foreach (var authorSid in authorSids) {
-            var newAuthorId = migratedAuthors.GetNewAuthorId(authorSid);
-            var newAuthorSid = newAuthorId.Value;
-#pragma warning disable CA1307
-            updateCount = await dbContext.Reactions
-                .Where(c => c.Id.StartsWith(chatSid))
-                .Where(c => c.AuthorId == authorSid)
-                .ExecuteUpdateAsync(setters => setters
-                        .SetProperty(c => c.Id,
-                            c => c.Id.Replace(authorSid, newAuthorSid))
-                        .SetProperty(c => c.AuthorId,
-                            newAuthorSid),
-                    cancellationToken)
-                .ConfigureAwait(false);
-#pragma warning restore CA1307
-            Log.LogInformation(
-                "Updated AuthorId for {Count} reaction records with old author id '{AuthorId}'."
-                + " New author id is '{NewAuthorId}'",
-                updateCount,
-                authorSid,
-                newAuthorSid);
+        foreach (var dbAttachment in attachments) {
+            var entryId = new TextEntryId(dbAttachment.EntryId);
+            var newEntryId = new TextEntryId(newChatId, entryId.LocalId, AssumeValid.Option);
+            dbAttachment.Id = DbTextEntryAttachment.ComposeId(newEntryId, dbAttachment.Index);
+            dbAttachment.EntryId = newEntryId;
+            dbContext.TextEntryAttachments.Add(dbAttachment);
         }
 
-#pragma warning disable CA1307
-        updateCount = await dbContext.Reactions
-            .Where(c => c.Id.StartsWith(chatSid))
-            .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(c => c.EntryId,
-                        c => c.EntryId.Replace(chatSid, newChatSid))
-                    .SetProperty(c => c.Id,
-                        c => c.Id.Replace(chatSid, newChatSid)),
-                cancellationToken)
-            .ConfigureAwait(false);
-#pragma warning restore CA1307
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        Log.LogInformation("Updated EntryId and Id for {Count} reaction records", updateCount);
+        Log.LogInformation("Inserted {Count} text entry attachment records", attachments.Count);
     }
 
-    private async Task UpdateReactionSummaries(
+    private async Task InsertReactions(
         ChatDbContext dbContext,
         string chatSid,
-        string newChatSid,
+        ChatId newChatId,
+        List<long> reactionIds,
         MigratedAuthors migratedAuthors,
         CancellationToken cancellationToken)
     {
-        #pragma warning disable CA1307
-        var updateCount = await dbContext.ReactionSummaries
-            .Where(c => c.Id.StartsWith(chatSid))
-            .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(c => c.EntryId,
-                        c => c.EntryId.Replace(chatSid, newChatSid))
-                    .SetProperty(c => c.Id,
-                        c => c.Id.Replace(chatSid, newChatSid)),
-                cancellationToken)
+        var reactionIdPrefix = chatSid + ":0:";
+        List<string> ids = reactionIds.Select(c => reactionIdPrefix + c).ToList();
+
+        var reactions = await dbContext.Reactions
+            .Where(c => c.Id.StartsWith(reactionIdPrefix))
+ #pragma warning disable CA1310
+            .Where(c => ids.Any(x => c.Id.StartsWith(x)))
+ #pragma warning restore CA1310
+            .AsNoTracking()
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        #pragma warning restore CA1307
 
-        Log.LogInformation("Updated EntryId and Id for {Count} reaction summary records", updateCount);
+        foreach (var dbReaction in reactions) {
+            var authorSid = dbReaction.AuthorId;
+            var newAuthorId = migratedAuthors.GetNewAuthorId(authorSid);
+            dbReaction.AuthorId = newAuthorId.Value;
 
-        updateCount = 0;
-        foreach (var dbSummary in dbContext.ReactionSummaries.Where(c => c.Id.StartsWith(chatSid))) {
+            var entryId = new TextEntryId(dbReaction.EntryId);
+            var newEntryId = new TextEntryId(newChatId, entryId.LocalId, AssumeValid.Option);
+            dbReaction.EntryId = newEntryId.Value;
+            dbReaction.Id = DbReaction.ComposeId(newEntryId, newAuthorId);
+
+            dbContext.Reactions.Add(dbReaction);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("Inserted {Count} reaction records", reactions.Count);
+
+        var reactionSummaries = await dbContext.ReactionSummaries
+            .Where(c => c.Id.StartsWith(chatSid))
+ #pragma warning disable CA1310
+            .Where(c => ids.Any(x => c.Id.StartsWith(x)))
+ #pragma warning restore CA1310
+            .AsNoTracking()
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach (var dbSummary in reactionSummaries) {
+            var entryId = new TextEntryId(dbSummary.EntryId);
+            var newEntryId = new TextEntryId(newChatId, entryId.LocalId, AssumeValid.Option);
+            dbSummary.EntryId = newEntryId.Value;
+            dbSummary.Id = DbReactionSummary.ComposeId(newEntryId, dbSummary.EmojiId);
+
             var summary = dbSummary.ToModel();
             var authorIds = summary.FirstAuthorIds;
+
             var newAuthorIds = ImmutableList<AuthorId>.Empty;
             foreach (var authorId in authorIds) {
                 var newAuthorId = migratedAuthors.GetNewAuthorId(authorId);
@@ -563,12 +623,57 @@ public partial class ChatsBackend
             }
             summary = summary with { FirstAuthorIds = newAuthorIds };
             dbSummary.UpdateFrom(summary);
-            updateCount++;
+
+            dbContext.ReactionSummaries.Add(dbSummary);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        Log.LogInformation("Updated AuthorIds for {Count} reaction summary records", updateCount);
+        Log.LogInformation("Updated AuthorIds for {Count} reaction summary records", reactionSummaries.Count);
+    }
+
+    private async Task InsertMentions(
+        ChatDbContext dbContext,
+        string chatSid,
+        ChatId newChatId,
+        Range<long> range,
+        MigratedAuthors migratedAuthors,
+        ICollection<long> entryIdsCollector,
+        CancellationToken cancellationToken)
+    {
+        var maxLocalId = range.End - 1;
+        var minLocalId = range.Start;
+        var newChatSid = newChatId.Value;
+
+        var mentions = await dbContext.Mentions
+            .Where(c => c.ChatId == chatSid)
+            .Where(c => c.EntryId >= minLocalId && c.EntryId <= maxLocalId)
+            .OrderBy(c => c.Id)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        const string mentionIdAuthorPrefix = "a:";
+        foreach (var mention in mentions) {
+            mention.ChatId = newChatSid;
+            var mentionSid = mention.MentionId;
+            MentionId mentionId;
+            if (mentionSid.StartsWith(mentionIdAuthorPrefix, StringComparison.Ordinal)) {
+                var authorSid = mentionSid.Substring(mentionIdAuthorPrefix.Length);
+                var newAuthorId = migratedAuthors.GetNewAuthorId(authorSid);
+                mentionId = new MentionId(newAuthorId, AssumeValid.Option);
+                mention.MentionId = mentionId;
+            }
+            else {
+                mentionId = new MentionId(mentionSid);
+            }
+            mention.Id = DbMention.ComposeId(new ChatEntryId(newChatId, ChatEntryKind.Text, mention.EntryId, AssumeValid.Option), mentionId);
+            dbContext.Mentions.Add(mention);
+            entryIdsCollector.Add(mention.EntryId);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("Updated ChatId and Id for {Count} mention records", mentions.Count);
     }
 
     private record MigratedRole(Role OriginalRole, Role NewRole)
@@ -576,9 +681,9 @@ public partial class ChatsBackend
         public RoleId NewId => NewRole.Id;
     }
 
-    private class MigratedAuthors
+    public class MigratedAuthors
     {
-        private List<MigratedAuthor> _migratedAuthors = new List<MigratedAuthor>();
+        private readonly List<MigratedAuthor> _migratedAuthors = new ();
 
         public void RegisterMigrated(AuthorFull originalAuthor, AuthorFull placeMember, AuthorFull newAuthor)
             => _migratedAuthors.Add(new MigratedAuthor(originalAuthor, placeMember, newAuthor));
@@ -617,4 +722,15 @@ public partial class ChatsBackend
             public bool IsRemoved => NewAuthor == null;
         }
     }
+
+    private sealed record CopyChatEntriesContext(
+        ChatId ChatId,
+        ChatId NewChatId,
+        MigratedAuthors MigratedAuthors);
+
+    public sealed record CopyChatEntriesResult(long ProcessedChatEntriesCount, ChatEntryId LastEntryId, Range<long> AudioEntryId);
 }
+
+
+
+

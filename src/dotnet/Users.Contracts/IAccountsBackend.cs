@@ -44,7 +44,6 @@ public sealed partial record AccountsBackend_Update(
     public UserId ShardKey => Account.Id;
 }
 
-
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_Delete(
@@ -55,5 +54,6 @@ public sealed partial record AccountsBackend_Delete(
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_MoveChatToPlace(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId
+    [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId,
+    [property: DataMember, MemoryPackOrder(2)] long MaxEntryId
 ) : ICommand<bool>, IBackendCommand;

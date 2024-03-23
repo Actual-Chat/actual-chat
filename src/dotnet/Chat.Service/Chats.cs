@@ -641,6 +641,7 @@ public class Chats(IServiceProvider services) : IChats
         Log.LogInformation("OnMoveToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'", chatId.Value, placeId);
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
         Log.LogInformation("Chat for chat id '{ChatId}' is {Chat}", chatId, chat);
+        var maxEntryId = 0L;
         if (chat != null) {
             if (chat.Id.Kind != ChatKind.Group)
                 throw StandardError.Constraint("Only group chats can be moved to a Place.");
@@ -652,22 +653,24 @@ public class Chats(IServiceProvider services) : IChats
                 throw StandardError.Constraint("You should be a place owner to perform 'move to place' operation.");
 
             var backendCmd = new ChatBackend_MoveChatToPlace(chatId, placeId);
-            await Commander.Call(backendCmd, true, cancellationToken).ConfigureAwait(false);
-            executed = true;
+            var result = await Commander.Call(backendCmd, true, cancellationToken).ConfigureAwait(false);
+            if (result.DidProgress)
+                executed = true;
+            maxEntryId = result.LastEntryId;
         }
 
-        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
-        var newChatId = (ChatId)placeChatId;
-        var contact = await Contacts.GetForChat(session, newChatId, cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("Contact for chat id '{ChatId}' is {Contact}", newChatId, contact);
-        if (contact == null || contact.PlaceId.IsNone || !contact.IsStored()) {
-            var backendCmd2 = new ContactsBackend_MoveChatToPlace(chatId, placeId);
-            await Commander.Call(backendCmd2, true, cancellationToken).ConfigureAwait(false);
-            executed = true;
-        }
-
+        // var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
+        // var newChatId = (ChatId)placeChatId;
+        // var contact = await Contacts.GetForChat(session, newChatId, cancellationToken).ConfigureAwait(false);
+        // Log.LogInformation("Contact for chat id '{ChatId}' is {Contact}", newChatId, contact);
+        // if (contact == null || contact.PlaceId.IsNone || !contact.IsStored()) {
+        //     var backendCmd2 = new ContactsBackend_MoveChatToPlace(chatId, placeId);
+        //     await Commander.Call(backendCmd2, true, cancellationToken).ConfigureAwait(false);
+        //     executed = true;
+        // }
+        //
         {
-            var backendCmd3 = new AccountsBackend_MoveChatToPlace(chatId, placeId);
+            var backendCmd3 = new AccountsBackend_MoveChatToPlace(chatId, placeId, maxEntryId);
             var hasChanges = await Commander.Call(backendCmd3, true, cancellationToken).ConfigureAwait(false);
             executed |= hasChanges;
         }
