@@ -335,6 +335,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .DistinctBy(m => m.Id)
                 .ToDictionary(m => m.Id);
         }
+        // NOTE(DF): Removing chat causes related media removing. Copied chat uses original chat media
+        // and this causes NRE on displaying attachments in chat view.
+        // return dbAttachments
+        //     .Select(c => c.ToModel())
+        //     .Where(c => c.MediaId.IsNone || mediaMap.ContainsKey(c.MediaId))
+        //     .Select(WithMedia).ToApiArray();
         return dbAttachments.Select(x => WithMedia(x.ToModel())).ToApiArray();
 
         TextEntryAttachment WithMedia(TextEntryAttachment attachment)
@@ -342,7 +348,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (attachment.MediaId.IsNone)
                 return attachment;
 
-            var media = mediaMap.GetValueOrDefault(attachment.MediaId) ?? attachment.Media;
+            var media = mediaMap.GetValueOrDefault(attachment.MediaId) ?? new Media.Media();// attachment.Media;
             var thumbnailMedia = attachment.ThumbnailMedia;
             if (!attachment.ThumbnailMediaId.IsNone)
                 thumbnailMedia = mediaMap.GetValueOrDefault(attachment.ThumbnailMediaId) ?? thumbnailMedia;
