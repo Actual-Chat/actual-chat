@@ -7,8 +7,7 @@ public partial class SharedResourcePool<TKey, TResource>(
     where TKey : notnull
     where TResource : class
 {
-    private readonly ConcurrentDictionary<TKey,
-        LazySlim<TKey, (SharedResourcePool<TKey, TResource>, CancellationToken), Lease>> _leases = new ();
+    private readonly ConcurrentDictionary<TKey,Lease> _leases = new ();
     private Func<TKey, CancellationToken, Task<TResource>> ResourceFactory { get; } = resourceFactory;
     private Func<TKey, TResource, ValueTask> ResourceDisposer { get; } = resourceDisposer ?? DefaultResourceDisposer;
 
@@ -18,10 +17,8 @@ public partial class SharedResourcePool<TKey, TResource>(
     public async ValueTask<Lease> Rent(TKey key, CancellationToken cancellationToken = default)
     {
         while (true) {
-            var lease = _leases.GetOrAdd(key, static (key1, state) => {
-                var (self, cancellationToken1) = state;
-                return new Lease(self, key1, cancellationToken1);
-            }, (this, cancellationToken));
+            var lease = _leases.GetOrAdd(key, static (key1, self) => new Lease(self, key1), this);
+            lease.Initialize(cancellationToken);
             var endRentTask = await lease.BeginRent(cancellationToken).ConfigureAwait(false);
             if (endRentTask == null)
                 return lease;
