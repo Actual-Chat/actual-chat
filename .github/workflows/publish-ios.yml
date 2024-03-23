@@ -82,7 +82,9 @@ jobs:
 
           echo ::Importing certificate to keychain
           security import $CERTIFICATE_PATH -A -t cert -k $KEYCHAIN_PATH
+          echo :: set-key-partition-list
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          echo :: list-keychain
           security list-keychain -d user -s $KEYCHAIN_PATH
 
           echo ::Applying provisioning profile
