@@ -77,6 +77,7 @@ jobs:
           echo ::Creating temporary key chain
           KEYCHAIN_PASSWORD=$(uuidgen)
           security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security default-keychain -s $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
