@@ -5,16 +5,24 @@ namespace ActualChat.MLSearch.Indexing;
 internal interface IChatIndexerWorker: IWorker<MLSearch_TriggerChatIndexing>;
 
 internal class ChatIndexerWorker(
-    IDataIndexer<ChatId> dataIndexer
+    int maxIterationCount,
+    IDataIndexer<ChatId> dataIndexer,
+    ICommander commander
 ) : IChatIndexerWorker
 {
-    public async Task ExecuteAsync(MLSearch_TriggerChatIndexing input, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(MLSearch_TriggerChatIndexing job, CancellationToken cancellationToken)
     {
-        bool continueIndexing;
-        do {
-            var result = await dataIndexer.IndexNextAsync(input.Id, cancellationToken).ConfigureAwait(false);
+        bool continueIndexing = true;
+        for (var iterationCount = 0; continueIndexing && iterationCount < maxIterationCount; iterationCount++) {
+            var result = await dataIndexer.IndexNextAsync(job.Id, cancellationToken).ConfigureAwait(false);
             continueIndexing = !(result.IsEndReached || cancellationToken.IsCancellationRequested);
         }
-        while (continueIndexing);
+        if (continueIndexing) {
+            await commander.Call(job, cancellationToken).ConfigureAwait(false);
+        }
+        else if (!cancellationToken.IsCancellationRequested) {
+            var completionNotification = new MLSearch_TriggerChatIndexingCompletion(job.Id);
+            await commander.Call(completionNotification, cancellationToken).ConfigureAwait(false);
+        }
     }
 }
