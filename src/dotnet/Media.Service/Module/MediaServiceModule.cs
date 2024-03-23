@@ -9,27 +9,23 @@ using ActualLab.Fusion.EntityFramework.Operations;
 namespace ActualChat.Media.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class MediaServiceModule(IServiceProvider moduleServices) : HostModule(moduleServices)
+public sealed class MediaServiceModule(IServiceProvider moduleServices)
+    : HostModule(moduleServices), IServerModule
 {
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.HostKind.IsServer())
-            return; // Server-side only module
-
-        // Redis
-        var redisModule = Host.GetModule<RedisModule>();
-        redisModule.AddRedisDb<MediaDbContext>(services);
-
-        // DB
-        var dbModule = Host.GetModule<DbModule>();
-        services.AddSingleton<IDbInitializer, MediaDbInitializer>();
-        dbModule.AddDbContextServices<MediaDbContext>(services, db => {
-            db.AddEntityResolver<string, DbMedia>();
-        });
-
-        // Backend
+        // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
         var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IMediaBackend>().IsClient();
+
+        // ASP.NET Core controllers
+        if (rpcHost.IsApiHost)
+            services.AddMvcCore().AddApplicationPart(GetType().Assembly);
+
+        // Link previews
+        rpcHost.AddApi<IMediaLinkPreviews, MediaLinkPreviews>();
+        rpcHost.AddBackend<ILinkPreviewsBackend, LinkPreviewsBackend>();
+        rpcHost.AddBackend<IMediaBackend, MediaBackend>();
 
         // Commander handlers
         rpcHost.Commander.AddHandlerFilter((handler, commandType) => {
@@ -43,26 +39,32 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices) : HostMo
             if (isBackendClient)
                 return false;
 
-            // 3. Make sure it's intact only for local commands
+            // 3. Make sure the handler is intact only for local commands
             var commandNamespace = commandType.Namespace;
             return commandNamespace.OrdinalStartsWith(typeof(IMediaLinkPreviews).Namespace!)
                 || commandType == typeof(TextEntryChangedEvent); // Event
         });
-
-        // Media
-        rpcHost.AddBackend<IMediaBackend, MediaBackend>();
-
-        // Links
-        rpcHost.AddApiService<IMediaLinkPreviews, MediaLinkPreviews>();
-        rpcHost.AddBackend<ILinkPreviewsBackend, LinkPreviewsBackend>();
         if (isBackendClient)
             return;
 
-        // Services used in SingleHost or Server modes only
+        // The services below are used only when this module operates in non-client mode
+
+        // Internal services
         services.AddHttpClient(nameof(LinkPreviewsBackend))
             .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.Add(new ("ActualChat-Bot", "0.1")));
         services.AddHttpClient(nameof(LinkPreviewsBackend) + ".fallback")
             .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.Add(new ("googlebot", null)));
         services.AddSingleton<Crawler>();
+
+        // Redis
+        var redisModule = Host.GetModule<RedisModule>();
+        redisModule.AddRedisDb<MediaDbContext>(services);
+
+        // DB
+        var dbModule = Host.GetModule<DbModule>();
+        services.AddSingleton<IDbInitializer, MediaDbInitializer>();
+        dbModule.AddDbContextServices<MediaDbContext>(services, db => {
+            db.AddEntityResolver<string, DbMedia>();
+        });
     }
 }

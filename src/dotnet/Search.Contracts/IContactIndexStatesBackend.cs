@@ -1,3 +1,4 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Search;
@@ -10,7 +11,7 @@ public sealed partial record ContactIndexStatesBackend_Change(
     [property: DataMember, MemoryPackOrder(2)] Change<ContactIndexState> Change
 ) : ICommand<ContactIndexState>, IBackendCommand;
 
-public interface IContactIndexStatesBackend : IComputeService
+public interface IContactIndexStatesBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<ContactIndexState> GetForUsers(CancellationToken cancellationToken);

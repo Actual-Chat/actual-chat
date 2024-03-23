@@ -1,8 +1,9 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Chat;
 
-public interface IRolesBackend : IComputeService
+public interface IRolesBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<Role?> Get(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);

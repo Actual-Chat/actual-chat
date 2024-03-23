@@ -15,7 +15,8 @@ namespace ActualChat.Module;
 #pragma warning disable CA1822 // Method can be static
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class CoreModule(IServiceProvider moduleServices) : HostModule<CoreSettings>(moduleServices)
+public sealed class CoreModule(IServiceProvider moduleServices)
+    : HostModule<CoreSettings>(moduleServices)
 {
     static CoreModule()
     {
@@ -60,7 +61,6 @@ public sealed class CoreModule(IServiceProvider moduleServices) : HostModule<Cor
 
     protected internal override void InjectServices(IServiceCollection services)
     {
-        base.InjectServices(services);
         var hostKind = HostInfo.HostKind;
         var isApp = hostKind.IsApp();
         var isServer = hostKind.IsServer();
@@ -119,7 +119,7 @@ public sealed class CoreModule(IServiceProvider moduleServices) : HostModule<Cor
                 : LogLevel.None;
         }
         fusion.AddComputedGraphPruner(_ => new ComputedGraphPruner.Options() {
-            CheckPeriod = TimeSpan.FromMinutes(isApp || IsDevelopmentInstance ? 5 : 10).ToRandom(0.1),
+            CheckPeriod = TimeSpan.FromMinutes(isApp || HostInfo.IsDevelopmentInstance ? 5 : 10).ToRandom(0.1),
         });
         fusion.AddFusionTime();
 

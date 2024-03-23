@@ -13,15 +13,9 @@ public sealed class NotificationBlazorUIModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
-        var hostKind = HostInfo.HostKind;
-        if (!hostKind.HasBlazorUI())
-            return; // Blazor UI only module
-
-        var fusion = services.AddFusion();
-
-        // Scoped / Blazor Circuit services
+        services.AddFusion();
         services.AddScoped<NotificationUI>();
-        if (hostKind.IsServer() || hostKind.IsWasmApp()) {
+        if (HostInfo.HostKind.IsServerOrWasmApp()) {
             services.AddTransient<IDeviceTokenRetriever>(c => new WebDeviceTokenRetriever(c));
             services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<NotificationUI>());
         }

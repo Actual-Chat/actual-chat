@@ -1,14 +1,13 @@
 using ActualChat.Media;
-using ActualChat.Uploads;
 using ActualLab.IO;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 
-namespace ActualChat.Chat.Uploads;
+namespace ActualChat.Uploads;
 
 public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadProcessor
 {
-    private ILogger<ImageUploadProcessor> Log { get; } = log;
+    private ILogger Log { get; } = log;
 
     public bool Supports(string contentType)
         => MediaTypeExt.IsImage(contentType);

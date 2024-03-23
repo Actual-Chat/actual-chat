@@ -1,8 +1,9 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Invite;
 
-public interface IInvitesBackend : IComputeService
+public interface IInvitesBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<Invite?> Get(string id, CancellationToken cancellationToken);

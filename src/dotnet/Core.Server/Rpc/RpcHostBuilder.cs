@@ -24,11 +24,14 @@ public readonly struct RpcHostBuilder
     public HostInfo HostInfo { get; }
     public ILogger? Log { get; }
 
+    public bool IsApiHost { get; }
+
     internal RpcHostBuilder(IServiceCollection services, HostInfo hostInfo, ILogger? log)
     {
         Fusion = services.AddFusion(RpcServiceMode.None);
         HostInfo = hostInfo;
         Log = log;
+        IsApiHost = HostInfo.HasRole(HostRole.Api);
 
         if (!Services.HasService<BackendServiceDefs>())
             AddCoreServices();
@@ -36,21 +39,34 @@ public readonly struct RpcHostBuilder
 
     // AddFrontend & AddBackend auto-detect IComputeService & IRpcService
 
-    public RpcHostBuilder AddApiService<
+    public RpcHostBuilder AddApi<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>()
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>(Symbol name = default)
         where TService : class, IRpcService
         where TImplementation : class, TService
-        => AddApiService(typeof(TService), typeof(TImplementation));
+        => AddApi(typeof(TService), typeof(TImplementation), false, name);
 
-    public RpcHostBuilder AddApiService(
+    public RpcHostBuilder AddApi<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>(
+        bool mustAddLocal,
+        Symbol name = default)
+        where TService : class, IRpcService
+        where TImplementation : class, TService
+        => AddApi(typeof(TService), typeof(TImplementation), mustAddLocal, name);
+
+    public RpcHostBuilder AddApi(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type serviceType,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type implementationType,
         Symbol name = default)
-    {
-        if (!HostInfo.HasRole(HostRole.Api))
-            return this;
+        => AddApi(serviceType, implementationType, false, name);
 
+    public RpcHostBuilder AddApi(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type serviceType,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type implementationType,
+        bool mustAddLocal,
+        Symbol name = default)
+    {
         if (!typeof(IRpcService).IsAssignableFrom(serviceType))
             throw ActualLab.Internal.Errors.MustImplement<IRpcService>(serviceType, nameof(serviceType));
         if (typeof(IBackendService).IsAssignableFrom(serviceType))
@@ -58,8 +74,10 @@ public readonly struct RpcHostBuilder
         if (!serviceType.IsAssignableFrom(implementationType))
             throw ActualLab.Internal.Errors.MustBeAssignableTo(implementationType, serviceType, nameof(implementationType));
 
-        AddService(serviceType, implementationType);
-        Rpc.Service(serviceType).HasServer(serviceType).HasName(name);
+        if (mustAddLocal || IsApiHost)
+            AddService(serviceType, implementationType);
+        if (IsApiHost)
+            Rpc.Service(serviceType).HasServer(serviceType).HasName(name);
         return this;
     }
 
@@ -104,7 +122,7 @@ public readonly struct RpcHostBuilder
             AddService(serviceType, implementationType);
             Rpc.Service(serviceType).HasServer(serviceType).HasName(name);
             break;
-        case ServiceMode.Mixed:
+        case ServiceMode.RoutingServer:
             AddService(implementationType, implementationType);
             AddClient(serviceType);
             Rpc.Service(serviceType).HasServer(implementationType).HasName(name);

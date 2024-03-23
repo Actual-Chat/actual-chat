@@ -4,6 +4,7 @@ using ActualChat.Hosting;
 using ActualChat.AspNetCore;
 using ActualChat.Queues.Internal;
 using ActualChat.Queues.Nats;
+using ActualChat.Uploads;
 using Microsoft.AspNetCore.StaticFiles;
 using NATS.Client.Core;
 using NATS.Client.Hosting;
@@ -21,22 +22,17 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
-        base.InjectServices(services);
-        var hostKind = HostInfo.HostKind;
-        if (!hostKind.IsServer())
-            throw StandardError.Internal("This module can be used on server side only.");
-
-        // RPC
+        // RPC host
         services.AddRpcHost(HostInfo, Log);
 
-        // Command queues
+        // Queues
         services.AddSingleton(c => new EventHandlerRegistry(c));
         var useInMemoryQueues = HostInfo.IsProductionInstance && HostInfo.HasRole(HostRole.OneServer);
         if (useInMemoryQueues)
             services.AddInMemoryQueues();
         else {
             var natsSettings = Cfg.GetSettings<NatsSettings>();
-            var natsTimeout = TimeSpan.FromSeconds(IsDevelopmentInstance ? 300 : 10);
+            var natsTimeout = TimeSpan.FromSeconds(HostInfo.IsDevelopmentInstance ? 300 : 10);
             services.AddNats(
                 poolSize: 1,
                 options => options with {
@@ -57,17 +53,11 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
             services.AddNatsQueues();
         }
 
-        // Controllers, etc.
-        services.AddRouting();
-        var mvc = services.AddMvc(options => {
-            options.ModelBinderProviders.Add(new MvcModelBinderProvider());
-            options.ModelMetadataDetailsProviders.Add(new MvcValidationMetadataProvider());
-        });
-        mvc.AddApplicationPart(GetType().Assembly);
-        services.AddResponseCaching();
+        // Upload processors
+        services.AddSingleton<IUploadProcessor, ImageUploadProcessor>();
+        services.AddSingleton<IUploadProcessor, VideoUploadProcessor>();
 
-        // Other services
-        services.AddSingleton<IContentSaver>(c => new ContentSaver(c.BlobStorages()));
+        // Blob storages & IContentSaver
         var storageBucket = Settings.GoogleStorageBucket;
         if (storageBucket.IsNullOrEmpty()) {
             services.AddSingleton<IContentTypeProvider>(_ => ContentTypeProvider.Instance);
@@ -76,5 +66,15 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         }
         else
             services.AddSingleton<IBlobStorages>(_ => new GoogleCloudBlobStorages(storageBucket));
+        services.AddSingleton<IContentSaver>(c => new ContentSaver(c.BlobStorages()));
+
+        // Controllers, etc.
+        services.AddRouting();
+        var mvc = services.AddMvc(options => {
+            options.ModelBinderProviders.Add(new MvcModelBinderProvider());
+            options.ModelMetadataDetailsProviders.Add(new MvcValidationMetadataProvider());
+        });
+        mvc.AddApplicationPart(GetType().Assembly);
+        services.AddResponseCaching();
     }
 }

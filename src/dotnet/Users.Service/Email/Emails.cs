@@ -11,19 +11,12 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
 {
     private static readonly string TotpFormat = new('0', Constants.Auth.Email.TotpLength);
 
-    private IAuthBackend? _authBackend;
-    private IAccounts? _accounts;
-    private IEmailSender? _emailSender;
-    private UsersSettings? _settings;
-    private Rfc6238AuthenticationService? _totps;
-    private TotpRandomSecrets? _randomSecrets;
-
-    private UsersSettings Settings => _settings ??= Services.GetRequiredService<UsersSettings>();
-    private IEmailSender EmailSender => _emailSender ??= Services.GetRequiredService<IEmailSender>();
-    private Rfc6238AuthenticationService Totps => _totps ??= Services.GetRequiredService<Rfc6238AuthenticationService>();
-    private TotpRandomSecrets RandomSecrets => _randomSecrets ??= Services.GetRequiredService<TotpRandomSecrets>();
-    private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
-    private IAuthBackend AuthBackend => _authBackend ??= Services.GetRequiredService<IAuthBackend>();
+    private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
+    private IEmailSender EmailSender { get; } = services.GetRequiredService<IEmailSender>();
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IAuthBackend AuthBackend { get; } = services.GetRequiredService<IAuthBackend>();
+    private TotpCodes TotpCodes { get; } = services.GetRequiredService<TotpCodes>();
+    private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
 
     // [CommandHandler]
     public virtual async Task<Moment> OnSendTotp(Emails_SendTotp command, CancellationToken cancellationToken) {
@@ -34,7 +27,7 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var email = account.Email;
         var (securityToken, modifier) = await GetTotpInputs(session, email, TotpPurpose.VerifyEmail, cancellationToken).ConfigureAwait(false);
-        var totp = Totps.GenerateCode(securityToken, modifier); // generate totp with the newest one
+        var totp = TotpCodes.Generate(securityToken, modifier); // generate totp with the newest one
         var expiresAt = GetExpiresAt();
 
         var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
@@ -54,7 +47,7 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
         return expiresAt;
 
         DateTimeOffset GetExpiresAt()
-            => Clocks.SystemClock.UtcNow + Settings.TotpUIThrottling;
+            => Clocks.SystemClock.UtcNow + UsersSettings.TotpUIThrottling;
     }
 
     // [CommandHandler]
@@ -90,7 +83,7 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
         CancellationToken cancellationToken)
     {
         var (securityToken, modifier) = await GetTotpInputs(session, email, purpose, cancellationToken).ConfigureAwait(false);
-        return Totps.ValidateCode(securityToken, totp, modifier);
+        return TotpCodes.Validate(securityToken, totp, modifier);
     }
 
     private async Task<(byte[] SecurityToken, string Modifier)> GetTotpInputs(
@@ -99,7 +92,7 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
         TotpPurpose purpose,
         CancellationToken cancellationToken)
     {
-        var randomSecret = await RandomSecrets.Get(session, cancellationToken).ConfigureAwait(false);
+        var randomSecret = await TotpSecrets.Get(session, cancellationToken).ConfigureAwait(false);
         var securityTokens = Encoding.UTF8.GetBytes($"{randomSecret}_{session.Id}_{email}");
         var modifier = $"{purpose}:{email}";
         return (securityTokens, modifier);

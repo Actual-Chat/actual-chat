@@ -10,43 +10,41 @@ using ActualLab.Fusion.EntityFramework.Operations;
 namespace ActualChat.Notification.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class NotificationServiceModule(IServiceProvider moduleServices) : HostModule(moduleServices)
+public sealed class NotificationServiceModule(IServiceProvider moduleServices)
+    : HostModule(moduleServices), IServerModule
 {
     private static readonly object FirebaseAppFactoryLock = new();
 
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.HostKind.IsServer())
-            return; // Server-side only module
+        // RPC host
+        var rpcHost = services.AddRpcHost(HostInfo);
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<INotificationsBackend>().IsClient();
 
-        // Redis
-        var redisModule = Host.GetModule<RedisModule>();
-        redisModule.AddRedisDb<NotificationDbContext>(services);
+        // Notifications
+        rpcHost.AddApi<INotifications, Notifications>();
+        rpcHost.AddBackend<INotificationsBackend, NotificationsBackend>();
 
-        // DB
-        var dbModule = Host.GetModule<DbModule>();
-        services.AddSingleton<IDbInitializer, NotificationDbInitializer>();
-        dbModule.AddDbContextServices<NotificationDbContext>(services,
-            db => db.AddEntityResolver<string, DbNotification>());
-
-        // Commander & Fusion
-        var commander = services.AddCommander();
-        commander.AddHandlerFilter((handler, commandType) => {
+        // Commander handlers
+        rpcHost.Commander.AddHandlerFilter((handler, commandType) => {
             // 1. Check if this is DbOperationScopeProvider<NotificationDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)
                 return true;
             if (ich.ServiceType != typeof(DbOperationScopeProvider<NotificationDbContext>))
                 return true;
 
-            // 2. Make sure it's intact only for local commands
+            // 2. Check if we're running on the client backend
+            if (isBackendClient)
+                return false;
+
+            // 3. Make sure the handler is intact only for local commands
             var commandNamespace = commandType.Namespace;
             return commandNamespace.OrdinalStartsWith(typeof(INotifications).Namespace!);
         });
-        var fusion = services.AddFusion();
+        if (isBackendClient)
+            return;
 
-        // Module's own services
-        fusion.AddService<INotifications, Notifications>();
-        fusion.AddService<INotificationsBackend, NotificationsBackend>();
+        // The services below are used only when this module operates in non-client mode
 
         // Firebase
         services.AddSingleton(_ => {
@@ -57,7 +55,14 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices) :
         });
         services.AddSingleton<FirebaseMessagingClient>();
 
-        // Controllers, etc.
-        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
+        // Redis
+        var redisModule = Host.GetModule<RedisModule>();
+        redisModule.AddRedisDb<NotificationDbContext>(services);
+
+        // DB
+        var dbModule = Host.GetModule<DbModule>();
+        services.AddSingleton<IDbInitializer, NotificationDbInitializer>();
+        dbModule.AddDbContextServices<NotificationDbContext>(services,
+            db => db.AddEntityResolver<string, DbNotification>());
     }
 }

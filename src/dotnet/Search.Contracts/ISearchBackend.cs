@@ -1,8 +1,9 @@
-﻿using MemoryPack;
+﻿using ActualLab.Rpc;
+using MemoryPack;
 
 namespace ActualChat.Search;
 
-public interface ISearchBackend : IComputeService
+public interface ISearchBackend : IComputeService, IBackendService
 {
     [CommandHandler]
     Task OnEntryBulkIndex(SearchBackend_EntryBulkIndex command, CancellationToken cancellationToken);

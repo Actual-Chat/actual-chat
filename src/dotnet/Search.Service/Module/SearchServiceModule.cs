@@ -7,18 +7,55 @@ using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Transport;
-using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Search.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class SearchServiceModule(IServiceProvider moduleServices) : HostModule<SearchSettings>(moduleServices)
+public sealed class SearchServiceModule(IServiceProvider moduleServices)
+    : HostModule<SearchSettings>(moduleServices), IServerModule
 {
     protected override void InjectServices(IServiceCollection services)
     {
-        base.InjectServices(services);
-        if (!HostInfo.HostKind.IsServer())
-            return; // Server-side only module
+        // RPC host
+        var rpcHost = services.AddRpcHost(HostInfo);
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<ISearchBackend>().IsClient();
+
+        // Search
+        rpcHost.AddBackend<ISearchBackend, SearchBackend>();
+
+        // Indexing
+        rpcHost.AddBackend<IIndexedChatsBackend, IndexedChatsBackend>();
+        rpcHost.AddBackend<IContactIndexStatesBackend, ContactIndexStateBackend>();
+
+        // Commander handlers
+        rpcHost.Commander.AddHandlerFilter((handler, commandType) => {
+            // 1. Check if this is DbOperationScopeProvider<SearchDbContext> handler
+            if (handler is not InterfaceCommandHandler<ICommand> ich)
+                return true;
+            if (ich.ServiceType != typeof(DbOperationScopeProvider<SearchDbContext>))
+                return true;
+
+            // 2. Check if we're running on the client backend
+            if (isBackendClient)
+                return false;
+
+            // 3. Make sure the handler is intact only for local commands
+            var commandNamespace = commandType.Namespace;
+            return commandNamespace.OrdinalStartsWith(typeof(ISearchBackend).Namespace!)
+                || commandType == typeof(TextEntryChangedEvent); // Event
+        });
+        if (isBackendClient)
+            return;
+
+        // The services below are used only when this module operates in non-client mode
+
+        // Internal services
+        services.AddSingleton<TextEntryIndexer>()
+            .AddHostedService(c => c.GetRequiredService<TextEntryIndexer>());
+        services.AddSingleton<UserContactIndexer>()
+            .AddHostedService(c => c.GetRequiredService<UserContactIndexer>());
+        services.AddSingleton<ChatContactIndexer>()
+            .AddHostedService(c => c.GetRequiredService<ChatContactIndexer>());
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
@@ -32,25 +69,7 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices) : HostM
             db.AddEntityResolver<string, DbContactIndexState>();
         });
 
-        // Commander & Fusion
-        var commander = services.AddCommander();
-        commander.AddHandlerFilter((handler, commandType) => {
-            // 1. Check if this is DbOperationScopeProvider<SearchDbContext> handler
-            if (handler is not InterfaceCommandHandler<ICommand> ich)
-                return true;
-            if (ich.ServiceType != typeof(DbOperationScopeProvider<SearchDbContext>))
-                return true;
-
-            // 2. Make sure it's intact only for local commands
-            var commandNamespace = commandType.Namespace;
-            return commandNamespace.OrdinalStartsWith(typeof(ISearchBackend).Namespace!)
-                || commandType == typeof(TextEntryChangedEvent); // Event
-        });
-
-        // Controllers, etc.
-        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
-
-        // elastic
+        // Elastic
         services.AddSingleton(c => {
             if (!HostInfo.IsDevelopmentInstance || Settings.IsCloudElastic) {
                 var cloudElasticClientSettings = new ElasticsearchClientSettings(Settings.ElasticCloudId, new Base64ApiKey(Settings.ElasticApiKey));
@@ -61,16 +80,8 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices) : HostM
             }
             return new ElasticsearchClient();
         });
-
-        // Module's own services
-        var fusion = services.AddFusion();
-        fusion.AddService<ISearchBackend, SearchBackend>();
-        fusion.AddService<IIndexedChatsBackend, IndexedChatsBackend>();
-        fusion.AddService<IContactIndexStatesBackend, ContactIndexStateBackend>();
-        services.AddSingleton<ElasticConfigurator>().AddAlias<IHostedService, ElasticConfigurator>();
-        services.AddSingleton<TextEntryIndexer>().AddHostedService(c => c.GetRequiredService<TextEntryIndexer>());
+        services.AddSingleton<ElasticConfigurator>()
+            .AddHostedService(c => c.GetRequiredService<ElasticConfigurator>());
         services.AddSingleton<ElasticNames>();
-        services.AddSingleton<UserContactIndexer>().AddHostedService(c => c.GetRequiredService<UserContactIndexer>());
-        services.AddSingleton<ChatContactIndexer>().AddHostedService(c => c.GetRequiredService<ChatContactIndexer>());
     }
 }

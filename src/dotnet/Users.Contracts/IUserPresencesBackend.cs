@@ -1,12 +1,12 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Users;
 
-public interface IUserPresencesBackend : IComputeService
+public interface IUserPresencesBackend : IComputeService, IBackendService
 {
     [ComputeMethod(MinCacheDuration = 30)]
     Task<Presence> Get(UserId userId, CancellationToken cancellationToken);
-
     [ComputeMethod(MinCacheDuration = 30)]
     Task<Moment?> GetLastCheckIn(UserId userId, CancellationToken cancellationToken);
 

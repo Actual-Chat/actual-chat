@@ -1,8 +1,9 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Chat;
 
-public interface IChatsUpgradeBackend : ICommandService
+public interface IChatsUpgradeBackend : ICommandService, IBackendService
 {
     [CommandHandler]
     Task<Chat> OnCreateDefaultChat(ChatsUpgradeBackend_CreateDefaultChat command, CancellationToken cancellationToken);

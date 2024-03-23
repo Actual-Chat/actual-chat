@@ -1,21 +1,19 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Users;
 
-public interface IAccountsBackend : IComputeService
+public interface IAccountsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken);
-
     [ComputeMethod]
     Task<UserId> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken);
 
     [CommandHandler]
     public Task OnUpdate(AccountsBackend_Update command, CancellationToken cancellationToken);
-
     [CommandHandler]
     public Task OnDelete(AccountsBackend_Delete command, CancellationToken cancellationToken);
-
     [CommandHandler]
     Task<bool> OnMoveChatToPlace(AccountsBackend_MoveChatToPlace command, CancellationToken cancellationToken);
 

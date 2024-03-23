@@ -2,7 +2,7 @@ using System.Net.Mime;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ActualChat.Chat.Controllers;
+namespace ActualChat.Media.Controllers;
 
 [ApiController, Route("api/content")]
 public sealed class ContentController(IBlobStorages blobStorages) : ControllerBase
@@ -10,7 +10,7 @@ public sealed class ContentController(IBlobStorages blobStorages) : ControllerBa
     private IBlobStorages BlobStorages { get; } = blobStorages;
 
     [HttpGet("{**blobId}")]
-    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Any, VaryByQueryKeys = new[] { "blobId" })]
+    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Any, VaryByQueryKeys = ["blobId"])]
     [EnableCors("CDN")]
     public async Task<ActionResult> Download(string blobId, CancellationToken cancellationToken)
     {

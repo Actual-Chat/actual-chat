@@ -1,3 +1,4 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Search;
@@ -8,7 +9,7 @@ public sealed partial record IndexedChatsBackend_BulkChange(
     [property: DataMember, MemoryPackOrder(1)] ApiArray<IndexedChatChange> Changes
 ) : ICommand<ApiArray<IndexedChat?>>, IBackendCommand;
 
-public interface IIndexedChatsBackend : IComputeService
+public interface IIndexedChatsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<IndexedChat?> GetLast(CancellationToken cancellationToken);

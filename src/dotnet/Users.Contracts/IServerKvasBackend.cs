@@ -1,8 +1,9 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Users;
 
-public interface IServerKvasBackend : IComputeService
+public interface IServerKvasBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<byte[]?> Get(string prefix, string key, CancellationToken cancellationToken = default);

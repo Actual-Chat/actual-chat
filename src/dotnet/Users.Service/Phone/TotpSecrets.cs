@@ -7,7 +7,7 @@ using ActualLab.Redis;
 
 namespace ActualChat.Users;
 
-public class TotpRandomSecrets
+public sealed class TotpSecrets
 {
     private const string RedisKeyPrefix = ".TotpRandomSecret.";
     private readonly RandomStringGenerator _rsg;
@@ -16,27 +16,28 @@ public class TotpRandomSecrets
     private UsersSettings Settings { get; }
     private IDataProtector DataProtector { get; }
 
-    public TotpRandomSecrets(IServiceProvider services)
+    public TotpSecrets(IServiceProvider services)
     {
         RedisDb = services.GetRequiredService<RedisDb<UsersDbContext>>();
-        DataProtector = services.GetRequiredService<IDataProtectionProvider>().CreateProtector(nameof(TotpRandomSecrets));
+        DataProtector = services.GetRequiredService<IDataProtectionProvider>().CreateProtector(nameof(TotpSecrets));
         Settings = services.GetRequiredService<UsersSettings>();
 
-        _rsg = new (Settings.TotpRandomSecretLength);
+        _rsg = new(Settings.TotpRandomSecretLength);
     }
 
     public Task<string> Get(Session session, CancellationToken cancellationToken = default)
         => GetOrSet(ToKey(session), _rsg.Next(), cancellationToken);
 
+    // Private methods
+
     private static string ToKey(Session session)
         => $"{RedisKeyPrefix}{session.Id}";
-
-    // redis helpers
 
     private async Task<string> GetOrSet(string key, string value, CancellationToken cancellationToken)
     {
         var protectedValue = DataProtector.Protect(value);
-        // avoiding multiple sets from different replicas
+
+        // Avoiding multiple sets from different replicas
         // TODO: use StringSetAndGetAsync after switching to redis 7.0
         var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
         var wasUpdated = await database.StringSetAsync(key,

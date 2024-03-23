@@ -3,14 +3,14 @@ using ActualChat.Audio;
 
 namespace ActualChat.Streaming.Services;
 
-public sealed partial class LocalAudioDownloader(IServiceProvider services) : AudioDownloader(services)
+public sealed partial class BlobStorageAudioDownloader(IServiceProvider services) : HttpClientAudioDownloader(services)
 {
     [GeneratedRegex(@"^.+\/api\/audio\/download\/(?<blobId>.+)$", RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture)]
     private static partial Regex AudioBlobIdRegexFactory();
 
     private static readonly Regex AudioBlobIdRegex = AudioBlobIdRegexFactory();
 
-    private IBlobStorages Blobs { get; init; } = services.GetRequiredService<IBlobStorages>();
+    private IBlobStorages Blobs { get; } = services.GetRequiredService<IBlobStorages>();
 
     public override async Task<AudioSource> Download(
         string audioBlobUrl,
@@ -18,7 +18,7 @@ public sealed partial class LocalAudioDownloader(IServiceProvider services) : Au
         CancellationToken cancellationToken)
     {
         var match = AudioBlobIdRegex.Match(audioBlobUrl);
-        if (!match.Success)
+        if (!match.Success) // Fallback to HttpClient-based download
             return await base.Download(audioBlobUrl, skipTo, cancellationToken).ConfigureAwait(false);
 
         var blobId = match.Groups["blobId"].Value;

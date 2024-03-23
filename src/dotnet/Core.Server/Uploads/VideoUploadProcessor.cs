@@ -1,16 +1,15 @@
 using System.Net.Mime;
 using ActualChat.Media;
-using ActualChat.Uploads;
 using FFMpegCore;
 using FFMpegCore.Enums;
 using ActualLab.IO;
 using SixLabors.ImageSharp;
 
-namespace ActualChat.Chat.Uploads;
+namespace ActualChat.Uploads;
 
 public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadProcessor
 {
-    private ILogger<VideoUploadProcessor> Log { get; } = log;
+    private ILogger Log { get; } = log;
 
     public bool Supports(string contentType)
         => MediaTypeExt.IsVideo(contentType);

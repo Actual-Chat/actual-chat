@@ -1,8 +1,9 @@
-﻿using MemoryPack;
+﻿using ActualLab.Rpc;
+using MemoryPack;
 
 namespace ActualChat.Users;
 
-public interface IAvatarsBackend : IComputeService
+public interface IAvatarsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<AvatarFull?> Get(Symbol avatarId, CancellationToken cancellationToken);

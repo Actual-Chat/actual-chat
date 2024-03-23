@@ -5,37 +5,32 @@ using ActualChat.Users.Module;
 
 namespace ActualChat.Users;
 
+// Implements TOTP code generation & verification per RFC 6238.
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#nullable enable
-
-
-public class Rfc6238AuthenticationService
+public sealed class TotpCodes(UsersSettings settings)
 {
     private static readonly Encoding _encoding = new UTF8Encoding(false, true);
-    private UsersSettings Settings { get; }
+    private UsersSettings Settings { get; } = settings;
 
-    public Rfc6238AuthenticationService(UsersSettings settings)
-        => Settings = settings;
-
-    public int GenerateCode(byte[] securityToken, string? modifier = null)
+    public int Generate(byte[] securityToken, string? modifier = null)
     {
         // Allow a variance of no greater than TimeStepCount * TimeStep in either direction
         var currentTimeStep = GetCurrentTimeStepNumber();
 
         var modifierBytes = modifier is not null ? _encoding.GetBytes(modifier) : null;
-        return ComputeTotp(securityToken, currentTimeStep, modifierBytes);
+        return Compute(securityToken, currentTimeStep, modifierBytes);
     }
 
-    public bool ValidateCode(byte[] securityToken, int code, string? modifier = null)
+    public bool Validate(byte[] securityToken, int code, string? modifier = null)
     {
         // Allow a variance of no greater than TimeStepCount * TimeStep in either direction
         var currentTimeStep = GetCurrentTimeStepNumber();
 
         var modifierBytes = modifier is not null ? _encoding.GetBytes(modifier) : null;
         for (var i = -Settings.TotpTimestepCount; i <= Settings.TotpTimestepCount; i++) {
-            var computedTotp = ComputeTotp(securityToken, (ulong)((long)currentTimeStep + i), modifierBytes);
+            var computedTotp = Compute(securityToken, (ulong)((long)currentTimeStep + i), modifierBytes);
             if (computedTotp == code)
                 return true;
         }
@@ -44,7 +39,9 @@ public class Rfc6238AuthenticationService
         return false;
     }
 
-    private static int ComputeTotp(
+    // Private methods
+
+    private static int Compute(
         byte[] key,
         ulong timestepNumber,
         byte[]? modifierBytes)
@@ -74,9 +71,9 @@ public class Rfc6238AuthenticationService
         var offset = hash[^1] & 0xf;
         Debug.Assert(offset + 4 < hash.Length);
         var binaryCode = ((hash[offset] & 0x7f) << 24)
-                            | ((hash[offset + 1] & 0xff) << 16)
-                            | ((hash[offset + 2] & 0xff) << 8)
-                            | (hash[offset + 3] & 0xff);
+            | ((hash[offset + 1] & 0xff) << 16)
+            | ((hash[offset + 2] & 0xff) << 8)
+            | (hash[offset + 3] & 0xff);
 
         return binaryCode % mod;
     }

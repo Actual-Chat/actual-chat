@@ -1,8 +1,9 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Contacts;
 
-public interface IContactsBackend : IComputeService
+public interface IContactsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken);

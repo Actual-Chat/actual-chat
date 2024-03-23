@@ -22,11 +22,12 @@ public readonly record struct ModuleHostBuilder(ImmutableList<HostModule> Module
 
         // 1. Initialize / bind modules to ModuleHost
         foreach (var module in host.Modules)
-            module.Initialize(host);
+            module.Initialize(host, services);
 
         // 2. Let modules to inject their services
         foreach (var module in host.Modules)
-            module.InjectServices(services);
+            if (module.IsUsed)
+                module.InjectServices(services);
 
         return host;
     }

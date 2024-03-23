@@ -4,6 +4,10 @@ namespace ActualChat.Hosting;
 
 public interface IServerModule; // A tagging interface for server-side modules
 public interface IAppModule; // A tagging interface for client-side modules
+public interface IBlazorUIModule
+{
+    public static abstract string ImportName { get; }
+}
 
 public abstract class HostModule(IServiceProvider moduleServices)
 {
@@ -11,20 +15,22 @@ public abstract class HostModule(IServiceProvider moduleServices)
     private IConfiguration? _cfg;
     private ILogger? _log;
 
-    protected IServiceProvider ModuleServices { get; } = moduleServices;
-    protected HostInfo HostInfo => _hostInfo ??= ModuleServices.HostInfo();
-    protected bool IsDevelopmentInstance => HostInfo.IsDevelopmentInstance;
-    protected IConfiguration Cfg => _cfg ??= ModuleServices.GetRequiredService<IConfiguration>();
-    protected ILogger Log => _log ??= ModuleServices.LogFor(GetType());
+    public IServiceProvider ModuleServices { get; } = moduleServices;
+    public HostInfo HostInfo => _hostInfo ??= ModuleServices.HostInfo();
+    public IConfiguration Cfg => _cfg ??= ModuleServices.GetRequiredService<IConfiguration>();
+    public ILogger Log => _log ??= ModuleServices.LogFor(GetType());
 
-    protected ModuleHost Host { get; private set; } = null!;
+    public ModuleHost Host { get; private set; } = null!;
+    public bool IsUsed { get; protected set; } = true;
 
-    protected internal void Initialize(ModuleHost host)
+    protected internal virtual void Initialize(ModuleHost host, IServiceCollection services)
     {
         if (this is IServerModule && !HostInfo.HostKind.IsServer())
             throw StandardError.Internal("This module can be used only on the server side.");
         if (this is IAppModule && !HostInfo.HostKind.IsApp())
             throw StandardError.Internal("This module can be used only in apps.");
+        if (this is IBlazorUIModule && !HostInfo.HasRole(HostRole.BlazorHost))
+            IsUsed = false;
 
         Host = host;
     }
@@ -42,6 +48,10 @@ public abstract class HostModule<TSettings>(IServiceProvider moduleServices) : H
     protected virtual TSettings ReadSettings()
         => Cfg.GetSettings<TSettings>();
 
-    protected internal override void InjectServices(IServiceCollection services)
-        => services.AddSingleton(Settings);
+    protected internal override void Initialize(ModuleHost host, IServiceCollection services)
+    {
+        base.Initialize(host, services);
+        if (IsUsed)
+            services.AddSingleton(Settings);
+    }
 }

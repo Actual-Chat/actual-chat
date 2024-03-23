@@ -1,8 +1,9 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Notification;
 
-public interface INotificationsBackend : IComputeService
+public interface INotificationsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<Notification?> Get(NotificationId notificationId, CancellationToken cancellationToken);

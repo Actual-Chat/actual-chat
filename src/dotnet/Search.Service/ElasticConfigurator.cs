@@ -1,5 +1,4 @@
 using ActualChat.Mesh;
-using ActualChat.Redis;
 using ActualChat.Search.Db;
 using ActualChat.Search.Module;
 using Elastic.Clients.Elasticsearch;

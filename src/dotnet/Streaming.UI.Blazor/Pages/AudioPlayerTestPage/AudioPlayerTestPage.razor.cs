@@ -21,8 +21,9 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private string _audioBlobStreamUri = "";
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private AudioDownloader AudioDownloader { get; init; } = null!;
     [Inject] private ITrackPlayerFactory TrackPlayerFactory { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ILogger<AudioPlayerTestPage> Log { get; init; } = null!;
 
     protected long ObjectCreationDelay;
@@ -129,8 +130,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private async Task<AudioSource> CreateAudioSource(string audioBlobUrl, CancellationToken cancellationToken)
     {
         if (_audioSource == null || !OrdinalEquals(_audioBlobStreamUri, audioBlobUrl)) {
-            var audioDownloader = new AudioDownloader(Services);
-            _audioSource = await audioDownloader.Download(audioBlobUrl, TimeSpan.Zero, cancellationToken);
+            _audioSource = await AudioDownloader.Download(audioBlobUrl, TimeSpan.Zero, cancellationToken);
             _audioBlobStreamUri = audioBlobUrl;
         }
         return _audioSource;

@@ -21,9 +21,6 @@ public sealed class ChatBlazorUIModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.HostKind.HasBlazorUI())
-            return; // Blazor UI only module
-
         var fusion = services.AddFusion();
 
         // Singletons

@@ -128,6 +128,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
         appHostModule.ConfigureApp(app); // This module must be the first one in ConfigureApp call sequence
 
         ModuleHost.Modules
+            .Where(m => m.IsUsed)
             .OfType<IWebServerModule>()
             .Where(m => !ReferenceEquals(m, appHostModule))
             .Apply(m => m.ConfigureApp(app));

@@ -11,6 +11,8 @@ public static class HostKindExt
         => hostKind is HostKind.WasmApp;
     public static bool IsMauiApp(this HostKind hostKind)
         => hostKind is HostKind.MauiApp;
+    public static bool IsServerOrWasmApp(this HostKind hostKind)
+        => hostKind is HostKind.WasmApp or HostKind.Server;
 
     public static bool HasBlazorUI(this HostKind hostKind)
         => hostKind is not HostKind.Unknown;
