@@ -60,6 +60,14 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      - name: Install provisioning profile
+        if: ${{env.IS_DEV_MAUI}}
+        run: |-
+          uuid=`grep UUID -A1 -a adhoc.mobileprovision | grep -io "[-A-F0-9]\{36\}"`
+          tee "~/Library/MobileDevice/Provisioning Profiles/$uuid.mobileprovision" <<EOF
+          ${{ env.IS_DEV_MAUI && secrets.PROVISIONING_PROFILE_DEV_BASE64 || secrets.PROVISIONING_PROFILE_PROD_BASE64 }}
+          EOF
+
       - name: Install dotnet 8.0 SDK
         uses: actions/setup-dotnet@v4
         with:
