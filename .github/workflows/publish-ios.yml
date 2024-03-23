@@ -60,14 +60,43 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Install provisioning profile
-        if: ${{env.IS_DEV_MAUI}}
+      - name: Install the Apple certificate and provisioning profile
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_DISTRIBUTION_CERT_BASE64 }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ env.IS_DEV_MAUI && secrets.PROVISIONING_PROFILE_DEV_BASE64 || secrets.PROVISIONING_PROFILE_PROD_BASE64 }}
         run: |-
-          b64=${{ env.IS_DEV_MAUI && secrets.PROVISIONING_PROFILE_DEV_BASE64 || secrets.PROVISIONING_PROFILE_PROD_BASE64 }}
-          mkdir -p "~/Library/MobileDevice/Provisioning Profiles/"
-          echo $b64 | base64 --decode -o pf.mobileprovision
-          uuid=`grep UUID -A1 -a pf.mobileprovision | grep -io "[-A-F0-9]\{36\}"`
-          mv pf.mobileprovision "~/Library/MobileDevice/Provisioning Profiles/$uuid.mobileprovision"
+          # create variables
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.cer
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          # import certificate and provisioning profile from secrets
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+          # create temporary keychain
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # import certificate to keychain
+          security import $CERTIFICATE_PATH -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # apply provisioning profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+      # - name: Install provisioning profile
+      #   if: ${{env.IS_DEV_MAUI}}
+      #   run: |-
+      #     b64=${{ env.IS_DEV_MAUI && secrets.PROVISIONING_PROFILE_DEV_BASE64 || secrets.PROVISIONING_PROFILE_PROD_BASE64 }}
+      #     mkdir -p "~/Library/MobileDevice/Provisioning Profiles/"
+      #     echo $b64 | base64 --decode -o pf.mobileprovision
+      #     uuid=`grep UUID -A1 -a pf.mobileprovision | grep -io "[-A-F0-9]\{36\}"`
+      #     mv pf.mobileprovision "~/Library/MobileDevice/Provisioning Profiles/$uuid.mobileprovision"
 
       - name: Install dotnet 8.0 SDK
         uses: actions/setup-dotnet@v4
