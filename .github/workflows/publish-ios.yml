@@ -64,7 +64,7 @@ jobs:
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_DISTRIBUTION_CERT_BASE64 }}
           BUILD_PROVISION_PROFILE_BASE64: ${{ env.IS_DEV_MAUI && secrets.PROVISIONING_PROFILE_DEV_BASE64 || secrets.PROVISIONING_PROFILE_PROD_BASE64 }}
-        run: |-
+        run: |
           # create variables
           CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.cer
           PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
