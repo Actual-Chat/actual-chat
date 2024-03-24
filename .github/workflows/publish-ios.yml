@@ -95,7 +95,6 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           uuid=`grep UUID -A1 -a $PP_PATH | grep -io "[-A-F0-9]\{36\}"`
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$uuid.mobileprovision
-          ls -ls ~/Library/MobileDevice/Provisioning\ Profiles
 
       # - name: Install provisioning profile
       #   if: ${{env.IS_DEV_MAUI}}
