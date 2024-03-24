@@ -66,7 +66,7 @@ jobs:
           BUILD_PROVISION_PROFILE_BASE64: ${{ env.IS_DEV_MAUI && secrets.PROVISIONING_PROFILE_DEV_BASE64 || secrets.PROVISIONING_PROFILE_PROD_BASE64 }}
         run: |
           # create variables
-          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.cer
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
           PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
@@ -82,9 +82,9 @@ jobs:
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
           echo ::Importing certificate to keychain
-          security import $CERTIFICATE_PATH -A -t cert -k $KEYCHAIN_PATH
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -k $KEYCHAIN_PATH
           echo :: set-key-partition-list
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           echo :: list-keychain
           security list-keychain -d user -s $KEYCHAIN_PATH
 
