@@ -38,7 +38,7 @@ jobs:
       github.ref == 'refs/heads/dev' ||
       startsWith(github.ref, 'refs/heads/feat/1873-') ||
       startsWith(github.ref, 'refs/heads/release/')
-    runs-on: macos-latest-large
+    runs-on: macos-13
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
