@@ -636,11 +636,13 @@ public class Chats(IServiceProvider services) : IChats
         if (Computed.IsInvalidating())
             return default; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, placeId) = command;
-        var executed = false;
-        Log.LogInformation("OnMoveToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'", chatId.Value, placeId);
+        var (session, chatId, placeId, correlationId) = command;
+        var hasChanges = false;
+        Log.LogInformation("-> OnCopyChat({CorrelationId}): copy chat '{ChatId}' to place '{PlaceId}'",
+            correlationId, chatId.Value, placeId);
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("Chat for chat id '{ChatId}' is {Chat}", chatId, chat);
+        Log.LogInformation("Chat for chat id '{ChatId}' is {Chat} ({CorrelationId})",
+            chatId, chat, correlationId);
         var maxEntryId = 0L;
         if (chat != null) {
             if (chat.Id.Kind != ChatKind.Group && chat.Id.Kind != ChatKind.Place)
@@ -654,10 +656,10 @@ public class Chats(IServiceProvider services) : IChats
             if (!place.Rules.IsOwner())
                 throw StandardError.Constraint("You should be a place owner to perform 'move to place' operation.");
 
-            var backendCmd = new ChatBackend_CopyChat(chatId, placeId);
+            var backendCmd = new ChatBackend_CopyChat(chatId, placeId, correlationId);
             var result = await Commander.Call(backendCmd, true, cancellationToken).ConfigureAwait(false);
-            if (result.DidProgress)
-                executed = true;
+            if (result.HasChanges)
+                hasChanges = true;
             maxEntryId = result.LastEntryId;
         }
 
@@ -672,12 +674,12 @@ public class Chats(IServiceProvider services) : IChats
         // }
         //
         {
-            var backendCmd3 = new AccountsBackend_CopyChat(chatId, placeId, maxEntryId);
-            var hasChanges = await Commander.Call(backendCmd3, true, cancellationToken).ConfigureAwait(false);
-            executed |= hasChanges;
+            var backendCmd3 = new AccountsBackend_CopyChat(chatId, placeId, maxEntryId, correlationId);
+            var hasChanges3 = await Commander.Call(backendCmd3, true, cancellationToken).ConfigureAwait(false);
+            hasChanges |= hasChanges3;
         }
 
-        Log.LogInformation("OnMoveToPlace: completed");
-        return executed;
+        Log.LogInformation("<- OnCopyChat({CorrelationId})", correlationId);
+        return hasChanges;
     }
 }

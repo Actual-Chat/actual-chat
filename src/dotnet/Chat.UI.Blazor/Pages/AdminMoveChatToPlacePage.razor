@@ -69,7 +69,7 @@
         await Hub.ModalUI.Show(new ConfirmModal.Model(false, message, () => _ = MoveInternal()));
 
         async Task MoveInternal() {
-            var command = new Chat_CopyChat(session, chatId, placeId);
+            var command = new Chat_CopyChat(session, chatId, placeId, Guid.NewGuid().ToString());
             var (success, error) = await Hub.UICommander().Run(command, default);
             if (error != null)
                 return;

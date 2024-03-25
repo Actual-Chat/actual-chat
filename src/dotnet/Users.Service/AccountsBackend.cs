@@ -226,7 +226,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         AccountsBackend_CopyChat command,
         CancellationToken cancellationToken)
     {
-        var (chatId, placeId, lastEntryId) = command;
+        var (chatId, placeId, lastEntryId, correlationId) = command;
         var localChatId = chatId.IsPlaceChat ? chatId.PlaceChatId.LocalChatId : chatId.Id;
         var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, localChatId));
         var newChatId = (ChatId)placeChatId;
@@ -237,16 +237,17 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             return default;
         }
 
-        Log.LogInformation("OnMoveChatToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'", chatSid, placeId);
+        Log.LogInformation("-> OnCopyChat({CorrelationId}): copy chat '{ChatId}' to place '{PlaceId}'",
+            correlationId, chatSid, placeId);
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var hasChanges = false;
-        hasChanges |= await UpdateUserChatSettings(dbContext, chatId, newChatId, cancellationToken).ConfigureAwait(false);
-        hasChanges |= await UpdateChatPositions(dbContext, chatId, newChatId, lastEntryId, cancellationToken).ConfigureAwait(false);
+        hasChanges |= await UpdateUserChatSettings(dbContext, chatId, newChatId, correlationId, cancellationToken).ConfigureAwait(false);
+        hasChanges |= await UpdateChatPositions(dbContext, chatId, newChatId, lastEntryId, correlationId, cancellationToken).ConfigureAwait(false);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("OnMoveChatToPlace: completed");
+        Log.LogInformation("<- OnCopyChat({CorrelationId})", correlationId);
         return hasChanges;
     }
 
@@ -309,6 +310,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         UsersDbContext dbContext,
         ChatId oldChatId,
         ChatId newChatId,
+        string correlationId,
         CancellationToken cancellationToken)
     {
         var oldChatSettingsSuffix = "/" + UserChatSettings.GetKvasKey(oldChatId);
@@ -337,7 +339,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        Log.LogInformation("Updated {Count} UserChatSettings kvas records", updateCount);
+        Log.LogInformation("Updated {Count} UserChatSettings kvas records ({CorrelationId})", updateCount, correlationId);
         return updateCount > 0;
     }
 
@@ -346,6 +348,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         ChatId oldChatId,
         ChatId newChatId,
         long maxEntryId,
+        string correlationId,
         CancellationToken cancellationToken)
     {
         if (maxEntryId <= 0)
@@ -381,7 +384,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             }
         }
 
-        Log.LogInformation("Updated {Count} ChatPositions records", updateCount);
+        Log.LogInformation("Updated {Count} ChatPositions records ({CorrelationId})", updateCount, correlationId);
         return updateCount > 0;
     }
 }

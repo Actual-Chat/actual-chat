@@ -374,7 +374,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (Computed.IsInvalidating())
             return default;
 
-        var (chatId, newChatId, rolesMap) = command;
+        var (chatId, newChatId, correlationId, rolesMap) = command;
         var chatSid = chatId.Value;
 
         var placeRootChatId = newChatId.PlaceId.ToRootChatId();
@@ -444,7 +444,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                     RoleIds = new ApiArray<Symbol>()
                 };
                 if (newAuthor.Version <= 0) {
-                    Log.LogInformation("Invalid version on DbAuthor with Id={AuthorId}", newAuthor.Id);
+                    Log.LogInformation("OnCopyChat({CorrelationId}) Invalid version on DbAuthor with Id={AuthorId}",
+                        correlationId, newAuthor.Id);
                     newAuthor = newAuthor with { Version = VersionGenerator.NextVersion() };
                 }
                 dbContext.Authors.Add(new DbAuthor(newAuthor));
@@ -466,7 +467,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             }
         }
 
-        Log.LogInformation("Created {Count} authors", createdAuthors);
+        Log.LogInformation("OnCopyChat({CorrelationId}) created {Count} authors", correlationId, createdAuthors);
         return didProgress;
     }
 

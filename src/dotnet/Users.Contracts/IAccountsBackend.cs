@@ -55,5 +55,6 @@ public sealed partial record AccountsBackend_Delete(
 public sealed partial record AccountsBackend_CopyChat(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId,
-    [property: DataMember, MemoryPackOrder(2)] long MaxEntryId
+    [property: DataMember, MemoryPackOrder(2)] long MaxEntryId,
+    [property: DataMember, MemoryPackOrder(3)] string CorrelationId
 ) : ICommand<bool>, IBackendCommand;
