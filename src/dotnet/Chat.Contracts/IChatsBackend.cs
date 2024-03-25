@@ -99,7 +99,7 @@ public interface IChatsBackend : IComputeService
     [CommandHandler]
     Task OnCreateNotesChat(ChatsBackend_CreateNotesChat command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<ChatBackend_MoveChatToPlaceResult> OnCopyChat(ChatBackend_CopyChat command, CancellationToken cancellationToken);
+    Task<ChatBackend_CopyChatResult> OnCopyChat(ChatBackend_CopyChat command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -155,13 +155,14 @@ public sealed partial record ChatsBackend_CreateNotesChat(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatBackend_CopyChat(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId
-) : ICommand<ChatBackend_MoveChatToPlaceResult>, IBackendCommand;
+    [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId,
+    [property: DataMember, MemoryPackOrder(2)] string CorrelationId
+) : ICommand<ChatBackend_CopyChatResult>, IBackendCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ChatBackend_MoveChatToPlaceResult(
-    [property: DataMember, MemoryPackOrder(0)] bool DidProgress,
+public sealed partial record ChatBackend_CopyChatResult(
+    [property: DataMember, MemoryPackOrder(0)] bool HasChanges,
     [property: DataMember, MemoryPackOrder(1)] bool HasErrors,
     [property: DataMember, MemoryPackOrder(2)] long LastEntryId
 );

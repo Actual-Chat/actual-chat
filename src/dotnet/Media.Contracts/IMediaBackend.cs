@@ -33,5 +33,6 @@ public sealed partial record MediaBackend_Change(
 // ReSharper disable once InconsistentNaming
 public sealed partial record MediaBackend_CopyChat(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] MediaId[] MediaIds
+    [property: DataMember, MemoryPackOrder(1)] string CorrelationId,
+    [property: DataMember, MemoryPackOrder(2)] MediaId[] MediaIds
 ) : ICommand<Unit>, IBackendCommand;

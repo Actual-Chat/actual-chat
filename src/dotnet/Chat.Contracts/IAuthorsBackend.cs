@@ -45,9 +45,10 @@ public sealed partial record AuthorsBackend_Remove(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AuthorsBackend_CopyChat(
-    [property: DataMember, MemoryPackOrder(0)] ChatId OldChatId,
-    [property: DataMember, MemoryPackOrder(1)] ChatId NewChatId,
-    [property: DataMember, MemoryPackOrder(2)] (RoleId, RoleId)[] RolesMap
+    [property: DataMember] [property: MemoryPackOrder(0)] ChatId OldChatId,
+    [property: DataMember] [property: MemoryPackOrder(1)] ChatId NewChatId,
+    [property: DataMember] [property: MemoryPackOrder(2)] string CorrelationId,
+    [property: DataMember] [property: MemoryPackOrder(3)] (RoleId, RoleId)[] RolesMap
 ) : ICommand<bool>, IBackendCommand;
 
 // ReSharper disable once InconsistentNaming

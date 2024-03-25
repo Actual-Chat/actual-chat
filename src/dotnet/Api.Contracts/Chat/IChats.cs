@@ -169,5 +169,6 @@ public sealed partial record Chats_ForwardTextEntries(
 public sealed partial record Chat_CopyChat(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2)] PlaceId PlaceId
+    [property: DataMember, MemoryPackOrder(2)] PlaceId PlaceId,
+    [property: DataMember, MemoryPackOrder(3)] string CorrelationId
 ) : ISessionCommand<bool>;

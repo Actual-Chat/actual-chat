@@ -6,11 +6,11 @@ namespace ActualChat.Chat;
 
 public partial class ChatsBackend
 {
-    public virtual async Task<ChatBackend_MoveChatToPlaceResult> OnCopyChat(
+    public virtual async Task<ChatBackend_CopyChatResult> OnCopyChat(
         ChatBackend_CopyChat command,
         CancellationToken cancellationToken)
     {
-        var (chatId, placeId) = command;
+        var (chatId, placeId, correlationId) = command;
         var localChatId = chatId.IsPlaceChat ? chatId.PlaceChatId.LocalChatId : chatId.Id;
         var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, localChatId));
         var newChatId = (ChatId)placeChatId;
@@ -24,11 +24,10 @@ public partial class ChatsBackend
             return default!;
         }
 
-        Log.LogInformation("OnMoveToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'",
-            chatId.Value,
-            placeId);
+        Log.LogInformation("-> OnCopyChat({CorrelationId}): copy chat '{ChatId}' to place '{PlaceId}'",
+            correlationId, chatId.Value, placeId);
 
-        var didProgress = false;
+        var hasChanges = false;
         var chatSid = chatId.Value;
         var commandTimeout = TimeSpan.FromSeconds(30);
 
@@ -43,7 +42,7 @@ public partial class ChatsBackend
             await using var __ = dbContext.ConfigureAwait(false);
 
             var chat = await Get(chatId, cancellationToken).Require().ConfigureAwait(false);
-            var newChat = await CreateOrUpdateChat(dbContext, newChatId, chat, cancellationToken).ConfigureAwait(false);
+            var newChat = await CreateOrUpdateChat(correlationId, dbContext, newChatId, chat, cancellationToken).ConfigureAwait(false);
 
             var lastTextEntry = await GetLastEntry(dbContext, chatId, ChatEntryKind.Text, cancellationToken)
                 .ConfigureAwait(false);
@@ -56,23 +55,27 @@ public partial class ChatsBackend
                     textEntryRange = new Range<long>(startEntryId, endEntryId + 1);
             }
 
+            Log.LogInformation("OnCopyChat({CorrelationId}: Text range is [{Start},{End})",
+                correlationId, textEntryRange.Start, textEntryRange.End);
+
             var migratedRoles = new List<MigratedRole>();
-            var didProgress1 = await CreateOrUpdateRoles(dbContext,
+            var hasChanges1 = await CreateOrUpdateRoles(dbContext,
                     chatSid,
                     newChat,
+                    correlationId,
                     migratedRoles,
                     cancellationToken)
                 .ConfigureAwait(false);
 
             maxAuthorLocalId = dbContext.Authors.Where(c => c.ChatId == chatSid).Max(c => c.LocalId);
             rolesMap = migratedRoles.Select(c => (c.OriginalRole.Id, c.NewId)).ToArray();
-            didProgress |= didProgress1;
+            hasChanges |= hasChanges1;
         }
         {
-            var didProgress2 = await Commander
-                .Call(new AuthorsBackend_CopyChat(chatId, newChatId, rolesMap), true, cancellationToken)
+            var hasChanges2 = await Commander
+                .Call(new AuthorsBackend_CopyChat(chatId, newChatId, correlationId, rolesMap), true, cancellationToken)
                 .ConfigureAwait(false);
-            didProgress |= didProgress2;
+            hasChanges |= hasChanges2;
         }
         {
             var dbContext = CreateDbContext();
@@ -95,7 +98,7 @@ public partial class ChatsBackend
         CopyChatEntriesResult? result = null;
         if (!textEntryRange.IsEmpty) {
             var startEntryId = textEntryRange.Start;
-            var copyContext = new CopyChatEntriesContext(chatId, newChatId, migratedAuthors);
+            var copyContext = new CopyChatEntriesContext(chatId, newChatId, correlationId, migratedAuthors);
             const int batchLimit = 10;
 
             while (proceed) {
@@ -109,7 +112,7 @@ public partial class ChatsBackend
                     if (result.ProcessedChatEntriesCount == 0)
                         proceed = false;
                     else {
-                        didProgress = true;
+                        hasChanges = true;
                         startEntryId = result.LastEntryId.LocalId + 1;
                         lastEntryId = result.LastEntryId.LocalId;
                     }
@@ -117,7 +120,8 @@ public partial class ChatsBackend
                 catch (Exception e) {
                     proceed = false;
                     hasErrors = true;
-                    Log.LogInformation(e, "Failed to proceed chat entries insertion for range [{Start}, {End})", batchRange.Start, batchRange.End);
+                    Log.LogWarning(e, "OnCopyChat({CorrelationId}) failed to proceed chat entries insertion for range [{Start}, {End})",
+                        correlationId, batchRange.Start, batchRange.End);
                 }
             }
         }
@@ -126,15 +130,14 @@ public partial class ChatsBackend
             var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             dbContext.Database.SetCommandTimeout(commandTimeout);
             await using var __ = dbContext.ConfigureAwait(false);
-
             context.Operation().Items.Set(result.LastEntryId);
         }
 
-        Log.LogInformation("OnMoveToPlace: completed");
-        return new ChatBackend_MoveChatToPlaceResult(didProgress, hasErrors, lastEntryId);
+        Log.LogInformation("<- OnCopyChat({CorrelationId})", correlationId);
+        return new ChatBackend_CopyChatResult(hasChanges, hasErrors, lastEntryId);
     }
 
-    private async Task<Chat> CreateOrUpdateChat(ChatDbContext dbContext, ChatId newChatId, Chat chat, CancellationToken cancellationToken)
+    private async Task<Chat> CreateOrUpdateChat(string correlationId, ChatDbContext dbContext, ChatId newChatId, Chat chat, CancellationToken cancellationToken)
     {
         var chatSid = newChatId.Value;
         var dbChat = await dbContext.Chats
@@ -154,7 +157,7 @@ public partial class ChatsBackend
             newChat = dbChat.ToModel();
         }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("Updated chat record");
+        Log.LogInformation("OnCopyChat({CorrelationId}) updated chat record", correlationId);
         return newChat;
     }
 
@@ -162,6 +165,7 @@ public partial class ChatsBackend
         ChatDbContext dbContext,
         string chatSid,
         Chat newChat,
+        string correlationId,
         ICollection<MigratedRole> migratedRoles,
         CancellationToken cancellationToken)
     {
@@ -198,7 +202,7 @@ public partial class ChatsBackend
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("Updated {Count} role records", dbRoles.Count);
+        Log.LogInformation("OnCopyChat({CorrelationId}) updated {Count} role records", correlationId, dbRoles.Count);
         return didProgress;
     }
 
@@ -271,6 +275,9 @@ public partial class ChatsBackend
         if (entryIdRange.IsEmpty)
             return new CopyChatEntriesResult(0, ChatEntryId.None, new Range<long>());
 
+        Log.LogInformation("-> CopyChatEntries({CorrelationId}). EntryId range is [{Start},{End})",
+            context.CorrelationId, entryIdRange.Start, entryIdRange.End);
+
         var dbContext = CreateDbContext(true);
         dbContext.Database.SetCommandTimeout(TimeSpan.FromSeconds(30));
         await using var __ = dbContext.ConfigureAwait(false);
@@ -294,6 +301,9 @@ public partial class ChatsBackend
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        Log.LogInformation("<- CopyChatEntries({CorrelationId}). EntryId range is [{Start},{End})",
+            context.CorrelationId, entryIdRange.Start, entryIdRange.End);
+
         return textEntriesResult;
     }
 
@@ -305,6 +315,7 @@ public partial class ChatsBackend
         int batchLimit,
         CancellationToken cancellationToken)
     {
+        var correlationId = context.CorrelationId;
         var chatSid = context.ChatId.Value;
         var newChatId = context.NewChatId;
         var migratedAuthors = context.MigratedAuthors;
@@ -339,6 +350,7 @@ public partial class ChatsBackend
             await InsertMentions(dbContext,
                     chatSid,
                     newChatId,
+                    correlationId,
                     new Range<long>(entryIdRange.Start, lastEntry.LocalId + 1),
                     migratedAuthors,
                     chatEntryWithMentionIds,
@@ -422,24 +434,25 @@ public partial class ChatsBackend
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         if (attachmentIds.Count > 0)
-            await InsertTextEntryAttachments(dbContext, chatSid, newChatId, attachmentIds, cancellationToken).ConfigureAwait(false);
+            await InsertTextEntryAttachments(correlationId, dbContext, chatSid, newChatId, attachmentIds, cancellationToken).ConfigureAwait(false);
 
         if (reactionIds.Count > 0)
-            await InsertReactions(dbContext, chatSid, newChatId, reactionIds, migratedAuthors, cancellationToken).ConfigureAwait(false);
+            await InsertReactions(correlationId, dbContext, chatSid, newChatId, reactionIds, migratedAuthors, cancellationToken).ConfigureAwait(false);
 
         Log.LogInformation(
-            "Inserted {Count} {Kind} chat entry records with local ids [{From},{To}]",
+            "OnCopyChat({CorrelationId}) inserted {Count} {Kind} chat entry records with local ids [{From},{To}]",
+            correlationId,
             entries.Count,
             entryKind,
             minLocalId,
             maxLocalId);
 
         if (entryKind == ChatEntryKind.Text)
-            Log.LogInformation("Updated author mentions inside DbChatEntry.Content. {Count} records are affected",
-                mentionUpdatesInsideContent);
+            Log.LogInformation("OnCopyChat({CorrelationId}) updated author mentions inside DbChatEntry.Content. {Count} records are affected",
+                correlationId, mentionUpdatesInsideContent);
 
-        Log.LogInformation("Updated MembersChangedOption inside system chat entries. {Count} records are affected",
-            mentionUpdatesInSystemEntries);
+        Log.LogInformation("OnCopyChat({CorrelationId}) updated MembersChangedOption inside system chat entries. {Count} records are affected",
+            correlationId, mentionUpdatesInSystemEntries);
 
         var lastEntryId = lastEntry != null ? ChatEntryId.Parse(lastEntry.Id) : ChatEntryId.None;
         var audioRange = minRelatedAudioEntryId <= maxRelatedAudioEntryId
@@ -447,7 +460,6 @@ public partial class ChatsBackend
             : new Range<long>();
         return new CopyChatEntriesResult(entries.Count, lastEntryId, audioRange);
     }
-
 
         // Что делать с форвардами, когда мы копируем записи?
 
@@ -507,7 +519,13 @@ public partial class ChatsBackend
         return content;
     }
 
-    private async Task InsertTextEntryAttachments(ChatDbContext dbContext, string chatSid, ChatId newChatId, List<long> attachmentsIds, CancellationToken cancellationToken)
+    private async Task InsertTextEntryAttachments(
+        string correlationId,
+        ChatDbContext dbContext,
+        string chatSid,
+        ChatId newChatId,
+        List<long> attachmentsIds,
+        CancellationToken cancellationToken)
     {
         var attachmentIdPrefix = chatSid + ":0:";
         List<string> ids = attachmentsIds.Select(c => attachmentIdPrefix + c).ToList();
@@ -527,7 +545,8 @@ public partial class ChatsBackend
             .Select(c => new MediaId(c))
             .ToArray();
 
-        await Commander.Call(new MediaBackend_CopyChat(newChatId, mediaIds), true, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new MediaBackend_CopyChat(newChatId, correlationId, mediaIds), true, cancellationToken)
+            .ConfigureAwait(false);
 
         foreach (var dbAttachment in attachments) {
             var entryId = new TextEntryId(dbAttachment.EntryId);
@@ -541,10 +560,12 @@ public partial class ChatsBackend
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        Log.LogInformation("Inserted {Count} text entry attachment records", attachments.Count);
+        Log.LogInformation("OnCopyChat({CorrelationId}) inserted {Count} text entry attachment records",
+            correlationId, attachments.Count);
     }
 
     private async Task InsertReactions(
+        string correlationId,
         ChatDbContext dbContext,
         string chatSid,
         ChatId newChatId,
@@ -578,7 +599,8 @@ public partial class ChatsBackend
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("Inserted {Count} reaction records", reactions.Count);
+        Log.LogInformation("OnCopyChat({CorrelationId}) inserted {Count} reaction records",
+            correlationId, reactions.Count);
 
         var reactionSummaries = await dbContext.ReactionSummaries
             .Where(c => c.Id.StartsWith(chatSid))
@@ -611,13 +633,15 @@ public partial class ChatsBackend
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        Log.LogInformation("Updated AuthorIds for {Count} reaction summary records", reactionSummaries.Count);
+        Log.LogInformation("OnCopyChat({CorrelationId}) updated AuthorIds for {Count} reaction summary records",
+            correlationId, reactionSummaries.Count);
     }
 
     private async Task InsertMentions(
         ChatDbContext dbContext,
         string chatSid,
         ChatId newChatId,
+        string correlationId,
         Range<long> range,
         MigratedAuthors migratedAuthors,
         ICollection<long> entryIdsCollector,
@@ -655,7 +679,8 @@ public partial class ChatsBackend
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("Updated ChatId and Id for {Count} mention records", mentions.Count);
+        Log.LogInformation("OnCopyChat({CorrelationId}) updated ChatId and Id for {Count} mention records",
+            correlationId, mentions.Count);
     }
 
     private record MigratedRole(Role OriginalRole, Role NewRole)
@@ -708,6 +733,7 @@ public partial class ChatsBackend
     private sealed record CopyChatEntriesContext(
         ChatId ChatId,
         ChatId NewChatId,
+        string CorrelationId,
         MigratedAuthors MigratedAuthors);
 
     public sealed record CopyChatEntriesResult(long ProcessedChatEntriesCount, ChatEntryId LastEntryId, Range<long> AudioEntryId);

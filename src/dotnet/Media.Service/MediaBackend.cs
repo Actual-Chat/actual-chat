@@ -80,13 +80,15 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
     // [CommandHandler]
     public virtual async Task OnCopyChat(MediaBackend_CopyChat command, CancellationToken cancellationToken)
     {
-        var (newChatId, mediaIds) = command;
+        var (newChatId, correlationId, mediaIds) = command;
         if (mediaIds.Length == 0)
             return;
 
         var oldChatSid = mediaIds[0].Scope;
         if (Computed.IsInvalidating())
             return;
+
+        Log.LogInformation("-> OnCopyChat({CorrelationId})", correlationId);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -129,6 +131,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        Log.LogInformation("Inserted {Count} media records", updateCount);
+        Log.LogInformation("<- OnCopyChat({CorrelationId}) inserted {Count} media records",
+            correlationId, updateCount);
     }
 }
