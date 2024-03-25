@@ -379,7 +379,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
         var placeRootChatId = newChatId.PlaceId.ToRootChatId();
         var createdAuthors = 0;
-        var didProgress = false;
+        var hasChanges = false;
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -429,7 +429,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 };
                 placeMember = await Commander.Call(upsertPlaceMemberCmd, cancellationToken)
                     .ConfigureAwait(false);
-                didProgress = true;
+                hasChanges = true;
             }
             {
                 var newLocalId = placeMember.LocalId;
@@ -463,12 +463,12 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
                 createdAuthors++;
-                didProgress = true;
+                hasChanges = true;
             }
         }
 
         Log.LogInformation("OnCopyChat({CorrelationId}) created {Count} authors", correlationId, createdAuthors);
-        return didProgress;
+        return hasChanges;
     }
 
     [EventHandler]
