@@ -77,6 +77,7 @@
 *.aprof filter=lfs diff=lfs merge=lfs -text
 *.aprofile filter=lfs diff=lfs merge=lfs -text
 *.mibc filter=lfs diff=lfs merge=lfs -text
+*.ipa
 
 *.webm filter=lfs diff=lfs merge=lfs -text
 *.jpg  filter=lfs diff=lfs merge=lfs -text

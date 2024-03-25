@@ -1,0 +1,66 @@
+name: publish ios app to test flight - lab
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  create:
+  push:
+    branches:
+      - "**"
+      - master
+      - dev
+      - release/v*
+    paths-ignore:
+      - "**.md"
+  pull_request:
+    branches:
+      - master
+      - dev
+      - release/v*
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+  issues: read
+  checks: write
+  statuses: write
+
+jobs:
+
+  deploy-ios-to-appstore:
+    name: Deploy app package to apple app store for ${{ github.ref_name }}
+    if: |
+      github.ref == 'refs/heads/master' ||
+      startsWith(github.ref, 'refs/heads/release/')
+    runs-on: macos-13
+    environment: prod
+    env:
+      APP_ID: chat.actual.app.dev
+      PACKAGE_FILE_NAME: ${{needs.build-ios-pkg.outputs.PACKAGE_FILE_NAME}}
+      API_KEY_BASE64: ${{secrets.APPSTORE_API_KEY_BASE64}}
+      API_KEY_ID: {{$secrets.APPSTORE_API_KEY_ID}}
+      API_ISSUER_ID: ${{secrets.APPSTORE_API_ISSUER}}
+    steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+          with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: true
+
+        - name: Install App Store api key
+          run: |-
+            mkdir -p ~/.appstoreconnect/private_keys/
+            echo -n "${{ env.API_KEY_BASE64 }}" | base64 --decode --o ~/.appstoreconnect/private_keys/AuthKey_${{ env.API_KEY_ID }}.p8
+
+        - name: Validate App
+          run: |-
+            xcrun altool --validate-app -f resources/ActualChat.ipa -t ios --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER}} --show-progress --verbose --output-format json
+          shell: bash
+#        - name: Upload App
+#          run: |
+#            xcrun altool --upload-app -f resources/ActualChat.ipa -t ios --apiKey ${{ inputs.appstoreAPIKeyID }} --apiIssuer ${{ inputs.appstoreAPIIssuer }} --show-progress --verbose --output-format json
+#          shell: bash
