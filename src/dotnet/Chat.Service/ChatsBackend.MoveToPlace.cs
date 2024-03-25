@@ -11,12 +11,12 @@ public partial class ChatsBackend
         CancellationToken cancellationToken)
     {
         var (chatId, placeId) = command;
-        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
+        var localChatId = chatId.IsPlaceChat ? chatId.PlaceChatId.LocalChatId : chatId.Id;
+        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, localChatId));
         var newChatId = (ChatId)placeChatId;
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            _ = Get(chatId, default);
             _ = GetPublicChatIdsFor(placeId, default);
             var lastEntryIdInv = context.Operation().Items.GetOrDefault(ChatEntryId.None);
             if (!lastEntryIdInv.IsNone)
