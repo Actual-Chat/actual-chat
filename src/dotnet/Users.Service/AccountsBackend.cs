@@ -227,7 +227,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         CancellationToken cancellationToken)
     {
         var (chatId, placeId, lastEntryId) = command;
-        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
+        var localChatId = chatId.IsPlaceChat ? chatId.PlaceChatId.LocalChatId : chatId.Id;
+        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, localChatId));
         var newChatId = (ChatId)placeChatId;
         var chatSid = chatId.Value;
 

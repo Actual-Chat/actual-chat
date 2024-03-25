@@ -643,8 +643,10 @@ public class Chats(IServiceProvider services) : IChats
         Log.LogInformation("Chat for chat id '{ChatId}' is {Chat}", chatId, chat);
         var maxEntryId = 0L;
         if (chat != null) {
-            if (chat.Id.Kind != ChatKind.Group)
+            if (chat.Id.Kind != ChatKind.Group && chat.Id.Kind != ChatKind.Place)
                 throw StandardError.Constraint("Only group chats can be moved to a Place.");
+            if (chat.Id.Kind == ChatKind.Place && chat.Id.PlaceId == placeId)
+                throw StandardError.Constraint("Can't copy place chat to the same Place.");
             if (!chat.Rules.IsOwner())
                 throw StandardError.Constraint("You must be the Owner of this chat to perform the migration.");
 
