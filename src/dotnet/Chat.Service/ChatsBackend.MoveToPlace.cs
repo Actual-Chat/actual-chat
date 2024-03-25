@@ -28,7 +28,7 @@ public partial class ChatsBackend
             chatId.Value,
             placeId);
 
-        var migratedAuthors = new MigratedAuthors();
+        MigratedAuthors migratedAuthors;
         var didProgress = false;
 
         var textEntryRange = new Range<long>();
@@ -61,11 +61,17 @@ public partial class ChatsBackend
                     cancellationToken)
                 .ConfigureAwait(false);
 
-            var didProgress2 = await CreateOrGetAuthors(dbContext,
+            var maxAuthorLocalId = dbContext.Authors.Where(c => c.ChatId == chatSid).Max(c => c.LocalId);
+
+            var rolesMap = migratedRoles.Select(c => (c.OriginalRole.Id, c.NewId)).ToArray();
+            var didProgress2 = await Commander
+                .Call(new AuthorsBackend_CopyChat(chatId, newChatId, rolesMap), true, cancellationToken)
+                .ConfigureAwait(false);
+
+            migratedAuthors = await GetAuthorsMap(dbContext,
                     chatSid,
                     newChatId,
-                    migratedRoles,
-                    migratedAuthors,
+                    maxAuthorLocalId,
                     cancellationToken)
                 .ConfigureAwait(false);
 
@@ -190,25 +196,31 @@ public partial class ChatsBackend
         return didProgress;
     }
 
-    private async Task<bool> CreateOrGetAuthors(
+    private static async Task<MigratedAuthors> GetAuthorsMap(
         ChatDbContext dbContext,
         string chatSid,
         ChatId newChatId,
-        IReadOnlyCollection<MigratedRole> migratedRoles,
-        MigratedAuthors migratedAuthors,
+        long maxAuthorLocalId,
         CancellationToken cancellationToken)
     {
-        var placeRootChatId = newChatId.PlaceId.ToRootChatId();
-        var createdAuthors = 0;
-        var didProgress = false;
+        var newChatSid = newChatId.Value;
 
-        // Create place members and update chat authors.
         var dbAuthors = await dbContext.Authors
-            .Include(a => a.Roles)
-            .Where(c => c.ChatId == chatSid)
+            .Where(c => c.ChatId == chatSid && c.LocalId <= maxAuthorLocalId)
             .OrderBy(c => c.LocalId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        var newDbAuthors = await dbContext.Authors
+            .Where(c => c.ChatId == newChatSid)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var newDbAuthorPerUserId = newDbAuthors
+            .Where(c => !c.UserId.IsNullOrEmpty())
+            .ToDictionary(c => c.UserId!, StringComparer.Ordinal);
+
+        var migratedAuthors = new MigratedAuthors();
 
         foreach (var dbAuthor in dbAuthors) {
             var originalAuthor = dbAuthor.ToModel();
@@ -234,62 +246,14 @@ public partial class ChatsBackend
                     $"Can't proceed with the migration: anonymous author migration isn't supported yet. AuthorId is '{dbAuthor.Id}'.");
             }
 
-            // Ensure there is matching place member
-            // TODO(DF): Can we use AuthorsBackend_GetAuthorOption.Full? In fact, they are equivalents in this case.
-            var placeMember = await AuthorsBackend.GetByUserId(placeRootChatId, userId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
-                .ConfigureAwait(false);
-            if (placeMember == null) {
-                var authorDiff = new AuthorDiff { AvatarId = dbAuthor.AvatarId };
-                var upsertPlaceMemberCmd = new AuthorsBackend_Upsert(placeRootChatId,
-                    default,
-                    userId,
-                    null,
-                    authorDiff);
-                placeMember = await Commander.Call(upsertPlaceMemberCmd, cancellationToken)
-                    .ConfigureAwait(false);
-                didProgress = true;
-            }
-            {
-                var newLocalId = placeMember.LocalId;
-                var newAuthorId = new AuthorId(newChatId, newLocalId, AssumeValid.Option);
-                var existentAuthor = await AuthorsBackend.Get(newAuthorId.ChatId, newAuthorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
-                    .ConfigureAwait(false);
-                if (existentAuthor != null) {
-                    migratedAuthors.RegisterMigrated(originalAuthor, placeMember, existentAuthor);
-                    continue;
-                }
+            if (!newDbAuthorPerUserId.TryGetValue(userId, out var newDbAuthor))
+                throw StandardError.Internal(
+                    $"Can't proceed with the migration: No migrated author found for user with id '{userId}'.");
 
-                var newAuthor = originalAuthor with {
-                    Id = newAuthorId,
-                    RoleIds = new ApiArray<Symbol>()
-                };
-                if (newAuthor.Version <= 0) {
-                    Log.LogInformation("Invalid version on DbAuthor with Id={AuthorId}", newAuthor.Id);
-                    newAuthor = newAuthor with { Version = VersionGenerator.NextVersion() };
-                }
-                dbContext.Authors.Add(new DbAuthor(newAuthor));
-                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-                migratedAuthors.RegisterMigrated(originalAuthor, placeMember, newAuthor);
-
-                var roleIds = dbAuthor.Roles.Select(c => c.DbRoleId).ToList();
-                foreach (var roleId in roleIds) {
-                    var migratedRole = migratedRoles.First(c => OrdinalEquals(roleId, c.OriginalRole.Id.Value));
-                    dbContext.AuthorRoles.Add(new DbAuthorRole {
-                        DbAuthorId = newAuthorId,
-                        DbRoleId = migratedRole.NewId
-                    });
-                }
-
-                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-                createdAuthors++;
-                didProgress = true;
-            }
+            migratedAuthors.RegisterMigrated(originalAuthor, new AuthorId(newDbAuthor.Id));
         }
 
-        Log.LogInformation("Created {Count} authors", createdAuthors);
-        return didProgress;
+        return migratedAuthors;
     }
 
     private async Task<CopyChatEntriesResult> CopyChatEntries(
@@ -697,11 +661,11 @@ public partial class ChatsBackend
     {
         private readonly List<MigratedAuthor> _migratedAuthors = new ();
 
-        public void RegisterMigrated(AuthorFull originalAuthor, AuthorFull placeMember, AuthorFull newAuthor)
-            => _migratedAuthors.Add(new MigratedAuthor(originalAuthor, placeMember, newAuthor));
+        public void RegisterMigrated(AuthorFull originalAuthor, AuthorId newAuthorId)
+            => _migratedAuthors.Add(new MigratedAuthor(originalAuthor.Id, newAuthorId));
 
         public void RegisterRemoved(AuthorFull originalAuthor)
-            => _migratedAuthors.Add(new MigratedAuthor(originalAuthor, null, null));
+            => _migratedAuthors.Add(new MigratedAuthor(originalAuthor.Id, null));
 
         public AuthorId GetNewAuthorId(AuthorId authorId)
             => GetNewAuthorId(authorId.Value);
@@ -728,10 +692,10 @@ public partial class ChatsBackend
         private MigratedAuthor? FindMigratedAuthor(string authorSid)
             => _migratedAuthors.FirstOrDefault(c => OrdinalEquals(c.OriginalAuthor.Id.Value, authorSid));
 
-        private record MigratedAuthor(AuthorFull OriginalAuthor, AuthorFull? PlaceMember, AuthorFull? NewAuthor)
+        private record MigratedAuthor(AuthorId OriginalAuthor, AuthorId? NewAuthorId)
         {
-            public AuthorId NewId => NewAuthor?.Id ?? AuthorId.None;
-            public bool IsRemoved => NewAuthor == null;
+            public AuthorId NewId => NewAuthorId ?? AuthorId.None;
+            public bool IsRemoved => NewAuthorId == null;
         }
     }
 
