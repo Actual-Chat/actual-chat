@@ -13,6 +13,9 @@ public interface IMediaBackend : IComputeService, IBackendService
 
     [CommandHandler]
     public Task<Media?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    public Task OnMoveToPlace(MediaBackend_MoveToPlace command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -25,3 +28,10 @@ public sealed partial record MediaBackend_Change(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public MediaId ShardKey => Id;
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record MediaBackend_MoveToPlace(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] MediaId[] MediaIds
+) : ICommand<Unit>, IBackendCommand;
