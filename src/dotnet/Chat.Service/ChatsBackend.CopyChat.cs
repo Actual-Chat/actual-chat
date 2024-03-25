@@ -28,13 +28,18 @@ public partial class ChatsBackend
             chatId.Value,
             placeId);
 
-        MigratedAuthors migratedAuthors;
         var didProgress = false;
+        var chatSid = chatId.Value;
+        var commandTimeout = TimeSpan.FromSeconds(30);
 
+        MigratedAuthors migratedAuthors;
         var textEntryRange = new Range<long>();
+        (RoleId Id, RoleId NewId)[] rolesMap;
+        long maxAuthorLocalId;
+
         {
             var dbContext = CreateDbContext(true);
-            dbContext.Database.SetCommandTimeout(TimeSpan.FromSeconds(30));
+            dbContext.Database.SetCommandTimeout(commandTimeout);
             await using var __ = dbContext.ConfigureAwait(false);
 
             var chat = await Get(chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -51,9 +56,7 @@ public partial class ChatsBackend
                     textEntryRange = new Range<long>(startEntryId, endEntryId + 1);
             }
 
-            var chatSid = chatId.Value;
             var migratedRoles = new List<MigratedRole>();
-
             var didProgress1 = await CreateOrUpdateRoles(dbContext,
                     chatSid,
                     newChat,
@@ -61,22 +64,25 @@ public partial class ChatsBackend
                     cancellationToken)
                 .ConfigureAwait(false);
 
-            var maxAuthorLocalId = dbContext.Authors.Where(c => c.ChatId == chatSid).Max(c => c.LocalId);
-
-            var rolesMap = migratedRoles.Select(c => (c.OriginalRole.Id, c.NewId)).ToArray();
+            maxAuthorLocalId = dbContext.Authors.Where(c => c.ChatId == chatSid).Max(c => c.LocalId);
+            rolesMap = migratedRoles.Select(c => (c.OriginalRole.Id, c.NewId)).ToArray();
+            didProgress |= didProgress1;
+        }
+        {
             var didProgress2 = await Commander
                 .Call(new AuthorsBackend_CopyChat(chatId, newChatId, rolesMap), true, cancellationToken)
                 .ConfigureAwait(false);
-
+            didProgress |= didProgress2;
+        }
+        {
+            var dbContext = CreateDbContext();
+            dbContext.Database.SetCommandTimeout(commandTimeout);
             migratedAuthors = await GetAuthorsMap(dbContext,
                     chatSid,
                     newChatId,
                     maxAuthorLocalId,
                     cancellationToken)
                 .ConfigureAwait(false);
-
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            didProgress |= didProgress1 | didProgress2;
         }
 
         // if (textEntryRange.Start > 1) {
@@ -118,7 +124,7 @@ public partial class ChatsBackend
 
         if (result != null && !result.LastEntryId.IsNone) {
             var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-            dbContext.Database.SetCommandTimeout(TimeSpan.FromSeconds(30));
+            dbContext.Database.SetCommandTimeout(commandTimeout);
             await using var __ = dbContext.ConfigureAwait(false);
 
             context.Operation().Items.Set(result.LastEntryId);
@@ -471,7 +477,7 @@ public partial class ChatsBackend
         // Log.LogInformation("Updated ForwardedAuthorId and ForwardedChatEntryId for {Count} chat entry records",
         //     updateCount);
 
-    private async Task<DbChatEntry?> GetLastEntry(
+    private static async Task<DbChatEntry?> GetLastEntry(
         ChatDbContext dbContext,
         ChatId chatId,
         ChatEntryKind entryKind,
