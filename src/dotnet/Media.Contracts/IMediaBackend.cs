@@ -15,7 +15,7 @@ public interface IMediaBackend : IComputeService, IBackendService
     public Task<Media?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    public Task OnMoveToPlace(MediaBackend_MoveToPlace command, CancellationToken cancellationToken);
+    public Task OnCopyChat(MediaBackend_CopyChat command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -31,7 +31,7 @@ public sealed partial record MediaBackend_Change(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record MediaBackend_MoveToPlace(
+public sealed partial record MediaBackend_CopyChat(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] MediaId[] MediaIds
 ) : ICommand<Unit>, IBackendCommand;

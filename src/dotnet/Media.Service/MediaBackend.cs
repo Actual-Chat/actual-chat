@@ -78,7 +78,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
     }
 
     // [CommandHandler]
-    public virtual async Task OnMoveToPlace(MediaBackend_MoveToPlace command, CancellationToken cancellationToken)
+    public virtual async Task OnCopyChat(MediaBackend_CopyChat command, CancellationToken cancellationToken)
     {
         var (newChatId, mediaIds) = command;
         if (mediaIds.Length == 0)
