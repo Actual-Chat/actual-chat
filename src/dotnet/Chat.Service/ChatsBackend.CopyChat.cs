@@ -169,7 +169,7 @@ public partial class ChatsBackend
         ICollection<MigratedRole> migratedRoles,
         CancellationToken cancellationToken)
     {
-        var didProgress = false;
+        var hasChanges = false;
         var dbRoles = await dbContext.Roles
             .Where(c => c.ChatId == chatSid)
             .OrderBy(c => c.LocalId)
@@ -187,7 +187,7 @@ public partial class ChatsBackend
             var newRole = originalRole with { Id = newRoleId };
             if (existentNewRole == null) {
                 dbContext.Roles.Add(new DbRole(newRole));
-                didProgress = true;
+                hasChanges = true;
             } else {
                 if (existentNewRole.SystemRole != originalRole.SystemRole)
                     throw StandardError.Constraint("Can't proceed migration. Role 'SystemRole' property has changed. "
@@ -203,7 +203,7 @@ public partial class ChatsBackend
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("OnCopyChat({CorrelationId}) updated {Count} role records", correlationId, dbRoles.Count);
-        return didProgress;
+        return hasChanges;
     }
 
     private static async Task<MigratedAuthors> GetAuthorsMap(
