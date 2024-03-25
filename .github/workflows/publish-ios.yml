@@ -53,6 +53,8 @@ jobs:
       PACKAGE_FILE_NAME: ${{env.PACKAGE_FILE_NAME}}
       MAJOR_MINOR_VERSION: ${{steps.nbgv.outputs.MajorMinorVersion}}
     steps:
+      - run: xcodebuild -showsdks
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
