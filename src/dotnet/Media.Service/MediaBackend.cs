@@ -76,4 +76,59 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
 
         return media;
     }
+
+    // [CommandHandler]
+    public virtual async Task OnMoveToPlace(MediaBackend_MoveToPlace command, CancellationToken cancellationToken)
+    {
+        var (newChatId, mediaIds) = command;
+        if (mediaIds.Length == 0)
+            return;
+
+        var oldChatSid = mediaIds[0].Scope;
+        if (Computed.IsInvalidating())
+            return;
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var sids = mediaIds.Select(c => c.Id.Value).ToList();
+        var medias = await dbContext.Media
+            .Where(c => c.Id.StartsWith(oldChatSid))
+ #pragma warning disable CA1310
+            .Where(c => sids.Any(x => c.Id == x))
+ #pragma warning restore CA1310
+            .AsNoTracking()
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var newSids = mediaIds.Select(c => new MediaId(newChatId, c.LocalId).Id.Value).ToList();
+        var newChatSid = newChatId.Value;
+        var existentMediaSids = await dbContext.Media
+            .Where(c => c.Id.StartsWith(newChatSid))
+ #pragma warning disable CA1310
+            .Where(c => newSids.Any(x => c.Id == x))
+ #pragma warning restore CA1310
+            .Select(c => c.Id)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var existentMediaSidSet = new HashSet<string>(existentMediaSids);
+
+        var updateCount = 0;
+
+        foreach (var dbMedia in medias) {
+            var mediaId = new MediaId(newChatId, dbMedia.LocalId);
+            if (existentMediaSidSet.Contains(mediaId.Value))
+                continue;
+            dbMedia.Id = mediaId.Value;
+            dbMedia.Scope = mediaId.Scope;
+            dbContext.Media.Add(dbMedia);
+            updateCount++;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        Log.LogInformation("Inserted {Count} media records", updateCount);
+    }
 }

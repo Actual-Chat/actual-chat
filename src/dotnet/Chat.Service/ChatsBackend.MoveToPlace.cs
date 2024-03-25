@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualChat.Media;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat;
@@ -549,11 +550,22 @@ public partial class ChatsBackend
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        var mediaIds = attachments
+            .Select(c => c.MediaId)
+            .Where(c => !string.IsNullOrEmpty(c))
+            .Distinct(StringComparer.Ordinal)
+            .Select(c => new MediaId(c))
+            .ToArray();
+
+        await Commander.Call(new MediaBackend_MoveToPlace(newChatId, mediaIds), true, cancellationToken).ConfigureAwait(false);
+
         foreach (var dbAttachment in attachments) {
             var entryId = new TextEntryId(dbAttachment.EntryId);
             var newEntryId = new TextEntryId(newChatId, entryId.LocalId, AssumeValid.Option);
             dbAttachment.Id = DbTextEntryAttachment.ComposeId(newEntryId, dbAttachment.Index);
             dbAttachment.EntryId = newEntryId;
+            var oldMediaId = new MediaId(dbAttachment.MediaId);
+            dbAttachment.MediaId = new MediaId(newChatId, oldMediaId.LocalId);
             dbContext.TextEntryAttachments.Add(dbAttachment);
         }
 
