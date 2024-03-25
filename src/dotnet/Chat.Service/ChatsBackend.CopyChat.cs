@@ -6,8 +6,8 @@ namespace ActualChat.Chat;
 
 public partial class ChatsBackend
 {
-    public virtual async Task<ChatBackend_MoveChatToPlaceResult> OnMoveToPlace(
-        ChatBackend_MoveChatToPlace command,
+    public virtual async Task<ChatBackend_MoveChatToPlaceResult> OnCopyChat(
+        ChatBackend_CopyChat command,
         CancellationToken cancellationToken)
     {
         var (chatId, placeId) = command;
@@ -521,7 +521,7 @@ public partial class ChatsBackend
             .Select(c => new MediaId(c))
             .ToArray();
 
-        await Commander.Call(new MediaBackend_MoveToPlace(newChatId, mediaIds), true, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new MediaBackend_CopyChat(newChatId, mediaIds), true, cancellationToken).ConfigureAwait(false);
 
         foreach (var dbAttachment in attachments) {
             var entryId = new TextEntryId(dbAttachment.EntryId);

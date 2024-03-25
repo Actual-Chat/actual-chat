@@ -222,8 +222,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     }
 
     // [CommandHandler]
-    public virtual async Task<bool> OnMoveChatToPlace(
-        AccountsBackend_MoveChatToPlace command,
+    public virtual async Task<bool> OnCopyChat(
+        AccountsBackend_CopyChat command,
         CancellationToken cancellationToken)
     {
         var (chatId, placeId, lastEntryId) = command;

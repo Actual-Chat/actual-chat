@@ -631,7 +631,7 @@ public class Chats(IServiceProvider services) : IChats
     }
 
     // [CommandHandler]
-    public virtual async Task<bool> OnMoveToPlace(Chat_MoveChatToPlace command, CancellationToken cancellationToken)
+    public virtual async Task<bool> OnCopyChat(Chat_CopyChat command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default; // It just spawns other commands, so nothing to do here
@@ -654,7 +654,7 @@ public class Chats(IServiceProvider services) : IChats
             if (!place.Rules.IsOwner())
                 throw StandardError.Constraint("You should be a place owner to perform 'move to place' operation.");
 
-            var backendCmd = new ChatBackend_MoveChatToPlace(chatId, placeId);
+            var backendCmd = new ChatBackend_CopyChat(chatId, placeId);
             var result = await Commander.Call(backendCmd, true, cancellationToken).ConfigureAwait(false);
             if (result.DidProgress)
                 executed = true;
@@ -672,7 +672,7 @@ public class Chats(IServiceProvider services) : IChats
         // }
         //
         {
-            var backendCmd3 = new AccountsBackend_MoveChatToPlace(chatId, placeId, maxEntryId);
+            var backendCmd3 = new AccountsBackend_CopyChat(chatId, placeId, maxEntryId);
             var hasChanges = await Commander.Call(backendCmd3, true, cancellationToken).ConfigureAwait(false);
             executed |= hasChanges;
         }
