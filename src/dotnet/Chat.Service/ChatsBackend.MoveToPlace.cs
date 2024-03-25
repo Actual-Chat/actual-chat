@@ -28,7 +28,6 @@ public partial class ChatsBackend
             chatId.Value,
             placeId);
 
-        var migratedRoles = new List<MigratedRole>();
         var migratedAuthors = new MigratedAuthors();
         var didProgress = false;
 
@@ -53,6 +52,7 @@ public partial class ChatsBackend
             }
 
             var chatSid = chatId.Value;
+            var migratedRoles = new List<MigratedRole>();
 
             var didProgress1 = await CreateOrUpdateRoles(dbContext,
                     chatSid,
@@ -583,7 +583,7 @@ public partial class ChatsBackend
         CancellationToken cancellationToken)
     {
         var reactionIdPrefix = chatSid + ":0:";
-        List<string> ids = reactionIds.Select(c => reactionIdPrefix + c).ToList();
+        var ids = reactionIds.Select(c => reactionIdPrefix + c + ":").ToList();
 
         var reactions = await dbContext.Reactions
             .Where(c => c.Id.StartsWith(reactionIdPrefix))
