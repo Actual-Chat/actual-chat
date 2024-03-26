@@ -47,9 +47,9 @@ jobs:
         - name: Checkout
           uses: actions/checkout@v4
           with:
-          # Avoid shallow clone for Nerdbank.GitVersioning
-          fetch-depth: 0
-          lfs: true
+            # Avoid shallow clone for Nerdbank.GitVersioning
+            fetch-depth: 0
+            lfs: true
 
         - name: Install App Store api key
           run: |-
