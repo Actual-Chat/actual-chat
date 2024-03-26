@@ -146,10 +146,15 @@ internal class ChatIndexInitializerShard(
                 await clock.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
                 continue;
             }
-            foreach (var chat in batch) {
-                cancellationToken.ThrowIfCancellationRequested();
-                minVersion = chat.Version + 1;
-                yield return (chat.Id, chat.Version);
+            if (batch.Count==0) {
+                await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken).ConfigureAwait(false);
+            }
+            else {
+                foreach (var chat in batch) {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    minVersion = chat.Version + 1;
+                    yield return (chat.Id, chat.Version);
+                }
             }
         }
     }
