@@ -6,16 +6,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Contacts;
 
-public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<ContactsDbContext>(services),
+public class ExternalContactsBackend(IAccountsBackend accountsBackend, ContactLinker contactLinker, AgentInfo agentInfo, IServiceProvider services) : DbServiceBase<ContactsDbContext>(services),
     IExternalContactsBackend
 {
-    private IAccountsBackend? _accountsBackend;
-    private ContactLinker? _contactLinker;
-
-    private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
-    private ContactLinker ContactLinker => _contactLinker ??= Services.GetRequiredService<ContactLinker>();
-    private AgentInfo AgentInfo { get; } = services.GetRequiredService<AgentInfo>();
-
     // [ComputeMethod]
     public virtual async Task<ApiArray<ExternalContact>> List(UserId ownerId, Symbol deviceId, CancellationToken cancellationToken)
     {
@@ -40,7 +33,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
     // Not compute method!
     public async Task<ApiSet<UserId>> ListReferencingUserIds(UserId userId, CancellationToken cancellationToken)
     {
-        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        var account = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         if (account is null)
             return ApiSet<UserId>.Empty;
 
@@ -79,9 +72,9 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
                 _ = List(invId.OwnerId, invId.DeviceId, default);
             // NOTE(DF): force sync after changes are committed
             var context = CommandContext.GetCurrent();
-            var isLocal = context.Operation().AgentId == AgentInfo.Id;
+            var isLocal = context.Operation().AgentId == agentInfo.Id;
             if (isLocal && command.Changes.Any(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Create))
-                ContactLinker.Activate();
+                contactLinker.Activate();
             return default!;
         }
 

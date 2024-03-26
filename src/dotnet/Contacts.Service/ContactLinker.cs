@@ -5,17 +5,11 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Contacts;
 
-public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(services)
+public class ContactLinker(IAccountsBackend accountsBackend, IContactsBackend contactsBackend, ICommander commander, IServiceProvider services) : ActivatedWorkerBase(services)
 {
     private const int BatchSize = 100;
 
-    private IAccountsBackend? _accountsBackend;
-    private DbHub<ContactsDbContext>? _dbHub;
-    private ICommander? _commander;
-
-    private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
-    private DbHub<ContactsDbContext> DbHub => _dbHub ??= Services.DbHub<ContactsDbContext>();
-    private ICommander Commander => _commander ??= Services.Commander();
+    private DbHub<ContactsDbContext> DbHub { get; } = services.DbHub<ContactsDbContext>();
 
     protected override async Task<bool> OnActivate(CancellationToken cancellationToken)
     {
@@ -24,7 +18,7 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
         await using var _ = dbContext.ConfigureAwait(false);
         var dbExternalContactLinks = await dbContext.ExternalContactLinks.ForUpdate()
             .Where(x => !x.IsChecked)
-            .OrderBy(x => x.DbExternalContactId)
+            .OrderBy(x => x.Value)
             .Take(BatchSize)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -32,7 +26,12 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
             return true;
 
         using var _2 = Tracer.Default.Region($"Checking {dbExternalContactLinks.Count} external contact link(s)");
-        foreach (var link in dbExternalContactLinks)
+        await dbExternalContactLinks.Select(EnsureCreated).Collect(HardwareInfo.ProcessorCount).ConfigureAwait(false);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return false;
+
+        async Task EnsureCreated(DbExternalContactLink link)
+        {
             try {
                 var userId = await FindUserId(link, cancellationToken).ConfigureAwait(false);
                 var ownerId = new ExternalContactId(link.DbExternalContactId).OwnerId;
@@ -45,19 +44,18 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
                         link.DbExternalContactId, link.Value);
                 throw;
             }
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return false;
+        }
     }
 
     private Task<UserId> FindUserId(DbExternalContactLink link, CancellationToken cancellationToken)
     {
         var phoneHash = link.ToPhoneHash();
         if (!phoneHash.IsNullOrEmpty())
-            return AccountsBackend.GetIdByPhoneHash(phoneHash, cancellationToken);
+            return accountsBackend.GetIdByPhoneHash(phoneHash, cancellationToken);
 
         var emailHash = link.ToEmailHash();
         if (!emailHash.IsNullOrEmpty())
-            return AccountsBackend.GetIdByEmailHash(emailHash, cancellationToken);
+            return accountsBackend.GetIdByEmailHash(emailHash, cancellationToken);
 
         Log.LogError("Unknown external contact link type: {ExternalContactLink}", link.Value);
         return Task.FromResult(UserId.None);
@@ -70,10 +68,14 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
 
         var peerChatId = new PeerChatId(ownerId, userId);
         var contactId = new ContactId(ownerId, peerChatId);
-        var contact = new Contact(contactId);
+        // check existing contact since command always performs db request
+        var contact = await contactsBackend.Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
+        if (contact.IsStored())
+            return;
 
+        contact = new Contact(contactId);
         // This command doesn't throw an exception in case contact already exists
         var createCmd = new ContactsBackend_Change(contactId, null, Change.Create(contact));
-        await Commander.Call(createCmd, cancellationToken).ConfigureAwait(false);
+        await commander.Call(createCmd, cancellationToken).ConfigureAwait(false);
     }
 }
