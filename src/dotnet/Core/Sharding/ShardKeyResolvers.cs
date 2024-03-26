@@ -13,6 +13,7 @@ public static class ShardKeyResolverExt
 
 public static class ShardKeyResolvers
 {
+    private static readonly ConcurrentDictionary<Type, Unit> KnownInvalidKeyTypes = new();
     private static readonly ConcurrentDictionary<Type, Delegate> Registered = new();
     private static readonly ConcurrentDictionary<Type, Delegate?> Resolved = new();
     private static readonly ConcurrentDictionary<Type, ShardKeyResolver<object?>?> ResolvedUntyped = new();
@@ -32,6 +33,11 @@ public static class ShardKeyResolvers
             : NullResolver.Invoke(default);
     public static ShardKeyResolver<T> NotFound<T>()
         => _ => throw NotFoundError(typeof(T));
+    public static ShardKeyResolver<T> Invalid<T>(ShardKeyResolver<T> resolver) => x => {
+        if (KnownInvalidKeyTypes.TryAdd(typeof(T), default))
+            DefaultLog.LogError("Invalid shard key type: {KeyType}", typeof(T).GetName());
+        return resolver.Invoke(x);
+    };
 
     // These properties can be set!
     public static ShardKeyResolver<Unit> NullResolver { get; set; } = static _ => 0;
@@ -41,6 +47,8 @@ public static class ShardKeyResolvers
     static ShardKeyResolvers()
     {
         Register(Random<Unit>());
+        Register(Invalid(Random<CancellationToken>()));
+        Register(Invalid(HashCode<Moment>()));
         Register<int>(static x => x);
         Register<long>(static x => x.GetHashCode());
         Register<string>(StringResolver);

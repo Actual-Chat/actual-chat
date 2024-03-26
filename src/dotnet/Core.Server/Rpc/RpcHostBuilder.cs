@@ -28,7 +28,7 @@ public readonly struct RpcHostBuilder
 
     internal RpcHostBuilder(IServiceCollection services, HostInfo hostInfo, ILogger? log)
     {
-        Fusion = services.AddFusion(RpcServiceMode.None);
+        Fusion = services.AddFusion(RpcServiceMode.Local);
         HostInfo = hostInfo;
         Log = log;
         IsApiHost = HostInfo.HasRole(HostRole.Api);
@@ -104,12 +104,14 @@ public readonly struct RpcHostBuilder
 
         var hostRoles = HostInfo.Roles;
         var serviceMode = hostRoles.GetBackendServiceMode(serviceType);
-        var shardScheme = ShardScheme.ForType(serviceType) ?? ShardScheme.None;
-        var serviceDef = new BackendServiceDef(serviceType, implementationType, serviceMode, shardScheme.HostRole);
-        Services.Add(new ServiceDescriptor(typeof(BackendServiceDef), serviceDef));
+        if (!serviceMode.IsDisabled()) {
+            var shardScheme = ShardScheme.ForType(serviceType) ?? ShardScheme.None;
+            var serviceDef = new BackendServiceDef(serviceType, implementationType, serviceMode, shardScheme.HostRole);
+            Services.Add(new ServiceDescriptor(typeof(BackendServiceDef), serviceDef));
+        }
 
         switch (serviceMode) {
-        case ServiceMode.None:
+        case ServiceMode.Disabled:
             break;
         case ServiceMode.Local:
             AddService(serviceType, implementationType);
@@ -122,9 +124,9 @@ public readonly struct RpcHostBuilder
             AddService(serviceType, implementationType);
             Rpc.Service(serviceType).HasServer(serviceType).HasName(name);
             break;
-        case ServiceMode.RoutingServer:
+        case ServiceMode.Hybrid:
             AddService(implementationType, implementationType);
-            AddClient(serviceType);
+            AddHybridClient(serviceType, implementationType);
             Rpc.Service(serviceType).HasServer(implementationType).HasName(name);
             break;
         default:
@@ -140,7 +142,7 @@ public readonly struct RpcHostBuilder
         if (typeof(IComputeService).IsAssignableFrom(serviceType)) {
             var descriptor = new ServiceDescriptor(
                 serviceType,
-                c => FusionProxies.NewServiceProxy(c, implementationType),
+                c => FusionProxies.NewProxy(c, implementationType),
                 ServiceLifetime.Singleton);
             Services.Add(descriptor);
         }
@@ -155,7 +157,17 @@ public readonly struct RpcHostBuilder
         if (typeof(IComputeService).IsAssignableFrom(serviceType))
             Services.AddSingleton(serviceType, c => FusionProxies.NewClientProxy(c, serviceType));
         else
-            Services.AddSingleton(serviceType, c => RpcProxies.NewClientProxy(c, serviceType, serviceType));
+            Services.AddSingleton(serviceType, c => RpcProxies.NewClientProxy(c, serviceType));
+        if (addCommandHandlers)
+            Commander.AddHandlers(serviceType);
+    }
+
+    private void AddHybridClient(Type serviceType, Type implementationType, bool addCommandHandlers = true)
+    {
+        if (typeof(IComputeService).IsAssignableFrom(serviceType))
+            Services.AddSingleton(serviceType, c => FusionProxies.NewHybridProxy(c, serviceType, implementationType));
+        else
+            Services.AddSingleton(serviceType, c => RpcProxies.NewHybridProxy(c, serviceType, implementationType));
         if (addCommandHandlers)
             Commander.AddHandlers(serviceType);
     }
