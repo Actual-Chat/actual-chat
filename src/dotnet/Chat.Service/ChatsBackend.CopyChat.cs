@@ -320,6 +320,7 @@ public partial class ChatsBackend
         var correlationId = context.CorrelationId;
         var chatSid = context.ChatId.Value;
         var newChatId = context.NewChatId;
+        var newChatSid = newChatId.Value;
         var migratedAuthors = context.MigratedAuthors;
         var mentionExtractor = new MentionExtractor();
 
@@ -345,7 +346,7 @@ public partial class ChatsBackend
         if (entries.Count == 0)
             return new CopyChatEntriesResult(0, ChatEntryId.None, new Range<long>());
 
-        DbChatEntry? lastEntry = entries[^1];
+        var lastFetchedEntry = entries[^1];
 
         List<long> chatEntryWithMentionIds = new List<long>();
         if (entryKind == ChatEntryKind.Text)
@@ -353,7 +354,7 @@ public partial class ChatsBackend
                     chatSid,
                     newChatId,
                     correlationId,
-                    new Range<long>(entryIdRange.Start, lastEntry.LocalId + 1),
+                    new Range<long>(entryIdRange.Start, lastFetchedEntry.LocalId + 1),
                     migratedAuthors,
                     chatEntryWithMentionIds,
                     cancellationToken)
@@ -361,9 +362,24 @@ public partial class ChatsBackend
         else
             chatEntryWithMentionIds = new List<long>();
 
-        lastEntry = null;
+        DbChatEntry? lastProcessedEntry = null;
+
+        ICollection<long>? entryToSkipLocalIds = null;
+        if (entryKind == ChatEntryKind.Audio) {
+            var existentAudioEntryLocalIds = await dbContext.ChatEntries
+                .Where(c => c.ChatId == newChatSid && c.Kind == ChatEntryKind.Audio)
+                .Where(c => c.LocalId >= minLocalId && c.LocalId <= lastFetchedEntry.LocalId)
+                .Select(c => c.LocalId)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (existentAudioEntryLocalIds.Count > 0)
+                entryToSkipLocalIds = existentAudioEntryLocalIds;
+        }
 
         foreach (var dbChatEntry in entries) {
+            if (entryToSkipLocalIds != null && entryToSkipLocalIds.Contains(dbChatEntry.LocalId))
+                continue;
+
             var skip = false;
             var newEntryId = new ChatEntryId(newChatId, entryKind, dbChatEntry.LocalId, AssumeValid.Option);
             dbChatEntry.Id = newEntryId;
@@ -424,7 +440,7 @@ public partial class ChatsBackend
 
             if (!skip) {
                 dbContext.ChatEntries.Add(dbChatEntry);
-                lastEntry = dbChatEntry;
+                lastProcessedEntry = dbChatEntry;
 
                 if (dbChatEntry.HasAttachments)
                     attachmentIds.Add(dbChatEntry.LocalId);
@@ -456,7 +472,7 @@ public partial class ChatsBackend
         Log.LogInformation("OnCopyChat({CorrelationId}) updated MembersChangedOption inside system chat entries. {Count} records are affected",
             correlationId, mentionUpdatesInSystemEntries);
 
-        var lastEntryId = lastEntry != null ? ChatEntryId.Parse(lastEntry.Id) : ChatEntryId.None;
+        var lastEntryId = lastProcessedEntry != null ? ChatEntryId.Parse(lastProcessedEntry.Id) : ChatEntryId.None;
         var audioRange = minRelatedAudioEntryId <= maxRelatedAudioEntryId
             ? new Range<long>(minRelatedAudioEntryId, maxRelatedAudioEntryId + 1)
             : new Range<long>();
