@@ -465,12 +465,13 @@ public partial class ChatsBackend
             minLocalId,
             maxLocalId);
 
-        if (entryKind == ChatEntryKind.Text)
+        if (mentionUpdatesInsideContent > 0)
             Log.LogInformation("OnCopyChat({CorrelationId}) updated author mentions inside DbChatEntry.Content. {Count} records are affected",
                 correlationId, mentionUpdatesInsideContent);
 
-        Log.LogInformation("OnCopyChat({CorrelationId}) updated MembersChangedOption inside system chat entries. {Count} records are affected",
-            correlationId, mentionUpdatesInSystemEntries);
+        if (mentionUpdatesInSystemEntries > 0)
+            Log.LogInformation("OnCopyChat({CorrelationId}) updated MembersChangedOption inside system chat entries. {Count} records are affected",
+                correlationId, mentionUpdatesInSystemEntries);
 
         var lastEntryId = lastProcessedEntry != null ? ChatEntryId.Parse(lastProcessedEntry.Id) : ChatEntryId.None;
         var audioRange = minRelatedAudioEntryId <= maxRelatedAudioEntryId
@@ -545,6 +546,11 @@ public partial class ChatsBackend
         List<long> attachmentsIds,
         CancellationToken cancellationToken)
     {
+        if (attachmentsIds.Count == 0)
+            return;
+
+        var firstId = attachmentsIds[0];
+        var lastId = attachmentsIds[^1];
         var attachmentIdPrefix = chatSid + ":0:";
         List<string> ids = attachmentsIds.Select(c => attachmentIdPrefix + c).ToList();
         var attachments = await dbContext.TextEntryAttachments
@@ -578,8 +584,8 @@ public partial class ChatsBackend
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        Log.LogInformation("OnCopyChat({CorrelationId}) inserted {Count} text entry attachment records",
-            correlationId, attachments.Count);
+        Log.LogInformation("OnCopyChat({CorrelationId}) inserted {Count} text entry attachment records for entries from range [{From},{To})",
+            correlationId, attachments.Count, firstId, lastId + 1);
     }
 
     private async Task InsertReactions(
@@ -676,6 +682,8 @@ public partial class ChatsBackend
             .AsNoTracking()
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        if (mentions.Count == 0)
+            return;
 
         const string mentionIdAuthorPrefix = "a:";
         foreach (var mention in mentions) {
