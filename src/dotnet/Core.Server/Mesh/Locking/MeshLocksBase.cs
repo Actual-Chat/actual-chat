@@ -9,9 +9,9 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
 
     public static readonly MeshLockOptions DefaultLockOptions =
 #if DEBUG
-        new(TimeSpan.FromSeconds(60));
+        new(TimeSpan.FromSeconds(60)) { WarningDelay = TimeSpan.FromSeconds(65) };
 #else
-        new(TimeSpan.FromSeconds(15));
+        new(TimeSpan.FromSeconds(15)) { WarningDelay = TimeSpan.FromSeconds(20) };
 #endif
     public static readonly TimeSpan DefaultUnconditionalCheckPeriod = TimeSpan.FromSeconds(10);
 
@@ -59,6 +59,10 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
         MeshLockOptions lockOptions,
         CancellationToken cancellationToken = default)
     {
+        var warningDelay = lockOptions.WarningDelay.Positive();
+        var warningDelayTask = warningDelay > TimeSpan.Zero
+            ? Clock.Delay(warningDelay, cancellationToken)
+            : null;
         var holder = CreateHolder(key, value, lockOptions);
         DebugLog?.LogDebug("Lock: {Key} = {StoredValue}", key, holder.StoredValue);
         IAsyncSubscription<string>? changes = null;
@@ -68,7 +72,16 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
                 try {
                     changes ??= await Changes(key, cancellationToken).ConfigureAwait(false);
                     cancellationToken.ThrowIfCancellationRequested();
-                    var isAcquired = await TryLock(key, holder.StoredValue, lockOptions.ExpirationPeriod, cancellationToken).ConfigureAwait(false);
+                    var tryLockTask = TryLock(key, holder.StoredValue, lockOptions.ExpirationPeriod, cancellationToken);
+                    if (warningDelayTask != null) {
+                        var completedTask = await Task.WhenAny(tryLockTask, warningDelayTask).ConfigureAwait(false);
+                        if (completedTask == warningDelayTask) {
+                            if (warningDelayTask.IsCompletedSuccessfully)
+                                Log?.LogWarning("Lock takes too long: {Key} = {StoredValue}", key, holder.StoredValue);
+                            warningDelayTask = null; // We report it just once per Lock call
+                        }
+                    }
+                    var isAcquired = await tryLockTask.ConfigureAwait(false);
                     if (isAcquired)
                         break;
                 }

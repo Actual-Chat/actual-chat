@@ -54,7 +54,7 @@ public sealed class MeshWatcher : WorkerBase
 
     public RpcBackendShardPeerRef? GetPeerRef(ShardRef shardRef)
         => shardRef.IsNone ? null
-            : _shardPeerRefs.GetOrAdd(shardRef,
+            : _shardPeerRefs.GetOrAdd(shardRef.Normalize(),
                 static (shardRef1, self) => new RpcBackendShardPeerRef(self, shardRef1),
                 this).Latest;
 

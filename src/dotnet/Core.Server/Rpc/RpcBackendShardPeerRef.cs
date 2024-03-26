@@ -39,7 +39,7 @@ public sealed record RpcBackendShardPeerRef : RpcPeerRef
     }
 
     public override string ToString()
-        => $"backend @ {ShardRef} (#{GetHashCode()})";
+        => Key;
 
     // This record relies on referential equality
     public bool Equals(RpcBackendShardPeerRef? other) => ReferenceEquals(this, other);
@@ -47,8 +47,8 @@ public sealed record RpcBackendShardPeerRef : RpcPeerRef
 
     // Private methods
 
-    private static Symbol GetKey(ShardRef shardRef, int index)
-        => $"@{shardRef}:{index.Format()}";
+    private static Symbol GetKey(ShardRef shardRef, int version)
+        => $"@{shardRef.Format()}-v{version.Format()}";
 
     private async Task Update()
     {

@@ -83,7 +83,7 @@ public abstract class ShardWorker : WorkerBase
                     ShardStates[shardIndex] = shardState.NextState(mustUse);
                 }
                 if (addedShards.Count > 0 || removedShards.Count > 0)
-                    Log.LogInformation("Shards @ {ThisNodeId}: {UsedShards} (+{AddedShards}, -{RemovedShards})",
+                    Log.LogInformation("Shards @ {ThisNodeId}: {UsedShards} +[{AddedShards}] -[{RemovedShards}]",
                         ThisNode.Ref,
                         usedShards.Format(), addedShards.ToDelimitedString(","), removedShards.ToDelimitedString(","));
             }
@@ -104,7 +104,7 @@ public abstract class ShardWorker : WorkerBase
             var lockIsLost = false;
             Exception? error = null;
             try {
-                Log.LogInformation("Shard #{ShardIndex} -> {ThisNodeId}", shardIndex, ThisNode.Ref);
+                DebugLog?.LogDebug("Shard #{ShardIndex} -> {ThisNodeId}", shardIndex, ThisNode.Ref);
                 await OnRun(shardIndex, lockToken).ConfigureAwait(false);
                 failureCount = 0;
             }
@@ -124,7 +124,7 @@ public abstract class ShardWorker : WorkerBase
                 if (lockIsLost)
                     Log.LogWarning("Shard #{ShardIndex} <- {ThisNodeId} (shard lock is lost)", shardIndex, ThisNode.Ref);
                 else
-                    Log.LogInformation("Shard #{ShardIndex} <- {ThisNode}", shardIndex, ThisNode.Ref);
+                    DebugLog?.LogDebug("Shard #{ShardIndex} <- {ThisNode}", shardIndex, ThisNode.Ref);
             }
 
             if (error != null) {
