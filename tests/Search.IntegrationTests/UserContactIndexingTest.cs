@@ -9,14 +9,13 @@ namespace ActualChat.Search.IntegrationTests;
 public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContactIndexingTest> log)
     : LocalAppHostTestBase( "user_contact_indexing",
         TestAppHostOptions.Default with {
-            AppConfigurationExtender = cfg => {
+            ConfigureHost = (_, cfg) => {
                 cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.IsSearchEnabled)}", "true"));
                 cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingDelay)}", "00:00:01"));
                 cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingSignalInterval)}", "00:00:00.5"));
             },
         },
-        @out,
-        log)
+        @out, log)
 {
     private WebClientTester _tester = null!;
     private ISearchBackend _searchBackend = null!;

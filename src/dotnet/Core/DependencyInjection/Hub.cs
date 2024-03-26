@@ -31,7 +31,7 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
     public AccountSettings AccountSettings() => _accountSettings ??= Services.GetRequiredService<AccountSettings>();
     public LocalSettings LocalSettings() => _localSettings ??= Services.GetRequiredService<LocalSettings>();
     public Features Features() => _features ??= Services.GetRequiredService<Features>();
-    public ICommander Commander() => _commander ??= Services.GetRequiredService<ICommander>();
+    public ICommander Commander() => _commander ??= Services.Commander();
     public RpcHub RpcHub() => _rpcHub ??= Services.GetRequiredService<RpcHub>();
 
     public CancellationToken StopToken { get; }

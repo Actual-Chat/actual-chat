@@ -7,7 +7,7 @@ public class MediaCollection : ICollectionFixture<AppHostFixture>;
 
 public class AppHostFixture(IMessageSink messageSink)
     : ActualChat.Testing.Host.AppHostFixture("media", messageSink, TestAppHostOptions.Default with {
-        AppServicesExtender = (_, services) => {
+        ConfigureAppServices = (_, services) => {
             services.AddSingleton<HttpClientFactoryMock>().AddAlias<IHttpClientFactory, HttpClientFactoryMock>();
         },
     });

@@ -1,13 +1,17 @@
 using ActualChat.Mesh;
+using ActualLab.Diagnostics;
 
 namespace ActualChat;
 
 public abstract class ShardWorker : WorkerBase
 {
+    private static bool DebugMode => Constants.DebugMode.QueueProcessor;
+
     private ILogger? _log;
 
     protected IServiceProvider Services { get; }
-    protected virtual ILogger Log => _log ??= Services.Logs().CreateLogger($"{GetType()}({ShardScheme.Id})");
+    protected ILogger Log => _log ??= Services.Logs().CreateLogger($"{GetType()}({ShardScheme.Id})");
+    protected ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     protected MeshWatcher MeshWatcher { get; }
     protected ShardScheme ShardScheme { get; }
@@ -93,7 +97,7 @@ public abstract class ShardWorker : WorkerBase
     {
         var failureCount = 0;
         while (!cancellationToken.IsCancellationRequested) {
-            Log.LogInformation("Shard #{ShardIndex}: acquiring lock for {ThisNodeId}", shardIndex, ThisNode.Ref);
+            DebugLog?.LogDebug("Shard #{ShardIndex}: acquiring lock for {ThisNodeId}", shardIndex, ThisNode.Ref);
             var lockHolder = await ShardLocks.Lock(shardIndex.Format(), "", cancellationToken).ConfigureAwait(false);
             var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
             var lockToken = lockCts.Token;

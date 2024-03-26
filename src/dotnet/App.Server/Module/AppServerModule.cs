@@ -134,6 +134,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 : TimeSpan.FromSeconds(30);
         });
 
+        // AppHostLifecycleMonitor
+        services.AddHostedService<AppHostLifecycleMonitor>();
+
         // Health-checks
         services.AddSingleton<LivelinessHealthCheck>(c => new LivelinessHealthCheck(c));
         services.AddSingleton<ReadinessHealthCheck>(c => new ReadinessHealthCheck(c));

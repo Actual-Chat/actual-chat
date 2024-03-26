@@ -5,6 +5,8 @@ namespace ActualChat.Mesh;
 
 public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = null) : IMeshLocksBackend
 {
+    private static bool DebugMode => Constants.DebugMode.QueueProcessor;
+
     public static readonly MeshLockOptions DefaultLockOptions =
 #if DEBUG
         new(TimeSpan.FromSeconds(60));
@@ -16,7 +18,7 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
     protected readonly string HolderKeyPrefix = Alphabet.AlphaNumeric.Generator8.Next() + "-";
     protected long LastHolderId;
     protected ILogger? Log { get; init; } = log;
-    protected ILogger? DebugLog { get; init; } = log.IfEnabled(LogLevel.Debug);
+    protected ILogger? DebugLog { get; init; } = DebugMode ? log.IfEnabled(LogLevel.Debug) : null;
     ILogger? IMeshLocksBackend.Log => Log;
     ILogger? IMeshLocksBackend.DebugLog => DebugLog;
 

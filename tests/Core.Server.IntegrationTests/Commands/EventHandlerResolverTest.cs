@@ -11,7 +11,7 @@ public class EventHandlerRegistryTest(ITestOutputHelper @out)
     public async Task BackendServerRoleShouldHandleAllEvents()
     {
         using var host = await NewAppHost(options => options with  {
-            AppServicesExtender = (c, services) => {
+            ConfigureAppServices = (_, services) => {
                 services
                     .AddNatsQueues()
                     .AddFusion()

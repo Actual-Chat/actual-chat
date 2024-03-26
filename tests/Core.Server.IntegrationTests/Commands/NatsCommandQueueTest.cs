@@ -13,23 +13,22 @@ public class NatsQueueTest(ITestOutputHelper @out)
     {
         using var host = await NewAppHost(options => options with {
             InstanceName = $"x-{nameof(NatsQueueTest)}-{nameof(SmokeTest)}",
-            AppServicesExtender = (c, services) => {
-                services
-                    .AddNatsQueues()
-                    .AddFusion()
-                    .AddService<ScheduledCommandTestService>();
+            ConfigureAppServices = (builder, services) => {
+                services.AddNatsQueues();
+                var rpcHost = services.AddRpcHost(builder.HostInfo);
+                rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },
         });
         var services = host.Services;
         var queues = services.Queues().Start();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
-        var commander = services.GetRequiredService<ICommander>();
+        var commander = services.Commander();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand(null));
-
         await queues.WhenProcessing();
+
         testService.ProcessedEvents.Count.Should().BeGreaterThanOrEqualTo(1);
     }
 
@@ -38,7 +37,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
     {
         using var host = await NewAppHost(options => options with {
             InstanceName = $"x-{nameof(NatsQueueTest)}-{nameof(MultipleCommandsCanBeScheduled)}",
-            AppServicesExtender = (c, services) => {
+            ConfigureAppServices = (c, services) => {
                 services
                     .AddNatsQueues()
                     .AddFusion()
@@ -68,7 +67,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
     {
         using var host = await NewAppHost(options => options with {
             InstanceName = $"x-{nameof(NatsQueueTest)}-{nameof(CommandsWithCustomQueuesAreHandled)}",
-            AppServicesExtender = (c, services) => {
+            ConfigureAppServices = (c, services) => {
                 services
                     // Remove all ShardCommandQueueScheduler to debug just one
                     // .RemoveAll(sd => sd.IsKeyedService)

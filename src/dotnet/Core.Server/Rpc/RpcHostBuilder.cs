@@ -114,15 +114,17 @@ public readonly struct RpcHostBuilder
         case ServiceMode.Disabled:
             break;
         case ServiceMode.Local:
-            AddService(serviceType, implementationType);
+            AddService(implementationType, implementationType);
+            AddAlias(serviceType, implementationType);
             break;
         case ServiceMode.Client:
             AddClient(serviceType);
             Rpc.Service(serviceType).HasName(name);
             break;
         case ServiceMode.Server:
-            AddService(serviceType, implementationType);
-            Rpc.Service(serviceType).HasServer(serviceType).HasName(name);
+            AddService(implementationType, implementationType);
+            AddAlias(serviceType, implementationType);
+            Rpc.Service(serviceType).HasServer(implementationType).HasName(name);
             break;
         case ServiceMode.Hybrid:
             AddService(implementationType, implementationType, false);
@@ -136,6 +138,12 @@ public readonly struct RpcHostBuilder
     }
 
     // Private methods
+
+    private void AddAlias(Type aliasType, Type serviceType, ServiceLifetime lifetime = ServiceLifetime.Singleton)
+    {
+        var descriptor = new ServiceDescriptor(aliasType, c => c.GetRequiredService(serviceType), lifetime);
+        Services.Add(descriptor);
+    }
 
     private void AddService(Type serviceType, Type implementationType, bool addCommandHandlers = true)
     {

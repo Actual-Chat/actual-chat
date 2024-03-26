@@ -20,7 +20,7 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
         var queues = services.Queues();
         queues.Should().BeAssignableTo<InMemoryQueues>();
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
-        var commander = services.GetRequiredService<ICommander>();
+        var commander = services.Commander();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand(null));
@@ -48,7 +48,7 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
         var queues = services.Queues();
         queues.Should().BeAssignableTo<InMemoryQueues>();
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
-        var commander = services.GetRequiredService<ICommander>();
+        var commander = services.Commander();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand2());
@@ -78,7 +78,7 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
         var queues = services.Queues();
         queues.Should().BeAssignableTo<InMemoryQueues>();
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
-        var commander = services.GetRequiredService<ICommander>();
+        var commander = services.Commander();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand3());

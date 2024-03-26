@@ -17,7 +17,7 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
         await using var tester = appHost.NewBlazorTester();
         var services = tester.AppServices;
         var clientServices = tester.ScopedAppServices;
-        var commander = services.GetRequiredService<ICommander>();
+        var commander = services.Commander();
         var authors = services.GetRequiredService<IAuthors>();
         var account = await tester.SignInAsBob();
         var session = tester.Session;
