@@ -101,7 +101,7 @@ public partial class ChatsBackend
         if (!textEntryRange.IsEmpty) {
             var startEntryId = textEntryRange.Start;
             var copyContext = new CopyChatEntriesContext(chatId, newChatId, correlationId, migratedAuthors);
-            const int batchLimit = 10;
+            const int batchLimit = 500;
 
             while (proceed) {
                 var batchRange = new Range<long>(startEntryId, textEntryRange.End);
