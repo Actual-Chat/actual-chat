@@ -2,7 +2,7 @@ using ActualChat.Pooling;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatActivity : ScopedServiceBase<ChatUIHub>
+public class ChatActivity : ScopedServiceBase<ChatUIHub>, IAsyncDisposable
 {
     private readonly SharedResourcePool<ChatId, ChatStreamingActivity> _activityPool;
 
@@ -14,6 +14,9 @@ public class ChatActivity : ScopedServiceBase<ChatUIHub>
         var lease = await _activityPool.Rent(chatId, cancellationToken).ConfigureAwait(false); // Ok here
         return new ChatStreamingActivityReplica(lease);
     }
+
+    public ValueTask DisposeAsync()
+        => _activityPool.DisposeAsync();
 
     private Task<ChatStreamingActivity> NewChatStreamingActivity(ChatId chatId, CancellationToken cancellationToken)
     {

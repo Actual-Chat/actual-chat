@@ -291,7 +291,7 @@ public class Chats(IServiceProvider services) : IChats
         chat.Rules.Permissions.Require(ChatPermissions.Write);
 
         var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
-        await RemoveTextEntry(session, chatId, textEntryId, author, cancellationToken).ConfigureAwait(false);
+        await RemoveTextEntry(session, chat, textEntryId, author, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -307,7 +307,7 @@ public class Chats(IServiceProvider services) : IChats
 
         var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
         await RestoreTextEntry(session,
-                chatId,
+                chat,
                 textEntryId,
                 author,
                 cancellationToken)
@@ -327,7 +327,7 @@ public class Chats(IServiceProvider services) : IChats
 
         foreach (var localId in localIds) {
             var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
-            await RemoveTextEntry(session, chatId, textEntryId, author, cancellationToken).ConfigureAwait(false);
+            await RemoveTextEntry(session, chat, textEntryId, author, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -344,7 +344,7 @@ public class Chats(IServiceProvider services) : IChats
 
         foreach (var localId in localIds) {
             var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
-            await RestoreTextEntry(session, chatId, textEntryId, author, cancellationToken).ConfigureAwait(false);
+            await RestoreTextEntry(session, chat, textEntryId, author, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -562,7 +562,7 @@ public class Chats(IServiceProvider services) : IChats
 
     private async Task RemoveTextEntry(
         Session session,
-        ChatId chatId,
+        Chat chat,
         TextEntryId textEntryId,
         Author author,
         CancellationToken cancellationToken)
@@ -573,14 +573,14 @@ public class Chats(IServiceProvider services) : IChats
             .ConfigureAwait(false);
 
         // Check constraints
-        if (textEntry.AuthorId != author.Id)
+        if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner()))
             throw StandardError.Unauthorized("You can remove only your own messages.");
         if (textEntry.IsStreaming)
             throw StandardError.Constraint("This entry is still recording, you'll be able to remove it later.");
 
         await Remove(textEntryId).ConfigureAwait(false);
         if (textEntry.AudioEntryId is { } localAudioEntryId) {
-            var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
+            var audioEntryId = new ChatEntryId(chat.Id, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
             await Remove(audioEntryId).ConfigureAwait(false);
         }
         return;
@@ -593,7 +593,7 @@ public class Chats(IServiceProvider services) : IChats
 
     private async Task RestoreTextEntry(
         Session session,
-        ChatId chatId,
+        Chat chat,
         TextEntryId textEntryId,
         Author author,
         CancellationToken cancellationToken)
@@ -604,12 +604,12 @@ public class Chats(IServiceProvider services) : IChats
         if (textEntry == null)
             return;
 
-        if (textEntry.AuthorId != author.Id)
+        if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner()))
             throw StandardError.Unauthorized("You can restore only your own messages.");
 
         await Restore(textEntryId).ConfigureAwait(false);
         if (textEntry.AudioEntryId is { } localAudioEntryId) {
-            var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
+            var audioEntryId = new ChatEntryId(chat.Id, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
             await Restore(audioEntryId).ConfigureAwait(false);
         }
         return;
@@ -625,7 +625,7 @@ public class Chats(IServiceProvider services) : IChats
         }
 
         async ValueTask<ChatEntry?> GetRemovedEntry(ChatEntryId entryId) {
-            await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
+            await Get(session, chat.Id, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
             return await Backend.GetRemovedEntry(entryId, cancellationToken).ConfigureAwait(false);
         }
     }

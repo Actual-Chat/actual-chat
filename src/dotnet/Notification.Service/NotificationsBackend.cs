@@ -252,6 +252,8 @@ public class NotificationsBackend(IServiceProvider services)
             // For regular text messages we notify chat users upon message creation.
         }
 
+        // force loading entry media info
+        entry = await ChatsBackend.GetEntry(entry.Id, cancellationToken).Require().ConfigureAwait(false);
         var (text, mentionIds) = await GetText(entry, MarkupConsumer.Notification, cancellationToken).ConfigureAwait(false);
         var chatId = entry.ChatId;
         var key = chatId.Id.Value;

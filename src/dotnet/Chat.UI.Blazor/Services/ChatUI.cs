@@ -9,7 +9,7 @@ using ActualLab.Interception;
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
+public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized, IAsyncDisposable
 {
     private readonly SharedResourcePool<Symbol, ISyncedState<ReadPosition>> _readPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
@@ -314,7 +314,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     {
         var hasChanged = SelectChatInternal(chatId);
         if (!chatId.IsNone || hasChanged)
-            _ = SelectPlaceNavbarGroup(chatId).SuppressExceptions();
+            _ = SelectNavbarGroup(chatId).SuppressExceptions();
         return hasChanged;
     }
 
@@ -346,6 +346,13 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         }
     }
 
+
+    public async ValueTask DisposeAsync()
+    {
+        await _readPositionStates.DisposeAsync();
+        _navbarSettings.Dispose();
+    }
+
     // Private methods
 
     private bool SelectChatInternal(ChatId chatId)
@@ -373,10 +380,24 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         return true;
     }
 
-    private async Task SelectPlaceNavbarGroup(ChatId chatId)
+    private async Task SelectNavbarGroup(ChatId chatId)
     {
         if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId) && chatId.Equals(pinnedChatId))
             return;
+
+        var isChatsSelected = NavbarUI.IsGroupSelected(NavbarGroupIds.Chats);
+        var isPlaceSelected = NavbarUI.IsPlaceSelected(out var selectedPlaceId);
+        var isPeerChat = chatId.Kind == ChatKind.Peer;
+        var isChatPlaceSelected = chatId.IsPlaceChat
+            && isPlaceSelected
+            && selectedPlaceId.Equals(chatId.PlaceId);
+        if (!isChatsSelected && !(isPeerChat && isPlaceSelected) && !isChatPlaceSelected) {
+            var navbarSettings = await NavbarSettings.Use().ConfigureAwait(false);
+            if (navbarSettings.PinnedChats.Contains(chatId)) {
+                Hub.NavbarUI.SelectGroup(chatId.GetNavbarGroupId(), false);
+                return;
+            }
+        }
 
         var placeId = chatId.PlaceChatId.PlaceId;
         if (!placeId.IsNone) {
@@ -390,10 +411,13 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             !SelectedPlaceId.Value.IsNone &&
             OrdinalEquals(NavbarUI.SelectedGroupId, SelectedPlaceId.Value.GetNavbarGroupId())) {
             var listView = ChatListUI.ActiveChatListView.Value;
+            // When peer chat is selected in url, we should keep selected place nav group if the chat belongs to
+            // place chat list.
             if (listView != null && listView.PlaceId == SelectedPlaceId.Value) {
                 var settings = await listView.GetSettings().ConfigureAwait(false);
-                if (settings.Filter == ChatListFilter.People) {
-                    // Check if peer chat was shown for place people view
+                // Peer chat can be included in the chat list only within People and None filters.
+                if (settings.Filter == ChatListFilter.People || settings.Filter == ChatListFilter.None) {
+                    // Check if peer chat was shown for place chat list view
                     var chats = await ChatListUI.ListAllUnordered(SelectedPlaceId.Value).ConfigureAwait(false);
                     if (chats.ContainsKey(chatId))
                         return; // Keep selected group

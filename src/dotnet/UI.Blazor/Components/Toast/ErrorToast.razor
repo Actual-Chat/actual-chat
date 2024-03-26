@@ -1,28 +1,39 @@
 @namespace ActualChat.UI.Blazor.Components
 
-@if (!_isDismissed) {
-    <div class="@Class error-toast">
-        <div class="c-icon">
-            <i class="icon-alert-circle text-2xl"></i>
-        </div>
-        <div class="c-content">
-            <div class="c-title">
-                @Title
-                @if (Count > 1) {
-                    <span class="c-count">&nbsp;×@Count</span>
-                }
-            </div>
-            <div class="c-message">@ChildContent</div>
-        </div>
-        <ButtonX
-            Class="btn-transparent btn-sm"
-            Click="@(_ => Dismiss())">
-        </ButtonX>
-    </div>
+@if (_isDismissed) {
+    return;
 }
+
+@if (AutoDismissDelay.HasValue) {
+    <UITimer
+        @key="_timerKey"
+        Period="@TimeSpan.FromSeconds(AutoDismissDelay.Value)"
+        IsRecurring="false"
+        Tick="@Dismiss"/>
+}
+
+<div class="@Class error-toast">
+    <div class="c-icon">
+        <i class="icon-alert-circle text-2xl"></i>
+    </div>
+    <div class="c-content">
+        <div class="c-title">
+            @Title
+            @if (Count > 1) {
+                <span class="c-count">&nbsp;×@(Count)</span>
+            }
+        </div>
+        <div class="c-message">@ChildContent</div>
+    </div>
+    <ButtonX
+        Class="btn-transparent btn-sm"
+        Click="@(_ => Dismiss())">
+    </ButtonX>
+</div>
 
 @code {
     private bool _isDismissed;
+    private object? _timerKey = new();
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Title { get; set; } = "Error";
@@ -31,14 +42,8 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback Dismissed { get; set; }
 
-    protected override void OnInitialized() {
-        if (AutoDismissDelay is { } autoDismissDelay)
-            _ = AutoDismiss(TimeSpan.FromSeconds(autoDismissDelay));
-    }
-
-    private async Task AutoDismiss(TimeSpan delay) {
-        await Task.Delay(delay);
-        await Dismiss().ConfigureAwait(false);
+    protected override void OnParametersSet() {
+        _timerKey = new(); // To make sure the timer is renewed on Count update
     }
 
     private async Task Dismiss()
@@ -49,5 +54,4 @@
         _isDismissed = true;
         await Dismissed.InvokeAsync();
     }
-
 }

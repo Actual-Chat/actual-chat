@@ -33,9 +33,11 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 // TODO: create wrapper around module for all workers
 
 let codecModule: Codec | null = null;
+// DEBUG - required for a chaos monkey
+// const sockets: WebSocket[] = [];
 
 const CHUNKS_WILL_BE_SENT_ON_RESUME = 6; // 20ms * 6 = 120ms
-const CHUNKS_WILL_BE_SENT_ON_RECONNECT = 500; // 20ms * 100 = 2s
+const CHUNKS_WILL_BE_SENT_ON_RECONNECT = 500; // 20ms * 500 = 10s
 const FADE_CHUNKS = 3;
 const BUFFER_CHUNKS = 4; // 80ms
 const CHUNK_SIZE = 960; // 20ms @ 48000KHz
@@ -44,7 +46,7 @@ const CHUNK_SIZE = 960; // 20ms @ 48000KHz
 const queue = new Denque<ArrayBuffer>();
 const worker = self as unknown as Worker;
 
-let hubConnection: signalR.HubConnection;
+let hubConnection: signalR.HubConnection = null;
 let recordingSubject: signalR.Subject<Array<Uint8Array>> = null;
 let state: 'inactive' | 'created' | 'encoding' | 'ended' = 'inactive';
 let vadState: 'voice' | 'silence' = 'silence';
@@ -62,7 +64,24 @@ let lastFrameProcessedAt = 0;
 
 const serverImpl: OpusEncoderWorker = {
     create: async (artifactVersions: Map<string, string>, hubUrl: string, _timeout?: RpcTimeout): Promise<void> => {
-        if (codecModule) {
+        // DEBUG - uncomment to test reconnect during recording with chaos monkey approach
+        // if (!encoder) {
+        //     const originalSend = WebSocket.prototype.send;
+        //     WebSocket.prototype.send = function(...args) {
+        //         if (sockets.indexOf(this) === -1)
+        //             sockets.push(this);
+        //         return originalSend.call(this, ...args);
+        //     };
+        //     setInterval(() => {
+        //         // or create a button which, when clicked, does something with the sockets
+        //         console.log(sockets);
+        //         sockets.forEach(s => {
+        //            s.close(3666, 'KILLED!');
+        //         });
+        //     }, 10000);
+        // }
+
+        if (encoder) {
             if (hubConnection.state !== HubConnectionState.Connected)
                 await serverImpl.reconnect();
 
@@ -70,47 +89,55 @@ const serverImpl: OpusEncoderWorker = {
         }
 
         debugLog?.log(`-> create`);
-        Versioning.init(artifactVersions);
+        if (!hubConnection) {
+            Versioning.init(artifactVersions);
 
-        // Connect to SignalR Hub
-        hubConnection = new signalR.HubConnectionBuilder()
-            .withUrl(hubUrl, {
-                skipNegotiation: true,
-                transport: signalR.HttpTransportType.WebSockets,
-            })
-            // We use fixed number of attempts here, because the reconnection is anyway
-            // triggered after SSB / Stl.Rpc reconnect. See:
-            // - C#: ChatAudioUI.ReconnectOnRpcReconnect
-            // - TS: AudioRecorder.ctor.
-            // Some extra attempts are needed, coz there is a chance that the primary connection
-            // stays intact, while this one drops somehow.
-            .withAutomaticReconnect([500, 500, 1000, 1000, 1000])
-            .withHubProtocol(new MessagePackHubProtocol())
-            .configureLogging(signalR.LogLevel.Information)
-            .build();
-        hubConnection.onreconnected(() => onReconnect());
-        hubConnection.onreconnecting(() => void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait));
-        debugLog?.log(`create: hub created`);
+            // Connect to SignalR Hub
+            hubConnection = new signalR.HubConnectionBuilder()
+                .withUrl(hubUrl, {
+                    skipNegotiation: true,
+                    transport: signalR.HttpTransportType.WebSockets,
+                })
+                // We use fixed number of attempts here, because the reconnection is anyway
+                // triggered after SSB / Stl.Rpc reconnect. See:
+                // - C#: ChatAudioUI.ReconnectOnRpcReconnect
+                // - TS: AudioRecorder.ctor.
+                // Some extra attempts are needed, coz there is a chance that the primary connection
+                // stays intact, while this one drops somehow.
+                .withAutomaticReconnect([50, 350, 500, 1000, 1000, 1000])
+                .withHubProtocol(new MessagePackHubProtocol())
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+            hubConnection.onreconnected(() => onReconnect());
+            hubConnection.onreconnecting(() => void server.onConnectionStateChanged(
+                hubConnection.state === HubConnectionState.Connected,
+                rpcNoWait));
+            debugLog?.log(`create: hub created`);
+        }
 
-        // Get fade-in window
-        kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
-        pinkNoiseChunk = getPinkNoiseBuffer(1.0);
-        silenceChunk = new Float32Array(CHUNK_SIZE);
+        if (!encoder) {
+            // Get fade-in window
+            kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE * FADE_CHUNKS, 2.55);
+            pinkNoiseChunk = getPinkNoiseBuffer(1.0);
+            silenceChunk = new Float32Array(CHUNK_SIZE);
 
-        // Loading codec
-        codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
-        debugLog?.log(`create: codec loaded`);
+            // Loading codec
+            codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
+            debugLog?.log(`create: codec loaded`);
 
-        // Warming up codec
-        encoder = new codecModule.Encoder();
-        for (let i= 0; i < 2; i++)
-            encoder.encode(pinkNoiseChunk.buffer);
-        encoder.reset();
+            // Warming up codec
+            encoder = new codecModule.Encoder();
+            for (let i = 0; i < 2; i++)
+                encoder.encode(pinkNoiseChunk.buffer);
+            encoder.reset();
+        }
 
         // Connecting to the server
         debugLog?.log(`create: hub connecting...`);
-        await hubConnection.start();
-        void onReconnect();
+        if (hubConnection.state === 'Disconnected') {
+            await hubConnection.start();
+            void onReconnect();
+        }
 
         debugLog?.log(`<- create`);
         state = 'created';
@@ -127,9 +154,10 @@ const serverImpl: OpusEncoderWorker = {
         lastInitArguments = { chatId, repliedChatEntryId };
         debugLog?.log(`start`);
 
+        state = 'encoding';
         if (hubConnection.state !== HubConnectionState.Connected)
             await serverImpl.reconnect();
-        state = 'encoding';
+
         if (vadState === 'voice')
             await startRecording();
         // do not set vadState there - it's independent from the recording state
@@ -265,6 +293,7 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
 
 async function startRecording(): Promise<void> {
     const { chatId, repliedChatEntryId } = lastInitArguments;
+    infoLog?.log(`startRecording: `, state, hubConnection.state);
 
     const isConnected = hubConnection.state === HubConnectionState.Connected;
     if (!isConnected)
@@ -361,9 +390,10 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
 }
 
 async function onReconnect(): Promise<void> {
+    infoLog?.log(`onReconnect: `, hubConnection.state);
     const isConnected = hubConnection.state === HubConnectionState.Connected;
     void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait);
-    if (isConnected && recordingSubject === null && vadState === 'voice') {
+    if (isConnected && state === 'encoding') {
         await startRecording();
     }
 }

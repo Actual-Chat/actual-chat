@@ -24,6 +24,7 @@ export enum Tune
     StopRealtimePlayback,
     PinUnpinChat,
     NotifyOnNewMessageInApp,
+    NotifyOnNewAudioMessageAfterDelay,
     SendMessage,
     EditMessage,
     ReplyMessage,
@@ -36,6 +37,30 @@ export enum Tune
 export type TuneName = keyof typeof Tune;
 
 interface TuneInfo { vibration: Array<number>, sound?: string }
+
+const cooldownMap = new Map<Tune, number>([
+        [Tune.CancelReply, 1],
+        [Tune.OpenModal, 1],
+        [Tune.CloseModal, 1],
+        [Tune.SelectNavbarItem, 1],
+        [Tune.ShowInputError, 1],
+        [Tune.BeginRecording, 1],
+        [Tune.EndRecording, 1],
+        [Tune.RemindOfRecording, 1],
+        [Tune.StartRealtimePlayback, 1],
+        [Tune.StartHistoricalPlayback, 1],
+        [Tune.StopHistoricalPlayback, 1],
+        [Tune.StopRealtimePlayback, 1],
+        [Tune.NotifyOnNewMessageInApp, 5],
+        [Tune.NotifyOnNewAudioMessageAfterDelay, 5],
+        [Tune.SendMessage, 1],
+        [Tune.EditMessage, 1],
+        [Tune.ReplyMessage, 1],
+        [Tune.ChangeAttachments, 1],
+        [Tune.ChangeLanguage, 1],
+        [Tune.ShowMenu, 1],
+        [Tune.React, 1],
+    ]);
 
 export class TuneUI {
     private static whenReady = new PromiseSource();
@@ -106,7 +131,8 @@ export class TuneUI {
 
         const ext = DeviceInfo.isWebKit ? '.m4a' : '.webm'; // TODO: allow webm for iOS >= 16.5
         const soundUrl = `dist/sounds/${tuneInfo.sound}${ext}`;
-        await soundPlayer.play(soundUrl);
+        const cooldown = cooldownMap.get(tune);
+        await soundPlayer.play(soundUrl, cooldown);
     }
 
     private static vibrate(durationMs: number = 20): void {

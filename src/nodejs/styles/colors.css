@@ -287,7 +287,7 @@
     --round-hover: var(--blue-50-10);
     --round-focus: var(--blue-95);
     --round-title: var(--gray-40);
-    --radio: var(--white);
+    --radio: var(--transparent);
     --radio-border: var(--gray-50);
     --radio-shadow: var(--gray-10-20);
     --round-right-panel: var(--white);
@@ -337,6 +337,7 @@
     --selected: var(--blue-50-20);
     --hover: var(--blue-50-10);
     --separator: var(--gray-90);
+    --nav-separator: var(--gray-80);
     --placeholder: var(--text-04);
     --counter: var(--background-05);
     --rating: var(--warning);
@@ -363,8 +364,6 @@
     --selection: var(--blue-50-10);
     --dot: #e2e7ec;
     --dot-selected: #4b5e71;
-    --skeleton: var(--gray-90);
-    --skeleton-border: var(--gray-95);
     --scrollbar: var(--gray-70);
     --quote: var(--gray-90);
     --place: var(--indigo-80);
@@ -380,6 +379,13 @@
     --link-preview-icon: var(--blue-70);
     --place-header-search: var(--white-30);
     --place-header-text: var(--white);
+    --tile: var(--white);
+
+    /* Skeletons */
+    --skeleton-left-panel-header: var(--gray-70);
+    --skeleton-right-panel-header: var(--gray-80);
+    --skeleton: var(--gray-90);
+    --skeleton-border: var(--gray-95);
 
     /* Specific colors */
     --loading-cat-lines: var(--gray-70);
@@ -407,7 +413,12 @@
     --verify-cat-face: var(--gray-80);
     --verify-cat-shadow: var(--gray-80);
     --verify-cat-display: var(--blue-80);
-    --active-chats: var(--white-50)
+    --active-chats: var(--white-50);
+
+    --place-cat-background: var(--gray-80);
+    --place-cat-tank: var(--gray-60);
+    --place-cat-border: var(--gray-70);
+    --place-cat-face: var(--white);
 }
 .theme-dark {
     /* Background */
@@ -478,7 +489,7 @@
     --round-hover: var(--ash-99-04);
     --round-focus: var(--ash-99-04);
     --round-title: var(--ash-90);
-    --radio: var(--ash-18);
+    --radio: var(--transparent);
     --radio-border: var(--white-30);
     --radio-shadow: var(--white-05);
     --round-right-panel: var(--ash-30);
@@ -527,6 +538,7 @@
     --selected: var(--white-10);
     --hover: var(--white-05);
     --separator: var(--ash-26);
+    --nav-separator: var(--ash-26);
     --placeholder: var(--gray-15);
     --counter: var(--background-05);
     --rating: var(--sienna-40);
@@ -555,8 +567,6 @@
     --selection: var(--ash-99-08);
     --dot: #E2E7EC;
     --dot-selected: #4B5E71;
-    --skeleton: var(--gray-05);
-    --skeleton-border: var(--gray-10);
     --scrollbar: var(--ash-40);
     --quote: var(--gray-10);
     --place: var(--indigo-80);
@@ -571,6 +581,13 @@
     --left-side-logo: var(--white);
     --place-header-search: var(--ash-99-10);
     --place-header-text: var(--ash-99);
+    --tile: var(--ash-30);
+
+    /* Skeletons */
+    --skeleton-left-panel-header: var(--ash-26);
+    --skeleton-right-panel-header: var(--ash-20);
+    --skeleton: var(--ash-99-05);
+    --skeleton-border: var(--ash-99-10);
 
     /* Specific colors */
     --loading-cat-lines: var(--ash-80);
@@ -598,7 +615,12 @@
     --verify-cat-face: var(--white);
     --verify-cat-shadow: var(--ash-40);
     --verify-cat-display: var(--blue-80);
-    --active-chats: var(--white-05)
+    --active-chats: var(--ash-30);
+
+    --place-cat-background: var(--ash-50);
+    --place-cat-tank: var(--ash-30);
+    --place-cat-border: var(--ash-40);
+    --place-cat-face: var(--ash-80);
 }
 .theme-ash {
     /* Background */
@@ -669,7 +691,7 @@
     --round-hover: var(--blue-50-10);
     --round-focus: var(--blue-95);
     --round-title: var(--gray-40);
-    --radio: var(--white);
+    --radio: var(--transparent);
     --radio-border: var(--gray-50);
     --radio-shadow: var(--gray-10-20);
     --round-right-panel: var(--white);
@@ -719,6 +741,7 @@
     --selected: var(--blue-50-20);
     --hover: var(--blue-50-10);
     --separator: var(--ash-95);
+    --nav-separator: var(--ash-90);
     --placeholder: var(--ash-60);
     --counter: var(--background-05);
     --rating: var(--warning);
@@ -745,8 +768,6 @@
     --selection: var(--blue-50-10);
     --dot: #e2e7ec;
     --dot-selected: #4b5e71;
-    --skeleton: var(--gray-90);
-    --skeleton-border: var(--gray-95);
     --scrollbar: var(--gray-70);
     --quote: var(--gray-90);
     --place: var(--indigo-80);
@@ -762,6 +783,13 @@
     --link-preview-icon: var(--blue-70);
     --place-header-search: var(--white-30);
     --place-header-text: var(--white);
+    --tile: var(--white);
+
+    /* Skeletons */
+    --skeleton-left-panel-header: var(--gray-70);
+    --skeleton-right-panel-header: var(--gray-80);
+    --skeleton: var(--gray-90);
+    --skeleton-border: var(--gray-95);
 
     /* Specific colors */
     --loading-cat-lines: var(--gray-70);
@@ -790,4 +818,9 @@
     --verify-cat-shadow: var(--gray-80);
     --verify-cat-display: var(--blue-80);
     --active-chats: var(--white-50);
+
+    --place-cat-background: var(--ash-90);
+    --place-cat-tank: var(--ash-60);
+    --place-cat-border: var(--ash-80);
+    --place-cat-face: var(--white);
 }

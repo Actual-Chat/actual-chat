@@ -2,6 +2,17 @@ namespace ActualChat;
 
 public static class TaskExt
 {
+    // Collect - a bit more user-friendly version of Task.WhenAll
+
+    public static Task<T[]> Collect<T>(this IEnumerable<Task<T>> tasks, int concurrency = 0)
+        => concurrency <= 0 ? Task.WhenAll(tasks) : CollectConcurrently(tasks, concurrency);
+
+    public static Task Collect(this IEnumerable<Task> tasks, int concurrency = 0)
+        => concurrency <= 0 ? Task.WhenAll(tasks) : CollectConcurrently(tasks, concurrency);
+
+    public static Task<Result<T>[]> CollectResults<T>(this IEnumerable<Task<T>> tasks, int concurrency = 0)
+        => concurrency <= 0 ? ToResults(tasks.ToList()) : CollectResultsConcurrently(tasks, concurrency);
+
     public static ValueTask ToVoidValueTask(this Task task)
         => task.ToValueTask();
 
@@ -130,6 +141,70 @@ public static class TaskExt
 
         return whenAny;
     }
+
+    // Private methods
+
+    private static async Task<T[]> CollectConcurrently<T>(this IEnumerable<Task<T>> tasks, int concurrency)
+    {
+        var list = new List<Task<T>>(concurrency);
+        var batch = new List<Task<T>>(concurrency);
+        foreach (var task in tasks) {
+            list.Add(task);
+            if (concurrency > batch.Count + 1)
+                batch.Add(task);
+            else {
+                await Task.WhenAny(batch).SilentAwait(false);
+                batch.RemoveAll(t => t.IsCompleted);
+                batch.Add(task);
+            }
+        }
+        return await Task.WhenAll(list).ConfigureAwait(false);
+    }
+
+    private static async Task CollectConcurrently(this IEnumerable<Task> tasks, int concurrency)
+    {
+        var list = new List<Task>(concurrency);
+        var batch = new List<Task>(concurrency);
+        foreach (var task in tasks) {
+            list.Add(task);
+            if (concurrency > batch.Count + 1)
+                batch.Add(task);
+            else {
+                await Task.WhenAny(batch).SilentAwait(false);
+                batch.RemoveAll(t => t.IsCompleted);
+                batch.Add(task);
+            }
+        }
+        await Task.WhenAll(list).ConfigureAwait(false);
+    }
+
+    private static async Task<Result<T>[]> CollectResultsConcurrently<T>(this IEnumerable<Task<T>> tasks, int concurrency)
+    {
+        var list = new List<Task<T>>(concurrency);
+        var batch = new List<Task<T>>(concurrency);
+        foreach (var task in tasks) {
+            list.Add(task);
+            if (concurrency > batch.Count + 1)
+                batch.Add(task);
+            else {
+                await Task.WhenAny(batch).SilentAwait(false);
+                batch.RemoveAll(t => t.IsCompleted);
+                batch.Add(task);
+            }
+        }
+        return await ToResults(list).ConfigureAwait(false);
+    }
+
+    private static async Task<Result<T>[]> ToResults<T>(List<Task<T>> list)
+    {
+        await Task.WhenAll(list).SilentAwait(false);
+        var result = new Result<T>[list.Count];
+        for (var i = 0; i < result.Length; i++)
+            result[i] = list[i].ToResultSynchronously();
+        return result;
+    }
+
+    // Nested types
 
     public sealed class WhenAnyValueTask<T>
     {

@@ -33,8 +33,7 @@ public static partial class Constants
             public static readonly Symbol Notes = "notes";
             public static readonly Symbol Family = "family";
             public static readonly Symbol Friends = "friends";
-            public static readonly Symbol Classmates = "classmates";
-            public static readonly Symbol Alumni = "alumni";
+            public static readonly Symbol ClassmatesAlumni = "classmates-alumni";
             public static readonly Symbol Coworkers = "coworkers";
             public static readonly Symbol Welcome = "welcome";
         }

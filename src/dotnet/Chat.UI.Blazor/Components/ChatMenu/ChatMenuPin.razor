@@ -2,7 +2,7 @@
 @inherits FusionComponentBase
 
 <MenuEntry
-    Icon="icon-pin"
+    Icon="@(ChatState.Contact.IsPinned ? "icon-unpin" : "icon-pin")"
     Text="@(ChatState.Contact.IsPinned ? "Unpin" : "Pin")"
     Click="@OnClick">
 </MenuEntry>

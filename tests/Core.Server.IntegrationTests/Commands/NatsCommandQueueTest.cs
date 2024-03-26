@@ -8,7 +8,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Commands;
 public class NatsQueueTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(NatsQueueTest)}", TestAppHostOptions.Default, @out)
 {
-    [Fact(Timeout = 1000_000)]
+    [Fact(Timeout = 20_000)]
     public async Task SmokeTest()
     {
         using var host = await NewAppHost(options => options with {
@@ -21,17 +21,15 @@ public class NatsQueueTest(ITestOutputHelper @out)
             },
         });
         var services = host.Services;
-        var queues = services.GetRequiredService<NatsQueues>().Start();
+        var queues = services.Queues().Start();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
-        var countComputed = await Computed.Capture(() => testService.GetProcessedEventCount(CancellationToken.None));
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand(null));
-        await queues.WhenProcessing();
-        await countComputed.WhenInvalidated();
 
+        await queues.WhenProcessing();
         testService.ProcessedEvents.Count.Should().BeGreaterThanOrEqualTo(1);
     }
 
@@ -48,7 +46,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
             },
         });
         var services = host.Services;
-        var queues = services.GetRequiredService<NatsQueues>().Start();
+        var queues = services.Queues().Start();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var countComputed = await Computed.Capture(() => testService.GetProcessedEventCount(CancellationToken.None));
@@ -56,6 +54,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
         testService.ProcessedEvents.Count.Should().Be(0);
         for (int i = 0; i < 100; i++)
             await queues.Enqueue(new TestEvent(null));
+
         await queues.WhenProcessing();
 
         Out.WriteLine($"{nameof(MultipleCommandsCanBeScheduled)}: event count is {countComputed.Value}. Collection has {testService.ProcessedEvents.Count}");
@@ -80,7 +79,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
             },
         });
         var services = host.Services;
-        var queues = services.GetRequiredService<NatsQueues>().Start();
+        var queues = services.Queues().Start();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         testService.ProcessedEvents.Count.Should().Be(0);

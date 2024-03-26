@@ -5,13 +5,11 @@
     var e = ChatEntry;
     var hasSelection = SelectionUI.HasSelection.Value;
     var isSelected = SelectionUI.IsSelected(e.Id);
-    var isForwarder = ChatEntry.ForwardedAuthorId.IsNone;
+    var isForwarded = !ChatEntry.ForwardedAuthorId.IsNone;
     var showPlayButton = ScreenSize.IsNarrow() && e.AudioEntryId != null && !hasSelection;
-    var canDelete =
-        this is { CanWrite: true, IsOwnEntry: true }
-        && ChatEntry is { Kind: ChatEntryKind.Text, IsStreaming: false }
-        && !hasSelection;
-    var canEdit = canDelete && isForwarder;
+    var isTextEntry = ChatEntry is { Kind: ChatEntryKind.Text, IsStreaming: false };
+    var canDelete = CanWrite && (IsOwnEntry || IsOwner) && isTextEntry && !hasSelection;
+    var canEdit = CanWrite && IsOwnEntry && isTextEntry && !isForwarded && !hasSelection;
     var messageLink = Links.Chat(e.Id).ToAbsolute(UrlMapper);
     var canReply = !e.IsStreaming && CanWrite && !IsSystem;
     var canCopyText = e is { Kind: ChatEntryKind.Text, IsStreaming: false } && !e.Content.IsNullOrEmpty();
@@ -146,6 +144,7 @@
     [Parameter, EditorRequired] public string? ClickedCode { get; set; }
     [Parameter, EditorRequired] public bool IsSystem { get; set; }
     [Parameter, EditorRequired] public bool IsOwnEntry { get; set; }
+    [Parameter, EditorRequired] public bool IsOwner { get; set; }
     [Parameter, EditorRequired] public bool CanWrite { get; set; }
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }

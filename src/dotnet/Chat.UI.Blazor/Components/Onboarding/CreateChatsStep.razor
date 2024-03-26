@@ -49,7 +49,7 @@
                 Change="CreateFriendsChatClick"/>
         </div>
         <div class="step-tile"
-             @onclick="CreateClassmatesChatClick">
+             @onclick="CreateClassmatesAlumniChatClick">
             <img draggable="false"
                  class="step-tile-icon"
                  crossorigin="anonymous"
@@ -57,36 +57,16 @@
                  src="/dist/images/onboarding/alumni.svg"/>
             <div class="step-tile-body">
                 <div class="step-tile-title">
-                    Classmates
-                </div>
-                <div class="step-tile-subtitle">
-                    Chat with your classmates
-                </div>
-            </div>
-            <Checkbox
-                IsChecked="@_model.CreateClassmatesChat"
-                Class="!flex-none"
-                Change="CreateClassmatesChatClick"/>
-        </div>
-        <div class="step-tile"
-             @onclick="CreateAlumniChatClick">
-            <img draggable="false"
-                 class="step-tile-icon"
-                 crossorigin="anonymous"
-                 alt="Alumni"
-                 src="/dist/images/onboarding/alumni.svg"/>
-            <div class="step-tile-body">
-                <div class="step-tile-title">
                     Classmates / Alumni
                 </div>
                 <div class="step-tile-subtitle">
-                    Chat with your alumni community
+                    Chat with your classmates / alumni community
                 </div>
             </div>
             <Checkbox
-                IsChecked="@_model.CreateAlumniChat"
+                IsChecked="@_model.CreateClassmatesAlumniChat"
                 Class="!flex-none"
-                Change="CreateAlumniChatClick"/>
+                Change="CreateClassmatesAlumniChatClick"/>
         </div>
         <div class="step-tile"
              @onclick="CreateCoworkersChatClick">
@@ -133,10 +113,8 @@
             await CreateChat("Family", Constants.Chat.SystemTags.Family);
         if (_model.CreateFriendsChat)
             await CreateChat("Friends", Constants.Chat.SystemTags.Friends);
-        if (_model.CreateClassmatesChat)
-            await CreateChat("Classmates", Constants.Chat.SystemTags.Classmates, "system-icons:alumni");
-        if (_model.CreateAlumniChat)
-            await CreateChat("Alumni", Constants.Chat.SystemTags.Alumni);
+        if (_model.CreateClassmatesAlumniChat)
+            await CreateChat("Classmates / Alumni", Constants.Chat.SystemTags.ClassmatesAlumni, "system-icons:alumni");
         if (_model.CreateCoworkersChat)
             await CreateChat("Coworkers", Constants.Chat.SystemTags.Coworkers);
 
@@ -166,11 +144,8 @@
     private void CreateFriendsChatClick()
         => _model.CreateFriendsChat = !_model.CreateFriendsChat;
 
-    private void CreateClassmatesChatClick()
-        => _model.CreateClassmatesChat = !_model.CreateClassmatesChat;
-
-    private void CreateAlumniChatClick()
-        => _model.CreateAlumniChat = !_model.CreateAlumniChat;
+    private void CreateClassmatesAlumniChatClick()
+        => _model.CreateClassmatesAlumniChat = !_model.CreateClassmatesAlumniChat;
 
     private void CreateCoworkersChatClick()
         => _model.CreateCoworkersChat = !_model.CreateCoworkersChat;
@@ -178,8 +153,7 @@
     public class Model {
         public bool CreateFamilyChat { get; set; }
         public bool CreateFriendsChat { get; set; }
-        public bool CreateClassmatesChat { get; set; }
-        public bool CreateAlumniChat { get; set; }
+        public bool CreateClassmatesAlumniChat { get; set; }
         public bool CreateCoworkersChat { get; set; }
     }
 }

@@ -93,6 +93,7 @@ module.exports = {
         'online': 'var(--online)',
         'away': 'var(--away)',
         'separator': 'var(--separator)',
+        'nav-separator': 'var(--nav-separator)',
         'placeholder': 'var(--placeholder)',
         'white': 'var(--white)',
         'black': 'var(--black)',
@@ -184,6 +185,7 @@ module.exports = {
         'recorder-on-middle': 'var(--recorder-on-middle)',
         'audio-panel-button': 'var(--audio-panel-button)',
         'audio-panel-button-text': 'var(--audio-panel-button-text)',
+        'tile': 'var(--tile)',
 
         // Download Banner
         'download-banner-left': 'var(--download-banner-left)',

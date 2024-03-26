@@ -51,8 +51,8 @@ RUN ./run-build.cmd restore \
 
 # node:16-alpine because it's [cached on gh actions VM](https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md#cached-docker-images)
 FROM node:16-alpine as nodejs-restore
-ARG GITHUB_TOKEN
-ENV GITHUB_TOKEN=$GITHUB_TOKEN
+ARG NPM_READ_TOKEN
+ENV NPM_READ_TOKEN=$NPM_READ_TOKEN
 WORKDIR /src/src/nodejs
 RUN apk update && apk add brotli gzip
 RUN npm -g config set user root && \

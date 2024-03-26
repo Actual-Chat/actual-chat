@@ -16,15 +16,21 @@
                     if (isActive)
                         _renderedSelectedTab = tab;
 
+                    var attributes = new Dictionary<string, object> {
+                        { "data-tab-id", tab.Id },
+                        { "role", "tab" },
+                        { "aria-selected", isActive.ToString() },
+                    };
+
+                    if (tab.AdditionalAttributes != null)
+                        attributes.AddRange(tab.AdditionalAttributes);
+
                     var cls = $"tab-btn {(isActive ? "on" : "")} {(BottomBorder ? "bottom-border-btn" : "")} {tab.ButtonClass} ";
                     <div @key="@tab.Id" class="btn-group-container">
                         <Button
-                            data-tab-id="@tab.Id"
-                            role="tab"
-                            aria-selected="@isActive"
+                            AdditionalAttributes="@attributes"
                             Class="@cls"
                             Click="@(_ => SelectedTabId = tab.Id)">
-
                             @if (tab.TitleContent != null) {
                                 @tab.TitleContent
                             } else {

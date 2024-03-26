@@ -16,6 +16,8 @@
     if (_form == null)
         return;
     Context.ModalDataBag.Set(nameof(ComputedModel.MembersCount), m.MembersCount);
+    var canEditMembers = m.Place.Rules.CanEditMembers();
+    var isOwner = m.IsOwner;
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -106,11 +108,12 @@
                  New private join link
              </Button>
          </FormBlock>
-     }
+    }
 
-    @if (m.Place.Rules.CanEditMembers()) {
+    @if (canEditMembers || isOwner) {
         <FormBlock>
-            <TileItem Class="item-manage-members" Click="OnManageMembersClick">
+            @if(canEditMembers) {
+                <TileItem Class="item-manage-members" Click="OnManageMembersClick">
                     <Icon>
                         <i class="icon-people"></i>
                     </Icon>
@@ -121,11 +124,16 @@
                         <i class="icon-chevron-right text-3xl"></i>
                     </Right>
                 </TileItem>
+            }
+            @if (isOwner) {
+                <TileItem Class="item-leave-group" Click="@(() => OnPlaceDeleteClick())">
+                    <Icon><i class="icon-log-out"></i></Icon>
+                    <Content>Leave place & delete</Content>
+                </TileItem>
+            }
         </FormBlock>
     }
 </Form>
-
-
 
 @code {
     private const int MaxInvitesCount = 5;
@@ -143,6 +151,7 @@
     private IPlaces Places => Hub.Places;
     private IInvites Invites => Hub.Invites;
     private MomentClockSet Clocks => Hub.Clocks();
+    private NavbarUI NavbarUI => Hub.NavbarUI;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -237,6 +246,15 @@
             Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
         });
         await UICommander.Run(command);
+    }
+
+    private async Task OnPlaceDeleteClick() {
+        var (_, error) = await UICommander.Run(new Places_Delete(Session, PlaceId));
+        if (error != null)
+            return;
+
+        Context.Close();
+        NavbarUI.SelectGroup(NavbarGroupIds.Chats, true);
     }
 
     public sealed class FormModel {

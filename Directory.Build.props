@@ -198,6 +198,9 @@
     <!-- IDE0055: Fix formatting -->
     <!-- IDE0160: Use block-scoped namespace declarations -->
     <NoWarn>$(NoWarn);IDE0055;IDE0160</NoWarn>
+    <!-- CA2007: Consider calling ConfigureAwait on the awaited task -->
+    <!-- TODO: Re-enable CA2007 when issue is fixed https://github.com/dotnet/roslyn-analyzers/issues/5712 -->
+    <NoWarn>$(NoWarn);CA2007</NoWarn>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(DeterministicSourcePaths)' =='true'">

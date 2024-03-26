@@ -4,25 +4,22 @@ namespace ActualChat.Testing.Host;
 
 public static class UniqueNames
 {
-    private static readonly RandomStringGenerator Rsg = new (5, Alphabet.AlphaLower);
-
-    public static string HostInstance(string prefix)
-    {
-        if (!prefix.IsNullOrEmpty())
-            prefix = prefix.EnsureSuffix("_");
-        return prefix + Rsg.Next();
-    }
+    private const int RandomPartLength = 5;
+    private static readonly RandomStringGenerator Rsg = new (RandomPartLength, Alphabet.AlphaLower);
 
     public static string Elastic(string prefix)
-        => prefix.EnsureSuffix("-") + Rsg.Next();
+        => Name(prefix, "-");
 
     public static string User(int i)
-        => User($"User_{i}");
+        => Name($"User_{i}");
 
-    public static string User(string prefix)
+    public static string Chat(int i)
+        => Name($"Chat {i}");
+
+    public static string Name(string prefix, string delimiter = "_", int randomSuffixLength = RandomPartLength)
     {
         if (!prefix.IsNullOrEmpty())
-            prefix = prefix.EnsureSuffix("_");
-        return prefix + Rsg.Next();
+            prefix = prefix.EnsureSuffix(delimiter);
+        return prefix + Rsg.Next(randomSuffixLength);
     }
 }

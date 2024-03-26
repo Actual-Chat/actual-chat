@@ -38,7 +38,3 @@
 .banner.add-members-banner .banner-buttons .btn-h i {
     @apply text-06;
 }
-
-.banner.place-people-banner {
-    @apply h-auto md:py-1.5;
-}

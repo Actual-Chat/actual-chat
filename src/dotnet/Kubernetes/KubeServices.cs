@@ -4,7 +4,7 @@ using ActualChat.Pooling;
 
 namespace ActualChat.Kubernetes;
 
-public class KubeServices : IKubeInfo
+public class KubeServices : IKubeInfo, IAsyncDisposable
 {
     private static readonly JsonSerializerOptions WebJsonSerializeOptions = new(JsonSerializerDefaults.Web);
     private readonly SharedResourcePool<KubeService, EndpointDiscoveryWorker> _discoveryWorkerPool;
@@ -61,6 +61,9 @@ public class KubeServices : IKubeInfo
             throw;
         }
     }
+
+    public ValueTask DisposeAsync()
+        => _discoveryWorkerPool.DisposeAsync();
 
     // Private methods
 

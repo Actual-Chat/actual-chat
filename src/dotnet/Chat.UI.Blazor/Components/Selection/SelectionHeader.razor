@@ -1,10 +1,10 @@
 @using System.Text
 @using ActualChat.UI.Blazor.Services.Internal
-@inherits ComputedStateComponent<ImmutableHashSet<ChatEntryId>>
+@inherits ComputedStateComponent<SelectionHeader.Model>
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
-    var selection = State.Value;
-    if (selection.Count == 0) {
+    var m = State.Value;
+    if (m.Selection.Count == 0) {
         _ = StopHandleEscape();
         return;
     }
@@ -12,7 +12,7 @@
     StartHandleEscape();
 }
 
-<SelectionHost Selected="@selection.First()" />
+<SelectionHost Selected="@m.Selection.First()" />
 
 @if (ScreenSize.IsNarrow()) {
     <div class="selection-header">
@@ -24,14 +24,17 @@
             </ButtonRound>
         </div>
         <div class="selection-header-title">
-            @(selection.Count) @("message".Pluralize(selection.Count))
+            @(m.Selection.Count) @("message".Pluralize(m.Selection.Count))
         </div>
         <div class="selection-header-buttons">
-            <HeaderButton Click="@(() => SelectionUI.Delete())">
-                <i class="icon-trash03 text-danger"></i>
-            </HeaderButton>
+            @if (m.CanDelete) {
+                <HeaderButton
+                    Click="@(() => SelectionUI.Delete())">
+                    <i class="icon-trash03 text-danger"></i>
+                </HeaderButton>
+            }
             <HeaderButton Click="@(() => SelectionUI.CopyToClipboard())">
-                <i class="icon-copy !text-lg"></i>
+                <i class="icon-copy"></i>
             </HeaderButton>
             <Button
                 Class="btn-submit btn-transparent"
@@ -53,21 +56,23 @@
     </div>
 
     <div class="selection-header-title">
-        @(selection.Count) @("message".Pluralize(selection.Count))
+        @(m.Selection.Count) @("message".Pluralize(m.Selection.Count))
     </div>
 
     <div class="selection-header-buttons">
-        <HeaderButton
-            Click="@(() => SelectionUI.Delete())"
-            Tooltip="Delete selected"
-            TooltipPosition="FloatingPosition.Bottom">
-            <i class="icon-trash03 text-danger"></i>
-        </HeaderButton>
+        @if (m.CanDelete) {
+            <HeaderButton
+                Click="@(() => SelectionUI.Delete())"
+                Tooltip="Delete selected"
+                TooltipPosition="FloatingPosition.Bottom">
+                <i class="icon-trash03 text-danger"></i>
+            </HeaderButton>
+        }
         <HeaderButton
             Click="@(() => SelectionUI.CopyToClipboard())"
             Tooltip="Copy selected as text"
             TooltipPosition="FloatingPosition.Bottom">
-            <i class="icon-copy !text-lg"></i>
+            <i class="icon-copy"></i>
         </HeaderButton>
         <Button
             Class="btn-primary btn-sm"
@@ -83,15 +88,9 @@
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
-    private ChatUI ChatUI => Hub.ChatUI;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private ToastUI ToastUI => Hub.ToastUI;
+    private IAuthors Authors => Hub.Authors;
     private SelectionUI SelectionUI => Hub.SelectionUI;
-    private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
-    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
     private Escapist Escapist => Hub.Escapist;
-    private History History => Hub.History;
-    private UICommander UICommander => Hub.UICommander();
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
@@ -100,15 +99,56 @@
         await StopHandleEscape();
     }
 
-    protected override ComputedState<ImmutableHashSet<ChatEntryId>>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = ImmutableHashSet<ChatEntryId>.Empty,
+            InitialValue = Model.None,
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
 
-    protected override Task<ImmutableHashSet<ChatEntryId>> ComputeState(CancellationToken cancellationToken)
-        => SelectionUI.Selection.Use(cancellationToken).AsTask();
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var selection = await SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
+        if (selection.IsEmpty) {
+            return Model.None;
+        }
+
+        var chatId = selection.First().ChatId;
+        var chat = await Chats.Get(Session, chatId, cancellationToken);
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken);
+
+        var canDelete = true;
+        foreach (var chatEntryId in selection) {
+            if (chat == null) {
+                canDelete = false;
+                break;
+            }
+
+            if (chat.Rules.IsOwner())
+                break;
+
+            if (ownAuthor == null) {
+                canDelete = false;
+                break;
+            }
+
+            var chatEntry = await Chats.GetEntry(Session, chatEntryId, cancellationToken);
+            if (chatEntry == null) {
+                canDelete = false;
+                break;
+            }
+
+            var isOwnEntry = ownAuthor.Id == chatEntry.AuthorId;
+            if (!isOwnEntry) {
+                canDelete = false;
+                break;
+            }
+        }
+
+        return new Model {
+            Selection = selection,
+            CanDelete = canDelete,
+        };
+    }
 
     private void OnCancel()
         => SelectionUI.Clear();
@@ -128,4 +168,13 @@
 
     private void OnEscape()
         => SelectionUI.Clear();
+
+    public sealed record Model {
+        public static Model None { get; } = new() {
+            Selection = ImmutableHashSet<ChatEntryId>.Empty,
+        };
+
+        public ImmutableHashSet<ChatEntryId> Selection { get; init; } = null!;
+        public bool CanDelete { get; init; }
+    }
 }

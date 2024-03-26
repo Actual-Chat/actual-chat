@@ -109,6 +109,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 }
 .layout-header > .c-content {
     @apply ordinary-header;
+    @apply gap-x-2;
     @apply justify-items-stretch;
     @apply border-b border-separator;
 }
@@ -236,6 +237,11 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply relative flex-1 -flex-y;
     @apply h-full;
     @apply overflow-hidden;
+}
+
+.page-with-header-and-footer:has(.chat-skeleton-panel) .layout-footer,
+.page-with-header-and-footer:has(.chat-skeleton-panel) .layout-subfooter {
+    @apply hidden;
 }
 
 .page-with-header-and-footer .layout-body .test-page-text {

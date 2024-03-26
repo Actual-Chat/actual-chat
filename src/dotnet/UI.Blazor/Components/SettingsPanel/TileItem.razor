@@ -4,13 +4,18 @@
 @{
     var unselectedCls = IsHoverable ? "" : "unselected";
     var extraClass = Click.HasDelegate ? " clickable" : "";
+    var bodyClass = Icon == null
+        ? "ml-4"
+        : "";
 }
 <div class="tile-item @unselectedCls @extraClass group @Class"
      @attributes="@_resolvedAdditionalAttributes">
-    <div class="tile-item-icon">
-        @Icon
-    </div>
-    <div class="tile-item-body">
+    @if (Icon != null) {
+        <div class="tile-item-icon">
+            @Icon
+        </div>
+    }
+    <div class="tile-item-body @bodyClass">
         <div class="tile-item-body-content">
             @Content
         </div>

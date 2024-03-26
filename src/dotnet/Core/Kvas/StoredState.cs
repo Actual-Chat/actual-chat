@@ -120,10 +120,8 @@ public sealed class StoredState<
 }
 
 public class StoredStateLease<
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
-    : MutableStateLease<T, IStoredState<T>>, IStoredState<T>
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(SharedResourcePool<Symbol, IStoredState<T>>.Lease lease)
+    : MutableStateLease<T, IStoredState<T>>(lease), IStoredState<T>
 {
     public Task WhenRead => State.WhenRead;
-
-    public StoredStateLease(SharedResourcePool<Symbol, IStoredState<T>>.Lease lease) : base(lease) { }
 }

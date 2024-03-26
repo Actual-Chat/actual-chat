@@ -9,6 +9,8 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
     private readonly IMutableState<bool> _hasSelection;
 
     private IChats Chats => Hub.Chats;
+    private IAuthors Authors => Hub.Authors;
+    private TimeZoneConverter TimeZoneConverter => Hub.TimeZoneConverter;
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
     private ModalUI ModalUI => Hub.ModalUI;
     private ToastUI ToastUI => Hub.ToastUI;
@@ -51,10 +53,12 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
         if (selection.Count == 0)
             return;
 
+        var showAuthor = selection.Count > 1;
         var chatId = selection.First().ChatId;
         var chatMarkupHub = ChatMarkupHubFactory[chatId];
 
         using var sb = ZString.CreateStringBuilder();
+        var currentAuthor = AuthorId.None;
         foreach (var chatEntryId in selection.OrderBy(x => x.LocalId)) {
             var chatEntry = await Chats.GetEntry(Session, chatEntryId).ConfigureAwait(false);
             if (chatEntry == null || chatEntry.Content.IsNullOrEmpty())
@@ -63,6 +67,18 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
             var markup = await chatMarkupHub
                 .GetMarkup(chatEntry, MarkupConsumer.MessageView, default)
                 .ConfigureAwait(false);
+
+            if (showAuthor && currentAuthor != chatEntry.AuthorId) {
+                if (sb.Length > 0)
+                    sb.AppendLine();
+                currentAuthor = chatEntry.AuthorId;
+                var author = await Authors.Get(Session, chatEntry.ChatId, chatEntry.AuthorId, default).ConfigureAwait(false);
+                var authorName = author?.Avatar.Name ?? "(N/A)";
+                var timestamp = TimeZoneConverter.ToLocalTime(chatEntry.BeginsAt).ToString("g", CultureInfo.InvariantCulture);
+                sb.AppendFormat("{0}, [{1}]", authorName, timestamp);
+                sb.AppendLine();
+            }
+
             var text = markup.ToClipboardText();
             sb.AppendLine(text);
         }
