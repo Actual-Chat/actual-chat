@@ -1,5 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ActualChat.Media.Db;
 
@@ -34,5 +36,11 @@ public class DbMedia : IHasId<string>, IRequirementTarget
         LocalId = model.Id.LocalId;
         ContentId = model.ContentId;
         MetadataJson = model.MetadataJson;
+    }
+
+    internal class EntityConfiguration : IEntityTypeConfiguration<DbMedia>
+    {
+        public void Configure(EntityTypeBuilder<DbMedia> builder)
+            => builder.HasIndex(a => a.ContentId);
     }
 }
