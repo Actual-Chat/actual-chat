@@ -18,9 +18,11 @@ public partial class ChatsBackend
 
         if (Computed.IsInvalidating()) {
             _ = GetPublicChatIdsFor(placeId, default);
-            var lastEntryIdInv = context.Operation().Items.GetOrDefault(ChatEntryId.None);
-            if (!lastEntryIdInv.IsNone)
-                InvalidateTiles(newChatId, ChatEntryKind.Text, lastEntryIdInv.LocalId, ChangeKind.Create);
+            var invLastEntryId = context.Operation().Items[typeof(ChatEntryId)] is string invLastEntrySid
+                ? new ChatEntryId(invLastEntrySid)
+                : ChatEntryId.None;
+            if (!invLastEntryId.IsNone)
+                InvalidateTiles(newChatId, ChatEntryKind.Text, invLastEntryId.LocalId, ChangeKind.Create);
             return default!;
         }
 
@@ -130,7 +132,7 @@ public partial class ChatsBackend
             var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             dbContext.Database.SetCommandTimeout(commandTimeout);
             await using var __ = dbContext.ConfigureAwait(false);
-            context.Operation().Items.Set(result.LastEntryId);
+            context.Operation().Items[typeof(ChatEntryId)] = result.LastEntryId.Value;
         }
 
         Log.LogInformation("<- OnCopyChat({CorrelationId})", correlationId);
