@@ -599,6 +599,7 @@ public partial class ChatsBackend
         MigratedAuthors migratedAuthors,
         CancellationToken cancellationToken)
     {
+        var chatId = new ChatId(chatSid);
         var reactionIdPrefix = chatSid + ":0:";
         var ids = reactionIds.Select(c => reactionIdPrefix + c + ":").ToList();
 
@@ -647,10 +648,21 @@ public partial class ChatsBackend
             var authorIds = summary.FirstAuthorIds;
 
             var newAuthorIds = ImmutableList<AuthorId>.Empty;
+            var isCorrupted = false;
             foreach (var authorId in authorIds) {
+                if (authorId.ChatId != chatId) {
+                    isCorrupted = true;
+                    // During original migration 'Actual Chat - Dev' chat to 'Actual chat' place FirstAuthorIds collection transformation
+                    // was not performed properly. Ignore these records.
+                    Log.LogWarning("OnCopyChat({CorrelationId}) ReactionSummary with id='{Id}' refer to invalid author id '{AuthorId}'",
+                        correlationId, entryId, authorId);
+                    continue;
+                }
                 var newAuthorId = migratedAuthors.GetNewAuthorId(authorId);
                 newAuthorIds = newAuthorIds.Add(newAuthorId);
             }
+            if (isCorrupted)
+                continue;
             summary = summary with { FirstAuthorIds = newAuthorIds };
             dbSummary.UpdateFrom(summary);
 
