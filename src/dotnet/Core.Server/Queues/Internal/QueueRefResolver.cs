@@ -5,10 +5,13 @@ namespace ActualChat.Queues.Internal;
 
 public sealed class QueueRefResolver(IServiceProvider services) : IQueueRefResolver
 {
-    private static readonly ConcurrentDictionary<Type, QueueAttribute?> _queueAttributes = new();
+    private static readonly ConcurrentDictionary<Type, QueueAttribute?> QueueAttributes = new();
 
-    private BackendServiceDefs BackendServiceDefs { get; } = services.GetRequiredService<BackendServiceDefs>();
+    private readonly ConcurrentDictionary<(Type, Type), Unit> _missingBackendServiceTypes = new();
+
+    private BackendServiceDefs? BackendServiceDefs { get; } = services.GetService<BackendServiceDefs>() ?? new BackendServiceDefs(services);
     private CommandHandlerResolver CommandHandlerResolver { get; } = services.GetRequiredService<CommandHandlerResolver>();
+    private ILogger Log { get; } = services.LogFor<QueueRefResolver>();
 
     public QueueShardRef GetQueueShardRef(ICommand command)
     {
@@ -55,13 +58,20 @@ public sealed class QueueRefResolver(IServiceProvider services) : IQueueRefResol
         if (serviceType == null)
             throw StandardError.Internal($"Unsupported command handler type: {finalHandler.GetType().GetName()}.");
 
-        var serviceDef = BackendServiceDefs[serviceType];
-        return serviceDef.ShardScheme;
+        if (BackendServiceDefs.TryGet(serviceType, out var serviceDef))
+            return serviceDef.ShardScheme;
+
+        if (_missingBackendServiceTypes.TryAdd((serviceType, commandType), default))
+            Log.LogWarning(
+                "Service {ServiceType} handles queued {CommandType}, so it must be registered as backend service!",
+                serviceType.GetName(), commandType.GetName());
+
+        return ShardScheme.ForType(serviceType) ?? ShardScheme.None;
     }
 
     public static QueueRef ResolveAttribute(Type type)
     {
-        var attr = _queueAttributes.GetOrAdd(type,
+        var attr = QueueAttributes.GetOrAdd(type,
             static (_, t) => t.GetCustomAttributes<QueueAttribute>().SingleOrDefault(),
             type);
         return attr != null

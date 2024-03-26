@@ -1,4 +1,5 @@
 using ActualChat.Queues.Internal;
+using ActualChat.Queues.Nats;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Commands;
@@ -11,14 +12,15 @@ public class EventHandlerRegistryTest(ITestOutputHelper @out)
     public async Task BackendServerRoleShouldHandleAllEvents()
     {
         using var host = await NewAppHost(options => options with  {
-            ConfigureAppServices = (_, services) => {
-                services
-                    .AddNatsQueues()
-                    .AddFusion()
-                    .AddService<ScheduledCommandTestService>();
+            ConfigureAppServices = (builder, services) => {
+                var rpcHost = services.AddRpcHost(builder.HostInfo);
+                rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },
         });
         var services = host.Services;
+        var queues = services.Queues().Start();
+        queues.Should().BeAssignableTo<NatsQueues>();
+
         var eventHandlerResolver = services.GetRequiredService<EventHandlerRegistry>();
         var eventHandlers = eventHandlerResolver.AllEventHandlers;
         eventHandlers.Should().NotBeEmpty();

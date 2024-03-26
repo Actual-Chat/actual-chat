@@ -1,4 +1,5 @@
 using ActualChat.Queues;
+using ActualChat.Queues.Nats;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Commands;
@@ -13,13 +14,13 @@ public class NatsQueueTest(ITestOutputHelper @out)
         using var host = await NewAppHost(options => options with {
             InstanceName = $"x-{nameof(NatsQueueTest)}-{nameof(SmokeTest)}",
             ConfigureAppServices = (builder, services) => {
-                services.AddNatsQueues();
                 var rpcHost = services.AddRpcHost(builder.HostInfo);
                 rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },
         });
         var services = host.Services;
         var queues = services.Queues().Start();
+        queues.Should().BeAssignableTo<NatsQueues>();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.Commander();
@@ -37,7 +38,6 @@ public class NatsQueueTest(ITestOutputHelper @out)
         using var host = await NewAppHost(options => options with {
             InstanceName = $"x-{nameof(NatsQueueTest)}-{nameof(MultipleCommandsCanBeScheduled)}",
             ConfigureAppServices = (builder, services) => {
-                services.AddNatsQueues();
                 var rpcHost = services.AddRpcHost(builder.HostInfo);
                 rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },
@@ -66,7 +66,6 @@ public class NatsQueueTest(ITestOutputHelper @out)
         using var host = await NewAppHost(options => options with {
             InstanceName = $"x-{nameof(NatsQueueTest)}-{nameof(CommandsWithCustomQueuesAreHandled)}",
             ConfigureAppServices = (builder, services) => {
-                services.AddNatsQueues();
                 var rpcHost = services.AddRpcHost(builder.HostInfo);
                 rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },

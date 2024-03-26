@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.FileProviders;
 using ActualLab.IO;
 using ActualLab.Testing.Output;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Testing.Host;
 
@@ -46,7 +47,7 @@ public static class TestAppHostFactory
 
                 // Adding must-have overrides for tests
                 cfg.AddInMemoryCollection(new Dictionary<string, string?> {
-                    { WebHostDefaults.EnvironmentKey, "Development" },
+                    { WebHostDefaults.EnvironmentKey, Environments.Development },
                     { WebHostDefaults.StaticWebAssetsKey, manifestPath },
                     { "CoreSettings:Instance", instanceName },
                 });

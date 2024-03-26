@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ActualChat;
 
@@ -36,6 +37,6 @@ public sealed class BackendServiceDefs
     public bool Contains(Type serviceType)
         => _items.ContainsKey(serviceType);
 
-    public bool TryGet(Type serviceType, out BackendServiceDef? serviceDef)
+    public bool TryGet(Type serviceType, [NotNullWhen(true)] out BackendServiceDef? serviceDef)
         => _items.TryGetValue(serviceType, out serviceDef);
 }
