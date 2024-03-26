@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Claims;
 using ActualChat.Performance;
+using ActualChat.Queues;
 using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
@@ -15,6 +16,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 {
     private WebClientTester _tester = null!;
     private IExternalContacts _externalContacts = null!;
+    private IQueues _queues = null!;
     private ICommander _commander = null!;
     private IAccounts _accounts = null!;
     private IContacts _contacts = null!;
@@ -37,10 +39,12 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     {
         Tracer.Default = Out.NewTracer();
         _tester = AppHost.NewWebClientTester(Out);
-        _externalContacts = AppHost.Services.GetRequiredService<IExternalContacts>();
-        _accounts = AppHost.Services.GetRequiredService<IAccounts>();
-        _contacts = AppHost.Services.GetRequiredService<IContacts>();
-        _commander = AppHost.Services.Commander();
+        var services = AppHost.Services;
+        _externalContacts = services.GetRequiredService<IExternalContacts>();
+        _accounts = services.GetRequiredService<IAccounts>();
+        _contacts = services.GetRequiredService<IContacts>();
+        _commander = services.Commander();
+        _queues = services.Queues();
 
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
         return Task.CompletedTask;
@@ -310,6 +314,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
     private async Task AssertConnectedUsers(AccountFull account, AccountFull[] allAccounts)
     {
+        await _queues.WhenProcessing();
         var userMap = allAccounts.ToDictionary(x => x.Id, x => x.User);
         var contactIds = await ListContactIds(allAccounts.Length - 1);
         var connectedUsers = contactIds.ConvertAll(GetUser).OrderBy(x => x.Name);
