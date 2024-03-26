@@ -329,13 +329,13 @@ public partial class ChatsBackend
         var maxRelatedAudioEntryId = 0L;
 
         var minLocalId = entryIdRange.Start;
-        var maxLocalId = entryIdRange.End - 1;
+        var maxLocalId = entryIdRange.End;
         var attachmentIds = new List<long>();
         var reactionIds = new List<long>();
 
         var entries = await dbContext.ChatEntries
             .Where(c => c.ChatId == chatSid && c.Kind == entryKind)
-            .Where(c => c.LocalId >= minLocalId && c.LocalId <= maxLocalId)
+            .Where(c => c.LocalId >= minLocalId && c.LocalId < maxLocalId)
             .OrderBy(c => c.LocalId)
             .Take(batchLimit)
             .AsNoTracking()
@@ -442,7 +442,7 @@ public partial class ChatsBackend
             await InsertReactions(correlationId, dbContext, chatSid, newChatId, reactionIds, migratedAuthors, cancellationToken).ConfigureAwait(false);
 
         Log.LogInformation(
-            "OnCopyChat({CorrelationId}) inserted {Count} {Kind} chat entry records with local ids [{From},{To}]",
+            "OnCopyChat({CorrelationId}) inserted {Count} {Kind} chat entry records with local ids [{From},{To})",
             correlationId,
             entries.Count,
             entryKind,
