@@ -125,7 +125,7 @@ public readonly struct RpcHostBuilder
             Rpc.Service(serviceType).HasServer(serviceType).HasName(name);
             break;
         case ServiceMode.Hybrid:
-            AddService(implementationType, implementationType);
+            AddService(implementationType, implementationType, false);
             AddHybridClient(serviceType, implementationType);
             Rpc.Service(serviceType).HasServer(implementationType).HasName(name);
             break;

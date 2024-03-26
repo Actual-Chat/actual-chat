@@ -3,12 +3,6 @@ using MemoryPack;
 
 namespace ActualChat.Search;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-// ReSharper disable once InconsistentNaming
-public sealed partial record IndexedChatsBackend_BulkChange(
-    [property: DataMember, MemoryPackOrder(1)] ApiArray<IndexedChatChange> Changes
-) : ICommand<ApiArray<IndexedChat?>>, IBackendCommand;
-
 public interface IIndexedChatsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -33,3 +27,13 @@ public sealed partial record IndexedChatChange(
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(3)] Change<IndexedChat> Change
 );
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record IndexedChatsBackend_BulkChange(
+    [property: DataMember, MemoryPackOrder(1)] ApiArray<IndexedChatChange> Changes
+) : ICommand<ApiArray<IndexedChat?>>, IBackendCommand, IHasShardKey<Unit>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public Unit ShardKey => Unit.Default;
+}

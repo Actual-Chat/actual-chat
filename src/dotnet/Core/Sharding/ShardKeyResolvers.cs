@@ -35,7 +35,7 @@ public static class ShardKeyResolvers
         => _ => throw NotFoundError(typeof(T));
     public static ShardKeyResolver<T> Invalid<T>(ShardKeyResolver<T> resolver) => x => {
         if (KnownInvalidKeyTypes.TryAdd(typeof(T), default))
-            DefaultLog.LogError("Invalid shard key type: {KeyType}", typeof(T).GetName());
+            DefaultLog.LogWarning("Invalid shard key type: {KeyType}", typeof(T).GetName());
         return resolver.Invoke(x);
     };
 
