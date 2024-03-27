@@ -555,7 +555,7 @@ public partial class ChatsBackend
         var firstId = attachmentsIds[0];
         var lastId = attachmentsIds[^1];
         var attachmentIdPrefix = chatSid + ":0:";
-        List<string> ids = attachmentsIds.Select(c => attachmentIdPrefix + c).ToList();
+        List<string> ids = attachmentsIds.Select(entryId => attachmentIdPrefix + entryId + ":").ToList();
         var attachments = await dbContext.TextEntryAttachments
             .Where(c => c.Id.StartsWith(attachmentIdPrefix))
  #pragma warning disable CA1310
