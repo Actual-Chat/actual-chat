@@ -43,13 +43,13 @@ internal class ChatIndexInitializerShard(
         var cursor = await cursorStates.Load(CursorKey, cancellationToken).ConfigureAwait(false) ?? new(0);
         _maxVersion = cursor.LastVersion;
         await Task.WhenAll([
-            ScheduleJobs(cursor.LastVersion, cancellationToken),
-            HandleEvents(cancellationToken),
-            UpdateCursor(cancellationToken),
+            ScheduleJobsAsync(cursor.LastVersion, cancellationToken),
+            HandleEventsAsync(cancellationToken),
+            UpdateCursorAsync(cancellationToken),
         ]).ConfigureAwait(false);
     }
 
-    private async Task HandleEvents(CancellationToken cancellationToken)
+    private async Task HandleEventsAsync(CancellationToken cancellationToken)
     {
         await Task.Yield();
 
@@ -65,7 +65,7 @@ internal class ChatIndexInitializerShard(
         }
     }
 
-    private async Task UpdateCursor(CancellationToken cancellationToken)
+    private async Task UpdateCursorAsync(CancellationToken cancellationToken)
     {
         await Task.Yield();
 
@@ -112,7 +112,7 @@ internal class ChatIndexInitializerShard(
         }
     }
 
-    private async Task ScheduleJobs(long minVersion, CancellationToken cancellationToken)
+    private async Task ScheduleJobsAsync(long minVersion, CancellationToken cancellationToken)
     {
         await Task.Yield();
 
