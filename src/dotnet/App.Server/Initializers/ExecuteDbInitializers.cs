@@ -36,7 +36,6 @@ public class ExecuteDbInitializers(IServiceProvider services): IAggregateInitial
             cancellationToken
         ).ConfigureAwait(false);
     }
-
     private Task InvokeDbInitializers(
         string name,
         Func<IDbInitializer, CancellationToken, Task> invoker,

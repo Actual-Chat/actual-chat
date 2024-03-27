@@ -33,6 +33,7 @@ public partial record struct HostRole(
     public static readonly HostRole TranscriptionBackend = nameof(TranscriptionBackend);
     public static readonly HostRole UsersBackend = nameof(UsersBackend);
     public static readonly HostRole ContactIndexingWorker = nameof(ContactIndexingWorker);
+    public static readonly HostRole MLSearchBackend = nameof(MLSearchBackend);
 
     // Queues
     public static readonly HostRole DefaultQueue = nameof(DefaultQueue);

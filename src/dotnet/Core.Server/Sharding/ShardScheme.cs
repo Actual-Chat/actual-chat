@@ -20,6 +20,7 @@ public sealed class ShardScheme(Symbol id, int shardCount, HostRole hostRole) : 
     public static readonly ShardScheme InviteBackend = new(nameof(InviteBackend), 1, HostRole.InviteBackend);
     public static readonly ShardScheme NotificationBackend = new(nameof(NotificationBackend), 10, HostRole.NotificationBackend);
     public static readonly ShardScheme SearchBackend = new(nameof(SearchBackend), 10, HostRole.SearchBackend);
+    public static readonly ShardScheme MLSearchBackend = new(nameof(MLSearchBackend), 12, HostRole.MLSearchBackend);
     public static readonly ShardScheme TranscriptionBackend = new(nameof(TranscriptionBackend), 10, HostRole.TranscriptionBackend);
     public static readonly ShardScheme UsersBackend = new(nameof(UsersBackend), 10, HostRole.UsersBackend);
     public static readonly ShardScheme ContactIndexingWorker = new(nameof(ContactIndexingWorker), 1, HostRole.ContactIndexingWorker);
@@ -39,6 +40,7 @@ public sealed class ShardScheme(Symbol id, int shardCount, HostRole hostRole) : 
         { InviteBackend.Id, InviteBackend },
         { NotificationBackend.Id, NotificationBackend },
         { SearchBackend.Id, SearchBackend },
+        { MLSearchBackend.Id, MLSearchBackend },
         { TranscriptionBackend.Id, TranscriptionBackend },
         { UsersBackend.Id, UsersBackend },
         { ContactIndexingWorker.Id, ContactIndexingWorker },

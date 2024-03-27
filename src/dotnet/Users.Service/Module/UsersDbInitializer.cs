@@ -10,22 +10,34 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
     public override async Task InitializeData(CancellationToken cancellationToken)
     {
         await EnsureAdminExists(cancellationToken).ConfigureAwait(false);
-        if (HostInfo is { IsDevelopmentInstance: true, IsTested: false })
+        await EnsureMLSearchBotExists(cancellationToken).ConfigureAwait(false);
+        if (HostInfo is { IsDevelopmentInstance: true, IsTested: false }) 
             await EnsureTestBotsExist(cancellationToken).ConfigureAwait(false);
+
     }
 
     // Private methods
 
     private async Task EnsureAdminExists(CancellationToken cancellationToken)
+    => await EnsureUserExists(Constants.User.Admin.UserId, Constants.User.Admin.Name, cancellationToken)
+        .ConfigureAwait(false);
+    private async Task EnsureUserExists(UserId userId, string name, CancellationToken cancellationToken)
     {
-        var userId = Constants.User.Admin.UserId;
         var account = await GetInternalAccount(userId, cancellationToken).ConfigureAwait(false);
         if (account != null)
             return;
 
-        Log.LogInformation("Creating admin user...");
-        await AddInternalAccount(userId, Constants.User.Admin.Name, cancellationToken).ConfigureAwait(false);
+        Log.LogInformation($"Creating {name} user...");
+        await AddInternalAccount(userId, name, cancellationToken).ConfigureAwait(false);
     }
+
+    private async Task EnsureMLSearchBotExists(CancellationToken cancellationToken)
+    => await EnsureUserExists(
+            Constants.User.MLSearchBot.UserId, 
+            Constants.User.MLSearchBot.Name, 
+            cancellationToken
+        )
+        .ConfigureAwait(false);
 
     private async Task EnsureTestBotsExist(CancellationToken cancellationToken)
     {

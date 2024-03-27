@@ -14,10 +14,11 @@
         // "-multihost-role:BackendServer"
       ],
       "cwd": "${workspaceFolder}/src/dotnet/App.Server",
+      "justMyCode":true,
       "stopAtEntry": false,
       "serverReadyAction": {
         "action": "openExternally",
-        "pattern": "App.Server is started!",
+        "pattern": "\\[!\\] App.Server is started\\.",
         "uriFormat": "https://local.actual.chat/chat/the-actual-one"
       },
       "console": "internalConsole",

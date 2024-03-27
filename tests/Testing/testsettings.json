@@ -27,6 +27,10 @@
     "Db": "",
     "Redis": ""
   },
+  "MLSearchSettings": {
+    "OpenSearchClusterUri": "http://localhost:9201",
+    "OpenSearchModelGroup": "NLP_model_group"
+  },
   "SearchSettings": {
   },
   "UsersSettings": {
