@@ -32,9 +32,9 @@ jobs:
 
   deploy-ios-to-appstore:
     name: Deploy app package to apple app store for ${{ github.ref_name }}
-    if: |
-      github.ref == 'refs/heads/master' ||
-      startsWith(github.ref, 'refs/heads/release/')
+#    if: |
+#      github.ref == 'refs/heads/master' ||
+#      startsWith(github.ref, 'refs/heads/release/')
     runs-on: macos-13
 #    environment: prod
     env:
