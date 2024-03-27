@@ -43,6 +43,8 @@ internal class ChatIndexInitializer(
         }
         else {
             // Lets wait for never ending task till cancellation
+            // TODO: instead of this use a dedicated shard scheme with just a single shard
+            // to process MLSearch_TriggerChatIndexingCompletion events
             var tcs = new TaskCompletionSource();
             await tcs.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
