@@ -331,7 +331,7 @@
 
         if (m.CanDelete) {
             var chat = await Hub.Chats.Get(Session, ChatId, default);
-            _ = Hub.ModalUI.Show(new LeaveChatConfirmationModal.Model(chat!) { IsDelete = true });
+            Hub.ChatUI.DeleteChat(chat!);
         } else {
             var hasAnotherOwner = m is { IsOwner: true, OwnersCount: > 1 };
             var hasMembers = m.MembersCount > 1;
@@ -340,7 +340,7 @@
                 Services.UICommander().ShowError(StandardError.Constraint(message));
             } else {
                 var chat = await Hub.Chats.Get(Session, ChatId, default);
-                _ = Hub.ModalUI.Show(new LeaveChatConfirmationModal.Model(chat!));
+                Hub.ChatUI.LeaveChat(chat!);
             }
         }
     }

@@ -4,13 +4,13 @@
         ? "delete"
         : "leave";
 
-    var title = $"{action.Capitalize()} chat";
+    var title = $"{action.Capitalize()} {ModalModel.Object}";
 }
 
 <DialogFrame Title="@title" Class="modal-xs">
     <Body>
     <FormBlock>
-        <p>Are you sure you want to @action this chat?</p>
+        <p>Are you sure you want to @action this @ModalModel.Object?</p>
     </FormBlock>
     </Body>
     <Buttons>
@@ -20,31 +20,14 @@
 </DialogFrame>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     private void OnCancel()
         => Modal.Close();
 
-    private async Task OnLeave(MouseEventArgs arg) {
-        var isSelectedChat = ModalModel.Chat.Id.Equals(ChatUI.SelectedChatId.Value);
-        var command = ModalModel.IsDelete
-            ? (ICommand)new Chats_Change(Session, ModalModel.Chat.Id, null, Change.Remove<ChatDiff>())
-            : new Authors_Leave(Session, ModalModel.Chat.Id);
-        var result = await UICommander.Run(command);
-        if (!result.HasError) {
-            Modal.Close();
-            if (isSelectedChat && !ModalModel.Chat.IsPublic)
-                _ = History.NavigateTo(Links.Chats);
-        }
-    }
+    private void OnLeave()
+        => ModalModel.Confirmed(Modal);
 
-    public sealed record Model(Chat Chat) {
-        public bool IsDelete { get; init; }
-    }
+    public sealed record Model(bool IsDelete, string Object, Action<Modal> Confirmed);
 }
