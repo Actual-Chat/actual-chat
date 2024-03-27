@@ -350,6 +350,9 @@ public partial class ChatsBackend
 
         var lastFetchedEntry = entries[^1];
 
+        Log.LogInformation("OnCopyChat({CorrelationId}) is about to process {Kind} chat entries with range [{From},{To})",
+            correlationId, entryKind, minLocalId, lastFetchedEntry.LocalId + 1);
+
         List<long> chatEntryWithMentionIds = new List<long>();
         if (entryKind == ChatEntryKind.Text)
             await InsertMentions(dbContext,
