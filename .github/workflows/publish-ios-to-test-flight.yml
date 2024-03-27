@@ -38,8 +38,6 @@ jobs:
     runs-on: macos-13
 #    environment: prod
     env:
-      APP_ID: chat.actual.app.dev
-      PACKAGE_FILE_NAME: ${{needs.build-ios-pkg.outputs.PACKAGE_FILE_NAME}}
       API_KEY_BASE64: ${{secrets.APPSTORE_API_KEY_BASE64}}
       API_KEY_ID: ${{secrets.APPSTORE_API_KEY_ID}}
       API_ISSUER_ID: ${{secrets.APPSTORE_API_ISSUER_ID}}
