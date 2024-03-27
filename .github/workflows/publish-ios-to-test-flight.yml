@@ -60,7 +60,7 @@ jobs:
 
         - name: Validate App
           run: |-
-            xcrun altool --validate-app -f resources/ActualChat.ipa -t ios --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER}} --show-progress --verbose --output-format json
+            xcrun altool --validate-app -f resources/ActualChat.ipa -t ios --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json
           shell: bash
 #        - name: Upload App
 #          run: |
