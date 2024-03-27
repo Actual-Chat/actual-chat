@@ -139,6 +139,8 @@ internal class ChatIndexInitializerShard(
         while (!cancellationToken.IsCancellationRequested) {
             ApiArray<Chat.Chat> batch;
             try {
+                // TODO: handle the case with infinite getting the same chats in a batch
+                // when there are more than BatchSize chats with the same version
                 batch = await chats
                     .ListChanged(minVersion, long.MaxValue, ChatId.None, BatchSize, cancellationToken)
                     .ConfigureAwait(false);
