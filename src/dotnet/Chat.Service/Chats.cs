@@ -663,6 +663,23 @@ public class Chats(IServiceProvider services) : IChats
             hasErrors |= result.HasErrors;
             maxEntryId = result.LastEntryId;
         }
+        {
+            // Ensure chat is listed in place chat list for the user who is performing chat copying.
+            var localChatId = chatId.IsPlaceChat ? chatId.PlaceChatId.LocalChatId : chatId.Id;
+            var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, localChatId));
+            var newChatId = (ChatId)placeChatId;
+            var author = await Authors.GetOwn(session, newChatId, cancellationToken).ConfigureAwait(false);
+            if (author != null) {
+                var userId = author.UserId;
+                var contactId = new ContactId(userId, newChatId, AssumeValid.Option);
+                var contact = await ContactsBackend.Get(userId, contactId, cancellationToken).ConfigureAwait(false);
+                if (!contact.IsStored()) {
+                    var change = new Change<Contact> { Create = new Contact(contactId) };
+                    var backendCmd4 = new ContactsBackend_Change(contactId, null, change);
+                    await Commander.Call(backendCmd4, true, cancellationToken).ConfigureAwait(false);
+                }
+            }
+        }
 
         // var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
         // var newChatId = (ChatId)placeChatId;
