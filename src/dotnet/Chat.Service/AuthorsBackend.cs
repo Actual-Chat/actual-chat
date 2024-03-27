@@ -374,7 +374,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (Computed.IsInvalidating())
             return default;
 
-        var (chatId, newChatId, correlationId, rolesMap) = command;
+        var (chatId, newChatId, rolesMap, correlationId) = command;
         var chatSid = chatId.Value;
 
         var placeRootChatId = newChatId.PlaceId.ToRootChatId();

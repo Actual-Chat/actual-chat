@@ -75,7 +75,7 @@ public partial class ChatsBackend
         }
         {
             var hasChanges2 = await Commander
-                .Call(new AuthorsBackend_CopyChat(chatId, newChatId, correlationId, rolesMap), true, cancellationToken)
+                .Call(new AuthorsBackend_CopyChat(chatId, newChatId, rolesMap, correlationId), true, cancellationToken)
                 .ConfigureAwait(false);
             hasChanges |= hasChanges2;
         }
