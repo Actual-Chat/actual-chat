@@ -29,6 +29,7 @@ public class TuneUI : ITuneUIBackend, IDisposable
         // Chat UI
         [Tune.PinUnpinChat] = new (new[] { 50 }/*, "pin-unpin-chat"*/),
         [Tune.NotifyOnNewMessageInApp] = new (new[] { 20 }, "notify-on-new-message-in-app"),
+        [Tune.NotifyOnNewAudioMessageAfterDelay] = new (new[] { 20, 40, 100 }, "new-audio-message-after-delay"),
         [Tune.React] = new (new[] { 20, 10, 20 }),
         // ChatMessageEditor
         [Tune.SendMessage] = new (new[] { 50 }/*, "send-message"*/),
@@ -118,6 +119,7 @@ public enum Tune
     StopRealtimePlayback,
     PinUnpinChat,
     NotifyOnNewMessageInApp,
+    NotifyOnNewAudioMessageAfterDelay,
     SendMessage,
     EditMessage,
     ReplyMessage,

@@ -17,7 +17,7 @@ namespace ActualChat.Media.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.0")
+                .HasAnnotation("ProductVersion", "8.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -100,6 +100,9 @@ namespace ActualChat.Media.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_media");
+
+                    b.HasIndex("ContentId")
+                        .HasDatabaseName("ix_media_content_id");
 
                     b.ToTable("media");
                 });

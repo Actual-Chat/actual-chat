@@ -368,6 +368,109 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         context.Operation().Items.Set(authors.ToArray());
     }
 
+    // CommandHandler
+    public virtual async Task<bool> OnCopyChat(AuthorsBackend_CopyChat command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return default;
+
+        var (chatId, newChatId, correlationId, rolesMap) = command;
+        var chatSid = chatId.Value;
+
+        var placeRootChatId = newChatId.PlaceId.ToRootChatId();
+        var createdAuthors = 0;
+        var hasChanges = false;
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        // Create place members and update chat authors.
+        var oldDbAuthors = await dbContext.Authors
+            .Include(a => a.Roles)
+            .Where(c => c.ChatId == chatSid)
+            .OrderBy(c => c.LocalId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach (var dbAuthor in oldDbAuthors) {
+            var originalAuthor = dbAuthor.ToModel();
+            var userId = originalAuthor.UserId;
+            if (userId.IsNone)
+                throw StandardError.Internal(
+                    $"Can't proceed with the migration: found an author with no associated user. AuthorId is '{dbAuthor.Id}'.");
+
+            if (originalAuthor.IsAnonymous) {
+                var authorSid = originalAuthor.Id.Value;
+                var hasChatEntries = await dbContext.ChatEntries
+                    .Where(c => c.ChatId == chatSid && c.AuthorId == authorSid)
+                    .AnyAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                if (!hasChatEntries)
+                    continue; // Skip anonymous author if there were no messages from them.
+
+                // TODO(DF): To think what we can do with anonymous authors migration.
+                // Places are not supposed to have anonymous authors at the moment.
+                throw StandardError.Internal(
+                    $"Can't proceed with the migration: anonymous author migration isn't supported yet. AuthorId is '{dbAuthor.Id}'.");
+            }
+
+            // Ensure there is matching place member
+            // TODO(DF): Can we use AuthorsBackend_GetAuthorOption.Full? In fact, they are equivalents in this case.
+            var placeMember = await GetByUserId(placeRootChatId, userId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
+                .ConfigureAwait(false);
+            if (placeMember == null) {
+                var authorDiff = new AuthorDiff { AvatarId = dbAuthor.AvatarId };
+                var upsertPlaceMemberCmd = new AuthorsBackend_Upsert(placeRootChatId,
+                    default,
+                    userId,
+                    null,
+                    authorDiff) {
+                    DoNotNotify = true
+                };
+                placeMember = await Commander.Call(upsertPlaceMemberCmd, cancellationToken)
+                    .ConfigureAwait(false);
+                hasChanges = true;
+            }
+            {
+                var newLocalId = placeMember.LocalId;
+                var newAuthorId = new AuthorId(newChatId, newLocalId, AssumeValid.Option);
+                var existentAuthor = await Get(newAuthorId.ChatId, newAuthorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
+                    .ConfigureAwait(false);
+                if (existentAuthor != null)
+                    continue;
+
+                var newAuthor = originalAuthor with {
+                    Id = newAuthorId,
+                    RoleIds = new ApiArray<Symbol>()
+                };
+                if (newAuthor.Version <= 0) {
+                    Log.LogInformation("OnCopyChat({CorrelationId}) Invalid version on DbAuthor with Id={AuthorId}",
+                        correlationId, newAuthor.Id);
+                    newAuthor = newAuthor with { Version = VersionGenerator.NextVersion() };
+                }
+                dbContext.Authors.Add(new DbAuthor(newAuthor));
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+                var roleIds = dbAuthor.Roles.Select(c => c.DbRoleId).ToList();
+                foreach (var roleId in roleIds) {
+                    var migratedRole = rolesMap.First(c => OrdinalEquals(roleId, c.Item1.Value));
+                    dbContext.AuthorRoles.Add(new DbAuthorRole {
+                        DbAuthorId = newAuthorId,
+                        DbRoleId = migratedRole.Item2
+                    });
+                }
+
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+                createdAuthors++;
+                hasChanges = true;
+            }
+        }
+
+        Log.LogInformation("OnCopyChat({CorrelationId}) created {Count} authors", correlationId, createdAuthors);
+        return hasChanges;
+    }
+
     [EventHandler]
     public virtual async Task OnAvatarChangedEvent(AvatarChangedEvent eventCommand, CancellationToken cancellationToken)
     {

@@ -82,6 +82,7 @@ public sealed class ChatBlazorUIModule(IServiceProvider moduleServices)
         services.AddTypeMap<IModalView>(map => map
             .Add<AvatarSelectModal.Model, AvatarSelectModal>()
             .Add<VoiceSettingsModal.Model, VoiceSettingsModal>()
+            .Add<ListeningSettingsModal.Model, ListeningSettingsModal>()
             .Add<ChatSettingsModal.Model, ChatSettingsModal>()
             .Add<PlaceSettingsModal.Model, PlaceSettingsModal>()
             .Add<AddMemberModal.Model, AddMemberModal>()

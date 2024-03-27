@@ -1,7 +1,10 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class RealtimeChatPlayer : ChatPlayer
 {
+
     private ChatAudioUI ChatAudioUI { get; }
 
     public RealtimeChatPlayer(ChatUIHub hub, ChatId chatId)
@@ -35,6 +38,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
         var startId = startEntry?.LocalId ?? idRange.End;
         var initialSleepDuration = SleepDuration.Value;
         var syncedSleepDuration = initialSleepDuration;
+        var lastEntryBeginsAt = serverClock.Now;
         minPlayAt = serverClock.Now;
 
         var entries = audioEntryReader.Observe(startId, cancellationToken);
@@ -71,9 +75,13 @@ public sealed class RealtimeChatPlayer : ChatPlayer
             if (playAt >= entry.BeginsAt + Constants.Chat.MaxEntryDuration) // no EndsAt for streaming entries
                 continue;
 
+            if (entry.BeginsAt - lastEntryBeginsAt > Hub.AudioSettings.IdleListeningNewMessageTrigger)
+                await Hub.TuneUI.PlayAndWait(Tune.NotifyOnNewAudioMessageAfterDelay).ConfigureAwait(false);
+
             var skipTo = (playAt - entry.BeginsAt).Positive();
             DebugLog?.LogDebug("Play: enqueuing #{EntryId} @ {SkipTo}", entry.Id, skipTo.ToShortString());
             entryPlayer.EnqueueEntry(entry, skipTo);
+            lastEntryBeginsAt = entry.BeginsAt;
         }
     }
 }

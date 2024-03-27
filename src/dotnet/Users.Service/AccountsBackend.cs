@@ -222,12 +222,13 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     }
 
     // [CommandHandler]
-    public virtual async Task<bool> OnMoveChatToPlace(
-        AccountsBackend_MoveChatToPlace command,
+    public virtual async Task<bool> OnCopyChat(
+        AccountsBackend_CopyChat command,
         CancellationToken cancellationToken)
     {
-        var (chatId, placeId) = command;
-        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
+        var (chatId, placeId, lastEntryId, correlationId) = command;
+        var localChatId = chatId.IsPlaceChat ? chatId.PlaceChatId.LocalChatId : chatId.Id;
+        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, localChatId));
         var newChatId = (ChatId)placeChatId;
         var chatSid = chatId.Value;
 
@@ -236,16 +237,17 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             return default;
         }
 
-        Log.LogInformation("OnMoveChatToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'", chatSid, placeId);
+        Log.LogInformation("-> OnCopyChat({CorrelationId}): copy chat '{ChatId}' to place '{PlaceId}'",
+            correlationId, chatSid, placeId);
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var hasChanges = false;
-        hasChanges |= await UpdateUserChatSettings(dbContext, chatId, newChatId, cancellationToken).ConfigureAwait(false);
-        hasChanges |= await UpdateChatPositions(dbContext, chatId, newChatId, cancellationToken).ConfigureAwait(false);
+        hasChanges |= await UpdateUserChatSettings(dbContext, chatId, newChatId, correlationId, cancellationToken).ConfigureAwait(false);
+        hasChanges |= await UpdateChatPositions(dbContext, chatId, newChatId, lastEntryId, correlationId, cancellationToken).ConfigureAwait(false);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("OnMoveChatToPlace: completed");
+        Log.LogInformation("<- OnCopyChat({CorrelationId})", correlationId);
         return hasChanges;
     }
 
@@ -308,22 +310,36 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         UsersDbContext dbContext,
         ChatId oldChatId,
         ChatId newChatId,
+        string correlationId,
         CancellationToken cancellationToken)
     {
-        var oldChatSettingsSuffix = UserChatSettings.GetKvasKey(oldChatId);
-        var newChatSettingsSuffix = UserChatSettings.GetKvasKey(newChatId);
+        var oldChatSettingsSuffix = "/" + UserChatSettings.GetKvasKey(oldChatId);
+        var newChatSettingsSuffix = "/" + UserChatSettings.GetKvasKey(newChatId);
 
-        // Update UserChatSettings
-#pragma warning disable CA1307
-        var updateCount = await dbContext.KvasEntries
-            .Where(c => c.Key.EndsWith(oldChatSettingsSuffix))
-            .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(c => c.Key, c => c.Key.Replace(oldChatSettingsSuffix, newChatSettingsSuffix)),
-                cancellationToken)
+        var kvasEntries = await dbContext.KvasEntries
+            .Where(c => c.Key.StartsWith("u/") && c.Key.EndsWith(oldChatSettingsSuffix))
+            .AsNoTracking()
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-#pragma warning restore CA1307
 
-        Log.LogInformation("Updated {Count} UserChatSettings kvas records", updateCount);
+        var updateCount = 0;
+        foreach (var oldKvasEntry in kvasEntries) {
+            var newKey = oldKvasEntry.Key.Replace(oldChatSettingsSuffix, newChatSettingsSuffix, StringComparison.Ordinal);
+            var dbKvasEntry = await dbContext.KvasEntries
+                .Where(c => c.Key == newKey)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (dbKvasEntry != null)
+                continue;
+
+            dbContext.KvasEntries.Add(new DbKvasEntry
+                { Key = newKey, Version = oldKvasEntry.Version, Value = oldKvasEntry.Value });
+            updateCount++;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        Log.LogInformation("Updated {Count} UserChatSettings kvas records ({CorrelationId})", updateCount, correlationId);
         return updateCount > 0;
     }
 
@@ -331,22 +347,44 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         UsersDbContext dbContext,
         ChatId oldChatId,
         ChatId newChatId,
+        long maxEntryId,
+        string correlationId,
         CancellationToken cancellationToken)
     {
+        if (maxEntryId <= 0)
+            return false;
+
         var oldChatPositionSuffix = $" {oldChatId.Value}:0";
         var newChatPositionSuffix = $" {newChatId.Value}:0";
 
-        // Update UserChatSettings
-#pragma warning disable CA1307
-        var updateCount = await dbContext.ChatPositions
+        var chatPositions = await dbContext.ChatPositions
             .Where(c => c.Id.EndsWith(oldChatPositionSuffix))
-            .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(c => c.Id, c => c.Id.Replace(oldChatPositionSuffix, newChatPositionSuffix)),
-                cancellationToken)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-#pragma warning restore CA1307
 
-        Log.LogInformation("Updated {Count} ChatPositions records", updateCount);
+        var updateCount = 0;
+        foreach (var oldChatPosition in chatPositions) {
+            var newId = oldChatPosition.Id.Replace(oldChatPositionSuffix, newChatPositionSuffix, StringComparison.Ordinal);
+            var dbChatPosition = await dbContext.ChatPositions
+                .Where(c => c.Id == newId)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+            var newPosition = Math.Min(oldChatPosition.EntryLid, maxEntryId);
+            if (dbChatPosition != null) {
+                if (dbChatPosition.EntryLid < newPosition) {
+                    dbChatPosition.EntryLid = newPosition;
+                    updateCount++;
+                }
+            }
+            else {
+                dbContext.ChatPositions.Add(new DbChatPosition
+                    { Id = newId, Kind = ChatPositionKind.Read, Origin = oldChatPosition.Origin, EntryLid = newPosition });
+                updateCount++;
+            }
+        }
+
+        Log.LogInformation("Updated {Count} ChatPositions records ({CorrelationId})", updateCount, correlationId);
         return updateCount > 0;
     }
 }

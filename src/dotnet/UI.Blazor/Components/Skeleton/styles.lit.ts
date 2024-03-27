@@ -24,7 +24,11 @@ export const messageStyles = css`
         width: 2.25rem;
         height: 2.25rem;
         border-radius: 9999px;
-        background-color: var(--background-04);
+        background-color: var(--skeleton);
+    }
+    .message-skeleton.header-skeleton .message-avatar {
+        width: 2.5rem;
+        height: 2.5rem;
     }
     .message-skeleton .c-container {
         display: flex;
@@ -35,13 +39,16 @@ export const messageStyles = css`
         width: 100%;
     }
     .message-skeleton .title.message {
-        height: 1rem;
+        height: 0.75rem;
         opacity: 100%;
         background-color: var(--skeleton);
         border-radius: 0.375rem;
     }
+    .message-skeleton.header-skeleton .title.message {
+        width: 20rem;
+    }
     .message-skeleton .message {
-        height: 0.875rem;
+        height: 0.75rem;
         background-color: var(--skeleton);
         border-radius: 0.375rem;
     }
@@ -68,6 +75,21 @@ export const messageStyles = css`
         background-color: var(--skeleton);
         opacity: 75%;
         border-radius: 0.375rem;
+    }
+    .string-skeleton {
+        height: 0.75rem;
+        background-color: var(--skeleton);
+        border-radius: 9999px;
+        animation: pulse 2s infinite;
+    }
+    .header-skeleton,
+    .animated-skeleton.round-skeleton {
+        animation: pulse 2s infinite;
+    }
+    .round-skeleton {
+        flex: none;
+        background-color: var(--skeleton);
+        border-radius: 9999px;
     }
     .message.w-1 {
         width: 10%;
@@ -98,6 +120,23 @@ export const messageStyles = css`
     }
     .message.w-10 {
         width: 100%;
+    }
+
+    .round-skeleton.radius-8 {
+        width: 2rem;
+        height: 2rem;
+    }
+    .round-skeleton.radius-10 {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+    .round-skeleton.radius-12 {
+        width: 3rem;
+        height: 3rem;
+    }
+    .round-skeleton.radius-16 {
+        width: 4rem;
+        height: 4rem;
     }
 
     @keyframes pulse {

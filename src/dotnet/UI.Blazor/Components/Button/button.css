@@ -329,6 +329,12 @@ body.hoverable .btn-h.blackout:hover,
 .btn.blackout:active .btn-content {
     @apply text-02;
 }
+body.hoverable .btn.bleached:hover .btn-content,
+body.hoverable .btn-h.bleached:hover,
+.btn.bleached:focus .btn-content,
+.btn.bleached:active .btn-content {
+    @apply text-white;
+}
 .btn.btn-round.show-on-hover {
     @apply invisible z-10 absolute;
 }
@@ -388,6 +394,9 @@ body.hoverable .btn.btn-x:focus .btn-content,
 body.hoverable .btn.btn-x:active .btn-content {
     @apply bg-transparent;
 }
+body.hoverable .btn.btn-x:hover .btn-content {
+    @apply text-02;
+}
 .btn-x .btn-content-inner > i {
     @apply relative top-px; /* To make it properly centered */
     @apply text-2xl font-medium;
@@ -399,8 +408,10 @@ body.hoverable .btn.btn-x:active .btn-content {
     @apply min-w-6 min-h-6;
     @apply text-03;
 }
-body.hoverable .btn-h:hover {
-    @apply text-03;
+body.hoverable .btn-h:hover,
+.btn-h:focus,
+.btn-h:active {
+    @apply text-02;
 }
 body.hoverable .btn-h.inactive:hover {
     @apply text-03;

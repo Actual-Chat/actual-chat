@@ -17,7 +17,7 @@ public interface IAccountsBackend : IComputeService
     public Task OnDelete(AccountsBackend_Delete command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<bool> OnMoveChatToPlace(AccountsBackend_MoveChatToPlace command, CancellationToken cancellationToken);
+    Task<bool> OnCopyChat(AccountsBackend_CopyChat command, CancellationToken cancellationToken);
 
     // Non-compute methods
 
@@ -44,7 +44,6 @@ public sealed partial record AccountsBackend_Update(
     public UserId ShardKey => Account.Id;
 }
 
-
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_Delete(
@@ -53,7 +52,9 @@ public sealed partial record AccountsBackend_Delete(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record AccountsBackend_MoveChatToPlace(
+public sealed partial record AccountsBackend_CopyChat(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId
+    [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId,
+    [property: DataMember, MemoryPackOrder(2)] long MaxEntryId,
+    [property: DataMember, MemoryPackOrder(3)] string CorrelationId
 ) : ICommand<bool>, IBackendCommand;

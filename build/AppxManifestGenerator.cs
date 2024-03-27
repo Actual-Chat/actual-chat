@@ -10,15 +10,17 @@ public static class AppxManifestGenerator
     public static async Task Generate(bool isProduction, CancellationToken cancellationToken)
     {
         var version= await GetVersion(cancellationToken).ConfigureAwait(false);
-        await Generate($"{version.ToString(3)}.0",
+        var appVersion = $"{version.ToString(3)}.0";
+        await Generate(appVersion,
             isProduction ? "" : ".Dev",
             isProduction ? "" : " Dev",
             cancellationToken).ConfigureAwait(false);
+        Utils.SetGithubOutput("AppVersion", appVersion);
     }
 
     private static async Task<Version> GetVersion(CancellationToken cancellationToken)
     {
-        var process = Process.Start(new ProcessStartInfo(Utils.FindDotnetExe(), "nbgv get-version -v NuGetPackageVersion") {
+        var process = Process.Start(new ProcessStartInfo(Utils.FindDotnetExe(), "nbgv get-version -v Version") {
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,

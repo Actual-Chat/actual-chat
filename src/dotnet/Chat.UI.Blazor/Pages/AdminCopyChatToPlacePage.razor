@@ -1,11 +1,11 @@
-@page "/admin/move-chat2place"
+@page "/admin/copy-chat2place"
 @using System.ComponentModel.DataAnnotations
 @inherits FusionComponentBase
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Move chat to place</MainHeader>
 
-<Form Class="h-full" @ref="@_formRef" Model="@_form" OnValidSubmit="@MoveChatToPlace">
+<Form Class="h-full" @ref="@_formRef" Model="@_form" OnValidSubmit="@CopyChatToPlace">
     <FormBlock>
         <DataAnnotationsValidator/>
 
@@ -13,7 +13,7 @@
             <TextBox
                 @bind-Value="@_form.ChatId"
                 Id="@_form.ChatIdFormId"
-                Placeholder="Id of a chat to move to the place"
+                Placeholder="Id of a chat to copy to the place"
                 ClearButton="true"/>
         </FormSection>
 
@@ -21,7 +21,7 @@
             <TextBox
                 @bind-Value="@_form.PlaceId"
                 Id="@_form.PlaceIdFormId"
-                Placeholder="Id of a place to move the chat in"
+                Placeholder="Id of a place to copy the chat in"
                 ClearButton="true"/>
         </FormSection>
     </FormBlock>
@@ -52,31 +52,31 @@
         public string PlaceIdFormId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
-            FormId = componentIdGenerator.Next("move-chat2place-form");
+            FormId = componentIdGenerator.Next("copy-chat2place-form");
             ChatIdFormId = $"{FormId}-chatId";
             PlaceIdFormId = $"{FormId}-placeId";
         }
     }
 
-    private async Task MoveChatToPlace() {
+    private async Task CopyChatToPlace() {
         var session = Hub.Session();
         var chatId = ChatId.Parse(_form.ChatId);
         var placeId = PlaceId.Parse(_form.PlaceId);
         var chat = await Hub.Chats.Get(session, chatId, default);
         var place = await Hub.Places.Get(session, placeId, default).Require();
         var chatDescriptor = chat?.Title ?? chatId.Value;
-        var message = $"You are about to move chat '{chatDescriptor}' to place '{place.Title}'. Do you want to proceed?";
+        var message = $"You are about to copy chat '{chatDescriptor}' to place '{place.Title}'. Do you want to proceed?";
         await Hub.ModalUI.Show(new ConfirmModal.Model(false, message, () => _ = MoveInternal()));
 
         async Task MoveInternal() {
-            var command = new Chat_MoveChatToPlace(session, chatId, placeId);
+            var command = new Chat_CopyChat(session, chatId, placeId, Guid.NewGuid().ToString());
             var (success, error) = await Hub.UICommander().Run(command, default);
             if (error != null)
                 return;
             if (success)
-                Hub.ToastUI.Show($"Chat '{chatDescriptor}' was successfully moved to place '{place.Title}'.", ToastDismissDelay.Short);
+                Hub.ToastUI.Show($"Chat '{chatDescriptor}' was successfully copied to place '{place.Title}'.", ToastDismissDelay.Short);
             else
-                Hub.ToastUI.Show($"Nothing has been done on moving chat '{chatDescriptor}' to place '{place.Title}'.", ToastDismissDelay.Short);
+                Hub.ToastUI.Show($"Nothing has been done on coping chat '{chatDescriptor}' to place '{place.Title}'.", ToastDismissDelay.Short);
         }
     }
 }

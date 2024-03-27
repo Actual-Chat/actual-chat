@@ -80,7 +80,10 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
 
         var now = CpuNow;
         return ActiveChatsUI.UpdateActiveChats(activeChats => {
-            if (activeChats.TryGetValue(chatId, out var chat) && chat.IsListening != mustListen) {
+            if (activeChats.TryGetValue(chatId, out var chat)) {
+                if (chat.IsListening == mustListen)
+                    return activeChats;
+
                 chat = chat with {
                     IsListening = mustListen,
                     Recency = mustListen ? now : chat.Recency,

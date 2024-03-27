@@ -11,12 +11,13 @@
 /*Author modal header*/
 .author-modal .c-header {
     @apply relative;
-    @apply min-h-40 h-40 w-full;
+    @apply flex-y;
+    @apply w-full;
     @apply mb-2;
 }
 .author-modal .c-header > .c-top {
     @apply relative;
-    @apply h-1/2 w-full;
+    @apply h-20 w-full;
     @apply rounded-b-xl;
     @apply overflow-hidden;
 }
@@ -24,10 +25,9 @@
     @apply h-full;
 }
 .author-modal .c-header > .c-bottom {
-    @apply absolute bottom-0 z-10;
     @apply flex-y items-start justify-end;
-    @apply h-1/2 w-full;
-    @apply px-4;
+    @apply w-full;
+    @apply px-4 pt-10;
     @apply bg-modal;
 }
 .author-modal .c-header > .c-bottom  > .c-title {
@@ -36,10 +36,11 @@
     @apply truncate;
 }
 .author-modal .c-header > .c-bottom > .c-public {
+    @apply max-h-16;
     @apply text-caption-6 text-03;
 }
 .author-modal .c-header > .c-center {
-    @apply absolute top-13 z-20;
+    @apply absolute top-12 z-20;
     @apply flex-x;
     @apply h-16 w-full;
     @apply px-4;

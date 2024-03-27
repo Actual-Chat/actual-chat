@@ -13,6 +13,7 @@
                     @key="@failureGroup"
                     Title="Action failed!"
                     Count="@failureGroup.Count"
+                    AutoDismissDelay="5"
                     Dismissed="@(() => DismissFailureGroup(failureGroup))">
                     @failureGroup.Title
                 </ErrorToast>

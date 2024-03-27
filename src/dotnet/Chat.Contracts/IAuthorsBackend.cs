@@ -17,6 +17,8 @@ public interface IAuthorsBackend : IComputeService
     Task<AuthorFull> OnUpsert(AuthorsBackend_Upsert command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemove(AuthorsBackend_Remove command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<bool> OnCopyChat(AuthorsBackend_CopyChat command, CancellationToken cancellationToken);
 }
 
 // Commands
@@ -39,6 +41,15 @@ public sealed partial record AuthorsBackend_Remove(
     [property: DataMember, MemoryPackOrder(1)] AuthorId ByAuthorId,
     [property: DataMember, MemoryPackOrder(2)] UserId ByUserId
 ) : ICommand<AuthorFull>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record AuthorsBackend_CopyChat(
+    [property: DataMember] [property: MemoryPackOrder(0)] ChatId OldChatId,
+    [property: DataMember] [property: MemoryPackOrder(1)] ChatId NewChatId,
+    [property: DataMember] [property: MemoryPackOrder(2)] string CorrelationId,
+    [property: DataMember] [property: MemoryPackOrder(3)] (RoleId, RoleId)[] RolesMap
+) : ICommand<bool>, IBackendCommand;
 
 // ReSharper disable once InconsistentNaming
 public enum AuthorsBackend_GetAuthorOption
