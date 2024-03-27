@@ -75,7 +75,7 @@ internal class ChatIndexInitializerShard(
                 await clock.Delay(UpdateCursorInterval, cancellationToken).ConfigureAwait(false);
                 var eventCount = Volatile.Read(ref _eventCount);
                 if (eventCount == lastEventCount) {
-                    // There is no point in advancig cursor as no job reported its completion.
+                    // There is no point in advancing cursor as no job reported its completion.
                     continue;
                 }
                 lastEventCount = eventCount;

@@ -15,7 +15,7 @@ internal class ChatIndexInitializer(
     ILogger<ChatIndexInitializer> log
 ) : ShardWorker(services, shardScheme, nameof(ChatIndexInitializer)), IChatIndexInitializer
 {
-    private record DummyEvent() : IHasShardKey<string>
+    private record DummyEvent : IHasShardKey<string>
     {
         public string ShardKey => ChatIndexInitializerShardKey.Value;
     }
