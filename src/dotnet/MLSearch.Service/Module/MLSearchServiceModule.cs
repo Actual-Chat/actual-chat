@@ -16,6 +16,7 @@ using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
+using Microsoft.Extensions.Hosting;
 using OpenSearch.Client;
 using OpenSearch.Net;
 
@@ -96,12 +97,24 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddKeyedSingleton<IDataIndexer<ChatId>, ChatHistoryExtractor>(IndexServiceGroup);
         services.AddSingleton<IChatIndexerWorker>(static services
             => services.CreateInstanceWith<ChatIndexerWorker>(
+                15, // max iteration count before rescheduling
                 services.GetRequiredKeyedService<IDataIndexer<ChatId>>(IndexServiceGroup)
             )
         );
         services.AddWorkerPool<IChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>(
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
+
+        // -- Register chat index initializer --
+        fusion.AddService<IChatIndexInitializerTrigger, ChatIndexInitializerTrigger>();
+        services.AddSingleton<ICursorStates<ChatIndexInitializerShard.Cursor>>(static services
+            => services.CreateInstanceWith<CursorStates<ChatIndexInitializerShard.Cursor>>(IndexNames.ChatCursor));
+        services.AddSingleton<IChatIndexInitializerShard, ChatIndexInitializerShard>();
+        services.AddSingleton(static services
+            => services.CreateInstanceWith<ChatIndexInitializer>(
+                ShardScheme.MLSearchBackend))
+            .AddAlias<IChatIndexInitializer, ChatIndexInitializer>()
+            .AddAlias<IHostedService, ChatIndexInitializer>();
 
         // -- Register ML bot --
         const string ConversationBotServiceGroup = "ML Chat Bot";

@@ -127,6 +127,7 @@ internal class ClusterSetup(
         var settings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
         var searchIndexId = settings.IntoFullIndexName(IndexNames.ChatSlice);
         var ingestCursorIndexId = settings.IntoFullIndexName(IndexNames.ChatSliceCursor);
+        var chatsCursorIndexId = settings.IntoFullIndexName(IndexNames.ChatCursor);
 
         var ingestPipelineId = settings.IntoFullIngestPipelineName(IndexNames.ChatSlice);
         var modelId = settings.ModelId;
@@ -162,6 +163,8 @@ internal class ClusterSetup(
         // Cursor fields
         var lastEntryVersionField = namingPolicy.ConvertName(nameof(ChatHistoryExtractor.Cursor.LastEntryVersion));
         var lastEntryLocalIdField = namingPolicy.ConvertName(nameof(ChatHistoryExtractor.Cursor.LastEntryLocalId));
+        // Chats cursor fields
+        var lastVersionField = namingPolicy.ConvertName(nameof(ChatIndexInitializerShard.Cursor.LastVersion));
 
         var isIngestPipelineExistsResult = await openSearch
             .Ingest
@@ -233,8 +236,37 @@ internal class ClusterSetup(
             ).ConfigureAwait(false);
             if (!ingestCursorIndexResult.Success) {
                 throw new InvalidOperationException(
-                    "Failed to update search index",
+                    "Failed to update ingest cursor index.",
                     ingestCursorIndexResult.OriginalException
+                );
+            }
+        }
+
+        var isChatsCursorIndexExistsResult = await openSearch
+            .Indices
+            .ExistsAsync(chatsCursorIndexId, ct: cancellationToken)
+            .ConfigureAwait(false);
+        isChatsCursorIndexExistsResult.AssertSuccess(allowNotFound:true);
+        if (!isChatsCursorIndexExistsResult.Exists) {
+            var chatsCursorIndexResult = await openSearch.RunAsync(
+                $$"""
+                PUT /{{chatsCursorIndexId}}
+                {
+                    "mappings": {
+                        "properties": {
+                            "{{lastVersionField}}": {
+                                "type": "text"
+                            }
+                        }
+                    }
+                }
+                """,
+                cancellationToken
+            ).ConfigureAwait(false);
+            if (!chatsCursorIndexResult.Success) {
+                throw new InvalidOperationException(
+                    "Failed to update chats cursor index",
+                    chatsCursorIndexResult.OriginalException
                 );
             }
         }
