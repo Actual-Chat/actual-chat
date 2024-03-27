@@ -98,6 +98,9 @@ public class Places(IServiceProvider services) : IPlaces
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, placeId, expectedVersion, placeChange) = command;
+        if (placeChange.Remove)
+            throw StandardError.Constraint("Use Places_Delete command instead to delete the place.");
+
         var chatChange = new Change<ChatDiff> {
             Create = placeChange.Create.HasValue ? Option<ChatDiff>.Some(ToChatDiff(placeChange.Create.Value)) : default,
             Update = placeChange.Update.HasValue ? Option<ChatDiff>.Some(ToChatDiff(placeChange.Update.Value)) : default,
@@ -181,6 +184,8 @@ public class Places(IServiceProvider services) : IPlaces
         var contacts = await Contacts.ListIds(session, placeId, cancellationToken).ConfigureAwait(false);
         foreach (var contact in contacts) {
             var chatId = contact.ChatId;
+            if (chatId.IsPeerChat(out _))
+                continue; // Ignore peer chats
             var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
             if (chat != null && OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag)) {
                 var resetChatTagCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> {
