@@ -20,6 +20,10 @@ internal class ChatIndexInitializerShard(
     internal record Cursor(long LastVersion);
     private const string CursorKey = $"{nameof(ChatIndexInitializer)}.{nameof(Cursor)}";
     private const int BatchSize = 1000;
+    private static readonly TimeSpan UpdateCursorInterval = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan NoChatsIdleInterval = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan ExecuteJobTimeout = TimeSpan.FromMinutes(3);
     private readonly Channel<MLSearch_TriggerChatIndexingCompletion> _events =
         Channel.CreateBounded<MLSearch_TriggerChatIndexingCompletion>(new BoundedChannelOptions(BatchSize) {
             FullMode = BoundedChannelFullMode.Wait,
@@ -68,7 +72,7 @@ internal class ChatIndexInitializerShard(
         var lastEventCount = Volatile.Read(ref _eventCount);
         while (!cancellationToken.IsCancellationRequested) {
             try {
-                await clock.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
+                await clock.Delay(UpdateCursorInterval, cancellationToken).ConfigureAwait(false);
                 var eventCount = Volatile.Read(ref _eventCount);
                 if (eventCount == lastEventCount) {
                     // There is no point in advancig cursor as no job reported its completion.
@@ -76,7 +80,7 @@ internal class ChatIndexInitializerShard(
                 }
                 lastEventCount = eventCount;
                 var now = clock.Now.EpochOffset.Ticks;
-                var pastMoment = now - TimeSpan.FromMinutes(3).Ticks;
+                var pastMoment = now - ExecuteJobTimeout.Ticks;
                 var stallJobs = new List<ChatId>();
                 // This is max chat version where indexing is completed.
                 // In the case our schedule is empty we may want to advance cursor till there.
@@ -123,7 +127,7 @@ internal class ChatIndexInitializerShard(
                 }
                 catch(Exception e) when (e is not OperationCanceledException) {
                     log.LogError(e, "Failed to schedule an indexing job for chat #{ChatId}.", chatId);
-                    await clock.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
+                    await clock.Delay(RetryInterval, cancellationToken).ConfigureAwait(false);
                 }
             }
         }
@@ -143,11 +147,11 @@ internal class ChatIndexInitializerShard(
                 log.LogError(e,
                     "Failed to load a batch of chats of length {Len} in the version range from {MinVersion} to infinity.",
                     BatchSize, minVersion);
-                await clock.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
+                await clock.Delay(RetryInterval, cancellationToken).ConfigureAwait(false);
                 continue;
             }
             if (batch.Count==0) {
-                await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken).ConfigureAwait(false);
+                await Task.Delay(NoChatsIdleInterval, cancellationToken).ConfigureAwait(false);
             }
             else {
                 foreach (var chat in batch) {
