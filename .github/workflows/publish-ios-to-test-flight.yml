@@ -54,7 +54,7 @@ jobs:
         - name: Install App Store api key
           run: |-
             mkdir -p ~/.appstoreconnect/private_keys/
-            echo -n "${{ env.API_KEY_BASE64 }}" | base64 --decode --o ~/.appstoreconnect/private_keys/AuthKey_${{ env.API_KEY_ID }}.p8
+            echo -n "${{ env.API_KEY_BASE64 }}" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${{ env.API_KEY_ID }}.p8
 
         - name: Validate App
           run: |-
