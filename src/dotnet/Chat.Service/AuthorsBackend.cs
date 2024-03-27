@@ -371,15 +371,25 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     // CommandHandler
     public virtual async Task<bool> OnCopyChat(AuthorsBackend_CopyChat command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return default;
-
         var (chatId, newChatId, rolesMap, correlationId) = command;
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating()) {
+            if (context.Operation().Items[typeof(List<UserId>)] is List<string> invAuthorUserSids)
+                foreach (var invAuthorUserSid in invAuthorUserSids)
+                    _ = GetByUserIdInternal(newChatId, new UserId(invAuthorUserSid), default);
+            if (context.Operation().Items[typeof(List<AuthorId>)] is List<string> invAuthorSids)
+                foreach (var invAuthorSid in invAuthorSids)
+                    _ = GetInternal(newChatId, new AuthorId(invAuthorSid), default);
+            return default;
+        }
+
         var chatSid = chatId.Value;
 
         var placeRootChatId = newChatId.PlaceId.ToRootChatId();
         var createdAuthors = 0;
         var hasChanges = false;
+        var newAuthorIds = new List<AuthorId>();
+        var newAuthorUserIds = new List<UserId>();
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -464,10 +474,15 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
                 createdAuthors++;
                 hasChanges = true;
+
+                newAuthorIds.Add(newAuthorId);
+                newAuthorUserIds.Add(newAuthor.UserId);
             }
         }
 
         Log.LogInformation("OnCopyChat({CorrelationId}) created {Count} authors", correlationId, createdAuthors);
+        context.Operation().Items[typeof(List<AuthorId>)] = newAuthorIds.ConvertAll(c => c.Value);
+        context.Operation().Items[typeof(List<UserId>)] = newAuthorUserIds.ConvertAll(c => c.Value);
         return hasChanges;
     }
 
