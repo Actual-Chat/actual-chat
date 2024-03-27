@@ -10,10 +10,11 @@
 </MenuEntry>
 
 @code {
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private ChatUI ChatUI => Hub.ChatUI;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
-    private Task OnClick()
-        => ModalUI.Show(new LeaveChatConfirmationModal.Model(ChatState.Chat));
+    private void OnClick()
+        => ChatUI.LeaveChat(ChatState.Chat);
 }

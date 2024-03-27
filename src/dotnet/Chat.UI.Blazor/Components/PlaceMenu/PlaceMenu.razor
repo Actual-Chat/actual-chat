@@ -38,10 +38,9 @@
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     private Session Session => Hub.Session();
-    private UICommander UICommander => Hub.UICommander();
     private IPlaces Places => Hub.Places;
     private ModalUI ModalUI => Hub.ModalUI;
-    private NavbarUI NavbarUI => Hub.NavbarUI;
+    private ChatUI ChatUI => Hub.ChatUI;
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is not [ var placeSid ])
@@ -69,11 +68,6 @@
     private void OnPlaceSettingsClick()
         => _ = ModalUI.Show(new PlaceSettingsModal.Model(_placeId));
 
-    private async Task OnPlaceLeaveClick() {
-        var (_, error) = await UICommander.Run(new Places_Leave(Session, _placeId));
-        if (error != null)
-            return;
-
-        NavbarUI.SelectGroup(NavbarGroupIds.Chats, true);
-    }
+    private void OnPlaceLeaveClick()
+        => ChatUI.LeavePlace(_placeId);
 }

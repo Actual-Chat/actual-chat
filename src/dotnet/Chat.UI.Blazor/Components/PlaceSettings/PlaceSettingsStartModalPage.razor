@@ -152,6 +152,7 @@
     private IInvites Invites => Hub.Invites;
     private MomentClockSet Clocks => Hub.Clocks();
     private NavbarUI NavbarUI => Hub.NavbarUI;
+    private ChatUI ChatUI => Hub.ChatUI;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -248,14 +249,13 @@
         await UICommander.Run(command);
     }
 
-    private async Task OnPlaceDeleteClick() {
-        var (_, error) = await UICommander.Run(new Places_Delete(Session, PlaceId));
-        if (error != null)
-            return;
-
-        Context.Close();
-        NavbarUI.SelectGroup(NavbarGroupIds.Chats, true);
-    }
+    private void OnPlaceDeleteClick()
+        => ChatUI.DeletePlace(
+            PlaceId,
+            () => {
+                Context.Close();
+                return Task.CompletedTask;
+            });
 
     public sealed class FormModel {
         [Required, MinLength(1)]
