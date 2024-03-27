@@ -17,19 +17,19 @@
     <ButtonX Click="OnCloseClick"/>
     <SettingsPanel Title="Settings" CloseModalClick="OnCloseClick">
         @if (showMyAccount) {
-            <SettingsTab @key="1" Title="Your Account" Id="account" IconTitle="person">
+            <SettingsTab @key="1" Title="Your Account" Id="account" IconClass="icon-person">
                 <YourAccount/>
             </SettingsTab>
         }
 
         @if (showNotifications) {
-            <SettingsTab @key="3" Title="Notifications" Id="notifications" IconTitle="bell">
+            <SettingsTab @key="3" Title="Notifications" Id="notifications" IconClass="icon-bell">
                 <ChildContent>
                 </ChildContent>
             </SettingsTab>
         }
 
-        <SettingsTab @key="4" Title="Transcription" Id="transcription" IconTitle="transcription">
+        <SettingsTab @key="4" Title="Transcription" Id="transcription" IconClass="icon-transcription">
             <TitleContent>
                 <LanguageShortcut/>
             </TitleContent>
@@ -38,11 +38,11 @@
             </ChildContent>
         </SettingsTab>
 
-        <SettingsTab @key="5" Title="User Interface" Id="userInterface" IconTitle="sort-by-alphabet">
+        <SettingsTab @key="5" Title="User Interface" Id="userInterface" IconClass="icon-sort-by-alphabet">
             <UserInterface/>
         </SettingsTab>
 
-        <SettingsTab @key="6" Title="Application" Id="app" IconTitle="settings">
+        <SettingsTab @key="6" Title="Application" Id="app" IconClass="icon-settings">
             <ChildContent>
                 @if (NativeAppSettings != null) {
                     <AppSettingsView NativeAppSettings="@NativeAppSettings"></AppSettingsView>
@@ -62,11 +62,11 @@
 
 
         @if (showLogout) {
-            <SettingsTab @key="100" Title="Log out" Id="signOut" IconTitle="log-out" HasSeparatorBefore="true">
+            <SettingsTab @key="100" Title="Log out" Id="signOut" IconClass="icon-log-out" HasSeparatorBefore="true">
             </SettingsTab>
         }
         @if (showQuit) {
-            <SettingsTab @key="101" Title="Quit Actual Chat" Id="quit" IconTitle="close" HasSeparatorBefore="false">
+            <SettingsTab @key="101" Title="Quit Actual Chat" Id="quit" IconClass="icon-close" HasSeparatorBefore="false">
             </SettingsTab>
         }
 

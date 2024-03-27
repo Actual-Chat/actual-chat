@@ -32,7 +32,7 @@
 
     RenderFragment RenderTabTitle(SettingsTab tab) =>
         @<div class="settings-tab-item">
-            <i class="icon-@tab.IconTitle text-2xl icon-title"></i>
+            <i class="@tab.IconClass text-2xl icon-title"></i>
             @if (tab.TitleComment.IsNullOrEmpty()) {
                 <span>@tab.Title</span>
             } else {
