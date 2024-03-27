@@ -36,7 +36,7 @@ jobs:
       github.ref == 'refs/heads/master' ||
       startsWith(github.ref, 'refs/heads/release/')
     runs-on: macos-13
-    environment: prod
+#    environment: prod
     env:
       APP_ID: chat.actual.app.dev
       PACKAGE_FILE_NAME: ${{needs.build-ios-pkg.outputs.PACKAGE_FILE_NAME}}
