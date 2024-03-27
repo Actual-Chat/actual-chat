@@ -117,8 +117,6 @@ public partial class ChatsBackend
                         hasChanges = true;
                         startEntryId = result.LastEntryId.LocalId + 1;
                         lastEntryId = result.LastEntryId.LocalId;
-                        if (startEntryId > textEntryRange.Start + 10000)
-                            proceed = false; // Temporarily limit number of chat entries to copy.
                     }
                 }
                 catch (Exception e) {
