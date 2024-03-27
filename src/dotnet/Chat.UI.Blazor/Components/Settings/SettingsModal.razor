@@ -9,8 +9,6 @@
     var isGuestOrNone = account.IsGuestOrNone;
     var showMyAccount = !isGuestOrNone;
     var showNotifications = !isGuestOrNone && _enableIncompleteUI;
-    var showLanguages = true;
-    var showUserInterface = true;
     var showLogout = !isGuestOrNone;
     var showQuit = HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows;
 }
@@ -31,22 +29,18 @@
             </SettingsTab>
         }
 
-        @if (showLanguages) {
-            <SettingsTab @key="4" Title="Transcription" Id="transcription" IconTitle="transcription">
-                <TitleContent>
-                    <LanguageShortcut/>
-                </TitleContent>
-                <ChildContent>
-                    <TranscriptionSettings/>
-                </ChildContent>
-            </SettingsTab>
-        }
+        <SettingsTab @key="4" Title="Transcription" Id="transcription" IconTitle="transcription">
+            <TitleContent>
+                <LanguageShortcut/>
+            </TitleContent>
+            <ChildContent>
+                <TranscriptionSettings/>
+            </ChildContent>
+        </SettingsTab>
 
-        @if (showUserInterface) {
-            <SettingsTab @key="5" Title="User Interface" Id="userInterface" IconTitle="sort-by-alphabet">
-                <UserInterface/>
-            </SettingsTab>
-        }
+        <SettingsTab @key="5" Title="User Interface" Id="userInterface" IconTitle="sort-by-alphabet">
+            <UserInterface/>
+        </SettingsTab>
 
         <SettingsTab @key="6" Title="Application" Id="app" IconTitle="settings">
             <ChildContent>
