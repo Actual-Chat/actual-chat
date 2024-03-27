@@ -92,8 +92,8 @@ public static class CommandLineHandler
     private static (string Host, int Port) GetDefaultHostAndPort()
     {
         // Building a similar host to get our own http:// endpoint
-        var similarHost = new AppHost().Build(configurationOnly: true);
-        var endpoint = ServerEndpoints.List(similarHost.Services, "http://").FirstOrDefault();
+        var appHost = new AppHost().Build(configurationOnly: true);
+        var endpoint = ServerEndpoints.List(appHost.Services, "http://").FirstOrDefault();
         return ServerEndpoints.Parse(endpoint);
     }
 

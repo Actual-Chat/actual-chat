@@ -36,14 +36,14 @@ public sealed class AppHostBuilder
     public AppHost AppHost { get; }
     public WebApplicationBuilder Builder { get; }
     public IWebHostEnvironment Env => Builder.Environment;
-    public ConfigurationManager Cfg => Builder.Configuration;
+    public IConfigurationManager Cfg => Builder.Configuration;
     public IServiceCollection Services => Builder.Services;
     public IServiceProvider ModuleServices { get; }
     public ModuleHost ModuleHost { get; }
     public HostInfo HostInfo => _hostInfo ??= ModuleServices.GetRequiredService<HostInfo>();
     public WebApplication App { get; }
 
-    public AppHostBuilder(AppHost appHost)
+    public AppHostBuilder(AppHost appHost, bool configurationOnly = false)
     {
         AppHost = appHost;
         Builder = WebApplication.CreateBuilder();
@@ -52,8 +52,8 @@ public sealed class AppHostBuilder
         // 1. Configuration
         /////
 
+        // Set default server URL
         Cfg.Sources.Insert(0,
-            // Looks like there is no better way to set _default_ URL
             new MemoryConfigurationSource {
                 InitialData = new Dictionary<string, string?>(StringComparer.Ordinal) {
                     { WebHostDefaults.ServerUrlsKey, AppHost.ServerUrls },
@@ -79,6 +79,9 @@ public sealed class AppHostBuilder
         var isTested = hostSettings.IsTested ?? false;
         Services.AddLogging(logging => {
             logging.ClearProviders();
+            if (configurationOnly)
+                return;
+
             logging.ConfigureServerFilters(Env.EnvironmentName);
             logging.AddConsole();
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
@@ -125,9 +128,11 @@ public sealed class AppHostBuilder
         // Notice that we create "partial" service provider here, which contains
         // just the services registered above - i.e. logging + HostInfo
         ModuleServices = new DefaultServiceProviderFactory().CreateServiceProvider(Services);
-        ModuleHost = new ModuleHostBuilder()
-            // From less dependent to more dependent!
-            .WithModules(
+        if (configurationOnly)
+            ModuleHost = new ModuleHostBuilder().Build(Services);
+        else {
+            ModuleHost = new ModuleHostBuilder().WithModules(
+                // From less dependent to more dependent!
                 // Core modules
                 new CoreModule(ModuleServices),
                 new CoreServerModule(ModuleServices),
@@ -156,9 +161,10 @@ public sealed class AppHostBuilder
                 // This module should be the last one
                 new AppServerModule(ModuleServices)
             ).Build(Services);
-        AppHost.ConfigureServices?.Invoke(this, Services);
-        if (HostInfo.IsDevelopmentInstance)
-            ValidateContainerRegistrations();
+            AppHost.ConfigureServices?.Invoke(this, Services);
+            if (HostInfo.IsDevelopmentInstance)
+                ValidateContainerRegistrations();
+        }
 
         /////
         // 3. Configure & build WebApplication (IHost)
@@ -173,6 +179,8 @@ public sealed class AppHostBuilder
             })
             .UseKestrel();
         App = Builder.Build();
+        if (configurationOnly)
+            return;
 
         /////
         // 4. Configure app

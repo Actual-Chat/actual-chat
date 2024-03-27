@@ -10,7 +10,7 @@ public class AppHost : IDisposable
     private volatile int _isDisposed;
 
     public string ServerUrls { get; set; } = DefaultServerUrls;
-    public Action<AppHostBuilder, ConfigurationManager>? ConfigureHost { get; set; }
+    public Action<AppHostBuilder, IConfigurationManager>? ConfigureHost { get; set; }
     public Action<AppHostBuilder, IServiceCollection>? ConfigureServices { get; set; }
     public Action<AppHostBuilder, WebApplication>? ConfigureApp { get; set; }
 
@@ -34,7 +34,7 @@ public class AppHost : IDisposable
 
     public virtual AppHost Build(bool configurationOnly = false)
     {
-        App = new AppHostBuilder(this).App;
+        App = new AppHostBuilder(this, configurationOnly).App;
         return this;
     }
 
