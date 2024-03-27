@@ -84,7 +84,7 @@ public interface IChats : IComputeService
     Task<Unit> OnForwardTextEntries(Chats_ForwardTextEntries command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<bool> OnCopyChat(Chat_CopyChat command, CancellationToken cancellationToken);
+    Task<Chat_CopyChatResult> OnCopyChat(Chat_CopyChat command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -171,4 +171,11 @@ public sealed partial record Chat_CopyChat(
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2)] PlaceId PlaceId,
     [property: DataMember, MemoryPackOrder(3)] string CorrelationId
-) : ISessionCommand<bool>;
+) : ISessionCommand<Chat_CopyChatResult>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Chat_CopyChatResult(
+    [property: DataMember, MemoryPackOrder(0)] bool HasChanges,
+    [property: DataMember, MemoryPackOrder(1)] bool HasErrors
+);

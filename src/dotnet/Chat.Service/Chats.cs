@@ -631,13 +631,14 @@ public class Chats(IServiceProvider services) : IChats
     }
 
     // [CommandHandler]
-    public virtual async Task<bool> OnCopyChat(Chat_CopyChat command, CancellationToken cancellationToken)
+    public virtual async Task<Chat_CopyChatResult> OnCopyChat(Chat_CopyChat command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
-            return default; // It just spawns other commands, so nothing to do here
+            return default!; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, placeId, correlationId) = command;
         var hasChanges = false;
+        var hasErrors = false;
         Log.LogInformation("-> OnCopyChat({CorrelationId}): copy chat '{ChatId}' to place '{PlaceId}'",
             correlationId, chatId.Value, placeId);
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -658,8 +659,8 @@ public class Chats(IServiceProvider services) : IChats
 
             var backendCmd = new ChatBackend_CopyChat(chatId, placeId, correlationId);
             var result = await Commander.Call(backendCmd, true, cancellationToken).ConfigureAwait(false);
-            if (result.HasChanges)
-                hasChanges = true;
+            hasChanges |= result.HasChanges;
+            hasErrors |= result.HasErrors;
             maxEntryId = result.LastEntryId;
         }
 
@@ -680,6 +681,6 @@ public class Chats(IServiceProvider services) : IChats
         }
 
         Log.LogInformation("<- OnCopyChat({CorrelationId})", correlationId);
-        return hasChanges;
+        return new Chat_CopyChatResult(hasChanges, hasErrors);
     }
 }
