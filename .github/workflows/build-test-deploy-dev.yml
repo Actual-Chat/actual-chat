@@ -508,7 +508,6 @@ jobs:
           mirrorDirectoryStructure: true
           overwrite: true
 
-
   deploy-android-to-play-store:
     name: Deploy app package for ${{ github.ref_name }} to google play store
     if: |
