@@ -20,25 +20,45 @@ public interface IChatsUpgradeBackend : ICommandService, IBackendService
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_CreateDefaultChat(
-) : ICommand<Chat>, IBackendCommand;
+) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => Constants.Chat.DefaultChatId;
+}
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_CreateAnnouncementsChat(
-) : ICommand<Chat>, IBackendCommand;
+) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => Constants.Chat.AnnouncementsChatId;
+}
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_CreateFeedbackTemplateChat(
-) : ICommand<Chat>, IBackendCommand;
+) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => Constants.Chat.FeedbackTemplateChatId;
+}
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_FixCorruptedReadPositions(
-) : ICommand<Unit>, IBackendCommand;
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => default;
+}
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_UpgradeChat(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId
-) : ICommand<Unit>, IBackendCommand;
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => ChatId;
+}
