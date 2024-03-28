@@ -67,7 +67,7 @@ jobs:
           echo $b64 | base64 --decode | tee pf.mobileprovision >> /dev/null
           uuid=`grep UUID -A1 -a pf.mobileprovision | grep -io "[-A-F0-9]\{36\}"`
           mkdir -p ~/Library/MobileDevice/Provisioning Profiles/
-          mv pf.mobileprovision "~/Library/MobileDevice/Provisioning Profiles/$uuid.mobileprovision"
+          cp pf.mobileprovision "~/Library/MobileDevice/Provisioning Profiles/$uuid.mobileprovision"
 
       - name: Install dotnet 8.0 SDK
         uses: actions/setup-dotnet@v4
