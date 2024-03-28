@@ -1,0 +1,91 @@
+name: Deploy windows app to msft store - lab
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  create:
+  push:
+    branches:
+      - "**"
+      - master
+      - dev
+      - release/v*
+    paths-ignore:
+      - "**.md"
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+  issues: read
+  checks: write
+  statuses: write
+
+jobs:
+  deploy-to-microsoft-store:
+    name: Deploy app package for ${{ github.ref_name }} to microsoft store
+    # TODO: REMOVE feature branch
+    if: |
+      github.ref == 'refs/heads/master' ||
+      startsWith(github.ref, 'refs/heads/feat/1871-') ||
+      startsWith(github.ref, 'refs/heads/release/')
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: true
+          sparse-checkout: |
+            resouces/
+
+      - name: Install StoreBroker
+        run: Install-Module -Name StoreBroker -Force
+
+      - name: Deploy win pkg to Microsoft Store
+        env:
+          PACKAGE_FILE_NAME: "resources/App.Maui_1.11.304.0_x64.msix"
+        run: |-
+          $global:SBDisableTelemetry = $true
+          $user = "${{secrets.MSFT_CLIENT_ID}}"
+          $password = ConvertTo-SecureString "${{secrets.MSFT_CLIENT_SECRET}}" -AsPlainText -Force
+          $creds = New-Object System.Management.Automation.PSCredential($user, $password)
+          Set-StoreBrokerAuthentication -TenantId "${{secrets.MSFT_TENANT_ID}}" -Credential $creds
+          New-StoreBrokerConfigFile -Path .\submission.json -AppId ${{ secrets.MSFT_PRODUCT_ID }}
+          New-SubmissionPackage -ConfigPath .\submission.json -AppxPath "${{env.PACKAGE_FILE_NAME}}" -OutPath out -OutName package -DisableAutoPackageNameFormatting
+          $submission = New-ApplicationSubmission -AppId ${{ secrets.MSFT_PRODUCT_ID }} -Force
+          $json = (Get-Content out\package.json -Encoding UTF8) | ConvertFrom-Json
+          $submission.applicationPackages += $json.applicationPackages
+          Write-Output ":: Set-ApplicationSubmission"
+          Set-ApplicationSubmission -AppId ${{ secrets.MSFT_PRODUCT_ID }} -UpdatedSubmission $submission
+          Write-Output ":: Set-SubmissionPackage"
+          Set-SubmissionPackage -PackagePath out\package.zip -UploadUrl ($submission.fileUploadUrl)
+          Write-Output ":: Complete-ApplicationSubmission"
+          Complete-ApplicationSubmission -AppId ${{ secrets.MSFT_PRODUCT_ID }} -SubmissionId ($submission.id)
+
+#  deploy-to-microsoft-store-2:
+#    name: Deploy app package for ${{ github.ref_name }} to microsoft store
+#    runs-on: ubuntu-latest
+#    env:
+#      PACKAGE_FILE_NAME: "resources/"
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v4
+#        with:
+#          # Avoid shallow clone for Nerdbank.GitVersioning
+#          fetch-depth: 0
+#          lfs: true
+#
+#      - name: Publish to Store
+#        uses: ActualLab/windows-store-action@feat/input-debug
+#        with:
+#          tenant-id: ${{ secrets.MSFT_TENANT_ID }}
+#          client-id: ${{ secrets.MSFT_CLIENT_ID }}
+#          client-secret: ${{ secrets.MSFT_CLIENT_SECRET }}
+#          app-id: ${{ secrets.MSFT_PRODUCT_ID }}
+#          package-path: ${{ env.PACKAGE_FILE_NAME }}
+#          delete-packages: false
+#          skip-polling: false

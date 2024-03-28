@@ -1,0 +1,134 @@
+#name: Publish windows app - lab
+#concurrency:
+#  group: "${{ github.workflow }}-${{ github.ref }}"
+#  cancel-in-progress: true
+#
+#on:
+#  workflow_dispatch:
+#  create:
+#  push:
+#    branches:
+#      - "**"
+#      - master
+#      - dev
+#      - release/v*
+#    paths-ignore:
+#      - "**.md"
+#
+#permissions:
+#  contents: read
+#  id-token: write
+#  packages: write
+#  issues: read
+#  checks: write
+#  statuses: write
+#
+#jobs:
+#  build-win-pkg:
+#    name: Build win app package for ${{ github.ref_name }}
+#    # TODO: REMOVE feature branch
+#    if: |
+#      github.ref == 'refs/heads/master' ||
+#      github.ref == 'refs/heads/dev' ||
+#      startsWith(github.ref, 'refs/heads/feat/1871-') ||
+#      startsWith(github.ref, 'refs/heads/release/')
+#    runs-on: windows-latest
+#    env:
+#      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+#      NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
+#      ActualChat_AndroidSigningKeyPass: ${{secrets.ANDROIDSIGNINGKEYPASS}}
+#      ActualChat_AndroidSigningStorePass: ${{secrets.ANDROIDSIGNINGSTOREPASS}}
+#      IS_DEV_MAUI: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
+#    outputs:
+#      APP_ID: ${{env.APP_ID}}
+#      ARTIFACT_NAME: chat.actual.app.${{steps.build-app-pkg.outputs.AppVersion}}.msix
+#      PACKAGE_FILE_NAME: App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_x64.msix
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v4
+#        with:
+#          # Avoid shallow clone for Nerdbank.GitVersioning
+#          fetch-depth: 0
+#          lfs: true
+#
+#      - name: Install dotnet 8.0 SDK
+#        uses: actions/setup-dotnet@v4
+#        with:
+#          dotnet-version: '8.0'
+#          dotnet-quality: 'ga'
+#
+#      - name: Use cached dependencies
+#        uses: actions/cache@v3
+#        with:
+#          path: ${{ github.workspace }}/.nuget/packages
+#          key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
+#          restore-keys: |
+#            ${{ runner.os }}-nuget-
+#
+#      - name: Install tools
+#        run: |-
+#          dotnet tool install nbgv
+#
+#      - name: Restore nuget packages
+#        run: |-
+#          ./run-build.cmd restore
+#
+#      - name: Build app package
+#        id: build-app-pkg
+#        run: |-
+#          ./run-build.cmd publish-win --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}"
+#
+#      - run: |-
+#          ls artifacts\bin\App.Maui\release_net8.0-windows10.0.22000.0\AppPackages\
+#          echo v=${{steps.build-app-pkg.outputs.AppVersion}}
+#          ls artifacts\bin\App.Maui\release_net8.0-windows10.0.22000.0\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\
+#
+#      - name: Upload package to artifacts
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: chat.actual.app.${{steps.build-app-pkg.outputs.AppVersion}}.msix
+#          path: artifacts\bin\App.Maui\release_net8.0-windows10.0.22000.0\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_x64.msix
+#          if-no-files-found: error
+#          compression-level: 0
+#          retention-days: 2
+#
+#  deploy-to-microsoft-store:
+#    name: Deploy app package for ${{ github.ref_name }} to microsoft store
+#    # TODO: REMOVE feature branch
+#    if: |
+#      github.ref == 'refs/heads/master' ||
+#      startsWith(github.ref, 'refs/heads/feat/1871-') ||
+#      startsWith(github.ref, 'refs/heads/release/')
+#    runs-on: windows-latest
+#    needs:
+#      - build-win-pkg
+## TODO: uncomment
+##    environment: prod
+#    env:
+#      APP_ID: ${{needs.build-win-pkg.outputs.APP_ID}}
+#      ARTIFACT_NAME: ${{needs.build-win-pkg.outputs.ARTIFACT_NAME}}
+#      PACKAGE_FILE_NAME: ${{needs.build-win-pkg.outputs.PACKAGE_FILE_NAME}}
+#    steps:
+#      - name: Download package file from artifacts
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: ${{env.ARTIFACT_NAME}}
+#
+#      - name: Install StoreBroker
+#        run: Install-Module -Name StoreBroker -Force
+#
+#      - name: Deploy win pkg to Microsoft Store
+#        run: |-
+#          $global:SBDisableTelemetry = $true
+#          $user = "${{secrets.MSFT_CLIENT_ID}}"
+#          $password = ConvertTo-SecureString "${{secrets.MSFT_CLIENT_SECRET}}" -AsPlainText -Force
+#          $creds = New-Object System.Management.Automation.PSCredential($user, $password)
+#          Set-StoreBrokerAuthentication -TenantId "${{secrets.MSFT_TENANT_ID}}" -Credential $creds
+#          New-StoreBrokerConfigFile -Path .\submission.json -AppId ${{ secrets.MSFT_PRODUCT_ID }}
+#          New-SubmissionPackage -ConfigPath .\submission.json -AppxPath "${{env.PACKAGE_FILE_NAME}}" -OutPath out -OutName package -DisableAutoPackageNameFormatting
+#          $submission = New-ApplicationSubmission -AppId ${{ secrets.MSFT_PRODUCT_ID }} -Force
+#          $json = (Get-Content out\package.json -Encoding UTF8) | ConvertFrom-Json
+#          $submission.applicationPackages += $json.applicationPackages
+#          Set-ApplicationSubmission -AppId ${{ secrets.MSFT_PRODUCT_ID }} -UpdatedSubmission $submission
+#          Set-SubmissionPackage -PackagePath out\package.zip -UploadUrl ($submission.fileUploadUrl)
+#          Complete-ApplicationSubmission -AppId ${{ secrets.MSFT_PRODUCT_ID }} -SubmissionId ($submission.id)
