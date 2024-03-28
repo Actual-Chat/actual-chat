@@ -1,5 +1,4 @@
 using OpenSearch.Client;
-using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Engine.Indexing;
 
@@ -26,7 +25,7 @@ internal sealed class Sink<TSource, TDocument>(
     IIndexSettingsSource indexSettingsSource,
     IDocumentMapper<TSource, TDocument> mapper,
     ILogger<Sink<TSource, TDocument>> log
-) : ISink<TSource, TSource> where TDocument: class, IHasDocId
+) : ISink<TSource, TSource> where TDocument: class, IHasId<string>
 {
     private IndexSettings? _indexSettings;
     private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings(docIndexName);
