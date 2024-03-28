@@ -40,7 +40,7 @@ jobs:
           fetch-depth: 0
           lfs: true
           sparse-checkout: |
-            resouces/
+            resources/
 
       - name: Install StoreBroker
         run: Install-Module -Name StoreBroker -Force
