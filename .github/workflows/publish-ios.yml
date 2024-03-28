@@ -46,7 +46,7 @@ jobs:
       ActualChat_AndroidSigningStorePass: ${{secrets.ANDROIDSIGNINGSTOREPASS}}
       IS_DEV_MAUI: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
       APP_ID: chat.actual.${{ !startsWith(github.ref, 'refs/heads/release/') && 'dev.' || '' }}app
-      PACKAGE_FILE_NAME: ActualChat.ipa
+      PACKAGE_FILE_NAME: App-signed.ipa
     outputs:
       APP_ID: ${{env.APP_ID}}
       ARTIFACT_NAME: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.aab
@@ -122,7 +122,7 @@ jobs:
           rm -r Payload/ActualChat.app/Frameworks/*/_CodeSignature
           codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" Payload/ActualChat.app/Frameworks/*
           codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" --entitlements ${{github.workspace}}/src/dotnet/App.Maui/Platforms/iOS/Entitlements.plist Payload/ActualChat.app
-          zip -r App-signed.ipa Payload
+          zip -r "${{env.PACKAGE_FILE_NAME}}" Payload
           popd
 
       - name: Upload package to artifacts
@@ -151,6 +151,9 @@ jobs:
       APP_ID: ${{needs.build-ios-pkg.outputs.APP_ID}}
       ARTIFACT_NAME: ${{needs.build-ios-pkg.outputs.ARTIFACT_NAME}}
       PACKAGE_FILE_NAME: ${{needs.build-ios-pkg.outputs.PACKAGE_FILE_NAME}}
+      API_KEY_BASE64: ${{secrets.APPSTORE_API_KEY_BASE64}}
+      API_KEY_ID: ${{secrets.APPSTORE_API_KEY_ID}}
+      API_ISSUER_ID: ${{secrets.APPSTORE_API_ISSUER_ID}}
     steps:
       - name: Download package file from artifacts
         uses: actions/download-artifact@v4
@@ -158,3 +161,17 @@ jobs:
           name: ${{env.ARTIFACT_NAME}}
 
       - run: test -f ${{env.PACKAGE_FILE_NAME}} || exit /b 1
+
+      - name: Install App Store api key
+        run: |-
+          mkdir -p ~/.appstoreconnect/private_keys/
+          echo -n "${{ env.API_KEY_BASE64 }}" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${{ env.API_KEY_ID }}.p8
+          ls -ls ~/.appstoreconnect/private_keys/
+          mkdir -p ~/private_keys/
+          echo -n "${{ env.API_KEY_BASE64 }}" | base64 --decode -o ~/private_keys/AuthKey_${{ env.API_KEY_ID }}.p8
+          ls -ls ~/private_keys/
+
+      - name: Validate App
+        run: |-
+          xcrun altool --validate-app -f "${{env.PACKAGE_FILE_NAME}}" -t ios --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json
+        shell: bash
