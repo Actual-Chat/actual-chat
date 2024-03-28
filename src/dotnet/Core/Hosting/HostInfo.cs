@@ -5,9 +5,9 @@ namespace ActualChat.Hosting;
 
 public sealed record HostInfo
 {
-    private Mutable<BaseUrlKind>? _baseUrlKind;
-    private Mutable<bool>? _isProductionInstance;
-    private Mutable<bool>? _isDevelopmentInstance;
+    private LazySlim<BaseUrlKind>? _baseUrlKind;
+    private LazySlim<bool>? _isProductionInstance;
+    private LazySlim<bool>? _isDevelopmentInstance;
 
     public HostKind HostKind { get; init; }
     public AppKind AppKind { get; init; }
@@ -19,9 +19,9 @@ public sealed record HostInfo
     public string BaseUrl { get; init; } = "";
 
     // Computed & cached
-    public BaseUrlKind BaseUrlKind => (_baseUrlKind ??= Mutable.New(GetBaseUrlKind(BaseUrl))).Value;
-    public bool IsProductionInstance => (_isProductionInstance ??= Mutable.New(IsProductionEnv())).Value;
-    public bool IsDevelopmentInstance => (_isDevelopmentInstance ??= Mutable.New(IsDevelopmentEnv())).Value;
+    public BaseUrlKind BaseUrlKind => (_baseUrlKind ??= LazySlim.New(GetBaseUrlKind(BaseUrl))).Value;
+    public bool IsProductionInstance => (_isProductionInstance ??= LazySlim.New(IsProductionEnv())).Value;
+    public bool IsDevelopmentInstance => (_isDevelopmentInstance ??= LazySlim.New(IsDevelopmentEnv())).Value;
 
     public bool HasRole(HostRole role) => Roles.Contains(role);
 
