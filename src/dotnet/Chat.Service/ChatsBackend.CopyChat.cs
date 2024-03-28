@@ -18,11 +18,8 @@ public partial class ChatsBackend
 
         if (Computed.IsInvalidating()) {
             _ = GetPublicChatIdsFor(placeId, default);
-            var invLastEntryId = context.Operation().Items[typeof(ChatEntryId)] is string invLastEntrySid
-                ? new ChatEntryId(invLastEntrySid)
-                : ChatEntryId.None;
-            if (!invLastEntryId.IsNone)
-                InvalidateTiles(newChatId, ChatEntryKind.Text, invLastEntryId.LocalId, ChangeKind.Create);
+            if (context.Operation().Items[typeof(ChatEntryId)] is string invLastEntrySid)
+                InvalidateTiles(newChatId, ChatEntryKind.Text, new ChatEntryId(invLastEntrySid).LocalId, ChangeKind.Create);
             return default!;
         }
 
@@ -52,9 +49,9 @@ public partial class ChatsBackend
                 var lastNewTextEntry = await GetLastEntry(dbContext, newChatId, ChatEntryKind.Text, cancellationToken)
                     .ConfigureAwait(false);
                 var startEntryId = lastNewTextEntry != null ? lastNewTextEntry.LocalId + 1 : 1;
-                var endEntryId = lastTextEntry.LocalId;
+                var endEntryId = lastTextEntry.LocalId + 1;
                 if (endEntryId > startEntryId)
-                    textEntryRange = new Range<long>(startEntryId, endEntryId + 1);
+                    textEntryRange = new Range<long>(startEntryId, endEntryId);
             }
 
             Log.LogInformation("OnCopyChat({CorrelationId}: Text range is [{Start},{End})",
@@ -75,7 +72,7 @@ public partial class ChatsBackend
         }
         {
             var hasChanges2 = await Commander
-                .Call(new AuthorsBackend_CopyChat(chatId, newChatId, correlationId, rolesMap), true, cancellationToken)
+                .Call(new AuthorsBackend_CopyChat(chatId, newChatId, rolesMap, correlationId), true, cancellationToken)
                 .ConfigureAwait(false);
             hasChanges |= hasChanges2;
         }
@@ -96,8 +93,7 @@ public partial class ChatsBackend
 
         var proceed = true;
         var hasErrors = false;
-        var lastEntryId = 0L;
-        CopyChatEntriesResult? result = null;
+        var lastProcessedEntryId = ChatEntryId.None;
         if (!textEntryRange.IsEmpty) {
             var startEntryId = textEntryRange.Start;
             var copyContext = new CopyChatEntriesContext(chatId, newChatId, correlationId, migratedAuthors);
@@ -106,7 +102,7 @@ public partial class ChatsBackend
             while (proceed) {
                 var batchRange = new Range<long>(startEntryId, textEntryRange.End);
                 try {
-                    result = await CopyChatEntries(copyContext,
+                    var result = await CopyChatEntries(copyContext,
                             batchRange,
                             batchLimit,
                             cancellationToken)
@@ -116,9 +112,7 @@ public partial class ChatsBackend
                     else {
                         hasChanges = true;
                         startEntryId = result.LastEntryId.LocalId + 1;
-                        lastEntryId = result.LastEntryId.LocalId;
-                        if (startEntryId > textEntryRange.Start + 10000)
-                            proceed = false; // Temporarily limit number of chat entries to copy.
+                        lastProcessedEntryId = result.LastEntryId;
                     }
                 }
                 catch (Exception e) {
@@ -130,15 +124,15 @@ public partial class ChatsBackend
             }
         }
 
-        if (result != null && !result.LastEntryId.IsNone) {
+        if (!lastProcessedEntryId.IsNone) {
             var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             dbContext.Database.SetCommandTimeout(commandTimeout);
             await using var __ = dbContext.ConfigureAwait(false);
-            context.Operation().Items[typeof(ChatEntryId)] = result.LastEntryId.Value;
+            context.Operation().Items[typeof(ChatEntryId)] = lastProcessedEntryId.Value;
         }
 
         Log.LogInformation("<- OnCopyChat({CorrelationId})", correlationId);
-        return new ChatBackend_CopyChatResult(hasChanges, hasErrors, lastEntryId);
+        return new ChatBackend_CopyChatResult(hasChanges, hasErrors, !lastProcessedEntryId.IsNone ? 0L : lastProcessedEntryId.LocalId);
     }
 
     private async Task<Chat> CreateOrUpdateChat(string correlationId, ChatDbContext dbContext, ChatId newChatId, Chat chat, CancellationToken cancellationToken)
@@ -350,6 +344,9 @@ public partial class ChatsBackend
 
         var lastFetchedEntry = entries[^1];
 
+        Log.LogInformation("OnCopyChat({CorrelationId}) is about to process {Kind} chat entries with range [{From},{To})",
+            correlationId, entryKind, minLocalId, lastFetchedEntry.LocalId + 1);
+
         List<long> chatEntryWithMentionIds = new List<long>();
         if (entryKind == ChatEntryKind.Text)
             await InsertMentions(dbContext,
@@ -554,7 +551,7 @@ public partial class ChatsBackend
         var firstId = attachmentsIds[0];
         var lastId = attachmentsIds[^1];
         var attachmentIdPrefix = chatSid + ":0:";
-        List<string> ids = attachmentsIds.Select(c => attachmentIdPrefix + c).ToList();
+        List<string> ids = attachmentsIds.Select(entryId => attachmentIdPrefix + entryId + ":").ToList();
         var attachments = await dbContext.TextEntryAttachments
             .Where(c => c.Id.StartsWith(attachmentIdPrefix))
  #pragma warning disable CA1310

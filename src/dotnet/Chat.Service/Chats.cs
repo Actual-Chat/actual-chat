@@ -631,13 +631,14 @@ public class Chats(IServiceProvider services) : IChats
     }
 
     // [CommandHandler]
-    public virtual async Task<bool> OnCopyChat(Chat_CopyChat command, CancellationToken cancellationToken)
+    public virtual async Task<Chat_CopyChatResult> OnCopyChat(Chat_CopyChat command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
-            return default; // It just spawns other commands, so nothing to do here
+            return default!; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, placeId, correlationId) = command;
         var hasChanges = false;
+        var hasErrors = false;
         Log.LogInformation("-> OnCopyChat({CorrelationId}): copy chat '{ChatId}' to place '{PlaceId}'",
             correlationId, chatId.Value, placeId);
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -658,9 +659,26 @@ public class Chats(IServiceProvider services) : IChats
 
             var backendCmd = new ChatBackend_CopyChat(chatId, placeId, correlationId);
             var result = await Commander.Call(backendCmd, true, cancellationToken).ConfigureAwait(false);
-            if (result.HasChanges)
-                hasChanges = true;
+            hasChanges |= result.HasChanges;
+            hasErrors |= result.HasErrors;
             maxEntryId = result.LastEntryId;
+        }
+        {
+            // Ensure chat is listed in place chat list for the user who is performing chat copying.
+            var localChatId = chatId.IsPlaceChat ? chatId.PlaceChatId.LocalChatId : chatId.Id;
+            var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, localChatId));
+            var newChatId = (ChatId)placeChatId;
+            var author = await Authors.GetOwn(session, newChatId, cancellationToken).ConfigureAwait(false);
+            if (author != null) {
+                var userId = author.UserId;
+                var contactId = new ContactId(userId, newChatId, AssumeValid.Option);
+                var contact = await ContactsBackend.Get(userId, contactId, cancellationToken).ConfigureAwait(false);
+                if (!contact.IsStored()) {
+                    var change = new Change<Contact> { Create = new Contact(contactId) };
+                    var backendCmd4 = new ContactsBackend_Change(contactId, null, change);
+                    await Commander.Call(backendCmd4, true, cancellationToken).ConfigureAwait(false);
+                }
+            }
         }
 
         // var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
@@ -680,6 +698,6 @@ public class Chats(IServiceProvider services) : IChats
         }
 
         Log.LogInformation("<- OnCopyChat({CorrelationId})", correlationId);
-        return hasChanges;
+        return new Chat_CopyChatResult(hasChanges, hasErrors);
     }
 }
