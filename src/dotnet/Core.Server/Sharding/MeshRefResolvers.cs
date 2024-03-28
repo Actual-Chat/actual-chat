@@ -35,13 +35,6 @@ public static class MeshRefResolvers
             throw StandardError.Internal($"MeshRefResolver for type {typeof(T).GetName()} is already registered.");
     }
 
-    public static MeshRef ResolveUntyped(object? source, Requester requester)
-        => ReferenceEquals(source, null)
-            ? ForNull()
-            : GetUntyped(source.GetType(), requester).Invoke(source);
-
-    public static MeshRefResolver<object?> GetUntyped<T>(Requester requester)
-        => GetUntyped(typeof(T), requester);
     public static MeshRefResolver<object?> GetUntyped(Type type, Requester requester)
         => ResolvedUntyped.GetOrAdd(type,
             static (type1, requester1) => (MeshRefResolver<object?>?)GetUntypedInternalMethod

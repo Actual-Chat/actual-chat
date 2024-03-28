@@ -14,14 +14,14 @@ public class MeshRefResolversTest(ITestOutputHelper @out) : TestBase(@out)
 
         var r0 = MeshRefResolvers.Get<MeshRefResolversTest>(requester);
         r0.Invoke(this).Should().Be(MeshRef.Shard(GetHashCode()));
-        var r0u = MeshRefResolvers.GetUntyped<MeshRefResolversTest>(requester);
+        var r0u = MeshRefResolvers.GetUntyped(typeof(MeshRefResolversTest), requester);
         r0u.Invoke(this).Should().Be(MeshRef.Shard(GetHashCode()));
 
         var r1 = MeshRefResolvers.Get<int>(requester);
         r1.Invoke(0).Should().Be(MeshRef.Shard(0));
         r1.Invoke(10).Should().Be(MeshRef.Shard(10));
 
-        var r1u = MeshRefResolvers.GetUntyped<int>(requester);
+        var r1u = MeshRefResolvers.GetUntyped(typeof(int), requester);
         r1u.Invoke(0).Should().Be(MeshRef.Shard(0));
         r1u.Invoke(10).Should().Be(MeshRef.Shard(10));
 
@@ -30,7 +30,7 @@ public class MeshRefResolversTest(ITestOutputHelper @out) : TestBase(@out)
         r2.Invoke(10).Should().Be(MeshRef.Shard(10));
         r2.Invoke(null).Should().Be(MeshRef.Shard(0));
 
-        var r2u = MeshRefResolvers.GetUntyped<int?>(requester);
+        var r2u = MeshRefResolvers.GetUntyped(typeof(int?), requester);
         r2u.Invoke(0).Should().Be(MeshRef.Shard(0));
         r2u.Invoke(10).Should().Be(MeshRef.Shard(10));
         r2u.Invoke(null).Should().Be(MeshRef.Shard(0));

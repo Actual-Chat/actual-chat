@@ -79,11 +79,6 @@ public static class ShardKeyResolvers
             throw StandardError.Internal($"ShardKeyResolver for type {typeof(T).GetName()} is already registered.");
     }
 
-    public static int ResolveUntyped(object? source, Requester requester)
-        => ReferenceEquals(source, null)
-            ? ForNull()
-            : GetUntyped(source.GetType(), requester).Invoke(source);
-
     public static ShardKeyResolver<object?> GetUntyped(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type,
         Requester requester)
