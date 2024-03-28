@@ -39,21 +39,32 @@ public sealed partial record NotificationsBackend_Notify(
     public UserId ShardKey => Notification.UserId;
 }
 
-
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Upsert(
     [property: DataMember, MemoryPackOrder(0)] Notification Notification
-) : ICommand<Unit>, IBackendCommand;
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public UserId ShardKey => Notification.UserId;
+}
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_RemoveDevices(
     [property: DataMember, MemoryPackOrder(0)] ApiArray<Symbol> DeviceIds
-) : ICommand<Unit>, IBackendCommand;
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<Symbol> // Review
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public Symbol ShardKey => !DeviceIds.IsEmpty ? DeviceIds[0] : default;
+}
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_RemoveAccount(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
-) : ICommand<Unit>, IBackendCommand;
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public UserId ShardKey => UserId;
+}

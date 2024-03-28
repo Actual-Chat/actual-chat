@@ -20,4 +20,8 @@ public sealed partial record UserPresencesBackend_CheckIn(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId,
     [property: DataMember, MemoryPackOrder(1)] Moment At,
     [property: DataMember, MemoryPackOrder(2)] bool IsActive
-) : ICommand<Unit>, IBackendCommand;
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public UserId ShardKey => UserId;
+}

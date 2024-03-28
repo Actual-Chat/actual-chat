@@ -19,4 +19,8 @@ public interface IServerKvasBackend : IComputeService, IBackendService
 public partial record ServerKvasBackend_SetMany(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] string Prefix,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] params (string Key, byte[]? Value)[] Items
-) : ICommand<Unit>, IBackendCommand;
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<string>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public string ShardKey => Prefix;
+}

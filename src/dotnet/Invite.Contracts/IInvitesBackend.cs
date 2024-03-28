@@ -25,17 +25,29 @@ public interface IInvitesBackend : IComputeService, IBackendService
 public sealed partial record InvitesBackend_Revoke(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] string InviteId
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>, IHasShardKey<string>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public string ShardKey => InviteId;
+}
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record InvitesBackend_Use(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] string InviteId
-) : ISessionCommand<Invite>;
+) : ISessionCommand<Invite>, IHasShardKey<string>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public string ShardKey => InviteId;
+}
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record InvitesBackend_Generate(
     [property: DataMember, MemoryPackOrder(0)] Invite Invite
-) : ICommand<Invite>, IBackendCommand;
+) : ICommand<Invite>, IBackendCommand, IHasShardKey<Unit>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public Unit ShardKey => default;
+}

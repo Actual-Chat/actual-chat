@@ -3,6 +3,7 @@ using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
+using ActualChat.Streaming;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework.Operations;
@@ -23,20 +24,20 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             services.AddMvcCore().AddApplicationPart(GetType().Assembly);
 
         // Chats
-        rpcHost.AddApi<IChats, Chats>();
+        rpcHost.AddApiOrLocal<IChats, Chats>(); // Used by many
         rpcHost.AddBackend<IChatsBackend, ChatsBackend>();
         rpcHost.AddBackend<IChatsUpgradeBackend, ChatsUpgradeBackend>();
 
         // Places
-        rpcHost.AddApi<IPlaces, Places>();
+        rpcHost.AddApiOrLocal<IPlaces, Places>(); // Used by Chats
 
         // Authors
-        rpcHost.AddApi<IAuthors, Authors>();
+        rpcHost.AddApiOrLocal<IAuthors, Authors>(); // Used by Chats
         rpcHost.AddBackend<IAuthorsBackend, AuthorsBackend>();
         rpcHost.AddBackend<IAuthorsUpgradeBackend, AuthorsUpgradeBackend>();
 
         // Roles
-        rpcHost.AddApi<IRoles, Roles>();
+        rpcHost.AddApiOrLocal<IRoles, Roles>(); // Used by Authors -> Chats
         rpcHost.AddBackend<IRolesBackend, RolesBackend>();
 
         // Mentions

@@ -19,4 +19,8 @@ public interface IReactionsBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record ReactionsBackend_React(
     [property: DataMember, MemoryPackOrder(0)] Reaction Reaction
-) : ICommand<Unit>, IBackendCommand;
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<TextEntryId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public TextEntryId ShardKey => Reaction.EntryId;
+}

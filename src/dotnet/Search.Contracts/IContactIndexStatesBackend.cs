@@ -3,14 +3,6 @@ using MemoryPack;
 
 namespace ActualChat.Search;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-// ReSharper disable once InconsistentNaming
-public sealed partial record ContactIndexStatesBackend_Change(
-    [property: DataMember, MemoryPackOrder(0)] Symbol Id,
-    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2)] Change<ContactIndexState> Change
-) : ICommand<ContactIndexState>, IBackendCommand;
-
 public interface IContactIndexStatesBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -22,4 +14,16 @@ public interface IContactIndexStatesBackend : IComputeService, IBackendService
     Task<ContactIndexState> OnChange(
         ContactIndexStatesBackend_Change command,
         CancellationToken cancellationToken);
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ContactIndexStatesBackend_Change(
+    [property: DataMember, MemoryPackOrder(0)] Symbol Id,
+    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2)] Change<ContactIndexState> Change
+) : ICommand<ContactIndexState>, IBackendCommand, IHasShardKey<Symbol>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public Symbol ShardKey => Id;
 }

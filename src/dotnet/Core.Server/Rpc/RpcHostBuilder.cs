@@ -37,34 +37,41 @@ public readonly struct RpcHostBuilder
             AddCoreServices();
     }
 
-    // AddFrontend & AddBackend auto-detect IComputeService & IRpcService
+    // AddApi
 
     public RpcHostBuilder AddApi<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>(Symbol name = default)
         where TService : class, IRpcService
         where TImplementation : class, TService
-        => AddApi(typeof(TService), typeof(TImplementation), false, name);
+        => AddApiOrLocal(typeof(TService), typeof(TImplementation), false, name);
 
-    public RpcHostBuilder AddApi<
+    public RpcHostBuilder AddApi(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type serviceType,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type implementationType,
+        Symbol name = default)
+        => AddApiOrLocal(serviceType, implementationType, false, name);
+
+    // AddApiOrLocal
+
+    public RpcHostBuilder AddApiOrLocal<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>(
-        bool mustAddLocal,
         Symbol name = default)
         where TService : class, IRpcService
         where TImplementation : class, TService
-        => AddApi(typeof(TService), typeof(TImplementation), mustAddLocal, name);
+        => AddApiOrLocal(typeof(TService), typeof(TImplementation), true, name);
 
-    public RpcHostBuilder AddApi(
+    public RpcHostBuilder AddApiOrLocal(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type serviceType,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type implementationType,
         Symbol name = default)
-        => AddApi(serviceType, implementationType, false, name);
+        => AddApiOrLocal(serviceType, implementationType, true, name);
 
-    public RpcHostBuilder AddApi(
+    private RpcHostBuilder AddApiOrLocal(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type serviceType,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type implementationType,
-        bool mustAddLocal,
+        bool isLocalServiceRequired,
         Symbol name = default)
     {
         if (!typeof(IRpcService).IsAssignableFrom(serviceType))
@@ -74,12 +81,14 @@ public readonly struct RpcHostBuilder
         if (!serviceType.IsAssignableFrom(implementationType))
             throw ActualLab.Internal.Errors.MustBeAssignableTo(implementationType, serviceType, nameof(implementationType));
 
-        if (mustAddLocal || IsApiHost)
+        if (isLocalServiceRequired || IsApiHost)
             AddService(serviceType, implementationType);
         if (IsApiHost)
             Rpc.Service(serviceType).HasServer(serviceType).HasName(name);
         return this;
     }
+
+    // AddBackend
 
     public RpcHostBuilder AddBackend<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,

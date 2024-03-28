@@ -17,7 +17,7 @@ public partial class SharedResourcePool<TKey, TResource>(
     public bool IsDisposed => _isDisposed != 0;
 
     public ILogger Log {
-        get => _log ?? DefaultLogFor(GetType());
+        get => _log ??= DefaultLogFor(GetType());
         init => _log = value;
     }
 

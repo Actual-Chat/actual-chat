@@ -114,7 +114,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<ISystemProperties, SystemProperties>();
 
         // Secure tokens
-        rpcHost.AddApi<ISecureTokens, SecureTokens>(true);
+        rpcHost.AddApiOrLocal<ISecureTokens, SecureTokens>();
         services.AddSingleton<ISecureTokensBackend, SecureTokensBackend>();
 
         // IAuth
@@ -122,16 +122,16 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             rpc.AddServer<IAuth>(); // IAuth is registered below
 
         // Accounts
-        rpcHost.AddApi<IAccounts, Accounts>(true);
+        rpcHost.AddApiOrLocal<IAccounts, Accounts>(); // Used by Chats, etc.
         rpcHost.AddBackend<IAccountsBackend, AccountsBackend>();
         rpcHost.AddBackend<IUsersUpgradeBackend, UsersUpgradeBackend>();
 
         // UserPresences
-        rpcHost.AddApi<IUserPresences, UserPresences>(true);
+        rpcHost.AddApiOrLocal<IUserPresences, UserPresences>(); // Used by Authors -> Chats, etc.
         rpcHost.AddBackend<IUserPresencesBackend, UserPresencesBackend>();
 
         // Avatars
-        rpcHost.AddApi<IAvatars, Avatars>();
+        rpcHost.AddApiOrLocal<IAvatars, Avatars>(); // Used by Authors -> Chats, etc.
         rpcHost.AddBackend<IAvatarsBackend, AvatarsBackend>();
 
         // ChatPositions
@@ -139,7 +139,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<IChatPositionsBackend, ChatPositionsBackend>();
 
         // ServerKvas
-        rpcHost.AddApi<IServerKvas, ServerKvas>();
+        rpcHost.AddApiOrLocal<IServerKvas, ServerKvas>(); // Used by Authors, Avatars -> Chats, etc.
         rpcHost.AddBackend<IServerKvasBackend, ServerKvasBackend>();
 
         // PhoneAuth

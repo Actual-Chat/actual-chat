@@ -20,7 +20,7 @@ public sealed class ContactsServiceModule(IServiceProvider moduleServices)
         var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IContactsBackend>().IsClient();
 
         // Contacts
-        rpcHost.AddApi<IContacts, Contacts>();
+        rpcHost.AddApiOrLocal<IContacts, Contacts>(); // Used by many, incl. Chats.
         rpcHost.AddBackend<IContactsBackend, ContactsBackend>();
 
         // External contacts

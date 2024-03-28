@@ -11,10 +11,9 @@ public class Contacts(IServiceProvider services) : IContacts
 
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
+    private IPlaces Places => _places ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
     private IContactsBackend Backend { get; } = services.GetRequiredService<IContactsBackend>();
     private ICommander Commander { get; } = services.Commander();
-
-    private IPlaces Places => _places ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
 
     // [ComputeMethod]
     public virtual async Task<Contact?> Get(Session session, ContactId contactId, CancellationToken cancellationToken)

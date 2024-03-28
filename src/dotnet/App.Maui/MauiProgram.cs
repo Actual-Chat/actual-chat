@@ -33,7 +33,7 @@ public static partial class MauiProgram
 
     private static HostInfo HostInfo => Constants.HostInfo;
     private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiProgram)];
-    private static ILogger Log => _log ?? DefaultLogFor(typeof(MauiProgram));
+    private static ILogger Log => _log ??= DefaultLogFor(typeof(MauiProgram));
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiDiagnostics))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiProgram))]
@@ -93,7 +93,7 @@ public static partial class MauiProgram
 #endif
         }
         catch (Exception ex) {
-            Log.Fatal(ex, "Failed to build MAUI app");
+            Log.LogCritical(ex, "Failed to build MAUI app");
             throw;
         }
     }
@@ -306,7 +306,7 @@ public static partial class MauiProgram
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events);
 
     private static void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
-        => Log.Information("Unhandled exception, isTerminating={IsTerminating}. \n{Exception}",
+        => Log.LogInformation("Unhandled exception, isTerminating={IsTerminating}.\n{Exception}",
             e.IsTerminating,
             e.ExceptionObject);
 }

@@ -71,8 +71,8 @@
   <!-- Environment -->
   <PropertyGroup>
     <FixedEnvironment Condition="'$(FixedEnvironment)' == ''" />
-    <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
-    <AnalysisLevel>preview</AnalysisLevel>
+    <!-- Produces tons of misleading warnings if true! -->
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(FixedEnvironment)' == 'Production'">
     <DefineConstants>$(DefineConstants);IS_PRODUCTION_ENV</DefineConstants>

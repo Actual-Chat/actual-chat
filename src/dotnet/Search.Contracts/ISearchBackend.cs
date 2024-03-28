@@ -67,7 +67,7 @@ public sealed partial record SearchBackend_EntryBulkIndex(
 public sealed partial record SearchBackend_UserContactBulkIndex(
     [property: DataMember, MemoryPackOrder(0)] ApiArray<IndexedUserContact> Updated,
     [property: DataMember, MemoryPackOrder(1)] ApiArray<IndexedUserContact> Deleted
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // Review
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public Unit ShardKey => Unit.Default;
@@ -78,7 +78,7 @@ public sealed partial record SearchBackend_UserContactBulkIndex(
 public sealed partial record SearchBackend_ChatContactBulkIndex(
     [property: DataMember, MemoryPackOrder(0)] ApiArray<IndexedChatContact> Updated,
     [property: DataMember, MemoryPackOrder(1)] ApiArray<IndexedChatContact> Deleted
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // Review
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public Unit ShardKey => Unit.Default;
@@ -86,7 +86,8 @@ public sealed partial record SearchBackend_ChatContactBulkIndex(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record SearchBackend_StartUserContactIndexing : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit>
+public sealed partial record SearchBackend_StartUserContactIndexing
+    : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // NOTE(AY): Will execute on a single backend now!
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public Unit ShardKey => Unit.Default;
@@ -94,7 +95,12 @@ public sealed partial record SearchBackend_StartUserContactIndexing : ICommand<U
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record SearchBackend_StartChatContactIndexing : ICommand<Unit>, IBackendCommand;
+public sealed partial record SearchBackend_StartChatContactIndexing
+    : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // NOTE(AY): Will execute on a single backend now!
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public Unit ShardKey => Unit.Default;
+}
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor]
@@ -104,10 +110,10 @@ public sealed partial record SearchBackend_Refresh(
     [property: DataMember, MemoryPackOrder(1)] bool RefreshUsers,
     [property: DataMember, MemoryPackOrder(2)] bool RefreshPublicChats,
     [property: DataMember, MemoryPackOrder(3)] bool RefreshPrivateChats
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId> // Review
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public Unit ShardKey => Unit.Default;
+    public ChatId ShardKey => !ChatIds.IsEmpty ? ChatIds[0] : default;
 
     public SearchBackend_Refresh(params ChatId[] chatIds) : this(chatIds.ToApiArray(), false, false, false) { }
 
