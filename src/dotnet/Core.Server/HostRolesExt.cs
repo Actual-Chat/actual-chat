@@ -5,6 +5,8 @@ namespace ActualChat;
 
 public static class HostRolesExt
 {
+    public static bool MustReplaceServerWithHybrid { get; set; }
+
     private static readonly ConcurrentDictionary<object, BackendServiceAttribute[]> _backendServiceAttributes = new();
 
     // GetServiceMode
@@ -20,7 +22,7 @@ public static class HostRolesExt
             return hostRoles.GetBackendServiceMode(type.Assembly);
 
         var attr = attrs.FirstOrDefault(x => hostRoles.Contains(new HostRole(x.HostRole)));
-        return attr?.ServiceMode ?? ServiceMode.Client;
+        return (attr?.ServiceMode ?? ServiceMode.Client).Fix();
     }
 
     // Private methods
@@ -31,6 +33,13 @@ public static class HostRolesExt
             static (_, a) => a.GetCustomAttributes<BackendServiceAttribute>().OrderByDescending(x => x.Priority).ToArray(),
             assembly);
         var attr = attrs.FirstOrDefault(x => hostRoles.Contains(new HostRole(x.HostRole)));
-        return attr?.ServiceMode ?? ServiceMode.Client;
+        return (attr?.ServiceMode ?? ServiceMode.Client).Fix();
+    }
+
+    private static ServiceMode Fix(this ServiceMode serviceMode)
+    {
+        if (MustReplaceServerWithHybrid && serviceMode is ServiceMode.Server)
+            serviceMode = ServiceMode.Hybrid;
+        return serviceMode;
     }
 }

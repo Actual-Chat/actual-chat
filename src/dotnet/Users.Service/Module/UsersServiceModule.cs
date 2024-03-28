@@ -122,12 +122,12 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             rpc.AddServer<IAuth>(); // IAuth is registered below
 
         // Accounts
-        rpcHost.AddApi<IAccounts, Accounts>();
+        rpcHost.AddApi<IAccounts, Accounts>(true);
         rpcHost.AddBackend<IAccountsBackend, AccountsBackend>();
         rpcHost.AddBackend<IUsersUpgradeBackend, UsersUpgradeBackend>();
 
         // UserPresences
-        rpcHost.AddApi<IUserPresences, UserPresences>();
+        rpcHost.AddApi<IUserPresences, UserPresences>(true);
         rpcHost.AddBackend<IUserPresencesBackend, UserPresencesBackend>();
 
         // Avatars
@@ -170,11 +170,15 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             if (commandAssembly == typeof(AuthBackend_SetupSession).Assembly)
                 return true;
 
-            // 3. Check if we're running on the client backend
+            // 3. UserPresences_* and Accounts_* commands should run locally
+            if (commandType.Name.OrdinalStartsWith("UserPresences_") || commandType.Name.OrdinalStartsWith("Accounts_"))
+                return true;
+
+            // 4. Check if we're running on the client backend
             if (isBackendClient)
                 return false;
 
-            // 4. Make sure the handler is intact only for local commands
+            // 5. Make sure the handler is intact only for local commands
             var commandNamespace = commandType.Namespace;
             return commandNamespace.OrdinalStartsWith(typeof(IAccounts).Namespace!);
         });

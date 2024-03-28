@@ -8,10 +8,12 @@ public class RightPanel
     private readonly IMutableState<bool> _isVisible;
     private readonly IMutableState<bool> _isSearchMode;
     private readonly IStoredState<bool> _isVisibleStored;
+    private ILogger? _log;
 
     private UIHub Hub { get; }
     private History History => Hub.History;
     private Dispatcher Dispatcher => Hub.Dispatcher;
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
 
     public PanelsUI Owner { get; }
     // ReSharper disable once InconsistentlySynchronizedField
@@ -72,7 +74,7 @@ public class RightPanel
             if (!value)
                 _isSearchMode.Value = false;
             History.Save<OwnHistoryState>();
-        }, DefaultLog);
+        }, Log);
 
     // Nested types
 

@@ -15,7 +15,10 @@ public static class QueuesExt
         CancellationToken cancellationToken = default)
     {
         var queueRefResolver = queues.Services.GetRequiredService<IQueueRefResolver>();
-        var queueShardRef = queueRefResolver.GetQueueShardRef(queuedCommand.UntypedCommand);
+        var command = queuedCommand.UntypedCommand;
+        var requester = new Requester(command,
+            static c => $"{nameof(QueuesExt)}.{nameof(Enqueue)}({c?.GetType().GetName() ?? "null"})");
+        var queueShardRef = queueRefResolver.GetQueueShardRef(command, requester);
         var queueProcessor = queues.GetSender(queueShardRef.QueueRef);
         return queueProcessor.Enqueue(queueShardRef, queuedCommand, cancellationToken);
     }

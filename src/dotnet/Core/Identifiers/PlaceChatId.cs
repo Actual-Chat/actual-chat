@@ -13,6 +13,9 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct PlaceChatId : ISymbolIdentifier<PlaceChatId>
 {
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= DefaultLogFor<PlaceChatId>();
+
     public static readonly string IdPrefix = "s-";
     public static PlaceChatId None => default;
 
@@ -81,7 +84,7 @@ public readonly partial struct PlaceChatId : ISymbolIdentifier<PlaceChatId>
     public static PlaceChatId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<PlaceChatId>(s);
     public static PlaceChatId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<PlaceChatId>(s).LogWarning(DefaultLog, None);
+        => TryParse(s, out var result) ? result : StandardError.Format<PlaceChatId>(s).LogWarning(Log, None);
 
     public static bool TryParse(string? s, out PlaceChatId result)
     {

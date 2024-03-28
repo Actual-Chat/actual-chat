@@ -13,6 +13,9 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct TextEntryId : ISymbolIdentifier<TextEntryId>
 {
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= DefaultLogFor<TextEntryId>();
+
     public static TextEntryId None => default;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
@@ -84,7 +87,7 @@ public readonly partial struct TextEntryId : ISymbolIdentifier<TextEntryId>
     public static TextEntryId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<TextEntryId>(s);
     public static TextEntryId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<TextEntryId>(s).LogWarning(DefaultLog, None);
+        => TryParse(s, out var result) ? result : StandardError.Format<TextEntryId>(s).LogWarning(Log, None);
 
     public static bool TryParse(string? s, out TextEntryId result)
     {

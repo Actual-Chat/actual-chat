@@ -13,7 +13,10 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct ExternalContactId : ISymbolIdentifier<ExternalContactId>
 {
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= DefaultLogFor<ExternalContactId>();
     private const char Delimiter = ':';
+
     public static ExternalContactId None => default;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
@@ -91,7 +94,7 @@ public readonly partial struct ExternalContactId : ISymbolIdentifier<ExternalCon
     public static ExternalContactId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ExternalContactId>(s);
     public static ExternalContactId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<ExternalContactId>(s).LogWarning(DefaultLog, None);
+        => TryParse(s, out var result) ? result : StandardError.Format<ExternalContactId>(s).LogWarning(Log, None);
 
     public static bool TryParse(string? s, out ExternalContactId result)
     {

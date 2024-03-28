@@ -13,6 +13,9 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct Language : ISymbolIdentifier<Language>
 {
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= DefaultLogFor<Language>();
+
     public static Language None => default;
 
     private readonly LanguageHandle? _handle;
@@ -68,7 +71,7 @@ public readonly partial struct Language : ISymbolIdentifier<Language>
     public static Language Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<Language>(s);
     public static Language ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<Language>(s).LogWarning(DefaultLog, None);
+        => TryParse(s, out var result) ? result : StandardError.Format<Language>(s).LogWarning(Log, None);
 
     public static bool TryParse(string? s, out Language result)
     {

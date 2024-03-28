@@ -8,13 +8,18 @@ public partial class SharedResourcePool<TKey, TResource>(
 {
     private readonly ConcurrentDictionary<TKey, Lease> _leases = new ();
     private volatile int _isDisposed;
+    private ILogger? _log;
 
     private Func<TKey, CancellationToken, Task<TResource>> ResourceFactory { get; } = resourceFactory;
     private Func<TKey, TResource, ValueTask> ResourceDisposer { get; } = resourceDisposer ?? DefaultResourceDisposer;
 
     public TimeSpan ResourceDisposeDelay { get; init; } = TimeSpan.FromSeconds(10);
     public bool IsDisposed => _isDisposed != 0;
-    public ILogger Log { get; init; } = NullLogger.Instance;
+
+    public ILogger Log {
+        get => _log ?? DefaultLogFor(GetType());
+        init => _log = value;
+    }
 
     public async ValueTask<Lease> Rent(TKey key, CancellationToken cancellationToken = default)
     {
@@ -47,10 +52,7 @@ public partial class SharedResourcePool<TKey, TResource>(
                 }
             }
             catch (Exception e) {
-                var log = Log == NullLogger.Instance
-                    ? DefaultLog
-                    : Log;
-                log.LogError(e, "Error while disposing {Type}", GetType().GetName());
+                Log.LogError(e, "Error while disposing {Type}", GetType().GetName());
             }
     }
 

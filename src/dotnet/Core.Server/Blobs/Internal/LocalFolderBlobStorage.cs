@@ -14,6 +14,7 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
     private IContentTypeProvider? _contentTypeProvider;
     private FilePath BaseDirectory { get; } = options.BaseDirectory.FullPath.DirectoryPath;
     private IServiceProvider Services { get; } = services;
+    private ILogger Log { get; } = services.LogFor<LocalFolderBlobStorage>();
 
     private IContentTypeProvider ContentTypeProvider
         => _contentTypeProvider ??= Services.GetRequiredService<IContentTypeProvider>();
@@ -75,7 +76,7 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
             await stream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
         }
         catch (IOException e) {
-            DefaultLog.LogWarning(e, "Error writing blob file");
+            Log.LogWarning(e, "Error writing blob file");
             // already exists
         }
     }

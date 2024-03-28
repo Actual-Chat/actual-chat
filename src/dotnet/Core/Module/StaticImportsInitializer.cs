@@ -11,8 +11,7 @@ public class StaticImportsInitializer : IHostedService
         if (hostInfo.HostKind.IsServer() && hostInfo.IsTested)
             return; // Don't set DefaultLog for test server
 
-        if (DefaultLog == NullLogger.Instance)
-            DefaultLog = services.LogFor("ActualChat.Unknown");
+        DefaultLoggerFactory = services.Logs();
     }
 
     public Task StartAsync(CancellationToken cancellationToken)

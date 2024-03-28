@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Messaging;
+﻿using ActualLab.Diagnostics;
+
+namespace ActualChat.Messaging;
 
 public interface IMessageProcessor<TMessage> : IAsyncDisposable
     where TMessage : class
@@ -11,17 +13,21 @@ public interface IMessageProcessor<TMessage> : IAsyncDisposable
         => (IMessageProcess<TSpecific>)Enqueue((TMessage)message, cancellationToken);
 }
 
-public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProcessor<TMessage>
+public abstract class MessageProcessorBase<TMessage>(CancellationTokenSource? stopTokenSource = null)
+    : WorkerBase(stopTokenSource), IMessageProcessor<TMessage>
     where TMessage : class
 {
     protected Channel<IMessageProcess<TMessage>>? Queue { get; set; }
 
+    private ILogger? _log;
+
+    protected static bool DebugMode => Constants.DebugMode.MessageProcessor;
+    protected ILogger Log => _log ??= DefaultLogFor(GetType());
+    protected ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
+
     public int QueueSize { get; init; } = Constants.MessageProcessing.QueueSize;
     public TimeSpan ProcessCallTimeout { get; init; } = Constants.MessageProcessing.ProcessCallTimeout;
     public BoundedChannelFullMode QueueFullMode { get; init; } = BoundedChannelFullMode.Wait;
-
-    protected MessageProcessorBase(CancellationTokenSource? stopTokenSource = null)
-        : base(stopTokenSource) { }
 
     protected override Task DisposeAsyncCore()
     {
@@ -86,7 +92,7 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
     {
         var queuedProcesses = Queue!.Reader.ReadAllAsync(cancellationToken);
         await foreach (var process in queuedProcesses.ConfigureAwait(false)) {
-            DefaultLog.LogDebug(nameof(MessageProcessor<TMessage>) + "." + nameof(OnRun) + " cycle");
+            DebugLog?.LogDebug($"{nameof(OnRun)} cycle");
             var message = process.Message;
             process.MarkStarted();
             Task<object?>? processTask = null;

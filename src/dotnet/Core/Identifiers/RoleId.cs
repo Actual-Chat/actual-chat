@@ -13,6 +13,9 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct RoleId : ISymbolIdentifier<RoleId>
 {
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= DefaultLogFor<RoleId>();
+
     public static RoleId None => default;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
@@ -82,7 +85,7 @@ public readonly partial struct RoleId : ISymbolIdentifier<RoleId>
     public static RoleId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<RoleId>(s);
     public static RoleId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<RoleId>(s).LogWarning(DefaultLog, None);
+        => TryParse(s, out var result) ? result : StandardError.Format<RoleId>(s).LogWarning(Log, None);
 
     public static bool TryParse(string? s, out RoleId result)
     {

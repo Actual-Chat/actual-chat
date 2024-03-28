@@ -34,19 +34,17 @@ public static class MauiDiagnostics
 
     private static SentryOptions? _sentryOptions;
 
-    public static readonly ILoggerFactory LoggerFactory;
     public static readonly Tracer Tracer;
     public static TracerProvider? TracerProvider { get; private set; }
 
     static MauiDiagnostics()
     {
         Log.Logger = CreateAppLogger();
+        DefaultLoggerFactory = new SerilogLoggerFactory(Log.Logger);
         Tracer.Default = Tracer = CreateAppTracer();
-        LoggerFactory = new SerilogLoggerFactory(Log.Logger);
-        DefaultLog = LoggerFactory.CreateLogger("ActualChat.Unknown");
 
         if (Constants.DebugMode.WebMReader)
-            WebMReader.DebugLog = LoggerFactory.CreateLogger(typeof(WebMReader));
+            WebMReader.DebugLog = DefaultLoggerFactory.CreateLogger(typeof(WebMReader));
 
         if (_sentryOptions != null)
             _ = LoadingUI.WhenAppRendered

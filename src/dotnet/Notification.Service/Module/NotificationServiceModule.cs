@@ -34,17 +34,16 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
                 return true;
 
             // 2. Check if we're running on the client backend
-            if (isBackendClient)
-                return false;
+            // if (isBackendClient)
+            //     return false;
 
             // 3. Make sure the handler is intact only for local commands
             var commandNamespace = commandType.Namespace;
             return commandNamespace.OrdinalStartsWith(typeof(INotifications).Namespace!);
         });
-        if (isBackendClient)
-            return;
 
-        // The services below are used only when this module operates in non-client mode
+        // NOTE(AY): Notifications service uses NotificationDbContext and FirebaseMessaging,
+        // so we have to register them in any case.
 
         // Firebase
         services.AddSingleton(_ => {

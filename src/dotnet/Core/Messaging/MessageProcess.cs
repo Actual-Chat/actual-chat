@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Messaging;
+﻿using ActualLab.Diagnostics;
+
+namespace ActualChat.Messaging;
 
 public interface IMessageProcess
 {
@@ -24,6 +26,11 @@ public abstract class MessageProcess : IMessageProcess
         Type,
         Func<object, CancellationToken, TaskCompletionSource?, TaskCompletionSource<object?>?, object>>
         MessageProcessorCtorCache = new();
+    private static ILogger? _log;
+
+    protected static bool DebugMode => Constants.DebugMode.MessageProcessor;
+    protected static ILogger Log => _log ??= DefaultLogFor<MessageProcess>();
+    protected static ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     protected TaskCompletionSource WhenStartedSource { get; init; } = null!;
     protected TaskCompletionSource<object?> WhenCompletedSource { get; init; } = null!;
@@ -93,15 +100,13 @@ public class MessageProcess<TMessage> : MessageProcess, IMessageProcess<TMessage
 
     public override void MarkStarted()
     {
-        DefaultLog.LogDebug(nameof(MessageProcess<TMessage>) + "." + nameof(MarkStarted));
-
+        DebugLog?.LogDebug(nameof(MessageProcess<TMessage>) + "." + nameof(MarkStarted));
         WhenStartedSource.TrySetResult();
     }
 
     public override void MarkCompleted(Result<object?> result)
     {
-        DefaultLog.LogDebug(nameof(MessageProcess<TMessage>) + "." + nameof(MarkCompleted) + " {Result}", result.ValueOrDefault);
-
+        DebugLog?.LogDebug(nameof(MessageProcess<TMessage>) + "." + nameof(MarkCompleted) + " {Result}", result.ValueOrDefault);
         WhenStartedSource.TrySetResult();
         WhenCompletedSource.TrySetFromResult(result, CancellationToken);
     }
@@ -119,8 +124,7 @@ public class MessageProcess<TMessage> : MessageProcess, IMessageProcess<TMessage
 
     public override void MarkFailed(Exception error)
     {
-        DefaultLog.LogDebug(nameof(MessageProcess<TMessage>) + "." + nameof(MarkFailed));
-
+        DebugLog?.LogDebug(nameof(MessageProcess<TMessage>) + "." + nameof(MarkFailed));
         if (error is OperationCanceledException && CancellationToken.IsCancellationRequested) {
             WhenStartedSource.TrySetCanceled(CancellationToken);
             WhenCompletedSource.TrySetCanceled(CancellationToken);

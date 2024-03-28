@@ -13,6 +13,8 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct StreamId : ISymbolIdentifier<StreamId>, IHasNodeRef
 {
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= DefaultLogFor<StreamId>();
     private const char Delimiter = '-';
 
     private static Func<Symbol> LocalIdGenerator { get; } = () => Ulid.NewUlid().ToString();
@@ -77,7 +79,7 @@ public readonly partial struct StreamId : ISymbolIdentifier<StreamId>, IHasNodeR
     public static StreamId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<StreamId>(s);
     public static StreamId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<StreamId>(s).LogWarning(DefaultLog, None);
+        => TryParse(s, out var result) ? result : StandardError.Format<StreamId>(s).LogWarning(Log, None);
 
     public static bool TryParse(string? s, out StreamId result)
     {

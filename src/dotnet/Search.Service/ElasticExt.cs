@@ -19,7 +19,7 @@ public static class ElasticExt
 
         // request sending failed
         if (response.ApiCallDetails.OriginalException is { } exc) {
-            log ??= DefaultLog;
+            log ??= DefaultLogFor(typeof(ElasticExt));
             log.LogError(exc, "Failed to perform elastic operation");
             throw StandardError.External($"Elastic request failed: {exc.Message}");
         }

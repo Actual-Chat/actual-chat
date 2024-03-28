@@ -18,6 +18,7 @@ using Sentry;
 using Sentry.Maui.Internal;
 using Serilog;
 using ActualLab.CommandR.Rpc;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 #if IOS
 using Foundation;
 #endif
@@ -28,8 +29,11 @@ namespace ActualChat.App.Maui;
 
 public static partial class MauiProgram
 {
-    private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiProgram)];
+    private static ILogger? _log;
+
     private static HostInfo HostInfo => Constants.HostInfo;
+    private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiProgram)];
+    private static ILogger Log => _log ?? DefaultLogFor(typeof(MauiProgram));
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiDiagnostics))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiProgram))]
@@ -132,12 +136,12 @@ public static partial class MauiProgram
     {
         var jsRuntimeRegistration = services.FirstOrDefault(c => c.ServiceType == typeof(IJSRuntime));
         if (jsRuntimeRegistration == null) {
-            DefaultLog.LogWarning("IJSRuntime registration is not found. Can't override WebViewJSRuntime");
+            Log.LogWarning("IJSRuntime registration is not found. Can't override WebViewJSRuntime");
             return;
         }
         var webViewJSRuntimeType = jsRuntimeRegistration.ImplementationType;
         if (webViewJSRuntimeType == null) {
-            DefaultLog.LogWarning("IJSRuntime registration has no ImplementationType. Can't override WebViewJSRuntime");
+            Log.LogWarning("IJSRuntime registration has no ImplementationType. Can't override WebViewJSRuntime");
             return;
         }
         services.Remove(jsRuntimeRegistration);

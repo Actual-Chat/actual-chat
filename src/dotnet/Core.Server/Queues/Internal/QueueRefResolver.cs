@@ -9,19 +9,19 @@ public sealed class QueueRefResolver(IServiceProvider services) : IQueueRefResol
 
     private readonly ConcurrentDictionary<(Type, Type), Unit> _missingBackendServiceTypes = new();
 
-    private BackendServiceDefs? BackendServiceDefs { get; } = services.GetRequiredService<BackendServiceDefs>();
+    private BackendServiceDefs BackendServiceDefs { get; } = services.GetRequiredService<BackendServiceDefs>();
     private CommandHandlerResolver CommandHandlerResolver { get; } = services.GetRequiredService<CommandHandlerResolver>();
     private ILogger Log { get; } = services.LogFor<QueueRefResolver>();
 
-    public QueueShardRef GetQueueShardRef(ICommand command)
+    public QueueShardRef GetQueueShardRef(ICommand command, Requester requester)
     {
-        var queueRef = GetQueueRef(command);
-        var shardKeyResolver = ShardKeyResolvers.GetUntyped(command.GetType()) ?? ShardKeyResolvers.DefaultResolver;
+        var queueRef = GetQueueRef(command, requester);
+        var shardKeyResolver = ShardKeyResolvers.GetUntyped(command.GetType(), requester);
         var shardKey = shardKeyResolver.Invoke(command);
         return new QueueShardRef(queueRef, shardKey);
     }
 
-    public QueueRef GetQueueRef(ICommand command)
+    public QueueRef GetQueueRef(ICommand command, Requester requester)
     {
         var commandType = command.GetType();
         var commandKind = command.GetKind();
@@ -56,13 +56,14 @@ public sealed class QueueRefResolver(IServiceProvider services) : IQueueRefResol
 
         var serviceType = finalHandler.GetServiceType();
         if (serviceType == null)
-            throw StandardError.Internal($"Unsupported command handler type: {finalHandler.GetType().GetName()}.");
+            throw StandardError.Internal(
+                $"Unsupported command handler type: {finalHandler.GetType().GetName()}.");
 
         if (BackendServiceDefs.TryGet(serviceType, out var serviceDef))
             return serviceDef.ShardScheme;
 
         if (_missingBackendServiceTypes.TryAdd((serviceType, commandType), default))
-            Log.LogWarning(
+            Log.LogError(
                 "Service {ServiceType} handles queued {CommandType}, so it must be registered as backend service!",
                 serviceType.GetName(), commandType.GetName());
 

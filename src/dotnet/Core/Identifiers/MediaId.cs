@@ -14,6 +14,8 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct MediaId : ISymbolIdentifier<MediaId>
 {
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= DefaultLogFor<MediaId>();
     private const char Delimiter = ':';
 
     private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
@@ -78,7 +80,7 @@ public readonly partial struct MediaId : ISymbolIdentifier<MediaId>
     public static MediaId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<MediaId>(s);
     public static MediaId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<MediaId>(s).LogWarning(DefaultLog, None);
+        => TryParse(s, out var result) ? result : StandardError.Format<MediaId>(s).LogWarning(Log, None);
 
     public static bool TryParse(string? s, out MediaId result)
     {

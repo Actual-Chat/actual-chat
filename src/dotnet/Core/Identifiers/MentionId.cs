@@ -13,6 +13,9 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct MentionId : ISymbolIdentifier<MentionId>
 {
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= DefaultLogFor<MentionId>();
+
     public static MentionId None => default;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]

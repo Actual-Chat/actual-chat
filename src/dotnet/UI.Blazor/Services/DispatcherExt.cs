@@ -10,7 +10,7 @@ public static class DispatcherExt
             await dispatcher.InvokeAsync(workItem).ConfigureAwait(false);
         }
         catch (Exception e) {
-            log.LogError(e, "Error invoking action using Dispatcher");
+            log.LogError(e, "Failed to invoke action via Dispatcher.InvokeAsync");
         }
     }
 }
