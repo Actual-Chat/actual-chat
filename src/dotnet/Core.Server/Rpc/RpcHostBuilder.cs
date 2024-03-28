@@ -222,7 +222,7 @@ public readonly struct RpcHostBuilder
                 var endpoint = ServerEndpoints.List(c, "http://").FirstOrDefault();
                 (host, port) = ServerEndpoints.Parse(endpoint);
                 if (ServerEndpoints.InvalidHostNames.Contains(host)) {
-                    if (!hostInfo.IsDevelopmentInstance)
+                    if (hostInfo is { IsDevelopmentInstance: false, IsTested: false })
                         throw StandardError.Internal($"Server host name is invalid: {host}");
 
                     host = "localhost";
