@@ -2,7 +2,6 @@ using ActualChat.App.Server;
 using ActualChat.Chat.Module;
 using ActualChat.Testing.Internal;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Testing.Host;
@@ -40,6 +39,7 @@ public record TestAppHostOptions
     public Action<AppHostBuilder, IServiceCollection>? ConfigureAppServices { get; init; }
     public Action<AppHostBuilder, WebApplication>? ConfigureApp { get; set; }
     public ChatDbInitializer.Options ChatDbInitializerOptions { get; init; } = ChatDbInitializer.Options.None;
+    public bool UseNatsQueues { get; init; }
     public bool MustInitializeDb { get; init; }
     public bool MustStart { get; init; }
 
@@ -53,4 +53,7 @@ public record TestAppHostOptions
             InstanceName = instanceName,
             Output = new MessageSinkTestOutput(messageSink),
         };
+
+    public TestAppHostOptions WithNatsQueues(bool useNatsQueues = true)
+        => this with { UseNatsQueues = useNatsQueues };
 }

@@ -17,6 +17,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
                 var rpcHost = services.AddRpcHost(builder.HostInfo);
                 rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },
+            UseNatsQueues = true,
         });
         var services = host.Services;
         var queues = services.Queues().Start();
@@ -41,9 +42,11 @@ public class NatsQueueTest(ITestOutputHelper @out)
                 var rpcHost = services.AddRpcHost(builder.HostInfo);
                 rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },
+            UseNatsQueues = true,
         });
         var services = host.Services;
         var queues = services.Queues().Start();
+        queues.Should().BeAssignableTo<NatsQueues>();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var countComputed = await Computed.Capture(() => testService.GetProcessedEventCount(CancellationToken.None));
@@ -69,9 +72,11 @@ public class NatsQueueTest(ITestOutputHelper @out)
                 var rpcHost = services.AddRpcHost(builder.HostInfo);
                 rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },
+            UseNatsQueues = true,
         });
         var services = host.Services;
         var queues = services.Queues().Start();
+        queues.Should().BeAssignableTo<NatsQueues>();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         testService.ProcessedEvents.Count.Should().Be(0);

@@ -1,5 +1,4 @@
 using ActualChat.Queues.Internal;
-using ActualChat.Queues.Nats;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Commands;
@@ -18,8 +17,7 @@ public class EventHandlerRegistryTest(ITestOutputHelper @out)
             },
         });
         var services = host.Services;
-        var queues = services.Queues().Start();
-        queues.Should().BeAssignableTo<NatsQueues>();
+        services.Queues().Start();
 
         var eventHandlerResolver = services.GetRequiredService<EventHandlerRegistry>();
         var eventHandlers = eventHandlerResolver.AllEventHandlers;

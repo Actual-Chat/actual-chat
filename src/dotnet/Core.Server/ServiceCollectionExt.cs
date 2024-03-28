@@ -7,6 +7,8 @@ using ActualChat.Queues.Nats;
 using ActualChat.Rpc;
 using ActualLab.CommandR.Internal;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using NATS.Client.Core;
+using NATS.Client.Hosting;
 
 namespace ActualChat;
 
@@ -24,6 +26,25 @@ public static class ServiceCollectionExt
     public static RpcHostBuilder AddRpcHost(
         this IServiceCollection services, HostInfo hostInfo, ILogger? log = null)
         => new(services, hostInfo, log);
+
+    public static IServiceCollection AddNats(this IServiceCollection services, HostInfo hostInfo, NatsSettings settings)
+    {
+        if (!services.HasService<NatsConnection>())
+            services.AddNats(poolSize: 1, options => {
+                var natsTimeout = TimeSpan.FromSeconds(hostInfo.IsDevelopmentInstance ? 300 : 10);
+                return options with {
+                    Url = settings.Url,
+                    TlsOpts = new NatsTlsOpts { Mode = TlsMode.Auto, },
+                    AuthOpts = settings.Seed.IsNullOrEmpty() || settings.NKey.IsNullOrEmpty()
+                        ? NatsAuthOpts.Default
+                        : new NatsAuthOpts { Seed = settings.Seed, NKey = settings.NKey, },
+                    CommandTimeout = natsTimeout,
+                    ConnectTimeout = natsTimeout,
+                    RequestTimeout = natsTimeout,
+                };
+            });
+        return services;
+    }
 
     // AddXxxQueues
 

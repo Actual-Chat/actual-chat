@@ -1,5 +1,6 @@
 using ActualChat.App.Server;
 using ActualChat.Blobs.Internal;
+using ActualChat.Module;
 using ActualChat.Queues.Nats;
 using ActualChat.Search;
 using Microsoft.AspNetCore.Hosting;
@@ -49,7 +50,8 @@ public static class TestAppHostFactory
                 cfg.AddInMemoryCollection(new Dictionary<string, string?> {
                     { WebHostDefaults.EnvironmentKey, Environments.Development },
                     { WebHostDefaults.StaticWebAssetsKey, manifestPath },
-                    { "CoreSettings:Instance", instanceName },
+                    { $"{nameof(CoreSettings)}:{nameof(CoreSettings.Instance)}", instanceName },
+                    { $"{nameof(CoreSettings)}:{nameof(CoreServerSettings.UseNatsQueues)}", options.UseNatsQueues.ToString() },
                 });
 
                 // Overrides from options

@@ -6,8 +6,6 @@ using ActualChat.Queues.Internal;
 using ActualChat.Queues.Nats;
 using ActualChat.Uploads;
 using Microsoft.AspNetCore.StaticFiles;
-using NATS.Client.Core;
-using NATS.Client.Hosting;
 
 namespace ActualChat.Module;
 
@@ -27,31 +25,16 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
 
         // Queues
         services.AddSingleton(c => new EventHandlerRegistry(c));
-        var useInMemoryQueues = HostInfo.IsProductionInstance && HostInfo.HasRole(HostRole.OneServer);
-        if (useInMemoryQueues)
-            services.AddInMemoryQueues();
-        else {
-            var natsSettings = Cfg.GetSettings<NatsSettings>();
-            var natsTimeout = TimeSpan.FromSeconds(HostInfo.IsDevelopmentInstance ? 300 : 10);
-            services.AddNats(
-                poolSize: 1,
-                options => options with {
-                    Url = natsSettings.Url,
-                    TlsOpts = new NatsTlsOpts {
-                        Mode = TlsMode.Auto,
-                    },
-                    AuthOpts = natsSettings.Seed.IsNullOrEmpty() || natsSettings.NKey.IsNullOrEmpty()
-                        ? NatsAuthOpts.Default
-                        : new NatsAuthOpts {
-                            Seed = natsSettings.Seed,
-                            NKey = natsSettings.NKey,
-                        },
-                    CommandTimeout = natsTimeout,
-                    ConnectTimeout = natsTimeout,
-                    RequestTimeout = natsTimeout,
-                });
+        var natsSettings = Cfg.GetSettings<NatsSettings>();
+        var useNatsQueues = Settings.UseNatsQueues
+            // NOTE(AY): The line below must be removed before we deploy NATS queues to production!
+            && !(HostInfo.IsProductionInstance && HostInfo.HasRole(HostRole.OneServer));
+        if (useNatsQueues) {
+            services.AddNats(HostInfo, natsSettings);
             services.AddNatsQueues();
         }
+        else
+            services.AddInMemoryQueues();
 
         // Upload processors
         services.AddSingleton<IUploadProcessor, ImageUploadProcessor>();
