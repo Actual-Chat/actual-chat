@@ -38,7 +38,7 @@ public sealed record HostInfo
 
     private bool IsProductionEnv()
         => OrdinalEquals(Environment.Value, Environments.Production)
-            || (HostKind.IsServer() && BaseUrlKind == BaseUrlKind.Production); // We don't want to mess it up
+            || (!IsTested && HostKind.IsServer() && BaseUrlKind == BaseUrlKind.Production); // We don't want to mess it up
 
     private bool IsDevelopmentEnv()
         => !IsProductionEnv() && OrdinalEquals(Environment.Value, Environments.Development);
