@@ -38,7 +38,7 @@ public static class ShardKeyResolvers
 
     // These properties can be set!
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int ForNull() => ForRandom();
+    public static int ForNull() => 0;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int ForRandom() => Random.Shared.Next();
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -47,7 +47,7 @@ public static class ShardKeyResolvers
     static ShardKeyResolvers()
     {
         // Value types
-        Register<Unit>(static _ => ForRandom());
+        Register<Unit>(static _ => 0);
         Register<Symbol>(static x => ForString(x.Value));
         Register<ChatId>(static x => ForString(x.Value));
         Register<PeerChatId>(static x => ForString(x.Value));
