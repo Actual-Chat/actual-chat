@@ -18,7 +18,7 @@ public static class MeshRefResolvers
     private static readonly MethodInfo CreateShardKeyBasedResolverMethod = typeof(MeshRefResolvers)
         .GetMethod(nameof(CreateShardKeyBasedResolver), BindingFlags.Static | BindingFlags.NonPublic)!;
 
-    public static MeshRefResolver<Unit> NullResolver { get; set; } = static _ => MeshRef.Shard(0);
+    public static MeshRef ForNull() => MeshRef.Shard(ShardKeyResolvers.ForNull());
 
     static MeshRefResolvers()
     {
@@ -37,7 +37,7 @@ public static class MeshRefResolvers
 
     public static MeshRef ResolveUntyped(object? source, Requester requester)
         => ReferenceEquals(source, null)
-            ? NullResolver.Invoke(default)
+            ? ForNull()
             : GetUntyped(source.GetType(), requester).Invoke(source);
 
     public static MeshRefResolver<object?> GetUntyped<T>(Requester requester)
