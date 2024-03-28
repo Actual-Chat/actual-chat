@@ -114,8 +114,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<ISystemProperties, SystemProperties>();
 
         // Secure tokens
-        rpcHost.AddApiOrLocal<ISecureTokens, SecureTokens>();
-        services.AddSingleton<ISecureTokensBackend, SecureTokensBackend>();
+        rpcHost.AddApi<ISecureTokens, SecureTokens>();
+        services.AddSingleton<ISecureTokensBackend, SecureTokensBackend>(); // Used by HttpSessionExt, server-side logic in AppBase, etc.
 
         // IAuth
         if (rpcHost.IsApiHost)
