@@ -53,7 +53,4 @@ public record TestAppHostOptions
             InstanceName = instanceName,
             Output = new MessageSinkTestOutput(messageSink),
         };
-
-    public TestAppHostOptions WithNatsQueues(bool useNatsQueues = true)
-        => this with { UseNatsQueues = useNatsQueues };
 }
