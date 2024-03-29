@@ -21,7 +21,7 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
 
     public IServiceProvider Services { get; }
     public HostInfo HostInfo { get; }
-    public IHostApplicationLifetime HostLifetime { get; }
+    public IHostApplicationLifetime? HostLifetime { get; }
     public IMomentClock Clock { get; }
 
     public TSettings Settings { get; }
@@ -34,7 +34,7 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
         Log = services.LogFor(GetType());
 
         HostInfo = services.HostInfo();
-        HostLifetime = services.HostLifetime();
+        HostLifetime = services.GetService<IHostApplicationLifetime>();
         Clock = settings.Clock ?? services.Clocks().SystemClock;
         if (initProcessors)
             // ReSharper disable once VirtualMemberCallInConstructor
@@ -83,8 +83,8 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
             processor.Start();
 
         // We want to stop processing queued events as quickly as possible on host stop signal
-        using var stopCts = HostLifetime.ApplicationStopping.LinkWith(cancellationToken);
-        var stopToken = stopCts.Token;
+        using var stopCts = HostLifetime?.ApplicationStopping.LinkWith(cancellationToken);
+        var stopToken = stopCts?.Token ?? cancellationToken;
         try {
             await ActualLab.Async.TaskExt.NeverEndingTask.WaitAsync(stopToken).ConfigureAwait(false);
         }
