@@ -9,7 +9,7 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 /// directly in the OpenSearch metadata index.
 /// </summary>
 /// <typeparam name="TState">State to store</typeparam>
-internal class CursorStates<TState>(
+internal sealed class CursorStates<TState>(
     string cursorIndexName,
     IOpenSearchClient client,
     IIndexSettingsSource indexSettingsSource

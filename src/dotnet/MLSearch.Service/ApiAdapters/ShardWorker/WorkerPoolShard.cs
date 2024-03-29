@@ -11,7 +11,7 @@ internal interface IWorkerPoolShard<in TJob, in TJobId, in TShardKey>
     Task UseAsync(CancellationToken cancellationToken);
 }
 
-internal class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
+internal sealed class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
     int shardIndex,
     DuplicateJobPolicy duplicateJobPolicy,
     int concurrencyLevel,

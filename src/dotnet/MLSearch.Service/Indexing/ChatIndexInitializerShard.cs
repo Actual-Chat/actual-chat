@@ -9,7 +9,7 @@ internal interface IChatIndexInitializerShard
     Task UseAsync(CancellationToken cancellationToken);
 }
 
-internal class ChatIndexInitializerShard(
+internal sealed class ChatIndexInitializerShard(
     IMomentClock clock,
     ICommander commander,
     IChatsBackend chats,

@@ -4,14 +4,14 @@ using ActualChat.MLSearch.Engine.Indexing;
 
 namespace ActualChat.MLSearch.Indexing;
 
-internal class ChatHistoryExtractor (
+internal sealed class ChatHistoryExtractor (
     ISink<ChatEntry, ChatEntry> sink,
     IChatsBackend chats,
     ICursorStates<ChatHistoryExtractor.Cursor> cursorStates
 ): IDataIndexer<ChatId>
 {
     private const int EntryBatchSize = 100;
- 
+
     public async Task<DataIndexerResult> IndexNextAsync(ChatId chatId, CancellationToken cancellationToken)
     {
         var state = await cursorStates.Load(
@@ -94,7 +94,7 @@ internal class ChatHistoryExtractor (
         return (updates, deletes);
     }
 
-    
+
     private static Symbol IdOf(in ChatId chatId) => chatId.Id;
 
     private static Cursor NewFor(in ChatId _)

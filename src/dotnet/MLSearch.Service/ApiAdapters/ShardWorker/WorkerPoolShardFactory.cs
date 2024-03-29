@@ -11,7 +11,7 @@ internal interface IWorkerPoolShardFactory<TWorker, in TJob, in TJobId, in TShar
     IWorkerPoolShard<TJob, TJobId, TShardKey> Create(int shardIndex, DuplicateJobPolicy duplicateJobPolicy, int concurrencyLevel);
 }
 
-internal class WorkerPoolShardFactory<TWorker, TJob, TJobId, TShardKey>(IServiceProvider services)
+internal sealed class WorkerPoolShardFactory<TWorker, TJob, TJobId, TShardKey>(IServiceProvider services)
     : IWorkerPoolShardFactory<TWorker, TJob, TJobId, TShardKey>
     where TWorker : class, IWorker<TJob>
     where TJob : IHasId<TJobId>, IHasShardKey<TShardKey>

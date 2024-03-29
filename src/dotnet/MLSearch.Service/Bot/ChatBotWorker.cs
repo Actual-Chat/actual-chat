@@ -5,7 +5,7 @@ namespace ActualChat.MLSearch.Bot;
 
 internal interface IChatBotWorker: IWorker<MLSearch_TriggerContinueConversationWithBot>;
 
-internal class ChatBotWorker(
+internal sealed class ChatBotWorker(
     IDataIndexer<ChatId> dataIndexer
 ) : IChatBotWorker
 {

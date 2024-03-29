@@ -3,7 +3,7 @@ using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch;
 
-public class IndexSettings(string indexName, ClusterSettings settings)
+public sealed class IndexSettings(string indexName, ClusterSettings settings)
 {
     public string ModelId => settings.ModelId;
 

@@ -7,7 +7,7 @@ internal interface IChatIndexInitializer
     ValueTask PostAsync(MLSearch_TriggerChatIndexingCompletion job, CancellationToken cancellationToken);
 }
 
-internal class ChatIndexInitializer(
+internal sealed class ChatIndexInitializer(
     IServiceProvider services,
     ShardScheme shardScheme,
     IShardIndexResolver<string> shardIndexResolver,

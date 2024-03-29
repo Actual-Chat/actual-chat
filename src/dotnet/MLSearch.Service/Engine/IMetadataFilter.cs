@@ -6,7 +6,7 @@ internal interface IMetadataFilter
     void Apply(IQueryBuilder queryBuilder);
 }
 
-internal class EqualityFilter<TValue>(string fieldName, TValue value) : IMetadataFilter
+internal sealed class EqualityFilter<TValue>(string fieldName, TValue value) : IMetadataFilter
 {
     public string FieldName { get; } = fieldName;
     public TValue Value { get; } = value;

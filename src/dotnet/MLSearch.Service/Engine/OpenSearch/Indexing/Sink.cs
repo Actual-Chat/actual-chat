@@ -20,7 +20,7 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 // - All deletes MUST NOT fail if document was already
 //   deleted.
 
-internal class Sink<TSource, TDocument>(
+internal sealed class Sink<TSource, TDocument>(
     string docIndexName,
     IOpenSearchClient client,
     IIndexSettingsSource indexSettingsSource,

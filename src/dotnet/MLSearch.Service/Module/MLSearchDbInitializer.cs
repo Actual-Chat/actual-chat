@@ -3,4 +3,4 @@ using ActualChat.MLSearch.Db;
 
 namespace ActualChat.MLSearch.Module;
 
-public class MLSearchDbInitializer(IServiceProvider services) : DbInitializer<MLSearchDbContext>(services);
+public sealed class MLSearchDbInitializer(IServiceProvider services) : DbInitializer<MLSearchDbContext>(services);

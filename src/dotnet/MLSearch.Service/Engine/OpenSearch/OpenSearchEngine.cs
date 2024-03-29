@@ -4,7 +4,7 @@ using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch;
 
-internal class OpenSearchEngine<TDocument>(
+internal sealed class OpenSearchEngine<TDocument>(
     string docIndexName,
     IOpenSearchClient openSearch,
     IIndexSettingsSource indexSettingsSource,

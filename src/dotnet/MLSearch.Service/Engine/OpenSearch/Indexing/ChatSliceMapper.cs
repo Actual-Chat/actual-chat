@@ -5,7 +5,7 @@ using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 
-internal class ChatSliceMapper : IDocumentMapper<ChatEntry, ChatSlice>
+internal sealed class ChatSliceMapper : IDocumentMapper<ChatEntry, ChatSlice>
 {
     public ChatSlice Map(ChatEntry source)
         => source.IntoIndexedDocument();

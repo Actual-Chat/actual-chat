@@ -10,7 +10,7 @@ using ActualChat.MLSearch.Indexing;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
-internal class ClusterSetup(
+internal sealed class ClusterSetup(
     OpenSearchModelGroupName modelGroupName,
     IOpenSearchClient openSearch,
     ILogger<ClusterSetup> log,

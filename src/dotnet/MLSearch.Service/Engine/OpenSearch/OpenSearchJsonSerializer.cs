@@ -2,7 +2,7 @@ using OpenSearch.Client;
 using OpenSearch.Net;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch;
-internal class OpenSearchJsonSerializer : IOpenSearchSerializer
+internal sealed class OpenSearchJsonSerializer : IOpenSearchSerializer
 {
     private IOpenSearchSerializer _builtin;
     private IConnectionSettingsValues _settings;

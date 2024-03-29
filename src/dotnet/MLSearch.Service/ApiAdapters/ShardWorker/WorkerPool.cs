@@ -27,7 +27,7 @@ internal interface IWorkerPool<in TJob, in TJobId, in TShardKey>
 /// Manages one pool of <see cref="TWorker"/> instances of <paramref name="shardConcurrencyLevel"/>
 /// size per shard.
 /// </summary>
-internal class WorkerPool<TWorker, TJob, TJobId, TShardKey>(
+internal sealed class WorkerPool<TWorker, TJob, TJobId, TShardKey>(
     IServiceProvider services,
     DuplicateJobPolicy duplicateJobPolicy,
     int shardConcurrencyLevel,

@@ -4,7 +4,7 @@ namespace ActualChat.MLSearch.Indexing;
 
 internal interface IChatIndexerWorker: IWorker<MLSearch_TriggerChatIndexing>;
 
-internal class ChatIndexerWorker(
+internal sealed class ChatIndexerWorker(
     int maxIterationCount,
     IDataIndexer<ChatId> dataIndexer,
     ICommander commander

@@ -4,7 +4,7 @@ internal interface ITracerSource {
     Tracer GetTracer();
 }
 
-internal class TracerSource : ITracerSource
+internal sealed class TracerSource : ITracerSource
 {
     public Tracer GetTracer() => Tracer.Default;
 }
