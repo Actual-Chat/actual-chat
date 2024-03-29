@@ -8,14 +8,11 @@ using Polly.Extensions.Http;
 namespace ActualChat.Kubernetes.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class KubernetesModule(IServiceProvider moduleServices) : HostModule<KubernetesSettings>(moduleServices)
+public sealed class KubernetesModule(IServiceProvider moduleServices)
+    : HostModule<KubernetesSettings>(moduleServices), IServerModule
 {
     protected override void InjectServices(IServiceCollection services)
     {
-        base.InjectServices(services);
-        if (!HostInfo.HostKind.IsServer())
-            return; // Server-side only module
-
         services.AddFusion();
         services.AddSingleton<KubeInfo>();
         services.AddSingleton<KubeServices>();

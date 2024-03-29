@@ -49,6 +49,8 @@ public static partial class StandardError
 
     public static Exception Timeout(string target)
         => new TimeoutException($"{target} has timed out.");
+    public static Exception Postpone(TimeSpan delay)
+        => new PostponeException($"Postponed for: {delay.ToShortString()}.") { Delay = delay };
 
     public static Exception Unavailable(string message)
         => new InvalidOperationException(message);
@@ -68,9 +70,9 @@ public static partial class StandardError
         => new InternalError($"Command line: {message}");
     public static Exception Configuration(string message)
         => new InternalError($"Configuration: {message}");
+
     public static Exception Internal(string message)
         => new InternalError(message);
-
     public static Exception External(string message)
         => new ExternalError(message);
 }

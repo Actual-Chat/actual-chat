@@ -13,7 +13,7 @@ public class AndroidWebViewClient(
     private const string AppHostAddress = "0.0.0.0";
     private ILogger? _log;
 
-    private ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger(GetType());
+    private ILogger Log => _log ??= DefaultLoggerFactory.CreateLogger(GetType());
     private WebViewClient Original { get; } = original;
     private AndroidContentDownloader ContentDownloader { get; } = contentDownloader;
 

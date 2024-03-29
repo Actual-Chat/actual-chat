@@ -1,6 +1,9 @@
+using ActualLab.Rpc;
+
 namespace ActualChat.Users;
 
-public interface IUsersUpgradeBackend : ICommandService
+public interface IUsersUpgradeBackend : IComputeService, IBackendService
 {
-    public Task<ImmutableList<UserId>> ListAllUserIds(CancellationToken cancellationToken);
+    // Not a [ComputeMethod]!
+    Task<ImmutableList<UserId>> ListAllUserIds(CancellationToken cancellationToken);
 }

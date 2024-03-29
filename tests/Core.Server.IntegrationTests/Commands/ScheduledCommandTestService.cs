@@ -1,9 +1,28 @@
 using System.Collections.Concurrent;
-using ActualChat.Commands;
+using ActualChat.Queues;
+using ActualLab.Rpc;
 
 namespace ActualChat.Core.Server.IntegrationTests.Commands;
 
-public class ScheduledCommandTestService : IComputeService
+public interface IScheduledCommandTestService : IComputeService, IBackendService
+{
+    [ComputeMethod]
+    Task<int> GetProcessedEventCount(CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task ProcessTestCommand(TestCommand command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task ProcessTestCommand2(TestCommand2 command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task ProcessTestCommand3(TestCommand3 command, CancellationToken cancellationToken);
+
+    [EventHandler]
+    Task ProcessTestEvent(TestEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task ProcessTestEvent2(TestEvent2 eventCommand, CancellationToken cancellationToken);
+}
+
+public class ScheduledCommandTestService : IScheduledCommandTestService
 {
     public readonly ConcurrentQueue<IEventCommand> ProcessedEvents = new();
 

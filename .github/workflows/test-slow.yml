@@ -154,9 +154,14 @@ jobs:
           ./run-build.cmd slow-tests --configuration Debug
 
       - name: Report slow test results
-        uses: dorny/test-reporter@v1
+        uses: phoenix-actions/test-reporting@v13
         if: success() || failure()    # run this step even if previous step failed
         with:
           name: Slow tests results     # Name of the check run which will be created
           path: './tests/**/*.trx'   # Path to test results
           reporter: dotnet-trx        # Format of test results
+          fail-on-error: false
+          list-tests: 'all'
+          output-to: 'checks'
+          list-suites: 'all'
+          only-summary: 'true'

@@ -2,7 +2,7 @@ using Elastic.Clients.Elasticsearch;
 
 namespace ActualChat.Search;
 
-public class ElasticNames
+public sealed class ElasticNames
 {
     public const string EntryIndexVersion = "v2";
     public const string UserIndexVersion = "v2";

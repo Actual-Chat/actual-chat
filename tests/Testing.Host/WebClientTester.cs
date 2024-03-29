@@ -76,7 +76,7 @@ public class WebClientTester : IWebClientTester
     protected virtual IServiceProvider CreateClientServices(ITestOutputHelper output, Action<IServiceCollection>? configureClientServices)
     {
         var services = new ServiceCollection();
-        var configuration = AppServices.GetRequiredService<IConfiguration>();
+        var configuration = AppServices.Configuration();
         Program.ConfigureServices(services, configuration, UrlMapper.BaseUrl, true);
         services.AddTestLogging(output); // Override logging
 

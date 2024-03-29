@@ -17,7 +17,7 @@ public class ShardSchemeTest(ITestOutputHelper @out) : TestBase(@out)
         s.IsValid.Should().BeFalse();
         s.NullIfUndefined().Should().BeNull();
 
-        s = ShardScheme.AnyServer;
+        s = ShardScheme.TestBackend;
         s.IsNone.Should().BeFalse();
         s.IsUndefined.Should().BeFalse();
         s.IsValid.Should().BeTrue();

@@ -1,8 +1,9 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Users;
 
-public interface IChatPositionsBackend : IComputeService
+public interface IChatPositionsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<ChatPosition> Get(UserId userId, ChatId chatId, ChatPositionKind kind, CancellationToken cancellationToken);

@@ -4,7 +4,6 @@ using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
 using ActualChat.Permissions;
 using ActualChat.Streaming.UI.Blazor.Services;
-using AudioInitializer = ActualChat.Streaming.UI.Blazor.Services.AudioInitializer;
 
 namespace ActualChat.Streaming.UI.Blazor.Module;
 
@@ -18,11 +17,7 @@ public sealed class StreamingBlazorUIModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.HostKind.HasBlazorUI())
-            return; // Blazor UI only module
-
         services.AddFusion();
-
         services.AddScoped<ITrackPlayerFactory>(c => new AudioTrackPlayerFactory(c));
         services.AddScoped<AudioInitializer>(c => new AudioInitializer(c.UIHub()));
         services.AddScoped<AudioRecorder>(c => new AudioRecorder(c));

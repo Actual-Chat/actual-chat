@@ -1,29 +1,26 @@
-using ActualChat.Commands;
-using ActualChat.Hosting;
-using ActualChat.Nats.Module;
+using ActualChat.Queues.Internal;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Commands;
 
 [Collection(nameof(CommandsCollection)), Trait("Category", nameof(CommandsCollection))]
-public class EventHandlerResolverTest(ITestOutputHelper @out)
-    : AppHostTestBase($"x-{nameof(EventHandlerResolverTest)}", TestAppHostOptions.Default, @out)
+public class EventHandlerRegistryTest(ITestOutputHelper @out)
+    : AppHostTestBase($"x-{nameof(EventHandlerRegistryTest)}", TestAppHostOptions.Default, @out)
 {
     [Fact(Timeout = 20_000)]
     public async Task BackendServerRoleShouldHandleAllEvents()
     {
         using var host = await NewAppHost(options => options with  {
-            AppServicesExtender = (c, services) => {
-                services
-                    .AddCommandQueues(HostRole.OneBackendServer)
-                    .AddFusion()
-                    .AddService<ScheduledCommandTestService>();
+            ConfigureAppServices = (builder, services) => {
+                var rpcHost = services.AddRpcHost(builder.HostInfo);
+                rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },
         });
         var services = host.Services;
-        var eventHandlerResolver = services.GetRequiredService<EventHandlerResolver>();
-        var eventHandlers = eventHandlerResolver.GetEventHandlers(HostRole.OneBackendServer);
-        eventHandlers.Should().NotBeEmpty();
+        services.Queues().Start();
 
+        var eventHandlerResolver = services.GetRequiredService<EventHandlerRegistry>();
+        var eventHandlers = eventHandlerResolver.AllEventHandlers;
+        eventHandlers.Should().NotBeEmpty();
     }
 }

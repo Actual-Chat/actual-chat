@@ -10,10 +10,10 @@ namespace ActualChat.Search.IntegrationTests;
 public class ChatContactIndexingTest(ITestOutputHelper @out)
     : LocalAppHostTestBase( "chat_contact_indexing",
         TestAppHostOptions.Default with {
-            AppConfigurationExtender = cfg => {
-                cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.IsSearchEnabled)}", "true"));
-                cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingDelay)}", "00:00:01"));
-                cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingSignalInterval)}", "00:00:00.5"));
+            Configure = (_, cfg) => {
+                cfg.AddInMemoryCollection(($"{nameof(SearchSettings)}:{nameof(SearchSettings.IsSearchEnabled)}", "true"));
+                cfg.AddInMemoryCollection(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingDelay)}", "00:00:01"));
+                cfg.AddInMemoryCollection(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingSignalInterval)}", "00:00:00.5"));
             },
         },
         @out)

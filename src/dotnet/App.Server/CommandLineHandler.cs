@@ -8,6 +8,7 @@ public static class CommandLineHandler
     private const string UrlArgPrefix = "-url:";
     private const string RoleArgPrefix = "-role:";
     private const string KeyboardArg = "-kb";
+    private const string HybridArg = "-hybrid";
     private const string MultiHostRoleArgPrefix = "-multihost-role:";
     private const string RoleGroupDelimiter = ":";
     private const string UrlsEnvVar = "URLS";
@@ -17,6 +18,11 @@ public static class CommandLineHandler
         { "1", [HostRole.OneServer] },
         { "2", [HostRole.OneApiServer, HostRole.OneBackendServer] },
     };
+
+    private static (string, int)? _defaultHostAndPort;
+
+    private static bool UseKeyboard { get; set; }
+    private static bool UseHybrid { get; set; }
     private static Symbol RoleGroupName { get; set; } = "1";
     private static int OwnRoleIndex { get; set; } = -1;
     private static HostRole[] RoleGroup => AllRoleGroups[RoleGroupName];
@@ -25,7 +31,9 @@ public static class CommandLineHandler
     public static void Process(string[] args)
     {
         // -kb argument
-        var useKeyboard = args.Any(x => OrdinalEquals(x, KeyboardArg));
+        UseKeyboard = args.Any(x => OrdinalEquals(x, KeyboardArg));
+        // -hybrid argument
+        UseHybrid = HostRolesExt.MustReplaceServerWithHybrid = args.Any(x => OrdinalEquals(x, HybridArg));
 
         // -url:<url> argument
         var urlOverride = args
@@ -36,34 +44,31 @@ public static class CommandLineHandler
             Environment.SetEnvironmentVariable(UrlsEnvVar, urlOverride);
         }
 
-        // -multihost-role:<role-group>:<own-role> argument
-        var multihostMode = TryParseRoleArgument(args, MultiHostRoleArgPrefix);
         // -role:<role-group>:<own-role> argument
         if (TryParseRoleArgument(args, RoleArgPrefix)) {
-            if (multihostMode)
+            if (TryParseRoleArgument(args, MultiHostRoleArgPrefix))
                 throw StandardError.CommandLine($"{RoleArgPrefix} and {MultiHostRoleArgPrefix} can't be used together.");
 
             WriteLine($"Role override: {OwnRole} of role group '{RoleGroupName}'.");
             Environment.SetEnvironmentVariable(ServerRoleEnvVar, OwnRole.Value);
-            if (!useKeyboard)
-                return;
+            StartKeyboardWatcher();
+            return;
         }
 
-        var (host, defaultPort) = GetDefaultHostAndPort();
-        if (multihostMode) {
+        // -multihost-role:<role-group>:<own-role> argument
+        if (TryParseRoleArgument(args, MultiHostRoleArgPrefix)) {
+            var (host, defaultPort) = GetDefaultHostAndPort();
             var ownUrl = $"http://{host}:{defaultPort + OwnRoleIndex}";
             WriteLine($"MultiHost mode. Own role: {OwnRole} of role group '{RoleGroupName}' @ {ownUrl}");
             for (var roleIndex = 0; roleIndex < RoleGroup.Length; roleIndex++) {
                 if (roleIndex != OwnRoleIndex)
-                    LaunchAppHost(RoleGroup[roleIndex], host, defaultPort + roleIndex, useKeyboard);
+                    LaunchAppHost(RoleGroup[roleIndex], host, defaultPort + roleIndex);
             }
-            // In the very end: set env. vars to own role vars
+
             Environment.SetEnvironmentVariable(UrlsEnvVar, ownUrl);
             Environment.SetEnvironmentVariable(ServerRoleEnvVar, OwnRole.Value);
+            StartKeyboardWatcher();
         }
-
-        if (useKeyboard)
-            _ = WatchKeyboard(host, defaultPort, useKeyboard);
     }
 
     // Private methods
@@ -91,13 +96,17 @@ public static class CommandLineHandler
 
     private static (string Host, int Port) GetDefaultHostAndPort()
     {
+        if (_defaultHostAndPort is { } defaultHostAndPort)
+            return defaultHostAndPort;
+
         // Building a similar host to get our own http:// endpoint
-        var similarHost = new AppHost().Build(configurationOnly: true);
-        var endpoint = ServerEndpoints.List(similarHost.Services, "http://").FirstOrDefault();
-        return ServerEndpoints.Parse(endpoint);
+        var appHost = new AppHost().Build(configurationOnly: true);
+        var endpoint = ServerEndpoints.List(appHost.Services, "http://").FirstOrDefault();
+        _defaultHostAndPort = ServerEndpoints.Parse(endpoint);
+        return _defaultHostAndPort.GetValueOrDefault();
     }
 
-    private static void LaunchAppHost(HostRole role, string host, int port, bool useKeyboard)
+    private static void LaunchAppHost(HostRole role, string host, int port)
     {
         var url = $"http://{host}:{port}";
         WriteLine($"Launching host: {role} @ {url}");
@@ -106,31 +115,38 @@ public static class CommandLineHandler
                 "/C", "start", "/D", Environment.CurrentDirectory, Environment.ProcessPath!,
                 $"{RoleArgPrefix}{RoleGroupName}{RoleGroupDelimiter}{role.Value}",
                 UrlArgPrefix + url,
-                useKeyboard ? KeyboardArg : "",
+                UseKeyboard ? KeyboardArg : "",
+                UseHybrid ? HybridArg : "",
             },
             UseShellExecute = true,
         };
         System.Diagnostics.Process.Start(startInfo);
     }
 
-    private static async Task WatchKeyboard(string host, int defaultPort, bool useKeyboard) {
+    private static void StartKeyboardWatcher() {
+        if (!UseKeyboard)
+            return;
+
+        var (host, defaultPort) = GetDefaultHostAndPort();
         var port = defaultPort + RoleGroup.Length;
-        while (true) {
-            if (!KeyAvailable) {
-                await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
-                continue;
+        _ = Task.Run(async () => {
+            while (true) {
+                if (!KeyAvailable) {
+                    await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+                    continue;
+                }
+
+                var key = ReadKey(true).KeyChar;
+                if (key is < '0' or > '9')
+                    continue;
+
+                var role = RoleGroup.GetValueOrDefault(key - '0');
+                if (role.IsNone || role == HostRole.OneApiServer)
+                    continue;
+
+                LaunchAppHost(role, host, port++);
             }
-
-            var key = ReadKey(true).KeyChar;
-            if (key is < '0' or > '9')
-                continue;
-
-            var role = RoleGroup.GetValueOrDefault(key - '0');
-            if (role.IsNone || role == HostRole.OneApiServer)
-                continue;
-
-            LaunchAppHost(role, host, port++, useKeyboard);
-        }
-        // ReSharper disable once FunctionNeverReturns
+            // ReSharper disable once FunctionNeverReturns
+        }, CancellationToken.None);
     }
 }

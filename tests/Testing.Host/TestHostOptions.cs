@@ -1,6 +1,7 @@
+using ActualChat.App.Server;
 using ActualChat.Chat.Module;
 using ActualChat.Testing.Internal;
-using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Testing.Host;
@@ -34,10 +35,11 @@ public record TestAppHostOptions
     public string InstanceName { get; init; } = "";
     public ITestOutputHelper Output { get; init; } = NullTestOutput.Instance;
     public string? ServerUrls { get; init; }
-    public Action<IConfigurationBuilder>? HostConfigurationExtender { get; init; }
-    public Action<IConfigurationBuilder>? AppConfigurationExtender { get; init; }
-    public Action<WebHostBuilderContext, IServiceCollection>? AppServicesExtender { get; init; }
+    public Action<AppHostBuilder, IConfigurationManager>? Configure { get; init; }
+    public Action<AppHostBuilder, IServiceCollection>? ConfigureAppServices { get; init; }
+    public Action<AppHostBuilder, WebApplication>? ConfigureApp { get; set; }
     public ChatDbInitializer.Options ChatDbInitializerOptions { get; init; } = ChatDbInitializer.Options.None;
+    public bool? UseNatsQueues { get; init; }
     public bool MustInitializeDb { get; init; }
     public bool MustStart { get; init; }
 

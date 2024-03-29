@@ -6,7 +6,7 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IExternalContactsBackend Backend { get; } = services.GetRequiredService<IExternalContactsBackend>();
-    private ICommander Commander { get; } = services.GetRequiredService<ICommander>();
+    private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<ExternalContact>> List(Session session, Symbol deviceId, CancellationToken cancellationToken)

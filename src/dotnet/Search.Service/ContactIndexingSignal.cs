@@ -2,7 +2,7 @@ using ActualChat.Search.Module;
 
 namespace ActualChat.Search;
 
-public class ContactIndexingSignal : IAsyncDisposable
+public sealed class ContactIndexingSignal : IAsyncDisposable
 {
     private MomentClockSet Clocks { get; }
     private IMutableState<bool> NeedsSync { get; }

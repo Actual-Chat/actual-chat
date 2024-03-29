@@ -2,7 +2,7 @@ namespace ActualChat.Concurrency;
 
 public static class InterlockedExt
 {
-    public static void ExchangeIfGreaterThan(ref long location, long value)
+    public static void ExchangeIfGreater(ref long location, long value)
     {
         var current = Interlocked.Read(ref location);
         while (current < value) {

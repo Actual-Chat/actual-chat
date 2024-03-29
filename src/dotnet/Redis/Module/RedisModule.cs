@@ -50,4 +50,7 @@ public sealed class RedisModule(IServiceProvider moduleServices)
                 };
         });
     }
+
+    protected override void InjectServices(IServiceCollection services)
+    { }
 }

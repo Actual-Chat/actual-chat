@@ -1,6 +1,8 @@
+using ActualLab.Rpc;
+
 namespace ActualChat.Chat;
 
-public interface IMentionsBackend : IComputeService
+public interface IMentionsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<Mention?> GetLast(

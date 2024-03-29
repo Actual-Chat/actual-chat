@@ -25,7 +25,7 @@ public class AppServicesAccessor
         TaskCompletionSourceExt.New<IServiceProvider>();
 
     private static ILogger AppServicesAccessorLog // Otherwise Rider assumes we're referencing it from elsewhere
-        => _appServicesAccessorLog ??= MauiDiagnostics.LoggerFactory.CreateLogger<AppServicesAccessor>();
+        => _appServicesAccessorLog ??= DefaultLoggerFactory.CreateLogger<AppServicesAccessor>();
 
     public static IServiceProvider AppServices {
         get => _appServices ?? throw Errors.NotInitialized(nameof(AppServices));

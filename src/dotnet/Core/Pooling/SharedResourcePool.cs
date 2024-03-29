@@ -8,23 +8,26 @@ public partial class SharedResourcePool<TKey, TResource>(
 {
     private readonly ConcurrentDictionary<TKey, Lease> _leases = new ();
     private volatile int _isDisposed;
+    private ILogger? _log;
 
     private Func<TKey, CancellationToken, Task<TResource>> ResourceFactory { get; } = resourceFactory;
     private Func<TKey, TResource, ValueTask> ResourceDisposer { get; } = resourceDisposer ?? DefaultResourceDisposer;
 
     public TimeSpan ResourceDisposeDelay { get; init; } = TimeSpan.FromSeconds(10);
     public bool IsDisposed => _isDisposed != 0;
-    public ILogger Log { get; init; } = NullLogger.Instance;
+
+    public ILogger Log {
+        get => _log ??= DefaultLogFor(GetType());
+        init => _log = value;
+    }
 
     public async ValueTask<Lease> Rent(TKey key, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(IsDisposed, this);
 
         while (true) {
-            var lease = _leases.GetOrAdd(key, static (key1, state) => {
-                var (self, cancellationToken1) = state;
-                return new Lease(self, key1, cancellationToken1);
-            }, (this, cancellationToken));
+            var lease = _leases.GetOrAdd(key, static (key1, self) => new Lease(self, key1), this);
+            lease.Initialize(cancellationToken);
             var endRentTask = await lease.BeginRent(cancellationToken).ConfigureAwait(false);
             if (endRentTask == null)
                 return lease;
@@ -40,7 +43,7 @@ public partial class SharedResourcePool<TKey, TResource>(
 
         while (!_leases.IsEmpty)
             try {
-                List<TKey> keys = [.._leases.Keys];
+                var keys = _leases.Keys.ToList();
                 foreach (var key in keys) {
                     if (!_leases.TryRemove(key, out var lease))
                         continue;
@@ -49,11 +52,7 @@ public partial class SharedResourcePool<TKey, TResource>(
                 }
             }
             catch (Exception e) {
-                var log = Log == NullLogger.Instance
-                    ? DefaultLog
-                    : Log;
-
-                log.LogError(e, $"Error disposing '{nameof(SharedResourcePool<TKey, TResource>)}'");
+                Log.LogError(e, "Error while disposing {Type}", GetType().GetName());
             }
     }
 

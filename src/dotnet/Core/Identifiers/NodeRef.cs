@@ -14,6 +14,8 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct NodeRef : ISymbolIdentifier<NodeRef>
 {
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= DefaultLogFor<NodeRef>();
     private static RandomStringGenerator IdGenerator => Alphabet.AlphaNumeric.Generator8;
 
     public static NodeRef None => default;
@@ -59,7 +61,7 @@ public readonly partial struct NodeRef : ISymbolIdentifier<NodeRef>
     public static NodeRef Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<NodeRef>(s);
     public static NodeRef ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<NodeRef>(s).LogWarning(DefaultLog, None);
+        => TryParse(s, out var result) ? result : StandardError.Format<NodeRef>(s).LogWarning(Log, None);
 
     public static bool TryParse(string? s, out NodeRef result)
     {

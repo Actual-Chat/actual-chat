@@ -1,11 +1,28 @@
+using ActualChat.Hosting;
 using ActualChat.Testing.Internal;
 using ActualLab.Testing.Output;
 using MartinCostello.Logging.XUnit;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Testing;
 
 public static class ServiceCollectionExt
 {
+    public static IServiceCollection AddTestHostInfo(this IServiceCollection services)
+        => services.AddTestHostInfo(out _);
+    public static IServiceCollection AddTestHostInfo(this IServiceCollection services, out HostInfo hostInfo)
+    {
+        hostInfo = new HostInfo {
+            HostKind = HostKind.Server,
+            AppKind = AppKind.Unknown,
+            Environment = Environments.Development,
+            Roles = HostRoles.Server.GetAllRoles(HostRole.OneServer, true),
+            IsTested = true,
+        };
+        services.AddSingleton(hostInfo);
+        return services;
+    }
+
     public static IServiceCollection AddTestLogging(this IServiceCollection services, ITestOutputHelper output)
         => AddTestLogging(services, new TestOutputHelperAccessor(output.ToSafe()));
     public static IServiceCollection AddTestLogging(this IServiceCollection services, TestOutputHelperAccessor outputAccessor)

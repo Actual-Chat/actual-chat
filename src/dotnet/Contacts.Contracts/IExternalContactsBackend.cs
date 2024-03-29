@@ -1,8 +1,9 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Contacts;
 
-public interface IExternalContactsBackend : IComputeService
+public interface IExternalContactsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<ApiArray<ExternalContact>> List(UserId ownerId, Symbol deviceId, CancellationToken cancellationToken);

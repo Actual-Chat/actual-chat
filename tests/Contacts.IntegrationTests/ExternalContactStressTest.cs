@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Claims;
 using ActualChat.Performance;
+using ActualChat.Queues;
 using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
@@ -15,30 +16,19 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
 {
     private WebClientTester _tester = null!;
     private ICommander _commander = null!;
+    private IQueues _queues = null!;
     private IAccounts _accounts = null!;
     private IContacts _contacts = null!;
 
-    private static string BobEmail => "bob@actual.chat";
-    private static Phone BobPhone => new ("1-2345678901");
-    private static User Bob { get; } = new User("", $"Bob-{nameof(ExternalContactsTest)}")
-        .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "111"))
-        .WithPhone(BobPhone)
-        .WithClaim(ClaimTypes.Email, BobEmail);
-
-    private static string JackEmail => "jack@actual.chat";
-    private static Phone JackPhone => new ("1-3456789012");
-    private static User Jack { get; } = new User("", $"JackAdmin-{nameof(ExternalContactsTest)}")
-        .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "222"))
-        .WithPhone(JackPhone)
-        .WithClaim(ClaimTypes.Email, JackEmail);
-
     protected override Task InitializeAsync()
     {
-        Tracer.Default = Out.NewTracer();
+        Tracer.Default = Out.NewTracer(nameof(ExternalContactStressTest));
         _tester = AppHost.NewWebClientTester(Out);
-        _accounts = AppHost.Services.GetRequiredService<IAccounts>();
-        _contacts = AppHost.Services.GetRequiredService<IContacts>();
-        _commander = AppHost.Services.Commander();
+        var services = AppHost.Services;
+        _accounts = services.GetRequiredService<IAccounts>();
+        _contacts = services.GetRequiredService<IContacts>();
+        _commander = services.Commander();
+        _queues = services.Queues();
 
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
         return Task.CompletedTask;
@@ -53,11 +43,12 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     }
 
     [Theory]
-    [InlineData("small", 5)]
-    [InlineData("medium", 37)]
-    public async Task StressTest_AllUsersExist_AllAreConnected(string prefix, int count)
+    [InlineData(5)]
+    [InlineData(37)]
+    public async Task StressTest_AllUsersExist_AllAreConnected(int count)
     {
         // arrange
+        var prefix = UniqueNames.Prefix();
         var tracer = Tracer.Default;
         using var __ = tracer.Region();
         var deviceIds = Enumerable.Repeat(0, count).Select(_ => NewDeviceId()).ToList();
@@ -81,19 +72,21 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
 
         // assert
         using var _3 = tracer.Region($"Assert {count} accounts");
+        var userMap = accounts.ToDictionary(x => x.Id, x => x.User);
         foreach (var account in accounts) {
             using var _4 = tracer.Region($"Assert contacts of {account.User.Name} #({account.User.Id})");
             await _tester.SignIn(account.User);
-            await AssertConnectedUsers(account, accounts);
+            await AssertConnectedUsers(account, userMap);
         }
     }
 
-    [Theory(Skip = "Flaky")]
-    [InlineData("small", 5)]
-    [InlineData("medium", 37)]
-    public async Task StressTest_UsersCreatedSequentially_AllAreConnected(string prefix, int count)
+    [Theory]
+    [InlineData(5)]
+    [InlineData(37)]
+    public async Task StressTest_UsersCreatedSequentially_AllAreConnected(int count)
     {
         // arrange
+        var prefix = UniqueNames.Prefix();
         var accounts = new AccountFull[count];
         var deviceIds = Enumerable.Repeat(0, count).Select(_ => NewDeviceId()).ToList();
 
@@ -106,6 +99,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
             await Add(externalContacts);
         }
 
+        var userMap = accounts.ToDictionary(x => x.Id, x => x.User);
         foreach (var u in accounts.Select(x => x.User)) {
             // act
             var account = await _tester.SignIn(u);
@@ -116,7 +110,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
                     acc.IsGreetingCompleted.Should().BeTrue();
                 },
                 TimeSpan.FromSeconds(5));
-            await AssertConnectedUsers(account, accounts);
+            await AssertConnectedUsers(account, userMap);
         }
     }
 
@@ -130,12 +124,11 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
             throw new AggregateException("Failed to create external contacts", errors);
     }
 
-    private async Task AssertConnectedUsers(AccountFull account, AccountFull[] allAccounts)
+    private async Task AssertConnectedUsers(AccountFull account, Dictionary<UserId, User> userMap)
     {
-        var userMap = allAccounts.ToDictionary(x => x.Id, x => x.User);
-        var contactIds = await ListContactIds(allAccounts.Length - 1);
+        var contactIds = await ListContactIds(account, userMap.Count - 1);
         var connectedUsers = contactIds.ConvertAll(GetUser).OrderBy(x => x.Name);
-        var otherUsers = allAccounts.Where(x => x.Id != account.Id).Select(x => x.User).OrderBy(x => x.Name);
+        var otherUsers = userMap.Values.Where(x => x.Id != account.Id).OrderBy(x => x.Name);
         connectedUsers.Should().BeEquivalentTo(otherUsers);
         return;
 
@@ -145,11 +138,11 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
                 : throw new Exception("Peer chat contact was expected")];
     }
 
-    private async Task<List<ContactId>> ListContactIds(int expectedCount)
+    private async Task<List<ContactId>> ListContactIds(AccountFull account, int expectedCount)
     {
         await TestExt.WhenMetAsync(async () => {
                 var peerContactIds = await ListContactIds();
-                peerContactIds.Should().HaveCountGreaterOrEqualTo(expectedCount);
+                peerContactIds.Should().HaveCountGreaterOrEqualTo(expectedCount, $"for {account.User.Name}");
             },
             TimeSpan.FromSeconds(10));
 
@@ -175,17 +168,14 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     private static Symbol NewDeviceContactId()
         => new (Guid.NewGuid().ToString());
 
-    private static ContactId BuildContactId(AccountFull owner, AccountFull friendAccount)
-        => ContactId.Peer(owner.Id, friendAccount.Id);
-
     private static User BuildUser(string prefix, int i)
-        => new User("", BuildUserName(i))
+        => new User("", BuildUserName(prefix, i))
             .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme,  $"{prefix}-{i.ToString("00000", CultureInfo.InvariantCulture)}"))
             .WithPhone(BuildPhone(prefix, i))
             .WithClaim(ClaimTypes.Email, BuildEmail(prefix, i));
 
-    private static string BuildUserName(int i)
-        => $"user{i:00000}";
+    private static string BuildUserName(string prefix, int i)
+        => $"user-{prefix}-{i:00000}";
 
     private static Phone BuildPhone(string prefix, int i)
         => new ($"1-{Math.Abs(prefix.GetDjb2HashCode() % 100000):00000}{i:00000}");

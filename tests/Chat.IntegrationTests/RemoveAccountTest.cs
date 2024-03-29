@@ -1,4 +1,5 @@
-﻿using ActualChat.Testing.Host;
+﻿using ActualChat.Queues;
+using ActualChat.Testing.Host;
 using ActualLab.Mathematics;
 
 namespace ActualChat.Chat.IntegrationTests;
@@ -25,7 +26,7 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         // NOTE(DF): await till user has joined to default chat (for admins it happens automatically) before
         // creating text entries
 
-        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
+        await services.Queues().WhenProcessing();
 
         await TestExt.WhenMetAsync(async () => {
             var author = await authors.GetOwn(session, chat!.Id, default);
@@ -83,7 +84,7 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var removeEntriesCommand = new ChatsBackend_RemoveOwnChats(bob.Id);
         await services.Commander().Call(removeEntriesCommand);
 
-        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
+        await services.Queues().WhenProcessing();
 
         var chat1 = await chats.Get(session, chat.Id, CancellationToken.None);
         chat1.Should().BeNull();

@@ -24,33 +24,56 @@ public readonly struct RpcHostBuilder
     public HostInfo HostInfo { get; }
     public ILogger? Log { get; }
 
+    public bool IsApiHost { get; }
+
     internal RpcHostBuilder(IServiceCollection services, HostInfo hostInfo, ILogger? log)
     {
-        Fusion = services.AddFusion(RpcServiceMode.None);
+        Fusion = services.AddFusion(RpcServiceMode.Local);
         HostInfo = hostInfo;
         Log = log;
+        IsApiHost = HostInfo.HasRole(HostRole.Api);
 
         if (!Services.HasService<BackendServiceDefs>())
             AddCoreServices();
     }
 
-    // AddFrontend & AddBackend auto-detect IComputeService & IRpcService
+    // AddApi
 
-    public RpcHostBuilder AddApiService<
+    public RpcHostBuilder AddApi<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>()
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>(Symbol name = default)
         where TService : class, IRpcService
         where TImplementation : class, TService
-        => AddApiService(typeof(TService), typeof(TImplementation));
+        => AddApiOrLocal(typeof(TService), typeof(TImplementation), false, name);
 
-    public RpcHostBuilder AddApiService(
+    public RpcHostBuilder AddApi(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type serviceType,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type implementationType,
         Symbol name = default)
-    {
-        if (!HostInfo.HasRole(HostRole.Api))
-            return this;
+        => AddApiOrLocal(serviceType, implementationType, false, name);
 
+    // AddApiOrLocal
+
+    public RpcHostBuilder AddApiOrLocal<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>(
+        Symbol name = default)
+        where TService : class, IRpcService
+        where TImplementation : class, TService
+        => AddApiOrLocal(typeof(TService), typeof(TImplementation), true, name);
+
+    public RpcHostBuilder AddApiOrLocal(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type serviceType,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type implementationType,
+        Symbol name = default)
+        => AddApiOrLocal(serviceType, implementationType, true, name);
+
+    private RpcHostBuilder AddApiOrLocal(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type serviceType,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type implementationType,
+        bool isLocalServiceRequired,
+        Symbol name = default)
+    {
         if (!typeof(IRpcService).IsAssignableFrom(serviceType))
             throw ActualLab.Internal.Errors.MustImplement<IRpcService>(serviceType, nameof(serviceType));
         if (typeof(IBackendService).IsAssignableFrom(serviceType))
@@ -58,10 +81,14 @@ public readonly struct RpcHostBuilder
         if (!serviceType.IsAssignableFrom(implementationType))
             throw ActualLab.Internal.Errors.MustBeAssignableTo(implementationType, serviceType, nameof(implementationType));
 
-        AddService(serviceType, implementationType);
-        Rpc.Service(serviceType).HasServer(serviceType).HasName(name);
+        if (isLocalServiceRequired || IsApiHost)
+            AddService(serviceType, implementationType);
+        if (IsApiHost)
+            Rpc.Service(serviceType).HasServer(serviceType).HasName(name);
         return this;
     }
+
+    // AddBackend
 
     public RpcHostBuilder AddBackend<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
@@ -86,27 +113,31 @@ public readonly struct RpcHostBuilder
 
         var hostRoles = HostInfo.Roles;
         var serviceMode = hostRoles.GetBackendServiceMode(serviceType);
-        var shardScheme = ShardScheme.ForType(serviceType) ?? ShardScheme.None;
-        var serviceDef = new BackendServiceDef(serviceType, implementationType, serviceMode, shardScheme.HostRole);
-        Services.Add(new ServiceDescriptor(typeof(BackendServiceDef), serviceDef));
+        if (!serviceMode.IsDisabled()) {
+            var shardScheme = ShardScheme.ForType(serviceType) ?? ShardScheme.None;
+            var serviceDef = new BackendServiceDef(serviceType, implementationType, serviceMode, shardScheme.HostRole);
+            Services.Add(new ServiceDescriptor(typeof(BackendServiceDef), serviceDef));
+        }
 
         switch (serviceMode) {
-        case ServiceMode.None:
+        case ServiceMode.Disabled:
             break;
         case ServiceMode.Local:
-            AddService(serviceType, implementationType);
+            AddService(implementationType, implementationType);
+            AddAlias(serviceType, implementationType);
             break;
         case ServiceMode.Client:
             AddClient(serviceType);
             Rpc.Service(serviceType).HasName(name);
             break;
         case ServiceMode.Server:
-            AddService(serviceType, implementationType);
-            Rpc.Service(serviceType).HasServer(serviceType).HasName(name);
-            break;
-        case ServiceMode.Mixed:
             AddService(implementationType, implementationType);
-            AddClient(serviceType);
+            AddAlias(serviceType, implementationType);
+            Rpc.Service(serviceType).HasServer(implementationType).HasName(name);
+            break;
+        case ServiceMode.Hybrid:
+            AddService(implementationType, implementationType, false);
+            AddHybridClient(serviceType, implementationType);
             Rpc.Service(serviceType).HasServer(implementationType).HasName(name);
             break;
         default:
@@ -117,12 +148,18 @@ public readonly struct RpcHostBuilder
 
     // Private methods
 
+    private void AddAlias(Type aliasType, Type serviceType, ServiceLifetime lifetime = ServiceLifetime.Singleton)
+    {
+        var descriptor = new ServiceDescriptor(aliasType, c => c.GetRequiredService(serviceType), lifetime);
+        Services.Add(descriptor);
+    }
+
     private void AddService(Type serviceType, Type implementationType, bool addCommandHandlers = true)
     {
         if (typeof(IComputeService).IsAssignableFrom(serviceType)) {
             var descriptor = new ServiceDescriptor(
                 serviceType,
-                c => FusionProxies.NewServiceProxy(c, implementationType),
+                c => FusionProxies.NewProxy(c, implementationType),
                 ServiceLifetime.Singleton);
             Services.Add(descriptor);
         }
@@ -137,7 +174,17 @@ public readonly struct RpcHostBuilder
         if (typeof(IComputeService).IsAssignableFrom(serviceType))
             Services.AddSingleton(serviceType, c => FusionProxies.NewClientProxy(c, serviceType));
         else
-            Services.AddSingleton(serviceType, c => RpcProxies.NewClientProxy(c, serviceType, serviceType));
+            Services.AddSingleton(serviceType, c => RpcProxies.NewClientProxy(c, serviceType));
+        if (addCommandHandlers)
+            Commander.AddHandlers(serviceType);
+    }
+
+    private void AddHybridClient(Type serviceType, Type implementationType, bool addCommandHandlers = true)
+    {
+        if (typeof(IComputeService).IsAssignableFrom(serviceType))
+            Services.AddSingleton(serviceType, c => FusionProxies.NewHybridProxy(c, serviceType, implementationType));
+        else
+            Services.AddSingleton(serviceType, c => RpcProxies.NewHybridProxy(c, serviceType, implementationType));
         if (addCommandHandlers)
             Commander.AddHandlers(serviceType);
     }
@@ -175,7 +222,7 @@ public readonly struct RpcHostBuilder
                 var endpoint = ServerEndpoints.List(c, "http://").FirstOrDefault();
                 (host, port) = ServerEndpoints.Parse(endpoint);
                 if (ServerEndpoints.InvalidHostNames.Contains(host)) {
-                    if (!hostInfo.IsDevelopmentInstance)
+                    if (hostInfo is { IsDevelopmentInstance: false, IsTested: false })
                         throw StandardError.Internal($"Server host name is invalid: {host}");
 
                     host = "localhost";

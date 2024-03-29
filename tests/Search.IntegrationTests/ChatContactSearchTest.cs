@@ -1,5 +1,6 @@
 using ActualChat.Chat;
 using ActualChat.Performance;
+using ActualChat.Search.Module;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
 
@@ -357,8 +358,8 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     private Task<TestAppHost> NewSearchEnabledAppHost(string instanceName)
         => NewAppHost(instanceName,
             options => options with {
-                AppConfigurationExtender = cfg => {
-                    cfg.AddInMemory(("SearchSettings:IsSearchEnabled", "true"));
+                Configure = (_, cfg) => {
+                    cfg.AddInMemoryCollection(($"{nameof(SearchSettings)}:{nameof(SearchSettings.IsSearchEnabled)}", "true"));
                 },
             });
 }

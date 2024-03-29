@@ -1,18 +1,23 @@
 using ActualChat.Mesh;
+using ActualLab.Diagnostics;
 
 namespace ActualChat;
 
 public abstract class ShardWorker : WorkerBase
 {
+    private static bool DebugMode => Constants.DebugMode.QueueProcessor;
+
     private ILogger? _log;
 
     protected IServiceProvider Services { get; }
-    protected virtual ILogger Log => _log ??= Services.Logs().CreateLogger($"{GetType()}({ShardScheme.Id})");
+    protected ILogger Log => _log ??= Services.LoggerFactory().CreateLogger(GetType().NonProxyType(), $"({ShardScheme.Id})");
+    protected ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     protected MeshWatcher MeshWatcher { get; }
     protected ShardScheme ShardScheme { get; }
     protected IMeshLocks ShardLocks { get; }
     protected ShardState[] ShardStates { get; }
+    protected string KeyPrefix { get; }
 
     public MeshNode ThisNode { get; }
     public MeshLockOptions LockOptions { get; init; }
@@ -20,20 +25,26 @@ public abstract class ShardWorker : WorkerBase
     public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.1, 5);
     public IMomentClock Clock => ShardLocks.Clock;
 
-    protected ShardWorker(IServiceProvider services, ShardScheme shardScheme, string? keySuffix = null)
+    protected ShardWorker(IServiceProvider services, ShardScheme shardScheme, string? keyPrefix = null)
     {
         Services = services;
         ShardScheme = shardScheme;
         MeshWatcher = services.MeshWatcher();
         ThisNode = MeshWatcher.MeshNode;
 
-        keySuffix ??= GetType().Name;
-        if (keySuffix.Length != 0)
-            keySuffix = "." + keySuffix;
-        var fullKeySuffix = $"{nameof(ShardLocks)}.{shardScheme.Id.Value}{keySuffix}";
-        ShardLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(fullKeySuffix);
+        KeyPrefix = keyPrefix ?? GetType().Name;
+        ShardLocks = GetMeshLocks(nameof(ShardLocks));
         LockOptions = ShardLocks.LockOptions;
         ShardStates = Enumerable.Range(0, shardScheme.ShardCount).Select(i => new ShardState(this, i)).ToArray();
+    }
+
+    protected IMeshLocks GetMeshLocks(string name)
+    {
+        var keyPrefix = KeyPrefix;
+        if (keyPrefix.Length != 0)
+            keyPrefix += ".";
+        var fullKeyPrefix = $"{keyPrefix}{name}.{ShardScheme.Id.Value}";
+        return Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(fullKeyPrefix);
     }
 
     protected abstract Task OnRun(int shardIndex, CancellationToken cancellationToken);
@@ -72,7 +83,7 @@ public abstract class ShardWorker : WorkerBase
                     ShardStates[shardIndex] = shardState.NextState(mustUse);
                 }
                 if (addedShards.Count > 0 || removedShards.Count > 0)
-                    Log.LogInformation("Shards @ {ThisNodeId}: {UsedShards} (+{AddedShards}, -{RemovedShards})",
+                    Log.LogInformation("Shards @ {ThisNodeId}: {UsedShards} +[{AddedShards}] -[{RemovedShards}]",
                         ThisNode.Ref,
                         usedShards.Format(), addedShards.ToDelimitedString(","), removedShards.ToDelimitedString(","));
             }
@@ -86,14 +97,14 @@ public abstract class ShardWorker : WorkerBase
     {
         var failureCount = 0;
         while (!cancellationToken.IsCancellationRequested) {
-            Log.LogInformation("Shard #{ShardIndex}: acquiring lock for {ThisNodeId}", shardIndex, ThisNode.Ref);
+            DebugLog?.LogDebug("Shard #{ShardIndex}: acquiring lock for {ThisNodeId}", shardIndex, ThisNode.Ref);
             var lockHolder = await ShardLocks.Lock(shardIndex.Format(), "", cancellationToken).ConfigureAwait(false);
             var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
             var lockToken = lockCts.Token;
             var lockIsLost = false;
             Exception? error = null;
             try {
-                Log.LogInformation("Shard #{ShardIndex} -> {ThisNodeId}", shardIndex, ThisNode.Ref);
+                DebugLog?.LogDebug("Shard #{ShardIndex} -> {ThisNodeId}", shardIndex, ThisNode.Ref);
                 await OnRun(shardIndex, lockToken).ConfigureAwait(false);
                 failureCount = 0;
             }
@@ -113,7 +124,7 @@ public abstract class ShardWorker : WorkerBase
                 if (lockIsLost)
                     Log.LogWarning("Shard #{ShardIndex} <- {ThisNodeId} (shard lock is lost)", shardIndex, ThisNode.Ref);
                 else
-                    Log.LogInformation("Shard #{ShardIndex} <- {ThisNode}", shardIndex, ThisNode.Ref);
+                    DebugLog?.LogDebug("Shard #{ShardIndex} <- {ThisNode}", shardIndex, ThisNode.Ref);
             }
 
             if (error != null) {

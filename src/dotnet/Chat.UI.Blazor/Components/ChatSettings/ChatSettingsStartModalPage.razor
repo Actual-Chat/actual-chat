@@ -191,11 +191,10 @@
                 </TileItem>
             }
 
-            @if (m.IsOwner && !_isPlaceWelcomeChat) {
-                var leaveTitle = m.CanDelete ? "Delete chat" : "Leave chat";
-                <TileItem Class="item-leave-group" Click="@(() => OnLeaveGroupClick(m))">
+            @if (m.IsOwner && m.Chat != null && !_isPlaceWelcomeChat) {
+                <TileItem Class="item-leave-group" Click="@(() => OnDeleteChatClick(m.Chat))">
                     <Icon><i class="icon-log-out"></i></Icon>
-                    <Content>@leaveTitle</Content>
+                    <Content>Leave chat & delete</Content>
                 </TileItem>
             }
         </FormBlock>
@@ -281,14 +280,6 @@
         if (chat == null || !chat.Rules.CanEditProperties())
             return new ComputedModel { Chat = chat };
 
-        var ownerIds = await Hub.Roles.ListOwnerIds(Session, ChatId, cancellationToken);
-        var allOwnersAreAnonymous = false;
-        if (ownerIds.Count > 0) {
-            var owners = await ownerIds
-                .Select(authorId => Hub.Authors.Get(Session, authorId.ChatId, authorId, cancellationToken))
-                .Collect();
-            allOwnersAreAnonymous = owners.All(c => c != null && c.IsAnonymous);
-        }
         var allAuthorIds = await Hub.Authors.ListAuthorIds(Session, ChatId, cancellationToken);
         var invites = await Hub.Invites.ListChatInvites(Session, ChatId, cancellationToken);
         var threshold = Hub.Clocks().SystemClock.Now - TimeSpan.FromDays(3);
@@ -304,8 +295,6 @@
             Invites = invites,
             AllowEditIsTemplate = allowEditIsTemplate,
             IsOwner = chat.Rules.IsOwner(),
-            OwnersCount = ownerIds.Count,
-            AllOwnersAreAnonymous = allOwnersAreAnonymous,
             MembersCount = allAuthorIds.Count,
         };
     }
@@ -325,25 +314,8 @@
     private void OnManageMembersClick()
         => Context.StepIn(DiveInDialogPage.New<EditChatMembersModalPage>(ChatId));
 
-    private async void OnLeaveGroupClick(ComputedModel m) {
-        if (m.Chat == null)
-            return;
-
-        if (m.CanDelete) {
-            var chat = await Hub.Chats.Get(Session, ChatId, default);
-            _ = Hub.ModalUI.Show(new LeaveChatConfirmationModal.Model(chat!) { IsDelete = true });
-        } else {
-            var hasAnotherOwner = m is { IsOwner: true, OwnersCount: > 1 };
-            var hasMembers = m.MembersCount > 1;
-            if (!hasAnotherOwner && hasMembers) {
-                const string message = "You can't leave this chat because you are its only owner. Please add another chat owner first.";
-                Services.UICommander().ShowError(StandardError.Constraint(message));
-            } else {
-                var chat = await Hub.Chats.Get(Session, ChatId, default);
-                _ = Hub.ModalUI.Show(new LeaveChatConfirmationModal.Model(chat!));
-            }
-        }
-    }
+    private void OnDeleteChatClick(Chat chat)
+        => Hub.ChatUI.DeleteChat(chat);
 
     private async Task OnSubmit() {
         if (_formRef == null)
@@ -417,8 +389,5 @@
         public bool AllowEditIsTemplate { get; init; }
         public bool IsOwner { get; init; }
         public int MembersCount { get; init; }
-        public int OwnersCount { get; init; }
-        public bool AllOwnersAreAnonymous { get; init; }
-        public bool CanDelete => IsOwner && (MembersCount == 1 || AllOwnersAreAnonymous);
     }
 }

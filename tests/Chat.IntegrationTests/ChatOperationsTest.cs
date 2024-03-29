@@ -3,6 +3,7 @@ using ActualChat.Chat.Module;
 using ActualChat.Contacts;
 using ActualChat.Testing.Host;
 using ActualChat.Invite;
+using ActualChat.Queues;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -152,11 +153,9 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var authors = services.GetRequiredService<IAuthors>();
         var session = tester.Session;
 
-        // act
         var account = await tester.SignInAsNew("NotesTest");
         account.Should().NotBeNull();
-
-        await Clocks.CoarseSystemClock.Delay(2000);
+        await services.Queues().WhenProcessing();
 
         // assert
         await TestExt.WhenMetAsync(async () => {
@@ -414,8 +413,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var session = ownerTester.Session;
 
         var (chatId, _) = await ownerTester.CreateChat(true);
-
-        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
+        await appHost.Services.Queues().WhenProcessing();
 
         var contacts = ownerTester.AppServices.GetRequiredService<IContacts>();
         await TestExt.WhenMetAsync(async () => {
@@ -433,8 +431,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var chat = await chats.Get(session, chatId, default);
         chat.Should().BeNull();
 
-        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
-
+        await appHost.Services.Queues().WhenProcessing();
         await TestExt.WhenMetAsync(async () => {
                 var contactIds = await contacts.ListIds(session, PlaceId.None, default);
                 var chatIds = contactIds.Select(c => c.ChatId).ToArray();

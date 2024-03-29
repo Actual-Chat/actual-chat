@@ -33,7 +33,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     private static readonly AtomicInteger _requestCodeProvider =
         new((int)Android.OS.SystemClock.ElapsedRealtime());
 
-    private static ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger<FirebaseMessagingService>();
+    private static ILogger Log => _log ??= DefaultLoggerFactory.CreateLogger<FirebaseMessagingService>();
 
     public override void OnNewToken(string token)
     {

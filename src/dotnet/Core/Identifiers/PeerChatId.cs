@@ -13,6 +13,9 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct PeerChatId : ISymbolIdentifier<PeerChatId>
 {
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= DefaultLogFor<PeerChatId>();
+
     public static readonly string IdPrefix = "p-";
     public static PeerChatId None => default;
 
@@ -138,7 +141,7 @@ public readonly partial struct PeerChatId : ISymbolIdentifier<PeerChatId>
     public static PeerChatId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<PeerChatId>(s);
     public static PeerChatId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<PeerChatId>(s).LogWarning(DefaultLog, None);
+        => TryParse(s, out var result) ? result : StandardError.Format<PeerChatId>(s).LogWarning(Log, None);
 
     public static bool TryParse(string? s, out PeerChatId result)
     {

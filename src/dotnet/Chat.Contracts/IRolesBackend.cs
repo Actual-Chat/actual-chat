@@ -1,8 +1,9 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Chat;
 
-public interface IRolesBackend : IComputeService
+public interface IRolesBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<Role?> Get(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
@@ -28,4 +29,8 @@ public sealed partial record RolesBackend_Change(
     [property: DataMember, MemoryPackOrder(1)] RoleId RoleId,
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(3)] Change<RoleDiff> Change
-) : ICommand<Role>, IBackendCommand;
+) : ICommand<Role>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => ChatId;
+}

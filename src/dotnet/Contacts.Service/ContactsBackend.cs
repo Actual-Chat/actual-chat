@@ -1,6 +1,5 @@
 using ActualChat.Chat;
 using ActualChat.Chat.Events;
-using ActualChat.Commands;
 using ActualChat.Contacts.Db;
 using ActualChat.Contacts.Module;
 using ActualChat.Db;
@@ -438,7 +437,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         ContactsBackend_ChangePlaceMembership command,
         CancellationToken cancellationToken)
     {
-        var (ownerId, placeId, hasLeft) = command;
+        var (placeId, ownerId, hasLeft) = command;
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
@@ -511,7 +510,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return;
 
         if (chatId.IsPlaceChat) {
-            var changePlaceMembership = new ContactsBackend_ChangePlaceMembership(userId, chatId.PlaceId, author.HasLeft);
+            var changePlaceMembership = new ContactsBackend_ChangePlaceMembership(chatId.PlaceId, userId, author.HasLeft);
             await Commander.Call(changePlaceMembership, true, cancellationToken).ConfigureAwait(false);
             if (chatId.PlaceChatId.IsRoot)
                 return;

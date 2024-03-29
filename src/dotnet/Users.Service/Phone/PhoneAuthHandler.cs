@@ -5,13 +5,13 @@ using Microsoft.Extensions.Options;
 
 namespace ActualChat.Users;
 
-public class PhoneAuthOptions : RemoteAuthenticationOptions
+public sealed class PhoneAuthOptions : RemoteAuthenticationOptions
 {
     public string LoginUrl { get; set; } = "/login/phone";
 }
 
 #pragma warning disable CS0618 // Type or member is obsolete (ISystemClock)
-public class PhoneAuthHandler(
+public sealed class PhoneAuthHandler(
         IOptionsMonitor<PhoneAuthOptions> options,
         ILoggerFactory logger,
         UrlEncoder encoder,

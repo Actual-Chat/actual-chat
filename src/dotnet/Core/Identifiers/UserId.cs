@@ -18,6 +18,8 @@ public readonly partial struct UserId : ISymbolIdentifier<UserId>,
     IComparable<UserId>,
     IComparisonOperators<UserId, UserId, bool>
 {
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= DefaultLogFor<UserId>();
     private static readonly RandomStringGenerator IdGenerator = new(6, Alphabet.AlphaNumeric);
     private static readonly RandomStringGenerator GuestIdGenerator = new(8, Alphabet.AlphaNumeric);
 
@@ -81,7 +83,7 @@ public readonly partial struct UserId : ISymbolIdentifier<UserId>,
     public static UserId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<UserId>(s);
     public static UserId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<UserId>(s).LogWarning(DefaultLog, None);
+        => TryParse(s, out var result) ? result : StandardError.Format<UserId>(s).LogWarning(Log, None);
 
     public static bool TryParse(string? s, out UserId result)
     {

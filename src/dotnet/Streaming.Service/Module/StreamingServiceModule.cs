@@ -6,7 +6,6 @@ using ActualChat.Streaming.Services;
 using ActualChat.Streaming.Services.Transcribers;
 using Microsoft.AspNetCore.Builder;
 using GoogleTranscriber = ActualChat.Streaming.Services.Transcribers.GoogleTranscriber;
-using LocalAudioDownloader = ActualChat.Streaming.Services.LocalAudioDownloader;
 using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 
 namespace ActualChat.Streaming.Module;
@@ -15,27 +14,24 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
     : HostModule<StreamingSettings>(moduleServices), IWebServerModule
 {
     public void ConfigureApp(IApplicationBuilder app)
-        => app.UseEndpoints(endpoints => {
-            endpoints.MapHub<StreamHub>("/api/hub/streams");
-            endpoints.MapHub<StreamHub>("/api/hub/audio"); // For backward compatibility!
-        });
+    {
+        if (HostInfo.HasRole(HostRole.Api)) {
+            // SignalR hub endpoints
+            app.UseEndpoints(endpoints => {
+                endpoints.MapHub<StreamHub>("/api/hub/streams");
+                endpoints.MapHub<StreamHub>("/api/hub/audio"); // For backward compatibility!
+            });
+        }
+    }
 
     protected override void InjectServices(IServiceCollection services)
     {
-        base.InjectServices(services);
-        if (!HostInfo.HostKind.IsServer())
-            return; // Server-side only module
-
-        // Backend
+        // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
         var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IStreamingBackend>().IsClient();
 
-        // Redis
-        var redisModule = Host.GetModule<RedisModule>();
-        redisModule.AddRedisDb<StreamingContext>(services);
-
-        // SignalR hub & related services
-        if (HostInfo.HasRole(HostRole.Api)) {
+        // SignalR hub
+        if (rpcHost.IsApiHost) {
             var signalR = services.AddSignalR(options => {
                 options.StreamBufferCapacity = 20;
                 options.EnableDetailedErrors = false;
@@ -45,18 +41,24 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
             services.AddScoped<StreamHub>();
         }
 
-        // Module's own services
+        rpcHost.AddApi<IStreamServer, StreamServer>();
+        rpcHost.AddBackend<IStreamingBackend, StreamingBackend>();
+        services.AddSingleton<IStreamClient, StreamBackendClient>(); // Client for IStreamingBackend
+        services.AddSingleton<AudioDownloader, BlobStorageAudioDownloader>(); // Server-side AudioDownloader
+        if (isBackendClient)
+            return;
+
+        // The services below are used only when this module operates in non-client mode
+
+        // Internal services
         services.AddSingleton<ITranscriberFactory, TranscriberFactory>();
         services.AddSingleton<GoogleTranscriber>();
         services.AddSingleton<DeepgramTranscriber>();
+        services.AddSingleton<AudioSegmentSaver>();
+        services.AddSingleton<StreamingBackend.Options>();
 
-        if (!isBackendClient) {
-            services.AddSingleton<AudioSegmentSaver>();
-            services.AddSingleton<StreamingBackend.Options>();
-        }
-        rpcHost.AddApiService<IStreamServer, StreamServer>();
-        rpcHost.AddBackend<IStreamingBackend, StreamingBackend>();
-        services.AddSingleton<IStreamClient, StreamBackendClient>();
-        services.AddSingleton<AudioDownloader, LocalAudioDownloader>();
+        // Redis
+        var redisModule = Host.GetModule<RedisModule>();
+        redisModule.AddRedisDb<StreamingContext>(services);
     }
 }

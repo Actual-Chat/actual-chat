@@ -15,9 +15,6 @@ public sealed class ContactsBlazorUIModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.HostKind.HasBlazorUI())
-            return; // Blazor UI only module
-
         var fusion = services.AddFusion();
         fusion.AddService<ContactSync>(ServiceLifetime.Scoped);
         if (HostInfo.IsDevelopmentInstance && FakeDeviceContacts.AllowGeneratedContacts) {

@@ -1,12 +1,12 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Chat;
 
-public interface IReactionsBackend : IComputeService
+public interface IReactionsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<Reaction?> Get(TextEntryId entryId, AuthorId authorId, CancellationToken cancellationToken);
-
     [ComputeMethod]
     Task<ApiArray<ReactionSummary>> List(TextEntryId entryId, CancellationToken cancellationToken);
 
@@ -18,4 +18,8 @@ public interface IReactionsBackend : IComputeService
 // ReSharper disable once InconsistentNaming
 public sealed partial record ReactionsBackend_React(
     [property: DataMember, MemoryPackOrder(0)] Reaction Reaction
-) : ICommand<Unit>, IBackendCommand;
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<TextEntryId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public TextEntryId ShardKey => Reaction.EntryId;
+}

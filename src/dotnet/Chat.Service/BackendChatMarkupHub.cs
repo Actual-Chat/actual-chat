@@ -2,7 +2,7 @@ using ActualChat.Search;
 
 namespace ActualChat.Chat;
 
-public class BackendChatMarkupHub : IBackendChatMarkupHub
+public class BackendChatMarkupHub(IServiceProvider services, ChatId chatId) : IBackendChatMarkupHub
 {
     private IMarkupParser? _parser;
     private static MarkupTrimmer? _trimmer;
@@ -10,8 +10,8 @@ public class BackendChatMarkupHub : IBackendChatMarkupHub
     private MentionNamer? _mentionNamer;
     private static IMarkupFormatter? _editorHtmlConverter;
 
-    public IServiceProvider Services { get; }
-    public ChatId ChatId { get; }
+    public IServiceProvider Services { get; } = services;
+    public ChatId ChatId { get; } = chatId;
 
     public IMarkupParser Parser
         => _parser ??= Services.GetRequiredService<IMarkupParser>();
@@ -32,10 +32,4 @@ public class BackendChatMarkupHub : IBackendChatMarkupHub
 
     public IMarkupFormatter EditorHtmlConverter
         => _editorHtmlConverter ??= new MarkupEditorHtmlConverter();
-
-    public BackendChatMarkupHub(IServiceProvider services, ChatId chatId)
-    {
-        Services = services;
-        ChatId = chatId;
-    }
 }

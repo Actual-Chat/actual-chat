@@ -2,7 +2,7 @@ using ActualChat.Users;
 
 namespace ActualChat.Search;
 
-public class UserContactIndexer(IServiceProvider services) : ContactIndexer(services)
+public sealed class UserContactIndexer(IServiceProvider services) : ContactIndexer(services)
 {
     private IAccountsBackend? _accountsBackend;
 

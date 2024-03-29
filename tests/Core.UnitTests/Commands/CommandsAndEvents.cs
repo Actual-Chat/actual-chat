@@ -1,5 +1,3 @@
-using ActualChat.Commands;
-
 namespace ActualChat.Core.UnitTests.Commands;
 
 public record TestEvent(string? Error) : EventCommand, IHasShardKey<Unit>

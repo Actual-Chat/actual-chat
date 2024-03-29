@@ -19,4 +19,14 @@ public static class ServerKvasBackendExt
             : userId.IsGuest
                 ? $"g/{userId}/"
                 : $"u/{userId}/";
+
+    public static UserId GetUserIdFromPrefix(string prefix)
+    {
+        if (prefix.OrdinalStartsWith("g/") || prefix.OrdinalStartsWith("u/")) {
+            var secondSlashIndex = prefix.OrdinalIndexOf("/", 2);
+            return secondSlashIndex < 0 ? default
+                : new UserId(prefix.Substring(2, secondSlashIndex - 2));
+        }
+        return default;
+    }
 }

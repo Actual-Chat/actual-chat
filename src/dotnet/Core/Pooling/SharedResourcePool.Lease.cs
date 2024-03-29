@@ -8,34 +8,34 @@ public partial class SharedResourcePool<TKey, TResource>
 {
     public sealed class Lease : IResourceLease<TResource>
     {
-        private readonly Task<TResource> _resourceTask;
+        private readonly object _lock = new();
+        private Task<TResource>? _resourceTask;
         private Task? _endRentTask;
         private CancellationTokenSource? _endRentDelayTokenSource;
         private int _renterCount;
-        private object Lock => _resourceTask;
 
         public SharedResourcePool<TKey, TResource> Pool { get; }
         public TKey Key { get; }
-        public TResource Resource => _resourceTask.Result;
+        public TResource Resource => _resourceTask!.Result;
         public bool IsRented {
             get {
-                lock (Lock)
+                lock (_lock)
                     return _renterCount > 0;
             }
         }
 
-        internal Lease(SharedResourcePool<TKey, TResource> pool, TKey key, CancellationToken cancellationToken)
+        internal Lease(SharedResourcePool<TKey, TResource> pool, TKey key)
         {
             Pool = pool;
             Key = key;
-            _resourceTask = pool.ResourceFactory.Invoke(key, cancellationToken);
+            _resourceTask = null!;
         }
 
         public void Dispose()
         {
             CancellationTokenSource endRentDelayTokenSource;
             CancellationToken endRentDelayToken;
-            lock (Lock) {
+            lock (_lock) {
                 _renterCount = Math.Max(0, _renterCount - 1);
                 if (_renterCount != 0 || _endRentTask != null)
                     return;
@@ -54,7 +54,7 @@ public partial class SharedResourcePool<TKey, TResource>
                     if (delayTask.IsCanceled)
                         return;
 
-                    Monitor.Enter(Lock);
+                    Monitor.Enter(_lock);
                     try {
                         // It's possible that BeginRent was called up right before we entered this lock.
                         // BeginRent sets _endRentDelayTokenSource to null when it succeeds,
@@ -66,15 +66,21 @@ public partial class SharedResourcePool<TKey, TResource>
                         _endRentTask ??= EndRent();
                     }
                     finally {
-                        Monitor.Exit(Lock);
+                        Monitor.Exit(_lock);
                         endRentDelayTokenSource.Dispose();
                     }
                 }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
 
+        internal void Initialize(CancellationToken cancellationToken)
+        {
+            lock (_lock)
+                _resourceTask ??= Pool.ResourceFactory.Invoke(Key, cancellationToken);
+        }
+
         internal async ValueTask<Task?> BeginRent(CancellationToken cancellationToken)
         {
-            lock (Lock) {
+            lock (_lock) {
                 if (_endRentTask != null)
                     return _endRentTask;
 
@@ -85,7 +91,7 @@ public partial class SharedResourcePool<TKey, TResource>
 
             // If we're here, _endRentTask == null, i.e. no resource is allocated yet
             try {
-                await _resourceTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+                await _resourceTask!.WaitAsync(cancellationToken).ConfigureAwait(false);
                 return null;
             }
             catch (OperationCanceledException) {
@@ -96,7 +102,7 @@ public partial class SharedResourcePool<TKey, TResource>
                 // The only thing we need to do here is to try removing the lease from
                 // the pool - EndRent, which is responsible for this otherwise,
                 // won't be called in this case.
-                lock (Lock) {
+                lock (_lock) {
                     _renterCount = 0;
                     _endRentTask = Task.CompletedTask;
                 }
@@ -105,7 +111,7 @@ public partial class SharedResourcePool<TKey, TResource>
             }
             catch (Exception e) {
                 Pool.Log.LogError(e, nameof(Pool.ResourceFactory) + " failed");
-                lock (Lock) {
+                lock (_lock) {
                     _renterCount = 0;
                     return _endRentTask ??= EndRent();
                 }

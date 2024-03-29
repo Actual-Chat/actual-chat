@@ -19,4 +19,7 @@ public static class ShardSchemeExt
 
     public static int GetShardIndex(this ShardScheme? shardScheme, int shardKey)
         => shardKey.Mod(shardScheme.RequireValid().ShardCount);
+
+    public static bool HasFlags(this ShardScheme? shardScheme, ShardSchemeFlags flags)
+        => shardScheme != null && (shardScheme.Flags & flags) == flags;
 }

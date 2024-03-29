@@ -35,4 +35,8 @@ public sealed partial record MediaBackend_CopyChat(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] string CorrelationId,
     [property: DataMember, MemoryPackOrder(2)] MediaId[] MediaIds
-) : ICommand<Unit>, IBackendCommand;
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => ChatId;
+}

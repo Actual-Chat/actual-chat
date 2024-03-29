@@ -139,12 +139,17 @@ jobs:
         run: ./run-build.cmd unit-tests --configuration Debug
 
       - name: Report unit test results
-        uses: dorny/test-reporter@v1
+        uses: phoenix-actions/test-reporting@v13
         if: success() || failure()    # run this step even if previous step failed
         with:
           name: Unit tests results     # Name of the check run which will be created
           path: './tests/**/*.trx'   # Path to test results
           reporter: dotnet-trx        # Format of test results
+          fail-on-error: false
+          list-tests: 'all'
+          output-to: 'checks'
+          list-suites: 'all'
+          only-summary: 'false'
 
   integration-tests:
     name: Run Integration tests
@@ -271,12 +276,17 @@ jobs:
           ./run-build.cmd integration-tests --configuration Debug
 
       - name: Report integration test results
-        uses: dorny/test-reporter@v1
+        uses: phoenix-actions/test-reporting@v13
         if: success() || failure()    # run this step even if previous step failed
         with:
           name: Integration tests results     # Name of the check run which will be created
           path: './tests/**/*.trx'   # Path to test results
           reporter: dotnet-trx        # Format of test results
+          fail-on-error: false
+          list-tests: 'all'
+          output-to: 'checks'
+          list-suites: 'all'
+          only-summary: 'true'
 
   deploy-dev:
     name: Deploy dev
@@ -507,7 +517,6 @@ jobs:
           credentials: ${{env.SERVICE_ACCOUNT_JSON}}
           mirrorDirectoryStructure: true
           overwrite: true
-
 
   deploy-android-to-play-store:
     name: Deploy app package for ${{ github.ref_name }} to google play store

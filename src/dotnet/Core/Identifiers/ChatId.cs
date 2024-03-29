@@ -14,6 +14,8 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
 {
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= DefaultLogFor<ChatId>();
     internal static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
 
     public static ChatId None => default;
@@ -105,7 +107,7 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     public static ChatId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatId>(s);
     public static ChatId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<ChatId>(s).LogWarning(DefaultLog, None);
+        => TryParse(s, out var result) ? result : StandardError.Format<ChatId>(s).LogWarning(Log, None);
 
     public static bool TryParse(string? s, out ChatId result)
     {

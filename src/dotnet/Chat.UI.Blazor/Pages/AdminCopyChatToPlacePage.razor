@@ -3,7 +3,7 @@
 @inherits FusionComponentBase
 
 <RequireAccount MustBeAdmin="true"/>
-<MainHeader>Move chat to place</MainHeader>
+<MainHeader>Copy chat to place</MainHeader>
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form" OnValidSubmit="@CopyChatToPlace">
     <FormBlock>
@@ -26,7 +26,7 @@
         </FormSection>
     </FormBlock>
 
-    <Button Type="@ButtonType.Submit">Move chat to place</Button>
+    <Button Type="@ButtonType.Submit">Copy chat to place</Button>
 </Form>
 
 
@@ -36,6 +36,9 @@
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    private ToastUI ToastUI => Hub.ToastUI;
+    private ModalUI ModalUI => Hub.ModalUI;
 
     protected override void OnInitialized() {
         _form = new FormModel(ComponentIdGenerator);
@@ -66,17 +69,22 @@
         var place = await Hub.Places.Get(session, placeId, default).Require();
         var chatDescriptor = chat?.Title ?? chatId.Value;
         var message = $"You are about to copy chat '{chatDescriptor}' to place '{place.Title}'. Do you want to proceed?";
-        await Hub.ModalUI.Show(new ConfirmModal.Model(false, message, () => _ = MoveInternal()));
+        await ModalUI.Show(new ConfirmModal.Model(false, message, () => _ = MoveInternal()));
 
         async Task MoveInternal() {
-            var command = new Chat_CopyChat(session, chatId, placeId, Guid.NewGuid().ToString());
-            var (success, error) = await Hub.UICommander().Run(command, default);
+            var correlationId = Guid.NewGuid().ToString();
+            var command = new Chat_CopyChat(session, chatId, placeId, correlationId);
+            var (result, error) = await Hub.UICommander().Run(command, default);
             if (error != null)
                 return;
-            if (success)
-                Hub.ToastUI.Show($"Chat '{chatDescriptor}' was successfully copied to place '{place.Title}'.", ToastDismissDelay.Short);
-            else
-                Hub.ToastUI.Show($"Nothing has been done on coping chat '{chatDescriptor}' to place '{place.Title}'.", ToastDismissDelay.Short);
+            if (!result.HasErrors) {
+                var info = result.HasChanges
+                    ? $"Chat '{chatDescriptor}' was successfully copied to place '{place.Title}'."
+                    : $"Nothing has been done on coping chat '{chatDescriptor}' to place '{place.Title}'.";
+                ToastUI.Show(info, ToastDismissDelay.Long);
+            } else {
+                await ModalUI.Show(new AdminCopyChatToPlaceErrorModal.Model(correlationId, result.HasChanges, chatDescriptor, place.Title));
+            }
         }
     }
 }

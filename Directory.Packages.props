@@ -4,17 +4,17 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>7.1.1</ActualLabFusionVersion>
-    <AspNetCoreVersion>8.0.2</AspNetCoreVersion>
+    <ActualLabFusionVersion>7.3.10</ActualLabFusionVersion>
+    <AspNetCoreVersion>8.0.3</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>8.0.2</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>8.0.2</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreCheckConstraintsVersion>8.0.1</EntityFrameworkCoreCheckConstraintsVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
-    <MicrosoftExtensionsVersion>8.0.0</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsVersion>8.0.1</MicrosoftExtensionsVersion>
     <MicrosoftExtensionsBaseVersion>8.0.0</MicrosoftExtensionsBaseVersion>
     <NpgsqlVersion>8.0.1</NpgsqlVersion>
-    <RedisVersion>2.7.27</RedisVersion>
+    <RedisVersion>2.7.33</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenSearchClientVersion>1.6.0</OpenSearchClientVersion>
@@ -30,10 +30,10 @@
     <PackageVersion Include="AspNet.Security.OAuth.Apple" Version="8.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="8.0.0" />
     <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="6.0.14" />
-    <PackageVersion Include="Blake3" Version="1.0.0" />
+    <PackageVersion Include="Blake3" Version="1.1.0" />
     <PackageVersion Include="CommunityToolkit.Maui.Core" Version="7.0.1" />
     <PackageVersion Include="EFCore.CheckConstraints" Version="$(EntityFrameworkCoreCheckConstraintsVersion)" />
-    <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="8.11.0" />
+    <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="8.12.1" />
     <PackageVersion Include="FFMpegCore" Version="5.1.0" />
     <PackageVersion Include="FirebaseAdmin" Version="2.4.0" />
     <PackageVersion Include="Google.Api.Gax" Version="4.4.0" />
@@ -46,7 +46,7 @@
     <PackageVersion Include="Grpc.Core" Version="2.46.6" />
     <PackageVersion Include="Google.Cloud.Speech.V2" Version="1.0.0-beta03" />
     <PackageVersion Include="Google.Cloud.AspNetCore.DataProtection.Storage" Version="1.0.0-alpha04" />
-    <PackageVersion Include="MailKit" Version="4.3.0" />
+    <PackageVersion Include="MailKit" Version="4.4.0" />
     <PackageVersion Include="MemoryPack" Version="$(MemoryPackVersion)" />
     <PackageVersion Include="MemoryPack.Core" Version="$(MemoryPackVersion)" />
     <PackageVersion Include="MemoryPack.Generator" Version="$(MemoryPackVersion)" />
@@ -78,8 +78,8 @@
     <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.8" />
     <PackageVersion Include="Twilio" Version="6.18.0" />
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="7.1.2" />
-    <PackageVersion Include="libphonenumber-csharp" Version="8.13.31" />
-    <PackageVersion Include="Mjml.Net" Version="3.10.0" />
+    <PackageVersion Include="libphonenumber-csharp" Version="8.13.33" />
+    <PackageVersion Include="Mjml.Net" Version="3.11.0" />
   </ItemGroup>
   <!--
     MAUI is not compatible with centralized packages management https://github.com/dotnet/sdk/issues/27840
@@ -104,8 +104,8 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="$(MicrosoftExtensionsBaseVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Http.Polly" Version="$(AspNetCoreVersion)" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="$(MicrosoftExtensionsBaseVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="$(MicrosoftExtensionsBaseVersion)" />
     <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="$(AspNetCoreVersion)" />
   </ItemGroup>
   <ItemGroup Label="Nupkg Versions 3">
@@ -118,14 +118,14 @@
     <PackageVersion Include="Microsoft.IO.RecyclableMemoryStream" Version="3.0.0" />
     <PackageVersion Include="Microsoft.JSInterop" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.Toolkit.HighPerformance" Version="7.1.2" />
-    <PackageVersion Include="NATS.Net" Version="2.1.0-preview.5" />
+    <PackageVersion Include="NATS.Net" Version="2.1.4" />
     <PackageVersion Include="Npgsql" Version="$(NpgsqlVersion)" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreNpgsqlVersion)" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.2" />
     <PackageVersion Include="RestEase" Version="1.6.4" />
-    <PackageVersion Include="Pidgin" Version="3.2.2" />
+    <PackageVersion Include="Pidgin" Version="3.2.3" />
     <PackageVersion Include="Pipelines.Sockets.Unofficial" Version="2.2.8" />
-    <PackageVersion Include="Polly" Version="8.3.0" />
+    <PackageVersion Include="Polly" Version="8.3.1" />
     <PackageVersion Include="Sentry" Version="$(SentryVersion)" />
     <PackageVersion Include="Sentry.Extensions.Logging" Version="$(SentryVersion)" />
     <PackageVersion Include="Sentry.Serilog" Version="$(SentryVersion) " />
@@ -201,7 +201,7 @@
     <PackageVersion Include="System.Management" Version="7.0.0-rc.2.22472.3" />
     <PackageVersion Include="Crayon" Version="2.0.69" />
     <!-- Build / test time only -->
-    <PackageVersion Include="bunit" Version="1.26.64" />
+    <PackageVersion Include="bunit" Version="1.27.17" />
     <PackageVersion Include="FluentAssertions" Version="6.12.0" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.3.3" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
@@ -209,7 +209,7 @@
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;" />
-    <PackageVersion Include="Microsoft.Playwright" Version="1.41.2" />
+    <PackageVersion Include="Microsoft.Playwright" Version="1.42.0" />
     <PackageVersion Include="Moq" Version="4.20.70" />
     <PackageVersion Include="Moq.Autocomplete" Version="0.0.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Moq.Contrib.HttpClient" Version="1.4.0" />
@@ -221,7 +221,7 @@
     <!-- Analyzers -->
     <PackageVersion Include="Moq.Analyzers" Version="0.0.9" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.9.28" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.145" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.146" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Roslynator.Analyzers" Version="4.11.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="xunit.analyzers" Version="1.11.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Generators -->

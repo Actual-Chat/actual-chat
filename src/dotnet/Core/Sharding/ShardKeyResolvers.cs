@@ -7,157 +7,151 @@ public delegate int ShardKeyResolver<in T>(T source);
 
 public static class ShardKeyResolverExt
 {
-    public static ShardKeyResolver<object>? ToUntyped<T>(this ShardKeyResolver<T>? resolver)
-        => resolver == null ? null : source => resolver.Invoke((T)source);
+    public static ShardKeyResolver<object> ToUntyped<T>(this ShardKeyResolver<T> resolver)
+        => source => resolver.Invoke((T)source);
 }
 
 public static class ShardKeyResolvers
 {
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= DefaultLogFor(typeof(ShardKeyResolvers));
+
     private static readonly ConcurrentDictionary<Type, Delegate> Registered = new();
-    private static readonly ConcurrentDictionary<Type, Delegate?> Resolved = new();
-    private static readonly ConcurrentDictionary<Type, ShardKeyResolver<object?>?> ResolvedUntyped = new();
+    private static readonly ConcurrentDictionary<Type, Delegate> ResolvedCache = new();
+    private static readonly ConcurrentDictionary<Type, ShardKeyResolver<object?>> ResolvedUntyped = new();
     private static readonly MethodInfo GetUntypedInternalMethod = typeof(ShardKeyResolvers)
         .GetMethod(nameof(GetUntypedInternal), BindingFlags.Static | BindingFlags.NonPublic)!;
     private static readonly MethodInfo CreateHasShardKeyResolverMethod = typeof(ShardKeyResolvers)
         .GetMethod(nameof(CreateHasShardKeyResolver), BindingFlags.Static | BindingFlags.NonPublic)!;
-    private static readonly MethodInfo NullableMethod = typeof(ShardKeyResolvers)
-        .GetMethod(nameof(Nullable), BindingFlags.Static | BindingFlags.Public)!;
+    private static readonly MethodInfo NewNullableMethod = typeof(ShardKeyResolvers)
+        .GetMethod(nameof(NewNullable), BindingFlags.Static | BindingFlags.Public)!;
+    private static readonly MethodInfo NewNotFoundMethod = typeof(ShardKeyResolvers)
+        .GetMethod(nameof(NewNotFound), BindingFlags.Static | BindingFlags.Public)!;
 
-    public static ShardKeyResolver<T> Random<T>() => static _ => System.Random.Shared.Next();
-    public static ShardKeyResolver<T> HashCode<T>() => static x => x?.GetHashCode() ?? 0;
-    public static ShardKeyResolver<T?> Nullable<T>(ShardKeyResolver<T> nonNullableResolver)
+    public static ShardKeyResolver<T> NewHashBased<T>() => static x => x?.GetHashCode() ?? ForNull();
+    public static ShardKeyResolver<T?> NewNullable<T>(ShardKeyResolver<T> nonNullableResolver)
         where T : struct
         => source => source is { } v
             ? nonNullableResolver.Invoke(v)
-            : NullResolver.Invoke(default);
-    public static ShardKeyResolver<T> NotFound<T>()
-        => _ => throw NotFoundError(typeof(T));
+            : ForNull();
+    public static ShardKeyResolver<T> NewNotFound<T>() => NewHashBased<T>();
 
     // These properties can be set!
-    public static ShardKeyResolver<Unit> NullResolver { get; set; } = static _ => 0;
-    public static ShardKeyResolver<string?> StringResolver { get; set; } = static x => x?.GetDjb2HashCode() ?? 0;
-    public static ShardKeyResolver<object?> DefaultResolver { get; set; } = static x => x?.GetHashCode() ?? 0;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int ForNull() => 0;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int ForRandom() => Random.Shared.Next();
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int ForString(string? x) => x?.GetDjb2HashCode() ?? 0;
 
     static ShardKeyResolvers()
     {
-        Register(Random<Unit>());
-        Register<int>(static x => x);
-        Register<long>(static x => x.GetHashCode());
-        Register<string>(StringResolver);
-        Register<Symbol>(x => StringResolver(x.Value));
-        Register<ChatId>(x => StringResolver(x.Value));
-        Register<PeerChatId>(x => StringResolver(x.Value));
-        Register<PlaceId>(x => StringResolver(x.Value));
-        Register<PlaceChatId>(x => StringResolver(x.Value));
-        Register<AuthorId>(x => StringResolver(x.ChatId.Value));
-        Register<ChatEntryId>(x => StringResolver(x.ChatId.Value));
-        Register<TextEntryId>(x => StringResolver(x.ChatId.Value));
-        Register<RoleId>(x => StringResolver(x.ChatId.Value));
-        Register<MentionId>(x => StringResolver(x.AuthorId.ChatId.Value));
-        Register<UserId>(x => StringResolver(x.Value));
-        Register<PrincipalId>(x => StringResolver(
+        // Value types
+        Register<Unit>(static _ => 0);
+        Register<Symbol>(static x => ForString(x.Value));
+        Register<ChatId>(static x => ForString(x.Value));
+        Register<PeerChatId>(static x => ForString(x.Value));
+        Register<PlaceId>(static x => ForString(x.Value));
+        Register<PlaceChatId>(static x => ForString(x.Value));
+        Register<AuthorId>(static x => ForString(x.ChatId.Value));
+        Register<ChatEntryId>(static x => ForString(x.ChatId.Value));
+        Register<TextEntryId>(static x => ForString(x.ChatId.Value));
+        Register<RoleId>(static x => ForString(x.ChatId.Value));
+        Register<MentionId>(static x => ForString(x.AuthorId.ChatId.Value));
+        Register<UserId>(static x => ForString(x.Value));
+        Register<PrincipalId>(static x => ForString(
             x.IsAuthor(out var authorId)
                 ? authorId.ChatId.Value
                 : x.IsUser(out var userId) ? userId.Value : x.Value));
-        Register<ContactId>(x => StringResolver(x.OwnerId.Value));
-        Register<NotificationId>(x => StringResolver(x.UserId.Value));
-        Register<MediaId>(x => StringResolver(x.Value));
+        Register<ContactId>(static x => ForString(x.OwnerId.Value));
+        Register<NotificationId>(static x => ForString(x.UserId.Value));
+        Register<MediaId>(static x => ForString(x.Value));
+
+        // Classes
+        Register<string>(ForString); // Todo: likely, we should get rid of this kind of shard key
+        Register<Session>(x => ForString(x.Id.Value));
+        Register<ISessionCommand>(x => ForString(x.Session.Id.Value));
     }
 
-    public static void Register<T>(ShardKeyResolver<T> resolver)
+    private static void Register<T>(ShardKeyResolver<T> resolver)
     {
         if (!Registered.TryAdd(typeof(T), resolver))
             throw StandardError.Internal($"ShardKeyResolver for type {typeof(T).GetName()} is already registered.");
     }
 
-    public static int Resolve(object? source)
-    {
-        if (source == null)
-            return NullResolver.Invoke(default);
-
-        var type = source.GetType();
-        var resolver = GetUntyped(type) ?? throw NotFoundError(type);
-        return resolver.Invoke(source);
-    }
-
-    public static int Resolve<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(T source)
-    {
-        if (source == null)
-            return NullResolver.Invoke(default);
-
-        var type = typeof(T);
-        var resolver = Get(type) as ShardKeyResolver<T> ?? throw NotFoundError(type);
-        return resolver.Invoke(source);
-    }
-
-    public static ShardKeyResolver<object?>? GetUntyped<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>()
-        => GetUntyped(typeof(T));
-    public static ShardKeyResolver<object?>? GetUntyped(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
+    public static ShardKeyResolver<object?> GetUntyped(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type,
+        Requester requester)
         => ResolvedUntyped.GetOrAdd(type,
-            static t => (ShardKeyResolver<object?>?)GetUntypedInternalMethod
-                .MakeGenericMethod(t)
-                .Invoke(null, Array.Empty<object>()));
+            static (type1, requester1) => (ShardKeyResolver<object?>)GetUntypedInternalMethod
+                .MakeGenericMethod(type1)
+                .Invoke(null, [requester1])!,
+            requester);
 
-    public static ShardKeyResolver<T>? Get<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>()
-        => Get(typeof(T)) as ShardKeyResolver<T>;
-    public static Delegate? Get(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
-        => Resolved.GetOrAdd(type, static ([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] t) => {
-            if (Registered.TryGetValue(t, out var result))
-                return result;
-
-            if (t.IsValueType) {
-                if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>)) {
-                    var baseType = t.GetGenericArguments()[0];
-                    var nonNullableResolver = Registered.GetValueOrDefault(baseType);
-                    if (nonNullableResolver != null)
-                        return (Delegate?)NullableMethod
-                            .MakeGenericMethod(baseType)
-                            .Invoke(null, [ nonNullableResolver ]);
-                }
-                return null;
-            }
-
-            foreach (var baseType in t.GetAllBaseTypes(false, true)) {
-                if (Registered.TryGetValue(baseType, out result))
-                    return result;
-                if (baseType is { IsInterface: true, IsGenericType: true } && baseType.GetGenericTypeDefinition() == typeof(IHasShardKey<>)) {
-                    var shardKeyType = baseType.GetGenericArguments()[0];
-                    return (Delegate?)CreateHasShardKeyResolverMethod
-                        .MakeGenericMethod(t, shardKeyType)
-                        .Invoke(null, Array.Empty<object>());
-                }
-            }
-
-            return null;
-        });
+    public static ShardKeyResolver<T> Get<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(Requester requester)
+        => (ShardKeyResolver<T>)Get(typeof(T), requester);
 
     // Private methods
 
-    private static ShardKeyResolver<object>? GetUntypedInternal<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>()
-        => Get<T>().ToUntyped();
+    public static Delegate Get(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type,
+        Requester requester)
+        => ResolvedCache.GetOrAdd(type,
+            static ([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] type1, requester1) => {
+                if (Registered.TryGetValue(type1, out var result))
+                    return result;
 
-    private static ShardKeyResolver<T>? CreateHasShardKeyResolver<
+                if (type1.IsValueType) {
+                    if (type1.IsGenericType && type1.GetGenericTypeDefinition() == typeof(Nullable<>)) {
+                        var baseType = type1.GetGenericArguments()[0];
+                        if (Registered.TryGetValue(baseType, out result))
+                            return (Delegate)NewNullableMethod
+                                .MakeGenericMethod(baseType)
+                                .Invoke(null, [result])!;
+                    }
+                    return NotFound(type1, requester1);
+                }
+
+                foreach (var baseType in type1.GetAllBaseTypes(false, true)) {
+                    if (Registered.TryGetValue(baseType, out result))
+                        return result;
+
+                    if (baseType is { IsInterface: true, IsGenericType: true } && baseType.GetGenericTypeDefinition() == typeof(IHasShardKey<>)) {
+                        var shardKeyType = baseType.GetGenericArguments()[0];
+                        return (Delegate)CreateHasShardKeyResolverMethod
+                            .MakeGenericMethod(type1, shardKeyType)
+                            .Invoke(null, [requester1])!;
+                    }
+                }
+                return NotFound(type1, requester1);
+            }, requester);
+
+    private static Delegate NotFound(Type type, Requester requester)
+    {
+        Log.LogError("ShardKeyResolvers: shard key type: {Type}, requester: {Requester}",
+            type.GetName(), requester.ToString());
+
+        return (Delegate)NewNotFoundMethod
+            .MakeGenericMethod(type)
+            .Invoke(null, Array.Empty<object>())!;
+    }
+
+    private static ShardKeyResolver<object> GetUntypedInternal<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(Requester requester)
+        => Get<T>(requester).ToUntyped();
+
+    private static ShardKeyResolver<T> CreateHasShardKeyResolver<
         T,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TShardKey>()
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TShardKey>(Requester requester)
         where T : IHasShardKey<TShardKey>
     {
-        var resolver = Get<TShardKey>();
-        if (resolver == null)
-            return null;
-
+        var resolver = Get<TShardKey>(requester);
         if (typeof(T).IsValueType)
             return x => resolver.Invoke(x.ShardKey);
 
         return x => ReferenceEquals(x, null)
-            ? NullResolver.Invoke(default)
+            ? ForNull()
             : resolver.Invoke(x.ShardKey);
     }
-
-    private static Exception NotFoundError(Type type)
-        => throw StandardError.Internal($"Can't find ValueMeshRefResolver for type {type.GetName()}.");
 }

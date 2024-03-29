@@ -31,7 +31,7 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
     public AccountSettings AccountSettings() => _accountSettings ??= Services.GetRequiredService<AccountSettings>();
     public LocalSettings LocalSettings() => _localSettings ??= Services.GetRequiredService<LocalSettings>();
     public Features Features() => _features ??= Services.GetRequiredService<Features>();
-    public ICommander Commander() => _commander ??= Services.GetRequiredService<ICommander>();
+    public ICommander Commander() => _commander ??= Services.Commander();
     public RpcHub RpcHub() => _rpcHub ??= Services.GetRequiredService<RpcHub>();
 
     public CancellationToken StopToken { get; }
@@ -53,7 +53,7 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IStateFactory StateFactory() => _stateFactory;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ILoggerFactory Logs() => _logs;
+    public ILoggerFactory LoggerFactory() => _logs;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public MomentClockSet Clocks() => _clocks;
 
@@ -73,11 +73,11 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
         => Services.GetService(serviceType);
 
     public ILogger<T> LogFor<T>()
-        => Logs().CreateLogger<T>();
+        => LoggerFactory().CreateLogger<T>();
     public ILogger LogFor(Type type)
-        => Logs().CreateLogger(type.NonProxyType());
+        => LoggerFactory().CreateLogger(type.NonProxyType());
     public ILogger LogFor(string category)
-        => Logs().CreateLogger(category);
+        => LoggerFactory().CreateLogger(category);
 
     public void RegisterAwaitable(Task task)
     {

@@ -19,10 +19,6 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
-        var hostKind = HostInfo.HostKind;
-        if (!hostKind.HasBlazorUI())
-            return; // Blazor UI only module
-
         services.AddScoped<AppScopedServiceStarter>(c => new AppScopedServiceStarter(c));
         services.AddSingleton<AppNonScopedServiceStarter>(c => new AppNonScopedServiceStarter(c));
         services.AddScoped<AppIconBadgeUpdater>(c => new AppIconBadgeUpdater(c.ChatUIHub()));

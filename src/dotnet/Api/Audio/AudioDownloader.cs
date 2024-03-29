@@ -1,30 +1,20 @@
 namespace ActualChat.Audio;
 
-public class AudioDownloader
+public abstract class AudioDownloader(IServiceProvider services)
 {
-    protected static readonly byte[] ActualOpusStreamHeader = { 0x41, 0x5F, 0x4F, 0x50, 0x55, 0x53, 0x5F, 0x53 }; // A_OPUS_S
-    protected static readonly byte[] WebMHeader = { 0x1A, 0x45, 0xDF, 0xA3 };
-    protected IServiceProvider Services { get; }
-    protected IHttpClientFactory HttpClientFactory { get; }
-    protected ILogger Log { get; }
+    private MomentClockSet? _clocks;
+    private ILogger<AudioSource>? _audioSourceLog;
+    private ILogger? _log;
 
-    public AudioDownloader(IServiceProvider services)
-    {
-        Services = services;
-        Log = services.LogFor(GetType());
-        HttpClientFactory = services.HttpClientFactory();
-    }
+    protected static readonly byte[] ActualOpusStreamHeader = "A_OPUS_S"u8.ToArray();
+    protected static readonly byte[] WebMHeader = [0x1A, 0x45, 0xDF, 0xA3];
 
-    public virtual async Task<AudioSource> Download(
-        string audioBlobUrl,
-        TimeSpan skipTo,
-        CancellationToken cancellationToken)
-    {
-        var byteStream = HttpClientFactory.DownloadByteStream(audioBlobUrl.ToUri(), Log, cancellationToken);
-        var audio = await ReadFromByteStream(byteStream, cancellationToken).ConfigureAwait(false);
-        var skipped = audio.SkipTo(skipTo, cancellationToken);
-        return skipped;
-    }
+    protected IServiceProvider Services { get; } = services;
+    protected MomentClockSet Clocks => _clocks ??= Services.Clocks();
+    protected ILogger AudioSourceLog => _audioSourceLog ??= Services.LogFor<AudioSource>();
+    protected ILogger Log => _log ??= Services.LogFor(GetType());
+
+    public abstract Task<AudioSource> Download(string audioBlobUrl, TimeSpan skipTo, CancellationToken cancellationToken);
 
     protected async Task<AudioSource> ReadFromByteStream(
         IAsyncEnumerable<byte[]> byteStream,
@@ -34,13 +24,11 @@ public class AudioDownloader
         if (head.Length < 8)
             throw new InvalidOperationException("Downloaded audio stream is empty.");
 
-        var clocks = Services.Clocks();
-        var audioLog = Services.LogFor<AudioSource>();
         IAudioStreamConverter streamConverter;
         if (head.StartsWith(WebMHeader))
-            streamConverter = new WebMStreamConverter(clocks, audioLog);
+            streamConverter = new WebMStreamConverter(Clocks, AudioSourceLog);
         else if (head.StartsWith(ActualOpusStreamHeader))
-            streamConverter = new ActualOpusStreamConverter(clocks, audioLog);
+            streamConverter = new ActualOpusStreamConverter(Clocks, AudioSourceLog);
         else
             throw new InvalidOperationException("Unsupported audio stream container.");
 

@@ -91,7 +91,7 @@ public sealed class LazyServiceProvider(
                 return _lazyServices;
 
             if (requestedType != null)
-                DefaultLog.LogInformation(
+                DefaultLogFor(GetType()).LogInformation(
                     nameof(LazyServiceProvider) + ": becoming non-lazy to resolve {RequestedType}",
                     requestedType);
 

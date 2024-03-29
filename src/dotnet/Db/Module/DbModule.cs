@@ -100,7 +100,7 @@ public sealed class DbModule(IServiceProvider moduleServices)
             default:
                 throw StandardError.NotSupported("Unsupported database kind.");
             }
-            if (IsDevelopmentInstance)
+            if (HostInfo.IsDevelopmentInstance)
                 db.EnableSensitiveDataLogging();
             db.AddInterceptors(new DbConnectionConfigurator(dbKind));
         }, 32);
@@ -117,7 +117,7 @@ public sealed class DbModule(IServiceProvider moduleServices)
             */
             db.AddOperations(operations => {
                 operations.ConfigureOperationLogReader(_ => new() {
-                    UnconditionalCheckPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5).ToRandom(0.1),
+                    UnconditionalCheckPeriod = TimeSpan.FromSeconds(HostInfo.IsDevelopmentInstance ? 60 : 5).ToRandom(0.1),
                 });
                 operations.ConfigureOperationLogTrimmer(_ => new DbOperationLogTrimmer<TDbContext>.Options {
                     MaxOperationAge = TimeSpan.FromMinutes(10),
@@ -136,7 +136,6 @@ public sealed class DbModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
-        base.InjectServices(services);
         var fusion = services.AddFusion();
         fusion.AddOperationReprocessor();
     }

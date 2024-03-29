@@ -11,7 +11,7 @@ public class ContactIndexingSignalTest : IAsyncLifetime
 
     public Task InitializeAsync()
     {
-        var config = new ConfigurationBuilder().AddInMemory(
+        var config = new ConfigurationBuilder().AddInMemoryCollection(
                 ($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingDelay)}", "00:00:00.02"),
                 ($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingSignalInterval)}", "00:00:00.01")
                 ).Build();

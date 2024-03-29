@@ -18,7 +18,8 @@ namespace ActualChat.Module;
 #pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class ApiClientModule(IServiceProvider moduleServices) : HostModule(moduleServices), IAppModule
+public sealed class ApiClientModule(IServiceProvider moduleServices)
+    : HostModule(moduleServices), IAppModule
 {
     protected override void InjectServices(IServiceCollection services)
     {
@@ -28,7 +29,7 @@ public sealed class ApiClientModule(IServiceProvider moduleServices) : HostModul
         // Audio
         rpc.AddClient<IStreamServer>();
         services.AddSingleton<IStreamClient>(c => new StreamClient(c));
-        services.AddSingleton<AudioDownloader>(c => new AudioDownloader(c));
+        services.AddSingleton<AudioDownloader>(c => new HttpClientAudioDownloader(c));
 
         // Chat
         fusion.AddClient<IChats>();

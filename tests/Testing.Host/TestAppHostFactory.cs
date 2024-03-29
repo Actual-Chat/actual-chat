@@ -1,16 +1,14 @@
 using ActualChat.App.Server;
 using ActualChat.Blobs.Internal;
-using ActualChat.Commands;
-using ActualChat.Nats;
+using ActualChat.Module;
 using ActualChat.Search;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
-using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.FileProviders;
 using ActualLab.IO;
 using ActualLab.Testing.Output;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Testing.Host;
 
@@ -24,28 +22,52 @@ public static class TestAppHostFactory
 
         var appHost = new TestAppHost(options, outputAccessor) {
             ServerUrls = options.ServerUrls ?? WebTestExt.GetLocalUri(WebTestExt.GetUnusedTcpPort()).ToString(),
-            HostConfigurationBuilder = cfg => {
-                cfg.Sources.Insert(0,
-                    new MemoryConfigurationSource {
-                        InitialData = new Dictionary<string, string?> {
-                            { WebHostDefaults.EnvironmentKey, "Development" },
-                            { WebHostDefaults.StaticWebAssetsKey, manifestPath },
-                        },
-                    });
-                options.HostConfigurationExtender?.Invoke(cfg);
+            HostOptions = new() {
+                EnvironmentName = Environments.Development,
             },
-            AppServicesBuilder = (host, services) => {
-                // register prefix for NATS queues
-                services.AddSingleton(new NatsCommandQueues.Options {
-                    CommonPrefix = instanceName,
-                });
+            Configure = (builder, cfg) => {
+                // Removing default appsettings.*
+                var toDelete = cfg.Sources
+                    .Where(s => (s is JsonConfigurationSource source
+                        && (source.Path ?? "").StartsWith("appsettings", StringComparison.OrdinalIgnoreCase))
+                        || s is EnvironmentVariablesConfigurationSource)
+                    .ToList();
+                foreach (var source in toDelete)
+                    cfg.Sources.Remove(source);
 
-                options.AppServicesExtender?.Invoke(host, services);
+                // Adding testsettings.* instead
+                var fileProvider = new PhysicalFileProvider(Path.GetDirectoryName(typeof(TestBase).Assembly.Location));
+                foreach (var (fileName, optional) in GetTestSettingsFiles())
+                    cfg.Sources.Add(new JsonConfigurationSource {
+                        FileProvider = fileProvider,
+                        OnLoadException = null,
+                        Optional = optional,
+                        Path = fileName,
+                        ReloadDelay = 100,
+                        ReloadOnChange = false,
+                    });
+
+                // Adding must-have overrides for tests
+                var useNatsQueues = options.UseNatsQueues ?? true; // Random.Shared.NextDouble() < 0.33;
+                cfg.AddInMemoryCollection(
+                    (WebHostDefaults.StaticWebAssetsKey, manifestPath),
+                    ($"{nameof(CoreSettings)}:{nameof(CoreSettings.Instance)}", instanceName),
+                    ($"{nameof(CoreSettings)}:{nameof(CoreServerSettings.UseNatsQueues)}", useNatsQueues.ToString())
+                );
+
+                // Overrides from options
+                options.Configure?.Invoke(builder, cfg);
+            },
+            ConfigureModuleHostServices = (_, services) => {
+                services.AddSingleton(outputAccessor);
+                services.AddTestLogging(outputAccessor);
+            },
+            ConfigureServices = (builder, services) => {
+                // Overrides from options
+                options.ConfigureAppServices?.Invoke(builder, services);
 
                 // The code below runs after module service registration & everything else
                 services.AddSettings<TestSettings>();
-                services.AddSingleton(outputAccessor);
-                services.AddTestLogging(outputAccessor);
                 services.AddSingleton(options.ChatDbInitializerOptions);
                 services.AddSingleton<IBlobStorages, TempFolderBlobStorages>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
@@ -53,10 +75,7 @@ public static class TestAppHostFactory
                     IndexPrefix = UniqueNames.Elastic("test"),
                 });
             },
-            AppConfigurationBuilder = cfg => {
-                ConfigureTestApp(cfg, instanceName);
-                options.AppConfigurationExtender?.Invoke(cfg);
-            },
+            ConfigureApp = (builder, app) => options.ConfigureApp?.Invoke(builder, app),
         };
         appHost.Build();
 
@@ -70,8 +89,7 @@ public static class TestAppHostFactory
             await appHost.InvokeInitializers();
 
         // Cleanup existing queues
-        var queues = appHost.Services.GetRequiredService<ICommandQueues>();
-        await queues.Purge(CancellationToken.None);
+        await appHost.Services.Queues().Purge();
 
         if (options.MustStart)
             await appHost.Start();
@@ -93,40 +111,14 @@ public static class TestAppHostFactory
             => assemblyPath.ChangeExtension("staticwebassets.runtime.json");
     }
 
-    private static void ConfigureTestApp(IConfigurationBuilder config, string instanceName)
+    private static List<(string FileName, bool Optional)> GetTestSettingsFiles()
     {
-        var toDelete = config.Sources
-            .Where(s => (s is JsonConfigurationSource source
-                && (source.Path ?? "").StartsWith("appsettings", StringComparison.OrdinalIgnoreCase))
-                || s is EnvironmentVariablesConfigurationSource)
-            .ToList();
-        foreach (var source in toDelete)
-            config.Sources.Remove(source);
-
-        var fileProvider = new PhysicalFileProvider(Path.GetDirectoryName(typeof(TestBase).Assembly.Location));
-        foreach (var (fileName, optional) in GetTestSettingsFiles())
-            config.Sources.Add(new JsonConfigurationSource {
-                FileProvider = fileProvider,
-                OnLoadException = null,
-                Optional = optional,
-                Path = fileName,
-                ReloadDelay = 100,
-                ReloadOnChange = false,
-            });
-        config.AddInMemoryCollection(new Dictionary<string, string?> {
-            { "CoreSettings:Instance", instanceName },
-        });
-        config.AddEnvironmentVariables();
-
-        static List<(string FileName, bool Optional)> GetTestSettingsFiles()
-        {
-            List<(string FileName, bool Optional)> result = new (3) {
-                ("testsettings.json", Optional: false),
-                ("testsettings.local.json", Optional: true),
-            };
-            if (EnvExt.IsRunningInContainer())
-                result.Add(("testsettings.docker.json", Optional: false));
-            return result;
-        }
+         var result = new List<(string FileName, bool Optional)> {
+            ("testsettings.json", Optional: false),
+            ("testsettings.local.json", Optional: true),
+        };
+        if (EnvExt.IsRunningInContainer())
+            result.Add(("testsettings.docker.json", Optional: false));
+        return result;
     }
 }

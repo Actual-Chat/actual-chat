@@ -4,24 +4,21 @@ public delegate MeshRef MeshRefResolver<in T>(T source);
 
 public static class MeshRefResolverExt
 {
-    public static MeshRefResolver<object>? ToUntyped<T>(this MeshRefResolver<T>? resolver)
-        => resolver == null ? null : source => resolver.Invoke((T)source);
+    public static MeshRefResolver<object> ToUntyped<T>(this MeshRefResolver<T> resolver)
+        => source => resolver.Invoke((T)source);
 }
 
 public static class MeshRefResolvers
 {
     private static readonly ConcurrentDictionary<Type, Delegate> Registered = new();
-    private static readonly ConcurrentDictionary<Type, Delegate?> Resolved = new();
-    private static readonly ConcurrentDictionary<Type, MeshRefResolver<object?>?> ResolvedUntyped = new();
+    private static readonly ConcurrentDictionary<Type, Delegate> Resolved = new();
+    private static readonly ConcurrentDictionary<Type, MeshRefResolver<object?>> ResolvedUntyped = new();
     private static readonly MethodInfo GetUntypedInternalMethod = typeof(MeshRefResolvers)
         .GetMethod(nameof(GetUntypedInternal), BindingFlags.Static | BindingFlags.NonPublic)!;
     private static readonly MethodInfo CreateShardKeyBasedResolverMethod = typeof(MeshRefResolvers)
         .GetMethod(nameof(CreateShardKeyBasedResolver), BindingFlags.Static | BindingFlags.NonPublic)!;
 
-    public static MeshRefResolver<T> NotFound<T>()
-        => _ => throw NotFoundError(typeof(T));
-
-    public static MeshRefResolver<Unit> NullResolver { get; set; } = static _ => MeshRef.Shard(0);
+    public static MeshRef ForNull() => MeshRef.Shard(ShardKeyResolvers.ForNull());
 
     static MeshRefResolvers()
     {
@@ -38,64 +35,39 @@ public static class MeshRefResolvers
             throw StandardError.Internal($"MeshRefResolver for type {typeof(T).GetName()} is already registered.");
     }
 
-    public static MeshRef Resolve(object? source)
-    {
-        if (source == null)
-            return NullResolver.Invoke(default);
-
-        var type = source.GetType();
-        var resolver = GetUntyped(type) ?? throw NotFoundError(type);
-        return resolver.Invoke(source);
-    }
-
-    public static MeshRef Resolve<T>(T source)
-    {
-        if (source == null)
-            return NullResolver.Invoke(default);
-
-        var type = typeof(T);
-        var resolver = Get(type) as MeshRefResolver<T> ?? throw NotFoundError(type);
-        return resolver.Invoke(source);
-    }
-
-    public static MeshRefResolver<object?>? GetUntyped<T>()
-        => GetUntyped(typeof(T));
-    public static MeshRefResolver<object?>? GetUntyped(Type type)
+    public static MeshRefResolver<object?> GetUntyped(Type type, Requester requester)
         => ResolvedUntyped.GetOrAdd(type,
-            static t => (MeshRefResolver<object?>?)GetUntypedInternalMethod
-                .MakeGenericMethod(t)
-                .Invoke(null, Array.Empty<object>()));
+            static (type1, requester1) => (MeshRefResolver<object?>?)GetUntypedInternalMethod
+                .MakeGenericMethod(type1)
+                .Invoke(null, [requester1])!,
+            requester);
 
-    public static MeshRefResolver<T>? Get<T>()
-        => Get(typeof(T)) as MeshRefResolver<T>;
-    public static Delegate? Get(Type type)
-        => Resolved.GetOrAdd(type, static t => {
-            if (Registered.TryGetValue(t, out var result))
+    public static MeshRefResolver<T> Get<T>(Requester requester)
+        => (MeshRefResolver<T>)Get(typeof(T), requester);
+    public static Delegate Get(Type type, Requester requester)
+        => Resolved.GetOrAdd(type, static (type1, requester1) => {
+            if (Registered.TryGetValue(type1, out var result))
                 return result;
 
-            if (!t.IsValueType)
-                foreach (var baseType in t.GetAllBaseTypes(false, true)) {
+            if (!type1.IsValueType)
+                foreach (var baseType in type1.GetAllBaseTypes(false, true)) {
                     if (Registered.TryGetValue(baseType, out result))
                         return result;
                 }
 
-            return (Delegate?)CreateShardKeyBasedResolverMethod
-                .MakeGenericMethod(t)
-                .Invoke(null, Array.Empty<object>());
-        });
+            return (Delegate)CreateShardKeyBasedResolverMethod
+                .MakeGenericMethod(type1)
+                .Invoke(null, [requester1])!;
+        }, requester);
 
     // Private methods
 
-    private static MeshRefResolver<object>? GetUntypedInternal<T>()
-        => Get<T>().ToUntyped();
+    private static MeshRefResolver<object> GetUntypedInternal<T>(Requester requester)
+        => Get<T>(requester).ToUntyped();
 
-    private static MeshRefResolver<T>? CreateShardKeyBasedResolver<T>()
+    private static MeshRefResolver<T> CreateShardKeyBasedResolver<T>(Requester requester)
     {
-        var shardKeyResolver = ShardKeyResolvers.Get<T>();
-        return shardKeyResolver == null ? null
-            : x => MeshRef.Shard(shardKeyResolver.Invoke(x));
+        var shardKeyResolver = ShardKeyResolvers.Get<T>(requester);
+        return x => MeshRef.Shard(shardKeyResolver.Invoke(x));
     }
-
-    private static Exception NotFoundError(Type type)
-        => throw StandardError.Internal($"Can't find MeshRefResolver for type {type.GetName()}.");
 }

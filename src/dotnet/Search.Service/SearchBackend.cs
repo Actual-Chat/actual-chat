@@ -1,7 +1,7 @@
 using ActualChat.Chat;
 using ActualChat.Chat.Events;
-using ActualChat.Commands;
 using ActualChat.Contacts;
+using ActualChat.Queues;
 using ActualChat.Search.Db;
 using ActualChat.Users.Events;
 using Elastic.Clients.Elasticsearch;

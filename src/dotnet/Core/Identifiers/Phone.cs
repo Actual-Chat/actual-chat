@@ -13,6 +13,9 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct Phone : ISymbolIdentifier<Phone>
 {
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= DefaultLogFor<Phone>();
+
     private const char Delimiter = '-';
     public static Phone None => default;
 
@@ -110,7 +113,7 @@ public readonly partial struct Phone : ISymbolIdentifier<Phone>
     public static Phone Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<Phone>(s);
     public static Phone ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<Phone>(s).LogWarning(DefaultLog, None);
+        => TryParse(s, out var result) ? result : StandardError.Format<Phone>(s).LogWarning(Log, None);
 
     public static bool TryParse(string? s, out Phone result)
     {

@@ -40,9 +40,12 @@ public sealed class RpcMeshRefResolvers(IServiceProvider services)
         return DefaultResolverImplMethod.MakeGenericMethod(arg0Type).CreateDelegate<RpcMeshRefResolver>();
     }
 
-    private static MeshRef DefaultResolverImpl<T>(RpcMethodDef methodDef, ArgumentList arguments, ShardScheme shardScheme)
+    private static MeshRef DefaultResolverImpl<T>(
+        RpcMethodDef methodDef,
+        ArgumentList arguments,
+        ShardScheme shardScheme)
     {
-        var meshRef = MeshRefResolvers.Resolve(arguments.Get<T>(0));
+        var meshRef = MeshRefResolvers.Get<T>(new Requester(methodDef)).Invoke(arguments.Get<T>(0));
         return meshRef.WithSchemeIfUndefined(shardScheme);
     }
 }

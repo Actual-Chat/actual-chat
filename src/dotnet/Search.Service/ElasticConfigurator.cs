@@ -1,5 +1,4 @@
 using ActualChat.Mesh;
-using ActualChat.Redis;
 using ActualChat.Search.Db;
 using ActualChat.Search.Module;
 using Elastic.Clients.Elasticsearch;
@@ -8,7 +7,7 @@ using Elastic.Clients.Elasticsearch.Mapping;
 
 namespace ActualChat.Search;
 
-public class ElasticConfigurator(IServiceProvider services) : WorkerBase
+public sealed class ElasticConfigurator(IServiceProvider services) : WorkerBase
 {
     private readonly TaskCompletionSource _whenCompleted = new ();
     private SearchSettings? _settings;

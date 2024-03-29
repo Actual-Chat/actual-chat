@@ -26,7 +26,7 @@ public sealed record RpcBackendNodePeerRef : RpcPeerRef
     }
 
     public override string ToString()
-        => $"backend @ {NodeRef}";
+        => Key;
 
     // This record relies on referential equality
     public bool Equals(RpcBackendNodePeerRef? other) => ReferenceEquals(this, other);

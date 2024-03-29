@@ -10,7 +10,8 @@ public partial class NativeHttpClientFactory(IServiceProvider services)
     : IHttpClientFactory, IHttpMessageHandlerFactory
 {
     private static readonly Tracer Tracer = Tracer.Default[nameof(NativeHttpClientFactory)];
-    private readonly ConcurrentDictionary<string, HttpMessageHandler> _messageHandlers = new (StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, LazySlim<string, NativeHttpClientFactory, HttpMessageHandler>> _messageHandlers
+        = new(StringComparer.Ordinal);
 
     private IServiceProvider Services { get; } = services;
     private IOptionsSnapshot<HttpClientFactoryOptions> Options { get; } = services.GetRequiredService<IOptionsSnapshot<HttpClientFactoryOptions>>();
@@ -20,22 +21,21 @@ public partial class NativeHttpClientFactory(IServiceProvider services)
         // Each call to CreateClient(String) is guaranteed to return a new HttpClient instance.
         // https://learn.microsoft.com/en-us/dotnet/api/system.net.http.ihttpclientfactory.createclient?view=dotnet-plat-ext-6.0#remarks
         => ConfigureClient(new HttpClient(CreateHandler(name), false) {
-                DefaultRequestVersion = HttpVersion.Version30,
-                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
-            },
-            name);
+            DefaultRequestVersion = HttpVersion.Version30,
+            DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
+        }, name);
 
     public HttpMessageHandler CreateHandler(string name)
         => _messageHandlers.GetOrAdd(name,
-            static (name1, this1) => {
+            static (name1, self) => {
                 using var _ = Tracer.Region($"{nameof(CreateHandler)}: '{name1}'");
 
-                var handler = this1.CreatePlatformMessageHandler();
+                var handler = self.CreatePlatformMessageHandler();
                 if (handler == null)
                     throw StandardError.NotSupported<NativeHttpClientFactory>(
                         $"{nameof(CreatePlatformMessageHandler)} should not return null on all supported platforms except Windows.");
 
-                return this1.ConfigureMessageHandler(handler, name1);
+                return self.ConfigureMessageHandler(handler, name1);
             }, this);
 
     private partial HttpMessageHandler? CreatePlatformMessageHandler();
@@ -64,12 +64,11 @@ public partial class NativeHttpClientFactory(IServiceProvider services)
 
         configure(builder);
 
-        void Configure(HttpMessageHandlerBuilder b)
-        {
+        return builder.Build();
+
+        void Configure(HttpMessageHandlerBuilder b) {
             for (int i = 0; i < options?.HttpMessageHandlerBuilderActions.Count; i++)
                 options.HttpMessageHandlerBuilderActions[i](b);
         }
-
-        return builder.Build();
     }
 }

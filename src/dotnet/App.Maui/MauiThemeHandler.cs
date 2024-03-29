@@ -22,7 +22,7 @@ public class MauiThemeHandler
     private string _appliedColors = "";
     private ILogger? _log;
 
-    protected ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger(GetType());
+    protected ILogger Log => _log ??= DefaultLoggerFactory.CreateLogger(GetType());
 
     protected MauiThemeHandler()
     {

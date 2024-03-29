@@ -25,10 +25,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
-        base.InjectServices(services);
         var hostKind = HostInfo.HostKind;
-        if (!hostKind.HasBlazorUI())
-            return; // Blazor UI only module
 
         // Just to test how it impacts the performance
         // FusionComponentBase.DefaultParameterComparisonMode = ParameterComparisonMode.Standard;
@@ -147,7 +144,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         }
 
         // Test services
-        if (IsDevelopmentInstance)
+        if (HostInfo.IsDevelopmentInstance)
             fusion.AddService<ComputeStateTestService>(ServiceLifetime.Scoped);
     }
 

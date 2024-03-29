@@ -1,21 +1,19 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Users;
 
-public interface IAccountsBackend : IComputeService
+public interface IAccountsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken);
-
     [ComputeMethod]
     Task<UserId> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken);
 
     [CommandHandler]
     public Task OnUpdate(AccountsBackend_Update command, CancellationToken cancellationToken);
-
     [CommandHandler]
     public Task OnDelete(AccountsBackend_Delete command, CancellationToken cancellationToken);
-
     [CommandHandler]
     Task<bool> OnCopyChat(AccountsBackend_CopyChat command, CancellationToken cancellationToken);
 
@@ -48,7 +46,11 @@ public sealed partial record AccountsBackend_Update(
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_Delete(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
-) : ICommand<Unit>, IBackendCommand;
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public UserId ShardKey => UserId;
+}
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
@@ -57,4 +59,8 @@ public sealed partial record AccountsBackend_CopyChat(
     [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId,
     [property: DataMember, MemoryPackOrder(2)] long MaxEntryId,
     [property: DataMember, MemoryPackOrder(3)] string CorrelationId
-) : ICommand<bool>, IBackendCommand;
+) : ICommand<bool>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => ChatId;
+}

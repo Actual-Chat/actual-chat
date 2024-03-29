@@ -3,7 +3,7 @@ namespace ActualChat.DependencyInjection;
 public sealed class TypeMapper<TScope>
 {
     private readonly Dictionary<Type, Type> _map;
-    private readonly ConcurrentDictionary<Type, Type?> _cache = new();
+    private readonly ConcurrentDictionary<Type, LazySlim<Type, TypeMapper<TScope>, Type?>> _cache = new();
 
     public TypeMapper(TypeMap<TScope> typeMap)
         => _map = typeMap.Map;

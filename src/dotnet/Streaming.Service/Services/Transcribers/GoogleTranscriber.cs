@@ -46,10 +46,10 @@ public partial class GoogleTranscriber : ITranscriber
 
     public GoogleTranscriber(IServiceProvider services)
     {
+        Services = services;
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
 
-        Services = services;
         CoreServerSettings = services.GetRequiredService<CoreServerSettings>();
         WebMStreamConverter = new WebMStreamConverter(Clocks, services.LogFor<WebMStreamConverter>());
         WhenInitialized = Initialize();
@@ -459,14 +459,16 @@ public partial class GoogleTranscriber : ITranscriber
             .Concat(audioSource, cancellationToken)
             .ConcatUntil(SilenceAudioSource, SilentSuffixDuration, cancellationToken);
 
-    private static async Task<AudioSource> LoadSilenceAudio()
+    private async Task<AudioSource> LoadSilenceAudio()
     {
         var silenceChunks = await typeof(GoogleTranscriber).Assembly
             .GetManifestResourceStream("ActualChat.Streaming.data.silence.opuss")!
             .ReadByteStream(true)
             .ToListAsync()
             .ConfigureAwait(false);
-        var converter = new ActualOpusStreamConverter(MomentClockSet.Default, DefaultLog);
+        var converter = new ActualOpusStreamConverter(
+            MomentClockSet.Default,
+            Services.LogFor<ActualOpusStreamConverter>());
         return await converter
             .FromByteStream(silenceChunks.AsAsyncEnumerable(), CancellationToken.None)
             .ConfigureAwait(false);

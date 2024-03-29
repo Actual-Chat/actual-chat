@@ -1,0 +1,26 @@
+@implements IModalView<AdminCopyChatToPlaceErrorModal.Model>
+
+<DialogFrame Class="confirm-modal modal-sm" Title="Issue on copying chat">
+    <Body>
+    <FormBlock>
+        <div class="c-text">
+            <p>There was an issue on copying chat '@ModalModel.Chat' to place '@ModalModel.Place'.</p>
+            @if (ModalModel.HasChanges) {
+                <p>Copy was executed partially successful.</p>
+            }
+            <p>Use the code below to get help with administrator.</p>
+            <CopyToClipboard ShowInput="true" Text="@ModalModel.CorrelationId" />
+        </div>
+    </FormBlock>
+    </Body>
+    <Buttons>
+        <Button Class="btn-modal" Click="@(_ => Modal.Close())">Close</Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public sealed record Model(string CorrelationId, bool HasChanges, string Chat, string Place);
+}

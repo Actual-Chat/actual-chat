@@ -34,9 +34,6 @@ public sealed partial record Transcript(
     public override string ToString()
         => $"`{Text}` + {TimeMap}";
 
-    public void RequireValid()
-        => TimeMap.RequireValid();
-
     public int GetContentStart()
         => ContentStartRegex.Match(Text).Length;
 
@@ -88,6 +85,12 @@ public sealed partial record Transcript(
         var text = Text + suffix;
         var timeMap = TimeMap.AppendOrUpdateSuffix(suffixTextToTimeMap, TimeMapEpsilon.X);
         return new Transcript(text, timeMap);
+    }
+
+    public Transcript RequireValid()
+    {
+        TimeMap.RequireValid();
+        return this;
     }
 
     // Operators

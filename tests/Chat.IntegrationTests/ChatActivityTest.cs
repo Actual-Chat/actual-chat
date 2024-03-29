@@ -17,15 +17,18 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
         await using var tester = appHost.NewBlazorTester();
         var services = tester.AppServices;
         var clientServices = tester.ScopedAppServices;
-        var commander = services.GetRequiredService<ICommander>();
+        var commander = services.Commander();
         var authors = services.GetRequiredService<IAuthors>();
         var account = await tester.SignInAsBob();
         var session = tester.Session;
 
         var chats = services.GetRequiredService<IChats>();
-        var chat = await chats.Get(session, TestChatId, CancellationToken.None);
-        chat.Should().NotBeNull();
-        chat?.Title.Should().Be("The Actual One");
+        Chat? chat;
+        await TestExt.WhenMetAsync(async () => {
+            chat = await chats.Get(session, TestChatId, CancellationToken.None);
+            chat.Should().NotBeNull();
+            chat!.Title.Should().Be("The Actual One");
+        }, TimeSpan.FromSeconds(10));
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var ct = cts.Token;

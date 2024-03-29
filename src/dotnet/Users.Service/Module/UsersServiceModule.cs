@@ -24,75 +24,225 @@ using Twilio.Clients;
 namespace ActualChat.Users.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class UsersServiceModule(IServiceProvider moduleServices) : HostModule<UsersSettings>(moduleServices)
+public sealed class UsersServiceModule(IServiceProvider moduleServices)
+    : HostModule<UsersSettings>(moduleServices), IServerModule
 {
     protected override void InjectServices(IServiceCollection services)
     {
-        base.InjectServices(services);
-        if (!HostInfo.HostKind.IsServer())
-            return; // Server-side only module
+        // RPC host
+        var rpcHost = services.AddRpcHost(HostInfo);
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IAccountsBackend>().IsClient();
+        var rpc = rpcHost.Rpc;
+        var commander = rpcHost.Commander;
+        var fusion = rpcHost.Fusion;
+        var fusionWebServer = fusion.AddWebServer();
 
-        // ASP.NET Core authentication providers
-        var authentication = services.AddAuthentication(options => {
-            options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-        });
-        authentication.AddCookie(options => {
-            options.LoginPath = "/signIn";
-            options.LogoutPath = "/signOut";
-            if (IsDevelopmentInstance)
-                options.Cookie.SecurePolicy = CookieSecurePolicy.None;
-            // This controls the expiration time stored in the cookie itself
-            options.ExpireTimeSpan = TimeSpan.FromDays(14);
-            options.SlidingExpiration = true;
-            // And this controls when the browser forgets the cookie
-            options.Events.OnSigningIn = ctx => {
-                ctx.CookieOptions.Expires = DateTimeOffset.UtcNow.AddDays(28);
-                return Task.CompletedTask;
-            };
-        });
-        authentication.AddGoogle(options => {
-            options.ClientId = Settings.GoogleClientId;
-            options.ClientSecret = Settings.GoogleClientSecret;
-            options.CorrelationCookie.SameSite = SameSiteMode.Lax;
-        });
-        authentication.AddApple(options => {
-            options.Events.OnCreatingTicket = context => {
-                if (context.Identity == null)
+        if (rpcHost.IsApiHost) {
+            services.AddMvcCore().AddApplicationPart(GetType().Assembly);
+
+            // ASP.NET Core authentication providers
+            var authentication = services.AddAuthentication(options => {
+                options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+            });
+            authentication.AddCookie(options => {
+                options.LoginPath = "/signIn";
+                options.LogoutPath = "/signOut";
+                if (HostInfo.IsDevelopmentInstance)
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.None;
+                // This controls the expiration time stored in the cookie itself
+                options.ExpireTimeSpan = TimeSpan.FromDays(14);
+                options.SlidingExpiration = true;
+                // And this controls when the browser forgets the cookie
+                options.Events.OnSigningIn = ctx => {
+                    ctx.CookieOptions.Expires = DateTimeOffset.UtcNow.AddDays(28);
                     return Task.CompletedTask;
+                };
+            });
+            authentication.AddGoogle(options => {
+                options.ClientId = Settings.GoogleClientId;
+                options.ClientSecret = Settings.GoogleClientSecret;
+                options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+            });
+            authentication.AddApple(options => {
+                options.Events.OnCreatingTicket = context => {
+                    if (context.Identity == null)
+                        return Task.CompletedTask;
 
-                if (!context.HttpContext.Request.Form.TryGetValue("user", out var userValue))
+                    if (!context.HttpContext.Request.Form.TryGetValue("user", out var userValue))
+                        return Task.CompletedTask;
+
+                    var userInfo = JsonConvert.DeserializeObject<AppleUser>(userValue.ToString());
+                    if (userInfo?.Name == null)
+                        return Task.CompletedTask;
+
+                    if (!userInfo.Name.FirstName.IsNullOrEmpty())
+                        context.Identity.AddClaim(new Claim(ClaimTypes.GivenName, userInfo.Name.FirstName));
+
+                    if (!userInfo.Name.LastName.IsNullOrEmpty())
+                        context.Identity.AddClaim(new Claim(ClaimTypes.Surname, userInfo.Name.LastName));
+
                     return Task.CompletedTask;
+                };
+                options.ClientId = Settings.AppleClientId;
+                options.KeyId = Settings.AppleKeyId;
+                options.TeamId = Settings.AppleTeamId;
+                options.GenerateClientSecret = true;
+                options.UsePrivateKey(_ => new PhysicalFileInfo(new FileInfo(Settings.ApplePrivateKeyPath)));
+            });
+            authentication.AddScheme<PhoneAuthOptions, PhoneAuthHandler>(Constants.Auth.Phone.SchemeName,
+                options => options.CallbackPath = Constants.Auth.Phone.CallbackPath);
+            /*
+            authentication.AddMicrosoftAccount(options => {
+                options.ClientId = Settings.MicrosoftAccountClientId;
+                options.ClientSecret = Settings.MicrosoftAccountClientSecret;
+                // That's for personal account authentication flow
+                options.AuthorizationEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
+                options.TokenEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
+                options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+            });
+            */
 
-                var userInfo = JsonConvert.DeserializeObject<AppleUser>(userValue.ToString());
-                if (userInfo?.Name == null)
-                    return Task.CompletedTask;
+            fusionWebServer.ConfigureAuthEndpoint(_ => new() {
+                DefaultSignInScheme = GoogleDefaults.AuthenticationScheme,
+                SignInPropertiesBuilder = (_, properties) => {
+                    properties.IsPersistent = true;
+                },
+            });
+        }
 
-                if (!userInfo.Name.FirstName.IsNullOrEmpty())
-                    context.Identity.AddClaim(new Claim(ClaimTypes.GivenName, userInfo.Name.FirstName));
+        // System properties
+        rpcHost.AddApi<ISystemProperties, SystemProperties>();
 
-                if (!userInfo.Name.LastName.IsNullOrEmpty())
-                    context.Identity.AddClaim(new Claim(ClaimTypes.Surname, userInfo.Name.LastName));
+        // Secure tokens
+        rpcHost.AddApi<ISecureTokens, SecureTokens>();
+        services.AddSingleton<ISecureTokensBackend, SecureTokensBackend>(); // Used by HttpSessionExt, server-side logic in AppBase, etc.
 
-                return Task.CompletedTask;
-            };
-            options.ClientId = Settings.AppleClientId;
-            options.KeyId = Settings.AppleKeyId;
-            options.TeamId = Settings.AppleTeamId;
-            options.GenerateClientSecret = true;
-            options.UsePrivateKey(_ => new PhysicalFileInfo(new FileInfo(Settings.ApplePrivateKeyPath)));
+        // IAuth
+        if (rpcHost.IsApiHost)
+            rpc.AddServer<IAuth>(); // IAuth is registered below
+
+        // Accounts
+        rpcHost.AddApiOrLocal<IAccounts, Accounts>(); // Used by Chats, etc.
+        rpcHost.AddBackend<IAccountsBackend, AccountsBackend>();
+        rpcHost.AddBackend<IUsersUpgradeBackend, UsersUpgradeBackend>();
+
+        // UserPresences
+        rpcHost.AddApiOrLocal<IUserPresences, UserPresences>(); // Used by Authors -> Chats, etc.
+        rpcHost.AddBackend<IUserPresencesBackend, UserPresencesBackend>();
+
+        // Avatars
+        rpcHost.AddApiOrLocal<IAvatars, Avatars>(); // Used by Authors -> Chats, etc.
+        rpcHost.AddBackend<IAvatarsBackend, AvatarsBackend>();
+
+        // ChatPositions
+        rpcHost.AddApi<IChatPositions, ChatPositions>();
+        rpcHost.AddBackend<IChatPositionsBackend, ChatPositionsBackend>();
+
+        // ServerKvas
+        rpcHost.AddApiOrLocal<IServerKvas, ServerKvas>(); // Used by Authors, Avatars -> Chats, etc.
+        rpcHost.AddBackend<IServerKvasBackend, ServerKvasBackend>();
+
+        // PhoneAuth
+        rpcHost.AddApi<IPhoneAuth, PhoneAuth>(); // Requires Redis & ITextMessageSender
+
+        // Emails
+        rpcHost.AddApi<IEmails, Emails>();
+
+        // Mobile authentication
+        rpcHost.AddApi<IMobileSessions, MobileSessions>();
+#pragma warning disable CS0618
+        if (rpcHost.IsApiHost)
+            rpc.AddServer<IMobileAuth, IMobileSessions>(); // ~ Alias of IMobileSessions
+#pragma warning restore CS0618
+
+        // Commander handlers
+        commander.AddHandlerFilter((handler, commandType) => {
+            // 1. Check if this is DbOperationScopeProvider<UsersDbContext> handler
+            if (handler is not InterfaceCommandHandler<ICommand> ich)
+                return true;
+            if (ich.ServiceType != typeof(DbOperationScopeProvider<UsersDbContext>))
+                return true;
+
+            // 2. ActualLab.Fusion.Ext.* commands are always processed locally
+            var commandAssembly = commandType.Assembly;
+            if (commandAssembly == typeof(Auth_EditUser).Assembly)
+                return true;
+            if (commandAssembly == typeof(AuthBackend_SetupSession).Assembly)
+                return true;
+
+            // 3. UserPresences_* and Accounts_* commands should run locally
+            if (commandType.Name.OrdinalStartsWith("UserPresences_") || commandType.Name.OrdinalStartsWith("Accounts_"))
+                return true;
+
+            // 4. Check if we're running on the client backend
+            if (isBackendClient)
+                return false;
+
+            // 5. Make sure the handler is intact only for local commands
+            var commandNamespace = commandType.Namespace;
+            return commandNamespace.OrdinalStartsWith(typeof(IAccounts).Namespace!);
         });
-        authentication.AddScheme<PhoneAuthOptions, PhoneAuthHandler>(Constants.Auth.Phone.SchemeName,
-            options => options.CallbackPath = Constants.Auth.Phone.CallbackPath);
-        /*
-        authentication.AddMicrosoftAccount(options => {
-            options.ClientId = Settings.MicrosoftAccountClientId;
-            options.ClientSecret = Settings.MicrosoftAccountClientSecret;
-            // That's for personal account authentication flow
-            options.AuthorizationEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
-            options.TokenEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
-            options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+
+        // NOTE(AY): We don't have a clear separation between the backend and the front-end
+        // due to IAuth & IAuthBackend, so these services are always local, and thus
+        // they drag the DB, Redis & everything they depend on.
+        // That's why we can't just exit here if we're operating as a backend client.
+
+        if (!isBackendClient) {
+            services.AddSingleton<ContactGreeter>()
+                .AddHostedService(c => c.GetRequiredService<ContactGreeter>());
+        }
+
+        // TOTP codes - used by IPhoneAuth (API)
+        services.AddSingleton<TotpCodes>();
+        services.AddSingleton<TotpSecrets>(); // Requires Redis
+
+        // Email sender - used by IEmails (API)
+        services.AddSingleton<IEmailSender, EmailSender>();
+
+        // Text message sender / Twilio - used by IPhoneAuth (API)
+        if (Settings.IsTwilioEnabled) {
+            services.AddSingleton<ITwilioRestClient>(_ => {
+                TwilioClient.Init(Settings.TwilioApiKey, Settings.TwilioApiSecret, Settings.TwilioAccountSid);
+                return TwilioClient.GetRestClient();
+            });
+            services.AddSingleton<ITextMessageSender, TwilioTextMessageSender>();
+        }
+        else
+            services.AddSingleton<ITextMessageSender, LogOnlyTextMessageSender>();
+
+        // IAuth & IAuthBackend
+        fusion.AddDbAuthService<UsersDbContext, DbSessionInfo, DbUser, string>(auth => {
+            auth.ConfigureAuthService(_ => new() {
+                MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
+            });
+            auth.ConfigureSessionInfoTrimmer(_ => new DbSessionInfoTrimmer<UsersDbContext>.Options {
+                MaxSessionAge = TimeSpan.FromDays(60),
+            });
+            // override IDbSessionInfoRepo for efficient trimming
+            services.RemoveAll(sd => sd.ServiceType == typeof(IDbSessionInfoRepo<UsersDbContext, DbSessionInfo, string>));
+            services.TryAddSingleton<IDbSessionInfoRepo<UsersDbContext, DbSessionInfo, string>, DbSessionInfoRepo>();
         });
-        */
+        services.AddSingleton<UserNamer>();
+        services.AddSingleton<ClaimMapper>();
+        commander.AddService<AuthCommandFilters>();
+        commander.AddService<AuthBackendCommandFilters>();
+
+        // DbUserRepo replacement
+        services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepo>());
+        services.AddSingleton(c => (DbUserRepo)c.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>());
+
+        // ServerAuthHelper replacement
+        services.AddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
+        fusionWebServer.ConfigureServerAuthHelper(_ => new() {
+            NameClaimKeys = Array.Empty<string>(),
+            SessionInfoUpdatePeriod = Constants.Session.SessionInfoUpdatePeriod,
+            AllowSignIn = HostInfo.IsDevelopmentInstance
+                ? ServerAuthHelper.Options.AllowAnywhere
+                : ServerAuthHelper.Options.AllowOnCloseWindowRequest,
+            AllowChange = ServerAuthHelper.Options.AllowOnCloseWindowRequest,
+            AllowSignOut = ServerAuthHelper.Options.AllowOnCloseWindowRequest,
+        });
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
@@ -112,104 +262,5 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices) : HostMo
             db.AddEntityResolver<string, DbUserPresence>();
             db.AddEntityResolver<string, DbChatPosition>();
         });
-
-        // Commander & Fusion
-        var commander = services.AddCommander();
-        commander.AddHandlerFilter((handler, commandType) => {
-            // 1. Check if this is DbOperationScopeProvider<UsersDbContext> handler
-            if (handler is not InterfaceCommandHandler<ICommand> ich)
-                return true;
-            if (ich.ServiceType != typeof(DbOperationScopeProvider<UsersDbContext>))
-                return true;
-
-            // 2. Make sure it's intact only for ActualLab.Fusion.Ext.* + local commands
-            var commandAssembly = commandType.Assembly;
-            if (commandAssembly == typeof(Auth_EditUser).Assembly)
-                return true;
-            if (commandAssembly == typeof(AuthBackend_SetupSession).Assembly)
-                return true;
-
-            var commandNamespace = commandType.Namespace;
-            return commandNamespace.OrdinalStartsWith(typeof(IAccounts).Namespace!);
-        });
-        var fusion = services.AddFusion();
-        var rpc = fusion.Rpc;
-
-        // Auth
-        fusion.AddDbAuthService<UsersDbContext, DbSessionInfo, DbUser, string>(auth => {
-            auth.ConfigureAuthService(_ => new() {
-                MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
-            });
-            auth.ConfigureSessionInfoTrimmer(_ => new DbSessionInfoTrimmer<UsersDbContext>.Options {
-                MaxSessionAge = TimeSpan.FromDays(60),
-            });
-            // override IDbSessionInfoRepo for efficient trimming
-            services.RemoveAll(sd => sd.ServiceType == typeof(IDbSessionInfoRepo<UsersDbContext, DbSessionInfo, string>));
-            services.TryAddSingleton<IDbSessionInfoRepo<UsersDbContext, DbSessionInfo, string>, DbSessionInfoRepo>();
-        });
-        var fusionWebServer = fusion.AddWebServer();
-        services.AddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
-        fusionWebServer.ConfigureAuthEndpoint(_ => new() {
-            DefaultSignInScheme = GoogleDefaults.AuthenticationScheme,
-            SignInPropertiesBuilder = (_, properties) => {
-                properties.IsPersistent = true;
-            },
-        });
-        fusionWebServer.ConfigureServerAuthHelper(_ => new() {
-            NameClaimKeys = Array.Empty<string>(),
-            SessionInfoUpdatePeriod = Constants.Session.SessionInfoUpdatePeriod,
-            AllowSignIn = HostInfo.IsDevelopmentInstance
-                ? ServerAuthHelper.Options.AllowAnywhere
-                : ServerAuthHelper.Options.AllowOnCloseWindowRequest,
-            AllowChange = ServerAuthHelper.Options.AllowOnCloseWindowRequest,
-            AllowSignOut = ServerAuthHelper.Options.AllowOnCloseWindowRequest,
-        });
-
-        commander.AddService<AuthCommandFilters>();
-        services.AddSingleton<ClaimMapper>();
-        services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepo>());
-        services.AddTransient(c => (DbUserRepo)c.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>());
-
-        // Module's own services
-        services.AddSingleton<UserNamer>();
-        services.AddSingleton<ISecureTokensBackend, SecureTokensBackend>();
-        services.AddSingleton<ISecureTokens, SecureTokens>();
-        rpc.AddServer<ISecureTokens, SecureTokens>();
-
-        fusion.AddService<ISystemProperties, SystemProperties>();
-        fusion.AddService<IAccounts, Accounts>();
-        fusion.AddService<IAccountsBackend, AccountsBackend>();
-        fusion.AddService<IUserPresences, UserPresences>();
-        fusion.AddService<IUserPresencesBackend, UserPresencesBackend>();
-        fusion.AddService<IAvatars, Avatars>();
-        fusion.AddService<IAvatarsBackend, AvatarsBackend>();
-        fusion.AddService<IChatPositions, ChatPositions>();
-        fusion.AddService<IChatPositionsBackend, ChatPositionsBackend>();
-        fusion.AddService<IServerKvas, ServerKvas>();
-        fusion.AddService<IServerKvasBackend, ServerKvasBackend>();
-        fusion.AddService<IPhoneAuth, PhoneAuth>();
-        fusion.AddService<IEmails, Emails>();
-        commander.AddService<IUsersUpgradeBackend, UsersUpgradeBackend>();
-        services.AddSingleton<ContactGreeter>().AddHostedService(c => c.GetRequiredService<ContactGreeter>());
-        services.AddTransient<Rfc6238AuthenticationService>();
-        services.AddSingleton<TotpRandomSecrets>();
-        services.AddSingleton<ITwilioRestClient>(_ => {
-            TwilioClient.Init(Settings.TwilioApiKey, Settings.TwilioApiSecret, Settings.TwilioAccountSid);
-            return TwilioClient.GetRestClient();
-        });
-        if (IsDevelopmentInstance && !Settings.IsTwilioEnabled)
-            services.AddTransient<ITextMessageGateway, LocalTextMessageGateway>();
-        else
-            services.AddTransient<ITextMessageGateway, TwilioTextMessageGateway>();
-        services.AddTransient<IEmailSender, EmailSender>();
-
-        // Mobile-related module's own services
-        fusion.AddService<IMobileSessions, MobileSessions>();
-#pragma warning disable CS0618
-        rpc.AddServer<IMobileAuth, IMobileSessions>();
-#pragma warning restore CS0618
-
-        // Controllers, etc.
-        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
     }
 }

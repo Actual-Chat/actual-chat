@@ -8,12 +8,39 @@ using ActualLab.Fusion.EntityFramework.Operations;
 namespace ActualChat.Invite.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class InviteServiceModule(IServiceProvider moduleServices) : HostModule(moduleServices)
+public sealed class InviteServiceModule(IServiceProvider moduleServices)
+    : HostModule(moduleServices), IServerModule
 {
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.HostKind.IsServer())
-            return; // Server-side only module
+        // RPC host
+        var rpcHost = services.AddRpcHost(HostInfo);
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IInvitesBackend>().IsClient();
+
+        // Invites
+        rpcHost.AddApi<IInvites, Invites>();
+        rpcHost.AddBackend<IInvitesBackend, InvitesBackend>();
+
+        // Commander handlers
+        rpcHost.Commander.AddHandlerFilter((handler, commandType) => {
+            // 1. Check if this is DbOperationScopeProvider<InviteDbContext> handler
+            if (handler is not InterfaceCommandHandler<ICommand> ich)
+                return true;
+            if (ich.ServiceType != typeof(DbOperationScopeProvider<InviteDbContext>))
+                return true;
+
+            // 2. Check if we're running on the client backend
+            if (isBackendClient)
+                return false;
+
+            // 3. Make sure the handler is intact only for local commands
+            var commandNamespace = commandType.Namespace;
+            return commandNamespace.OrdinalStartsWith(typeof(IInvites).Namespace!);
+        });
+        if (isBackendClient)
+            return;
+
+        // The services below are used only when this module operates in non-client mode
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
@@ -27,28 +54,5 @@ public sealed class InviteServiceModule(IServiceProvider moduleServices) : HostM
             db.AddEntityResolver<string, DbInvite>();
             db.AddEntityResolver<string, DbActivationKey>();
         });
-
-        // Commander & Fusion
-        var commander = services.AddCommander();
-        commander.AddHandlerFilter((handler, commandType) => {
-            // 1. Check if this is DbOperationScopeProvider<InviteDbContext> handler
-            if (handler is not InterfaceCommandHandler<ICommand> ich)
-                return true;
-            if (ich.ServiceType != typeof(DbOperationScopeProvider<InviteDbContext>))
-                return true;
-
-            // 2. Make sure it's intact only for local commands
-            var commandNamespace = commandType.Namespace;
-            return commandNamespace.OrdinalStartsWith(typeof(IInvites).Namespace!);
-        });
-        var fusion = services.AddFusion();
-
-        // Module's own services
-        fusion.AddService<IInvites, Invites>();
-        fusion.AddService<IInvitesBackend, InvitesBackend>();
-        // services.AddSingleton<ITextSerializer>(SystemJsonSerializer.Default);
-
-        // Controllers, etc.
-        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
     }
 }

@@ -1,14 +1,12 @@
 using System.IO.Compression;
 using ActualChat.App.Server.Health;
 using ActualChat.Chat.Module;
-using ActualChat.Commands;
 using ActualChat.Contacts.Module;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Module;
 using ActualChat.Media.Module;
 using ActualChat.Module;
-using ActualChat.Nats.Module;
 using ActualChat.Notification.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Search.Module;
@@ -31,8 +29,6 @@ using ActualLab.Fusion.EntityFramework;
 using ActualLab.IO;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Server;
-using NATS.Client.Core;
-using NATS.Client.Hosting;
 
 namespace ActualChat.App.Server.Module;
 
@@ -91,7 +87,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             KeepAliveInterval = TimeSpan.FromSeconds(30),
         });
 
-        // Static + Swagger
+        // Static files
         app.UseBlazorFrameworkFiles();
         app.UseDistFiles();
         // Explicit rewrite cause files without extension (hence no content-type) are not served due to security reasons
@@ -101,6 +97,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 true));
         app.UseStaticFiles();
 
+        // Swagger
         /*
         app.UseSwagger();
         app.UseSwaggerUI(c => {
@@ -112,7 +109,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         if (!Env.IsDevelopment()) // disable compression for local development and hot reload
             app.UseResponseCompression();
 
-        // API controllers
+        // API controllers & HTTP endpoints
         app.UseRouting();
         app.UseCors("Default");
         app.UseResponseCaching();
@@ -130,17 +127,15 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
-        base.InjectServices(services);
-        var hostKind = HostInfo.HostKind;
-        if (!hostKind.IsServer())
-            throw StandardError.Internal("This module can be used on server side only.");
-
         // Host options
         services.Configure<HostOptions>(o => {
             o.ShutdownTimeout = Env.IsDevelopment()
                 ? TimeSpan.FromSeconds(1)
                 : TimeSpan.FromSeconds(30);
         });
+
+        // AppHostLifecycleMonitor
+        services.AddHostedService<AppHostLifecycleMonitor>();
 
         // Health-checks
         services.AddSingleton<LivelinessHealthCheck>(c => new LivelinessHealthCheck(c));
@@ -152,10 +147,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<InfrastructureDbContext>(services);
-
-        // NATS
-        var natsModule = Host.GetModule<NatsModule>();
-        natsModule.AddNatsQueues(services);
 
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;

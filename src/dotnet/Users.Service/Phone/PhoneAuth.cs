@@ -17,9 +17,9 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
     private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
     private HostInfo HostInfo { get; } = services.HostInfo();
-    private ITextMessageGateway TextMessage { get; } = services.GetRequiredService<ITextMessageGateway>();
-    private Rfc6238AuthenticationService Totps { get; } = services.GetRequiredService<Rfc6238AuthenticationService>();
-    private TotpRandomSecrets RandomSecrets { get; } = services.GetRequiredService<TotpRandomSecrets>();
+    private ITextMessageSender TextMessage { get; } = services.GetRequiredService<ITextMessageSender>();
+    private TotpCodes Totps { get; } = services.GetRequiredService<TotpCodes>();
+    private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
     private IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; } = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
 
     private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
@@ -43,7 +43,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             return GetExpiresAt(); // no need to send predefined totp
 
         var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose, cancellationToken).ConfigureAwait(false);
-        var totp = Totps.GenerateCode(securityToken, modifier); // generate totp with the newest one
+        var totp = Totps.Generate(securityToken, modifier); // generate totp with the newest one
         var expiresAt = GetExpiresAt();
 
         var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
@@ -128,7 +128,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             return true;
 
         var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose, cancellationToken).ConfigureAwait(false);
-        return Totps.ValidateCode(securityToken, totp, modifier);
+        return Totps.Validate(securityToken, totp, modifier);
     }
 
     private async Task<(byte[] SecurityToken, string Modifier)> GetTotpInputs(
@@ -137,7 +137,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         TotpPurpose purpose,
         CancellationToken cancellationToken)
     {
-        var randomSecret = await RandomSecrets.Get(session, cancellationToken).ConfigureAwait(false);
+        var randomSecret = await TotpSecrets.Get(session, cancellationToken).ConfigureAwait(false);
         var securityTokens = Encoding.UTF8.GetBytes($"{randomSecret}_{session.Id}_{phone}");
         var modifier = $"{purpose}:{phone}";
         return (securityTokens, modifier);

@@ -62,6 +62,6 @@ public abstract class ScopedServiceBase<THub>(THub hub) : IHasIsDisposed
         get => Hub.Clocks();
     }
 
-    protected ILogger Log => _log ??= Hub.Logs().CreateLogger(GetType());
+    protected ILogger Log => _log ??= Hub.LoggerFactory().CreateLogger(GetType().NonProxyType());
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 }

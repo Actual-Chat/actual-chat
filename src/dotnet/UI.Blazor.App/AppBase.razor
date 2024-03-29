@@ -92,7 +92,7 @@
             // Evaluate UIModuleAssemblies (just once - it's a static member)
             var uiModuleAssemblies = new HashSet<Assembly>();
             foreach (var module in Host.Modules) {
-                if (module is IBlazorUIModule)
+                if (module.IsUsed && module is IBlazorUIModule)
                     uiModuleAssemblies.Add(module.GetType().Assembly);
             }
             uiModuleAssemblies.Remove(UIAssembly);
