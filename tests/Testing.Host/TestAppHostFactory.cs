@@ -22,7 +22,10 @@ public static class TestAppHostFactory
 
         var appHost = new TestAppHost(options, outputAccessor) {
             ServerUrls = options.ServerUrls ?? WebTestExt.GetLocalUri(WebTestExt.GetUnusedTcpPort()).ToString(),
-            ConfigureHost = (builder, cfg) => {
+            HostOptions = new() {
+                EnvironmentName = Environments.Development,
+            },
+            Configure = (builder, cfg) => {
                 // Removing default appsettings.*
                 var toDelete = cfg.Sources
                     .Where(s => (s is JsonConfigurationSource source
@@ -46,14 +49,13 @@ public static class TestAppHostFactory
 
                 // Adding must-have overrides for tests
                 cfg.AddInMemoryCollection(
-                    (WebHostDefaults.EnvironmentKey, Environments.Development),
                     (WebHostDefaults.StaticWebAssetsKey, manifestPath),
                     ($"{nameof(CoreSettings)}:{nameof(CoreSettings.Instance)}", instanceName),
                     ($"{nameof(CoreSettings)}:{nameof(CoreServerSettings.UseNatsQueues)}", options.UseNatsQueues.ToString())
                 );
 
                 // Overrides from options
-                options.ConfigureHost?.Invoke(builder, cfg);
+                options.Configure?.Invoke(builder, cfg);
             },
             ConfigureModuleHostServices = (_, services) => {
                 services.AddSingleton(outputAccessor);

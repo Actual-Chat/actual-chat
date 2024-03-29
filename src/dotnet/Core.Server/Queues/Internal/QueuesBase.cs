@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Queues.Internal;
 
@@ -7,6 +8,7 @@ namespace ActualChat.Queues.Internal;
 public abstract record QueueSettings
 {
     public int ConcurrencyLevel { get; init; } = HardwareInfo.GetProcessorCountFactor(8);
+    public TimeSpan ProcessCancellationDelay { get; init; } = TimeSpan.FromSeconds(5);
     public IMomentClock? Clock { get; init; }
 }
 
@@ -19,6 +21,7 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
 
     public IServiceProvider Services { get; }
     public HostInfo HostInfo { get; }
+    public IHostApplicationLifetime HostLifetime { get; }
     public IMomentClock Clock { get; }
 
     public TSettings Settings { get; }
@@ -31,6 +34,7 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
         Log = services.LogFor(GetType());
 
         HostInfo = services.HostInfo();
+        HostLifetime = services.HostLifetime();
         Clock = settings.Clock ?? services.Clocks().SystemClock;
         if (initProcessors)
             // ReSharper disable once VirtualMemberCallInConstructor
@@ -78,8 +82,11 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
         foreach (var processor in Processors.Values)
             processor.Start();
 
+        // We want to stop processing queued events as quickly as possible on host stop signal
+        using var stopCts = HostLifetime.ApplicationStopping.LinkWith(cancellationToken);
+        var stopToken = stopCts.Token;
         try {
-            await ActualLab.Async.TaskExt.NeverEndingTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await ActualLab.Async.TaskExt.NeverEndingTask.WaitAsync(stopToken).ConfigureAwait(false);
         }
         finally {
             var disposeTasks = Processors.Values.Select(p => p.DisposeSilentlyAsync().AsTask()).ToArray();

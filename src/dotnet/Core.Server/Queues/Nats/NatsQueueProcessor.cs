@@ -89,6 +89,9 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
     protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {
+        using var gracefulStopCts = cancellationToken.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
+        var gracefulStopToken = gracefulStopCts.Token;
+
         var consumer = await GetConsumer(shardIndex, cancellationToken).ConfigureAwait(false);
         var messages = consumer.ConsumeAsync<IMemoryOwner<byte>>(
             opts: new NatsJSConsumeOpts { MaxMsgs = 10 },
@@ -101,9 +104,10 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         await Parallel.ForEachAsync(messages, parallelOptions, HandleMessage).ConfigureAwait(false);
         return;
 
-        async ValueTask HandleMessage(NatsJSMsg<IMemoryOwner<byte>> message, CancellationToken cancellationToken1) {
+        async ValueTask HandleMessage(NatsJSMsg<IMemoryOwner<byte>> message, CancellationToken _) {
             try {
-                await Process(shardIndex, message, cancellationToken1).ConfigureAwait(false);
+                StopToken.ThrowIfCancellationRequested();
+                await Process(shardIndex, message, gracefulStopToken).ConfigureAwait(false);
             }
             finally {
                 message.Data.DisposeSilently();

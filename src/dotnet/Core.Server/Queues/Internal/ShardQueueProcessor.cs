@@ -14,7 +14,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
     protected ICommander Commander { get; }
     protected CommandHandlerResolver CommandHandlerResolver { get; }
     protected new IMomentClock Clock { get; }
-    protected ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
+    protected new ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     public TSettings Settings { get; }
     IQueues IQueueSender.Queues => Queues;

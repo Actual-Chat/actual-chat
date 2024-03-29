@@ -50,7 +50,7 @@ public sealed class AppHostBuilder
     public AppHostBuilder(AppHost appHost, bool configurationOnly = false)
     {
         AppHost = appHost;
-        Builder = WebApplication.CreateBuilder();
+        Builder = WebApplication.CreateBuilder(AppHost.HostOptions);
 
         /////
         // 1. Configuration
@@ -72,7 +72,7 @@ public sealed class AppHostBuilder
         // Add a few default sources
         Cfg.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: false);
         Cfg.AddEnvironmentVariables();
-        AppHost.ConfigureHost?.Invoke(this, Cfg);
+        AppHost.Configure?.Invoke(this, Cfg);
 
         /////
         // 2. Base services
