@@ -23,9 +23,12 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
         var session = tester.Session;
 
         var chats = services.GetRequiredService<IChats>();
-        var chat = await chats.Get(session, TestChatId, CancellationToken.None);
-        chat.Should().NotBeNull();
-        chat?.Title.Should().Be("The Actual One");
+        Chat? chat;
+        await TestExt.WhenMetAsync(async () => {
+            chat = await chats.Get(session, TestChatId, CancellationToken.None);
+            chat.Should().NotBeNull();
+            chat!.Title.Should().Be("The Actual One");
+        }, TimeSpan.FromSeconds(10));
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var ct = cts.Token;
