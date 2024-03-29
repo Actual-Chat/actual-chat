@@ -110,6 +110,8 @@ public static class ServiceCollectionExt
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IOperationCompletionListener, EnqueueOnCompletionProcessor>());
         }
         services.AddSingleton(optionsBuilder ?? (static _ => new InMemoryQueues.Options()));
+        return services;
+    }
 
     [RequiresUnreferencedCode(UnreferencedCode.Commander)]
     public static IServiceCollection AddNatsQueues(
@@ -167,5 +169,4 @@ public static class ServiceCollectionExt
         }
         return services;
     }
-
 }
