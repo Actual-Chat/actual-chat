@@ -39,7 +39,7 @@ public record TestAppHostOptions
     public Action<AppHostBuilder, IServiceCollection>? ConfigureAppServices { get; init; }
     public Action<AppHostBuilder, WebApplication>? ConfigureApp { get; set; }
     public ChatDbInitializer.Options ChatDbInitializerOptions { get; init; } = ChatDbInitializer.Options.None;
-    public bool UseNatsQueues { get; init; }
+    public bool? UseNatsQueues { get; init; }
     public bool MustInitializeDb { get; init; }
     public bool MustStart { get; init; }
 
