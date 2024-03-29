@@ -73,22 +73,23 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
+        // We want to stop processing queued events as quickly as possible on host stop signal
+        using var stopCts = HostLifetime?.ApplicationStopping.LinkWith(cancellationToken);
+        var stopToken = stopCts?.Token ?? cancellationToken;
+
         var queueProcessors = Processors
             .Select(p => p.Key.ShardScheme.Id.Value)
             .ToDelimitedString()
             .NullIfEmpty()
             ?? "(none)";
-        Log.LogInformation("Queue processors: {QueueProcessors}", queueProcessors);
+        Log.LogInformation("Starting queue processors: {QueueProcessors}", queueProcessors);
         foreach (var processor in Processors.Values)
             processor.Start();
-
-        // We want to stop processing queued events as quickly as possible on host stop signal
-        using var stopCts = HostLifetime?.ApplicationStopping.LinkWith(cancellationToken);
-        var stopToken = stopCts?.Token ?? cancellationToken;
         try {
             await ActualLab.Async.TaskExt.NeverEndingTask.WaitAsync(stopToken).ConfigureAwait(false);
         }
         finally {
+            Log.LogInformation("Stopping queue processors...");
             var disposeTasks = Processors.Values.Select(p => p.DisposeSilentlyAsync().AsTask()).ToArray();
             await Task.WhenAll(disposeTasks).ConfigureAwait(false);
         }
