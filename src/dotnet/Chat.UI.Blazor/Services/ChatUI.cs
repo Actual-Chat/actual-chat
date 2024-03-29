@@ -312,6 +312,19 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
     private async Task LeaveChatInternal(Chat chat, bool isDelete, Modal modal)
     {
+        if (!isDelete) {
+            var isOwner = chat.Rules.IsOwner();
+            if (isOwner) {
+                var authorId = chat.Rules.Author?.Id ?? AuthorId.None;
+                var ownerIds = await Hub.Roles.ListOwnerIds(Session, chat.Id, default).ConfigureAwait(true); // Continue on Blazor context.
+                var hasAnotherOwner = ownerIds.Any(c => c != authorId);
+                if (!hasAnotherOwner) {
+                    const string message =
+                        "You can't leave this chat because you are its only owner. Please add another chat owner first.";
+                    UICommander.ShowError(StandardError.Constraint(message));
+                }
+            }
+        }
         var isSelectedChat = chat.Id.Equals(SelectedChatId.Value);
         var command = isDelete
             ? (ICommand)new Chats_Change(Session, chat.Id, null, Change.Remove<ChatDiff>())
