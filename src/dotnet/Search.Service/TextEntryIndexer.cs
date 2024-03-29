@@ -1,13 +1,12 @@
 using ActualChat.Chat;
 using ActualChat.Mesh;
-using ActualChat.Redis;
 using ActualChat.Search.Db;
 using ActualChat.Search.Module;
 using ActualLab.Interception;
 
 namespace ActualChat.Search;
 
-public class TextEntryIndexer(IServiceProvider services) : WorkerBase, IHasServices, INotifyInitialized
+public sealed class TextEntryIndexer(IServiceProvider services) : WorkerBase, IHasServices, INotifyInitialized
 {
     private const int ChatDispatchBatchSize = 20;
     private const int IndexChatSyncBatchSize = 1000;

@@ -7,7 +7,7 @@ using Elastic.Clients.Elasticsearch.Mapping;
 
 namespace ActualChat.Search;
 
-public class ElasticConfigurator(IServiceProvider services) : WorkerBase
+public sealed class ElasticConfigurator(IServiceProvider services) : WorkerBase
 {
     private readonly TaskCompletionSource _whenCompleted = new ();
     private SearchSettings? _settings;
