@@ -10,7 +10,7 @@ public interface IEmailSender
     Task Send(string name, string email, string subject, string html, CancellationToken cancellationToken);
 }
 
-public class EmailSender(IServiceProvider services) : IEmailSender
+public sealed class EmailSender(IServiceProvider services) : IEmailSender
 {
     private UsersSettings? _settings;
     private UsersSettings Settings => _settings ??= services.GetRequiredService<UsersSettings>();
