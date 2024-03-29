@@ -33,7 +33,7 @@ public static class CommandLineHandler
         // -kb argument
         UseKeyboard = args.Any(x => OrdinalEquals(x, KeyboardArg));
         // -hybrid argument
-        UseHybrid = args.Any(x => OrdinalEquals(x, HybridArg));
+        UseHybrid = HostRolesExt.MustReplaceServerWithHybrid = args.Any(x => OrdinalEquals(x, HybridArg));
 
         // -url:<url> argument
         var urlOverride = args
