@@ -76,20 +76,20 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddWorkerPoolDependencies();
 
         // -- Register chat indexer --
-        const string IndexServiceGroup = "OpenSearch Chat Index";
-        // fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
+//        const string IndexServiceGroup = "OpenSearch Chat Index";
+        fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
 
-        // services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
-        // services.AddSingleton<ICursorStates<ChatHistoryExtractor.Cursor>>(static services
-        //     => services.CreateInstanceWith<CursorStates<ChatHistoryExtractor.Cursor>>(IndexNames.ChatSliceCursor));
-        // services.AddSingleton<ISink<ChatEntry, ChatEntry>>(static services
-        //     => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
+        services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
+        services.AddSingleton<ICursorStates<ChatEntryCursor>>(static services
+             => services.CreateInstanceWith<CursorStates<ChatEntryCursor>>(IndexNames.ChatSliceCursor));
+        services.AddSingleton<ISink<ChatEntry, ChatEntry>>(static services
+            => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
 
-        // services.AddKeyedSingleton<IDataIndexer<ChatId>, ChatHistoryExtractor>(IndexServiceGroup);
+        services.AddSingleton<IChatIndexerFactory, ChatIndexerFactory>();
         services.AddSingleton<IChatIndexerWorker>(static services
             => services.CreateInstanceWith<ChatIndexerWorker>(
-                15, // max iteration count before rescheduling
-                services.GetRequiredKeyedService<IDataIndexer<ChatId>>(IndexServiceGroup)
+                100, // the size of a single batch of updates to load from db
+                5000 // max number of updates to process in a single run
             )
         );
         services.AddWorkerPool<IChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>(

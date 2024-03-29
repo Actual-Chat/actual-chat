@@ -6,15 +6,14 @@ namespace ActualChat.MLSearch.Indexing;
 internal interface IChatIndexerWorker: IWorker<MLSearch_TriggerChatIndexing>;
 
 internal sealed class ChatIndexerWorker(
+    int batchSize,
+    int maxEventCount,
     IChatsBackend chats,
     IChatEntryCursorStates cursorStates,
     IChatIndexerFactory indexerFactory,
     ICommander commander
 ) : IChatIndexerWorker
 {
-    private const int BatchSize = 100;
-    private const int MaxEventCount = 5000;
-
     public async Task ExecuteAsync(MLSearch_TriggerChatIndexing job, CancellationToken cancellationToken)
     {
         var eventCount = 0;
@@ -29,17 +28,17 @@ internal sealed class ChatIndexerWorker(
             var eventType = entry.IsRemoved ? ChatEventType.Remove
                 : entry.LocalId > cursor.LastEntryLocalId ? ChatEventType.New : ChatEventType.Update;
             await indexer.ApplyAsync(new ChatEvent(eventType, entry), cancellationToken).ConfigureAwait(false);
-            if (++eventCount % BatchSize == 0) {
+            if (++eventCount % batchSize == 0) {
                 cursor = await FlushAsync().ConfigureAwait(false);
             }
-            if (eventCount==MaxEventCount) {
+            if (eventCount==maxEventCount) {
                 break;
             }
         }
 
         _ = await FlushAsync().ConfigureAwait(false);
 
-        if (eventCount==MaxEventCount) {
+        if (eventCount==maxEventCount) {
             await commander.Call(job, cancellationToken).ConfigureAwait(false);
         }
         else if (!cancellationToken.IsCancellationRequested) {
@@ -62,39 +61,15 @@ internal sealed class ChatIndexerWorker(
         var (lastEntryVersion, lastEntryLocalId) = (cursor.LastEntryVersion, cursor.LastEntryLocalId);
         do {
             var entries = await chats
-                .ListChangedEntries2(targetId, lastEntryVersion, lastEntryLocalId, BatchSize, cancellationToken)
+                .ListChangedEntries2(targetId, lastEntryVersion, lastEntryLocalId, batchSize, cancellationToken)
                 .ConfigureAwait(false);
             foreach (var entry in entries) {
                 lastEntryVersion = entry.Version;
                 lastEntryLocalId = entry.LocalId;
                 yield return entry;
             }
-            continueProcessing = entries.Count == BatchSize;
+            continueProcessing = entries.Count == batchSize;
         }
         while (continueProcessing);
     }
-}
-
-internal interface IChatIndexerFactory
-{
-    IChatIndexer Create();
-}
-
-internal enum ChatEventType
-{
-    New,
-    Update,
-    Remove
-}
-
-internal record ChatEvent(ChatEventType Type, ChatEntry ChatEntry) : IHasId<ChatEntryCursor>
-{
-    public ChatEntryCursor Id => new(ChatEntry.Version, ChatEntry.LocalId);
-}
-
-internal interface IChatIndexer
-{
-    Task InitAsync(CancellationToken cancellationToken);
-    ValueTask ApplyAsync(ChatEvent @event, CancellationToken cancellationToken);
-    Task<ChatEntryCursor> FlushAsync(CancellationToken cancellationToken);
 }

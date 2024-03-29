@@ -6,23 +6,30 @@ namespace ActualChat.MLSearch.Indexing;
 
 internal sealed class ChatHistoryExtractor (
     ISink<ChatEntry, ChatEntry> sink,
-    IChatEntryCursorStates cursorStates,
-    INewChatEntryLoader newChatEntryLoader,
-    IUpdatedAndRemovedEntryLoader updatedAndRemovedEntryLoader
+    IChatsBackend chats,
+    ICursorStates<ChatHistoryExtractor.Cursor> cursorStates
 ): IDataIndexer<ChatId>
 {
+    private const int EntryBatchSize = 100;
+
     public async Task<DataIndexerResult> IndexNextAsync(ChatId chatId, CancellationToken cancellationToken)
     {
-        var state = await cursorStates.LoadAsync(chatId, cancellationToken)
+        var state = await cursorStates.Load(
+            IdOf(chatId),
+            cancellationToken
+            )
+            .ConfigureAwait(false);
+        state ??= NewFor(chatId);
+        var creates = await ListNewEntries(chatId, state, cancellationToken)
+            .ConfigureAwait(false);
+        var (updates, deletes) = await ListUpdatedAndRemovedEntries(chatId, state, cancellationToken)
             .ConfigureAwait(false);
 
-        var creates = await newChatEntryLoader.LoadAsync(chatId, state, cancellationToken)
-            .ConfigureAwait(false);
-        var (updates, deletes) = await updatedAndRemovedEntryLoader.LoadAsync(chatId, state, cancellationToken)
-            .ConfigureAwait(false);
-
+        // TODO: Ask @frol
+        // - If an entry was added to a chat would it have larger version than every other existing item there?
         var lastTouchedEntry =
             creates.Concat(updates).Concat(deletes).MaxBy(e=>e.Version);
+        // -- End of logic that depends on the answer above
 
         // It can only be null if all lists are empty.
         if (lastTouchedEntry == null) {
@@ -31,45 +38,20 @@ internal sealed class ChatHistoryExtractor (
         }
         await sink.ExecuteAsync(creates.Concat(updates), deletes, cancellationToken)
             .ConfigureAwait(false);
-        var next = new ChatEntryCursor(lastTouchedEntry.LocalId, lastTouchedEntry.Version);
-        await cursorStates.SaveAsync(chatId, next, cancellationToken).ConfigureAwait(false);
+        var next = new Cursor(lastTouchedEntry.LocalId, lastTouchedEntry.Version);
+        await cursorStates.Save(IdOf(chatId), next, cancellationToken).ConfigureAwait(false);
         return new DataIndexerResult(IsEndReached: false);
     }
-}
 
-internal record ChatEntryCursor(long LastEntryLocalId, long LastEntryVersion);
-
-internal interface IChatEntryCursorStates
-{
-    Task<ChatEntryCursor> LoadAsync(ChatId key, CancellationToken cancellationToken);
-    Task SaveAsync(ChatId key, ChatEntryCursor state, CancellationToken cancellationToken);
-}
-
-internal class ChatEntryCursorStates(ICursorStates<ChatEntryCursor> cursorStates): IChatEntryCursorStates
-{
-    public async Task<ChatEntryCursor> LoadAsync(ChatId key, CancellationToken cancellationToken)
-        => (await cursorStates.Load(key, cancellationToken).ConfigureAwait(false)) ?? new(0, 0);
-
-    public async Task SaveAsync(ChatId key, ChatEntryCursor state, CancellationToken cancellationToken)
-        => await cursorStates.Save(key, state, cancellationToken).ConfigureAwait(false);
-}
-
-internal interface INewChatEntryLoader
-{
-    Task<IReadOnlyList<ChatEntry>> LoadAsync(ChatId chatId, ChatEntryCursor cursor, CancellationToken cancellationToken);
-}
-
-internal class NewChatEntryLoader(IChatsBackend chats): INewChatEntryLoader
-{
-    public async Task<IReadOnlyList<ChatEntry>> LoadAsync(ChatId chatId, ChatEntryCursor cursor, CancellationToken cancellationToken)
+    private async Task<IList<ChatEntry>> ListNewEntries(ChatId chatId, Cursor cursor, CancellationToken cancellationToken)
     {
+        // Note: Copied from IndexingQueue
         var result = new List<ChatEntry>();
         var lastIndexedLid = cursor.LastEntryLocalId;
         var news = await chats.GetNews(chatId, cancellationToken).ConfigureAwait(false);
         var lastLid = (news.TextEntryIdRange.End - 1).Clamp(0, long.MaxValue);
-        if (lastIndexedLid >= lastLid) {
+        if (lastIndexedLid >= lastLid)
             return result;
-        }
 
         var idTiles =
             Constants.Chat.ServerIdTileStack.LastLayer.GetCoveringTiles(
@@ -85,19 +67,8 @@ internal class NewChatEntryLoader(IChatsBackend chats): INewChatEntryLoader
         }
         return result;
     }
-}
 
-internal interface IUpdatedAndRemovedEntryLoader {
-    Task<(IReadOnlyList<ChatEntry>, IReadOnlyList<ChatEntry>)> LoadAsync(
-        ChatId chatId, ChatEntryCursor cursor, CancellationToken cancellationToken);
-}
-
-internal class UpdatedAndRemovedEntryLoader(IChatsBackend chats): IUpdatedAndRemovedEntryLoader
-{
-    private const int EntryBatchSize = 100;
-
-    public async Task<(IReadOnlyList<ChatEntry>, IReadOnlyList<ChatEntry>)> LoadAsync(
-        ChatId chatId, ChatEntryCursor cursor, CancellationToken cancellationToken)
+    private async Task<(IList<ChatEntry> updates, IList<ChatEntry> deletes)> ListUpdatedAndRemovedEntries(ChatId chatId, Cursor cursor, CancellationToken cancellationToken)
     {
         // Note: Copied from IndexingQueue
         var updates = new List<ChatEntry>();
@@ -121,4 +92,11 @@ internal class UpdatedAndRemovedEntryLoader(IChatsBackend chats): IUpdatedAndRem
         );
         return (updates, deletes);
     }
+
+    private static Symbol IdOf(in ChatId chatId) => chatId.Id;
+
+    private static Cursor NewFor(in ChatId _)
+        => new (0, 0);
+
+    internal record Cursor(long LastEntryLocalId, long LastEntryVersion);
 }
