@@ -55,13 +55,12 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
             // 2. Make sure it's intact only for local commands
             var commandAssembly = commandType.Assembly;
-            return commandAssembly == typeof(IMLSearchBackend).Assembly // MLSearch.Contracts assembly
+            return commandAssembly == typeof(IMLSearch).Assembly // MLSearch.Contracts assembly
                 || commandType == typeof(TextEntryChangedEvent);
         });
 
         // Module's own services
         var fusion = services.AddFusion();
-        services.AddSingleton<IResponseBuilder, ResponseBuilder>();
 
         var openSearchClusterUri = Settings.OpenSearchClusterUri
             ?? throw new InvalidOperationException("OpenSearchClusterUri is not set");
