@@ -10,7 +10,7 @@ public abstract class ShardWorker : WorkerBase
     private ILogger? _log;
 
     protected IServiceProvider Services { get; }
-    protected ILogger Log => _log ??= Services.Logs().CreateLogger($"{GetType()}({ShardScheme.Id})");
+    protected ILogger Log => _log ??= Services.LoggerFactory().CreateLogger($"{GetType().NonProxyType()}({ShardScheme.Id})");
     protected ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     protected MeshWatcher MeshWatcher { get; }

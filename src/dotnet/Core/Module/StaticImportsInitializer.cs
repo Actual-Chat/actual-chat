@@ -11,7 +11,7 @@ public class StaticImportsInitializer : IHostedService
         if (hostInfo.HostKind.IsServer() && hostInfo.IsTested)
             return; // Don't set DefaultLog for test server
 
-        DefaultLoggerFactory = services.Logs();
+        DefaultLoggerFactory = services.LoggerFactory();
     }
 
     public Task StartAsync(CancellationToken cancellationToken)

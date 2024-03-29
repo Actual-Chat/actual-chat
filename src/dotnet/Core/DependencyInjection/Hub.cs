@@ -53,7 +53,7 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IStateFactory StateFactory() => _stateFactory;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ILoggerFactory Logs() => _logs;
+    public ILoggerFactory LoggerFactory() => _logs;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public MomentClockSet Clocks() => _clocks;
 
@@ -73,11 +73,11 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
         => Services.GetService(serviceType);
 
     public ILogger<T> LogFor<T>()
-        => Logs().CreateLogger<T>();
+        => LoggerFactory().CreateLogger<T>();
     public ILogger LogFor(Type type)
-        => Logs().CreateLogger(type.NonProxyType());
+        => LoggerFactory().CreateLogger(type.NonProxyType());
     public ILogger LogFor(string category)
-        => Logs().CreateLogger(category);
+        => LoggerFactory().CreateLogger(category);
 
     public void RegisterAwaitable(Task task)
     {
