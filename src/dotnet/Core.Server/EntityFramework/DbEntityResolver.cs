@@ -23,9 +23,9 @@ public class DbEntityResolver<
         // Re-build compiled queries for Npgsql
         var buffer = ArrayBuffer<(Func<TDbContext, TKey[], IAsyncEnumerable<TDbEntity>>, int)>.Lease(false);
         try {
-            for (var batchSize = 2; batchSize < Settings.BatchSize; batchSize *= 2)
-                buffer.Add((CreateCompiledQueryNpgsql(batchSize), batchSize));
-            buffer.Add((CreateCompiledQueryNpgsql(Settings.BatchSize), Settings.BatchSize));
+            var compiledQuery = CreateCompiledQueryNpgsql();
+            for (var batchSize = 1; batchSize <= Settings.BatchSize; batchSize++)
+                buffer.Add((compiledQuery, batchSize));
             Queries = buffer.ToArray();
         }
         finally {
@@ -33,7 +33,7 @@ public class DbEntityResolver<
         }
     }
 
-    private Func<TDbContext, TKey[], IAsyncEnumerable<TDbEntity>> CreateCompiledQueryNpgsql(int batchSize)
+    private Func<TDbContext, TKey[], IAsyncEnumerable<TDbEntity>> CreateCompiledQueryNpgsql()
     {
         var pDbContext = Expression.Parameter(typeof(TDbContext), "dbContext");
         var pKeys = Expression.Parameter(typeof(TKey[]), "pKeys");
