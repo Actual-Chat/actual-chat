@@ -342,12 +342,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (attachment.MediaId.IsNone)
                 return attachment;
 
-            var media = mediaMap.GetValueOrDefault(attachment.MediaId);// attachment.Media;
+            var media = mediaMap.GetValueOrDefault(attachment.MediaId) ?? attachment.Media;
             var thumbnailMedia = attachment.ThumbnailMedia;
             if (!attachment.ThumbnailMediaId.IsNone)
                 thumbnailMedia = mediaMap.GetValueOrDefault(attachment.ThumbnailMediaId) ?? thumbnailMedia;
             return attachment with {
-                Media = media ?? new Media.Media(),
+                Media = media,
                 ThumbnailMedia = thumbnailMedia,
             };
         }
