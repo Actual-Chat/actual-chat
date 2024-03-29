@@ -114,7 +114,7 @@ public sealed class AppHostBuilder
                 if (baseUrl.IsNullOrEmpty())
                     throw StandardError.Internal("Can't resolve BaseUrl.");
             }
-            return new HostInfo {
+            var hostInfo = new HostInfo {
                 HostKind = appKind,
                 AppKind = AppKind.Unknown,
                 Environment = Env.EnvironmentName,
@@ -123,6 +123,8 @@ public sealed class AppHostBuilder
                 IsTested = isTested,
                 BaseUrl = baseUrl,
             };
+            c.LogFor(AppHost.GetType()).LogInformation("HostInfo: {HostInfo}", hostInfo);
+            return hostInfo;
         });
 
         // Notice that we create "partial" service provider here, which contains

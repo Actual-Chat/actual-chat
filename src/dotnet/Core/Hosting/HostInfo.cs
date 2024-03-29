@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
@@ -9,6 +10,7 @@ public sealed record HostInfo
     private LazySlim<bool>? _isProductionInstance;
     private LazySlim<bool>? _isDevelopmentInstance;
 
+    public string BaseUrl { get; init; } = "";
     public HostKind HostKind { get; init; }
     public AppKind AppKind { get; init; }
     public Symbol Environment { get; init; } = Environments.Development;
@@ -16,7 +18,6 @@ public sealed record HostInfo
     public string DeviceModel { get; init; } = "Unknown";
     public IReadOnlySet<HostRole> Roles { get; init; } = ImmutableHashSet<HostRole>.Empty;
     public bool IsTested { get; init; }
-    public string BaseUrl { get; init; } = "";
 
     // Computed & cached
     public BaseUrlKind BaseUrlKind => (_baseUrlKind ??= LazySlim.New(GetBaseUrlKind(BaseUrl))).Value;
@@ -24,6 +25,18 @@ public sealed record HostInfo
     public bool IsDevelopmentInstance => (_isDevelopmentInstance ??= LazySlim.New(IsDevelopmentEnv())).Value;
 
     public bool HasRole(HostRole role) => Roles.Contains(role);
+
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append(nameof(BaseUrl)).Append(" = '").Append(BaseUrl).Append("', ");
+        builder.Append(nameof(HostKind)).Append(" = ").Append(HostKind).Append(", ");
+        builder.Append(nameof(AppKind)).Append(" = ").Append(AppKind).Append(", ");
+        builder.Append(nameof(Roles)).Append(" = [").Append(Roles.ToDelimitedString()).Append("], ");
+        builder.Append(nameof(Environment)).Append(" = '").Append(Environment).Append("', ");
+        builder.Append(nameof(DeviceModel)).Append(" = '").Append(DeviceModel).Append("', ");
+        builder.Append(nameof(IsTested)).Append(" = ").Append(IsTested);
+        return true;
+    }
 
     // Private methods
 
