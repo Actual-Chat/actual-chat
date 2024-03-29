@@ -22,21 +22,24 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
     private static readonly Regex SpecialCharacterRegex = SpecialCharacterRegexFactory();
 
     private readonly ConcurrentDictionary<(Type, Symbol), string> _getTopicCache = new();
-    private NatsConnection? _nats;
+    private NatsSettings? _natsSettings;
+    private NatsConnection? _connection;
 
-    private NatsConnection Nats {
+    private NatsConnection Connection {
         get {
-            if (_nats != null)
-                return _nats;
+            if (_connection != null)
+                return _connection;
 
             lock (Lock)
-                return _nats ??= Services.GetRequiredService<NatsConnection>();
+                return _connection ??= Services.GetRequiredService<NatsConnection>();
         }
     }
 
+    public NatsSettings NatsSettings => _natsSettings ??= services.GetRequiredService<NatsSettings>();
+
     public override async Task Purge(CancellationToken cancellationToken = default)
     {
-        var context = new NatsJSContext(Nats);
+        var context = new NatsJSContext(Connection);
         await foreach (var stream in context.ListStreamsAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
             await stream.PurgeAsync(new StreamPurgeRequest(), cancellationToken).ConfigureAwait(false);
     }

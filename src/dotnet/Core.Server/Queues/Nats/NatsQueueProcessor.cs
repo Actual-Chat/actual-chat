@@ -20,7 +20,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     private readonly AsyncLockSet<int> _getConsumerLock = new();
     private readonly ConcurrentDictionary<int, INatsJSStream> _streams = new ();
     private readonly ConcurrentDictionary<int, INatsJSConsumer> _consumers = new ();
-    private readonly string _prefix;
+    private readonly string _instancePrefix;
     private NatsConnection? _connection;
 
     private IMeshLocks ActionLocks { get; }
@@ -29,6 +29,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         get {
             if (_connection != null)
                 return _connection;
+
             lock (Lock)
                 return _connection = Services.GetRequiredService<NatsConnection>();
         }
@@ -38,7 +39,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         : base(settings, queues, queueRef)
     {
         ActionLocks = GetMeshLocks(nameof(ActionLocks));
-        _prefix = Settings.InstanceName.IsNullOrEmpty() ? "" : Settings.InstanceName + "-";
+        _instancePrefix = queues.NatsSettings.InstancePrefix;
     }
 
     public override async Task Enqueue(QueueShardRef queueShardRef, QueuedCommand queuedCommand, CancellationToken cancellationToken = default)
@@ -138,18 +139,18 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
     private string GetStreamName(int shardIndex)
         => Settings.UseStreamPerShard
-            ? $"{_prefix}{QueueRef.ShardScheme.Id}-S{shardIndex.Format()}"
-            : $"{_prefix}{QueueRef.ShardScheme.Id}";
+            ? $"{_instancePrefix}{QueueRef.ShardScheme.Id}-S{shardIndex.Format()}"
+            : $"{_instancePrefix}{QueueRef.ShardScheme.Id}";
 
     private string GetSubjectName(int shardIndex, Symbol topic)
         => Settings.UseStreamPerShard
-            ? $"{_prefix}{QueueRef.ShardScheme.Id}-S{shardIndex.Format()}.{topic.Value.NullIfEmpty() ?? "_"}"
-            : $"{_prefix}{QueueRef.ShardScheme.Id}.S{shardIndex.Format()}.{topic.Value.NullIfEmpty() ?? "_"}";
+            ? $"{_instancePrefix}{QueueRef.ShardScheme.Id}-S{shardIndex.Format()}.{topic.Value.NullIfEmpty() ?? "_"}"
+            : $"{_instancePrefix}{QueueRef.ShardScheme.Id}.S{shardIndex.Format()}.{topic.Value.NullIfEmpty() ?? "_"}";
 
     private string GetConsumerName(int shardIndex)
         => Settings.UseStreamPerShard
-            ? $"{_prefix}{QueueRef.ShardScheme.Id}-S{shardIndex.Format()}"
-            : $"{_prefix}{QueueRef.ShardScheme.Id}.S{shardIndex.Format()}";
+            ? $"{_instancePrefix}{QueueRef.ShardScheme.Id}-S{shardIndex.Format()}"
+            : $"{_instancePrefix}{QueueRef.ShardScheme.Id}.S{shardIndex.Format()}";
 
     private string GetConsumerFilter(int shardIndex)
         => $"{GetConsumerName(shardIndex)}.>";

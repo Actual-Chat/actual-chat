@@ -4,6 +4,8 @@ namespace ActualChat.Testing;
 
 public static class ConfigurationExt
 {
-    public static IConfigurationBuilder AddInMemory(this IConfigurationBuilder builder, params (string Key, string? Value)[] values)
-        => builder.AddInMemoryCollection(values.ToDictionary(x => x.Key, x => x.Value));
+    public static IConfigurationBuilder AddInMemoryCollection(
+        this IConfigurationBuilder builder,
+        params (string Key, string? Value)[] values)
+        => builder.AddInMemoryCollection(values.Select(x => KeyValuePair.Create(x.Key, x.Value)));
 }

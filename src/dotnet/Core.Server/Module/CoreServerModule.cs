@@ -25,12 +25,8 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
 
         // Queues
         services.AddSingleton(c => new EventHandlerRegistry(c));
-        var natsSettings = Cfg.GetSettings<NatsSettings>();
-        var useNatsQueues = Settings.UseNatsQueues
-            // NOTE(AY): The line below must be removed before we deploy NATS queues to production!
-            && !(HostInfo.IsProductionInstance && HostInfo.HasRole(HostRole.OneServer));
-        if (useNatsQueues) {
-            services.AddNats(HostInfo, natsSettings);
+        if (Settings.UseNatsQueues) {
+            services.AddNats(HostInfo);
             services.AddNatsQueues();
         }
         else

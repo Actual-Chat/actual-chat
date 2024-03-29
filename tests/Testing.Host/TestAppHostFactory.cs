@@ -1,10 +1,8 @@
 using ActualChat.App.Server;
 using ActualChat.Blobs.Internal;
 using ActualChat.Module;
-using ActualChat.Queues.Nats;
 using ActualChat.Search;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.FileProviders;
@@ -47,15 +45,19 @@ public static class TestAppHostFactory
                     });
 
                 // Adding must-have overrides for tests
-                cfg.AddInMemoryCollection(new Dictionary<string, string?> {
-                    { WebHostDefaults.EnvironmentKey, Environments.Development },
-                    { WebHostDefaults.StaticWebAssetsKey, manifestPath },
-                    { $"{nameof(CoreSettings)}:{nameof(CoreSettings.Instance)}", instanceName },
-                    { $"{nameof(CoreSettings)}:{nameof(CoreServerSettings.UseNatsQueues)}", options.UseNatsQueues.ToString() },
-                });
+                cfg.AddInMemoryCollection(
+                    (WebHostDefaults.EnvironmentKey, Environments.Development),
+                    (WebHostDefaults.StaticWebAssetsKey, manifestPath),
+                    ($"{nameof(CoreSettings)}:{nameof(CoreSettings.Instance)}", instanceName),
+                    ($"{nameof(CoreSettings)}:{nameof(CoreServerSettings.UseNatsQueues)}", options.UseNatsQueues.ToString())
+                );
 
                 // Overrides from options
                 options.ConfigureHost?.Invoke(builder, cfg);
+            },
+            ConfigureModuleHostServices = (_, services) => {
+                services.AddSingleton(outputAccessor);
+                services.AddTestLogging(outputAccessor);
             },
             ConfigureServices = (builder, services) => {
                 // Overrides from options
@@ -63,14 +65,9 @@ public static class TestAppHostFactory
 
                 // The code below runs after module service registration & everything else
                 services.AddSettings<TestSettings>();
-                services.AddSingleton(outputAccessor);
-                services.AddTestLogging(outputAccessor);
                 services.AddSingleton(options.ChatDbInitializerOptions);
                 services.AddSingleton<IBlobStorages, TempFolderBlobStorages>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
-                services.AddSingleton(new NatsQueues.Options {
-                    InstanceName = instanceName,
-                });
                 services.AddSingleton<ElasticNames>(_ => new ElasticNames {
                     IndexPrefix = UniqueNames.Elastic("test"),
                 });

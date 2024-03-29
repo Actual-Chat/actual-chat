@@ -10,9 +10,9 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
     : LocalAppHostTestBase( "user_contact_indexing",
         TestAppHostOptions.Default with {
             ConfigureHost = (_, cfg) => {
-                cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.IsSearchEnabled)}", "true"));
-                cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingDelay)}", "00:00:01"));
-                cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingSignalInterval)}", "00:00:00.5"));
+                cfg.AddInMemoryCollection(($"{nameof(SearchSettings)}:{nameof(SearchSettings.IsSearchEnabled)}", "true"));
+                cfg.AddInMemoryCollection(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingDelay)}", "00:00:01"));
+                cfg.AddInMemoryCollection(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingSignalInterval)}", "00:00:00.5"));
             },
         },
         @out, log)

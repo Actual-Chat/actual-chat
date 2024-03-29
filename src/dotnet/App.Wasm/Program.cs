@@ -89,7 +89,7 @@ public static class Program
             HostKind = HostKind.WasmApp,
             AppKind = AppKind.Wasm,
             Environment = c.GetService<IWebAssemblyHostEnvironment>()?.Environment ?? "Development",
-            Configuration = c.GetRequiredService<IConfiguration>(),
+            Configuration = c.Configuration(),
             Roles = HostRoles.App,
             IsTested = isTested,
             BaseUrl = baseUrl,

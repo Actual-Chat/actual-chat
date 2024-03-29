@@ -6,9 +6,9 @@ namespace ActualChat.Hosting;
 
 public sealed record HostInfo
 {
-    private LazySlim<BaseUrlKind>? _baseUrlKind;
-    private LazySlim<bool>? _isProductionInstance;
-    private LazySlim<bool>? _isDevelopmentInstance;
+    private readonly LazySlim<HostInfo, BaseUrlKind> _baseUrlKindLazy;
+    private readonly LazySlim<HostInfo, bool> _isProductionInstanceLazy;
+    private readonly LazySlim<HostInfo, bool> _isDevelopmentInstanceLazy;
 
     public string BaseUrl { get; init; } = "";
     public HostKind HostKind { get; init; }
@@ -20,9 +20,24 @@ public sealed record HostInfo
     public bool IsTested { get; init; }
 
     // Computed & cached
-    public BaseUrlKind BaseUrlKind => (_baseUrlKind ??= LazySlim.New(GetBaseUrlKind(BaseUrl))).Value;
-    public bool IsProductionInstance => (_isProductionInstance ??= LazySlim.New(IsProductionEnv())).Value;
-    public bool IsDevelopmentInstance => (_isDevelopmentInstance ??= LazySlim.New(IsDevelopmentEnv())).Value;
+    public BaseUrlKind BaseUrlKind => _baseUrlKindLazy.Value;
+    public bool IsProductionInstance => _isProductionInstanceLazy.Value;
+    public bool IsDevelopmentInstance => _isDevelopmentInstanceLazy.Value;
+
+    public HostInfo()
+    {
+        _baseUrlKindLazy = LazySlim.New(this, static self => {
+            var host = self.BaseUrl.EnsureSuffix("/").ToUri().Host;
+            return OrdinalIgnoreCaseEquals(host, "actual.chat") ? BaseUrlKind.Production
+                : OrdinalIgnoreCaseEquals(host, "dev.actual.chat") ? BaseUrlKind.Development
+                : OrdinalIgnoreCaseEquals(host, "local.actual.chat") ? BaseUrlKind.Local
+                : BaseUrlKind.Unknown;
+        });
+        _isProductionInstanceLazy = LazySlim.New(this,
+            static self => OrdinalEquals(self.Environment.Value, Environments.Production));
+        _isDevelopmentInstanceLazy ??= LazySlim.New(this,
+            static self => OrdinalEquals(self.Environment.Value, Environments.Development));
+    }
 
     public bool HasRole(HostRole role) => Roles.Contains(role);
 
@@ -37,22 +52,4 @@ public sealed record HostInfo
         builder.Append(nameof(IsTested)).Append(" = ").Append(IsTested);
         return true;
     }
-
-    // Private methods
-
-    private static BaseUrlKind GetBaseUrlKind(string baseUrl)
-    {
-        var host = baseUrl.EnsureSuffix("/").ToUri().Host;
-        return OrdinalIgnoreCaseEquals(host, "actual.chat") ? BaseUrlKind.Production
-            : OrdinalIgnoreCaseEquals(host, "dev.actual.chat") ? BaseUrlKind.Development
-            : OrdinalIgnoreCaseEquals(host, "local.actual.chat") ? BaseUrlKind.Local
-            : BaseUrlKind.Unknown;
-    }
-
-    private bool IsProductionEnv()
-        => OrdinalEquals(Environment.Value, Environments.Production)
-            || (!IsTested && HostKind.IsServer() && BaseUrlKind == BaseUrlKind.Production); // We don't want to mess it up
-
-    private bool IsDevelopmentEnv()
-        => !IsProductionEnv() && OrdinalEquals(Environment.Value, Environments.Development);
 }

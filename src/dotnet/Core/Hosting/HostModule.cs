@@ -17,7 +17,7 @@ public abstract class HostModule(IServiceProvider moduleServices)
 
     public IServiceProvider ModuleServices { get; } = moduleServices;
     public HostInfo HostInfo => _hostInfo ??= ModuleServices.HostInfo();
-    public IConfiguration Cfg => _cfg ??= ModuleServices.GetRequiredService<IConfiguration>();
+    public IConfiguration Cfg => _cfg ??= ModuleServices.Configuration();
     public ILogger Log => _log ??= ModuleServices.LogFor(GetType());
 
     public ModuleHost Host { get; private set; } = null!;

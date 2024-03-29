@@ -6,7 +6,6 @@ namespace ActualChat.Queues.Internal;
 
 public abstract record QueueSettings
 {
-    public string InstanceName { get; init; } = "";
     public int ConcurrencyLevel { get; init; } = HardwareInfo.GetProcessorCountFactor(8);
     public IMomentClock? Clock { get; init; }
 }

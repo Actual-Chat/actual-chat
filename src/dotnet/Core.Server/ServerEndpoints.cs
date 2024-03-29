@@ -12,7 +12,7 @@ public static partial class ServerEndpoints
     public static readonly HashSet<Symbol> InvalidHostNames = [ "*", "localhost", "127.0.0.1", "0.0.0.0" ];
 
     public static string[] List(IServiceProvider services, string? prefix = null)
-        => List(services.GetRequiredService<IConfiguration>(), prefix);
+        => List(services.Configuration(), prefix);
 
     public static string[] List(IConfiguration configuration, string? prefix = null)
     {

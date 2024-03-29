@@ -1,11 +1,13 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
+using ActualChat.Module;
 using ActualChat.Queues;
 using ActualChat.Queues.InMemory;
 using ActualChat.Queues.Internal;
 using ActualChat.Queues.Nats;
 using ActualChat.Rpc;
 using ActualLab.CommandR.Internal;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NATS.Client.Core;
 using NATS.Client.Hosting;
@@ -27,22 +29,54 @@ public static class ServiceCollectionExt
         this IServiceCollection services, HostInfo hostInfo, ILogger? log = null)
         => new(services, hostInfo, log);
 
-    public static IServiceCollection AddNats(this IServiceCollection services, HostInfo hostInfo, NatsSettings settings)
+    public static IServiceCollection AddNats(this IServiceCollection services, HostInfo hostInfo)
     {
-        if (!services.HasService<NatsConnection>())
-            services.AddNats(poolSize: 1, options => {
-                var natsTimeout = TimeSpan.FromSeconds(hostInfo.IsDevelopmentInstance ? 300 : 10);
-                return options with {
-                    Url = settings.Url,
-                    TlsOpts = new NatsTlsOpts { Mode = TlsMode.Auto, },
-                    AuthOpts = settings.Seed.IsNullOrEmpty() || settings.NKey.IsNullOrEmpty()
-                        ? NatsAuthOpts.Default
-                        : new NatsAuthOpts { Seed = settings.Seed, NKey = settings.NKey, },
-                    CommandTimeout = natsTimeout,
-                    ConnectTimeout = natsTimeout,
-                    RequestTimeout = natsTimeout,
-                };
-            });
+        if (services.HasService<NatsSettings>())
+            return services;
+
+        // The code below is based on services.AddNats from NATS
+
+        // NatsSettings
+        services.AddSingleton(c => {
+            var settings = c.Configuration().GetSettings<NatsSettings>();
+            var instance = c.GetRequiredService<CoreSettings>().Instance;
+            var instancePrefix = instance.IsNullOrEmpty() ? "" : instance + "-";
+            settings = MemberwiseCloner.Invoke(settings);
+            settings.InstancePrefix = instancePrefix;
+            return settings;
+        });
+
+        // NatsOpts
+        services.AddSingleton(c => {
+            var natsSettings = c.GetRequiredService<NatsSettings>();
+            var natsTimeout = TimeSpan.FromSeconds(hostInfo.IsDevelopmentInstance ? 300 : 10);
+            var options = NatsOpts.Default;
+            return options with {
+                Url = natsSettings.Url,
+                TlsOpts = new NatsTlsOpts { Mode = TlsMode.Auto, },
+                AuthOpts = natsSettings.Seed.IsNullOrEmpty() || natsSettings.NKey.IsNullOrEmpty()
+                    ? NatsAuthOpts.Default
+                    : new NatsAuthOpts { Seed = natsSettings.Seed, NKey = natsSettings.NKey, },
+                CommandTimeout = natsTimeout,
+                ConnectTimeout = natsTimeout,
+                RequestTimeout = natsTimeout,
+                LoggerFactory = c.GetRequiredService<ILoggerFactory>(),
+            };
+        });
+
+        // NatsConnectionPool
+        services.AddSingleton(c => {
+            var options = c.GetRequiredService<NatsOpts>();
+            return new NatsConnectionPool(1, options, static _ => { });
+        });
+        services.AddAlias<INatsConnectionPool, NatsConnectionPool>();
+
+        // NatsConnection
+        services.AddTransient<NatsConnection>(static provider => {
+            var pool = provider.GetRequiredService<NatsConnectionPool>();
+            return (pool.GetConnection() as NatsConnection)!;
+        });
+        services.AddAlias<INatsConnection, NatsConnection>(ServiceLifetime.Transient);
         return services;
     }
 

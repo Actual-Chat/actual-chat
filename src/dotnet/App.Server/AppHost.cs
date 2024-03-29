@@ -11,6 +11,7 @@ public class AppHost : IDisposable
 
     public string ServerUrls { get; set; } = DefaultServerUrls;
     public Action<AppHostBuilder, IConfigurationManager>? ConfigureHost { get; set; }
+    public Action<AppHostBuilder, IServiceCollection>? ConfigureModuleHostServices { get; set; }
     public Action<AppHostBuilder, IServiceCollection>? ConfigureServices { get; set; }
     public Action<AppHostBuilder, WebApplication>? ConfigureApp { get; set; }
 

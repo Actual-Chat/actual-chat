@@ -359,7 +359,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         => NewAppHost(instanceName,
             options => options with {
                 ConfigureHost = (_, cfg) => {
-                    cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.IsSearchEnabled)}", "true"));
+                    cfg.AddInMemoryCollection(($"{nameof(SearchSettings)}:{nameof(SearchSettings.IsSearchEnabled)}", "true"));
                 },
             });
 }

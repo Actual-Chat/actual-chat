@@ -21,17 +21,20 @@ using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
+using ActualLab.Diagnostics;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Logging.Console;
 using Serilog;
 using Serilog.Events;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace ActualChat.App.Server;
 
 public sealed class AppHostBuilder
 {
     private HostInfo? _hostInfo;
+    private ILogger<AppHostBuilder>? _log;
 
     public AppHost AppHost { get; }
     public WebApplicationBuilder Builder { get; }
@@ -41,6 +44,7 @@ public sealed class AppHostBuilder
     public IServiceProvider ModuleServices { get; }
     public ModuleHost ModuleHost { get; }
     public HostInfo HostInfo => _hostInfo ??= ModuleServices.GetRequiredService<HostInfo>();
+    public ILogger Log => _log ??= ModuleServices.LogFor<AppHostBuilder>();
     public WebApplication App { get; }
 
     public AppHostBuilder(AppHost appHost, bool configurationOnly = false)
@@ -55,7 +59,7 @@ public sealed class AppHostBuilder
         // Set default server URL
         Cfg.Sources.Insert(0,
             new MemoryConfigurationSource {
-                InitialData = new Dictionary<string, string?>(StringComparer.Ordinal) {
+                InitialData = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase) {
                     { WebHostDefaults.ServerUrlsKey, AppHost.ServerUrls },
                 },
             });
@@ -71,12 +75,14 @@ public sealed class AppHostBuilder
         AppHost.ConfigureHost?.Invoke(this, Cfg);
 
         /////
-        // 2. Services
+        // 2. Base services
         /////
 
         var hostSettings = Cfg.GetSettings<HostSettings>();
         var appKind = hostSettings.AppKind ?? HostKind.Server;
         var isTested = hostSettings.IsTested ?? false;
+
+        // Logging
         Services.AddLogging(logging => {
             logging.ClearProviders();
             if (configurationOnly)
@@ -114,7 +120,7 @@ public sealed class AppHostBuilder
                 if (baseUrl.IsNullOrEmpty())
                     throw StandardError.Internal("Can't resolve BaseUrl.");
             }
-            var hostInfo = new HostInfo {
+            return new HostInfo {
                 HostKind = appKind,
                 AppKind = AppKind.Unknown,
                 Environment = Env.EnvironmentName,
@@ -123,13 +129,19 @@ public sealed class AppHostBuilder
                 IsTested = isTested,
                 BaseUrl = baseUrl,
             };
-            c.LogFor(AppHost.GetType()).LogInformation("HostInfo: {HostInfo}", hostInfo);
-            return hostInfo;
         });
+        AppHost.ConfigureModuleHostServices?.Invoke(this, Services);
+
+        /////
+        // 3. ModuleHost & module service
+        /////
 
         // Notice that we create "partial" service provider here, which contains
         // just the services registered above - i.e. logging + HostInfo
         ModuleServices = new DefaultServiceProviderFactory().CreateServiceProvider(Services);
+        Log.IfEnabled(LogLevel.Information)
+            ?.LogInformation("HostInfo: {HostInfo}", HostInfo);
+
         if (configurationOnly)
             ModuleHost = new ModuleHostBuilder().Build(Services);
         else {
@@ -169,7 +181,7 @@ public sealed class AppHostBuilder
         }
 
         /////
-        // 3. Configure & build WebApplication (IHost)
+        // 4. Configure & build WebApplication (IHost)
         /////
 
         Builder.WebHost
@@ -185,7 +197,7 @@ public sealed class AppHostBuilder
             return;
 
         /////
-        // 4. Configure app
+        // 5. Configure app
         /////
 
         var appHostModule = ModuleHost.GetModule<AppServerModule>();
