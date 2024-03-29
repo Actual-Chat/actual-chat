@@ -12,22 +12,23 @@ public sealed class ShardScheme(
     ShardSchemeFlags flags = ShardSchemeFlags.Backend
     ) : IHasId<Symbol>
 {
+    private const int N = 12;
     private static readonly ConcurrentDictionary<object, BackendClientAttribute?> _backendClientAttributes = new();
 
     public static readonly ShardScheme None = new(nameof(None), 0, HostRole.None, ShardSchemeFlags.Special | ShardSchemeFlags.Queue);
     public static readonly ShardScheme Undefined = new(nameof(Undefined), 0, HostRole.None, ShardSchemeFlags.Special | ShardSchemeFlags.Queue);
-    public static readonly ShardScheme EventQueue = new(nameof(EventQueue), 10, HostRole.EventQueue, ShardSchemeFlags.Queue);
-    public static readonly ShardScheme MediaBackend = new(nameof(MediaBackend), 10, HostRole.MediaBackend);
-    public static readonly ShardScheme AudioBackend = new(nameof(AudioBackend), 10, HostRole.AudioBackend);
-    public static readonly ShardScheme ChatBackend = new(nameof(ChatBackend), 30, HostRole.ChatBackend);
-    public static readonly ShardScheme ContactsBackend = new(nameof(ContactsBackend), 10, HostRole.ContactsBackend);
+    public static readonly ShardScheme EventQueue = new(nameof(EventQueue), N, HostRole.EventQueue, ShardSchemeFlags.Queue);
+    public static readonly ShardScheme MediaBackend = new(nameof(MediaBackend), N, HostRole.MediaBackend);
+    public static readonly ShardScheme AudioBackend = new(nameof(AudioBackend), N, HostRole.AudioBackend);
+    public static readonly ShardScheme ChatBackend = new(nameof(ChatBackend), N, HostRole.ChatBackend);
+    public static readonly ShardScheme ContactsBackend = new(nameof(ContactsBackend), N, HostRole.ContactsBackend);
     public static readonly ShardScheme ContactIndexerBackend = new(nameof(ContactIndexerBackend), 1, HostRole.ContactIndexerBackend);
     public static readonly ShardScheme InviteBackend = new(nameof(InviteBackend), 1, HostRole.InviteBackend);
-    public static readonly ShardScheme NotificationBackend = new(nameof(NotificationBackend), 10, HostRole.NotificationBackend);
-    public static readonly ShardScheme SearchBackend = new(nameof(SearchBackend), 10, HostRole.SearchBackend);
-    public static readonly ShardScheme TranscriptionBackend = new(nameof(TranscriptionBackend), 10, HostRole.TranscriptionBackend);
-    public static readonly ShardScheme UsersBackend = new(nameof(UsersBackend), 10, HostRole.UsersBackend);
-    public static readonly ShardScheme TestBackend = new(nameof(TestBackend), 10, HostRole.TestBackend); // Should be used only for testing
+    public static readonly ShardScheme NotificationBackend = new(nameof(NotificationBackend), N, HostRole.NotificationBackend);
+    public static readonly ShardScheme SearchBackend = new(nameof(SearchBackend), N, HostRole.SearchBackend);
+    public static readonly ShardScheme TranscriptionBackend = new(nameof(TranscriptionBackend), N, HostRole.TranscriptionBackend);
+    public static readonly ShardScheme UsersBackend = new(nameof(UsersBackend), N, HostRole.UsersBackend);
+    public static readonly ShardScheme TestBackend = new(nameof(TestBackend), N, HostRole.TestBackend); // Should be used only for testing
 
     // A reverse map of ShardScheme.Id to ShardScheme
     public static readonly IReadOnlyDictionary<Symbol, ShardScheme> ById = new Dictionary<Symbol, ShardScheme>() {
