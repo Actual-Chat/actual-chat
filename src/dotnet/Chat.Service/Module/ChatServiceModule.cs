@@ -100,7 +100,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             db.AddShardLocalIdGenerator(dbContext => dbContext.Authors,
                 (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
             db.AddEntityResolver<string, DbAuthor>(_ => new() {
-                QueryTransformer = query => query.Include(a => a.Roles),
+                QueryTransformer = query => query
+                    .Include(a => a.Roles)
+                    .AsSplitQuery(),
             });
 
             // DbRole
