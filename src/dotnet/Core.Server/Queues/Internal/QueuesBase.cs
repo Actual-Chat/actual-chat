@@ -13,9 +13,9 @@ public abstract record QueueSettings
 public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
     where TSettings : QueueSettings
     where TProcessor : IQueueProcessor
-
 {
     protected readonly ConcurrentDictionary<QueueRef, TProcessor> ProcessorsAndSenders = new();
+    protected ILogger Log { get; }
 
     public IServiceProvider Services { get; }
     public HostInfo HostInfo { get; }
@@ -28,6 +28,8 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
     {
         Settings = settings;
         Services = services;
+        Log = services.LogFor(GetType());
+
         HostInfo = services.HostInfo();
         Clock = settings.Clock ?? services.Clocks().SystemClock;
         if (initProcessors)
@@ -67,8 +69,15 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
+        var queueProcessors = Processors
+            .Select(p => p.Key.ShardScheme.Id.Value)
+            .ToDelimitedString()
+            .NullIfEmpty()
+            ?? "(none)";
+        Log.LogInformation("Queue processors: {QueueProcessors}", queueProcessors);
         foreach (var processor in Processors.Values)
             processor.Start();
+
         try {
             await ActualLab.Async.TaskExt.NeverEndingTask.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
