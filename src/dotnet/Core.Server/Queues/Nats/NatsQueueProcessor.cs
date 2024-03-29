@@ -106,7 +106,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
         async ValueTask HandleMessage(NatsJSMsg<IMemoryOwner<byte>> message, CancellationToken _) {
             try {
-                StopToken.ThrowIfCancellationRequested();
+                cancellationToken.ThrowIfCancellationRequested();
                 await Process(shardIndex, message, gracefulStopToken).ConfigureAwait(false);
             }
             finally {

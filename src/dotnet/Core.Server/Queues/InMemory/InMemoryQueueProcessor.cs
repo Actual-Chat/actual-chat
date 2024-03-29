@@ -37,7 +37,7 @@ public sealed class InMemoryQueueProcessor : LocalQueueProcessor<InMemoryQueues.
         await Parallel.ForEachAsync(commands, parallelOptions, HandleMessage).ConfigureAwait(false);
 
         ValueTask HandleMessage(QueuedCommand queuedCommand, CancellationToken _) {
-            StopToken.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
             return Process(queuedCommand, gracefulStopToken);
         }
     }
