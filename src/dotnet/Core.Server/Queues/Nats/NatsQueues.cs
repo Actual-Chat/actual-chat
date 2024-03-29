@@ -35,7 +35,7 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
         }
     }
 
-    public NatsSettings NatsSettings => _natsSettings ??= services.GetRequiredService<NatsSettings>();
+    public NatsSettings NatsSettings => _natsSettings ??= Services.GetRequiredService<NatsSettings>();
 
     public override async Task Purge(CancellationToken cancellationToken = default)
     {
