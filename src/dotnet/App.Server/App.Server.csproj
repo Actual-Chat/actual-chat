@@ -39,7 +39,6 @@
     <!-- You must reference migration projects here for services w/ DBs -->
     <ProjectReference Include="..\Chat.Service.Migration\Chat.Service.Migration.csproj" />
     <ProjectReference Include="..\Contacts.Service.Migration\Contacts.Service.Migration.csproj" />
-    <ProjectReference Include="..\Nats\Nats.csproj" />
     <ProjectReference Include="..\Notification.Service.Migration\Notification.Service.Migration.csproj" />
     <ProjectReference Include="..\Invite.Service.Migration\Invite.Service.Migration.csproj" />
     <ProjectReference Include="..\Users.Service.Migration\Users.Service.Migration.csproj" />
