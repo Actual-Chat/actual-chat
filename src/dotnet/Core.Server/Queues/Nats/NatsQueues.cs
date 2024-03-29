@@ -39,9 +39,14 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
 
     public override async Task Purge(CancellationToken cancellationToken = default)
     {
+        var instancePrefix = NatsSettings.InstancePrefix;
         var context = new NatsJSContext(Connection);
-        await foreach (var stream in context.ListStreamsAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
+        await foreach (var stream in context.ListStreamsAsync(cancellationToken: cancellationToken).ConfigureAwait(false)) {
+            if (!stream.Info.Config.Name.OrdinalStartsWith(instancePrefix))
+                continue;
+
             await stream.PurgeAsync(new StreamPurgeRequest(), cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public string GetTopic(ICommand command)
