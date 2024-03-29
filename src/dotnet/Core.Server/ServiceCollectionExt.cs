@@ -43,6 +43,8 @@ public static class ServiceCollectionExt
             var instancePrefix = instance.IsNullOrEmpty() ? "" : instance + "-";
             settings = MemberwiseCloner.Invoke(settings);
             settings.InstancePrefix = instancePrefix;
+            var log = c.LogFor<NatsSettings>();
+            log.LogInformation("Using NATS, instance prefix: {InstancePrefix}", instancePrefix);
             return settings;
         });
 
