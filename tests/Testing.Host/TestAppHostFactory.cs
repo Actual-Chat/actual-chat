@@ -48,7 +48,7 @@ public static class TestAppHostFactory
                     });
 
                 // Adding must-have overrides for tests
-                var useNatsQueues = options.UseNatsQueues ?? Random.Shared.NextDouble() < 0.33;
+                var useNatsQueues = options.UseNatsQueues ?? true; // Random.Shared.NextDouble() < 0.33;
                 cfg.AddInMemoryCollection(
                     (WebHostDefaults.StaticWebAssetsKey, manifestPath),
                     ($"{nameof(CoreSettings)}:{nameof(CoreSettings.Instance)}", instanceName),
