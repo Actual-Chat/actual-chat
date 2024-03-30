@@ -5,7 +5,7 @@ namespace ActualChat.Mesh;
 
 public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = null) : IMeshLocksBackend
 {
-    private static bool DebugMode => Constants.DebugMode.QueueProcessor;
+    private static bool DebugMode => Constants.DebugMode.MeshLocks;
 
     public static readonly MeshLockOptions DefaultLockOptions =
 #if DEBUG

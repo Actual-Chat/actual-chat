@@ -5,7 +5,7 @@ namespace ActualChat;
 
 public abstract class ShardWorker : WorkerBase
 {
-    private static bool DebugMode => Constants.DebugMode.QueueProcessor;
+    private static bool DebugMode => Constants.DebugMode.ShardWorker;
 
     private ILogger? _log;
 
