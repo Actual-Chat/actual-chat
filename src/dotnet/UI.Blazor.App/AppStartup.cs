@@ -139,7 +139,7 @@ public static class AppStartup
         var moduleServices = services.BuildServiceProvider();
         var moduleHostBuilder = new ModuleHostBuilder()
             // From less dependent to more dependent!
-            .WithModules(
+            .AddModules(
                 // Core modules
                 new CoreModule(moduleServices),
                 // API
@@ -156,7 +156,7 @@ public static class AppStartup
                 new BlazorUIAppModule(moduleServices)
             );
         if (platformModuleFactory != null)
-            moduleHostBuilder = moduleHostBuilder.WithModules(platformModuleFactory.Invoke(moduleServices));
+            moduleHostBuilder = moduleHostBuilder.AddModules(platformModuleFactory.Invoke(moduleServices));
         moduleHostBuilder.Build(services);
     }
 }

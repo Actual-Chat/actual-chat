@@ -13,8 +13,8 @@ public class NatsQueueTest(ITestOutputHelper @out)
     {
         using var host = await NewAppHost(options => options with {
             InstanceName = $"x-{nameof(NatsQueueTest)}-{nameof(SmokeTest)}",
-            ConfigureAppServices = (builder, services) => {
-                var rpcHost = services.AddRpcHost(builder.HostInfo);
+            ConfigureServices = (ctx, services) => {
+                var rpcHost = services.AddRpcHost(ctx.HostInfo);
                 rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },
             UseNatsQueues = true,
@@ -38,8 +38,8 @@ public class NatsQueueTest(ITestOutputHelper @out)
     {
         using var host = await NewAppHost(options => options with {
             InstanceName = $"x-{nameof(NatsQueueTest)}-{nameof(MultipleCommandsCanBeScheduled)}",
-            ConfigureAppServices = (builder, services) => {
-                var rpcHost = services.AddRpcHost(builder.HostInfo);
+            ConfigureServices = (ctx, services) => {
+                var rpcHost = services.AddRpcHost(ctx.HostInfo);
                 rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },
             UseNatsQueues = true,
@@ -68,8 +68,8 @@ public class NatsQueueTest(ITestOutputHelper @out)
     {
         using var host = await NewAppHost(options => options with {
             InstanceName = $"x-{nameof(NatsQueueTest)}-{nameof(CommandsWithCustomQueuesAreHandled)}",
-            ConfigureAppServices = (builder, services) => {
-                var rpcHost = services.AddRpcHost(builder.HostInfo);
+            ConfigureServices = (ctx, services) => {
+                var rpcHost = services.AddRpcHost(ctx.HostInfo);
                 rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },
             UseNatsQueues = true,

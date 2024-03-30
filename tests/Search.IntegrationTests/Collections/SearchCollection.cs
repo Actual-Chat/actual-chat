@@ -8,7 +8,7 @@ public class SearchCollection : ICollectionFixture<AppHostFixture>;
 
 public class AppHostFixture(IMessageSink messageSink)
     : ActualChat.Testing.Host.AppHostFixture("search", messageSink, TestAppHostOptions.Default with {
-        Configure = (_, cfg) => {
+        ConfigureHost = (_, cfg) => {
             cfg.AddInMemoryCollection(($"{nameof(SearchSettings)}:{nameof(SearchSettings.IsSearchEnabled)}", "true"));
         },
     });

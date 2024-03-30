@@ -3,7 +3,7 @@ using ActualChat.Mesh;
 
 namespace ActualChat.App.Server;
 
-public class AppHost : IDisposable
+public partial class AppHost : IDisposable
 {
     public static readonly string DefaultServerUrls = "http://localhost:7080";
 
@@ -11,10 +11,10 @@ public class AppHost : IDisposable
 
     public string ServerUrls { get; set; } = DefaultServerUrls;
     public WebApplicationOptions HostOptions { get; set; } = new();
-    public Action<AppHostBuilder, IConfigurationManager>? Configure { get; set; }
-    public Action<AppHostBuilder, IServiceCollection>? ConfigureModuleHostServices { get; set; }
-    public Action<AppHostBuilder, IServiceCollection>? ConfigureServices { get; set; }
-    public Action<AppHostBuilder, WebApplication>? ConfigureApp { get; set; }
+    public Action<IConfigureHostContext, IConfigurationManager>? ConfigureHost { get; set; }
+    public Action<IConfigureModuleServicesContext, IServiceCollection>? ConfigureModuleServices { get; set; }
+    public Action<IConfigureServicesContext, IServiceCollection>? ConfigureServices { get; set; }
+    public Action<IConfigureAppContext, WebApplication>? ConfigureApp { get; set; }
 
     public WebApplication App { get; protected set; } = null!;
     public IServiceProvider Services => App.Services;
@@ -32,12 +32,6 @@ public class AppHost : IDisposable
     {
         if (disposing)
             App.DisposeSilently();
-    }
-
-    public virtual AppHost Build(bool configurationOnly = false)
-    {
-        App = new AppHostBuilder(this, configurationOnly).App;
-        return this;
     }
 
     public virtual async Task InvokeInitializers(CancellationToken cancellationToken = default)

@@ -1,18 +1,19 @@
 namespace ActualChat.Hosting;
 
-public readonly record struct ModuleHostBuilder(ImmutableList<HostModule> Modules)
+public class ModuleHostBuilder
 {
-    public ModuleHostBuilder() : this(ImmutableList<HostModule>.Empty) { }
+    public List<HostModule> Modules { get; } = new();
 
-    public ModuleHostBuilder WithModule(HostModule module)
-        => new(Modules.Add(module));
-
-    public ModuleHostBuilder WithModules(params HostModule[] modules)
+    public ModuleHostBuilder AddModule(HostModule module)
     {
-        var newModules = Modules;
-        foreach (var module in modules)
-            newModules = newModules.Add(module);
-        return new(newModules);
+        Modules.Add(module);
+        return this;
+    }
+
+    public ModuleHostBuilder AddModules(params HostModule[] modules)
+    {
+        Modules.AddRange(modules);
+        return this;
     }
 
     public ModuleHost Build(IServiceCollection services)

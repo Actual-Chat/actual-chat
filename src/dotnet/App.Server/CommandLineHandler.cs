@@ -100,7 +100,7 @@ public static class CommandLineHandler
             return defaultHostAndPort;
 
         // Building a similar host to get our own http:// endpoint
-        var appHost = new AppHost().Build(configurationOnly: true);
+        var appHost = new AppHost().Build(coreServicesOnly: true);
         var endpoint = ServerEndpoints.List(appHost.Services, "http://").FirstOrDefault();
         _defaultHostAndPort = ServerEndpoints.Parse(endpoint);
         return _defaultHostAndPort.GetValueOrDefault();
