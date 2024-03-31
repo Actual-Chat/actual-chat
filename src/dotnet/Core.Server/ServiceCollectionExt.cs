@@ -38,7 +38,7 @@ public static class ServiceCollectionExt
 
         // NatsSettings
         services.AddSingleton(c => {
-            var settings = c.Configuration().GetSettings<NatsSettings>();
+            var settings = c.Configuration().Settings<NatsSettings>();
             var instance = c.GetRequiredService<CoreSettings>().Instance;
             var instancePrefix = instance.IsNullOrEmpty() ? "" : instance + "-";
             settings = MemberwiseCloner.Invoke(settings);

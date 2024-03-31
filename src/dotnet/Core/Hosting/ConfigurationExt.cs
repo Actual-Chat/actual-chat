@@ -4,7 +4,7 @@ namespace ActualChat.Hosting;
 
 public static class ConfigurationExt
 {
-    public static TSettings GetSettings<TSettings>(this IConfiguration configuration, string? sectionName = null)
+    public static TSettings Settings<TSettings>(this IConfiguration configuration, string? sectionName = null)
         where TSettings : class, new()
     {
         sectionName ??= typeof(TSettings).Name;

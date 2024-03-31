@@ -42,7 +42,8 @@ public static partial class MauiProgram
         using var _1 = Tracer.Region();
 
         FusionSettings.Mode = FusionMode.Client;
-        RpcOutboundCommandCallMiddleware.DefaultTimeout = TimeSpan.FromSeconds(20);
+        RpcOutboundCommandCallMiddleware.DefaultCallTimeout = TimeSpan.FromSeconds(20);
+
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
 #if IOS

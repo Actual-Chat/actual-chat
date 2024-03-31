@@ -141,7 +141,7 @@ public static class CommandLineHandler
                     continue;
 
                 var role = RoleGroup.GetValueOrDefault(key - '0');
-                if (role.IsNone || role == HostRole.OneApiServer)
+                if (role.IsNone)
                     continue;
 
                 LaunchAppHost(role, host, port++);

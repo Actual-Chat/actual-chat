@@ -6,24 +6,24 @@ namespace ActualChat.Rpc;
 public sealed record RpcBackendShardPeerRef : RpcPeerRef
 {
     private readonly TaskCompletionSource<RpcBackendNodePeerRef?> _whenReadySource = new();
-    private readonly TaskCompletionSource _whenObsoleteSource = new();
-    private volatile RpcBackendShardPeerRef _latest;
+    private readonly TaskCompletionSource<RpcBackendShardPeerRef> _whenObsoleteSource = new();
+    private volatile RpcBackendShardPeerRef? _cachedLatest;
 
     public MeshWatcher MeshWatcher { get; }
     public ShardRef ShardRef { get; }
     public int Version { get; }
     public Task<RpcBackendNodePeerRef?> WhenReady => _whenReadySource.Task;
-    public Task WhenObsolete => _whenObsoleteSource.Task;
+    public Task<RpcBackendShardPeerRef> WhenObsolete => _whenObsoleteSource.Task;
 
     public RpcBackendShardPeerRef Latest {
         get {
-            var latest = _latest;
-            if (!latest.WhenObsolete.IsCompleted)
-                return latest;
+            var whenObsolete = WhenObsolete;
+            if (!whenObsolete.IsCompleted)
+                return this;
 
-            latest = latest.Latest;
-            Interlocked.Exchange(ref _latest, latest);
-            return latest;
+ #pragma warning disable VSTHRD002
+            return _cachedLatest = (_cachedLatest ?? whenObsolete.Result).Latest;
+ #pragma warning restore VSTHRD002
         }
     }
 
@@ -31,7 +31,6 @@ public sealed record RpcBackendShardPeerRef : RpcPeerRef
     public RpcBackendShardPeerRef(MeshWatcher meshWatcher, ShardRef shardRef, int version = 0)
         : base(GetKey(shardRef, version), false, true)
     {
-        _latest = this;
         MeshWatcher = meshWatcher;
         ShardRef = shardRef.RequireValid();
         Version = version;
@@ -70,9 +69,8 @@ public sealed record RpcBackendShardPeerRef : RpcPeerRef
             await meshState
                 .When(x => x.GetShardMap(shardScheme)[shardIndex] != meshNode)
                 .ConfigureAwait(false);
-            var latest = new RpcBackendShardPeerRef(MeshWatcher, ShardRef, Version + 1);
-            Interlocked.Exchange(ref _latest, latest);
-            _whenObsoleteSource.TrySetResult();
+            var next = new RpcBackendShardPeerRef(MeshWatcher, ShardRef, Version + 1);
+            _whenObsoleteSource.TrySetResult(next);
         }
         finally {
             _whenReadySource.TrySetResult(null);

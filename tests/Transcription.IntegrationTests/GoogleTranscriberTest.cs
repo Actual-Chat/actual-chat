@@ -19,7 +19,7 @@ public class GoogleTranscriberTest(
     ) : TestBase(@out, log)
 {
     private CoreServerSettings CoreServerSettings { get; }
-        = configuration.GetSettings<CoreServerSettings>(nameof(CoreSettings));
+        = configuration.Settings<CoreServerSettings>(nameof(CoreSettings));
 
     [Theory(Skip = "For manual runs only")]
     [InlineData("file.webm", false)]

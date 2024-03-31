@@ -1,5 +1,3 @@
-using Elastic.Clients.Elasticsearch;
-
 namespace ActualChat.Search.Module;
 
 public sealed class SearchSettings

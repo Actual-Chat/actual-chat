@@ -3,7 +3,6 @@ using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
 using ActualChat.AspNetCore;
 using ActualChat.Queues.Internal;
-using ActualChat.Queues.Nats;
 using ActualChat.Uploads;
 using Microsoft.AspNetCore.StaticFiles;
 
@@ -15,8 +14,8 @@ namespace ActualChat.Module;
 public sealed class CoreServerModule(IServiceProvider moduleServices)
     : HostModule<CoreServerSettings>(moduleServices), IServerModule
 {
-    protected override CoreServerSettings ReadSettings()
-        => Cfg.GetSettings<CoreServerSettings>(nameof(CoreSettings));
+    protected override CoreServerSettings GetSettings()
+        => Cfg.Settings<CoreServerSettings>(nameof(CoreSettings));
 
     protected override void InjectServices(IServiceCollection services)
     {
