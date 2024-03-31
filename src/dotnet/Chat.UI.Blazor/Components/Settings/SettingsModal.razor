@@ -60,6 +60,9 @@
             </ChildContent>
         </SettingsTab>
 
+        <SettingsTab @key="7" Title="Emails" Id="emails" IconClass="icon-email">
+            <EmailSettings/>
+        </SettingsTab>
 
         @if (showLogout) {
             <SettingsTab @key="100" Title="Log out" Id="signOut" IconClass="icon-log-out" HasSeparatorBefore="true">
