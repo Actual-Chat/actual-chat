@@ -1,0 +1,87 @@
+@using ActualChat.Kvas
+@{
+    var timeZoneChanged = !string.Equals(_formModel.CurrentTimeZoneId, _formModel.SelectedTimeZoneId, StringComparison.Ordinal);
+}
+
+<TileTopic Topic="Time Zone"/>
+<Tile>
+    <Form Model="@_formModel">
+        <DataAnnotationsValidator/>
+        <ValidationSummary/>
+        <FormBlock>
+            <FormSection
+                For="() => _formModel.UserTimeZoneFormId"
+                InputId="@_formModel.UserTimeZoneFormId"
+                IsLabelInsideInput="true"
+                Label="Time zone">
+                <InputSelect
+                    Value="_formModel.SelectedTimeZoneId"
+                    ValueExpression="@(() => _formModel.SelectedTimeZoneId)"
+                    ValueChanged="@(async (string timeZoneId) => await OnTimeZoneSelected(timeZoneId))">
+                    @if (_formModel.SelectedTimeZoneId == "") {
+                        <option value="">None</option>
+                    }
+                    @if (_timeZones != null) {
+                        foreach (var timeZone in _timeZones) {
+                            <option value="@timeZone.Key">@timeZone.Value</option>
+                        }
+                    }
+                </InputSelect>
+            </FormSection>
+            @if (timeZoneChanged) {
+                <span>'@(_formModel.CurrentTimeZoneName)' is detected.</span>
+                <Button Click="@OnUpdateTimeZone">Update</Button>
+            }
+        </FormBlock>
+    </Form>
+</Tile>
+
+@code {
+    private FormModel _formModel = null!;
+    private Dictionary<string, string>? _timeZones;
+
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
+    [Inject] private ToastUI ToastUI { get; init; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        _formModel = new FormModel(ComponentIdGenerator);
+        var timeZones = TimeZoneInfo.GetSystemTimeZones();
+        _timeZones = timeZones.ToDictionary(x => x.Id, x => x.DisplayName);
+        var settings = await AccountSettings.GetUserEmailsSettings(default);
+        _formModel.SelectedTimeZoneId = settings.TimeZone;
+        _formModel.CurrentTimeZoneId = BrowserInfo.TimeZone;
+        _formModel.CurrentTimeZoneName = _timeZones.GetValueOrDefault(_formModel.CurrentTimeZoneId, "N/A");
+    }
+
+    private async Task OnTimeZoneSelected(string timeZoneId) {
+        await UpdateTimezone(timeZoneId);
+    }
+
+    private async Task OnUpdateTimeZone() {
+        await UpdateTimezone(_formModel.CurrentTimeZoneId);
+    }
+
+    private async Task UpdateTimezone(string timeZoneId) {
+        _formModel.SelectedTimeZoneId = timeZoneId;
+        var settings = await AccountSettings.GetUserEmailsSettings(default);
+        var newSettings = settings with { TimeZone = timeZoneId };
+        await AccountSettings.SetUserEmailsSettings(newSettings, default);
+        ToastUI.Show("Time zone has been updated", "icon-checkmark-circle", ToastDismissDelay.Short);
+    }
+
+    public sealed class FormModel {
+        public string SelectedTimeZoneId { get; set; } = "";
+        public string CurrentTimeZoneId { get; set; } = "";
+        public string CurrentTimeZoneName { get; set; } = "";
+
+        private string FormId { get; }
+        public string UserTimeZoneFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("time-zone-form");
+            UserTimeZoneFormId = $"{FormId}-user-time-zone";
+        }
+    }
+}
