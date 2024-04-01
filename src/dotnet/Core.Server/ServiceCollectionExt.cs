@@ -17,8 +17,6 @@ namespace ActualChat;
 
 public static class ServiceCollectionExt
 {
-    private static readonly ConcurrentDictionary<Type, Func<IServiceProvider, object>> _factoryMap = new ();
-
     // Private accessors
 
     [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "GetImplementationType")]
@@ -153,19 +151,16 @@ public static class ServiceCollectionExt
             if (implementationType.GetGenericTypeDefinition() != typeof(IDbEntityResolver<,>))
                 continue;
 
-            var factory = _factoryMap.GetOrAdd(implementationType,
-                t => {
-                    var genericArgs = existingFactory.Method.DeclaringType!.GetGenericArguments();
-                    var overriddenResolver = typeof(EntityFramework.DbEntityResolver<,,>).MakeGenericType(genericArgs);
-                    var optionsType = typeof(DbEntityResolver<,,>.Options).MakeGenericType(genericArgs);
-                    var ctor = overriddenResolver.GetConstructor([optionsType, typeof(IServiceProvider)]);
-                    return (Func<IServiceProvider, object>)Factory;
+            var genericArgs = existingFactory.Method.DeclaringType!.GetGenericArguments();
+            var overriddenResolver = typeof(EntityFramework.DbEntityResolver<,,>).MakeGenericType(genericArgs);
+            var optionsType = typeof(DbEntityResolver<,,>.Options).MakeGenericType(genericArgs);
+            var ctor = overriddenResolver.GetConstructor([optionsType, typeof(IServiceProvider)]);
 
-                    object Factory(IServiceProvider c)
-                        => ctor!.Invoke([c.GetRequiredService(optionsType), c]);
-                });
+            ServiceDescriptorImplementationFactory(serviceDescriptor) = (Func<IServiceProvider, object>)Factory;
+            continue;
 
-            ServiceDescriptorImplementationFactory(serviceDescriptor) = factory;
+            object Factory(IServiceProvider c)
+                => ctor!.Invoke([c.GetRequiredService(optionsType), c]);
         }
         return services;
     }

@@ -21,16 +21,10 @@ public class DbEntityResolver<
     public DbEntityResolver(Options settings, IServiceProvider services) : base(settings, services)
     {
         // Re-build compiled queries for Npgsql
-        var buffer = ArrayBuffer<(Func<TDbContext, TKey[], IAsyncEnumerable<TDbEntity>>, int)>.Lease(false);
-        try {
-            var compiledQuery = CreateCompiledQueryNpgsql();
-            for (var batchSize = 1; batchSize <= Settings.BatchSize; batchSize++)
-                buffer.Add((compiledQuery, batchSize));
-            Queries = buffer.ToArray();
-        }
-        finally {
-            buffer.Release();
-        }
+        var compiledQuery = CreateCompiledQueryNpgsql();
+        Queries = Enumerable.Range(1, Settings.BatchSize)
+            .Select(batchSize => (compiledQuery, batchSize))
+            .ToArray();
     }
 
     private Func<TDbContext, TKey[], IAsyncEnumerable<TDbEntity>> CreateCompiledQueryNpgsql()
