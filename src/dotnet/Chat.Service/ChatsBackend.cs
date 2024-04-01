@@ -1193,15 +1193,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         // If we aren't running tests, we always join Announcements chat,
         // + try joining other dev-only chats if they exist.
         var joinAnnouncementsChat = true;
+        var joinNotesChat = true;
         var joinDefaultChat = isDevelopmentInstance;
-        var joinNotesChat = isDevelopmentInstance;
         var joinFeedbackTemplateChat = isDevelopmentInstance;
         if (isTested) {
             // If we're running tests, these options are matching to ChatDbInitializer.Options.AddXxx
             var options = Services.GetService<ChatDbInitializer.Options>() ?? ChatDbInitializer.Options.Default;
             joinAnnouncementsChat = options.AddAnnouncementsChat;
-            joinDefaultChat = options.AddDefaultChat;
             joinNotesChat = options.AddNotesChat;
+            joinDefaultChat = options.AddDefaultChat;
             joinFeedbackTemplateChat = options.AddFeedbackTemplateChat;
         }
 
