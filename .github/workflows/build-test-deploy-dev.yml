@@ -472,7 +472,7 @@ jobs:
           retention-days: 10
 
   deploy-android-dev-to-drive:
-    name: Deploy android app package to googlde drive for ${{ github.ref_name }}
+    name: Deploy android app package to google drive for ${{ github.ref_name }}
     if: |
       github.ref == 'refs/heads/master' ||
       github.ref == 'refs/heads/dev'
@@ -557,3 +557,102 @@ jobs:
           packageName: ${{env.APP_ID}}
           releaseFiles: ${{env.PACKAGE_FILE_NAME}}
           track: internal
+
+  build-win-pkg:
+    name: Build win app package for ${{ github.ref_name }}
+    if: |
+      github.ref == 'refs/heads/master' ||
+      startsWith(github.ref, 'refs/heads/release/')
+    runs-on: windows-latest
+    env:
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+      NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
+      ActualChat_AndroidSigningKeyPass: ${{secrets.ANDROIDSIGNINGKEYPASS}}
+      ActualChat_AndroidSigningStorePass: ${{secrets.ANDROIDSIGNINGSTOREPASS}}
+      # we don't build dev win version for now
+      IS_DEV_MAUI: false
+      # IS_DEV_MAUI: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
+    outputs:
+      APP_ID: ${{env.APP_ID}}
+      ARTIFACT_NAME: chat.actual.app.${{steps.build-app-pkg.outputs.AppVersion}}.msix
+      PACKAGE_FILE_NAME: App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_x64.msix
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: true
+
+      - name: Install dotnet 8.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
+          dotnet-quality: 'ga'
+
+      - name: Use cached dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/.nuget/packages
+          key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Install tools
+        run: |-
+          dotnet tool install nbgv
+
+      - name: Restore nuget packages
+        run: |-
+          ./run-build.cmd restore
+
+      - name: Build app package
+        id: build-app-pkg
+        run: |-
+          ./run-build.cmd publish-win --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}"
+
+      - run: |-
+          ls artifacts\bin\App.Maui\release_net8.0-windows10.0.22000.0\AppPackages\
+          echo v=${{steps.build-app-pkg.outputs.AppVersion}}
+          ls artifacts\bin\App.Maui\release_net8.0-windows10.0.22000.0\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\
+
+      - name: Upload package to artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: chat.actual.app.${{steps.build-app-pkg.outputs.AppVersion}}.msix
+          path: artifacts\bin\App.Maui\release_net8.0-windows10.0.22000.0\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_x64.msix
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 2
+  deploy-to-microsoft-store:
+    name: Deploy app package for ${{ github.ref_name }} to microsoft store
+    if: |
+      github.ref == 'refs/heads/master' ||
+      startsWith(github.ref, 'refs/heads/release/')
+    runs-on: windows-latest
+    needs:
+      - build-win-pkg
+      - unit-tests
+      - integration-tests
+    environment: prod
+    env:
+      APP_ID: ${{needs.build-win-pkg.outputs.APP_ID}}
+      ARTIFACT_NAME: ${{needs.build-win-pkg.outputs.ARTIFACT_NAME}}
+      PACKAGE_FILE_NAME: ${{needs.build-win-pkg.outputs.PACKAGE_FILE_NAME}}
+    steps:
+      - name: Download package file from artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{env.ARTIFACT_NAME}}
+          path: ./packages
+
+      - name: Publish to Store
+        uses: ActualLab/windows-store-action@main
+        with:
+          tenant-id: ${{ secrets.MSFT_TENANT_ID }}
+          client-id: ${{ secrets.MSFT_CLIENT_ID }}
+          client-secret: ${{ secrets.MSFT_CLIENT_SECRET }}
+          app-id: ${{ secrets.MSFT_PRODUCT_ID }}
+          package-path: ./packages
+          delete-packages: false
+          skip-polling: false
