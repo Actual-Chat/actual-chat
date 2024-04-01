@@ -60,3 +60,9 @@ sw.js
 
 # VIM swap files
 *.swp
+
+# Python cache dir
+__pycache__/
+
+# Keep secrets file local for development
+.secrets

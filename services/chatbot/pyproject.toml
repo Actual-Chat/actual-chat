@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "chatbot"
+version = "0.1.0"
+description = ""
+authors = ["Andrew Kurochkin <andrew.kurochkin@actual.chat>"]
+readme = "README.md"
+packages = [
+    { include = "app" },
+]
+
+[tool.poetry.dependencies]
+python = "~3.12.2"
+uvicorn = "^0.23.2"
+langchain = "0.1.14"
+langserve = {extras = ["server"], version = ">=0.0.30"}
+# TODO: investigate if could be fixed.
+# Downgrading pydantic due to langserve issues
+# pydantic = "2.6.4"
+pydantic = "1.10.14"
+cleandoc = "0.0.13"
+anthropic = "0.21.3"
+# TODO: remove
+# Obsolete:
+langchainhub = "0.1.15"
+
+
+[tool.poetry.group.dev.dependencies]
+langchain-cli = ">=0.0.15"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
