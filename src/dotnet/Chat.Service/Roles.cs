@@ -65,12 +65,24 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
         if (!rules.CanSeeMembers())
             return default;
 
+        var targetChatId = chatId;
+        if (targetChatId.IsPlaceChat && !targetChatId.IsPlaceRootChat) {
+            var chat = await ChatsBackend.Get(targetChatId, cancellationToken).ConfigureAwait(false);
+            if (chat == null)
+                return default; // Chat should be not null here, but do check for safety.
+
+            if (chat.IsPublic)
+                targetChatId = chatId.PlaceChatId.PlaceId.ToRootChatId(); // For public place chats take owner list from root place chat.
+        }
+
         var ownerRole = await Backend
-            .GetSystem(chatId, SystemRole.Owner, cancellationToken)
+            .GetSystem(targetChatId, SystemRole.Owner, cancellationToken)
             .Require()
             .ConfigureAwait(false);
 
-        var authorIds = await Backend.ListAuthorIds(chatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
+        var authorIds = await Backend.ListAuthorIds(targetChatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
+        if (targetChatId != chatId)
+            authorIds = authorIds.Select(c => Remap(c, chatId)).ToApiArray();
         // Mask anonymous owners
         if (!rules.IsOwner())
             authorIds = await MaskAnonymousAuthors(authorIds, cancellationToken).ConfigureAwait(false);
@@ -139,4 +151,7 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
 
         return authorIds.Except(toExclude).ToApiArray();
     }
+
+    private static AuthorId Remap(AuthorId authorId, ChatId targetChatId)
+        => new AuthorId(targetChatId, authorId.LocalId, AssumeValid.Option);
 }
