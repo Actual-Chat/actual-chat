@@ -37,18 +37,12 @@ public partial class ChatAudioUI
     }
 
     // Private methods
+
     private async Task InitializeListening(CancellationToken cancellationToken)
     {
-        await Hub.ChatUI.WhenLoaded.ConfigureAwait(false);
-        var contacts = await Hub.Contacts.ListContacts(Session, cancellationToken).ConfigureAwait(false);
-        foreach (var chatId in contacts.Select(contact => contact.ChatId)) {
-            var userChatSettings = await AccountSettings
-                .GetUserChatSettings(chatId, cancellationToken)
-                .ConfigureAwait(false);
-            var listeningMode = userChatSettings.ListeningMode;
-            if (listeningMode == ListeningMode.KeepListening)
-                await SetListeningState(chatId, true).ConfigureAwait(false);
-        }
+        var chatIdsToListenTo = await GetChatsYouNeedToKeepListeningTo(cancellationToken).ConfigureAwait(false);
+        foreach (var chatId in chatIdsToListenTo)
+            await SetListeningState(chatId, true).ConfigureAwait(false);
     }
 
     private async Task InvalidateActiveChatDependencies(CancellationToken cancellationToken)
@@ -145,7 +139,7 @@ public partial class ChatAudioUI
                 .ConfigureAwait(false);
             var chatId = cRecordingState.Value.ChatId;
             if (ChatPlayers.PlaybackState.Value is HistoricalPlaybackState historicalPlaybackState && historicalPlaybackState.ChatId != chatId)
-                ChatPlayers.StopPlayback();
+                ChatPlayers.StopHistoricalPlayback();
             cRecordingState = await cRecordingState.When(x => x.ChatId.IsNone || x.ChatId != chatId, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -259,7 +253,7 @@ public partial class ChatAudioUI
             }
             else {
                 DebugLog?.LogDebug(nameof(PushRealtimePlaybackState) + ": stopping playback");
-                ChatPlayers.StopPlayback();
+                ChatPlayers.StopHistoricalPlayback();
             }
 
             skip:
@@ -304,6 +298,9 @@ public partial class ChatAudioUI
                 var userChatSettings = await AccountSettings
                     .GetUserChatSettings(chatId, cancellationToken)
                     .ConfigureAwait(false);
+                if (userChatSettings.ListeningMode == ListeningMode.KeepListening)
+                    continue; // do not start listening idle watcher
+
                 var chatOptions = options with {
                     IdleTimeout = userChatSettings.ListeningMode switch {
                         ListeningMode.Default => AudioSettings.IdleListeningTimeout,
@@ -347,8 +344,14 @@ public partial class ChatAudioUI
             throw;
         }
         finally {
-            if (mustStop)
-                await SetListeningState(chatId, false).ConfigureAwait(false);
+            if (mustStop) {
+                var userChatSettings = await AccountSettings
+                    .GetUserChatSettings(chatId, cancellationToken)
+                    .ConfigureAwait(false);
+                if (userChatSettings.ListeningMode != ListeningMode.KeepListening)
+                    // do not turn off listening when KeepListening is configured
+                    await SetListeningState(chatId, false).ConfigureAwait(false);
+            }
         }
 
         async Task WhenRecordingChatIdBecomes(Func<ChatId, bool> predicate, CancellationToken ct) {

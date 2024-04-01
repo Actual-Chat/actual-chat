@@ -1,7 +1,9 @@
 using ActualChat.Audio;
+using ActualChat.Contacts;
 using ActualChat.Streaming.UI.Blazor.Components;
 using ActualChat.Streaming.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 using ActualLab.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
@@ -69,6 +71,23 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
         return Task.FromResult(result);
     }
 
+    [ComputeMethod(MinCacheDuration = 300)] // Synced
+    public virtual async Task<List<ChatId>> GetChatsYouNeedToKeepListeningTo(CancellationToken cancellationToken)
+    {
+        var result = new List<ChatId>();
+        await Hub.ChatUI.WhenLoaded.ConfigureAwait(false);
+        var contacts = await Hub.Contacts.ListContacts(Session, cancellationToken).ConfigureAwait(false);
+        foreach (var chatId in contacts.Select(contact => contact.ChatId)) {
+            var userChatSettings = await AccountSettings
+                .GetUserChatSettings(chatId, cancellationToken)
+                .ConfigureAwait(false);
+            var listeningMode = userChatSettings.ListeningMode;
+            if (listeningMode == ListeningMode.KeepListening)
+                result.Add(chatId);
+        }
+        return result;
+    }
+
     [ComputeMethod] // Synced
     public virtual Task<ImmutableHashSet<ChatId>> GetListeningChatIds()
         => Task.FromResult(ActiveChatsUI.ActiveChats.Value.Where(c => c.IsListening).Select(c => c.ChatId).ToImmutableHashSet());
@@ -130,6 +149,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                             IsRecording = false,
                             Recency = now,
                         });
+                        _ = RestoreListening(StopToken);
                         _ = TuneUI.Play(Tune.EndRecording);
                     }
                     return activeChats;
@@ -150,6 +170,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                     };
                 }
                 activeChats = activeChats.AddOrReplace(chat, true);
+                // Turn off listening for all the rest chats if mustListen
                 activeChats = mustListen
                     ? activeChats.UpdateWhere(
                         c => c.ChatId != chatId && (c.IsRecording || c.IsListening),
@@ -159,6 +180,25 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                         c => c with { IsRecording = false });
                 _ = TuneUI.Play(Tune.BeginRecording);
                 return activeChats;
+
+                async Task RestoreListening(CancellationToken ct)
+                {
+                    var chatIdsToListenTo = await GetChatsYouNeedToKeepListeningTo(ct).ConfigureAwait(false);
+                    foreach (var cid in chatIdsToListenTo) {
+                        chat = activeChats.FirstOrDefault(c => c.ChatId == cid);
+                        chat = chat.IsNone
+                            ? new ActiveChat(cid,
+                                true,
+                                false,
+                                now,
+                                now)
+                            : chat with {
+                                IsListening = true,
+                                ListeningRecency = now,
+                            };
+                        activeChats = activeChats.AddOrReplace(chat);
+                    }
+                }
             },
             StopToken);
 
