@@ -170,6 +170,7 @@ public partial class AppHost
             if (hostInfo.IsDevelopmentInstance)
                 ValidateContainerRegistrations(services);
         }
+        services.OverrideEntityResolver();
 
         /////
         // 4. Configure & build WebApplication (IHost)
