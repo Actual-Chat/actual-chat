@@ -14,7 +14,7 @@ public static partial class Constants
             public static readonly bool ApiClient = false;
             public static readonly bool ApiServer = false;
             public static readonly bool BackendClient = false;
-            public static readonly bool BackendServer = false;
+            public static readonly bool BackendServer = true;
         }
 
         // Core components

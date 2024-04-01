@@ -19,9 +19,10 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
     private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
 
     // [CommandHandler]
-    public virtual async Task<Moment> OnSendTotp(Emails_SendTotp command, CancellationToken cancellationToken) {
+    public virtual async Task<Moment> OnSendTotp(Emails_SendTotp command, CancellationToken cancellationToken)
+    {
         if (Computed.IsInvalidating())
-            return default;
+            return default; // Nothing to invalidate
 
         var session = command.Session;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -51,8 +52,10 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
     }
 
     // [CommandHandler]
-    public virtual async Task<bool> OnVerifyEmail(Emails_VerifyEmail command, CancellationToken cancellationToken) {
+    public virtual async Task<bool> OnVerifyEmail(Emails_VerifyEmail command, CancellationToken cancellationToken)
+    {
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             // TODO(AY): support UserId (any non-string/non-int) type for multi-instance deployment
             var userId = context.Operation().Items.GetId<UserId>();

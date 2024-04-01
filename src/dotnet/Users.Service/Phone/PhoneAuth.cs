@@ -77,6 +77,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     public virtual async Task<bool> OnVerifyPhone(PhoneAuth_VerifyPhone command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             // TODO(AY): support UserId (any non-string/non-int) type for multi-instance deployment
             var userId = context.Operation().Items.GetId<UserId>();
