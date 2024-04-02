@@ -25,6 +25,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string Username { get; set; } = "";
     public string? UsernameNormalized { get; set; }
     public bool IsGreetingCompleted { get; set; }
+    public string TimeZone { get; set; } = "";
     public DateTime CreatedAt {
         get => _createdAt.DefaultKind(DateTimeKind.Utc);
         set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
@@ -46,6 +47,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Username = Username,
             IsGreetingCompleted = IsGreetingCompleted,
             CreatedAt = CreatedAt,
+            TimeZone = TimeZone,
         };
     }
 
@@ -67,6 +69,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Username = model.Username;
         IsGreetingCompleted = model.IsGreetingCompleted;
         CreatedAt = model.CreatedAt;
+        TimeZone = model.TimeZone;
         if (!model.Username.IsNullOrEmpty())
             UsernameNormalized = model.Username.ToUpper(CultureInfo.InvariantCulture);
     }
