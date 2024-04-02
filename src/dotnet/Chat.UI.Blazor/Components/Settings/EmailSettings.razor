@@ -43,14 +43,18 @@
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private ToastUI ToastUI { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     protected override async Task OnInitializedAsync() {
         _formModel = new FormModel(ComponentIdGenerator);
         var timeZones = TimeZoneInfo.GetSystemTimeZones();
         _timeZones = timeZones.ToDictionary(x => x.Id, x => x.DisplayName);
-        var settings = await AccountSettings.GetUserEmailsSettings(default);
-        _formModel.SelectedTimeZoneId = settings.TimeZone;
+        var account = await AccountUI.OwnAccount.Use();
+        _formModel.SelectedTimeZoneId = account.TimeZone;
         _formModel.CurrentTimeZoneId = BrowserInfo.TimeZone;
         _formModel.CurrentTimeZoneName = _timeZones.GetValueOrDefault(_formModel.CurrentTimeZoneId, "N/A");
     }
@@ -65,9 +69,15 @@
 
     private async Task UpdateTimezone(string timeZoneId) {
         _formModel.SelectedTimeZoneId = timeZoneId;
-        var settings = await AccountSettings.GetUserEmailsSettings(default);
-        var newSettings = settings with { TimeZone = timeZoneId };
-        await AccountSettings.SetUserEmailsSettings(newSettings, default);
+        var account = await Accounts.GetOwn(Session, default);
+        var updateAccountCommand = new Accounts_Update(
+            Session,
+            account with { TimeZone = timeZoneId},
+            account.Version);
+        var (_, error) = await UICommander.Run(updateAccountCommand);
+        if (error != null)
+            return;
+
         ToastUI.Show("Time zone has been updated", "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
