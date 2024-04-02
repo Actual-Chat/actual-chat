@@ -40,22 +40,17 @@
     private FormModel _formModel = null!;
     private Dictionary<string, string>? _timeZones;
 
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private ToastUI ToastUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
 
     protected override async Task OnInitializedAsync() {
         _formModel = new FormModel(ComponentIdGenerator);
         var timeZones = TimeZoneInfo.GetSystemTimeZones();
         _timeZones = timeZones.ToDictionary(x => x.Id, x => x.DisplayName);
-        var account = await AccountUI.OwnAccount.Use();
+        var account = await Hub.AccountUI.OwnAccount.Use();
         _formModel.SelectedTimeZoneId = account.TimeZone;
-        _formModel.CurrentTimeZoneId = BrowserInfo.TimeZone;
+        _formModel.CurrentTimeZoneId = Hub.BrowserInfo.TimeZone;
         _formModel.CurrentTimeZoneName = _timeZones.GetValueOrDefault(_formModel.CurrentTimeZoneId, "N/A");
     }
 
@@ -69,16 +64,16 @@
 
     private async Task UpdateTimezone(string timeZoneId) {
         _formModel.SelectedTimeZoneId = timeZoneId;
-        var account = await Accounts.GetOwn(Session, default);
+        var account = await Hub.Accounts.GetOwn(Session, default);
         var updateAccountCommand = new Accounts_Update(
             Session,
             account with { TimeZone = timeZoneId},
             account.Version);
-        var (_, error) = await UICommander.Run(updateAccountCommand);
+        var (_, error) = await Hub.UICommander().Run(updateAccountCommand);
         if (error != null)
             return;
 
-        ToastUI.Show("Time zone has been updated", "icon-checkmark-circle", ToastDismissDelay.Short);
+        Hub.ToastUI.Show("Time zone has been updated", "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
     public sealed class FormModel {

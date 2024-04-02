@@ -7,7 +7,7 @@
 }
 
 @{
-    var timeZoneChanged = !string.Equals(_model.TimeZone, BrowserInfo.TimeZone, StringComparison.Ordinal);
+    var timeZoneChanged = !string.Equals(_model.TimeZone, Hub.BrowserInfo.TimeZone, StringComparison.Ordinal);
 }
 
 <div>
@@ -47,7 +47,7 @@
                 </InputSelect>
             </FormSection>
             @if (timeZoneChanged) {
-                <span>'@(BrowserInfo.TimeZone)' is detected.</span>
+                <span>'@(Hub.BrowserInfo.TimeZone)' is detected.</span>
                 <Button Click="@OnUpdateTimeZone">Update</Button>
             }
         </FormBlock>
@@ -59,12 +59,9 @@
     private Form? _formRef;
     private Dictionary<string, string>? _timeZones;
 
+    [Inject] private UIHub Hub { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
 
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
 
@@ -88,9 +85,9 @@
     }
 
     protected override async Task<bool> Save() {
-        var account = await Accounts.GetOwn(Session, default);
+        var account = await Hub.Accounts.GetOwn(Session, default);
         var command = new Accounts_Update(Session, account with { TimeZone = _model.TimeZone }, account.Version);
-        var (_, error) = await UICommander.Run(command);
+        var (_, error) = await Hub.UICommander().Run(command);
         return error is null;
     }
 
@@ -99,7 +96,7 @@
     }
 
     private void OnUpdateTimeZone() {
-        _model.TimeZone = BrowserInfo.TimeZone;
+        _model.TimeZone = Hub.BrowserInfo.TimeZone;
     }
 
     public class Model {
