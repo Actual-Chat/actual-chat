@@ -1,0 +1,105 @@
+services:
+  opensearch-node:
+    image: opensearchproject/opensearch:2.12.0
+    container_name: opensearch-node
+    environment:
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-node
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true # along with the memlock settings below, disables swapping
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
+      - DISABLE_SECURITY_PLUGIN=true
+      # - plugins.ml_commons.only_run_on_ml_node=false # allow running ml tasks on data nodes
+      # - plugins.ml_commons.allow_registering_model_via_url=true
+      # - plugins.ml_commons.allow_registering_model_via_local_file=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536 # maximum number of open files for the OpenSearch user, set to at least 65536 on modern systems
+        hard: 65536
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - 9201:9200
+      - 9601:9600 # required for Performance Analyzer
+    networks:
+      - opensearch-net
+    healthcheck:
+      test: "curl --fail 'http://opensearch-node:9200/_cluster/health?wait_for_status=green&timeout=1s' || exit 1"
+      interval: 3s
+      timeout: 3s
+      retries: 6
+
+  # OpenSearch requires pandas v2.0.3.
+  # So we stick with python 3.9 because it is the only python version
+  # having prebuilt wheel (*.whl) file for pandas 2.0.3,
+  # as prebuilt *.whl drastically reduces package installation time.
+  # See https://www.piwheels.org/project/pandas/ for possible python/pandas combos.
+  opensearch-config:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.9
+        RUN pip install pandas==2.0.3 deprecated opensearch-py opensearch-py-ml requests
+        WORKDIR /workdir
+        CMD python ./opensearch-setup.py
+    container_name: opensearch-config
+    develop:
+      watch:
+        - path: ./opensearch-setup.py
+          action: rebuild
+    environment:
+      OPENSEARCH_CLUSTER_URL: 'http://opensearch-node:9200'
+      OPENSEARCH_ML_MODEL_GROUP: 'NLP_model_group'
+      SLEEP_ON_FAILURE_SECONDS: 10
+      TORCHSCRIPT_MODEL_PATH: /ml_model/sentence-transformers_paraphrase-MiniLM-L3-v2-1.0.1-torch_script.zip
+      TORCHSCRIPT_MODEL_CONFIG_PATH: /ml_model/config.json
+    volumes:
+      - type: bind
+        source: ./ml_model
+        target: /ml_model
+      - type: bind
+        source: ./opensearch-setup.py
+        target: /workdir/opensearch-setup.py
+    networks:
+      - opensearch-net
+    depends_on:
+      opensearch-node:
+        condition: service_healthy
+    restart: on-failure
+
+  opensearch-config-wait:
+    build:
+      dockerfile_inline: |
+        FROM busybox
+        CMD ["sh", "exit", "0"]
+    container_name: opensearch-config-wait
+    depends_on:
+      opensearch-node:
+        condition: service_healthy
+      opensearch-config:
+        condition: service_completed_successfully
+
+  opensearch-dashboards:
+    build:
+      context: .
+      dockerfile: opensearch-dashboard-no-security.dockerfile
+    container_name: opensearch-dashboards
+    ports:
+      - 5602:5601
+    expose:
+      - "5602"
+    environment:
+      ml_commons_dashboards.enabled: true
+      OPENSEARCH_HOSTS: '["http://opensearch-node:9200"]'
+      DISABLE_SECURITY_PLUGIN: true
+    networks:
+      - opensearch-net
+
+volumes:
+  opensearch-data:
+
+networks:
+  opensearch-net:

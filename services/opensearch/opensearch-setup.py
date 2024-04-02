@@ -101,7 +101,7 @@ def main():
     model_group_name = os.getenv('OPENSEARCH_ML_MODEL_GROUP')
     api = API(cluster_url)
     api.set_ml_commons_config({
-        "only_run_on_ml_node": "true",
+        "only_run_on_ml_node": "false",
         "model_access_control_enabled": "true",
         "native_memory_threshold": "99",
         # This is a requirement to upload ML model from a local storage
@@ -162,12 +162,14 @@ def main():
     current_model_info = ml_client.get_model_info(model_id)
     print(current_model_info)
 
+def get_int_env_var(env_var_name, default_value):
+    try:
+        return int(os.getenv(env_var_name, default_value))
+    except ValueError:
+        return default_value
 
 if __name__ == '__main__':
-    try:
-        sleep_on_failure = int(os.getenv('SLEEP_ON_FAILURE_SECONDS', 0))
-    except ValueError:
-        sleep_on_failure = 0
+    sleep_on_failure = get_int_env_var('SLEEP_ON_FAILURE_SECONDS', 5)
     try:
         main()
     except:
