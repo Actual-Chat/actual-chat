@@ -66,8 +66,16 @@
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
 
     public override bool CanSkip => true;
-    public override bool IsCompleted
-        => Account.TimeZone.Length > 0 || OnboardingUI.UserSettings.Value.IsTimeZoneStepCompleted;
+
+    public override bool IsCompleted {
+        get {
+            if (OnboardingUI.UserSettings.Value.IsTimeZoneStepCompleted)
+                return true;
+
+            return !Account.TimeZone.IsNullOrEmpty()
+                   && string.Equals(Account.TimeZone, Hub.BrowserInfo.TimeZone, StringComparison.Ordinal);
+        }
+    }
 
     protected override void MarkCompleted()
         => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsTimeZoneStepCompleted = true });
@@ -93,10 +101,12 @@
 
     private void OnTimeZoneSelected(string timeZoneId) {
         _model.TimeZone = timeZoneId;
+        OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsTimeZoneStepCompleted = false });
     }
 
     private void OnUpdateTimeZone() {
         _model.TimeZone = Hub.BrowserInfo.TimeZone;
+        OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsTimeZoneStepCompleted = false });
     }
 
     public class Model {
