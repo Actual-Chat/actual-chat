@@ -40,3 +40,6 @@
 .onboarding-modal .c-upload .c-buttons {
     @apply flex-1 flex-y justify-center gap-y-2;
 }
+.onboarding-modal .form-block {
+    @apply p-0;
+}

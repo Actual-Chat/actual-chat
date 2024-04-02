@@ -1,0 +1,108 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using System.ComponentModel.DataAnnotations
+@inherits Step;
+
+@if (CurrentStep != this) {
+    return;
+}
+
+@{
+    var timeZoneChanged = !string.Equals(_model.TimeZone, BrowserInfo.TimeZone, StringComparison.Ordinal);
+}
+
+<div>
+    @if (Stepper.CurrentStepIndex == 0) {
+        <p class="text-title-1 text-center">Welcome to Actual Chat!</p>
+    }
+    <p class="text-headline-1 mt-6">
+        Please set up your time zone.
+    </p>
+    <p class="text-headline-1 mt-2">
+    </p>
+    <Form
+        @ref="_formRef"
+        Class="mt-6"
+        Model="@_model">
+        <DataAnnotationsValidator/>
+        <FormBlock>
+            <FormSection
+                For="() => _model.TimeZone"
+                InputId="timeZone"
+                Label="Time zone"
+                Class="grow"
+                IsRequired="true"
+                IsLabelInsideInput="true">
+                <InputSelect
+                    Value="_model.TimeZone"
+                    ValueExpression="@(() => _model.TimeZone)"
+                    ValueChanged="@((string timeZoneId) => OnTimeZoneSelected(timeZoneId))">
+                    @if (_model.TimeZone == "") {
+                        <option value="">Please select...</option>
+                    }
+                    @if (_timeZones != null) {
+                        foreach (var timeZone in _timeZones) {
+                            <option value="@timeZone.Key">@timeZone.Value</option>
+                        }
+                    }
+                </InputSelect>
+            </FormSection>
+            @if (timeZoneChanged) {
+                <span>'@(BrowserInfo.TimeZone)' is detected.</span>
+                <Button Click="@OnUpdateTimeZone">Update</Button>
+            }
+        </FormBlock>
+    </Form>
+</div>
+
+@code {
+    private readonly Model _model = new();
+    private Form? _formRef;
+    private Dictionary<string, string>? _timeZones;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+
+    [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
+
+    public override bool CanSkip => true;
+    public override bool IsCompleted
+        => Account.TimeZone.Length > 0 || OnboardingUI.UserSettings.Value.IsTimeZoneStepCompleted;
+
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsTimeZoneStepCompleted = true });
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        var timeZones = TimeZoneInfo.GetSystemTimeZones();
+        _timeZones = timeZones.ToDictionary(x => x.Id, x => x.DisplayName);
+        _model.TimeZone = Account.TimeZone;
+    }
+
+    protected override Task<bool> Validate() {
+        var isValid = _formRef?.EditContext?.Validate() ?? false;
+        return Task.FromResult(isValid);
+    }
+
+    protected override async Task<bool> Save() {
+        var account = await Accounts.GetOwn(Session, default);
+        var command = new Accounts_Update(Session, account with { TimeZone = _model.TimeZone }, account.Version);
+        var (_, error) = await UICommander.Run(command);
+        return error is null;
+    }
+
+    private void OnTimeZoneSelected(string timeZoneId) {
+        _model.TimeZone = timeZoneId;
+    }
+
+    private void OnUpdateTimeZone() {
+        _model.TimeZone = BrowserInfo.TimeZone;
+    }
+
+    public class Model {
+        [Required] public string TimeZone { get; set; } = "";
+    }
+}
