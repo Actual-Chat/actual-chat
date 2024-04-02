@@ -104,9 +104,7 @@ public class NotificationsBackend(IServiceProvider services)
             return; // It just spawns other commands, so nothing to do here
 
         var notification = command.Notification;
-        var kind = notification.Kind;
         var userId = notification.UserId.Require();
-        var chatId = notification.ChatId;
 
         var similar = await Get(notification.Id, cancellationToken).ConfigureAwait(false);
         if (similar != null) {
@@ -120,14 +118,18 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         var upsertCommand = new NotificationsBackend_Upsert(notification);
-        await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        var hasUpserted = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        if (!hasUpserted)
+            return;
+
         await Send(userId, notification, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task OnUpsert(NotificationsBackend_Upsert command, CancellationToken cancellationToken)
+    public virtual async Task<bool> OnUpsert(NotificationsBackend_Upsert command, CancellationToken cancellationToken)
     {
         var notification = command.Notification;
+        var sid = notification.Id.Value;
         var userId = notification.UserId.Require();
         var context = CommandContext.GetCurrent();
 
@@ -135,19 +137,25 @@ public class NotificationsBackend(IServiceProvider services)
             var invIsCreate = context.Operation().Items.GetOrDefault(false);
             if (invIsCreate) // Created
                 _ = PseudoListRecentNotificationIds(userId);
-            else // Updated
-                _ = Get(notification.Id, default);
-            return;
+
+            // Created or Updated
+            _ = Get(notification.Id, default);
+            return default;
         }
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        DbNotification? dbNotification;
-        if (notification.Version == 0) { // Create
+        var dbNotification = await dbContext.Notifications.ForUpdate()
+            .FirstOrDefaultAsync(e => e.Id == sid, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (dbNotification == null) { // Create
             notification = notification with {
                 Version = VersionGenerator.NextVersion(),
-                CreatedAt = notification.CreatedAt == default ? notification.SentAt : notification.CreatedAt,
+                CreatedAt = notification.CreatedAt == default
+                    ? notification.SentAt
+                    : notification.CreatedAt,
             };
             dbNotification = new DbNotification();
             dbNotification.UpdateFrom(notification);
@@ -155,10 +163,10 @@ public class NotificationsBackend(IServiceProvider services)
             context.Operation().Items.Set(true);
         }
         else { // Update
-            var notificationCopy = notification;
-            dbNotification = await dbContext.Notifications.ForUpdate()
-                .FirstOrDefaultAsync(e => e.Id == notificationCopy.Id, cancellationToken)
-                .ConfigureAwait(false);
+            var throttleInterval = GetThrottleInterval(notification);
+            if (notification.SentAt.ToDateTime() - dbNotification.SentAt < throttleInterval)
+                return false; // skip update and avoid sending notification if notification for the user has already been sent recently
+
             dbNotification = dbNotification.RequireVersion(notification.Version);
             notification = notification with {
                 Version = VersionGenerator.NextVersion(notification.Version),
@@ -168,6 +176,7 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return true;
     }
 
     // [CommandHandler]
