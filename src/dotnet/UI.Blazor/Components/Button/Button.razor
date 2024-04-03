@@ -1,14 +1,27 @@
 @using System.Text
+@using Sentry
 @namespace ActualChat.UI.Blazor.Components
+@{
+    var hasIcon = IconContent != null;
+    var btnContentCls = hasIcon ? "" : "only-text";
+}
 
 <button
     @ref="Ref"
     class="@Class btn"
     type="@GetButtonType()"
+    data-button-class="default"
     @attributes="@GetAttributes()"
     @onclick="@Click">
-    <div class="@ContentClass btn-content" tabindex="-1">
-        @ChildContent
+    <div class="@ContentClass @btnContentCls btn-content" tabindex="-1">
+        @if (IconContent == null) {
+            @ChildContent
+        } else {
+            @IconContent
+            if (TitleContent != null) {
+                <span>@TitleContent</span>
+            }
+        }
     </div>
 </button>
 
@@ -25,6 +38,8 @@
     [Parameter] public string Tooltip { get; set; } = "";
     [Parameter] public FloatingPosition TooltipPosition { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? IconContent { get; set; }
+    [Parameter] public RenderFragment? TitleContent { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
     [Parameter] public EventCallback<ElementReference> Rendered { get; set; }
     [Parameter] public Mutable<ElementReference>? ButtonRef { get; set; }

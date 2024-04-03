@@ -11,7 +11,7 @@
 @* Header *@
 <div class="landing-header blur-bg">
     @if (ScreenSize.IsNarrow()) {
-        <ButtonRound Class="menu-button flex-none" Click="@Click">
+        <ButtonRound Class="menu-button btn-sm" Click="@Click">
             <i class="icon-menu text-2xl"></i>
         </ButtonRound>
         <div class="c-content">
@@ -44,7 +44,7 @@
         </div>
         <div class="c-right">
             @if (isGuest) {
-                <ButtonRound Class="signin-button" Click="@(SignIn)">
+                <ButtonRound Class="signin-button btn-sm" Click="@(SignIn)">
                     <i class="icon-log-in text-xl"></i>
                 </ButtonRound>
             } else {
@@ -76,15 +76,15 @@
                         <div class="w-4"></div>
                         <Button
                             Click="@WhyUsClick"
-                            Class="btn-text btn-transparent why-us">Why us
+                            Class="btn-text btn-transparent why-us unhovered">Why us
                         </Button>
                         <Button
                             Click="@PricingClick"
-                            Class="btn-text btn-transparent">Why now
+                            Class="btn-text btn-transparent unhovered">Why now
                         </Button>
                         <Button
                             Click="@(_ => History.NavigateTo(Links.Docs))"
-                            Class="btn-text btn-transparent">Docs
+                            Class="btn-text btn-transparent unhovered">Docs
                         </Button>
                     </div>
                 </div>
@@ -105,15 +105,15 @@
                         <div class="w-4"></div>
                         <Button
                             Click="@WhyUsClick"
-                            Class="btn-text btn-transparent why-us">Why us
+                            Class="btn-text btn-transparent why-us unhovered">Why us
                         </Button>
                         <Button
                             Click="@PricingClick"
-                            Class="btn-text btn-transparent">Why now
+                            Class="btn-text btn-transparent unhovered">Why now
                         </Button>
                         <Button
                             Click="@(_ => History.NavigateTo(Links.Docs))"
-                            Class="btn-text btn-transparent">Docs
+                            Class="btn-text btn-transparent unhovered">Docs
                         </Button>
                     </div>
                 </div>

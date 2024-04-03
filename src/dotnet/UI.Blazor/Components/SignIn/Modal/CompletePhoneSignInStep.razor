@@ -12,9 +12,15 @@
 }
 
 <div class="sign-in-step verify-phone-step" @onclick="@TryFocusTotpInput">
-    <div class="c-title">Phone number verification</div>
     <div class="flex-x flex-1 justify-center">
         <phone-verification-cat-svg/>
+    </div>
+    <div class="c-text-container">
+        <p class="c-title">Enter the code</p>
+        <p class="c-text">
+            Please verify your phone number to enable sign-in with it and to allow your friends to find your account
+            in their list of contacts on Actual Chat
+        </p>
     </div>
     <TotpVerifier @ref="_totpVerifier" Purpose="TotpPurpose.SignIn" Phone="@phone.Value" Verified="OnTotpVerified"/>
 </div>

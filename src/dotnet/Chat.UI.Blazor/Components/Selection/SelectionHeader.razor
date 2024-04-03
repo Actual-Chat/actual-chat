@@ -17,25 +17,27 @@
 @if (ScreenSize.IsNarrow()) {
     <div class="selection-header">
         <div>
-            <ButtonRound
-                Class="transparent btn-sm"
+            <HeaderButton
                 Click="OnCancel">
                 <i class="icon-close-fill text-2xl"></i>
-            </ButtonRound>
+            </HeaderButton>
         </div>
         <div class="selection-header-title">
             @(m.Selection.Count) @("message".Pluralize(m.Selection.Count))
         </div>
         <div class="selection-header-buttons">
             @if (m.CanDelete) {
-                <HeaderButton
+                <ButtonRound
+                    Class="btn-xs btn-danger btn-transparent"
                     Click="@(() => SelectionUI.Delete())">
-                    <i class="icon-trash03 text-danger"></i>
-                </HeaderButton>
+                    <i class="icon-trash03 text-danger text-xl"></i>
+                </ButtonRound>
             }
-            <HeaderButton Click="@(() => SelectionUI.CopyToClipboard())">
-                <i class="icon-copy"></i>
-            </HeaderButton>
+            <ButtonRound
+                Class="btn-xs btn-primary btn-transparent"
+                Click="@(() => SelectionUI.CopyToClipboard())">
+                <i class="icon-copy text-xl"></i>
+            </ButtonRound>
             <Button
                 Class="btn-submit btn-transparent"
                 Click="@(() => SelectionUI.Forward())">
@@ -49,7 +51,7 @@
 <div class="selection-header">
     <div>
         <HeaderButton
-            Class="c-close-btn"
+            Class="c-close-btn blackout"
             Click="OnCancel">
             <i class="icon-close-fill text-2xl"></i>
         </HeaderButton>
@@ -61,19 +63,21 @@
 
     <div class="selection-header-buttons">
         @if (m.CanDelete) {
-            <HeaderButton
+            <ButtonRound
+                Class="btn-xs btn-danger btn-transparent"
                 Click="@(() => SelectionUI.Delete())"
                 Tooltip="Delete selected"
                 TooltipPosition="FloatingPosition.Bottom">
-                <i class="icon-trash03 text-danger"></i>
-            </HeaderButton>
+                <i class="icon-trash03 text-xl text-danger"></i>
+            </ButtonRound>
         }
-        <HeaderButton
+        <ButtonRound
+            Class="btn-xs btn-primary btn-transparent"
             Click="@(() => SelectionUI.CopyToClipboard())"
             Tooltip="Copy selected as text"
             TooltipPosition="FloatingPosition.Bottom">
-            <i class="icon-copy"></i>
-        </HeaderButton>
+            <i class="icon-copy text-xl"></i>
+        </ButtonRound>
         <Button
             Class="btn-primary btn-sm"
             Click="@(() => SelectionUI.Forward())">

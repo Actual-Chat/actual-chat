@@ -45,18 +45,13 @@
 }
 
 /* Buttons */
-.chat-audio-panel .btn.btn-round .btn-content {
-    @apply rounded-full;
-    @apply bg-post-panel md:bg-input;
-    @apply text-audio-panel-button-text;
-}
-.chat-audio-panel .record-off-btn.btn .btn-content,
-body.hoverable .chat-audio-panel .record-off-btn.btn:hover .btn-content {
+.chat-audio-panel .record-off-btn.btn,
+body.hoverable .chat-audio-panel .record-off-btn.btn:hover {
     @apply bg-gradient-to-b from-[var(--recorder-off-top)] to-[var(--recorder-off-bottom)];
     @apply text-06;
 }
-.chat-audio-panel .record-on-btn.btn .btn-content,
-body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
+.chat-audio-panel .record-on-btn.btn,
+body.hoverable .chat-audio-panel .record-on-btn.btn:hover {
     @apply bg-gradient-to-b from-[var(--recorder-on-top)] to-[var(--recorder-on-bottom)];
     @apply text-06;
 }
@@ -69,14 +64,14 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
 .chat-audio-panel .language-button .btn.btn-round,
 .chat-audio-panel .playback-wrapper .btn.btn-round,
 .chat-audio-panel .recorder-wrapper .btn.btn-round {
-    @apply bg-transparent;
+    @apply bg-post-panel md:bg-input;
+    @apply text-audio-panel-button-text;
 }
 .chat-audio-panel .recorder-wrapper.applying-changes .record-off-btn.btn,
 .chat-audio-panel .recorder-wrapper.applying-changes .record-on-btn.btn {
     @apply opacity-50;
 }
 .recorder-wrapper .recorder-icon {
-    @apply h-10 w-10;
     @apply always-white;
 }
 .recorder-wrapper .mic-disabled.btn .btn-content,
@@ -87,7 +82,8 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply border-text-04;
 }
 
-.playback-wrapper .btn.btn-round.on .btn-content {
+.playback-wrapper.listen-on,
+.playback-wrapper.listen-off-to-on {
     @apply bg-playback-on;
 }
 .playback-wrapper.listen-off-to-on,
@@ -124,10 +120,6 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .chat-audio-panel .recorder-wrapper {
     @apply border-none;
 }
-.narrow-panel.narrow .recorder-wrapper .recorder-icon,
-.wide .recorder-wrapper .recorder-icon {
-    @apply h-7 w-7;
-}
 
 /* Buttons, Mobile View */
 .narrow .chat-audio-panel .language-button,
@@ -148,12 +140,8 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .narrow .chat-audio-panel .language-button {
     @apply bg-gradient-to-b from-[var(--background-02)] to-[var(--background-01)];
 }
-.narrow .chat-audio-panel .playback-wrapper .btn.btn-round,
-.narrow .chat-audio-panel .transcription-options-btn.btn.btn-round {
-    @apply text-audio-panel-button-text;
-}
-.narrow .chat-audio-panel .playback-wrapper .btn.btn-round .btn-content,
-.narrow .chat-audio-panel .transcription-options-btn.btn.btn-round .btn-content {
+.narrow .playback-wrapper .btn.btn-round,
+.narrow .transcription-options-btn.btn.btn-round {
     @apply bg-audio-panel-button;
     @apply text-audio-panel-button-text;
 }
@@ -163,12 +151,14 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 }
 
 /* Playback, Mobile View */
-.narrow .chat-audio-panel .playback-wrapper.listen-on,
-.narrow .chat-audio-panel .playback-wrapper.listen-off-to-on {
+.narrow  .playback-wrapper.listen-on .btn.btn-round,
+.narrow .playback-wrapper.listen-off-to-on .btn.btn-round {
     @apply bg-playback-on;
 }
-.narrow .chat-audio-panel .playback-wrapper .btn.btn-round.on .btn-content {
-    @apply bg-playback-on;
+.narrow .playback-wrapper.listen-off-to-on,
+.narrow .playback-wrapper.listen-on {
+    @apply outline outline-1 outline-primary outline-offset-0;
+    @apply bg-round-focus;
 }
 .narrow.base-panel .chat-audio-panel .playback-wrapper {
     @apply min-w-12 max-w-12 min-h-12 max-h-12;
@@ -193,7 +183,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .narrow .chat-audio-panel .recorder-wrapper .btn {
     @apply self-center;
 }
-.narrow .chat-audio-panel .recorder-wrapper .btn .btn-content {
+.narrow .chat-audio-panel .recorder-wrapper .btn {
     @apply min-w-17 max-w-17 min-h-17 max-h-17;
     @apply text-06;
 }

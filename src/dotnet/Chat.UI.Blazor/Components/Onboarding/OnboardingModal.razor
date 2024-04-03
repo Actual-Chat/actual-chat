@@ -25,10 +25,10 @@
             </Steps>
             <Header>
                 @if (stepper.CanMoveBack) {
-                    <HeaderButton Click="@(_ => stepper.MoveBack())">
+                    <HeaderButton Class="blackout" Click="@(_ => stepper.MoveBack())">
                         <i class="icon-arrow-left text-2xl"></i>
                     </HeaderButton>
-                    <div class="text-xl md:text-lg font-semibold md:font-medium">Back</div>
+                    <div class="text-headline-7 text-02">Back</div>
                 }
                 <div class="grow"></div>
                 @if (ModalModel.CanBeClosed) {
@@ -41,7 +41,7 @@
                 <div class="btn-group">
                     @if (stepper.CanSkip) {
                         <Button
-                            Class=""
+                            Class="btn-cancel"
                             Click="@(async _ => await stepper.Skip())">
                             Skip
                         </Button>

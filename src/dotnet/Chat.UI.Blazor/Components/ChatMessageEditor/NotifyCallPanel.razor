@@ -10,25 +10,21 @@
 
 <div class="@panelCls notify-call-panel">
     @if (_enableIncompleteUI) {
-        <button class="post-panel-btn notify-call-toggle" Click="OnClick">
+        <HeaderButton Class="post-panel-btn notify-call-toggle" Click="@OnClick">
             <i class="icon-hand text-2xl"></i>
-        </button>
+        </HeaderButton>
     }
     <div class="notify-call-content">
         <div class="actions">
-            <Button Class="notify-btn" Click="@OnNotifyClick">
-                <div class="w-full flex-x items-center gap-x-2 mx-2">
-                    <i class="icon-at text-2xl"></i>
-                    <div>
-                        Notify
-                    </div>
-                </div>
+            <Button Class="notify-btn btn-transparent">
+                <IconContent><i class="icon-at text-2xl"></i></IconContent>
+                <TitleContent>Notify</TitleContent>
             </Button>
             everyone
         </div>
-        <ButtonRound Class="close-btn blackout" Click="OnClick">
+        <HeaderButton Class="close-btn" Click="OnClick">
             <i class="icon-close text-2xl"></i>
-        </ButtonRound>
+        </HeaderButton>
     </div>
 </div>
 

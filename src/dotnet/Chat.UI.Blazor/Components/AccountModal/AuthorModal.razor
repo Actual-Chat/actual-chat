@@ -32,17 +32,17 @@
         @if (m.IsOwn) {
             if (!m.Author.IsAnonymous) {
                 <Button Class="btn-modal btn-primary" Click="OnChangeAvatarClicked">
-                    <i class="icon-sync text-lg"></i>
-                    Change avatar
+                    <IconContent><i class="icon-sync text-lg"></i></IconContent>
+                    <TitleContent>Change avatar</TitleContent>
                 </Button>
             } else {
                 <Button Class="btn-modal" Click="@(_ => OnEditAvatarClicked(m.Author))">
-                    <i class="icon-sync text-lg md:hidden"></i>
-                    Edit avatar
+                    <IconContent><i class="icon-sync text-lg md:hidden"></i></IconContent>
+                    <TitleContent>Edit avatar</TitleContent>
                 </Button>
                 <Button Class="btn-modal btn-danger" Click="OnRevealClicked">
-                    <i class="icon-eye text-xl md:hidden"></i>
-                    Reveal
+                    <IconContent><i class="icon-eye text-xl md:hidden"></i></IconContent>
+                    <TitleContent>Reveal</TitleContent>
                 </Button>
             }
         } else if (m.Author.IsAnonymous) {
@@ -53,14 +53,12 @@
                     Class="btn-modal btn-primary start-chat-btn"
                     ContentClass="truncate"
                     Click="OnStartPeerChat">
-                    <i class="icon-message-ellipse text-xl"></i>
-                    <p>
-                        Chat with @m.Author.Avatar.Name
-                    </p>
+                    <IconContent><i class="icon-message-ellipse text-xl"></i></IconContent>
+                    <TitleContent>Chat with @m.Author.Avatar.Name</TitleContent>
                 </Button>
                 <Button Class="btn-modal" Click="OnStartAnonymousPeerChat">
-                    <i class="icon-question-mark-bubble text-xl"></i>
-                    Start anonymous chat
+                    <IconContent><i class="icon-question-mark-bubble text-xl"></i></IconContent>
+                    <TitleContent>Start anonymous chat</TitleContent>
                 </Button>
             } else {
                 <Button Class="btn-modal" Click="OnCancel">Close</Button>

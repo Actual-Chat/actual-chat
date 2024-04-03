@@ -25,7 +25,7 @@
                     if (tab.AdditionalAttributes != null)
                         attributes.AddRange(tab.AdditionalAttributes);
 
-                    var cls = $"tab-btn {(isActive ? "on" : "")} {(BottomBorder ? "bottom-border-btn" : "")} {tab.ButtonClass} ";
+                    var cls = $"tab-btn unhovered {(isActive ? "on" : "")} {(BottomBorder ? "bottom-border-btn" : "")} {tab.ButtonClass} ";
                     <div @key="@tab.Id" class="btn-group-container">
                         <Button
                             AdditionalAttributes="@attributes"

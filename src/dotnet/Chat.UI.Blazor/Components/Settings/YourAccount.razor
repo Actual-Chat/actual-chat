@@ -36,7 +36,7 @@
             Email
         </Caption>
         <Right>
-            <CopyToClipboard ButtonClass="btn-sm transparent tile-hidden-btn" Text="@account.Email"/>
+            <CopyToClipboard ButtonClass="btn-xs transparent tile-hidden-btn" Text="@account.Email"/>
             <VerificationStatus IsVerified="account.HasVerifiedEmail()" Class="w-8 h-8" Verify="@OnEditClick"/>
         </Right>
     </TileItem>
@@ -46,7 +46,7 @@
             <i class="icon-phone text-xl"></i>
         </Icon>
         <Right>
-            <CopyToClipboard ButtonClass="btn-sm transparent tile-hidden-btn" Text="@account.Phone.ToReadable()"/>
+            <CopyToClipboard ButtonClass="btn-xs transparent tile-hidden-btn" Text="@account.Phone.ToReadable()"/>
             <VerificationStatus IsVerified="account.HasVerifiedPhone()" Class="w-8 h-8" Verify="@OnEditClick"/>
         </Right>
         <Content>

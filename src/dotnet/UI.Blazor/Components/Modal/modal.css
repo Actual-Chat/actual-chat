@@ -101,8 +101,16 @@ body.narrow .modal-frame.modal-xs .c-text {
     @apply md:shadow-modal-wide;
 }
 
-.modal-frame:not(:has(.modal-header)):not(:has(.modal-header-interactive)) .dialog-body {
+.modal-frame .dialog-body {
     @apply pt-4;
+}
+.modal-frame:has(.modal-header) .dialog-body,
+.modal-frame:has(.modal-header-interactive) .dialog-body {
+    @apply pt-0;
+}
+.modal-frame .dialog-body:has(.stepper) {
+    @apply pt-0;
+    @apply overflow-hidden;
 }
 
 .btn.btn-square.modal-close {
@@ -171,7 +179,7 @@ body.narrow .dialog-buttons {
 }
 .dialog-buttons .btn {
     @apply flex-1;
-    @apply max-w-none;
+    @apply max-w-none w-auto;
 }
 
 .dialog-body .validation-errors {

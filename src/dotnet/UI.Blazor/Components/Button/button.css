@@ -1,345 +1,399 @@
-.btn, .btn-md {
+/* Sizes */
+.btn, .btn.btn-md {
     @apply relative;
-    @apply inline-flex-x justify-center;
-    @apply min-w-32 md:min-w-24 max-w-full md:max-w-max;
-    @apply h-12 md:h-10 min-h-12 md:min-h-10;
-    @apply py-1 px-3;
-    @apply rounded-lg border outline-none;
-    @apply text-xl md:text-lg font-normal md:font-normal;
+    @apply flex-initial inline-flex-x items-center justify-center;
+    @apply px-3;
+    @apply rounded-lg border-0 border-transparent;
+    @apply text-headline-1;
     @apply fill-current;
-    @apply whitespace-nowrap;
+    @apply truncate;
     @apply select-none;
-    @apply transition duration-150 ease-in-out;
-    @apply overflow-hidden;
 }
-.btn .btn-content {
-    @apply flex-x self-center items-center;
+.btn[data-button-class="default"],
+.btn.btn-md[data-button-class="default"] {
+    @apply min-h-12 h-12 md:min-h-10 md:h-10 w-fit;
 }
-
-.btn:disabled {
-    @apply opacity-70;
+.btn * {
+    @apply truncate;
 }
-.btn.-disabled:disabled {
-    @apply opacity-100;
+.btn > .btn-content {
+    @apply flex-x self-center items-center justify-center gap-x-2;
 }
-
-/* Primary */
-.btn.btn-primary {
-    @apply bg-primary;
-    @apply border-primary;
-    @apply text-primary-title;
+.btn > .btn-content.only-text {
+    @apply block;
 }
-.btn.btn-primary:active,
-.btn.btn-primary:focus:active {
-    @apply bg-primary;
-    @apply border-primary ring-1 ring-primary;
+.btn > .btn-content i {
+    @apply flex-none;
 }
-body.hoverable .btn.btn-primary:hover::after {
-    @apply more-colored-hover;
-}
-.btn.btn-primary:disabled,
-body.hoverable .btn.btn-primary:disabled:hover,
-.btn.btn-primary:disabled:focus,
-.btn.btn-primary:disabled:active,
-.btn.btn-primary:disabled:focus:active,
-.btn.btn-secondary:disabled,
-.btn.btn-secondary:disabled:focus,
-.btn.btn-secondary:disabled:active,
-.btn.btn-secondary:disabled:focus:active,
-body.hoverable .btn.btn-secondary:disabled:hover {
-    @apply bg-secondary-hover;
-    @apply border-secondary-hover ring-0;
-}
-
-/* Danger */
-.btn.btn-danger {
-    @apply bg-danger;
-    @apply border-danger;
-    @apply text-danger-title;
-}
-body.hoverable .btn.btn-danger:hover::after {
-    @apply danger-colored-hover;
-}
-.btn.btn-danger:active,
-.btn.btn-danger:focus:active {
-    @apply bg-danger;
-    @apply border-danger ring-1 ring-danger;
-}
-.btn.btn-danger:disabled,
-.btn.btn-danger:disabled:focus,
-.btn.btn-danger:disabled:active,
-.btn.btn-danger:disabled:focus:active,
-body.hoverable .btn.btn-danger:disabled:hover {
-    @apply bg-danger-hover;
-    @apply border-danger-hover ring-0;
-}
-
-/* Secondary */
-.btn.btn-secondary{
-    @apply bg-secondary;
-    @apply border-secondary;
-    @apply text-secondary-title;
-}
-body.hoverable .btn.btn-secondary:hover::after {
-    @apply less-colored-hover;
-}
-.btn.btn-secondary:active,
-.btn.btn-secondary:focus:active {
-    @apply bg-secondary;
-    @apply border-secondary ring-1 ring-secondary;
-}
-
-/* Cancel */
-.btn.btn-cancel {
-    @apply bg-cancel;
-    @apply border-cancel;
-    @apply text-cancel-title;
-}
-body.hoverable .btn.btn-cancel:hover::after {
-    @apply less-colored-hover;
-}
-.btn.btn-cancel:active,
-.btn.btn-cancel:focus:active {
-    @apply bg-cancel;
-    @apply border-cancel-hover ring-1 ring-cancel-hover;
-}
-.btn.btn-cancel:disabled,
-.btn.btn-cancel:disabled:focus,
-.btn.btn-cancel:disabled:active,
-.btn.btn-cancel:disabled:focus:active,
-body.hoverable .btn.btn-cancel:disabled:hover {
-    @apply bg-cancel-hover;
-    @apply border-cancel-hover ring-0;
-}
-
-/* Outline */
-.btn.btn-outline {
-    @apply bg-outline;
-    @apply border-primary;
-    @apply text-primary;
-}
-body.hoverable .btn.btn-outline:hover::after {
-    @apply primary-colored-hover;
-}
-.btn.btn-outline:active,
-.btn.btn-outline:focus:active {
-    @apply bg-outline-hover;
-    @apply border-primary ring-1 ring-primary;
-}
-.btn.btn-outline:disabled,
-.btn.btn-outline:disabled:focus,
-.btn.btn-outline:disabled:active,
-.btn.btn-outline:disabled:focus:active,
-body.hoverable .btn.btn-outline:disabled:hover {
-    @apply bg-outline-hover;
-    @apply border-outline-hover ring-0;
-}
-
-/* Danger outline */
-.btn.btn-danger-outline {
-    @apply bg-outline;
-    @apply border-danger;
-    @apply text-danger;
-}
-body.hoverable .btn.btn-danger-outline:hover::after {
-    @apply danger-colored-hover;
-}
-.btn.btn-danger-outline:active,
-.btn.btn-danger-outline:focus:active {
-    @apply bg-danger-outline-hover;
-    @apply border-danger ring-1 ring-danger;
-}
-.btn.btn-danger-outline:disabled,
-.btn.btn-danger-outline:disabled:focus,
-.btn.btn-danger-outline:disabled:active,
-.btn.btn-danger-outline:disabled:focus:active,
-body.hoverable .btn.btn-danger-outline:disabled:hover {
-    @apply bg-danger-outline-hover;
-    @apply text-danger-hover;
-    @apply text-danger-hover;
-}
-
-/* Transparent button */
-.btn.btn-transparent {
-    @apply flex-x;
-    @apply min-w-0 h-min;
-    @apply m-0 p-0;
-    @apply border-0 rounded-none;
-    @apply text-base;
-    @apply hover:cursor-pointer;
-}
-
-/* Modal buttons */
-.btn.btn-modal {
-    @apply min-w-20;
-    @apply px-2;
-    @apply border-0;
-    @apply text-headline-1 text-primary;
-    @apply bg-cancel;
-}
-.btn.btn-modal .btn-content {
-    @apply flex-x gap-x-2 items-center;
-}
-.btn.btn-modal:active,
-.btn.btn-modal:focus:active {
-    @apply bg-cancel;
-    @apply border-cancel-hover ring-1 ring-cancel-hover;
-}
-body.hoverable .btn.btn-modal:hover::after {
-    @apply less-colored-hover;
-}
-
-/* Modal primary button */
-.btn.btn-primary.btn-modal {
-    @apply bg-primary;
-    @apply text-white;
-}
-body.hoverable .btn.btn-modal.btn-primary:hover::after {
-    @apply more-colored-hover;
-}
-.btn.btn-modal.btn-primary:active,
-.btn.btn-modal.btn-primary:focus:active {
-    @apply bg-primary;
-    @apply border-primary ring-1 ring-primary;
-}
-
-/* Modal danger button */
-.btn.btn-modal.btn-danger {
-    @apply text-danger;
-}
-body.hoverable .btn.btn-modal.btn-danger:hover::after {
-    @apply danger-colored-hover;
-}
-.btn.btn-modal.btn-danger:active,
-.btn.btn-modal.btn-danger:focus:active {
-    @apply border-danger-hover ring-1 ring-danger-hover;
-}
-
-.btn.btn-modal.btn-narrow {
-    @apply min-w-12;
-}
-
 .btn.btn-xs {
-    @apply h-8 md:h-6 min-h-8 md:min-h-6;
-    @apply min-w-0 md:min-w-16;
-    @apply text-base md:text-base;
+    @apply min-h-8 max-h-8 md:min-h-6 md:max-h-6;
+    @apply text-caption-4;
 }
 .btn.btn-sm {
-    @apply h-10 md:h-8 min-h-10 md:min-h-8;
-    @apply min-w-0 md:min-w-20;
-    @apply text-lg md:text-base;
+    @apply min-h-10 max-h-10 md:min-h-8 md:max-h-8;
+    @apply text-caption-1;
 }
 .btn.btn-lg {
-    @apply h-16 md:h-12 min-h-16 md:min-h-12;
-    @apply min-w-0 md:min-w-28;
-    @apply text-2xl md:text-xl;
+    @apply min-h-16 max-h-16 md:min-h-12 md:max-h-12;
 }
 .btn.btn-w-full {
     @apply min-w-full;
 }
 
+/* Disabled */
+.btn:disabled {
+    @apply !bg-03;
+    @apply !text-04;
+}
+.btn:disabled::after {
+    @apply !bg-transparent;
+}
+
+/* Colors */
+.btn.btn-primary {
+    @apply bg-primary;
+    @apply text-primary-title;
+}
+.btn.btn-danger {
+    @apply bg-danger;
+    @apply text-danger-title;
+}
+.btn.btn-cancel {
+    @apply bg-cancel;
+    @apply text-cancel-title;
+}
+
+/* Hover, Focus, Active */
+body.hoverable .btn:hover::after {
+    @apply hover-after;
+    @apply bg-after-darker;
+}
+body.hoverable .btn.btn-cancel:hover::after {
+    @apply hover-after;
+    @apply bg-hover-after-primary;
+}
+.btn:active::after,
+.btn:hover:active::after,
+.btn:focus:active::after,
+.btn:hover:focus:active::after,
+.btn.btn-cancel:hover:active::after,
+.btn.btn-cancel:hover:focus:active::after {
+    @apply hover-after;
+    @apply bg-after-lighter;
+}
+.btn.unhovered:hover::after {
+    @apply hidden;
+}
+
+/* Outline Button */
+.btn.btn-outline,
+.btn.btn-outline.btn-primary {
+    @apply bg-transparent;
+    @apply border border-primary;
+    @apply text-primary;
+}
+.btn.btn-outline.btn-danger {
+    @apply border-danger;
+    @apply text-danger;
+}
+.btn.btn-outline.btn-cancel {
+    @apply border-cancel-text;
+    @apply text-cancel-text;
+}
+
+/* Outline Disabled */
+.btn.btn-outline:disabled {
+    @apply !bg-transparent;
+    @apply !text-cancel-text;
+    @apply !border-cancel-text;
+    @apply opacity-50;
+}
+
+/* Outline Hover */
+body.hoverable .btn.btn-outline:hover::after {
+    @apply hover-after;
+    @apply bg-hover-after-primary;
+}
+body.hoverable .btn.btn-outline.btn-danger:hover::after {
+    @apply hover-after;
+    @apply bg-hover-after-danger;
+}
+body.hoverable .btn.btn-outline.btn-cancel:hover::after {
+    @apply hover-after;
+    @apply bg-hover-after-cancel;
+}
+
+/* Outline Focus, Active */
+.btn.btn-outline:active::after,
+.btn.btn-outline:focus:active::after,
+.btn.btn-outline:hover:focus:active::after {
+    @apply hover-after;
+    @apply bg-focus-after-primary;
+}
+.btn.btn-outline.btn-danger:active::after,
+.btn.btn-outline.btn-danger:focus:active::after,
+.btn.btn-outline.btn-danger:hover:focus:active::after {
+    @apply hover-after;
+    @apply bg-focus-after-danger;
+}
+.btn.btn-outline.btn-cancel:active::after,
+.btn.btn-outline.btn-cancel:focus:active::after,
+.btn.btn-outline.btn-cancel:hover:focus:active::after {
+    @apply hover-after;
+    @apply bg-focus-after-cancel;
+}
+
+/* Transparent Button */
+.btn.btn-transparent,
+.btn.btn-transparent.btn-primary {
+    @apply bg-transparent;
+    @apply text-primary;
+}
+.btn.btn-transparent.btn-danger {
+    @apply text-danger;
+}
+.btn.btn-transparent.btn-cancel {
+    @apply text-cancel-text;
+}
+
+/* Transparent Disabled */
+.btn.btn-transparent:disabled {
+    @apply !bg-transparent;
+    @apply !text-cancel-text;
+    @apply !border-transparent;
+    @apply opacity-50;
+}
+
+/* Transparent hover */
+body.hoverable .btn.btn-transparent:hover::after {
+    @apply hover-after;
+    @apply bg-hover-after-primary;
+}
+body.hoverable .btn.btn-transparent.btn-danger:hover::after {
+    @apply hover-after;
+    @apply bg-hover-after-danger;
+}
+body.hoverable .btn.btn-transparent.btn-cancel:hover::after {
+    @apply hover-after;
+    @apply bg-hover-after-cancel;
+}
+
+/* Transparent focus, active */
+.btn.btn-transparent:active::after,
+.btn.btn-transparent:focus:active::after,
+.btn.btn-transparent:hover:focus:active::after {
+    @apply hover-after;
+    @apply bg-focus-after-primary;
+}
+.btn.btn-transparent.btn-danger:active::after,
+.btn.btn-transparent.btn-danger:focus:active::after,
+.btn.btn-transparent.btn-danger:hover:focus:active::after {
+    @apply hover-after;
+    @apply bg-focus-after-danger;
+}
+.btn.btn-transparent.btn-cancel:active::after,
+.btn.btn-transparent.btn-cancel:focus:active::after,
+.btn.btn-transparent.btn-cancel:hover:focus:active::after {
+    @apply hover-after;
+    @apply bg-focus-after-cancel;
+}
+
+/* Modal Button */
+.btn.btn-modal {
+    @apply flex-1;
+    @apply w-auto;
+    @apply bg-cancel;
+    @apply text-primary;
+}
+.btn.btn-modal.btn-primary {
+    @apply bg-primary;
+    @apply text-white;
+}
+.btn.btn-modal.btn-danger {
+    @apply bg-cancel;
+    @apply text-danger;
+}
+.btn.btn-modal.btn-cancel {
+    @apply bg-cancel;
+    @apply text-cancel-text;
+}
+
+/* Modal Disabled */
+.btn.btn-modal:disabled {
+    @apply !bg-cancel;
+    @apply !text-cancel-text;
+    @apply !border-transparent;
+    @apply opacity-50;
+}
+
+/* Modal hover */
+body.hoverable .btn.btn-modal:hover::after {
+    @apply hover-after;
+    @apply bg-after-darker;
+}
+
+/* Modal focus, active */
+.btn.btn-modal:active::after,
+.btn.btn-modal:focus:active::after,
+.btn.btn-modal:hover:focus:active::after {
+    @apply hover-after;
+    @apply bg-after-lighter
+}
+
 /* Button Square */
-.btn.btn-square {
-    @apply inline-block overflow-hidden;
-    @apply p-0 mx-0 min-w-0 h-auto min-h-0;
-    @apply border-0;
-    @apply rounded-xl md:rounded-lg;
+.btn.btn-square,
+.btn.btn-square.btn-primary,
+.btn.btn-square.btn-danger,
+.btn.btn-square.btn-cancel {
+    @apply flex-none;
+    @apply max-h-none max-w-none;
+    @apply p-0;
+    @apply rounded-lg;
     @apply bg-square;
+    @apply text-square-title;
 }
-.btn.btn-square:focus > .btn-content {
-    @apply bg-square-focus;
-}
-.btn.btn-square:active > .btn-content {
-    @apply bg-square-active;
-}
-body.hoverable .btn.btn-square:hover > .btn-content {
-    @apply bg-square-hover;
-}
+/* new code start */
 .btn.btn-square:disabled {
     @apply opacity-70;
 }
-.btn.btn-square.-disabled:disabled {
-    @apply opacity-100;
-}
-.btn.btn-square .btn-content {
-    @apply flex-none flex-x;
-    @apply w-full h-full;
+.btn.btn-square.transparent {
     @apply bg-transparent;
-    @apply text-square-title text-base font-semibold;
 }
-.btn.btn-square.show-on-hover {
-    @apply invisible z-10 absolute;
+body.hoverable .btn.btn-square:hover::after {
+    @apply hover-after;
+    @apply bg-hover-after-primary;
 }
-.btn.btn-square .btn-content-inner {
-    @apply p-0.5 self-center;
+body.hoverable .btn.btn-square:hover {
+    @apply bg-transparent;
+}
+.btn.btn-square:active::after,
+.btn.btn-square:hover:active::after,
+.btn.btn-square:focus:active::after,
+.btn.btn-square:hover:focus:active::after {
+    @apply hover-after;
+    @apply bg-focus-after-primary;
+}
+.btn.btn-square:active,
+.btn.btn-square:hover:active,
+.btn.btn-square:focus:active,
+.btn.btn-square:hover:focus:active {
+    @apply bg-transparent;
+}
+body.hoverable .btn.btn-square.btn-danger:hover::after {
+    @apply hover-after;
+    @apply bg-hover-after-danger;
+}
+body.hoverable .btn.btn-square.btn-primary:hover {
+    @apply text-primary;
+}
+body.hoverable .btn.btn-square.btn-danger:hover {
+    @apply text-danger;
+}
+body.hoverable .btn.btn-square.btn-cancel:hover {
+    @apply text-cancel-text;
+}
+.btn.btn-square.btn-danger:active::after,
+.btn.btn-square.btn-danger:hover:active::after,
+.btn.btn-square.btn-danger:focus:active::after,
+.btn.btn-square.btn-danger:hover:focus:active::after {
+    @apply hover-after;
+    @apply bg-focus-after-danger;
+}
+
+/* Button Square Sizes */
+.btn.btn-square, .btn.btn-square.btn-md {
+    @apply h-12 w-12;
+}
+.btn.btn-square.btn-sm {
+    @apply h-10 w-10;
+}
+.btn.btn-square.btn-xs {
+    @apply h-8 w-8;
 }
 
 /* Button Round */
-.btn.btn-round {
-    @apply flex self-center;
-    @apply min-w-0 min-h-0 h-fit w-fit;
-    @apply p-0 mx-0 ;
-    @apply rounded-full border-0;
-    @apply overflow-hidden;
-    @apply text-base text-round-title;
+.btn.btn-round,
+.btn.btn-round.btn-primary,
+.btn.btn-round.btn-danger,
+.btn.btn-round.btn-cancel {
+    @apply flex-none;
+    @apply max-h-none max-w-none;
+    @apply p-0;
+    @apply rounded-full;
     @apply bg-round;
+    @apply text-round-title;
 }
-.btn.btn-round:focus > .btn-content {
-    @apply bg-round-focus;
-}
-.btn.btn-round:active > .btn-content {
-    @apply bg-round-active;
-}
-body.hoverable .btn.btn-round:hover > .btn-content {
-    @apply bg-round-hover;
-}
+/* new code start */
 .btn.btn-round:disabled {
     @apply opacity-70;
 }
-.btn.btn-round.-disabled:disabled {
-    @apply opacity-100;
-}
-.btn.btn-round .btn-content {
-    @apply items-center justify-center;
-    @apply min-h-12 min-w-12 max-h-12 max-w-12;
-    @apply bg-transparent;
-    @apply text-round-title;
-}
-.btn.btn-round.transparent  {
+.btn.btn-round.btn-transparent {
     @apply bg-transparent;
 }
-.btn.btn-round.btn-md .btn-content {
-    @apply min-h-10 min-w-10 max-h-10 max-w-10;
+body.hoverable .btn.btn-round:hover::after {
+    @apply hover-after;
+    @apply bg-hover-after-primary;
 }
-.btn.btn-round.btn-sm .btn-content {
-    @apply min-h-8 min-w-8 max-h-8 max-w-8;
+body.hoverable .btn.btn-round:hover {
+    @apply bg-transparent;
 }
-.btn.btn-round.primary-icon .btn-content {
+.btn.btn-round:active::after,
+.btn.btn-round:hover:active::after,
+.btn.btn-round:focus:active::after,
+.btn.btn-round:hover:focus:active::after {
+    @apply hover-after;
+    @apply bg-focus-after-primary;
+}
+.btn.btn-round:active,
+.btn.btn-round:hover:active,
+.btn.btn-round:focus:active,
+.btn.btn-round:hover:focus:active {
+    @apply bg-transparent;
+}
+body.hoverable .btn.btn-round.btn-danger:hover::after {
+    @apply hover-after;
+    @apply bg-hover-after-danger;
+}
+body.hoverable .btn.btn-round.btn-primary:hover {
     @apply text-primary;
 }
-.btn.btn-round.accent-icon .btn-content {
-    @apply text-primary;
+body.hoverable .btn.btn-round.btn-danger:hover {
+    @apply text-danger;
 }
-.btn.btn-round.hover-primary-icon .btn-content {
-    @apply hover:text-primary;
+body.hoverable .btn.btn-round.btn-cancel:hover {
+    @apply text-cancel-text;
 }
-body.hoverable .btn.blackout:hover .btn-content,
+.btn.btn-round.btn-danger:active::after,
+.btn.btn-round.btn-danger:hover:active::after,
+.btn.btn-round.btn-danger:focus:active::after,
+.btn.btn-round.btn-danger:hover:focus:active::after {
+    @apply hover-after;
+    @apply bg-focus-after-danger;
+}
+
+/* Button Round Sizes */
+.btn.btn-round, .btn.btn-round.btn-md {
+    @apply h-12 w-12;
+}
+.btn.btn-round.btn-sm {
+    @apply h-10 w-10;
+}
+.btn.btn-round.btn-xs {
+    @apply h-8 w-8;
+}
 body.hoverable .btn-h.blackout:hover,
-.btn.blackout:focus .btn-content,
-.btn.blackout:active .btn-content {
+.btn.blackout:focus,
+.btn.blackout:active {
     @apply text-02;
 }
-body.hoverable .btn.bleached:hover .btn-content,
+body.hoverable .btn.bleached:hover,
 body.hoverable .btn-h.bleached:hover,
-.btn.bleached:focus .btn-content,
-.btn.bleached:active .btn-content {
+.btn.bleached:focus,
+.btn.bleached:active {
     @apply text-white;
 }
 .btn.btn-round.show-on-hover {
     @apply invisible z-10 absolute;
-}
-.btn.btn-round .btn-content-inner {
-    @apply p-1 self-center;
 }
 
 /*Default horizontal*/
@@ -357,24 +411,13 @@ body.hoverable .btn-h.bleached:hover,
     @apply flex-col gap-y-2;
 }
 
-/* Dot */
-
-.dot {
-    @apply rounded-full ring-1 ring-dot-selected m-2.5;
-}
-.dot-dot {
-    @apply h-2 w-2 rounded-full m-0.5 bg-dot;
-}
-.on .dot-dot {
-    @apply bg-dot-selected;
-}
-
 /* Suffixes */
-
 button.on, .btn.on, .btn.btn-square.on, .btn.btn-round.on {
     @apply text-primary;
 }
-button.on .btn-content, .btn.on .btn-content, .btn.btn-square.on .btn-content, .btn.btn-round.on .btn-content {
+.btn-h.on,
+.btn-h.on:focus,
+body.hoverable .btn-h.on:hover {
     @apply text-primary;
 }
 button.off, .btn.off {
@@ -385,9 +428,6 @@ button.off, .btn.off {
 }
 
 /* Specific buttons */
-/*.btn-x {*/
-/*    @apply transparent;*/
-/*}*/
 body.hoverable .btn.btn-x .btn-content,
 body.hoverable .btn.btn-x:hover .btn-content,
 body.hoverable .btn.btn-x:focus .btn-content,
@@ -397,44 +437,20 @@ body.hoverable .btn.btn-x:active .btn-content {
 body.hoverable .btn.btn-x:hover .btn-content {
     @apply text-02;
 }
-.btn-x .btn-content-inner > i {
-    @apply relative top-px; /* To make it properly centered */
-    @apply text-2xl font-medium;
-}
 
+/* Header Button */
 .btn-h {
     @apply relative z-20;
     @apply flex-none flex items-center justify-center;
-    @apply min-w-6 min-h-6;
     @apply text-03;
 }
-body.hoverable .btn-h:hover,
-.btn-h:focus,
-.btn-h:active {
-    @apply text-02;
-}
+
 body.hoverable .btn-h.inactive:hover {
     @apply text-03;
 }
 .btn-h > .c-content {
     @apply relative z-20;
     @apply flex items-center;
-}
-.btn-h > .c-ground {
-    @apply absolute z-10;
-    @apply rounded-full;
-    @apply invisible;
-    @apply bg-header-btn-active;
-    @apply w-10 h-10;
-}
-.btn-h.inactive > .c-ground {
-    @apply bg-transparent;
-}
-.btn-h:active > .c-ground {
-    @apply visible;
-}
-body.hoverable .btn-h:active > .c-ground {
-    @apply invisible;
 }
 .btn-h i {
     @apply text-2xl leading-6;
@@ -445,14 +461,22 @@ body.hoverable .btn-h:active > .c-ground {
 .btn-h.inverted {
     @apply text-03;
 }
-.btn-h.inverted > .c-ground {
-    @apply bg-07;
-}
 body.hoverable .btn-h.inverted:hover {
     @apply text-06;
 }
 body.narrow .btn-h.inverted {
     @apply text-06;
+}
+
+/* Header Button Sizes */
+.btn-h, .btn-h.btn-md {
+    @apply w-6 h-6;
+}
+.btn-h.btn-lg {
+    @apply h-10 w-10;
+}
+.btn-h.btn-sm {
+    @apply w-5 h-5;
 }
 
 .btn-submit {

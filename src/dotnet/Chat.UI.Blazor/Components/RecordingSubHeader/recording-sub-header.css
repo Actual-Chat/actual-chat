@@ -11,6 +11,7 @@
 }
 .recording-sub-header > .c-container {
     @apply flex-1 flex-y md:flex-x items-start justify-start gap-y-1;
+    @apply overflow-hidden;
 }
 .recording-sub-header .c-line-1 {
     @apply flex-1 flex-x flex-nowrap;
@@ -56,10 +57,12 @@
     @apply truncate;
     @apply text-caption-1;
 }
-.recording-sub-header .btn .btn-content {
+.recording-sub-header .btn {
+    @apply flex-none;
     @apply text-banner-warning;
 }
-.recording-sub-header.recording-elsewhere .btn .btn-content {
+.recording-sub-header.recording-elsewhere .btn {
+    @apply px-1;
     @apply text-banner-error;
 }
 .recording-sub-header.recording-elsewhere .btn:hover {

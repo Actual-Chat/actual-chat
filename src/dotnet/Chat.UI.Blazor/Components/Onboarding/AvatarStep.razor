@@ -10,26 +10,22 @@
     return;
 }
 
-<div>
+<div class="avatar-step">
     <p class="text-title-1 text-center">Your user name and avatar</p>
     <Form
         @ref="_formRef"
         Model="@_model">
         <DataAnnotationsValidator/>
-        <div class="flex-none flex-x my-8">
+        <div class="c-upload">
             <Pic
                 Title="@_model.Name"
                 Picture="@_model.Picture"
                 Size="SquareSize.Size24"/>
 
-            <div class="flex-y">
-                <Button Class="transparent border-none" Click="OnGenerateAvatarClick">
-                    <div class="flex min-w-10 items-center justify-center">
-                        <i class="icon-sync text-xl text-primary"></i>
-                    </div>
-                    <div class="flex items-center text-headline-1 text-primary">
-                        Generate random avatar
-                    </div>
+            <div class="c-buttons">
+                <Button Class="btn-modal btn-sm btn-transparent" Click="OnGenerateAvatarClick">
+                    <IconContent><i class="icon-sync text-xl text-primary"></i></IconContent>
+                    <TitleContent>Generate avatar</TitleContent>
                 </Button>
                 <FileUpload
                     @key="@_model.AvatarId.Value"
@@ -40,15 +36,12 @@
                     accept="image/*"
                     hidden>
                 </FileUpload>
-                <Button Class="transparent border-none">
-                    <label for="fileUpload" class="flex-x">
-                        <div class="flex min-w-10 items-center justify-center">
-                            <i class="icon-image text-xl text-primary"></i>
-                        </div>
-                        <div class="flex items-center text-headline-1 text-primary">
-                            Upload your photo
-                        </div>
-                    </label>
+                <Button Class="btn-modal btn-sm btn-transparent">
+                    <IconContent><i class="icon-image text-xl text-primary"></i></IconContent>
+                    <TitleContent>
+                        <label for="fileUpload" class="flex-x"></label>
+                        Upload your photo
+                    </TitleContent>
                 </Button>
             </div>
         </div>

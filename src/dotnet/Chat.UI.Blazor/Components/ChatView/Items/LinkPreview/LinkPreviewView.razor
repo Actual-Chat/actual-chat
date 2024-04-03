@@ -52,7 +52,7 @@
     <div class="link-buttons">
         @if (uri != null) {
             <CopyTrigger Tooltip="@Entry.Content" CopyText="@Entry.Content">
-                <ButtonRound Class="btn-sm">
+                <ButtonRound Class="btn-xs">
                     <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
                     <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
                 </ButtonRound>
@@ -60,7 +60,7 @@
         }
         <ButtonRound
             Tooltip="Forward"
-            Class="btn-sm"
+            Class="btn-xs"
             Click="@(() => SelectionUI.Forward(Entry.Id))">
             <i class="icon-share"></i>
         </ButtonRound>

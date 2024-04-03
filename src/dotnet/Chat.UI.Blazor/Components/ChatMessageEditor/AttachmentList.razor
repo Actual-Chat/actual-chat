@@ -10,10 +10,10 @@
 @if (_attachments.Count > 0) {
     <div class="attachment-list-wrapper">
         <div class="c-btn-group">
-            <Button Class="btn-sm attachment-list-btn c-remove" Click="_ => Clear()">
+            <Button Class="attachment-list-btn btn-danger btn-transparent unhovered c-remove" Click="_ => Clear()">
                 Remove all
             </Button>
-            <Button Class="btn-sm attachment-list-btn c-send" Click="OnSendClick">
+            <Button Class="attachment-list-btn btn-primary btn-transparent unhovered c-send" Click="OnSendClick">
                 Send @_attachments.Count @("file".Pluralize(_attachments.Count))
             </Button>
         </div>
@@ -32,7 +32,7 @@
                 <li class="attachment-wrapper">
                     <div class="flex-y relative">
                         <div class="attachment-item">
-                            <ButtonSquare Click="@(() => OnRemoveClick(attachment))" Class="remove-attachment-btn">
+                            <ButtonSquare Click="@(() => OnRemoveClick(attachment))" Class="remove-attachment-btn btn-danger btn-sm">
                                 <i class="icon-trash03 text-2xl font-thin"></i>
                             </ButtonSquare>
                             @if (attachment.IsImage) {
