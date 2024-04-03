@@ -92,8 +92,10 @@ public sealed class DbModule(IServiceProvider moduleServices)
                     npgsql.EnableRetryOnFailure(0);
                     npgsql.MaxBatchSize(16); // NOTE(AY): Was 1 - not sure why, prob. related to old concurrency issues
                     npgsql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
-                });
-                db.UseNpgsqlHintFormatter();
+                })
+                .UseNpgsqlHintFormatter()
+                .UseNpgsqlConflictStrategies();
+
                 // To be enabled later (requires migrations):
                 // builder.UseValidationCheckConstraints(c => c.UseRegex(false));
                 break;

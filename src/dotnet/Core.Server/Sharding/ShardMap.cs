@@ -53,7 +53,7 @@ public sealed class ShardMap
 
     public override string ToString()
     {
-        var sb = StringBuilderExt.Acquire();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append(nameof(ShardMap));
         sb.Append('(').Append(ShardScheme).Append(" -> ");
         sb.Append(Nodes.Length).Append(' ').Append("node".Pluralize(Nodes.Length)).Append(')');
