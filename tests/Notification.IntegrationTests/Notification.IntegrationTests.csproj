@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\dotnet\Notification.Service\Notification.Service.csproj" />
+    <ProjectReference Include="..\Testing.Host\Testing.Host.csproj" />
+    <ProjectReference Include="..\Testing\Testing.csproj" />
+  </ItemGroup>
+                                                                                 
+</Project>
