@@ -16,6 +16,7 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
     public DbSet<DbAuthor> Authors { get; protected set; } = null!;
     public DbSet<DbRole> Roles { get; protected set; } = null!;
     public DbSet<DbAuthorRole> AuthorRoles { get; protected set; } = null!;
+    public DbSet<DbCopiedChat> CopiedChats { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;

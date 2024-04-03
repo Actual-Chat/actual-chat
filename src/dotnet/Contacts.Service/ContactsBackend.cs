@@ -18,11 +18,13 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
     private const string RedisKeyPrefix = ".ContactGreetingLocks.";
     private IAccountsBackend? _accountsBackend;
+    private IAuthorsBackend? _authorsBackend;
     private IChatsBackend? _chatsBackend;
     private IExternalContactsBackend? _externalContactsBackend;
     private RedisDb<ContactsDbContext>? _redisDb;
 
     private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
+    private IAuthorsBackend AuthorsBackend => _authorsBackend ??= Services.GetRequiredService<IAuthorsBackend>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
     private IExternalContactsBackend ExternalContactsBackend
         => _externalContactsBackend ??= Services.GetRequiredService<IExternalContactsBackend>();
@@ -476,6 +478,49 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         context.Operation().Items.SetId(ownerId);
     }
 
+    // [CommandHandler]
+    public virtual async Task OnPublishCopiedChat(
+        ContactsBackend_PublishCopiedChat command,
+        CancellationToken cancellationToken)
+    {
+        var newChatId = command.NewChatId;
+
+        if (Computed.IsInvalidating()) {
+            _ = PseudoChatContact(newChatId);
+            _ = PseudoPlaceContact(newChatId.PlaceId);
+            return;
+        }
+
+        if (!newChatId.IsPlaceChat)
+            throw StandardError.Constraint($"Place chat id is expected, but '{newChatId.Value}' is given.");
+
+        var placeId = newChatId.PlaceId;
+
+        Log.LogInformation("-> OnPublishCopiedChat: creating contacts for chat '{ChatId}'", newChatId);
+
+        var authorIds = await AuthorsBackend.ListAuthorIds(newChatId, cancellationToken).ConfigureAwait(false);
+        foreach (var authorId in authorIds) {
+            var author = await AuthorsBackend.Get(authorId.ChatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+            if (author == null || author.HasLeft)
+                continue;
+
+            var userId = author.UserId;
+            var changePlaceMembership = new ContactsBackend_ChangePlaceMembership(placeId, userId, false);
+            await Commander.Call(changePlaceMembership, false, cancellationToken).ConfigureAwait(false);
+
+            var contactId = new ContactId(userId, newChatId, AssumeValid.Option);
+            var contact = await Get(userId, contactId, cancellationToken).ConfigureAwait(false);
+            if (contact.IsStored())
+                continue; // No need to make any changes
+
+            var change = Change.Create(new Contact(contactId));
+            var createContact = new ContactsBackend_Change(contactId, null, change);
+            await Commander.Call(createContact, false, cancellationToken).ConfigureAwait(false);
+        }
+
+        Log.LogInformation("<- OnPublishCopiedChat: created contacts for chat '{ChatId}'", newChatId);
+    }
+
     // Events
 
     [EventHandler]
@@ -555,54 +600,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         var command = new ContactsBackend_Touch(contact.Id);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
-    }
-
-    public virtual async Task OnMoveChatToPlace(ContactsBackend_MoveChatToPlace command, CancellationToken cancellationToken)
-    {
-        var (chatId, placeId) = command;
-        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
-        var newChatId = (ChatId)placeChatId;
-
-        if (Computed.IsInvalidating()) {
-            _ = PseudoChatContact(chatId);
-            _ = PseudoChatContact(newChatId);
-            _ = PseudoPlaceContact(placeId);
-            return;
-        }
-
-        var chatSid = chatId.Value;
-        var placeSid = placeId.Value;
-
-        Log.LogInformation("OnMoveChatToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'", chatSid, placeSid);
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbContacts = await dbContext.Contacts
-            .Where(c => c.ChatId == chatSid)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        // Update DbContacts
-        foreach (var dbContact in dbContacts) {
-            var contactSid = dbContact.Id;
-            var ownerId = new UserId(dbContact.OwnerId);
-            var newContactSid = ContactId.Format(ownerId, newChatId);
-            var newChatSid = newChatId.Value;
-
-            _ = await dbContext.Contacts
-                .Where(c => c.Id == contactSid)
-                .ExecuteUpdateAsync(setters => setters
-                        .SetProperty(c => c.Id, _ => newContactSid)
-                        .SetProperty(c => c.ChatId, _ => newChatSid)
-                        .SetProperty(c => c.PlaceId, _ => placeSid),
-                    cancellationToken)
-                .RequireOneUpdated()
-                .ConfigureAwait(false);
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        // Place contacts should be added on adding authors to place root chat during processing ChatsMigrationBackend_MoveToPlace.
-        Log.LogInformation("OnMoveChatToPlace: completed");
     }
 
     // Protected methods

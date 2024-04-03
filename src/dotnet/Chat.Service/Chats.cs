@@ -128,6 +128,16 @@ public class Chats(IServiceProvider services) : IChats
             .ToApiArray();
     }
 
+    // [ComputeMethod]
+    public virtual async Task<CopiedChat?> GetCopiedChat(Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return null;
+
+        return await Backend.GetCopiedChat(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
     // Not a [ComputeMethod]!
     public virtual async Task<ChatEntry?> FindNext(
         Session session,
@@ -655,7 +665,7 @@ public class Chats(IServiceProvider services) : IChats
 
             var place = await Places.Get(session, placeId, cancellationToken).Require().ConfigureAwait(false);
             if (!place.Rules.IsOwner())
-                throw StandardError.Constraint("You should be a place owner to perform 'move to place' operation.");
+                throw StandardError.Constraint("You should be a place owner to perform 'copy chat to place' operation.");
 
             var backendCmd = new ChatBackend_CopyChat(chatId, placeId, correlationId);
             var result = await Commander.Call(backendCmd, true, cancellationToken).ConfigureAwait(false);
@@ -680,17 +690,6 @@ public class Chats(IServiceProvider services) : IChats
                 }
             }
         }
-
-        // var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
-        // var newChatId = (ChatId)placeChatId;
-        // var contact = await Contacts.GetForChat(session, newChatId, cancellationToken).ConfigureAwait(false);
-        // Log.LogInformation("Contact for chat id '{ChatId}' is {Contact}", newChatId, contact);
-        // if (contact == null || contact.PlaceId.IsNone || !contact.IsStored()) {
-        //     var backendCmd2 = new ContactsBackend_MoveChatToPlace(chatId, placeId);
-        //     await Commander.Call(backendCmd2, true, cancellationToken).ConfigureAwait(false);
-        //     executed = true;
-        // }
-        //
         {
             var backendCmd3 = new AccountsBackend_CopyChat(chatId, placeId, maxEntryId, correlationId);
             var hasChanges3 = await Commander.Call(backendCmd3, true, cancellationToken).ConfigureAwait(false);
@@ -699,5 +698,53 @@ public class Chats(IServiceProvider services) : IChats
 
         Log.LogInformation("<- OnCopyChat({CorrelationId})", correlationId);
         return new Chat_CopyChatResult(hasChanges, hasErrors);
+    }
+
+    public virtual async Task OnPublishCopiedChat(Chat_PublishCopiedChat command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, newChatId, sourceChatId) = command;
+
+        if (!newChatId.IsPlaceChat)
+            throw StandardError.Constraint("New chat id should be a place chat id.");
+
+        var localChatId = sourceChatId.IsPlaceChat ? sourceChatId.PlaceChatId.LocalChatId : sourceChatId.Id;
+        if (newChatId.PlaceChatId.LocalChatId != localChatId)
+            throw StandardError.Constraint("New chat is seems not a copy of provided source chat.");
+
+        var newChat = await Get(session, newChatId, cancellationToken).Require().ConfigureAwait(false);
+        if (!newChat.Rules.IsOwner())
+            throw StandardError.Constraint("You must be the Owner of this chat to perform this operation.");
+
+        var place = await Places.Get(session, newChat.Id.PlaceId, cancellationToken).Require().ConfigureAwait(false);
+        if (!place.Rules.IsOwner())
+            throw StandardError.Constraint("You must be a chat's place owner to perform this operation.");
+
+        var sourceChat = await Get(session, sourceChatId, cancellationToken).Require().ConfigureAwait(false);
+        var copiedChat = await GetCopiedChat(session, newChatId, cancellationToken).Require().ConfigureAwait(false);
+
+        if (newChat.IsPublic != sourceChat.IsPublic) {
+            var changeChatCmd = new Chats_Change(session,
+                newChat.Id,
+                newChat.Version,
+                Change.Update(new ChatDiff {
+                    IsPublic = sourceChat.IsPublic,
+                }));
+            await Commander.Call(changeChatCmd, true, cancellationToken).ConfigureAwait(false);
+        }
+
+        var publishContactsCmd = new ContactsBackend_PublishCopiedChat(newChatId);
+        await Commander.Call(publishContactsCmd, true, cancellationToken).ConfigureAwait(false);
+
+        if (!copiedChat.IsPublished) {
+            var publishCopiedChatCmd = new ChatsBackend_ChangeCopiedChat(copiedChat.Id,
+                copiedChat.Version,
+                Change.Update(new CopiedChatDiff {
+                    IsPublished = true,
+                }));
+            await Commander.Call(publishCopiedChatCmd, true, cancellationToken).ConfigureAwait(false);
+        }
     }
 }

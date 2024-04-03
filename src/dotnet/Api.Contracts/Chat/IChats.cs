@@ -48,6 +48,9 @@ public interface IChats : IComputeService
     [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<ApiArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken);
 
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.NoCache)]
+    Task<CopiedChat?> GetCopiedChat(Session session, ChatId chatId, CancellationToken cancellationToken);
+
     // Non-compute methods
 
     Task<ChatEntry?> FindNext(
@@ -85,6 +88,9 @@ public interface IChats : IComputeService
 
     [CommandHandler]
     Task<Chat_CopyChatResult> OnCopyChat(Chat_CopyChat command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnPublishCopiedChat(Chat_PublishCopiedChat command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -179,3 +185,11 @@ public sealed partial record Chat_CopyChatResult(
     [property: DataMember, MemoryPackOrder(0)] bool HasChanges,
     [property: DataMember, MemoryPackOrder(1)] bool HasErrors
 );
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Chat_PublishCopiedChat(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] ChatId NewChatId,
+    [property: DataMember, MemoryPackOrder(2)] ChatId SourceChatId
+) : ISessionCommand<Unit>;

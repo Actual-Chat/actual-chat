@@ -54,6 +54,9 @@ public interface IChatsBackend : IComputeService, IBackendService
         PlaceId placeId,
         CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<CopiedChat?> GetCopiedChat(ChatId chatId, CancellationToken cancellationToken);
+
     // Non-compute methods
     Task<ApiArray<Chat>> List(
         Moment minCreatedAt,
@@ -101,6 +104,8 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task OnCreateNotesChat(ChatsBackend_CreateNotesChat command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ChatBackend_CopyChatResult> OnCopyChat(ChatBackend_CopyChat command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<CopiedChat> OnChangeCopiedChat(ChatsBackend_ChangeCopiedChat command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -195,3 +200,15 @@ public sealed partial record ChatBackend_CopyChatResult(
     [property: DataMember, MemoryPackOrder(1)] bool HasErrors,
     [property: DataMember, MemoryPackOrder(2)] long LastEntryId
 );
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsBackend_ChangeCopiedChat(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2)] Change<CopiedChatDiff> Change
+) : ICommand<CopiedChat>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => ChatId;
+}

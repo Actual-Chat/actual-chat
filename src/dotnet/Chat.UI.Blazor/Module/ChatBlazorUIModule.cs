@@ -83,6 +83,7 @@ public sealed class ChatBlazorUIModule(IServiceProvider moduleServices)
             .Add<ListeningSettingsModal.Model, ListeningSettingsModal>()
             .Add<ChatSettingsModal.Model, ChatSettingsModal>()
             .Add<PlaceSettingsModal.Model, PlaceSettingsModal>()
+            .Add<CopyChatToPlaceModal.Model, CopyChatToPlaceModal>()
             .Add<AddMemberModal.Model, AddMemberModal>()
             .Add<NewChatModal.Model, NewChatModal>()
             .Add<NewPlaceModal.Model, NewPlaceModal>()
@@ -96,7 +97,7 @@ public sealed class ChatBlazorUIModule(IServiceProvider moduleServices)
             .Add<ShareModalModel, ShareModal>()
             .Add<IncomingShareModal.Model, IncomingShareModal>()
             .Add<DownloadAppModal.Model, DownloadAppModal>()
-            .Add<AdminCopyChatToPlaceErrorModal.Model, AdminCopyChatToPlaceErrorModal>()
+            .Add<CopyChatToPlaceErrorModal.Model, CopyChatToPlaceErrorModal>()
         );
         // IBannerViews
         services.AddTypeMap<IBannerView>(map => map

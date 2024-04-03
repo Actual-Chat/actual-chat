@@ -48,6 +48,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; } = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
+    private IDbEntityResolver<string, DbCopiedChat> DbCopiedChatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbCopiedChat>>();
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
     private OtelMetrics Metrics { get; } = services.Metrics();
@@ -307,6 +308,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
     }
 
+    // [ComputeMethod]
+    public virtual async Task<CopiedChat?> GetCopiedChat(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var dbCopiedChat = await DbCopiedChatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
+        return dbCopiedChat?.ToModel();
+    }
+
     [ComputeMethod]
     protected virtual async Task<ApiArray<TextEntryAttachment>> GetEntryAttachments(TextEntryId entryId, CancellationToken cancellationToken)
     {
@@ -342,7 +350,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (attachment.MediaId.IsNone)
                 return attachment;
 
-            var media = mediaMap.GetValueOrDefault(attachment.MediaId) ?? attachment.Media;
+            var media = mediaMap.GetValueOrDefault(attachment.MediaId) ?? attachment.Media ?? new Media.Media();
             var thumbnailMedia = attachment.ThumbnailMedia;
             if (!attachment.ThumbnailMediaId.IsNone)
                 thumbnailMedia = mediaMap.GetValueOrDefault(attachment.ThumbnailMediaId) ?? thumbnailMedia;
@@ -1177,6 +1185,79 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             },
             userId);
         await Commander.Call(createNotesCommand, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task<CopiedChat> OnChangeCopiedChat(ChatsBackend_ChangeCopiedChat command, CancellationToken cancellationToken)
+    {
+        var change = command.Change;
+        var chatId = command.ChatId;
+        var expectedVersion = command.ExpectedVersion;
+
+        if (Computed.IsInvalidating()) {
+            _ = GetCopiedChat(chatId, default);
+            return null!;
+        }
+
+        change.RequireValid();
+        CopiedChat copiedChat;
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+        var dbCopiedChat = await dbContext.CopiedChats.ForUpdate()
+            // ReSharper disable once AccessToModifiedClosure
+            .FirstOrDefaultAsync(c => c.Id == chatId, cancellationToken)
+            .ConfigureAwait(false);
+        var oldCopiedChat = dbCopiedChat?.ToModel();
+
+        if (change.IsCreate(out var update)) {
+            oldCopiedChat.RequireNull();
+
+            copiedChat = new CopiedChat(chatId) {
+                CreatedAt = Clocks.SystemClock.Now,
+            };
+            copiedChat = DiffEngine.Patch(copiedChat, update) with {
+                Version = VersionGenerator.NextVersion(),
+            };
+            if (copiedChat.SourceChatId.IsNone)
+                throw StandardError.Constraint("SourceChatId should be specified to create CopiedChat.");
+
+            dbCopiedChat = new DbCopiedChat(copiedChat);
+            dbContext.Add(dbCopiedChat);
+        }
+        else if (change.IsUpdate(out update)) {
+            dbCopiedChat.RequireVersion(expectedVersion);
+            if (update.SourceChatId.HasValue)
+                throw StandardError.Constraint("SourceChatId can't be edited.");
+            var originalCopiedChat = dbCopiedChat.ToModel();
+            if (originalCopiedChat.IsPublished)
+                throw StandardError.Constraint("CopiedChat can't be edited after it has been marked as published.");
+
+            copiedChat = DiffEngine.Patch(originalCopiedChat, update) with {
+                Version = VersionGenerator.NextVersion(),
+            };
+
+            if (update.IsPublished == true)
+                copiedChat = copiedChat with {
+                    PublishedAt = Clocks.SystemClock.Now,
+                };
+
+            if (update.IsCopiedSuccessfully.HasValue || update.LastEntryId.HasValue)
+                copiedChat = copiedChat with {
+                    LastCopyingAt = Clocks.SystemClock.Now,
+                };
+
+            dbCopiedChat.UpdateFrom(copiedChat);
+        }
+        else if (change.IsRemove()) {
+            dbCopiedChat.Require();
+            throw StandardError.Constraint("Removing CopiedChat is not allowed.");
+        }
+        else
+            throw StandardError.Internal("Invalid CopiedChatDiff state.");
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return copiedChat;
     }
 
     // Event handlers

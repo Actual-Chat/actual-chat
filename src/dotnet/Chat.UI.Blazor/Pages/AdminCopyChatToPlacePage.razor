@@ -5,7 +5,7 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Copy chat to place</MainHeader>
 
-<Form Class="h-full" @ref="@_formRef" Model="@_form" OnValidSubmit="@CopyChatToPlace">
+<Form Class="h-full" @ref="@_formRef" Model="@_form">
     <FormBlock>
         <DataAnnotationsValidator/>
 
@@ -26,12 +26,13 @@
         </FormSection>
     </FormBlock>
 
-    <Button Type="@ButtonType.Submit">Copy chat to place</Button>
+    <Button Type="@ButtonType.Button" Click="@(() => CopyChatToPlace())">Copy chat to place</Button>
+    <Button Type="@ButtonType.Button" Click="@(() => PublishCopiedChat())">Publish copied chat</Button>
 </Form>
 
 
 @code {
-    private Form?_formRef;
+    private Form? _formRef;
     private FormModel _form = null!;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -42,6 +43,71 @@
 
     protected override void OnInitialized() {
         _form = new FormModel(ComponentIdGenerator);
+    }
+
+    private async Task CopyChatToPlace() {
+        if (!EnsureFormIsValid())
+            return;
+
+        var session = Hub.Session();
+        var chatId = ChatId.Parse(_form.ChatId);
+        var placeId = PlaceId.Parse(_form.PlaceId);
+        var chat = await Hub.Chats.Get(session, chatId, default);
+        var place = await Hub.Places.Get(session, placeId, default).Require();
+        var chatDescriptor = chat?.Title ?? chatId.Value;
+        var message = $"You are about to copy chat '{chatDescriptor}' to place '{place.Title}'. Do you want to proceed?";
+        await ModalUI.Show(new ConfirmModal.Model(false, message, () => _ = CopyInternal()));
+
+        async Task CopyInternal() {
+            var correlationId = Guid.NewGuid().ToString();
+            var command = new Chat_CopyChat(session, chatId, placeId, correlationId);
+            var (result, error) = await Hub.UICommander().Run(command, default);
+            if (error != null)
+                return;
+            if (!result.HasErrors) {
+                var info = result.HasChanges
+                    ? $"Chat '{chatDescriptor}' was successfully copied to place '{place.Title}'."
+                    : $"Nothing has been done on coping chat '{chatDescriptor}' to place '{place.Title}'.";
+                ToastUI.Show(info, ToastDismissDelay.Long);
+            } else {
+                await ModalUI.Show(new CopyChatToPlaceErrorModal.Model(correlationId, result.HasChanges, chatDescriptor, place.Title));
+            }
+        }
+    }
+
+    private async Task PublishCopiedChat() {
+        if (!EnsureFormIsValid())
+            return;
+
+        var session = Hub.Session();
+        var sourceChatId = ChatId.Parse(_form.ChatId);
+        var placeId = PlaceId.Parse(_form.PlaceId);
+        var localChatId = sourceChatId.IsPlaceChat ? sourceChatId.PlaceChatId.LocalChatId : sourceChatId.Id;
+        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, localChatId));
+        var newChatId = (ChatId)placeChatId;
+
+        var newChat = await Hub.Chats.Get(session, newChatId, default).Require();
+        var place = await Hub.Places.Get(session, placeId, default).Require();
+        var message = $"You are about to publish copied chat '{newChat.Title}' from place '{place.Title}'. Do you want to proceed?";
+        await ModalUI.Show(new ConfirmModal.Model(false, message, () => _ = PublishInternal()));
+
+        async Task PublishInternal() {
+            var command = new Chat_PublishCopiedChat(session, newChat.Id, sourceChatId);
+            var (_, error) = await Hub.UICommander().Run(command);
+            if (error != null)
+                return;
+            ToastUI.Show($"Chat '{newChat.Title}' was successfully published.", ToastDismissDelay.Long);
+        }
+    }
+
+    private bool EnsureFormIsValid()
+    {
+        if (_formRef == null)
+            return false;
+        if (_formRef.IsValid)
+            return true;
+        Hub.UICommander().ShowError(StandardError.Constraint("Form is not valid"));
+        return false;
     }
 
     public sealed class FormModel {
@@ -58,33 +124,6 @@
             FormId = componentIdGenerator.Next("copy-chat2place-form");
             ChatIdFormId = $"{FormId}-chatId";
             PlaceIdFormId = $"{FormId}-placeId";
-        }
-    }
-
-    private async Task CopyChatToPlace() {
-        var session = Hub.Session();
-        var chatId = ChatId.Parse(_form.ChatId);
-        var placeId = PlaceId.Parse(_form.PlaceId);
-        var chat = await Hub.Chats.Get(session, chatId, default);
-        var place = await Hub.Places.Get(session, placeId, default).Require();
-        var chatDescriptor = chat?.Title ?? chatId.Value;
-        var message = $"You are about to copy chat '{chatDescriptor}' to place '{place.Title}'. Do you want to proceed?";
-        await ModalUI.Show(new ConfirmModal.Model(false, message, () => _ = MoveInternal()));
-
-        async Task MoveInternal() {
-            var correlationId = Guid.NewGuid().ToString();
-            var command = new Chat_CopyChat(session, chatId, placeId, correlationId);
-            var (result, error) = await Hub.UICommander().Run(command, default);
-            if (error != null)
-                return;
-            if (!result.HasErrors) {
-                var info = result.HasChanges
-                    ? $"Chat '{chatDescriptor}' was successfully copied to place '{place.Title}'."
-                    : $"Nothing has been done on coping chat '{chatDescriptor}' to place '{place.Title}'.";
-                ToastUI.Show(info, ToastDismissDelay.Long);
-            } else {
-                await ModalUI.Show(new AdminCopyChatToPlaceErrorModal.Model(correlationId, result.HasChanges, chatDescriptor, place.Title));
-            }
         }
     }
 }
