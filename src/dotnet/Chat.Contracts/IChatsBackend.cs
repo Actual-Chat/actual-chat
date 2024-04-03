@@ -54,9 +54,6 @@ public interface IChatsBackend : IComputeService, IBackendService
         PlaceId placeId,
         CancellationToken cancellationToken);
 
-    [ComputeMethod]
-    Task<CopiedChat?> GetCopiedChat(ChatId chatId, CancellationToken cancellationToken);
-
     // Non-compute methods
     Task<ApiArray<Chat>> List(
         Moment minCreatedAt,
@@ -85,6 +82,12 @@ public interface IChatsBackend : IComputeService, IBackendService
         long? startEntryId,
         string text,
         CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<CopiedChat?> GetCopiedChat(ChatId chatId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<ChatId> GetForwardChatReplacement(ChatId sourceChatId, CancellationToken cancellationToken);
 
     // Commands
 

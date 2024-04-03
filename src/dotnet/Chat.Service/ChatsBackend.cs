@@ -315,6 +315,32 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return dbCopiedChat?.ToModel();
     }
 
+    // [ComputeMethod]
+    public virtual async Task<ChatId> GetForwardChatReplacement(
+        ChatId sourceChatId,
+        CancellationToken cancellationToken)
+    {
+        if (sourceChatId.IsNone)
+            return ChatId.None;
+
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var copiedChats = await dbContext.CopiedChats
+            .Where(c => c.SourceChatId == sourceChatId.Value && c.IsPublished)
+            .OrderByDescending(c => c.PublishedAt)
+            .ThenByDescending(c => c.LastEntryId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach (var copiedChat in copiedChats) {
+            var chat = await Get(new ChatId(copiedChat.Id), cancellationToken).ConfigureAwait(false);
+            if (chat != null)
+                return chat.Id;
+        }
+        return ChatId.None;
+    }
+
     [ComputeMethod]
     protected virtual async Task<ApiArray<TextEntryAttachment>> GetEntryAttachments(TextEntryId entryId, CancellationToken cancellationToken)
     {
