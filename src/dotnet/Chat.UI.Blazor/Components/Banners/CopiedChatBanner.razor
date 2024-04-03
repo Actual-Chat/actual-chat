@@ -13,12 +13,14 @@
         This chat has been copied to the place.
     </Body>
     <Buttons>
-        <Button Class="btn-transparent btn-secondary on" Click="@(() => OnUpdateClick(copiedChat))">Update</Button>
+        <Button IsDisabled="@_isCopying" Class="btn-transparent on" Click="@(() => OnUpdateClick(copiedChat))">Update</Button>
         <Button IsDisabled="@(!copiedChat.IsCopiedSuccessfully)" Class="btn-transparent on" Click="@(() => OnPublishClick(copiedChat))">Publish</Button>
     </Buttons>
 </Banner>
 
 @code {
+    private bool _isCopying;
+
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
     private ChatUIHub Hub => ChatContext.Hub;
@@ -51,23 +53,21 @@
         return new Model(true, copiedChat);
     }
 
-    private async Task OnPublishClick(CopiedChat copiedChat) {
-        var chatTitle = ChatContext.Chat.Title;
-        var message = $"You are about to publish copied chat '{chatTitle}'. Do you want to proceed?";
-        await ModalUI.Show(new ConfirmModal.Model(false, message, () => _ = PublishInternal()));
+    private Task OnPublishClick(CopiedChat copiedChat)
+        => CopyChatToPlaceUI.PublishCopiedChat(ChatContext.Hub, copiedChat.Id, copiedChat.SourceChatId);
 
-        async Task PublishInternal() {
-            var command = new Chat_PublishCopiedChat(Session, copiedChat.Id, copiedChat.SourceChatId);
-            var (_, error) = await UICommander.Run(command);
-            if (error != null)
-                return;
-            ToastUI.Show($"Chat '{chatTitle}' was successfully published.", ToastDismissDelay.Long);
-        }
-    }
-
-    private Task OnUpdateClick(CopiedChat copiedChat) {
-        throw new NotImplementedException();
-    }
+    private Task OnUpdateClick(CopiedChat copiedChat)
+        => CopyChatToPlaceUI.CopyChat(Hub,
+            copiedChat.SourceChatId,
+            copiedChat.Id.PlaceChatId.Require().PlaceId,
+            () => {
+                _isCopying = true;
+                StateHasChanged();
+            },
+            (_) => {
+                _isCopying = false;
+                StateHasChanged();
+            });
 
     public sealed record Model(bool IsVisible, CopiedChat? CopiedChat) {
         public static readonly Model Hidden = new (false, null);

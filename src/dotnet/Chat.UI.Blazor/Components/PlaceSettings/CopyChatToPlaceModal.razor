@@ -33,61 +33,28 @@
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
-    private Session Session => Hub.Session();
-    private IChats Chats => Hub.Chats;
-    private IPlaces Places => Hub.Places;
-    private ToastUI ToastUI => Hub.ToastUI;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private UICommander UICommander => Hub.UICommander();
-
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override void OnInitialized()
         => _form = new FormModel(ComponentIdGenerator);
 
-    private async Task OnCopyClick() {
+    private Task OnCopyClick() {
         if (_formRef is not { IsValid: true })
-            return;
+            return Task.CompletedTask;
 
-        var chatId = ChatId.Parse(_form.ChatId);
-        var chat = await Chats.Get(Session, chatId, default).Require();
-        var place = await Places.Get(Session, ModalModel.PlaceId, default).Require();
-        var message = $"You are about to copy chat '{chat.Title}' to place '{place.Title}'. Do you want to proceed?";
-        await ModalUI.Show(new ConfirmModal.Model(false, message, () => _ = CopyInternal()));
-
-        async Task CopyInternal() {
-            _isCopying = true;
-            StateHasChanged();
-
-            var correlationId = Guid.NewGuid().ToString();
-            var command = new Chat_CopyChat(Session, chatId, ModalModel.PlaceId, correlationId);
-            Chat_CopyChatResult? result;
-            Exception? error;
-            try {
-                (result, error) = await UICommander.Run(command);
-            }
-            catch {
-                UICommander.ShowError(StandardError.External("Failed to call server."));
-                return;
-            }
-            finally {
+        return CopyChatToPlaceUI.CopyChat(Hub,
+            ChatId.Parse(_form.ChatId),
+            ModalModel.PlaceId,
+            () => {
+                _isCopying = true;
+                StateHasChanged();
+            },
+            (_) => {
                 _isCopying = false;
                 StateHasChanged();
-            }
-            Modal.Close();
-            if (error != null)
-                return;
-
-            if (!result.HasErrors) {
-                var info = result.HasChanges
-                    ? $"Chat '{chat.Title}' was successfully copied to place '{place.Title}'."
-                    : $"Nothing has been done on coping chat '{chat.Title}' to place '{place.Title}'.";
-                ToastUI.Show(info, ToastDismissDelay.Long);
-            } else {
-                await ModalUI.Show(new CopyChatToPlaceErrorModal.Model(correlationId, result.HasChanges, chat.Title, place.Title));
-            }
-        }
+                Modal.Close();
+            });
     }
 
     public sealed class FormModel {
