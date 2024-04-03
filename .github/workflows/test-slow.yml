@@ -133,6 +133,26 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      - name: Build OpenSearch configurator image
+        run: |
+          docker build \
+          -f ${{github.workspace}}/services/opensearch/opensearch-configurator.dockerfile \
+          -t opensearch-configurator-image:latest .
+
+      - name: Configure OpenSearch ML pipeline
+        run: |
+          docker run --attach stderr -attach stdout --rm \
+          --name opensearch-configurator \
+          --env SLEEP_ON_FAILURE_SECONDS=5 \
+          --env MAX_RETRY_ATTEMPTS=6 \
+          --env OPENSEARCH_CLUSTER_URL='http://localhost:9201' \
+          --env OPENSEARCH_ML_MODEL_GROUP='NLP_model_group' \
+          --env TORCHSCRIPT_MODEL_PATH='/ml_model/sentence-transformers_paraphrase-MiniLM-L3-v2-1.0.1-torch_script.zip' \
+          --env TORCHSCRIPT_MODEL_CONFIG_PATH='/ml_model/config.json' \
+          --mount type=bind,src=${{github.workspace}}/services/opensearch/ml_model,dst=/ml_model \
+          --mount type=bind,src=${{github.workspace}}/services/opensearch/opensearch-setup.py,dst=/workdir/opensearch-setup.py \
+          opensearch-configurator-image:latest
+
       - name: Install dotnet 8.0 SDK
         uses: actions/setup-dotnet@v3
         with:
