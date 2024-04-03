@@ -170,10 +170,21 @@ def get_int_env_var(env_var_name, default_value):
 
 if __name__ == '__main__':
     sleep_on_failure = get_int_env_var('SLEEP_ON_FAILURE_SECONDS', 5)
-    try:
-        main()
-    except:
-        if sleep_on_failure > 0:
-            print("Sleep on failure: %s seconds." % sleep_on_failure)
-            time.sleep(sleep_on_failure)
-        raise
+    max_attempts = get_int_env_var('MAX_RETRY_ATTEMPTS', 1)
+
+    attempts = 0
+    while attempts < max_attempts:
+        try:
+            main()
+            break  # If main() succeeds, exit the loop
+        except:
+            attempts += 1
+            if attempts < max_attempts:
+                is_to_sleep = sleep_on_failure > 0
+                message = f"Attempt {attempts}/{max_attempts} failed."
+                print(message + f" Sleeping for {sleep_on_failure} seconds." if is_to_sleep else message)
+                if is_to_sleep:
+                    time.sleep(sleep_on_failure)
+            else:
+                print(f"All {max_attempts} attempts failed. Raising the last error.")
+                raise
