@@ -72,7 +72,7 @@ public readonly partial struct ApiArray<T>(T[] items)
 
     public override string ToString()
     {
-        var sb = StringBuilderExt.Acquire();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append('<');
         sb.Append(typeof(T).GetName());
         sb.Append(">[");

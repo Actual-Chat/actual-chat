@@ -25,7 +25,7 @@ public static class ComputedExt
         var type = computed.GetType();
         var pFlags = GetProperty(type, "Flags")!;
 
-        var sb = StringBuilderExt.Acquire();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         // var flags = pFlags.GetGetter<ComputedFlags>().Invoke(computed);
         var flags = (ComputedFlags)pFlags.GetMethod!.Invoke(computed, Array.Empty<object?>())!;
         sb.Append("Computed: ").Append(computed).AppendLine();

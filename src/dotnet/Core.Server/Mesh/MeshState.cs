@@ -45,7 +45,7 @@ public sealed partial class MeshState
 
     public override string ToString()
     {
-        var sb = StringBuilderExt.Acquire();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append("MeshState(").Append(Nodes.Length).AppendLine(" node(s)) {");
         var i = 0;
         foreach (var node in Nodes) {

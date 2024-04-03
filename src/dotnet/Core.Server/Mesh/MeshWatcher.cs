@@ -82,7 +82,7 @@ public sealed class MeshWatcher : WorkerBase
                 if (!diff.IsEmpty) {
                     state = new MeshState(nodes);
                     _state.Value = state;
-                    var sb = StringBuilderExt.Acquire();
+                    var sb = ActualLab.Text.StringBuilderExt.Acquire();
                     foreach (var item in diff.RemovedItems)
                         sb.Append("- ").Append(item).AppendLine();
                     foreach (var item in diff.AddedItems)

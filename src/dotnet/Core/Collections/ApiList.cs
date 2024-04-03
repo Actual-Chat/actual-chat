@@ -15,7 +15,7 @@ public sealed partial class ApiList<T> : List<T>, ICloneable<ApiList<T>>
 
     public override string ToString()
     {
-        var sb = StringBuilderExt.Acquire();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append('<');
         sb.Append(typeof(T).GetName());
         sb.Append(">[");
