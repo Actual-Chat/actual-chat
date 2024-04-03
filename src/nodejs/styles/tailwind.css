@@ -143,6 +143,11 @@
         @apply inline-flex flex-col-reverse;
     }
 
+    /* Flex-basis shortcuts */
+    .basis-content {
+        flex-basis: content;
+    }
+
     /* Other */
 
     .disabled {
@@ -221,28 +226,30 @@
 
     /* Hover styles */
 
-    .hover-after {
+    .hover-after-05 {
         @apply absolute inset-0;
         @apply opacity-5;
         @apply content-empty;
     }
-    .more-colored-hover {
-        @apply hover-after;
-        @apply bg-more-colored;
-    }
-    .less-colored-hover {
-        @apply hover-after;
-        @apply bg-less-colored;
-    }
-    .primary-colored-hover {
-        @apply hover-after;
-        @apply bg-primary-colored;
+    .hover-after-10 {
+        @apply absolute inset-0;
         @apply opacity-10;
+        @apply content-empty;
     }
-    .danger-colored-hover {
-        @apply hover-after;
-        @apply bg-danger-colored;
-        @apply opacity-10;
+    .hover-after-20 {
+        @apply absolute inset-0;
+        @apply opacity-20;
+        @apply content-empty;
+    }
+    .hover-after-40 {
+        @apply absolute inset-0;
+        @apply opacity-40;
+        @apply content-empty;
+    }
+    .hover-after {
+        @apply absolute inset-0;
+        @apply opacity-100;
+        @apply content-empty;
     }
 
     .always-white {

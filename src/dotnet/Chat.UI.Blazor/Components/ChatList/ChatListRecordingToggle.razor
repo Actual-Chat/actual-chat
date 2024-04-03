@@ -8,24 +8,22 @@
 }
 
 @if (IsRecording) {
-    <ButtonRound
+    <HeaderButton
         Class="@cls"
-        ContentClass="!bg-transparent"
         Click="@(_ => ChatAudioUI.SetRecordingChatId(default))"
         Tooltip="Stop"
         TooltipPosition="FloatingPosition.Top">
         <i class="icon-mic-2 text-2xl"></i>
-    </ButtonRound>
+    </HeaderButton>
 } else {
-    <ButtonRound
+    <HeaderButton
         Class="@cls"
-        ContentClass="!bg-transparent"
         Click="@(_ => ChatAudioUI.SetRecordingChatId(Chat.Id))"
         Tooltip="Start"
         TooltipPosition="FloatingPosition.Top"
         MustKeepAwake="true">
         <i class="icon-mic-2 text-2xl"></i>
-    </ButtonRound>
+    </HeaderButton>
 }
 
 @code {

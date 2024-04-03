@@ -38,16 +38,17 @@
     </div>
     @if (GenerateAvatar.HasDelegate) {
         <div class="c-btn-group">
-            <Button Class="btn-modal">
-                <i class="icon-image"></i>
-                <span>Upload image</span>
+            <Button Class="btn-modal btn-sm">
+                <IconContent><i class="icon-image"></i></IconContent>
+                <TitleContent>Upload image
                 <label for="@_inputId"
                        class="pic-upload-input-file-label absolute">
                 </label>
+                </TitleContent>
             </Button>
-            <Button Class="btn-modal" Click="GenerateAvatar">
-                <i class="icon-sync"></i>
-                <span>Generate avatar</span>
+            <Button Class="btn-modal btn-sm" Click="GenerateAvatar">
+                <IconContent><i class="icon-sync"></i></IconContent>
+                <TitleContent>Generate avatar</TitleContent>
             </Button>
         </div>
     }

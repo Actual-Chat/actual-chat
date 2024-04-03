@@ -30,20 +30,20 @@
                     <div class="c-round">
                         <i class="icon-link-2 text-xl"></i>
                     </div>
-                    <div>
+                    <div class="c-link-wrapper">
                         <div class="link-url">@link.DisplayText</div>
                         <div class="link-hint">@linkKind</div>
                     </div>
                 </div>
                 <div class="c-link-buttons">
                     <CopyTrigger Tooltip="@copyText" CopyText="@copyText">
-                        <ButtonRound Class="md:btn-md">
+                        <ButtonRound Class="md:btn-sm">
                             <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
                             <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
                         </ButtonRound>
                     </CopyTrigger>
                     <ButtonRound
-                        Class="md:btn-md"
+                        Class="md:btn-sm"
                         Tooltip="Share"
                         Click="@(() => OnShareClick(shareModel))">
                         <i class="icon-share"></i>

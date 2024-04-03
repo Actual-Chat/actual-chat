@@ -33,7 +33,284 @@
     </div>
 </div>
 
+
+<h1>Square buttons</h1>
+<div class="flex-x gap-x-4">
+    <ButtonSquare>
+        1
+    </ButtonSquare>
+    <ButtonSquare Class="btn-primary">
+        2
+    </ButtonSquare>
+    <ButtonSquare Class="btn-danger btn-sm">
+        SM
+    </ButtonSquare>
+    <ButtonSquare Class="btn-cancel btn-xs">
+        XS
+    </ButtonSquare>
+    <ButtonSquare Class="transparent">
+        B
+    </ButtonSquare>
+    <ButtonSquare>
+        C
+    </ButtonSquare>
+    <ButtonSquare IsDisabled="true">
+        D
+    </ButtonSquare>
+</div>
+
+<h1>Round buttons</h1>
+<div class="flex-x gap-x-4">
+    <ButtonRound>
+        1
+    </ButtonRound>
+    <ButtonRound Class="btn-primary">
+        2
+    </ButtonRound>
+    <ButtonRound Class="btn-danger">
+        3
+    </ButtonRound>
+    <ButtonRound Class="btn-cancel">
+        A
+    </ButtonRound>
+    <ButtonRound>
+        B
+    </ButtonRound>
+    <ButtonRound>
+        C
+    </ButtonRound>
+    <ButtonRound IsDisabled="true">
+        D
+    </ButtonRound>
+</div>
+<div class="flex-x gap-x-4">
+    <ButtonRound>
+        1
+    </ButtonRound>
+    <ButtonRound Class="btn-primary btn-md">
+        MD
+    </ButtonRound>
+    <ButtonRound Class="btn-danger btn-sm">
+        SM
+    </ButtonRound>
+    <ButtonRound Class="btn-cancel btn-xs">
+        XS
+    </ButtonRound>
+    <ButtonRound Class="transparent">
+        B
+    </ButtonRound>
+    <ButtonRound>
+        C
+    </ButtonRound>
+    <ButtonRound IsDisabled="true">
+        D
+    </ButtonRound>
+</div>
+
 <h1>Button colors</h1>
+<div class="flex-x gap-x-4">
+    <Button Class="btn-primary">
+        Long Primary
+    </Button>
+    <Button Class="btn-danger">
+        Danger
+    </Button>
+    <Button Class="btn-cancel">
+        Cancel
+    </Button>
+    <Button Class="notify-btn btn-transparent">
+        <IconContent><i class="icon-at text-2xl"></i></IconContent>
+        <TitleContent>Notify</TitleContent>
+    </Button>
+    <Button Class="notify-btn btn-transparent">
+        <IconContent><i class="icon-at text-2xl"></i></IconContent>
+    </Button>
+</div>
+
+<div class="flex-none flex-x items-center gap-x-4 w-80 p-1 overflow-hidden rounded-lg">
+    <Button Class="btn-primary">
+        Primary
+    </Button>
+    <Button Class="btn-danger">
+        <IconContent><i class="icon-person"></i></IconContent>
+        <TitleContent>Long title button</TitleContent>
+    </Button>
+    <Button Class="btn-cancel">
+        <IconContent><i class="icon-person"></i></IconContent>
+        <TitleContent>Primary</TitleContent>
+    </Button>
+</div>
+<div class="flex-none flex-x items-center gap-x-4 w-fit p-1 bg-[var(--white-10)] overflow-hidden rounded-lg">
+    <Button Class="btn-primary btn-xs">
+        Primary XS
+    </Button>
+    <Button Class="btn-danger btn-sm">
+        Danger SM
+    </Button>
+    <Button Class="btn-cancel">
+        Cancel MD (Default)
+    </Button>
+    <Button Class="btn-primary btn-lg">
+        <IconContent><i class="icon-person"></i></IconContent>
+        <TitleContent>Primary LG</TitleContent>
+    </Button>
+    <Button Class="btn-danger btn-lg">
+        <IconContent><i class="icon-person"></i></IconContent>
+        <TitleContent>Danger LG</TitleContent>
+    </Button>
+</div>
+<Button Class="btn-primary btn-w-full">
+    Full Width Button
+</Button>
+
+<h1>Disabled buttons</h1>
+
+<div class="flex-x gap-x-4">
+    <Button Class="btn-primary" IsDisabled="true">
+        Long Primary
+    </Button>
+    <Button Class="btn-danger" IsDisabled="true">
+        Danger
+    </Button>
+    <Button Class="btn-cancel" IsDisabled="true">
+        Cancel
+    </Button>
+    <Button Class="btn-primary btn-sm" IsDisabled="true">
+        Primary SM
+    </Button>
+</div>
+
+<h1>Outline buttons</h1>
+
+<div class="flex-x gap-x-4">
+    <Button Class="btn-outline">
+        Default Outline
+    </Button>
+    <Button Class="btn-outline btn-primary">
+        Primary Outline
+    </Button>
+    <Button Class="btn-outline btn-danger">
+        Danger
+    </Button>
+    <Button Class="btn-outline btn-cancel">
+        Cancel
+    </Button>
+</div>
+
+<h1>Outline Disabled buttons</h1>
+
+<div class="flex-x gap-x-4">
+    <Button Class="btn-primary btn-outline" IsDisabled="true">
+        Long Primary
+    </Button>
+    <Button Class="btn-danger btn-outline" IsDisabled="true">
+        Danger
+    </Button>
+    <Button Class="btn-cancel btn-outline" IsDisabled="true">
+        Cancel
+    </Button>
+    <Button Class="btn-primary btn-outline btn-sm" IsDisabled="true">
+        Primary SM
+    </Button>
+</div>
+
+<h1>Transparent buttons</h1>
+
+<div class="flex-x items-center gap-x-4">
+    <Button Class="btn-transparent btn-primary btn-lg">
+        Primary LG
+    </Button>
+    <Button Class="btn-transparent btn-primary btn-md">
+        Primary MD
+    </Button>
+    <Button Class="btn-transparent btn-danger btn-sm">
+        Danger SM
+    </Button>
+    <Button Class="btn-transparent btn-cancel btn-xs">
+        Cancel XS
+    </Button>
+</div>
+<div class="flex-x items-center gap-x-4 bg-[var(--background-banner-error)]">
+    <Button Class="btn-transparent btn-primary btn-lg">
+        Primary LG
+    </Button>
+    <Button Class="btn-transparent btn-primary btn-md">
+        Primary MD
+    </Button>
+    <Button Class="btn-transparent btn-danger btn-sm">
+        Danger SM
+    </Button>
+    <Button Class="btn-transparent btn-cancel btn-xs">
+        Cancel XS
+    </Button>
+</div>
+<div class="flex-x items-center gap-x-4 bg-[var(--background-banner-info)]">
+    <Button Class="btn-transparent btn-primary btn-lg">
+        Primary LG
+    </Button>
+    <Button Class="btn-transparent btn-primary btn-md">
+        Primary MD
+    </Button>
+    <Button Class="btn-transparent btn-danger btn-sm">
+        Danger SM
+    </Button>
+    <Button Class="btn-transparent btn-cancel btn-xs">
+        Cancel XS
+    </Button>
+</div>
+
+<h1>Modal buttons</h1>
+
+<div class="flex-x items-center gap-x-4">
+    <Button Class="btn-modal btn-lg">
+        Default Modal LG
+    </Button>
+    <Button Class="btn-modal btn-primary">
+        Primary MD
+    </Button>
+    <Button Class="btn-modal btn-danger btn-sm">
+        Danger SM
+    </Button>
+    <Button Class="btn-modal btn-cancel btn-xs">
+        Cancel XS
+    </Button>
+</div>
+
+<h1>Transparent Disabled buttons</h1>
+
+<div class="flex-x items-center gap-x-4">
+    <Button Class="btn-transparent" IsDisabled="true">
+        Long Primary
+    </Button>
+    <Button Class="btn-danger btn-transparent" IsDisabled="true">
+        Danger
+    </Button>
+    <Button Class="btn-cancel btn-transparent" IsDisabled="true">
+        Cancel
+    </Button>
+    <Button Class="btn-primary btn-transparent btn-sm" IsDisabled="true">
+        Primary SM
+    </Button>
+</div>
+
+<h1>Modal Disabled buttons</h1>
+
+<div class="flex-x items-center gap-x-4">
+    <Button Class="btn-modal" IsDisabled="true">
+        Long Primary
+    </Button>
+    <Button Class="btn-danger btn-modal" IsDisabled="true">
+        Danger
+    </Button>
+    <Button Class="btn-cancel btn-modal" IsDisabled="true">
+        Cancel
+    </Button>
+    <Button Class="btn-primary btn-modal btn-sm" IsDisabled="true">
+        Primary SM
+    </Button>
+</div>
+
+<div class="flex-none h-20"></div>
 <div class="buttons-colors grid grid-cols-3 items-center justify-center gap-1">
     <Button Class="btn-primary">Primary</Button>
     <Button Class="btn-outline">Outline</Button>

@@ -35,7 +35,7 @@
     </Body>
     <Buttons>
         @if (m.ReconnectsIn != default) {
-            <Button Class="btn-transparent on" Click="@(_ => ReconnectUI.ReconnectIfDisconnected())">Retry</Button>
+            <Button Class="btn-transparent unhovered on" Click="@(_ => ReconnectUI.ReconnectIfDisconnected())">Retry</Button>
         }
     </Buttons>
 </Banner>

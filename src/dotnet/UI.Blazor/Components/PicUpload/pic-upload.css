@@ -37,7 +37,7 @@ body:not(.hoverable) .pic-upload .pic-upload-picker {
 }
 
 .pic-upload .c-btn-group {
-    @apply flex-1 flex-y gap-2;
+    @apply flex-1 flex-y justify-center gap-2;
 }
 .pic-upload .c-btn-group > .btn {
     @apply justify-start;
