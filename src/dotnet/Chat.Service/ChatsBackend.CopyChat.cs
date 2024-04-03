@@ -34,6 +34,7 @@ public partial class ChatsBackend
         var textEntryRange = new Range<long>();
         (RoleId Id, RoleId NewId)[] rolesMap;
         long maxAuthorLocalId;
+        CopiedChat copiedChat;
 
         {
             var dbContext = CreateDbContext(true);
@@ -42,6 +43,19 @@ public partial class ChatsBackend
 
             var chat = await Get(chatId, cancellationToken).Require().ConfigureAwait(false);
             var newChat = await CreateOrUpdateChat(correlationId, dbContext, newChatId, chat, cancellationToken).ConfigureAwait(false);
+
+            var copiedChat1 = await GetCopiedChat(newChatId, cancellationToken).ConfigureAwait(false);
+            if (copiedChat1 != null)
+                copiedChat = copiedChat1;
+            else
+                copiedChat = await Commander.Call(new ChatsBackend_ChangeCopiedChat(newChatId,
+                            null,
+                            Change.Create(new CopiedChatDiff {
+                                SourceChatId = chat.Id,
+                            })),
+                        true,
+                        cancellationToken)
+                    .ConfigureAwait(false);
 
             var lastTextEntry = await GetLastEntry(dbContext, chatId, ChatEntryKind.Text, cancellationToken)
                 .ConfigureAwait(false);
@@ -123,7 +137,17 @@ public partial class ChatsBackend
                 }
             }
         }
-
+        {
+            await Commander.Call(new ChatsBackend_ChangeCopiedChat(copiedChat.Id,
+                        copiedChat.Version,
+                        Change.Update(new CopiedChatDiff {
+                            IsCopiedSuccessfully = !hasErrors,
+                            LastCorrelationId = correlationId,
+                            LastEntryId = !lastProcessedEntryId.IsNone ? 0L : lastProcessedEntryId.LocalId
+                        })),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
         if (!lastProcessedEntryId.IsNone) {
             var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             dbContext.Database.SetCommandTimeout(commandTimeout);
@@ -142,6 +166,9 @@ public partial class ChatsBackend
             .Where(c => c.Id == chatSid)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
+        // Make chat private, so only owner who executed copying can see the chat.
+        // Publishing copied chat command will set actual value of IsPublic property later.
+        chat = chat with { IsPublic = false };
         Chat newChat;
         if (dbChat == null) {
             newChat = chat with { Id = newChatId };

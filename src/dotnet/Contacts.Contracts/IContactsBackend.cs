@@ -29,7 +29,7 @@ public interface IContactsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task OnChangePlaceMembership(ContactsBackend_ChangePlaceMembership command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnMoveChatToPlace(ContactsBackend_MoveChatToPlace command, CancellationToken cancellationToken);
+    Task OnPublishCopiedChat(ContactsBackend_PublishCopiedChat command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -98,11 +98,10 @@ public sealed partial record ContactsBackend_ChangePlaceMembership(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ContactsBackend_MoveChatToPlace(
-    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId
+public sealed partial record ContactsBackend_PublishCopiedChat(
+    [property: DataMember, MemoryPackOrder(0)] ChatId NewChatId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => ChatId;
+    public ChatId ShardKey => NewChatId;
 }
