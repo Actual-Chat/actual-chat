@@ -7,6 +7,8 @@ from langchain_core.messages import BaseMessage
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.globals import set_debug
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables.utils import ConfigurableField
 
 
 # Note: As of current state (Apr 1, 2024) Langserve has issues working
@@ -53,41 +55,24 @@ def get_by_session_id(session_id: str) -> BaseChatMessageHistory:
     return store[session_id]
 
 
-def create(*, claude_api_key):
+def create(*, claude_api_key, main_prompt_config_key, prompt):
     tools = all_tools()
     llm = ChatAnthropic(
         model = 'claude-2',
         anthropic_api_key = claude_api_key
     )
-    prompt = cleandoc("""
-        For the given objective, come up with a simple step by step plan.
-        Use tools provided if neccessary.
-        You have the following list of tools:
-        {tools}
-
-        This plan should involve individual tasks, that if executed correctly will yield the correct answer.
-        Do not add any superfluous steps.
-        The result of the final step should be the final answer. Make sure that each step has all the information
-        needed - do not skip steps.
-
-        Previous Conversation:
-        {chat_history}
-
-        Input: {input}
-        Thoughts: {agent_scratchpad}
-    """)
-    prompt = hub.pull("hwchase17/xml-agent-convo")
-    print(f"PROMPT:\n---\n{prompt}")
+    prompt = ChatPromptTemplate.from_template(prompt.get_langchain_prompt())
     agent_runnable = create_xml_agent(llm, tools, prompt)
+    """
+    .configurable_fields(
+        prompt = ConfigurableField(
+            id = main_prompt_config_key,
+            name = "Main prompt",
+            description = "Main prompt retrieved per request from langfuse server (could be cached).",
+        )
+    )
+    """
     agent_executor = AgentExecutor(agent=agent_runnable, tools=tools, verbose=True)
-    """
-    return RunnableWithMessageHistory(
-        agent_executor,
-        get_by_session_id,
-        input_messages_key="input",
-        history_messages_key="chat_history",
-    ).with_types(input_type=Input, output_type=Output)
-    """
     return agent_executor.with_types(input_type=Input, output_type=Output).with_config(
         {"run_name": "agent"}
     )

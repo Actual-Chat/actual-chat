@@ -22,7 +22,7 @@ anthropic = "0.21.3"
 # TODO: remove
 # Obsolete:
 langchainhub = "0.1.15"
-
+langfuse = "2.21.1"
 
 [tool.poetry.group.dev.dependencies]
 langchain-cli = ">=0.0.15"
