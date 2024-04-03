@@ -138,6 +138,20 @@ public class Chats(IServiceProvider services) : IChats
         return await Backend.GetCopiedChat(chatId, cancellationToken).ConfigureAwait(false);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<ChatId> GetForwardChatReplacement(
+        Session session,
+        ChatId sourceChatId,
+        CancellationToken cancellationToken)
+    {
+        var chatId = await Backend.GetForwardChatReplacement(sourceChatId, cancellationToken).ConfigureAwait(false);
+        if (chatId.IsNone)
+            return ChatId.None;
+
+        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        return chat?.Id ?? ChatId.None;
+    }
+
     // Not a [ComputeMethod]!
     public virtual async Task<ChatEntry?> FindNext(
         Session session,
@@ -722,10 +736,10 @@ public class Chats(IServiceProvider services) : IChats
         if (!place.Rules.IsOwner())
             throw StandardError.Constraint("You must be a chat's place owner to perform this operation.");
 
-        var sourceChat = await Get(session, sourceChatId, cancellationToken).Require().ConfigureAwait(false);
-        var copiedChat = await GetCopiedChat(session, newChatId, cancellationToken).Require().ConfigureAwait(false);
+        var sourceChat = await Get(session, sourceChatId, cancellationToken).ConfigureAwait(false);
+        var copiedChat = await GetCopiedChat(session, newChatId, cancellationToken).ConfigureAwait(false);
 
-        if (newChat.IsPublic != sourceChat.IsPublic) {
+        if (sourceChat != null && newChat.IsPublic != sourceChat.IsPublic) {
             var changeChatCmd = new Chats_Change(session,
                 newChat.Id,
                 newChat.Version,
@@ -738,7 +752,7 @@ public class Chats(IServiceProvider services) : IChats
         var publishContactsCmd = new ContactsBackend_PublishCopiedChat(newChatId);
         await Commander.Call(publishContactsCmd, true, cancellationToken).ConfigureAwait(false);
 
-        if (!copiedChat.IsPublished) {
+        if (copiedChat != null && !copiedChat.IsPublished) {
             var publishCopiedChatCmd = new ChatsBackend_ChangeCopiedChat(copiedChat.Id,
                 copiedChat.Version,
                 Change.Update(new CopiedChatDiff {
