@@ -167,6 +167,7 @@ public class NotificationsBackend(IServiceProvider services)
             if (notification.SentAt.ToDateTime() - dbNotification.SentAt < throttleInterval)
                 return false; // skip update and avoid sending notification if notification for the user has already been sent recently
 
+            // TODO(AK): suspicious version check - it might be outdated
             dbNotification = dbNotification.RequireVersion(notification.Version);
             notification = notification with {
                 Version = VersionGenerator.NextVersion(notification.Version),
@@ -175,7 +176,14 @@ public class NotificationsBackend(IServiceProvider services)
             context.Operation().Items.Set(false);
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        try {
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateConcurrencyException e) when(e.Entries.All(en => en.State == EntityState.Added)) {
+            // Notification has already been created for another message, let's skip
+            return false;
+        }
+
         return true;
     }
 

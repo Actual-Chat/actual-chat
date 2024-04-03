@@ -24,10 +24,12 @@ public class NpgsqlUpdateSqlGenerator(UpdateSqlGeneratorDependencies dependencie
 
         AppendValuesHeader(commandStringBuilder, writeOperations);
         AppendValues(commandStringBuilder, name, schema, writeOperations);
+
+        ConflictStrategy? conflictStrategy = null;
         var operation = writeOperations.FirstOrDefault();
         if (operation?.Entry != null) {
             var type = operation.Entry.EntityType.ClrType;
-            var conflictStrategy = _conflictResolutionMap.GetOrAdd(
+            conflictStrategy = _conflictResolutionMap.GetOrAdd(
                 type,
                 static (_, entityType) => {
                     var conflictStrategyAnnotation = entityType.FindAnnotation(nameof(ConflictStrategy));
@@ -40,7 +42,9 @@ public class NpgsqlUpdateSqlGenerator(UpdateSqlGeneratorDependencies dependencie
                 AppendConflictClause(commandStringBuilder, writeOperations, conflictStrategy.Value);
         }
 
-        AppendReturningClause(commandStringBuilder, readOperations);
+        if (readOperations.Count > 0)
+            AppendReturningClause(commandStringBuilder, readOperations);
+
         commandStringBuilder.AppendLine(SqlGenerationHelper.StatementTerminator);
     }
 
@@ -68,7 +72,7 @@ public class NpgsqlUpdateSqlGenerator(UpdateSqlGeneratorDependencies dependencie
                     (sb, o, helper) => helper.DelimitIdentifier(sb, o.ColumnName))
                 .Append(")")
                 .AppendLine()
-                .Append("DO UPDATE SET")
+                .Append("DO UPDATE SET ")
                 .AppendJoin(
                     updateOperations,
                     SqlGenerationHelper,
