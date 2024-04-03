@@ -142,6 +142,7 @@ jobs:
       - name: Configure OpenSearch ML pipeline
         run: |
           docker run --attach stderr --attach stdout --rm \
+          --network host \
           --name opensearch-configurator \
           --env SLEEP_ON_FAILURE_SECONDS=5 \
           --env MAX_RETRY_ATTEMPTS=6 \
