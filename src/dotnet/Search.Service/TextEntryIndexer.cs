@@ -62,7 +62,9 @@ public sealed class TextEntryIndexer(IServiceProvider services) : WorkerBase, IH
                 .ConfigureAwait(false);
             await IndexAllChats(cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+            // Intended: it's a cancellation on losing the lock
+        }
     }
 
     private async Task IndexAllChats(CancellationToken cancellationToken)

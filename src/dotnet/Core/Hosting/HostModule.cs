@@ -43,10 +43,12 @@ public abstract class HostModule<TSettings>(IServiceProvider moduleServices) : H
 {
     private TSettings? _settings;
 
-    public TSettings Settings => _settings ??= ReadSettings();
+#pragma warning disable CA1721
+    public TSettings Settings => _settings ??= GetSettings();
+#pragma warning restore CA1721
 
-    protected virtual TSettings ReadSettings()
-        => Cfg.GetSettings<TSettings>();
+    protected virtual TSettings GetSettings()
+        => Cfg.Settings<TSettings>();
 
     protected internal override void Initialize(ModuleHost host, IServiceCollection services)
     {

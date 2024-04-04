@@ -25,11 +25,11 @@ public static class CommandExt
     public static TCommand EnqueueOnCompletion<TCommand>(this TCommand command)
         where TCommand : ICommand
     {
-        var commandContext = CommandContext.GetCurrent();
         if (Computed.IsInvalidating())
-            throw StandardError.Internal("The operation is already completed.");
+            throw StandardError.Internal("The operation has already completed.");
 
-        var operationItems = GetOperation(commandContext).Items;
+        var context = CommandContext.GetCurrent();
+        var operationItems = GetOperation(context).Items;
         var list = operationItems.GetOrDefault(ImmutableList<QueuedCommand>.Empty);
         list = list.Add(QueuedCommand.New(command));
         operationItems.Set(list);

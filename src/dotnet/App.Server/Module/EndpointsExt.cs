@@ -11,10 +11,11 @@ public static class EndpointsExt
     public static IEndpointRouteBuilder MapAppHealth(this IEndpointRouteBuilder endpoints, params string[] tags)
     {
         foreach (var tag in new[] { HealthTags.Live, HealthTags.Ready })
-            endpoints.MapHealthChecks($"/healthz/{tag}",
-                    new HealthCheckOptions {
-                        Predicate = healthCheck => healthCheck.Tags.Contains(tag),
-                    });
+            endpoints.MapHealthChecks(
+                $"/healthz/{tag}",
+                new HealthCheckOptions {
+                    Predicate = healthCheck => healthCheck.Tags.Contains(tag),
+                });
 
         return endpoints;
     }

@@ -129,8 +129,8 @@ public class NotificationsBackend(IServiceProvider services)
     {
         var notification = command.Notification;
         var userId = notification.UserId.Require();
-
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var invIsCreate = context.Operation().Items.GetOrDefault(false);
             if (invIsCreate) // Created

@@ -35,9 +35,10 @@ public record TestAppHostOptions
     public string InstanceName { get; init; } = "";
     public ITestOutputHelper Output { get; init; } = NullTestOutput.Instance;
     public string? ServerUrls { get; init; }
-    public Action<AppHostBuilder, IConfigurationManager>? Configure { get; init; }
-    public Action<AppHostBuilder, IServiceCollection>? ConfigureAppServices { get; init; }
-    public Action<AppHostBuilder, WebApplication>? ConfigureApp { get; set; }
+    public Action<AppHost.IConfigureHostContext, IConfigurationManager>? ConfigureHost { get; init; }
+    public Action<AppHost.IConfigureModuleServicesContext, IServiceCollection>? ConfigureModuleServices { get; init; }
+    public Action<AppHost.IConfigureServicesContext, IServiceCollection>? ConfigureServices { get; init; }
+    public Action<AppHost.IConfigureAppContext, WebApplication>? ConfigureApp { get; set; }
     public ChatDbInitializer.Options ChatDbInitializerOptions { get; init; } = ChatDbInitializer.Options.None;
     public bool? UseNatsQueues { get; init; }
     public bool MustInitializeDb { get; init; }

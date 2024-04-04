@@ -51,7 +51,9 @@ public abstract class ContactIndexer(IServiceProvider services)
                 Log.LogDebug("Became idle waiting for any event");
                 await NeedsSync.WhenSet(MaxIdleInterval, cancellationToken).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+                // Intended: some other token is cancelled
+            }
     }
 
     protected abstract Task Sync(CancellationToken cancellationToken);

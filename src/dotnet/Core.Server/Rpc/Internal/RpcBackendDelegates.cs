@@ -11,10 +11,18 @@ namespace ActualChat.Rpc.Internal;
 
 public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceBase(services)
 {
+    private volatile TaskCompletionSource? _whenRouting = new();
+
     private MeshNode MeshNode { get; } = services.MeshNode();
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
     private BackendServiceDefs BackendServiceDefs { get; } = services.GetRequiredService<BackendServiceDefs>();
     private RpcMeshRefResolvers RpcMeshRefResolvers { get; } = services.GetRequiredService<RpcMeshRefResolvers>();
+
+    public void StartRouting()
+    {
+        _whenRouting?.TrySetResult();
+        _whenRouting = null;
+    }
 
     public bool IsBackendService(Type serviceType)
         => BackendServiceDefs.Contains(serviceType)
@@ -31,6 +39,9 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
         var serviceMode = serverSideServiceDef.ServiceMode;
         if (serviceMode is not ServiceMode.Client and not ServiceMode.Hybrid)
             throw StandardError.Internal($"{serviceDef} must be a ServiceMode.Client or ServiceMode.RoutingServer mode service.");
+
+        if (_whenRouting is { Task.IsCompleted: false })
+            return null;
 
         var meshRefResolver = RpcMeshRefResolvers[methodDef];
         var meshRef = meshRefResolver.Invoke(methodDef, arguments, serverSideServiceDef.ShardScheme);

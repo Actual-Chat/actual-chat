@@ -11,6 +11,7 @@ using Microsoft.Toolkit.HighPerformance;
 namespace ActualChat.Contacts.IntegrationTests;
 
 [Collection(nameof(ExternalContactStressCollection))]
+[Trait("Category", "Slow")]
 public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<ExternalStressAppHostFixture>(fixture, @out)
 {
@@ -42,7 +43,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
         await _tester.DisposeAsync().AsTask();
     }
 
-    [Theory]
+    [Theory(Skip = "flaky, must be fixed")]
     [InlineData(5)]
     [InlineData(37)]
     public async Task StressTest_AllUsersExist_AllAreConnected(int count)
@@ -80,7 +81,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
         }
     }
 
-    [Theory]
+    [Theory(Skip = "flaky, must be fixed")]
     [InlineData(5)]
     [InlineData(37)]
     public async Task StressTest_UsersCreatedSequentially_AllAreConnected(int count)

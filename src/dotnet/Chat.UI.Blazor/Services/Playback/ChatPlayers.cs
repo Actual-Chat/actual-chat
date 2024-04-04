@@ -41,8 +41,22 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
     public void StartRealtimePlayback(RealtimePlaybackState playbackState)
         => StartPlayback(playbackState);
 
-    public void StopPlayback()
-        => _playbackState.Value = null;
+    public void StopHistoricalPlayback()
+    {
+        var playbackState = _playbackState.Value;
+        if (playbackState is not HistoricalPlaybackState)
+            return;
+
+        _playbackState.Value = null;
+        ResumeRealtimePlayback();
+    }
+
+    public void StopRealtimePlayback()
+    {
+        var playbackState = _playbackState.Value;
+        if (playbackState is RealtimePlaybackState)
+            _playbackState.Value = null;
+    }
 
     // Protected methods
 
@@ -60,7 +74,7 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) {
                     // Let's stop everything in this case
-                    StopPlayback();
+                    _playbackState.Value = null;
                     lastPlaybackState = null;
                     _ = StopPlayers();
                 }
@@ -83,7 +97,7 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
         => _ = BackgroundTask.Run(async () => {
             var playbackState = await ChatAudioUI.GetExpectedRealtimePlaybackState().ConfigureAwait(false);
             if (playbackState == null)
-                StopPlayback();
+                StopRealtimePlayback();
             else
                 StartRealtimePlayback(playbackState);
         }, CancellationToken.None);

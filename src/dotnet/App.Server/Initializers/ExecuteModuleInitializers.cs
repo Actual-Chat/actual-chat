@@ -5,7 +5,9 @@ namespace ActualChat.App.Server.Initializers;
 public class ExecuteModuleInitializers(IServiceProvider services): IAggregateInitializer
 {
     public async Task InvokeAll(CancellationToken cancellationToken)
-        => await Task.WhenAll(services.GetServices<IModuleInitializer>()
-                .Select(instance => instance.Initialize(cancellationToken))
-            ).ConfigureAwait(false);
+    {
+        var moduleInitializers = services.GetServices<IModuleInitializer>();
+        var initializeTasks = moduleInitializers.Select(instance => instance.Initialize(cancellationToken)).ToArray();
+        await Task.WhenAll(initializeTasks).ConfigureAwait(false);
+    }
 }

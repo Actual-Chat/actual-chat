@@ -133,7 +133,7 @@ public partial class ChatsUpgradeBackend
         if (Computed.IsInvalidating()) {
             // This command changes a lot of things directly, so we invalidate everything here
             ComputedRegistry.Instance.InvalidateEverything();
-            return default!; // It just spawns other commands, so nothing to do here
+            return default!;
         }
 
         var chatId = Constants.Chat.DefaultChatId;

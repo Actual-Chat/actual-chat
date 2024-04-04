@@ -1,4 +1,4 @@
-using ActualLab.Interception.Interceptors;
+using ActualLab.Interception;
 
 namespace ActualChat;
 

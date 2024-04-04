@@ -6,6 +6,10 @@ public class ExecuteDbInitializers(IServiceProvider services): IAggregateInitial
 {
     public async Task InvokeAll(CancellationToken cancellationToken)
     {
+        var hostInfo = services.HostInfo();
+        if (hostInfo.HasRole(HostRole.OneApiServer) && !hostInfo.HasRole(HostRole.OneServer))
+            return; // This role doesn't (and can't) run DB initializers
+
         // InitializeSchema
         await InvokeDbInitializers(
             nameof(IDbInitializer.InitializeSchema),

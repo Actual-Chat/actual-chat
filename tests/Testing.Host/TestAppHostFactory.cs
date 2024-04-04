@@ -25,7 +25,7 @@ public static class TestAppHostFactory
             HostOptions = new() {
                 EnvironmentName = Environments.Development,
             },
-            Configure = (builder, cfg) => {
+            ConfigureHost = (ctx, cfg) => {
                 // Removing default appsettings.*
                 var toDelete = cfg.Sources
                     .Where(s => (s is JsonConfigurationSource source
@@ -56,15 +56,18 @@ public static class TestAppHostFactory
                 );
 
                 // Overrides from options
-                options.Configure?.Invoke(builder, cfg);
+                options.ConfigureHost?.Invoke(ctx, cfg);
             },
-            ConfigureModuleHostServices = (_, services) => {
+            ConfigureModuleServices = (ctx, services) => {
+                // Overrides from options
+                options.ConfigureModuleServices?.Invoke(ctx, services);
+
                 services.AddSingleton(outputAccessor);
                 services.AddTestLogging(outputAccessor);
             },
-            ConfigureServices = (builder, services) => {
+            ConfigureServices = (ctx, services) => {
                 // Overrides from options
-                options.ConfigureAppServices?.Invoke(builder, services);
+                options.ConfigureServices?.Invoke(ctx, services);
 
                 // The code below runs after module service registration & everything else
                 services.AddSettings<TestSettings>();
@@ -75,7 +78,7 @@ public static class TestAppHostFactory
                     IndexPrefix = UniqueNames.Elastic("test"),
                 });
             },
-            ConfigureApp = (builder, app) => options.ConfigureApp?.Invoke(builder, app),
+            ConfigureApp = (ctx, app) => options.ConfigureApp?.Invoke(ctx, app),
         };
         appHost.Build();
 

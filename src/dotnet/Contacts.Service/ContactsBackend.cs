@@ -272,6 +272,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var chatId = id.ChatId;
         var placeId = chatId.PlaceId;
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var invIndex = context.Operation().Items.GetOrDefault(long.MinValue);
             if (invIndex != long.MinValue) {

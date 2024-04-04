@@ -24,20 +24,19 @@ public class RpcBackendWebSocketClient(RpcWebSocketClient.Options settings, ISer
         }
         case RpcBackendShardPeerRef shardPeerRef: {
             retry:
+            shardPeerRef = shardPeerRef.Latest;
             var shardNodePeerRef = await shardPeerRef.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
             if (shardNodePeerRef == null)
                 throw InvalidShardRefError();
 
-            if (shardNodePeerRef.StopToken.IsCancellationRequested) {
-                shardPeerRef = shardPeerRef.Latest;
+            if (shardNodePeerRef.StopToken.IsCancellationRequested)
+                await shardPeerRef.WhenObsolete.ConfigureAwait(false);
+            if (shardPeerRef.WhenObsolete.IsCompleted)
                 goto retry;
-            }
 
             var meshNode = await shardNodePeerRef.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
-            if (meshNode == null) {
-                shardPeerRef = shardPeerRef.Latest;
+            if (meshNode == null)
                 goto retry;
-            }
 
             return await Connect(peer, meshNode, cancellationToken).ConfigureAwait(false);
         }

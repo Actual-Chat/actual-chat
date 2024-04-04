@@ -1,9 +1,10 @@
 using ActualChat.App.Server.Initializers;
 using ActualChat.Mesh;
+using ActualChat.Rpc.Internal;
 
 namespace ActualChat.App.Server;
 
-public class AppHost : IDisposable
+public partial class AppHost : IDisposable
 {
     public static readonly string DefaultServerUrls = "http://localhost:7080";
 
@@ -11,10 +12,10 @@ public class AppHost : IDisposable
 
     public string ServerUrls { get; set; } = DefaultServerUrls;
     public WebApplicationOptions HostOptions { get; set; } = new();
-    public Action<AppHostBuilder, IConfigurationManager>? Configure { get; set; }
-    public Action<AppHostBuilder, IServiceCollection>? ConfigureModuleHostServices { get; set; }
-    public Action<AppHostBuilder, IServiceCollection>? ConfigureServices { get; set; }
-    public Action<AppHostBuilder, WebApplication>? ConfigureApp { get; set; }
+    public Action<IConfigureHostContext, IConfigurationManager>? ConfigureHost { get; set; }
+    public Action<IConfigureModuleServicesContext, IServiceCollection>? ConfigureModuleServices { get; set; }
+    public Action<IConfigureServicesContext, IServiceCollection>? ConfigureServices { get; set; }
+    public Action<IConfigureAppContext, WebApplication>? ConfigureApp { get; set; }
 
     public WebApplication App { get; protected set; } = null!;
     public IServiceProvider Services => App.Services;
@@ -34,20 +35,25 @@ public class AppHost : IDisposable
             App.DisposeSilently();
     }
 
-    public virtual AppHost Build(bool configurationOnly = false)
-    {
-        App = new AppHostBuilder(this, configurationOnly).App;
-        return this;
-    }
-
     public virtual async Task InvokeInitializers(CancellationToken cancellationToken = default)
-        => await InvokeInitializers([
-                new ExecuteDbInitializers(Services),
-                new ExecuteModuleInitializers(Services),
-            ],
-            cancellationToken
-        )
-        .ConfigureAwait(false);
+    {
+        var initializers = new IAggregateInitializer[] {
+            new ExecuteDbInitializers(Services),
+            new ExecuteModuleInitializers(Services),
+        };
+        await InvokeInitializers(initializers, cancellationToken).ConfigureAwait(false);
+
+        // NOTE(AY):
+        // Since InvokeInitializers is called before App.Run(), the host isn't listening yet.
+        // So if every available host is in this state, none of them is listening.
+        // And if all of them use a backend service running in Hybrid or Client mode,
+        // they'll try to connect to corresponding peers, which will take indefinitely long,
+        // since all of them are still initializing (and listening yet).
+        // See e.g. UsersDbInitializer.EnsureAdminExists - apparently, it's going to resort to
+        // an RPC call in Hybrid or Client mode, so the initialization will stuck right there.
+        var rpcBackendDelegates = Services.GetRequiredService<RpcBackendDelegates>();
+        rpcBackendDelegates.StartRouting();
+    }
 
     public virtual Task Run(CancellationToken cancellationToken = default)
         => App.RunAsync(cancellationToken);

@@ -11,8 +11,8 @@ public class EventHandlerRegistryTest(ITestOutputHelper @out)
     public async Task BackendServerRoleShouldHandleAllEvents()
     {
         using var host = await NewAppHost(options => options with  {
-            ConfigureAppServices = (builder, services) => {
-                var rpcHost = services.AddRpcHost(builder.HostInfo);
+            ConfigureServices = (ctx, services) => {
+                var rpcHost = services.AddRpcHost(ctx.HostInfo);
                 rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },
         });
