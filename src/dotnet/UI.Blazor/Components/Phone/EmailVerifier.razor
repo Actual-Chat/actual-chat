@@ -1,0 +1,48 @@
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="phone-verifier @Class">
+    @if (_emailUnderVerification == Email) {
+        <TotpVerifier
+            @ref="_totpVerifier"
+            Purpose="TotpPurpose.VerifyEmail"
+            Email="@Email"
+            Class="c-totp-verifier"
+            Verified="@Verified"/>
+    } else {
+        <div class="c-verify">
+            <Button Class="btn-outline c-verify-btn" Click="OnVerifyClick">Verify</Button>
+            <p class="c-description">Please confirm your email</p>
+        </div>
+    }
+</div>
+
+@code {
+    private TotpVerifier? _totpVerifier;
+    private string? _emailUnderVerification;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string Email { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback Verified { get; set; }
+
+    protected override void OnParametersSet() {
+        if (_emailUnderVerification != Email)
+            _emailUnderVerification = null!;
+    }
+
+    private async Task OnVerifyClick() {
+        var account = await AccountUI.OwnAccount.Use();
+        var command = new Accounts_Update(Session, account with { Email = Email }, account.Version);
+        var (_, error) = await UICommander.Run(command);
+        if (error is not null)
+            return ;
+        _emailUnderVerification = Email;
+        await (_totpVerifier?.Focus().AsTask() ?? Task.CompletedTask);
+    }
+}

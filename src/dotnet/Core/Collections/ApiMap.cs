@@ -26,7 +26,7 @@ public sealed partial class ApiMap<TKey, TValue> : Dictionary<TKey, TValue>, ICl
 
     public override string ToString()
     {
-        var sb = StringBuilderExt.Acquire();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append('<');
         sb.Append(typeof(TKey).GetName());
         sb.Append(',');

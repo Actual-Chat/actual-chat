@@ -98,7 +98,7 @@ public static class AppStartup
 
                     var settings = client.Settings;
                     var urlMapper = client.Services.UrlMapper();
-                    var sb = StringBuilderExt.Acquire();
+                    var sb = ActualLab.Text.StringBuilderExt.Acquire();
                     sb.Append(urlMapper.WebsocketBaseUrl);
                     sb.Append(settings.RequestPath);
                     sb.Append('?');

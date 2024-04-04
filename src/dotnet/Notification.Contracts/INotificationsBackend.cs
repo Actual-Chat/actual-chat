@@ -20,7 +20,7 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task OnNotify(NotificationsBackend_Notify command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnUpsert(NotificationsBackend_Upsert command, CancellationToken cancellationToken);
+    Task<bool> OnUpsert(NotificationsBackend_Upsert command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveDevices(NotificationsBackend_RemoveDevices command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -43,7 +43,7 @@ public sealed partial record NotificationsBackend_Notify(
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Upsert(
     [property: DataMember, MemoryPackOrder(0)] Notification Notification
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<bool>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public UserId ShardKey => Notification.UserId;

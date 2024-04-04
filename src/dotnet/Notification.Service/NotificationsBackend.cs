@@ -6,6 +6,7 @@ using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using ActualLab.Fusion.EntityFramework;
+using ActualLab.Versioning;
 
 namespace ActualChat.Notification;
 
@@ -104,9 +105,7 @@ public class NotificationsBackend(IServiceProvider services)
             return; // It just spawns other commands, so nothing to do here
 
         var notification = command.Notification;
-        var kind = notification.Kind;
         var userId = notification.UserId.Require();
-        var chatId = notification.ChatId;
 
         var similar = await Get(notification.Id, cancellationToken).ConfigureAwait(false);
         if (similar != null) {
@@ -120,14 +119,18 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         var upsertCommand = new NotificationsBackend_Upsert(notification);
-        await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        var hasUpserted = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        if (!hasUpserted)
+            return;
+
         await Send(userId, notification, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task OnUpsert(NotificationsBackend_Upsert command, CancellationToken cancellationToken)
+    public virtual async Task<bool> OnUpsert(NotificationsBackend_Upsert command, CancellationToken cancellationToken)
     {
         var notification = command.Notification;
+        var sid = notification.Id.Value;
         var userId = notification.UserId.Require();
         var context = CommandContext.GetCurrent();
 
@@ -135,39 +138,64 @@ public class NotificationsBackend(IServiceProvider services)
             var invIsCreate = context.Operation().Items.GetOrDefault(false);
             if (invIsCreate) // Created
                 _ = PseudoListRecentNotificationIds(userId);
-            else // Updated
-                _ = Get(notification.Id, default);
-            return;
+
+            // Created or Updated
+            _ = Get(notification.Id, default);
+            return default;
         }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
+        try {
+            var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            await using var __ = dbContext.ConfigureAwait(false);
 
-        DbNotification? dbNotification;
-        if (notification.Version == 0) { // Create
-            notification = notification with {
-                Version = VersionGenerator.NextVersion(),
-                CreatedAt = notification.CreatedAt == default ? notification.SentAt : notification.CreatedAt,
-            };
-            dbNotification = new DbNotification();
-            dbNotification.UpdateFrom(notification);
-            dbContext.Notifications.Add(dbNotification);
-            context.Operation().Items.Set(true);
-        }
-        else { // Update
-            var notificationCopy = notification;
-            dbNotification = await dbContext.Notifications.ForUpdate()
-                .FirstOrDefaultAsync(e => e.Id == notificationCopy.Id, cancellationToken)
+            var dbNotification = await dbContext.Notifications.ForUpdate()
+                .FirstOrDefaultAsync(e => e.Id == sid, cancellationToken)
                 .ConfigureAwait(false);
-            dbNotification = dbNotification.RequireVersion(notification.Version);
-            notification = notification with {
-                Version = VersionGenerator.NextVersion(notification.Version),
-            };
-            dbNotification.UpdateFrom(notification);
-            context.Operation().Items.Set(false);
+
+            if (dbNotification == null) {
+                // Create
+                notification = notification with {
+                    Version = VersionGenerator.NextVersion(),
+                    CreatedAt = notification.CreatedAt == default
+                        ? notification.SentAt
+                        : notification.CreatedAt,
+                };
+                dbNotification = new DbNotification();
+                dbNotification.UpdateFrom(notification);
+                dbContext.Notifications.Add(dbNotification);
+                context.Operation().Items.Set(true);
+            }
+            else {
+                // Update
+                var throttleInterval = GetThrottleInterval(notification);
+                if (notification.SentAt.ToDateTime() - dbNotification.SentAt < throttleInterval)
+                    return
+                        false; // skip update and avoid sending notification if notification for the user has already been sent recently
+
+                // TODO(AK): suspicious version check - it might be outdated
+                dbNotification = dbNotification.RequireVersion(notification.Version);
+                notification = notification with {
+                    Version = VersionGenerator.NextVersion(notification.Version),
+                };
+                dbNotification.UpdateFrom(notification);
+                context.Operation().Items.Set(false);
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (VersionMismatchException) {
+            // Get() returns stale notification, let's invalidate it and retry automatically
+            using (Computed.Invalidate())
+                _ = Get(notification.Id, default);
+
+            throw;
+        }
+        catch (DbUpdateConcurrencyException e) when(e.Entries.All(en => en.State == EntityState.Added)) {
+            // Notification has already been created for another message, let's skip
+            return false;
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return true;
     }
 
     // [CommandHandler]

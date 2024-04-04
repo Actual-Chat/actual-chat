@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Versioning;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ActualChat.Notification.Db;
 
@@ -94,5 +96,11 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         CreatedAt = model.CreatedAt;
         SentAt = model.SentAt;
         HandledAt = model.HandledAt;
+    }
+
+    internal class EntityConfiguration : IEntityTypeConfiguration<DbNotification>
+    {
+        public void Configure(EntityTypeBuilder<DbNotification> builder)
+            => builder.HasAnnotation(nameof(ConflictStrategy), ConflictStrategy.DoNothing);
     }
 }

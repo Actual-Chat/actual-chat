@@ -64,7 +64,9 @@
 	<string>Upload photos to share with other users or to change your avatar.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>Find friends, relatives, colleagues, etc.</string>
-    <key>UIViewControllerBasedStatusBarAppearance</key>
-    <false/>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
