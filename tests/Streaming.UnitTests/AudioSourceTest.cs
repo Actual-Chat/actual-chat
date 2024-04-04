@@ -90,16 +90,24 @@ public class AudioSourceTest(ILogger log)
         await WriteToFile(audio, TimeSpan.FromSeconds(40), "result-large-file.webm");
     }
 
+    [Fact(Skip = "Run manually to convert .opuss file")]
+    public async Task ConvertFiles()
+    {
+        var audio = await GetAudio("0003.opuss");
+        await WriteToFile(audio, TimeSpan.Zero, "0003.webm");
+    }
+
     private async Task<AudioSource> GetAudio(
         FilePath fileName,
         TimeSpan skipTo = default,
         int blobSize = 128 * 1024,
-        bool isWebMStream = true,
+        bool? isWebMStream = null,
         CancellationToken cancellationToken = default)
     {
+        var isWebMStream1 = isWebMStream ?? string.Equals(fileName.Extension, "webm", StringComparison.InvariantCultureIgnoreCase);
         var byteStream = GetAudioFilePath(fileName)
             .ReadByteStream(blobSize, cancellationToken);
-        var converter = isWebMStream
+        var converter = isWebMStream1
             ? new WebMStreamConverter(MomentClockSet.Default, Log)
             : (IAudioStreamConverter)new ActualOpusStreamConverter(MomentClockSet.Default, Log);
         var audio = await converter.FromByteStream(byteStream, cancellationToken);
@@ -112,12 +120,13 @@ public class AudioSourceTest(ILogger log)
 
     // Private methods
 
-    private async Task WriteToFile(AudioSource source, TimeSpan skipTo, FilePath fileName, bool isWebMStream = true)
+    private async Task WriteToFile(AudioSource source, TimeSpan skipTo, FilePath fileName, bool? isWebMStream = null)
     {
+        var isWebMStream1 = isWebMStream ?? string.Equals(fileName.Extension, ".webm", StringComparison.InvariantCultureIgnoreCase);
         await using var stream = new FileStream(GetAudioFilePath(fileName), FileMode.OpenOrCreate, FileAccess.ReadWrite);
-        var converter = isWebMStream
+        var converter = isWebMStream1
             ? new WebMStreamConverter(MomentClockSet.Default, Log)
             : (IAudioStreamConverter)new ActualOpusStreamConverter(MomentClockSet.Default, Log);
-        await stream.WriteByteStream(converter.ToByteStream(source, CancellationToken.None),true);
+        await stream.WriteByteStream(converter.ToByteStream(source.SkipTo(skipTo, CancellationToken.None), CancellationToken.None),true);
     }
 }

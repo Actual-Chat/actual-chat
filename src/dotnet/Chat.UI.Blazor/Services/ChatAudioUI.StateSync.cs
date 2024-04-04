@@ -253,7 +253,7 @@ public partial class ChatAudioUI
             }
             else {
                 DebugLog?.LogDebug(nameof(PushRealtimePlaybackState) + ": stopping playback");
-                ChatPlayers.StopHistoricalPlayback();
+                ChatPlayers.StopRealtimePlayback();
             }
 
             skip:

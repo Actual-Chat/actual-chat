@@ -58,7 +58,6 @@ let lastSessionToken = '';
 let isEncoding = false;
 let kbdWindow: Float32Array | null = null;
 let pinkNoiseChunk: Float32Array | null = null;
-let silenceChunk: Float32Array | null = null;
 let chunkTimeOffset: number = 0;
 let lastFrameProcessedAt = 0;
 
@@ -105,6 +104,9 @@ const serverImpl: OpusEncoderWorker = {
                 // Some extra attempts are needed, coz there is a chance that the primary connection
                 // stays intact, while this one drops somehow.
                 .withAutomaticReconnect([50, 350, 500, 1000, 1000, 1000])
+                .withStatefulReconnect({
+                    bufferSize: 2048 // ~ 5s of encoded opus with 3000 kbps
+                })
                 .withHubProtocol(new MessagePackHubProtocol())
                 .configureLogging(signalR.LogLevel.Information)
                 .build();
@@ -119,7 +121,6 @@ const serverImpl: OpusEncoderWorker = {
             // Get fade-in window
             kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE * FADE_CHUNKS, 2.55);
             pinkNoiseChunk = getPinkNoiseBuffer(1.0);
-            silenceChunk = new Float32Array(CHUNK_SIZE);
 
             // Loading codec
             codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
@@ -329,14 +330,8 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
         isEncoding = true;
         const result = new Array<Uint8Array>();
         let fadeWindowIndex: number | null = null;
-        if (fade === 'in') {
-            result.push(encoder.encode(silenceChunk.buffer));
-            chunkTimeOffset = 20;
-        }
-        else if (fade === 'out') {
-            if (queue.length >= FADE_CHUNKS)
-                fadeWindowIndex = 0;
-        }
+        if (fade === 'in' || fade === 'out')
+            fadeWindowIndex = 0;
 
         while (!queue.isEmpty()) {
             const buffer = queue.shift();
@@ -371,12 +366,6 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
             void encoderWorklet.releaseBuffer(buffer, rpcNoWait);
 
             chunkTimeOffset += 20;
-        }
-        if (fade === 'out') {
-            while (chunkTimeOffset < 2200) {
-                result.push(encoder.encode(silenceChunk.buffer));
-                chunkTimeOffset += 20;
-            }
         }
 
         recordingSubject?.next(result);

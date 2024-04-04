@@ -385,6 +385,183 @@ jobs:
           dst: |
             us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-app:${{needs.build.outputs.simple-version}}
 
+  build-ios-pkg:
+    name: Build ios app package for ${{ github.ref_name }}
+    if: |
+      github.ref == 'refs/heads/master' ||
+      github.ref == 'refs/heads/dev' ||
+      startsWith(github.ref, 'refs/heads/release/')
+    runs-on: macos-13
+    env:
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+      NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
+      IS_DEV_MAUI: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
+      APP_ID: chat.actual.${{ !startsWith(github.ref, 'refs/heads/release/') && 'dev.' || '' }}app
+      PACKAGE_FILE_NAME: App-signed.ipa
+    outputs:
+      APP_ID: ${{env.APP_ID}}
+      ARTIFACT_NAME: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.ipa
+      PACKAGE_FILE_NAME: ${{env.PACKAGE_FILE_NAME}}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: true
+
+      - name: Install the Apple certificate and provisioning profile
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{secrets.APPLE_DISTRIBUTION_CERT_BASE64}}
+          P12_PASSWORD: ${{secrets.APPLE_DISTRIBUTION_CERT_PASSWORD}}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ env.IS_DEV_MAUI && secrets.PROVISIONING_PROFILE_DEV_BASE64 || secrets.PROVISIONING_PROFILE_PROD_BASE64 }}
+        run: |
+          # create variables
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          echo ::Importing certificate and provisioning profile from secrets
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+          echo ::Creating temporary key chain
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security default-keychain -s $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          echo ::Importing certificate to keychain
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          echo :: set-key-partition-list
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          echo :: list-keychain
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          echo ::Applying provisioning profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          uuid=`grep UUID -A1 -a $PP_PATH | grep -io "[-A-F0-9]\{36\}"`
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$uuid.mobileprovision
+
+      - name: Install dotnet 8.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
+          dotnet-quality: 'ga'
+
+      - name: Use cached dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/.nuget/packages
+          key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Replace git+ssh://git@ to https://
+        run: sed -i -E 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
+
+      - name: Install workloads
+        run: |-
+          dotnet workload restore
+
+      - name: Generate version variables
+        id: nbgv
+        uses: dotnet/nbgv@master
+        with:
+          setAllVars: true
+
+      - name: Restore nuget packages
+        run: |-
+          ./run-build.cmd restore
+
+      - name: Prepare GoogleServices file for dev
+        if: ${{env.IS_DEV_MAUI}}
+        run: |-
+          tee src/dotnet/App.Maui/Platforms/iOS/GoogleService-Info.plist.dev <<EOF
+          ${{ secrets.GOOGLE_SERVICES_PLIST_DEV }}
+          EOF
+
+      - name: Prepare GoogleServices file for prod
+        if: ${{!env.IS_DEV_MAUI}}
+        run: |-
+          tee src/dotnet/App.Maui/Platforms/iOS/GoogleService-Info.plist.prod <<EOF
+          ${{ secrets.GOOGLE_SERVICES_PLIST_PROD }}
+          EOF
+
+      - name: PList - set aps-environment and app identifier
+        uses: dppeak/update-ios-plist-action@v1.1.0
+        with:
+          info-plist-path: 'src/dotnet/App.Maui/Platforms/iOS/Entitlements.plist'
+          key-value-json: '[{"application-identifier": "${{secrets.APPLE_TEAM_ID}}.${{env.APP_ID}}"}, {"aps-environment": "production"}]'
+          print-file: true
+
+      - name: Build app package
+        run: |-
+          ./run-build.cmd publish-ios --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}"
+          pushd artifacts/publish/App.Maui/release_net8.0-ios_ios-arm64
+          unzip ActualChat.ipa
+          rm -r Payload/ActualChat.app/_CodeSignature
+          rm -r Payload/ActualChat.app/Frameworks/*/_CodeSignature
+          codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" Payload/ActualChat.app/Frameworks/*
+          codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" --entitlements ${{github.workspace}}/src/dotnet/App.Maui/Platforms/iOS/Entitlements.plist Payload/ActualChat.app
+          zip -r "${{env.PACKAGE_FILE_NAME}}" Payload
+          popd
+
+      - name: Upload package to artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.ipa
+          path: artifacts/publish/App.Maui/release_net8.0-ios_ios-arm64/${{env.PACKAGE_FILE_NAME}}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 10
+
+
+  deploy-ios-to-appstore:
+    name: Deploy app package to apple app store for ${{ github.ref_name }}
+    if: |
+      github.ref == 'refs/heads/master' ||
+      startsWith(github.ref, 'refs/heads/dev/') ||
+      startsWith(github.ref, 'refs/heads/release/')
+    runs-on: macos-13
+    needs:
+      - build-ios-pkg
+      - unit-tests
+      - integration-tests
+    environment: ${{ startsWith(github.ref, 'refs/heads/release/') && 'prod' || '' }}
+    env:
+      APP_ID: ${{needs.build-ios-pkg.outputs.APP_ID}}
+      ARTIFACT_NAME: ${{needs.build-ios-pkg.outputs.ARTIFACT_NAME}}
+      PACKAGE_FILE_NAME: ${{needs.build-ios-pkg.outputs.PACKAGE_FILE_NAME}}
+      API_KEY_BASE64: ${{secrets.APPSTORE_API_KEY_BASE64}}
+      API_KEY_ID: ${{secrets.APPSTORE_API_KEY_ID}}
+      API_ISSUER_ID: ${{secrets.APPSTORE_API_ISSUER_ID}}
+    steps:
+      - name: Download package file from artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{env.ARTIFACT_NAME}}
+
+      - name: Install App Store api key
+        run: |-
+          mkdir -p ~/.appstoreconnect/private_keys/
+          echo -n "${{ env.API_KEY_BASE64 }}" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${{ env.API_KEY_ID }}.p8
+          ls -ls ~/.appstoreconnect/private_keys/
+          mkdir -p ~/private_keys/
+          echo -n "${{ env.API_KEY_BASE64 }}" | base64 --decode -o ~/private_keys/AuthKey_${{ env.API_KEY_ID }}.p8
+          ls -ls ~/private_keys/
+
+      - name: Validate App
+        run: |-
+          xcrun altool --validate-app -f ${{env.PACKAGE_FILE_NAME}} -t ios --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json
+        shell: bash
+
+      - name: Upload App
+        run: |
+          xcrun altool --upload-app -f ${{env.PACKAGE_FILE_NAME}} -t ios --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json
+        shell: bash
+
   build-android-pkg:
     name: Build android app package for ${{ github.ref_name }}
     if: |

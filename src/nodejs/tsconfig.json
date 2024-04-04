@@ -28,7 +28,6 @@
     "downlevelIteration": false,
     "moduleResolution": "node",
     "newLine": "lf",
-    "charset": "utf-8",
     "emitBOM": false,
     "noEmitOnError": true,
     "importsNotUsedAsValues": "remove",

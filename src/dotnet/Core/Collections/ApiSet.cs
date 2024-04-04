@@ -34,7 +34,7 @@ public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>
 
     public override string ToString()
     {
-        var sb = StringBuilderExt.Acquire();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append('<');
         sb.Append(typeof(T).GetName());
         sb.Append(">{");

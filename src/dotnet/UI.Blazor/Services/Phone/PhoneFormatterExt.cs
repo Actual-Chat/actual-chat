@@ -13,7 +13,7 @@ public static class PhoneFormatterExt
         if (phoneCode is null)
             return $"+{phone.Code} {phone.Number}";
 
-        var sb = StringBuilderExt.Acquire();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         const int areaCodeLength = 3;
         const int defaultGroupSize = 3;
         sb.Append(phoneCode.DisplayCode);

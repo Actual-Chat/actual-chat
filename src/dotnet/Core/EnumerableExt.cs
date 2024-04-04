@@ -50,7 +50,7 @@ public static class EnumerableExt
     // Constructs "a, b, and c" strings
     public static string ToCommaPhrase(this IEnumerable<string> source)
     {
-        var sb = StringBuilderExt.Acquire();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         var prev = "";
         var i = 0;
         foreach (var item in source) {

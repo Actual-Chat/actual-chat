@@ -49,7 +49,7 @@ public class RpcBackendWebSocketClient(RpcWebSocketClient.Options settings, ISer
 
     private Task<RpcConnection> Connect(RpcClientPeer peer, MeshNode meshNode, CancellationToken cancellationToken)
     {
-        var sb = StringBuilderExt.Acquire();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append("ws://");
         sb.Append(meshNode.Endpoint);
         sb.Append(Settings.BackendRequestPath);
