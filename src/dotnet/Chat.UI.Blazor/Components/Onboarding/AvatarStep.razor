@@ -24,8 +24,8 @@
 
             <div class="c-buttons">
                 <Button Class="btn-modal btn-sm btn-transparent" Click="OnGenerateAvatarClick">
-                    <IconContent><i class="icon-sync text-xl text-primary"></i></IconContent>
-                    <TitleContent>Generate avatar</TitleContent>
+                    <Icon><i class="icon-sync text-xl text-primary"></i></Icon>
+                    <Title>Generate avatar</Title>
                 </Button>
                 <FileUpload
                     @key="@_model.AvatarId.Value"
@@ -37,11 +37,11 @@
                     hidden>
                 </FileUpload>
                 <Button Class="btn-modal btn-sm btn-transparent">
-                    <IconContent><i class="icon-image text-xl text-primary"></i></IconContent>
-                    <TitleContent>
+                    <Icon><i class="icon-image text-xl text-primary"></i></Icon>
+                    <Title>
                         <label for="fileUpload" class="flex-x"></label>
                         Upload your photo
-                    </TitleContent>
+                    </Title>
                 </Button>
             </div>
         </div>

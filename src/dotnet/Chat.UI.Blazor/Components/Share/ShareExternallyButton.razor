@@ -5,8 +5,8 @@
 <div class="share-button share-externally-button @Class">
     @if (MauiShare != null) {
         <Button Class="btn-modal" Click="OnMauiShareClick">
-            <IconContent><i class="icon-share-more"></i></IconContent>
-            <TitleContent>Share Externally</TitleContent>
+            <Icon><i class="icon-share-more"></i></Icon>
+            <Title>Share Externally</Title>
         </Button>
     } else if (_canUseWebShare) {
         var textAndLink = Request.GetShareTextAndLink(UrlMapper);
@@ -25,11 +25,11 @@
         var text = Request.HasLink() ? "Copy link" : "Copy to clipboard";
         <CopyTrigger Tooltip="Copy" CopyText="@Request.GetShareTextAndLink(UrlMapper)">
             <Button Class="btn-modal">
-                <IconContent>
+                <Icon>
                     <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
                     <i class="copied-hint icon-checkmark-simple text-xl" aria-hidden="true"></i>
-                </IconContent>
-                <TitleContent>@text</TitleContent>
+                </Icon>
+                <Title>@text</Title>
             </Button>
         </CopyTrigger>
     }
