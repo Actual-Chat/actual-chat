@@ -51,7 +51,7 @@
                         Class="btn-primary"
                         ButtonRef="@_nextButtonRef"
                         Click="@(async _ => await stepper.TryMoveForward())">
-                        @if (stepper.CanSkip) {
+                        @if (stepper.CurrentStep is PhoneStep or EmailStep) {
                             <span>Verify</span>
                         } else if (stepper.IsLastStep) {
                             <span>Start messaging</span>
