@@ -136,27 +136,25 @@
     private AccountFull _account = AccountFull.Loading;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private UIHub UIHub { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
-        _account = await Accounts.GetOwn(Session, default);
+        _account = await UIHub.Accounts.GetOwn(Session, default);
         _form.Name = _account.Name;
         _form.LastName = _account.LastName;
-        _form.Email = _account.Email.IsNullOrEmpty() ? null : _account.Email;
+        _form.Email = _account.Email.NullIfEmpty();
         _form.Phone = !_account.Phone.IsNone ? _account.Phone.ToReadable() : PhoneCodes.Default.DisplayCode;
 
         _form.CopyToBase();
     }
 
     private async void OnSave() {
-        var account = await Accounts.GetOwn(Session, default);
+        var account = await UIHub.Accounts.GetOwn(Session, default);
         var updateAccountCommand = new Accounts_Update(
             Session,
             account with {
@@ -165,7 +163,7 @@
                 Phone = PhoneFormatterExt.FromReadable(_form.Phone),
             },
             account.Version);
-        var (_, error) = await UICommander.Run(updateAccountCommand);
+        var (_, error) = await UIHub.UICommander().Run(updateAccountCommand);
         if (error != null)
             return;
 
@@ -177,13 +175,13 @@
         => Modal.Close();
 
     private async Task OnPhoneVerified()
-        => _account = await Accounts.GetOwn(Session, default);
+        => _account = await UIHub.Accounts.GetOwn(Session, default);
 
     private async Task OnEmailVerified()
-        => _account = await Accounts.GetOwn(Session, default);
+        => _account = await UIHub.Accounts.GetOwn(Session, default);
 
     private Task OnDeleteAccountClick()
-        => ModalUI.Show(new DeleteAccountModal.Model());
+        => UIHub.ModalUI.Show(new DeleteAccountModal.Model());
 
     // Nested types
 
