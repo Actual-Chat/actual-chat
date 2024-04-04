@@ -5,16 +5,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat.Db;
 
-[Table("CopiedChats")]
+[Table("ChatCopyStates")]
 [Index(nameof(SourceChatId))]
-public class DbCopiedChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
+public class DbChatCopyState : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;
     private DateTime _lastCopyingAt;
     private DateTime _publishedAt;
 
-    public DbCopiedChat() { }
-    public DbCopiedChat(CopiedChat model) => UpdateFrom(model);
+    public DbChatCopyState() { }
+    public DbChatCopyState(ChatCopyState model) => UpdateFrom(model);
 
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
@@ -40,7 +40,7 @@ public class DbCopiedChat : IHasId<string>, IHasVersion<long>, IRequirementTarge
         set => _publishedAt = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    public CopiedChat ToModel()
+    public ChatCopyState ToModel()
         => new (new ChatId(Id), Version) {
             CreatedAt = CreatedAt,
             SourceChatId = new ChatId(SourceChatId),
@@ -52,7 +52,7 @@ public class DbCopiedChat : IHasId<string>, IHasVersion<long>, IRequirementTarge
             IsPublished = IsPublished
         };
 
-    public void UpdateFrom(CopiedChat model)
+    public void UpdateFrom(ChatCopyState model)
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id);

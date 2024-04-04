@@ -8,7 +8,7 @@
 @foreach (var banner in m.Banners.Take(MaxCount)) {
     @banner.View
 }
-<CopiedChatBanner ChatContext="@ChatContext"/>
+<ChatCopyBanner ChatContext="@ChatContext"/>
 <AddToContactsBanner ChatContext="@ChatContext"/>
 <AddChatMembersBanner ChatContext="@ChatContext"/>
 <PermissionBannerSwitch/>

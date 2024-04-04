@@ -49,7 +49,7 @@ public interface IChats : IComputeService
     Task<ApiArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
-    Task<CopiedChat?> GetCopiedChat(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<ChatCopyState?> GetChatCopyState(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<ChatId> GetForwardChatReplacement(Session session, ChatId sourceChatId, CancellationToken cancellationToken);

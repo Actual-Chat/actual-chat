@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    [Migration("20240402145729_CopiedChat")]
-    partial class CopiedChat
+    [Migration("20240402145729_ChatCopyState")]
+    partial class ChatCopyState
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -312,7 +312,7 @@ namespace ActualChat.Chat.Migrations
                     b.ToTable("chat_entries");
                 });
 
-            modelBuilder.Entity("ActualChat.Chat.Db.DbCopiedChat", b =>
+            modelBuilder.Entity("ActualChat.Chat.Db.DbChatCopyState", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text")
@@ -357,12 +357,12 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnName("version");
 
                     b.HasKey("Id")
-                        .HasName("pk_copied_chats");
+                        .HasName("pk_chat_copy_states");
 
                     b.HasIndex("SourceChatId")
-                        .HasDatabaseName("ix_copied_chats_source_chat_id");
+                        .HasDatabaseName("ix_chat_copy_states_source_chat_id");
 
-                    b.ToTable("copied_chats");
+                    b.ToTable("chat_copy_states");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbMention", b =>
