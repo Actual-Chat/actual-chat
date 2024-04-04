@@ -25,10 +25,16 @@ namespace ActualChat.MLSearch.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : HostModule<MLSearchSettings>(moduleServices)
 {
+    private readonly ILogger<MLSearchServiceModule> _log = moduleServices.LogFor<MLSearchServiceModule>();
+
     protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.HostKind.IsServer()) {
             return; // Server-side only module
+        }
+        if (!Settings.IsEnabled) {
+            _log.LogInformation("MLSearch functionality is disabled, skipping service registrations.");
+            return;
         }
 
         // Api Adapters
@@ -103,16 +109,21 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
 
-        // -- Register chat index initializer --
-        fusion.AddService<IChatIndexInitializerTrigger, ChatIndexInitializerTrigger>();
-        services.AddSingleton<ICursorStates<ChatIndexInitializerShard.Cursor>>(static services
-            => services.CreateInstanceWith<CursorStates<ChatIndexInitializerShard.Cursor>>(IndexNames.ChatCursor));
-        services.AddSingleton<IChatIndexInitializerShard, ChatIndexInitializerShard>();
-        services.AddSingleton(static services
-            => services.CreateInstanceWith<ChatIndexInitializer>(
-                ShardScheme.MLSearchBackend))
-            .AddAlias<IChatIndexInitializer, ChatIndexInitializer>()
-            .AddAlias<IHostedService, ChatIndexInitializer>();
+        if (Settings.IsInitialIndexingDisabled) {
+            _log.LogInformation("Initial chat indexing is disabled, skipping services registration.");
+        }
+        else {
+            // -- Register chat index initializer --
+            fusion.AddService<IChatIndexInitializerTrigger, ChatIndexInitializerTrigger>();
+            services.AddSingleton<ICursorStates<ChatIndexInitializerShard.Cursor>>(static services
+                => services.CreateInstanceWith<CursorStates<ChatIndexInitializerShard.Cursor>>(IndexNames.ChatCursor));
+            services.AddSingleton<IChatIndexInitializerShard, ChatIndexInitializerShard>();
+            services.AddSingleton(static services
+                => services.CreateInstanceWith<ChatIndexInitializer>(
+                    ShardScheme.MLSearchBackend))
+                .AddAlias<IChatIndexInitializer, ChatIndexInitializer>()
+                .AddAlias<IHostedService, ChatIndexInitializer>();
+        }
 
         // -- Register ML bot --
         const string ConversationBotServiceGroup = "ML Chat Bot";

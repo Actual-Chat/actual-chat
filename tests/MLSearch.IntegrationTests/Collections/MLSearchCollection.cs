@@ -1,3 +1,4 @@
+using ActualChat.MLSearch.Module;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.MLSearch.IntegrationTests;
@@ -7,7 +8,8 @@ public class MLSearchCollection : ICollectionFixture<AppHostFixture>;
 
 public class AppHostFixture(IMessageSink messageSink)
     : Testing.Host.AppHostFixture("mlsearch", messageSink, TestAppHostOptions.Default with {
-        // AppConfigurationExtender = cfg => {
-        //     cfg.AddInMemory(("SearchSettings:IsSearchEnabled", "true"));
-        // },
+        Configure = (_, cfg) => {
+            cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsEnabled)}", "true"));
+            cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsInitialIndexingDisabled)}", "true"));
+        },
     });

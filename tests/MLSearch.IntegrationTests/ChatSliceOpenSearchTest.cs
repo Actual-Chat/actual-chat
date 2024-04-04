@@ -13,6 +13,7 @@ using HttpMethod = OpenSearch.Net.HttpMethod;
 
 namespace ActualChat.MLSearch.IntegrationTests;
 
+[Trait("Category", "Slow")]
 [Collection(nameof(MLSearchCollection))]
 public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
