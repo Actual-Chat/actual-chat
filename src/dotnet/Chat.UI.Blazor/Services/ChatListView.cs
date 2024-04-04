@@ -8,6 +8,8 @@ public class ChatListView
 
     public PlaceId PlaceId { get; }
 
+    public Task WhenReady => _settingsState.WhenRead;
+
     public ChatListView(PlaceId placeId, IStoredState<ChatListSettings> settingsState)
     {
         PlaceId = placeId;

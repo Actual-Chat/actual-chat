@@ -31,6 +31,7 @@
             @ref="@_tabPanel"
             BottomHill="true"
             TabsClass="left-panel-tabs"
+            AutoSelectInitialTab="false"
             SelectedTabIdChanged="@OnSelectedTabIdChanged">
             <AdditionalButton>
                 <ChatListSortButton ChatListView="@_chatListView" />
@@ -39,13 +40,7 @@
                 @for (var i = 0; i < ChatListFilter.All.Count; i++) {
                     var filter = ChatListFilter.All[i];
                     var placePeopleTab = !PlaceId.IsNone && Equals(ChatListFilter.People, filter);
-                    var attributes = placePeopleTab
-                        ? new Dictionary<string, object> {
-                            { "data-bubble", BubbleRef.New<PlacePeopleBubble>() },
-                            { "data-bubble-priority", "204" },
-                            { "data-bubble-placement", FloatingPosition.Bottom.ToPositionString() },
-                        }
-                        : null;
+                    var attributes = placePeopleTab ? PlacePeopleTabAttrs : null;
                     @RenderTab(filter, i, attributes)
                 }
             </ChildContent>
@@ -60,6 +55,12 @@
 </div>
 
 @code {
+    private static readonly Dictionary<string, object> PlacePeopleTabAttrs = new() {
+        { "data-bubble", BubbleRef.New<PlacePeopleBubble>() },
+        { "data-bubble-priority", "204" },
+        { "data-bubble-placement", FloatingPosition.Bottom.ToPositionString() },
+    };
+
     private TabPanel _tabPanel = null!;
     private bool _updateSelectedTab = true;
     private ChatListView? _chatListView;
@@ -68,9 +69,10 @@
 
     [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
 
-    protected override void OnParametersSet() {
+    protected override async Task OnParametersSetAsync() {
         var oldChatListView = _chatListView;
         _chatListView = ChatListUI.ActivateChatList(PlaceId);
+        await _chatListView.WhenReady; // NOTE(DF): Re-render after ChatListView became ready (settings are loaded) to select tab with current filter id.
         if (_chatListView != oldChatListView)
             _updateSelectedTab = true;
     }
@@ -82,6 +84,7 @@
         if (chatListView == null)
             return;
         var settings = await chatListView.GetSettings();
+        // If chatListView has been changed during we reading settings, do nothing now, wait new chatListView is rendered.
         if (chatListView != _chatListView)
             return;
         _updateSelectedTab = false;
