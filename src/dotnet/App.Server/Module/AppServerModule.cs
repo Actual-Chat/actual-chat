@@ -233,6 +233,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             o.DetailedErrors = true;
         }).AddHubOptions(o => {
             o.MaximumParallelInvocationsPerClient = 4;
+            o.StatefulReconnectBufferSize = 1000;
         });
 
         // OpenTelemetry
