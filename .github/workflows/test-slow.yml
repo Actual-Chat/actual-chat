@@ -71,6 +71,8 @@ jobs:
           ELASTIC_PASSWORD: elastic
           xpack.security.enabled: false
           discovery.type: single-node
+        volumes:
+          - elasticsearch-data:/usr/share/elasticsearch/data
       nats:
         image: ghcr.io/actual-chat/nats-jetstream:2.10.10-alpine3.19
         # Set health checks to wait until postgres has started
