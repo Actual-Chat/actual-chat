@@ -29,13 +29,13 @@
             <div class="actions">
                 @if (AllowRevoke) {
                     <Button Class="btn-modal" Click="@(() => Revoke(invite))">
-                        <IconContent><i class="icon-trash03 text-xl"></i></IconContent>
-                        <TitleContent>Revoke</TitleContent>
+                        <Icon><i class="icon-trash03 text-xl"></i></Icon>
+                        <Title>Revoke</Title>
                     </Button>
                 }
                 <Button Class="btn-modal" Click="@(() => OnShareClick(invite).AsTask())">
-                    <IconContent><i class="icon-share-more text-xl"></i></IconContent>
-                    <TitleContent>Share</TitleContent>
+                    <Icon><i class="icon-share-more text-xl"></i></Icon>
+                    <Title>Share</Title>
                 </Button>
             </div>
         </div>

@@ -18,12 +18,12 @@
             <Button
                 Class="btn-modal sign-in sign-in-with"
                 Click="@(_ => OnSignInWith(schema.Name))">
-                <IconContent>
+                <Icon>
                     @if (schema.Icon != null) {
                         <img draggable="false" src="@schema.Icon" class="@schema.Class" alt="@schema.DisplayName">
                     }
-                </IconContent>
-                <TitleContent>@("Sign in with " + schema.DisplayName)</TitleContent>
+                </Icon>
+                <Title>@("Sign in with " + schema.DisplayName)</Title>
             </Button>
         }
     </div>
