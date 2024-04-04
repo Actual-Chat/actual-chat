@@ -4,7 +4,7 @@ using MemoryPack;
 namespace ActualChat.Chat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record CopiedChat(
+public partial record ChatCopyState(
     [property: DataMember, MemoryPackOrder(0)] ChatId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
     )
@@ -23,7 +23,7 @@ public partial record CopiedChat(
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record CopiedChatDiff : RecordDiff
+public sealed partial record ChatCopyStateDiff : RecordDiff
 {
     [DataMember, MemoryPackOrder(0)] public Option<ChatId> SourceChatId { get; init; }
     [DataMember, MemoryPackOrder(1)] public long? LastEntryId { get; init; }

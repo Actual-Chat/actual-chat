@@ -111,7 +111,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             db.AddEntityResolver<string, DbRole>();
 
             // DbCopiedChat
-            db.AddEntityResolver<string, DbCopiedChat>();
+            db.AddEntityResolver<string, DbChatCopyState>();
         });
     }
 }

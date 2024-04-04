@@ -34,7 +34,7 @@ public partial class ChatsBackend
         var textEntryRange = new Range<long>();
         (RoleId Id, RoleId NewId)[] rolesMap;
         long maxAuthorLocalId;
-        CopiedChat copiedChat;
+        ChatCopyState chatCopyState;
 
         {
             var dbContext = CreateDbContext(true);
@@ -44,13 +44,13 @@ public partial class ChatsBackend
             var chat = await Get(chatId, cancellationToken).Require().ConfigureAwait(false);
             var newChat = await CreateOrUpdateChat(correlationId, dbContext, newChatId, chat, cancellationToken).ConfigureAwait(false);
 
-            var copiedChat1 = await GetCopiedChat(newChatId, cancellationToken).ConfigureAwait(false);
-            if (copiedChat1 != null)
-                copiedChat = copiedChat1;
+            var chatCopyState1 = await GetChatCopyState(newChatId, cancellationToken).ConfigureAwait(false);
+            if (chatCopyState1 != null)
+                chatCopyState = chatCopyState1;
             else
-                copiedChat = await Commander.Call(new ChatsBackend_ChangeCopiedChat(newChatId,
+                chatCopyState = await Commander.Call(new ChatsBackend_ChangeChatCopyState(newChatId,
                             null,
-                            Change.Create(new CopiedChatDiff {
+                            Change.Create(new ChatCopyStateDiff {
                                 SourceChatId = chat.Id,
                             })),
                         true,
@@ -138,9 +138,9 @@ public partial class ChatsBackend
             }
         }
         {
-            await Commander.Call(new ChatsBackend_ChangeCopiedChat(copiedChat.Id,
-                        copiedChat.Version,
-                        Change.Update(new CopiedChatDiff {
+            await Commander.Call(new ChatsBackend_ChangeChatCopyState(chatCopyState.Id,
+                        chatCopyState.Version,
+                        Change.Update(new ChatCopyStateDiff {
                             IsCopiedSuccessfully = !hasErrors,
                             LastCorrelationId = correlationId,
                             LastEntryId = !lastProcessedEntryId.IsNone ? 0L : lastProcessedEntryId.LocalId

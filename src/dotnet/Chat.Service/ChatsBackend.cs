@@ -48,7 +48,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; } = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
-    private IDbEntityResolver<string, DbCopiedChat> DbCopiedChatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbCopiedChat>>();
+    private IDbEntityResolver<string, DbChatCopyState> DbChatCopyStateResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChatCopyState>>();
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
     private OtelMetrics Metrics { get; } = services.Metrics();
@@ -309,9 +309,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [ComputeMethod]
-    public virtual async Task<CopiedChat?> GetCopiedChat(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ChatCopyState?> GetChatCopyState(ChatId chatId, CancellationToken cancellationToken)
     {
-        var dbCopiedChat = await DbCopiedChatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var dbCopiedChat = await DbChatCopyStateResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
         return dbCopiedChat?.ToModel();
     }
 
@@ -326,15 +326,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var copiedChats = await dbContext.CopiedChats
+        var chatCopyStates = await dbContext.ChatCopyStates
             .Where(c => c.SourceChatId == sourceChatId.Value && c.IsPublished)
             .OrderByDescending(c => c.PublishedAt)
             .ThenByDescending(c => c.LastEntryId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        foreach (var copiedChat in copiedChats) {
-            var chat = await Get(new ChatId(copiedChat.Id), cancellationToken).ConfigureAwait(false);
+        foreach (var chatCopyState in chatCopyStates) {
+            var chat = await Get(new ChatId(chatCopyState.Id), cancellationToken).ConfigureAwait(false);
             if (chat != null)
                 return chat.Id;
         }
@@ -1214,76 +1214,76 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [CommandHandler]
-    public virtual async Task<CopiedChat> OnChangeCopiedChat(ChatsBackend_ChangeCopiedChat command, CancellationToken cancellationToken)
+    public virtual async Task<ChatCopyState> OnChangeChatCopyState(ChatsBackend_ChangeChatCopyState command, CancellationToken cancellationToken)
     {
         var change = command.Change;
         var chatId = command.ChatId;
         var expectedVersion = command.ExpectedVersion;
 
         if (Computed.IsInvalidating()) {
-            _ = GetCopiedChat(chatId, default);
+            _ = GetChatCopyState(chatId, default);
             return null!;
         }
 
         change.RequireValid();
-        CopiedChat copiedChat;
+        ChatCopyState chatCopyState;
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
-        var dbCopiedChat = await dbContext.CopiedChats.ForUpdate()
+        var dbChatCopyState = await dbContext.ChatCopyStates.ForUpdate()
             // ReSharper disable once AccessToModifiedClosure
             .FirstOrDefaultAsync(c => c.Id == chatId, cancellationToken)
             .ConfigureAwait(false);
-        var oldCopiedChat = dbCopiedChat?.ToModel();
+        var oldChatCopyState = dbChatCopyState?.ToModel();
 
         if (change.IsCreate(out var update)) {
-            oldCopiedChat.RequireNull();
+            oldChatCopyState.RequireNull();
 
-            copiedChat = new CopiedChat(chatId) {
+            chatCopyState = new ChatCopyState(chatId) {
                 CreatedAt = Clocks.SystemClock.Now,
             };
-            copiedChat = DiffEngine.Patch(copiedChat, update) with {
+            chatCopyState = DiffEngine.Patch(chatCopyState, update) with {
                 Version = VersionGenerator.NextVersion(),
             };
-            if (copiedChat.SourceChatId.IsNone)
-                throw StandardError.Constraint("SourceChatId should be specified to create CopiedChat.");
+            if (chatCopyState.SourceChatId.IsNone)
+                throw StandardError.Constraint("SourceChatId should be specified to create ChatCopyState.");
 
-            dbCopiedChat = new DbCopiedChat(copiedChat);
-            dbContext.Add(dbCopiedChat);
+            dbChatCopyState = new DbChatCopyState(chatCopyState);
+            dbContext.Add(dbChatCopyState);
         }
         else if (change.IsUpdate(out update)) {
-            dbCopiedChat.RequireVersion(expectedVersion);
+            dbChatCopyState.RequireVersion(expectedVersion);
             if (update.SourceChatId.HasValue)
                 throw StandardError.Constraint("SourceChatId can't be edited.");
-            var originalCopiedChat = dbCopiedChat.ToModel();
-            if (originalCopiedChat.IsPublished)
-                throw StandardError.Constraint("CopiedChat can't be edited after it has been marked as published.");
+            var originalChatCopyState = dbChatCopyState.ToModel();
+            if (originalChatCopyState.IsPublished)
+                throw StandardError.Constraint("ChatCopyState can't be edited after it has been marked as published.");
 
-            copiedChat = DiffEngine.Patch(originalCopiedChat, update) with {
+            chatCopyState = DiffEngine.Patch(originalChatCopyState, update) with {
                 Version = VersionGenerator.NextVersion(),
             };
 
             if (update.IsPublished == true)
-                copiedChat = copiedChat with {
+                chatCopyState = chatCopyState with {
                     PublishedAt = Clocks.SystemClock.Now,
                 };
 
             if (update.IsCopiedSuccessfully.HasValue || update.LastEntryId.HasValue)
-                copiedChat = copiedChat with {
+                chatCopyState = chatCopyState with {
                     LastCopyingAt = Clocks.SystemClock.Now,
                 };
 
-            dbCopiedChat.UpdateFrom(copiedChat);
+            dbChatCopyState.UpdateFrom(chatCopyState);
         }
         else if (change.IsRemove()) {
-            dbCopiedChat.Require();
-            throw StandardError.Constraint("Removing CopiedChat is not allowed.");
+            dbChatCopyState.Require();
+            throw StandardError.Constraint("Removing ChatCopyState is not allowed.");
         }
         else
-            throw StandardError.Internal("Invalid CopiedChatDiff state.");
+            throw StandardError.Internal("Invalid ChatCopyStateDiff state.");
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return copiedChat;
+        return chatCopyState;
     }
 
     // Event handlers

@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ActualChat.Chat.Migrations
 {
     /// <inheritdoc />
-    public partial class CopiedChat : Migration
+    public partial class ChatCopyState : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "copied_chats",
+                name: "chat_copy_states",
                 columns: table => new
                 {
                     id = table.Column<string>(type: "text", nullable: false),
@@ -28,12 +28,12 @@ namespace ActualChat.Chat.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_copied_chats", x => x.id);
+                    table.PrimaryKey("pk_chat_copy_states", x => x.id);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "ix_copied_chats_source_chat_id",
-                table: "copied_chats",
+                name: "ix_chat_copy_states_source_chat_id",
+                table: "chat_copy_states",
                 column: "source_chat_id");
         }
 
@@ -41,7 +41,7 @@ namespace ActualChat.Chat.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "copied_chats");
+                name: "chat_copy_states");
         }
     }
 }

@@ -129,13 +129,13 @@ public class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<CopiedChat?> GetCopiedChat(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ChatCopyState?> GetChatCopyState(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return null;
 
-        return await Backend.GetCopiedChat(chatId, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetChatCopyState(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -737,7 +737,7 @@ public class Chats(IServiceProvider services) : IChats
             throw StandardError.Constraint("You must be a chat's place owner to perform this operation.");
 
         var sourceChat = await Get(session, sourceChatId, cancellationToken).ConfigureAwait(false);
-        var copiedChat = await GetCopiedChat(session, newChatId, cancellationToken).ConfigureAwait(false);
+        var chatCopyState = await GetChatCopyState(session, newChatId, cancellationToken).ConfigureAwait(false);
 
         if (sourceChat != null && newChat.IsPublic != sourceChat.IsPublic) {
             var changeChatCmd = new Chats_Change(session,
@@ -746,19 +746,19 @@ public class Chats(IServiceProvider services) : IChats
                 Change.Update(new ChatDiff {
                     IsPublic = sourceChat.IsPublic,
                 }));
-            await Commander.Call(changeChatCmd, true, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(changeChatCmd, cancellationToken).ConfigureAwait(false);
         }
 
         var publishContactsCmd = new ContactsBackend_PublishCopiedChat(newChatId);
         await Commander.Call(publishContactsCmd, true, cancellationToken).ConfigureAwait(false);
 
-        if (copiedChat != null && !copiedChat.IsPublished) {
-            var publishCopiedChatCmd = new ChatsBackend_ChangeCopiedChat(copiedChat.Id,
-                copiedChat.Version,
-                Change.Update(new CopiedChatDiff {
+        if (chatCopyState != null && !chatCopyState.IsPublished) {
+            var publishCopiedChatCmd = new ChatsBackend_ChangeChatCopyState(chatCopyState.Id,
+                chatCopyState.Version,
+                Change.Update(new ChatCopyStateDiff {
                     IsPublished = true,
                 }));
-            await Commander.Call(publishCopiedChatCmd, true, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(publishCopiedChatCmd, cancellationToken).ConfigureAwait(false);
         }
     }
 }

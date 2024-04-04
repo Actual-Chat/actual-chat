@@ -1,14 +1,15 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<CopiedChatBanner.Model>
+@inherits ComputedStateComponent<ChatCopyBanner.Model>
 @{
     var m = State.Value;
     if (!m.IsVisible)
         return;
 
     var copiedChat = m.CopiedChat!;
+    var severity = !copiedChat.IsCopiedSuccessfully ? BannerSeverity.Warning : BannerSeverity.Info;
 }
 
-<Banner Severity="BannerSeverity.Info">
+<Banner Severity="@severity">
     <Body>
         This chat has been copied to the place.
     </Body>
@@ -43,7 +44,7 @@
         if (!hasChat || !chat.Id.IsPlaceChat || !chat.Rules.IsOwner())
             return Model.Hidden;
 
-        var copiedChat = await Chats.GetCopiedChat(Session, chat.Id, cancellationToken).ConfigureAwait(false);
+        var copiedChat = await Chats.GetChatCopyState(Session, chat.Id, cancellationToken).ConfigureAwait(false);
         if (copiedChat == null)
             return Model.Hidden;
 
@@ -53,10 +54,10 @@
         return new Model(true, copiedChat);
     }
 
-    private Task OnPublishClick(CopiedChat copiedChat)
+    private Task OnPublishClick(ChatCopyState copiedChat)
         => CopyChatToPlaceUI.PublishCopiedChat(ChatContext.Hub, copiedChat.Id, copiedChat.SourceChatId);
 
-    private Task OnUpdateClick(CopiedChat copiedChat)
+    private Task OnUpdateClick(ChatCopyState copiedChat)
         => CopyChatToPlaceUI.CopyChat(Hub,
             copiedChat.SourceChatId,
             copiedChat.Id.PlaceChatId.Require().PlaceId,
@@ -69,7 +70,7 @@
                 StateHasChanged();
             });
 
-    public sealed record Model(bool IsVisible, CopiedChat? CopiedChat) {
+    public sealed record Model(bool IsVisible, ChatCopyState? CopiedChat) {
         public static readonly Model Hidden = new (false, null);
     }
 }
