@@ -105,8 +105,8 @@ jobs:
         ports:
           - 9201:9200
           - 9601:9600
-              # volumes:
-              # - opensearch-data:/usr/share/opensearch/data
+        volumes:
+          - opensearch-data:/usr/share/opensearch/data
     steps:
       - name: Install postgresql-client
         run: |
