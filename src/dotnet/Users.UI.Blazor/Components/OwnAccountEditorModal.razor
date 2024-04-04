@@ -5,6 +5,8 @@
         return;
     var phone = PhoneFormatterExt.FromReadable(_form.Phone);
     var isPhoneVerified = _account.HasVerifiedPhone();
+    var isEmailVerified = _account.HasVerifiedEmail();
+    var isEmailEmpty = _form?.Email.IsNullOrEmpty() ?? true;
 }
 
 <Form @ref="@_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
@@ -19,12 +21,29 @@
             <DataAnnotationsValidator/>
             <ValidationSummary/>
 
-            <FormSection For="() => _form.Name" IsRequired="true" InputId="@_form.NameFieldId" Label="First name" IsLabelInsideInput="true">
-                <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" Autofocus="true" ClearButton="true"/>
+            <FormSection
+                For="() => _form.Name"
+                IsRequired="true"
+                InputId="@_form.NameFieldId"
+                Label="First name"
+                IsLabelInsideInput="true">
+                <TextBox
+                    @bind-Value="@_form.Name"
+                    Id="@_form.NameFieldId"
+                    Autofocus="true"
+                    ClearButton="true"/>
             </FormSection>
 
-            <FormSection For="() => _form.LastName" InputId="@_form.LastNameFieldId" Label="Last name" IsLabelInsideInput="true">
-                <TextBox @bind-Value="@_form.LastName" Id="@_form.LastNameFieldId" Autofocus="true" ClearButton="true"/>
+            <FormSection
+                For="() => _form.LastName"
+                InputId="@_form.LastNameFieldId"
+                Label="Last name"
+                IsLabelInsideInput="true">
+                <TextBox
+                    @bind-Value="@_form.LastName"
+                    Id="@_form.LastNameFieldId"
+                    Autofocus="true"
+                    ClearButton="true"/>
             </FormSection>
 
             <FormSection
@@ -51,17 +70,35 @@
             </FormSection>
 
             @if (phone.IsValid && !isPhoneVerified) {
-                <PhoneVerifier Phone="@phone.Value" Class="my-3" Verified="OnPhoneVerified"/>
+                <PhoneVerifier
+                    Phone="@phone.Value"
+                    Class="my-3"
+                    Verified="OnPhoneVerified"/>
             }
 
-            <FormSection For="() => _form.Email" InputId="@_form.EmailFieldId" Label="Email" IsLabelInsideInput="true">
+            <FormSection
+                For="() => _form.Email"
+                InputId="@_form.EmailFieldId"
+                Label="Email"
+                IsLabelInsideInput="true">
                 <ChildContent>
-                    <TextBox @bind-Value="@_form.Email" Id="@_form.EmailFieldId" Autofocus="true" disabled/>
+                    <TextBox
+                        @bind-Value="@_form.Email"
+                        Id="@_form.EmailFieldId"
+                        Autofocus="true"
+                        disabled="@isEmailVerified"/>
                 </ChildContent>
                 <Right>
-                    <VerificationStatus IsVerified="@_account.HasVerifiedEmail()"/>
+                    <VerificationStatus IsVerified="isEmailVerified"/>
                 </Right>
             </FormSection>
+
+            @if (_formRef.IsValid && !isEmailVerified && !isEmailEmpty) {
+                <EmailVerifier
+                    Email="@_form.Email"
+                    Class="my-3"
+                    Verified="@OnEmailVerified"/>
+            }
         </FormBlock>
         <FormBlock>
             <button type="button" class="delete-avatar-btn" @onclick="@OnDeleteAccountClick">
@@ -76,8 +113,18 @@
         </Body>
         <Buttons>
             <FormButtons>
-                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
-                <Button Type="@ButtonType.Submit" Class="btn-modal btn-primary" IsDisabled="@(!_formRef.IsValid)">Save</Button>
+                <Button
+                    Type="@ButtonType.Button"
+                    Class="btn-modal"
+                    Click="OnCancel">
+                    Cancel
+                </Button>
+                <Button
+                    Type="@ButtonType.Submit"
+                    Class="btn-modal btn-primary"
+                    IsDisabled="@(!_formRef.IsValid)">
+                    Save
+                </Button>
             </FormButtons>
         </Buttons>
     </DialogFrame>
@@ -102,7 +149,7 @@
         _account = await Accounts.GetOwn(Session, default);
         _form.Name = _account.Name;
         _form.LastName = _account.LastName;
-        _form.Email = _account.Email;
+        _form.Email = _account.Email.IsNullOrEmpty() ? null : _account.Email;
         _form.Phone = !_account.Phone.IsNone ? _account.Phone.ToReadable() : PhoneCodes.Default.DisplayCode;
 
         _form.CopyToBase();
@@ -132,6 +179,9 @@
     private async Task OnPhoneVerified()
         => _account = await Accounts.GetOwn(Session, default);
 
+    private async Task OnEmailVerified()
+        => _account = await Accounts.GetOwn(Session, default);
+
     private Task OnDeleteAccountClick()
         => ModalUI.Show(new DeleteAccountModal.Model());
 
@@ -144,7 +194,7 @@
         public string NameFieldId { get; set; } = "";
         public string LastName { get; set; } = "";
         public string LastNameFieldId { get; set; } = "";
-        public string Email { get; set; } = "";
+        [EmailAddress] public string? Email { get; set; }
         public string EmailFieldId { get; set; } = "";
         [PhoneNumber] public string Phone { get; set; } = "";
         public string PhoneFieldId { get; set; } = "";
