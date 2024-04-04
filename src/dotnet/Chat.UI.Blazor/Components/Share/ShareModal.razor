@@ -19,7 +19,7 @@
     Title="@(ModalModel.Title.NullIfEmpty() ?? "Share")"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Stretch">
     <Body>
-    <FormBlock class="with-contact-list">
+    <FormBlock Class="with-contact-list">
         @if (_selectorKind == SelectorKind.Contact) {
             <ContactSelector
                 @ref="@_contactSelectorRef"

@@ -50,7 +50,7 @@
         <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
             <TileItem>
                 <Icon>
-                    <FormRadio id="@_form.IsPublicTrueFormId" IsDisabled="@(!canChangeChatType)" Value="@true" />
+                    <FormRadio Id="@_form.IsPublicTrueFormId" IsDisabled="@(!canChangeChatType)" Value="@true" />
                 </Icon>
                 <Content>
                     <Label InputId="@_form.IsPublicTrueFormId" Text="Public chat"></Label>
@@ -61,7 +61,7 @@
             </TileItem>
             <TileItem>
                 <Icon>
-                    <FormRadio id="@_form.IsPublicFalseFormId" IsDisabled="@(!canChangeChatType)" Value="@false"/>
+                    <FormRadio Id="@_form.IsPublicFalseFormId" IsDisabled="@(!canChangeChatType)" Value="@false"/>
                 </Icon>
                 <Content>
                     <Label InputId="@_form.IsPublicFalseFormId" Text="Private chat"></Label>
