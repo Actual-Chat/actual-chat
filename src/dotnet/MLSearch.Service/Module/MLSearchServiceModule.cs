@@ -85,6 +85,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<ISink<ChatEntry, ChatEntry>>(static services
             => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
 
+        services.AddSingleton<IChatEntryCursorStates, ChatEntryCursorStates>();
         services.AddSingleton<IChatIndexerFactory, ChatIndexerFactory>();
         services.AddSingleton<IChatIndexerWorker>(static services
             => services.CreateInstanceWith<ChatIndexerWorker>(

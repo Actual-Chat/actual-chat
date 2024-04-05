@@ -27,6 +27,7 @@ internal sealed class ChatIndexer(
             ChatEventType.New => _creates,
             ChatEventType.Update => _updates,
             ChatEventType.Remove => _deletes,
+            _ => throw StandardError.NotSupported($"The event type {@event.Type} is not supported."),
         };
         evtGroup.Add(@event.ChatEntry);
         _cursor = @event.Id;
