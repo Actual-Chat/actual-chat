@@ -71,7 +71,7 @@
             </FormSection>
             @if (timeZoneChanged) {
                 <span>'@(_timeZoneFormModel.CurrentTimeZoneName)' is detected.</span>
-                <Button Click="@OnUpdateTimeZone">Update</Button>
+                <Button Class="btn-outline" ContentClass="text-sm" Click="@OnUpdateTimeZone">Update</Button>
             }
         </FormBlock>
     </Form>
