@@ -5,6 +5,7 @@ namespace ActualChat.UI.Blazor.Services;
 public class SearchUI : SafeAsyncDisposableBase, IComputeService
 {
     public IMutableState<string> Text { get; }
+    public IMutableState<bool> IsSearchModeOn { get; }
 
     protected override Task DisposeAsync(bool disposing)
         => Task.CompletedTask;
@@ -17,5 +18,13 @@ public class SearchUI : SafeAsyncDisposableBase, IComputeService
     }
 
     public SearchUI(IStateFactory stateFactory)
-        => Text = stateFactory.NewMutable("", StateCategories.Get(GetType(), nameof(Text)));
+    {
+        Text = stateFactory.NewMutable("", StateCategories.Get(GetType(), nameof(Text)));
+        IsSearchModeOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchModeOn)));
+        Text.Updated += (state, _) => {
+            var isSearchModeOn = !string.IsNullOrWhiteSpace(state.Value);
+            if (IsSearchModeOn.Value != isSearchModeOn)
+                IsSearchModeOn.Value = isSearchModeOn;
+        };
+    }
 }
