@@ -204,4 +204,9 @@ public static partial class Constants
     {
         public const int PageSizeLimit = 50;
     }
+
+    public static class Invalidation
+    {
+        public static readonly TimeSpan Delay = TimeSpan.FromSeconds(0.5);
+    }
 }

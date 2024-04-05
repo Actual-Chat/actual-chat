@@ -281,7 +281,7 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         // force loading entry media info
-        entry = await ChatsBackend.GetEntry(entry.Id, cancellationToken).Require().ConfigureAwait(false);
+        entry = await ChatsBackend.GetEntry(entry.Id, Constants.Invalidation.Delay, cancellationToken).Require().ConfigureAwait(false);
         var (text, mentionIds) = await GetText(entry, MarkupConsumer.Notification, cancellationToken).ConfigureAwait(false);
         var chatId = entry.ChatId;
         var key = chatId.Id.Value;
