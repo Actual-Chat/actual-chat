@@ -17,7 +17,7 @@ namespace ActualChat.Users.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.2")
+                .HasAnnotation("ProductVersion", "8.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -67,6 +67,11 @@ namespace ActualChat.Users.Migrations
                     b.Property<bool>("SyncContacts")
                         .HasColumnType("boolean")
                         .HasColumnName("sync_contacts");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("time_zone");
 
                     b.Property<string>("Username")
                         .IsRequired()

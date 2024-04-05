@@ -21,6 +21,7 @@ export class BrowserInfo {
             ? 'WasmApp'
             : "WebServer";
     public static utcOffset: number;
+    public static timeZone: string;
     public static windowId = "";
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
 
@@ -30,6 +31,7 @@ export class BrowserInfo {
         this.backendRef = backendRef1;
         this.appKind = appKind;
         this.utcOffset = new Date().getTimezoneOffset();
+        this.timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         this.windowId = BrowserInit.windowId; // It is already computed when this call happens
         if (this.appKind == 'MauiApp')
             Interactive.isAlwaysInteractive = true;
@@ -42,6 +44,7 @@ export class BrowserInfo {
             isHoverable: ScreenSize.isHoverable,
             themeInfo: Theme.info,
             utcOffset: this.utcOffset,
+            timeZone: this.timeZone,
             isMobile: DeviceInfo.isMobile,
             isAndroid: DeviceInfo.isAndroid,
             isIos: DeviceInfo.isIos,
@@ -116,6 +119,7 @@ export interface InitResult {
     isHoverable: boolean,
     themeInfo: ThemeInfo,
     utcOffset: number;
+    timeZone: string;
     isMobile: boolean;
     isAndroid: boolean;
     isIos: boolean;

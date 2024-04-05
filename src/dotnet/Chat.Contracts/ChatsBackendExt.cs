@@ -20,6 +20,38 @@ public static class ChatsBackendExt
         return tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
     }
 
+    public static async ValueTask<ChatEntry?> GetEntry(
+        this IChatsBackend chatsBackend,
+        ChatEntryId entryId,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default)
+    {
+        if (entryId.IsNone)
+            return null;
+
+        var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
+        var cTile = await Computed.Capture(() => chatsBackend.GetTile(
+                entryId.ChatId,
+                entryId.Kind,
+                idTile.Range,
+                false,
+                cancellationToken),
+            cancellationToken).ConfigureAwait(false);
+
+        var tile = cTile.Value;
+        var entry = tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
+        if (entry != null)
+            return entry;
+
+        // GetTile hasn't invalidated yet for the new Entry
+        cTile = await cTile
+            .When(ct => ct.Entries.Any(e => e.LocalId == entryId.LocalId), cancellationToken)
+            .WaitAsync(timeout, cancellationToken);
+
+        tile = cTile.Value;
+        return tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
+    }
+
     public static async ValueTask<ChatEntry?> GetRemovedEntry(
         this IChatsBackend chatsBackend,
         ChatEntryId entryId,

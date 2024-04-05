@@ -1,0 +1,74 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+@using System.ComponentModel.DataAnnotations
+@implements IModalView<CopyChatToPlaceModal.Model>
+
+<DialogFrame Title="Copy chat to place" HasCloseButton="true">
+    <Body>
+    <Form @ref="@_formRef" Class="h-full" Model="@_form">
+        <FormBlock>
+            <DataAnnotationsValidator/>
+
+            <FormSection Label="Chat ID" Class="field-chat-id" For="() => _form.ChatId" InputId="@_form.ChatIdFormId" IsLabelInsideInput="true">
+                <TextBox
+                    @bind-Value="@_form.ChatId"
+                    Id="@_form.ChatIdFormId"
+                    Placeholder="Id of a chat to copy to the place"
+                    ClearButton="true"/>
+            </FormSection>
+        </FormBlock>
+    </Form>
+    </Body>
+    <Buttons>
+        <Button Class="btn-modal" Click="@(() => Modal.Close())">Cancel</Button>
+        <Button Class="btn-modal btn-primary" IsDisabled="@_isCopying" Click="OnCopyClick">Copy chat</Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private Form? _formRef;
+    private FormModel _form = null!;
+    private bool _isCopying;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => _form = new FormModel(ComponentIdGenerator);
+
+    private Task OnCopyClick() {
+        if (_formRef is not { IsValid: true })
+            return Task.CompletedTask;
+
+        return CopyChatToPlaceUI.CopyChat(Hub,
+            ChatId.Parse(_form.ChatId),
+            ModalModel.PlaceId,
+            () => {
+                _isCopying = true;
+                StateHasChanged();
+            },
+            (_) => {
+                _isCopying = false;
+                StateHasChanged();
+                Modal.Close();
+            });
+    }
+
+    public sealed class FormModel {
+        [Required, MinLength(1)]
+        public string ChatId { get; set; } = "";
+
+        public string FormId { get; }
+        public string ChatIdFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("copy-chat2place-form");
+            ChatIdFormId = $"{FormId}-chatId";
+        }
+    }
+
+    public sealed record Model(PlaceId PlaceId);
+}

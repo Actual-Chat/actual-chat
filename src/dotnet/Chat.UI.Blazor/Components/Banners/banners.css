@@ -30,11 +30,15 @@
 .banner.add-members-banner .banner-body {
     @apply flex-1 flex-x justify-center items-center;
 }
-.banner.add-members-banner .banner-body .btn-content {
-    @apply gap-x-4 text-headline-1;
-    @apply text-06;
+.banner.add-members-banner .banner-body .btn {
+    @apply justify-start;
+    @apply px-0;
+    @apply text-headline-1 text-06;
 }
-.banner.add-members-banner .banner-buttons .btn.btn-transparent .btn-content,
+.banner.add-members-banner .banner-body .btn .btn-content {
+    @apply gap-x-3;
+}
+.banner.add-members-banner .banner-buttons .btn.btn-transparent,
 .banner.add-members-banner .banner-buttons .btn-h i {
     @apply text-06;
 }

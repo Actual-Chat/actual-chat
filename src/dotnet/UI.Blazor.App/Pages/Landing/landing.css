@@ -787,7 +787,11 @@ body.narrow .landing-menu {
 }
 .landing-menu .menu-content button,
 .landing-menu .menu-content a {
+    @apply flex-none;
     @apply text-title-1 text-01;
+}
+.landing-menu .menu-content .sign-in-btn {
+    @apply text-primary;
 }
 
 /* Landing Links */

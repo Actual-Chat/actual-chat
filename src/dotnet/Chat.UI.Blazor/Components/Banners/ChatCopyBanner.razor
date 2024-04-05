@@ -1,0 +1,76 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<ChatCopyBanner.Model>
+@{
+    var m = State.Value;
+    if (!m.IsVisible)
+        return;
+
+    var copiedChat = m.CopiedChat!;
+    var severity = !copiedChat.IsCopiedSuccessfully ? BannerSeverity.Warning : BannerSeverity.Info;
+}
+
+<Banner Severity="@severity">
+    <Body>
+        This chat has been copied to the place.
+    </Body>
+    <Buttons>
+        <Button IsDisabled="@_isCopying" Class="btn-transparent on" Click="@(() => OnUpdateClick(copiedChat))">Update</Button>
+        <Button IsDisabled="@(!copiedChat.IsCopiedSuccessfully)" Class="btn-transparent on" Click="@(() => OnPublishClick(copiedChat))">Publish</Button>
+    </Buttons>
+</Banner>
+
+@code {
+    private bool _isCopying;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+
+    private ChatUIHub Hub => ChatContext.Hub;
+    private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
+    private UICommander UICommander => Hub.UICommander();
+    private ModalUI ModalUI => Hub.ModalUI;
+    private ToastUI ToastUI => Hub.ToastUI;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Hidden,
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var hasChat = ChatContext.HasChat;
+        var chat = ChatContext.Chat;
+        if (!hasChat || !chat.Id.IsPlaceChat || !chat.Rules.IsOwner())
+            return Model.Hidden;
+
+        var copiedChat = await Chats.GetChatCopyState(Session, chat.Id, cancellationToken).ConfigureAwait(false);
+        if (copiedChat == null)
+            return Model.Hidden;
+
+        if (copiedChat.IsPublished)
+            return Model.Hidden;
+
+        return new Model(true, copiedChat);
+    }
+
+    private Task OnPublishClick(ChatCopyState copiedChat)
+        => CopyChatToPlaceUI.PublishCopiedChat(ChatContext.Hub, copiedChat.Id, copiedChat.SourceChatId);
+
+    private Task OnUpdateClick(ChatCopyState copiedChat)
+        => CopyChatToPlaceUI.CopyChat(Hub,
+            copiedChat.SourceChatId,
+            copiedChat.Id.PlaceChatId.Require().PlaceId,
+            () => {
+                _isCopying = true;
+                StateHasChanged();
+            },
+            (_) => {
+                _isCopying = false;
+                StateHasChanged();
+            });
+
+    public sealed record Model(bool IsVisible, ChatCopyState? CopiedChat) {
+        public static readonly Model Hidden = new (false, null);
+    }
+}

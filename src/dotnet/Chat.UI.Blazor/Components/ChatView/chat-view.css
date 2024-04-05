@@ -281,6 +281,7 @@ body.hoverable .chat-header-title:hover {
 .chat-link .c-link-url {
     @apply flex-1;
     @apply text-caption-1 md:text-headline-1;
+    @apply truncate;
 }
 .chat-link .c-link-url > .c-round {
     @apply flex-none flex items-center justify-center;
@@ -297,6 +298,12 @@ body.narrow .chat-link .c-link-buttons {
 .chat-link i.icon-copy,
 .chat-link i.fa-check {
     @apply text-lg;
+}
+.chat-link .c-link-wrapper {
+    @apply flex-y overflow-hidden;
+}
+.chat-link .link-url {
+    @apply truncate;
 }
 .chat-link .link-hint {
     @apply text-xs font-normal text-03;

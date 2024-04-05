@@ -6,7 +6,7 @@
 
 <div class="c-header">
     <div class="c-buttons">
-        <ButtonRound Click="@OnHideRightPanelClick" Class="right-panel-close-btn btn-md">
+        <ButtonRound Click="@OnHideRightPanelClick" Class="right-panel-close-btn btn-sm">
             <i class="icon-close text-2xl"></i>
         </ButtonRound>
     </div>
@@ -25,17 +25,17 @@
         <ChatIcon Chat="Chat" Size="SquareSize.Size16" ShowPresence="@false"/>
         <div class="c-buttons">
             @if (m.CanEditProperties()) {
-                <ButtonRound Class="btn-md" Click="@OnEditChatSettingsClick">
+                <ButtonRound Class="btn-sm" Click="@OnEditChatSettingsClick">
                     <i class="icon-edit text-2xl"></i>
                 </ButtonRound>
             }
             @if (EditMembersUI.CanAddMembers(Chat)) {
-                <ButtonRound Class="btn-md" Click="@OnInviteClick">
+                <ButtonRound Class="btn-sm" Click="@OnInviteClick">
                     <i class="icon-person-add text-2xl"></i>
                 </ButtonRound>
             }
             @if (ShareModel != null) {
-                <ButtonRound Class="btn-md" Click="@(() => OnShareClick(ShareModel))">
+                <ButtonRound Class="btn-sm" Click="@(() => OnShareClick(ShareModel))">
                     <i class="icon-share text-2xl"></i>
                 </ButtonRound>
             }

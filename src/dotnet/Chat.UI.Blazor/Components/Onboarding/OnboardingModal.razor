@@ -19,16 +19,17 @@
             <Steps>
                 <PhoneStep Account="m.AccountFull"/>
                 <EmailStep Account="m.AccountFull"/>
+                <TimeZoneStep Account="m.AccountFull"/>
                 <AvatarStep/>
-                <PermissionsStep NextButtonRef="@_nextButtonRef" />
+                <PermissionsStep NextButtonRef="@_nextButtonRef"/>
                 <CreateChatsStep/>
             </Steps>
             <Header>
                 @if (stepper.CanMoveBack) {
-                    <HeaderButton Click="@(_ => stepper.MoveBack())">
+                    <HeaderButton Class="blackout" Click="@(_ => stepper.MoveBack())">
                         <i class="icon-arrow-left text-2xl"></i>
                     </HeaderButton>
-                    <div class="text-xl md:text-lg font-semibold md:font-medium">Back</div>
+                    <div class="text-headline-7 text-02">Back</div>
                 }
                 <div class="grow"></div>
                 @if (ModalModel.CanBeClosed) {
@@ -41,7 +42,7 @@
                 <div class="btn-group">
                     @if (stepper.CanSkip) {
                         <Button
-                            Class=""
+                            Class="btn-cancel"
                             Click="@(async _ => await stepper.Skip())">
                             Skip
                         </Button>
@@ -50,7 +51,7 @@
                         Class="btn-primary"
                         ButtonRef="@_nextButtonRef"
                         Click="@(async _ => await stepper.TryMoveForward())">
-                        @if (stepper.CanSkip) {
+                        @if (stepper.CurrentStep is PhoneStep or EmailStep) {
                             <span>Verify</span>
                         } else if (stepper.IsLastStep) {
                             <span>Start messaging</span>

@@ -25,7 +25,7 @@
                     if (tab.AdditionalAttributes != null)
                         attributes.AddRange(tab.AdditionalAttributes);
 
-                    var cls = $"tab-btn {(isActive ? "on" : "")} {(BottomBorder ? "bottom-border-btn" : "")} {tab.ButtonClass} ";
+                    var cls = $"tab-btn unhovered {(isActive ? "on" : "")} {(BottomBorder ? "bottom-border-btn" : "")} {tab.ButtonClass} ";
                     <div @key="@tab.Id" class="btn-group-container">
                         <Button
                             AdditionalAttributes="@attributes"
@@ -65,6 +65,7 @@
     [Parameter] public string TabsClass { get; set; } = "";
     [Parameter] public bool BottomHill { get; set; }
     [Parameter] public bool BottomBorder { get; set; }
+    [Parameter] public bool AutoSelectInitialTab { get; set; } = true;
     [Parameter] public RenderFragment? AdditionalButton { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment<string?>? TabContent { get; set; }
@@ -88,7 +89,8 @@
     protected override void OnAfterRender(bool firstRender) {
         var tabs = SortedTabs.ToList();
         if (_renderedSelectedTab == null) {
-            SelectedTabId = tabs.Count == 0 ? null : tabs[0].Id;
+            if (AutoSelectInitialTab)
+                SelectedTabId = tabs.Count == 0 ? null : tabs[0].Id;
             return;
         }
 

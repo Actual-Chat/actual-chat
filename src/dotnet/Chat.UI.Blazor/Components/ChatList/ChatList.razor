@@ -2,7 +2,11 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatList.Model>
 @{
-    var m = _rendered = State.Value;
+    var m = State.Value;
+    var searchModeTriggered = m.IsSearchModeOn && !_rendered.IsSearchModeOn;
+    _rendered = m;
+    if (Kind == ChatListKind.All && searchModeTriggered)
+        _resetScrollPositionRequested = true;
     DebugLog?.LogDebug("Rendered: {List}, ChatCount={ChatCount}", Kind, m.ChatCount);
     if (m is { ChatCount: 0, IsSearchModeOn: false })
         return;
@@ -27,7 +31,7 @@
     </div>
 } else {
     @* ChatListKind.All *@
-    <div class="chat-list chat-list-all">
+    <div @ref="AllChatListRef" class="chat-list chat-list-all">
         @for (var i = 0; i < m.ChatCount; i++) {
             <ChatListItem ListKind="@Kind" Index="@i"/>
         }
@@ -37,6 +41,7 @@
 @code {
     private Model _rendered;
     private ILogger? _log;
+    private bool _resetScrollPositionRequested;
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
@@ -45,6 +50,8 @@
     private SearchUI SearchUI => Hub.SearchUI;
     private ILogger Log => _log ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
+
+    private ElementReference AllChatListRef { get; set; }
 
     [Parameter, EditorRequired] public ChatListKind Kind { get; set; }
 
@@ -67,18 +74,20 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         DebugLog?.LogDebug("-> ComputeState: {List}", Kind);
         var chatCount = await ChatListUI.GetCount(Kind);
-        if (Kind != ChatListKind.Active) {
-            DebugLog?.LogDebug("<- ComputeState: {List}. Count={Count}", Kind, chatCount);
-            return new Model(chatCount);
-        }
-
-        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
-        DebugLog?.LogDebug("<- ComputeState: {List}. Count={Count}", Kind, chatCount);
-        return new Model(chatCount, !searchPhrase.IsEmpty);
+        var isSearchModeOn = await SearchUI.IsSearchModeOn.Use(cancellationToken);
+        DebugLog?.LogDebug("<- ComputeState: {List}. Count={Count}, IsSearchModeOn={IsSearchModeOn}", Kind, chatCount, isSearchModeOn);
+        return new Model(chatCount, isSearchModeOn);
     }
 
     protected override bool ShouldRender()
         => State.HasError || State.Value != _rendered;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_resetScrollPositionRequested) {
+            await AllChatListRef.ScrollToTop();
+            _resetScrollPositionRequested = false;
+        }
+    }
 
     // Nested types
 

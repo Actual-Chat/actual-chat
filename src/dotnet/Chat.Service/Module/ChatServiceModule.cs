@@ -109,6 +109,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             db.AddShardLocalIdGenerator(dbContext => dbContext.Roles,
                 (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
             db.AddEntityResolver<string, DbRole>();
+
+            // DbCopiedChat
+            db.AddEntityResolver<string, DbChatCopyState>();
         });
     }
 }

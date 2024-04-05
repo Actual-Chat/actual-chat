@@ -17,7 +17,7 @@ namespace ActualChat.Chat.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.2")
+                .HasAnnotation("ProductVersion", "8.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -307,6 +307,55 @@ namespace ActualChat.Chat.Migrations
                         .HasDatabaseName("ix_chat_entries_chat_id_kind_is_removed_local_id");
 
                     b.ToTable("chat_entries");
+                });
+
+            modelBuilder.Entity("ActualChat.Chat.Db.DbCopiedChat", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsCopiedSuccessfully")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_copied_successfully");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_published");
+
+                    b.Property<DateTime>("LastCopyingAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_copying_at");
+
+                    b.Property<long>("LastEntryId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_entry_id");
+
+                    b.Property<DateTime>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<string>("SourceChatId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source_chat_id");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_copied_chats");
+
+                    b.HasIndex("SourceChatId")
+                        .HasDatabaseName("ix_copied_chats_source_chat_id");
+
+                    b.ToTable("copied_chats");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbMention", b =>

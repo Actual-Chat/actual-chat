@@ -14,9 +14,14 @@
     --gray-05: #1C1C1C;
 
     --gray-05-05: #1C1C1C0D;
+    --gray-05-10: #1C1C1C1A;
     --gray-10-20: #28282833;
+    --gray-20-20: #39393933;
     --gray-40-10: #2828281A;
     --gray-40-20: #28282833;
+    --gray-50-05: #2828280D;
+    --gray-50-10: #2828281A;
+    --gray-50-20: #28282833;
     --gray-80-20: #D3D3D333;
 
     --ash-99: #F5F5FC;
@@ -98,7 +103,9 @@
 
     --magenta-40-10: #C80E511A;
     --magenta-40-20: #C80E5133;
+    --magenta-50-05: #FF005C0D;
     --magenta-50-10: #FF005C1A;
+    --magenta-50-20: #FF005C33;
 
     --red-99: #FFECEC;
     --red-95: #FFD4D4;
@@ -269,14 +276,16 @@
     --secondary: var(--blue-99);
     --secondary-hover: var(--blue-95);
     --secondary-title: var(--primary);
-    --cancel: var(--background-03);
-    --cancel-hover: var(--background-04);
-    --cancel-title: var(--background-06);
-    --outline: var(--background-01);
+    --cancel: var(--gray-05-05);
+    --cancel-hover: var(--gray-90);
+    --cancel-title: var(--blue-50);
+    --outline: var(--white);
     --outline-hover: var(--blue-50-10);
     --danger-hover: var(--magenta-60);
-    --danger-title: var(--text-06);
+    --danger-title: var(--white);
     --danger-outline-hover: var(--magenta-50-10);
+    --cancel-outline: var(--gray-20);
+    --cancel-outline-hover: var(--black-10);
     --square: var(--gray-95);
     --square-active: var(--white);
     --square-hover: var(--white-04);
@@ -291,10 +300,20 @@
     --radio-border: var(--gray-50);
     --radio-shadow: var(--gray-10-20);
     --round-right-panel: var(--white);
+    --disabled-after: var(--white-40);
+    --cancel-text: var(--gray-30);
+    --after-lighter: var(--white-05);
+    --after-darker: var(--black-05);
+    --hover-after-primary: var(--blue-50-10);
+    --hover-after-danger: var(--magenta-50-10);
+    --hover-after-cancel: var(--gray-50-10);
+    --focus-after-primary: var(--blue-50-05);
+    --focus-after-danger: var(--magenta-50-05);
+    --focus-after-cancel: var(--gray-50-05);
 
     /* Hover */
     --more-colored: var(--white);
-    --less-colored: var(--black);
+    --less-colored: var(--gray-05);
     --primary-colored: var(--primary);
     --danger-colored: var(--danger);
 
@@ -470,15 +489,17 @@
     --primary-title: var(--white);
     --secondary: var(--blue-99);
     --secondary-hover: var(--blue-95);
-    --secondary-title: var(--primary);
-    --cancel: var(--ash-30);
+    --secondary-title: var(--blue-60);
+    --cancel: var(--ash-99-10);
     --cancel-hover: var(--ash-40);
-    --cancel-title: var(--background-06);
-    --outline: var(--background-01);
+    --cancel-title: var(--blue-60);
+    --outline: var(--ash-18);
     --outline-hover: var(--blue-50-10);
     --danger-hover: var(--magenta-60);
-    --danger-title: var(--text-06);
+    --danger-title: var(--white);
     --danger-outline-hover: var(--magenta-50-10);
+    --cancel-outline: var(--gray-80);
+    --cancel-outline-hover: var(--white-05);
     --square: var(--ash-26);
     --square-active: var(--ash-99-08);
     --square-hover: var(--ash-99-04);
@@ -493,8 +514,19 @@
     --radio-border: var(--white-30);
     --radio-shadow: var(--white-05);
     --round-right-panel: var(--ash-30);
+    --disabled-after: var(--gray-05-10);
+    --cancel-text: var(--ash-70);
+    --after-lighter: var(--white-05);
+    --after-darker: var(--black-05);
+    --hover-after-primary: var(--blue-50-10);
+    --hover-after-danger: var(--magenta-50-10);
+    --hover-after-cancel: var(--white-05);
+    --focus-after-primary: var(--blue-50-20);
+    --focus-after-danger: var(--magenta-50-20);
+    --focus-after-cancel: var(--white-10);
 
     /* Hover */
+    /* TODO Need to remove this colors */
     --more-colored: var(--white);
     --less-colored: var(--black);
     --primary-colored: var(--primary);
@@ -672,15 +704,17 @@
     --primary-title: var(--white);
     --secondary: var(--blue-99);
     --secondary-hover: var(--blue-95);
-    --secondary-title: var(--primary);
-    --cancel: var(--background-03);
-    --cancel-hover: var(--background-04);
-    --cancel-title: var(--background-06);
-    --outline: var(--background-01);
+    --secondary-title: var(--blue-50);
+    --cancel: var(--gray-05-05);
+    --cancel-hover: var(--ash-95);
+    --cancel-title: var(--blue-50);
+    --outline: var(--white);
     --outline-hover: var(--blue-50-10);
     --danger-hover: var(--magenta-60);
-    --danger-title: var(--text-06);
+    --danger-title: var(--white);
     --danger-outline-hover: var(--magenta-50-10);
+    --cancel-outline: var(--ash-80);
+    --cancel-outline-hover: var(--black-05);
     --square: var(--gray-95);
     --square-active: var(--white);
     --square-hover: var(--white-04);
@@ -695,6 +729,16 @@
     --radio-border: var(--gray-50);
     --radio-shadow: var(--gray-10-20);
     --round-right-panel: var(--white);
+    --disabled-after: var(--white-40);
+    --cancel-text: var(--gray-30);
+    --after-lighter: var(--white-05);
+    --after-darker: var(--black-05);
+    --hover-after-primary: var(--blue-50-10);
+    --hover-after-danger: var(--magenta-50-10);
+    --hover-after-cancel: var(--gray-50-10);
+    --focus-after-primary: var(--blue-50-05);
+    --focus-after-danger: var(--magenta-50-05);
+    --focus-after-cancel: var(--gray-50-05);
 
     /* Hover */
     --more-colored: var(--white);

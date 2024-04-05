@@ -7,11 +7,12 @@
     var quickReactionTooltip = $"React with '{Emoji.ThumbsUp.Name}'";
 }
 <div class="flex-x gap-x-1">
-    <ButtonRound Click="OnReactionClick" Tooltip="@quickReactionTooltip">
+    <ButtonRound Click="OnReactionClick" Tooltip="@quickReactionTooltip" Class="btn-xs btn-transparent">
         <EmojiIcon Id="@Emoji.ThumbsUp.Id" Class="w-5 h-5"/>
     </ButtonRound>
     @if (m.CanReply && !IsSystem) {
         <ButtonRound
+            Class="btn-xs btn-transparent"
             Click="@(() => Reply(Message.Entry))"
             Tooltip="Reply"
             TooltipPosition="FloatingPosition.Top">
@@ -22,6 +23,7 @@
         <MessageMenuPlay Entry="@entry"/>
     }
     <ButtonRound
+        Class="btn-xs btn-transparent"
         data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, IsSystem.ToString(), "", "").ToString())"
         data-menu-trigger="@MenuTrigger.Primary"
         data-menu-placement="@(FloatingPosition.LeftStart.ToPositionString())">

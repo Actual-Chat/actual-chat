@@ -1,5 +1,5 @@
 /// #if MEM_LEAK_DETECTION
-import codec, {Codec, Encoder} from '@actual-chat/codec/codec.debug';
+import codec, { Codec, Encoder } from '@actual-chat/codec/codec.debug';
 import codecWasm from '@actual-chat/codec/codec.debug.wasm';
 import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #else
@@ -7,22 +7,23 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #code import codecWasm from '@actual-chat/codec/codec.wasm';
 /// #endif
 import Denque from 'denque';
-import {Disposable} from 'disposable';
-import {delayAsync, retry} from 'promises';
-import {rpcClientServer, rpcNoWait, RpcNoWait, RpcTimeout} from 'rpc';
+import { Disposable } from 'disposable';
+import { delayAsync, retry } from 'promises';
+import { rpcClientServer, rpcNoWait, RpcNoWait, RpcTimeout } from 'rpc';
 import * as signalR from '@microsoft/signalr';
-import {HubConnectionState} from '@microsoft/signalr';
-import {MessagePackHubProtocol} from '@microsoft/signalr-protocol-msgpack';
-import {Versioning} from 'versioning';
+import { HubConnectionState, IStreamResult } from '@microsoft/signalr';
+import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
+import { Versioning } from 'versioning';
 
-import {AudioVadWorker} from './audio-vad-worker-contract';
-import {KaiserBesselDerivedWindow} from './kaiser–bessel-derived-window';
-import {OpusEncoderWorker} from './opus-encoder-worker-contract';
-import {OpusEncoderWorklet} from '../worklets/opus-encoder-worklet-contract';
-import {VoiceActivityChange} from './audio-vad-contract';
-import {RecorderStateEventHandler} from "../opus-media-recorder-contracts";
-import {Log} from 'logging';
-import {AudioDiagnosticsState} from "../audio-recorder";
+import { AudioVadWorker } from './audio-vad-worker-contract';
+import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
+import { OpusEncoderWorker } from './opus-encoder-worker-contract';
+import { OpusEncoderWorklet } from '../worklets/opus-encoder-worklet-contract';
+import { VoiceActivityChange } from './audio-vad-contract';
+import { RecorderStateEventHandler } from '../opus-media-recorder-contracts';
+import { Log } from 'logging';
+import { AudioDiagnosticsState } from '../audio-recorder';
+import { ObjectPool } from 'object-pool';
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
@@ -45,6 +46,7 @@ const CHUNK_SIZE = 960; // 20ms @ 48000KHz
 /** buffer or callbackId: number of `end` message */
 const queue = new Denque<ArrayBuffer>();
 const worker = self as unknown as Worker;
+const bufferPool: ObjectPool<ArrayBuffer> = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(2048)).expandTo(4);
 
 let hubConnection: signalR.HubConnection = null;
 let recordingSubject: signalR.Subject<Array<Uint8Array>> = null;
@@ -104,16 +106,15 @@ const serverImpl: OpusEncoderWorker = {
                 // Some extra attempts are needed, coz there is a chance that the primary connection
                 // stays intact, while this one drops somehow.
                 .withAutomaticReconnect([50, 350, 500, 1000, 1000, 1000])
-                .withStatefulReconnect({
-                    bufferSize: 2048 // ~ 5s of encoded opus with 3000 kbps
-                })
                 .withHubProtocol(new MessagePackHubProtocol())
                 .configureLogging(signalR.LogLevel.Information)
                 .build();
+            // stateful reconnect doesn't work with skipNegotiation and moreover provides glitches
             hubConnection.onreconnected(() => onReconnect());
             hubConnection.onreconnecting(() => void server.onConnectionStateChanged(
                 hubConnection.state === HubConnectionState.Connected,
                 rpcNoWait));
+            hubConnection['_launchStreams'] = _launchStreams.bind(hubConnection);
             debugLog?.log(`create: hub created`);
         }
 
@@ -334,9 +335,9 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
             fadeWindowIndex = 0;
 
         while (!queue.isEmpty()) {
-            const buffer = queue.shift();
+            const samplesBuffer = queue.shift();
             if (fadeWindowIndex !== null) {
-                const samples = new Float32Array(buffer);
+                const samples = new Float32Array(samplesBuffer);
                 if (fade === 'in')
                     for (let i = 0; i < samples.length; i++)
                         samples[i] *= kbdWindow[fadeWindowIndex + i];
@@ -356,19 +357,25 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
             // fakeChunk.set(typedViewFakeChunk);
             // recordingSubject?.next(fakeChunk);
 
+            const encodedChunkBuffer = bufferPool.get();
+            const typedViewEncodedChunk = encoder.encode(samplesBuffer);
             // typedViewEncodedChunk is a typed_memory_view to Decoder internal buffer - so you have to copy data
-            const typedViewEncodedChunk = encoder.encode(buffer);
-            const encodedChunk = new Uint8Array(typedViewEncodedChunk.length);
+            const encodedChunk = encodedChunkBuffer.byteLength > typedViewEncodedChunk.byteLength
+                ? new Uint8Array(encodedChunkBuffer, 0, typedViewEncodedChunk.byteLength)
+                : new Uint8Array(typedViewEncodedChunk.length);
             encodedChunk.set(typedViewEncodedChunk);
             result.push(encodedChunk);
 
             lastFrameProcessedAt = Date.now();
-            void encoderWorklet.releaseBuffer(buffer, rpcNoWait);
+            void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
 
             chunkTimeOffset += 20;
         }
 
+        // next will copy data during serialization synchronously - see `_launchStreams` override
         recordingSubject?.next(result);
+        // release buffers for reuse
+        result.forEach(chunk => bufferPool.release(chunk.buffer));
     }
     catch (error) {
         errorLog?.log(`processQueue: unhandled error:`, error);
@@ -405,4 +412,43 @@ function getPinkNoiseBuffer(gain: number = 1): Float32Array {
         b6 = white * 0.115926;
     }
     return buffer;
+}
+
+// Override HubConnection._launchStreams
+function _launchStreams(streams: IStreamResult<any>[], promiseQueue: Promise<void>): void {
+    if (streams.length === 0) {
+        return;
+    }
+
+    // Synchronize stream data so they arrive in-order on the server
+    if (!promiseQueue) {
+        promiseQueue = Promise.resolve();
+    }
+
+    // We want to iterate over the keys, since the keys are the stream ids
+    // eslint-disable-next-line guard-for-in
+    for (const streamId in streams) {
+        streams[streamId].subscribe({
+            complete: () => {
+                promiseQueue = promiseQueue.then(() => this._sendWithProtocol(this._createCompletionMessage(streamId)));
+            },
+            error: (err) => {
+                let message: string;
+                if (err instanceof Error) {
+                    message = err.message;
+                } else if (err && err.toString) {
+                    message = err.toString();
+                } else {
+                    message = "Unknown error";
+                }
+
+                const protocolMessage = this._protocol.writeMessage(this._createCompletionMessage(streamId, message));
+                promiseQueue = promiseQueue.then(() => this._sendMessage(protocolMessage));
+            },
+            next: (item) => {
+                const protocolMessage = this._protocol.writeMessage(this._createStreamItemMessage(streamId, item));
+                promiseQueue = promiseQueue.then(() => this._sendMessage(protocolMessage));
+            },
+        });
+    }
 }

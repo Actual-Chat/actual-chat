@@ -7,7 +7,7 @@
 
     RenderFragment RenderCommonButton(SettingsTab tab) {
         var isActive = tab == ActiveTab;
-        var tabCls = tab.ButtonClass;
+        var tabCls = $"{tab.ButtonClass} unhovered";
         if (!tab.IsToggle) {
             return
                 @<Button Class="@tabCls" Click="@(_ => OnTabTitleClick(tab))" data-tab-id="@tab.Id" role="tab" aria-selected="@isActive">
@@ -21,18 +21,18 @@
     }
 
     RenderFragment RenderSignOutButton(SettingsTab tab)
-        => @<Button Class="" Click="@SignOut" data-tab-id="@tab.Id" role="tab">
+        => @<Button Class="unhovered" Click="@SignOut" data-tab-id="@tab.Id" role="tab">
                @RenderTabTitle(tab)
            </Button>;
 
     RenderFragment RenderQuitButton(SettingsTab tab)
-        => @<Button Class="" Click="@Quit" data-tab-id="@tab.Id" role="tab">
+        => @<Button Class="unhovered" Click="@Quit" data-tab-id="@tab.Id" role="tab">
                @RenderTabTitle(tab)
            </Button>;
 
     RenderFragment RenderTabTitle(SettingsTab tab) =>
         @<div class="settings-tab-item">
-            <i class="icon-@tab.IconTitle text-2xl icon-title"></i>
+            <i class="@tab.IconClass text-2xl icon-title"></i>
             @if (tab.TitleComment.IsNullOrEmpty()) {
                 <span>@tab.Title</span>
             } else {

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ActualLab.Versioning;
@@ -61,6 +62,7 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
         {
             builder.Property(a => a.Id).IsRequired();
             builder.Property(a => a.ChatId).IsRequired();
+            builder.HasAnnotation(nameof(ConflictStrategy), ConflictStrategy.DoNothing);
             // builder.HasMany(a => a.Roles).WithOne();
         }
     }

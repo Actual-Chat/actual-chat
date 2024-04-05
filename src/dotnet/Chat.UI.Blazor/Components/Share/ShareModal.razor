@@ -19,7 +19,7 @@
     Title="@(ModalModel.Title.NullIfEmpty() ?? "Share")"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Stretch">
     <Body>
-    <FormBlock class="with-contact-list">
+    <FormBlock Class="with-contact-list">
         @if (_selectorKind == SelectorKind.Contact) {
             <ContactSelector
                 @ref="@_contactSelectorRef"
@@ -63,8 +63,8 @@
             Request="@RequestWithComment"
             />
         <Button Class="@shareButtonClass" IsDisabled="@(!canSend)" Click="OnSendClicked">
-            <i class="icon-share text-2xl"></i>
-            <span>Send to selected contacts</span>
+            <Icon><i class="icon-share text-2xl"></i></Icon>
+            <Title>Send to selected contacts</Title>
         </Button>
     </Buttons>
 </DialogFrame>

@@ -2,7 +2,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
 <div class="c-header">
-    <ButtonRound Click="@OnClose" Class="author-modal-close-btn btn-md">
+    <ButtonRound Click="@OnClose" Class="author-modal-close-btn btn-sm">
         <i class="icon-close text-2xl text-toast-text"></i>
     </ButtonRound>
 
@@ -27,7 +27,7 @@
         <div class="c-buttons">
             @if (IsOwn && !Author.IsAnonymous) {
                 <ButtonRound
-                    Class="btn-md"
+                    Class="btn-sm"
                     Tooltip="Edit"
                     TooltipPosition="FloatingPosition.Top"
                     Click="@OnEditClick">
@@ -39,7 +39,7 @@
             }
             @if (!Author.IsAnonymous) {
                 <ButtonRound
-                    Class="btn-md"
+                    Class="btn-sm"
                     Tooltip="Share"
                     TooltipPosition="FloatingPosition.Top"
                     Click="@(OnShareClick)">

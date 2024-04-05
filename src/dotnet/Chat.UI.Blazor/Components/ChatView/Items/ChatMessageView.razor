@@ -105,7 +105,7 @@
                     <span class="forwarded-chat-header-title">Forwarded from </span>
                     @if (m.ForwardedChat != null) {
                         <span class="forwarded-chat-header-name message-link"
-                              @onclick="() => OnForwardedMessageHeaderClick(entry.ForwardedChatEntryId.ChatId)">
+                              @onclick="() => OnForwardedMessageHeaderClick(m.ForwardedChat.Id)">
                             @m.ForwardedChat.Title
                         </span>
                     } else if (m.ForwardedPeerAuthor != null) {
@@ -124,16 +124,20 @@
             }
             @if (showForwardAuthor) {
                 <div class="forwarded-author-header">
-                    @if (m.ForwardedAuthor != null) {
+                    @{
+                        var forwardedAuthorName = m.ForwardedAuthor?.Avatar.Name
+                            ?? entry.ForwardedAuthorName.NullIfEmpty()
+                            ?? "Unknown author";
+                        var canClick = m.ForwardedAuthor != null || !m.ForwardedChatEntryId.IsNone;
+                    }
+                    @if (canClick) {
                         <span class="forwarded-author-header-name message-link"
-                              @onclick="() => OnForwardedMessageAuthorClick(entry.ForwardedChatEntryId, m.ForwardedAuthor)">
-                            @m.ForwardedAuthor.Avatar.Name
+                              @onclick="() => OnForwardedMessageAuthorClick(m.ForwardedChatEntryId, m.ForwardedAuthor)">
+                            @forwardedAuthorName
                         </span>
                     } else {
                         <span class="forwarded-author-header-name">
-                            @(!entry.ForwardedAuthorName.IsNullOrEmpty()
-                                ? entry.ForwardedAuthorName
-                                : "Unknown author")
+                            @forwardedAuthorName
                         </span>
                     }
                     <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.ForwardedChatEntryBeginsAt"/>
@@ -263,9 +267,21 @@
         var relatedChatEntry = await ChatContext.Hub.ChatEditorUI.RelatedChatEntry.Use(cancellationToken);
         var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, Id: var repliedEntryId } && repliedEntryId == entry.Id;
         var isHighlighted = entry.Id == await ChatUI.HighlightedEntryId.Use(cancellationToken);
-        var forwardedChat = !entry.ForwardedChatEntryId.IsNone
-            ? await Chats.Get(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken)
-            : null;
+        Chat? forwardedChat = null;
+        var forwardedChatEntryId = ChatEntryId.None;
+        if (!entry.ForwardedChatEntryId.IsNone) {
+            forwardedChat = await Chats.Get(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken);
+            if (forwardedChat != null)
+                forwardedChatEntryId = entry.ForwardedChatEntryId;
+            else {
+                // May be chat was copied to place and removed afterwards. Try to find out copied chat.
+                var replacementChatId = await Chats.GetForwardChatReplacement(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken);
+                if (!replacementChatId.IsNone) {
+                    forwardedChat = await Chats.Get(Session, replacementChatId, cancellationToken);
+                    forwardedChatEntryId = new ChatEntryId(replacementChatId, entry.ForwardedChatEntryId.Kind, entry.ForwardedChatEntryId.LocalId, AssumeValid.Option);
+                }
+            }
+        }
         var forwardedAuthor = await GetForwardedAuthor(entry, ownAuthor, cancellationToken);
         var forwardedPeerAuthor = await GetForwardedPeerAuthor(entry, ownAuthor, cancellationToken);
         var selectedChatEntries = await ChatContext.Hub.SelectionUI.Selection.Use(cancellationToken);
@@ -277,6 +293,7 @@
             IsSelected = selectedChatEntries.Contains(entry.Id),
             IsOwnAuthorMentioned = isOwnAuthorMentioned,
             ForwardedChat = forwardedChat,
+            ForwardedChatEntryId = forwardedChatEntryId,
             ForwardedAuthor = forwardedAuthor,
             ForwardedPeerAuthor = forwardedPeerAuthor,
         };
@@ -300,8 +317,12 @@
     private void OnForwardedMessageHeaderClick(ChatId chatId)
         => _ = History.NavigateTo(Links.Chat(chatId));
 
-    private void OnForwardedMessageAuthorClick(ChatEntryId entryId, Author forwardedAuthor)
-        => _ = entryId.IsNone ? AuthorUI.Show(forwardedAuthor.Id) : History.NavigateTo(Links.Chat(entryId));
+    private void OnForwardedMessageAuthorClick(ChatEntryId entryId, Author? forwardedAuthor) {
+        if (!entryId.IsNone)
+            _ = History.NavigateTo(Links.Chat(entryId));
+        else if (forwardedAuthor != null)
+            _ = AuthorUI.Show(forwardedAuthor.Id);
+    }
 
     private void OnForwardedAuthorClick(Author forwardedAuthor)
         => _ = AuthorUI.Show(forwardedAuthor.Id);
@@ -403,6 +424,7 @@
         public bool IsSelected { get; init; }
         public ChatEntry? RepliedEntry { get; init; }
         public Chat? ForwardedChat { get; init; }
+        public ChatEntryId ForwardedChatEntryId { get; init; }
         public Author? ForwardedAuthor { get; init; }
         public Author? ForwardedPeerAuthor { get; init; }
     }

@@ -16,6 +16,7 @@ public interface IBrowserInfoBackend
         ThemeInfo ThemeInfo,
         string DefaultTheme,
         double UtcOffset,
+        string TimeZone,
         bool IsMobile,
         bool IsAndroid,
         bool IsIos,

@@ -42,8 +42,8 @@
 .tab-panel-tabs .btn.tab-btn.bottom-border-btn.on {
     @apply border-primary;
 }
-.tab-panel-tabs .btn.tab-btn.on .btn-content {
-    @apply text-02 text-primary;
+.tab-panel-tabs .btn.tab-btn.on {
+    @apply text-primary;
 }
 .tab-panel-tabs .btn.tab-btn.on + .c-bottom-hill {
     @apply bg-primary;

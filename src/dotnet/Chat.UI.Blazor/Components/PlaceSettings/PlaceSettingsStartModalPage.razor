@@ -50,7 +50,7 @@
         <InputRadioGroup Name="chat_type" DisplayName="Place type" @bind-Value="_form.IsPublic">
             <TileItem>
                 <Icon>
-                    <FormRadio id="@_form.IsPublicTrueFormId" Value="@true" />
+                    <FormRadio Id="@_form.IsPublicTrueFormId" Value="@true" />
                 </Icon>
                 <Content>
                     <Label InputId="@_form.IsPublicTrueFormId" Text="Public place"></Label>
@@ -61,7 +61,7 @@
             </TileItem>
             <TileItem>
                 <Icon>
-                    <FormRadio id="@_form.IsPublicFalseFormId" Value="@false"/>
+                    <FormRadio Id="@_form.IsPublicFalseFormId" Value="@false"/>
                 </Icon>
                 <Content>
                     <Label InputId="@_form.IsPublicFalseFormId" Text="Private place"></Label>
@@ -104,10 +104,19 @@
                      AllowRevoke="true"/>
              }
              <Button IsDisabled="@(m.Invites.Count >= MaxInvitesCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
-                 <i class="icon-plus text-xl"></i>
-                 New private join link
+                <Icon><i class="icon-plus text-xl"></i></Icon>
+                <Title>New private join link</Title>
              </Button>
          </FormBlock>
+    }
+
+    @if (isOwner && m.EnableChatCopying) {
+        <FormBlock Title="Copy chats">
+            <Button Click="OnCopyChatClick" Class="btn-modal h-10 btn-w-full">
+                <i class="icon-plus text-xl"></i>
+                Copy chat into the place
+            </Button>
+        </FormBlock>
     }
 
     @if (canEditMembers || isOwner) {
@@ -151,8 +160,8 @@
     private IPlaces Places => Hub.Places;
     private IInvites Invites => Hub.Invites;
     private MomentClockSet Clocks => Hub.Clocks();
-    private NavbarUI NavbarUI => Hub.NavbarUI;
     private ChatUI ChatUI => Hub.ChatUI;
+    private ModalUI ModalUI => Hub.ModalUI;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -209,6 +218,7 @@
             Invites = invites,
             MembersCount = allAuthorIds.Count,
             IsOwner = place.Rules.IsOwner(),
+            EnableChatCopying = Hub.AccountUI.OwnAccount.Value.IsAdmin,
         };
     }
 
@@ -223,6 +233,9 @@
         invite = await UICommander.Run(new Invites_Generate(Session, invite));
         _newInviteId = invite.Id;
     }
+
+    private void OnCopyChatClick()
+        => ModalUI.Show(new CopyChatToPlaceModal.Model(PlaceId));
 
     private void OnManageMembersClick()
         => Context.StepIn(DiveInDialogPage.New<EditPlaceMembersModalPage>(PlaceId));
@@ -292,6 +305,7 @@
         public int MembersCount { get; init; }
         public DisplayUrl? Link { get; init; }
         public bool IsOwner { get; init; }
+        public bool EnableChatCopying { get; init; }
         public ApiArray<Invite> Invites { get; init; } = ApiArray.New<Invite>();
     }
 }

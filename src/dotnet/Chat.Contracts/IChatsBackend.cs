@@ -83,6 +83,12 @@ public interface IChatsBackend : IComputeService, IBackendService
         string text,
         CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<ChatCopyState?> GetChatCopyState(ChatId chatId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<ChatId> GetForwardChatReplacement(ChatId sourceChatId, CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]
@@ -101,6 +107,8 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task OnCreateNotesChat(ChatsBackend_CreateNotesChat command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ChatBackend_CopyChatResult> OnCopyChat(ChatBackend_CopyChat command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<ChatCopyState> OnChangeChatCopyState(ChatsBackend_ChangeChatCopyState command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -195,3 +203,15 @@ public sealed partial record ChatBackend_CopyChatResult(
     [property: DataMember, MemoryPackOrder(1)] bool HasErrors,
     [property: DataMember, MemoryPackOrder(2)] long LastEntryId
 );
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsBackend_ChangeChatCopyState(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2)] Change<ChatCopyStateDiff> Change
+) : ICommand<ChatCopyState>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => ChatId;
+}
