@@ -269,7 +269,17 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             dbContext.Add(dbAuthor);
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        try {
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateConcurrencyException e) when(e.Entries.All(en => en.State == EntityState.Added)) {
+            // Author for same ChatId\UserId has already been created, let's get it
+            dbAuthor = await (authorId.IsNone
+                    ? dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
+                    : dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.Id == authorId, cancellationToken)
+                ).ConfigureAwait(false);
+            dbAuthor.Require();
+        }
 
         { // Nested to get a new var scope
             var author = dbAuthor.ToModel();
