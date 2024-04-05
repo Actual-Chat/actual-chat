@@ -1,6 +1,14 @@
+using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using ActualChat.Audio;
 using ActualChat.IO;
 using ActualLab.IO;
+using ActualLab.Time;
+using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Xunit;
 
 namespace ActualChat.Streaming.UnitTests;
 
@@ -104,7 +112,7 @@ public class AudioSourceTest(ILogger log)
         bool? isWebMStream = null,
         CancellationToken cancellationToken = default)
     {
-        var isWebMStream1 = isWebMStream ?? string.Equals(fileName.Extension, "webm", StringComparison.InvariantCultureIgnoreCase);
+        var isWebMStream1 = isWebMStream ?? string.Equals(fileName.Extension, ".webm", StringComparison.InvariantCultureIgnoreCase);
         var byteStream = GetAudioFilePath(fileName)
             .ReadByteStream(blobSize, cancellationToken);
         var converter = isWebMStream1
