@@ -2,6 +2,8 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Comparison;
 
+
+
 public sealed class VersionEqualityComparer<T, TKey> : IEqualityComparer<T>
     where T : IHasId<TKey>, IHasVersion<long>
 {

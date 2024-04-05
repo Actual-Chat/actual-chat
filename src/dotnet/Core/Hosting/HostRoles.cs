@@ -57,6 +57,7 @@ public static class HostRoles
                         roles.Add(HostRole.TranscriptionBackend);
                         roles.Add(HostRole.UsersBackend);
                         roles.Add(HostRole.ContactIndexerBackend);
+                        roles.Add(HostRole.MLSearchBackend);
                     }
 
                     // TestBackend

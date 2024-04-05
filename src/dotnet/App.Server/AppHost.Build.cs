@@ -10,6 +10,7 @@ using ActualChat.Hosting;
 using ActualChat.Invite.Module;
 using ActualChat.Kubernetes.Module;
 using ActualChat.Media.Module;
+using ActualChat.MLSearch.Module;
 using ActualChat.Module;
 using ActualChat.Notification.Module;
 using ActualChat.Notification.UI.Blazor.Module;
@@ -156,6 +157,7 @@ public partial class AppHost
                 new ChatServiceModule(moduleServices),
                 new NotificationServiceModule(moduleServices),
                 new SearchServiceModule(moduleServices),
+                new MLSearchServiceModule(moduleServices),
                 // UI modules
                 new BlazorUICoreModule(moduleServices),
                 new StreamingBlazorUIModule(moduleServices),

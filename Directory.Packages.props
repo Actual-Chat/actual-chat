@@ -17,6 +17,7 @@
     <RedisVersion>2.7.33</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
+    <OpenSearchClientVersion>1.6.0</OpenSearchClientVersion>
     <OpenTelemetryVersion>1.7.0</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.7.1</OpenTelemetryAspNetCoreVersion>
     <OpenTelemetryGrpcClientVersion>1.6.0-beta.3</OpenTelemetryGrpcClientVersion>
@@ -179,6 +180,10 @@
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Cookies" Version="2.2.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Routing" Version="2.2.2" />
     <PackageVersion Include="System.Reactive" Version="5.0.0" />
+    <!-- OpenSearch client -->
+    <PackageVersion Include="OpenSearch.Net" Version="$(OpenSearchClientVersion)" />
+    <PackageVersion Include="OpenSearch.Net.VirtualizedCluster" Version="$(OpenSearchClientVersion)" />
+    <PackageVersion Include="OpenSearch.Client" Version="$(OpenSearchClientVersion)" />
     <!-- OpenTelemetry & Metrics-->
     <PackageVersion Include="OpenTelemetry" Version="$(OpenTelemetryVersion)" />
     <PackageVersion Include="OpenTelemetry.Api" Version="$(OpenTelemetryVersion)" />

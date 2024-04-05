@@ -89,6 +89,9 @@ public readonly partial struct PeerChatId : ISymbolIdentifier<PeerChatId>
         return -1;
     }
 
+    public bool HasUser(UserId userId) 
+        => IndexOf(userId) != -1;
+
     public PeerChatId FixOwnerId(UserId ownerId)
     {
         if (ownerId.IsGuestOrNone)

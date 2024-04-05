@@ -544,6 +544,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
         if (authorId == Bots.GetWalleId(chatId))
             return Bots.GetWalle(chatId);
+        if (authorId == Bots.GetMLSearchBotId(chatId))
+            return Bots.GetMLSearchBot(chatId);
 
         var dbAuthor = await DbAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
         AuthorFull? author;
