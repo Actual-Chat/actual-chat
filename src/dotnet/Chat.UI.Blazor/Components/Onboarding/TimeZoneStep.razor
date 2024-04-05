@@ -6,10 +6,6 @@
     return;
 }
 
-@{
-    var timeZoneChanged = !string.Equals(_model.TimeZone, Hub.BrowserInfo.TimeZone, StringComparison.Ordinal);
-}
-
 <div>
     @if (Stepper.CurrentStepIndex == 0) {
         <p class="text-title-1 text-center">Welcome to Actual Chat!</p>
@@ -46,10 +42,6 @@
                     }
                 </InputSelect>
             </FormSection>
-            @if (timeZoneChanged) {
-                <span>'@(Hub.BrowserInfo.TimeZone)' is detected.</span>
-                <Button Click="@OnUpdateTimeZone">Update</Button>
-            }
         </FormBlock>
     </Form>
 </div>
@@ -72,8 +64,10 @@
             if (OnboardingUI.UserSettings.Value.IsTimeZoneStepCompleted)
                 return true;
 
-            return !Account.TimeZone.IsNullOrEmpty()
-                   && string.Equals(Account.TimeZone, Hub.BrowserInfo.TimeZone, StringComparison.Ordinal);
+            if (Account.TimeZone.IsNullOrEmpty())
+                return false;
+
+            return string.Equals(Account.TimeZone, Hub.BrowserInfo.TimeZone, StringComparison.Ordinal);
         }
     }
 
@@ -84,7 +78,7 @@
         base.OnInitialized();
         var timeZones = TimeZoneInfo.GetSystemTimeZones();
         _timeZones = timeZones.ToDictionary(x => x.Id, x => x.DisplayName);
-        _model.TimeZone = Account.TimeZone;
+        _model.TimeZone = Hub.BrowserInfo.TimeZone;
     }
 
     protected override Task<bool> Validate() {
@@ -101,11 +95,6 @@
 
     private void OnTimeZoneSelected(string timeZoneId) {
         _model.TimeZone = timeZoneId;
-        OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsTimeZoneStepCompleted = false });
-    }
-
-    private void OnUpdateTimeZone() {
-        _model.TimeZone = Hub.BrowserInfo.TimeZone;
         OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsTimeZoneStepCompleted = false });
     }
 
