@@ -11,27 +11,27 @@
 }
 
 <div class="historical-playback-sub-header">
-    <div class="historical-playback-sub-header-content flex-x justify-between items-center gap-x-2">
-        <div class="flex-none flex-x">
+    <div class="historical-playback-sub-header-content">
+        <div class="c-control-buttons">
             @if (ScreenSize.IsWide()) {
-                <ButtonRound Title="Backward" Click="@OnBackward" Class="transparent hover-primary-icon">
+                <ButtonRound Title="Backward" Click="@OnBackward" Class="btn-xs btn-transparent hover-primary-icon">
                     <i class="icon-rewind-left-fill text-2xl"></i>
                 </ButtonRound>
             }
             @if (m.IsPaused) {
-                <ButtonRound Title="Play" Click="@OnResume" Class="transparent primary-icon" MustKeepAwake="true">
+                <ButtonRound Title="Play" Click="@OnResume" Class="btn-xs btn-transparent primary-icon" MustKeepAwake="true">
                     <i class="icon-play-fill text-2xl"></i>
                 </ButtonRound>
             } else {
-                <ButtonRound Title="Pause" Click="@OnPause" Class="transparent hover-primary-icon">
+                <ButtonRound Title="Pause" Click="@OnPause" Class="btn-xs btn-transparent hover-primary-icon">
                     <i class="icon-pause-fill text-2xl"></i>
                 </ButtonRound>
             }
-            <ButtonRound Title="Stop" Click="@OnStop" Class="transparent primary-icon">
+            <ButtonRound Title="Stop" Click="@OnStop" Class="btn-xs btn-transparent primary-icon">
                 <i class="icon-stop-fill text-2xl"></i>
             </ButtonRound>
             @if (ScreenSize.IsWide()) {
-                <ButtonRound Title="Fast-forward" Click="@OnForward" Class="transparent hover-primary-icon">
+                <ButtonRound Title="Fast-forward" Click="@OnForward" Class="btn-xs btn-transparent hover-primary-icon">
                     <i class="icon-rewind-right-fill text-2xl"></i>
                 </ButtonRound>
             }
@@ -58,20 +58,16 @@
             }
         </div>
 
-        <div class="flex-none flex-x">
-            <AuthorCircleGroup
-                Class="historical-playback-active-authors-panel"
-                MaxIconCount="4"
-                Size="SquareSize.Size6"
-                AuthorSids="@m.AuthorSids" />
-        </div>
+        <AuthorCircleGroup
+            Class="historical-playback-active-authors-panel"
+            MaxIconCount="4"
+            Size="SquareSize.Size6"
+            AuthorSids="@m.AuthorSids" />
 
-        <div class="flex-none">
-            @* Speed Selector *@
-            <ButtonRound Title="Close" Click="@OnStop" Class="transparent hover-primary-icon">
-                <i class="icon-close-fill text-2xl"></i>
-            </ButtonRound>
-        </div>
+        @* Speed Selector *@
+        <HeaderButton Click="@OnStop" Class="blackout">
+            <i class="icon-close-fill text-2xl"></i>
+        </HeaderButton>
     </div>
 </div>
 

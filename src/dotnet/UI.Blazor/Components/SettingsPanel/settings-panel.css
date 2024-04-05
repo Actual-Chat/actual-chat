@@ -165,14 +165,18 @@ body.hoverable .tile-hidden-btn:hover {
 body.hoverable .tile-btn:hover {
     @apply text-primary;
 }
-.add-avatar-btn {
-    @apply flex-x items-center justify-start;
-    @apply h-12 px-1;
+.add-avatar-btn.btn {
+    @apply justify-start;
+    @apply w-auto;
+    @apply h-12 px-4;
     @apply rounded-lg;
-    @apply bg-banner-info;
-    @apply border-transparent;
+    @apply bg-[var(--hover-after-primary)];
+    @apply text-primary;
 }
-.add-avatar-btn * {
+.add-avatar-btn.btn > .btn-content {
+    @apply gap-x-4;
+}
+.add-avatar-btn span {
     @apply text-sm font-medium;
 }
 .settings-tab-title {

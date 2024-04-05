@@ -1,7 +1,3 @@
-.left-panel-buttons .btn.btn-square .navbar-button-content.btn-content {
-    @apply w-10 md:w-12 h-10 md:h-12;
-    @apply text-primary;
-}
 .left-panel-buttons .btn.btn-square.on .navbar-button-content.btn-content {
     @apply text-square-title;
 }
@@ -11,6 +7,17 @@
     @apply relative;
     @apply flex-none flex-x items-center justify-end;
     @apply lg:w-20;
+}
+.navbar-button .btn-square {
+    @apply min-h-0;
+    @apply text-primary;
+}
+body.narrow .navbar-button .btn-square {
+    @apply w-10 h-10;
+    @apply rounded-xl;
+}
+.left-panel-buttons .btn-square.on {
+    @apply text-square-title;
 }
 .navbar-button .left-line {
     @apply self-center;
@@ -22,19 +29,12 @@
 .navbar-button:not(.selected) .left-line {
     @apply invisible;
 }
-.navbar-button-content.btn-content {
-    @apply justify-center;
-    @apply p-1;
-    @apply rounded-xl md:rounded-lg;
-}
-
 .navbar-button .badge {
     @apply absolute -right-0.5 -top-0.5;
     @apply min-w-4 min-h-4 w-4 h-4;
     @apply text-[0.625rem];
     @apply bg-danger;
 }
-
 .navbar-button > .c-dots {
     @apply absolute z-10 left-1;
     @apply hidden;
@@ -102,7 +102,7 @@
     @apply overflow-hidden;
 }
 .navbar-item .navbar-item-ending .slot {
-    @apply flex-none flex-x items-center;
+    @apply flex-none flex-x items-center gap-x-1;
     @apply h-full;
     @apply overflow-hidden;
 }

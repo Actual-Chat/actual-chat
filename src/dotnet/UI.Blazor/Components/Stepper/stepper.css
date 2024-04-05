@@ -1,13 +1,23 @@
 .stepper {
     @apply flex-y grow;
+    @apply px-4;
 }
 .stepper-header {
     @apply ordinary-header;
+    @apply p-0;
 }
 .stepper-body {
+    @apply relative;
     @apply flex-y grow justify-center;
-    @apply px-4;
+}
+.stepper-body .stepper-content {
+    @apply pb-24;
 }
 .stepper-footer {
-    @apply mt-8;
+    @apply absolute inset-x-0 bottom-8;
+}
+
+.form-block:has(.stepper) {
+    @apply flex-1;
+    @apply py-0;
 }

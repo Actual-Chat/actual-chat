@@ -19,13 +19,9 @@
 </div>
 <div class="menu-content">
     @if (isGuest) {
-        <Button Class="btn-transparent" Click="SignIn">
-            <div>
-                <i class="icon-log-in text-2xl text-primary"></i>
-            </div>
-            <div class="flex items-center mx-2 text-primary">
-                Sign in
-            </div>
+        <Button Class="btn-transparent sign-in-btn" Click="SignIn">
+            <Icon><i class="icon-log-in text-2xl"></i></Icon>
+            <Title>Sign in</Title>
         </Button>
     }
     @if (ShowHome) {
@@ -51,16 +47,16 @@
 </div>
 <div class="menu-footer">
     @if (m.EnableIncompleteUI) {
-        <ButtonRound>
+        <ButtonRound Class="btn-sm">
             <img draggable="false" src="/dist/images/landing/github-gray.svg" alt="GitHub">
         </ButtonRound>
-        <ButtonRound>
+        <ButtonRound Class="btn-sm">
             <img draggable="false" src="/dist/images/landing/facebook-gray.svg" alt="Facebook">
         </ButtonRound>
-        <ButtonRound>
+        <ButtonRound Class="btn-sm">
             <img draggable="false" src="/dist/images/landing/telegram-gray.svg" alt="Telegram">
         </ButtonRound>
-        <ButtonRound>
+        <ButtonRound Class="btn-sm">
             <img draggable="false" src="/dist/images/landing/medium-gray.svg" alt="Medium">
         </ButtonRound>
     }

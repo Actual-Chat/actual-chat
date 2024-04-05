@@ -38,9 +38,9 @@
                      data-bubble="@(BubbleRef.New<TextMessagePanelBubble>())"
                      data-bubble-priority="105"
                      data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
-                    <button class="post-panel-btn attach-btn">
+                    <ButtonRound Class="post-panel-btn attach-btn btn-transparent unhovered">
                         <i class="icon-attach-2 text-2xl"></i>
-                    </button>
+                    </ButtonRound>
                     <label for="message-input" class="message-input-label">
                         <MarkupEditor
                             @key="MarkupEditorKey"
@@ -55,7 +55,7 @@
                             Cancel="@(() => OnCancel())"
                             OpenPrevious="OnOpenPrevious"/>
                     </label>
-                    <button class="post-panel-btn post-message"
+                    <button class="post-panel-btn post-message btn btn-round btn-transparent unhovered"
                         @onmousedown="@(_ => Post())"
                         @onmousedown:preventDefault="true">
                         <i class="icon-paper-plane text-2xl"></i>

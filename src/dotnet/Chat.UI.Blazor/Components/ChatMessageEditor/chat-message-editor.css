@@ -31,8 +31,8 @@
 .post-panel {
     @apply flex-auto flex-x justify-between items-center;
     @apply min-h-12;
-    @apply py-1 md:py-0 px-1.5;
-    @apply border-bg-01  md:rounded-3xl outline-none;
+    @apply py-1 md:py-0;
+    @apply border-bg-01 md:rounded-3xl outline-none;
     @apply bg-post-panel md:bg-input;
     @apply overflow-hidden;
     @apply break-all;
@@ -223,7 +223,7 @@ body.wide .attachment-mode .post-panel-btn.post-message {
 }
 .attachment-list-wrapper > .c-btn-group {
     @apply flex-1 flex-x justify-between;
-    @apply pt-1;
+    @apply px-2;
 }
 body.narrow .attachment-list-wrapper > .c-btn-group {
     @apply pb-1;
@@ -235,6 +235,7 @@ body.narrow .attachment-list-wrapper > .c-btn-group {
 }
 
 .attachment-list-btn.btn {
+    @apply flex-none;
     @apply min-h-6 max-h-6;
     @apply px-0;
     @apply border-transparent;
@@ -242,14 +243,8 @@ body.narrow .attachment-list-wrapper > .c-btn-group {
 body.narrow .attachment-list-btn.btn {
     @apply px-0;
 }
-.attachment-list-btn.btn .btn-content {
-    @apply text-primary font-medium;
-}
-.attachment-list-btn.btn:hover .btn-content {
+.attachment-list-btn.btn:hover {
     @apply brightness-125;
-}
-.attachment-list-btn.btn.c-remove .btn-content {
-    @apply text-danger;
 }
 
 .attachment-wrapper {
@@ -259,7 +254,7 @@ body.narrow .attachment-list-btn.btn {
     @apply bg-03;
 }
 .attachment-wrapper.last-element {
-    @apply flex justify-center;
+    @apply flex items-center justify-center;
     @apply min-w-34;
 }
 body.narrow .attachment-wrapper.last-element {
@@ -290,12 +285,7 @@ body.narrow .attachment-item > img, .attachment-item > video {
     @apply z-10;
     @apply opacity-60;
 }
-body.hoverable .remove-attachment-btn.btn:hover {
-    @apply opacity-80;
-}
-body.hoverable .remove-attachment-btn.btn:hover .btn-content {
-    @apply bg-danger;
-}
+
 .remove-attachment-btn.btn .btn-content {
     @apply justify-center;
 }

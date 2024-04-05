@@ -7,7 +7,7 @@
     @apply flex-grow;
 }
 .selection-header .selection-header-buttons {
-    @apply flex-x gap-x-4;
+    @apply flex-x items-center gap-x-1 md:gap-x-2;
 }
 .selection-header .btn-h.c-close-btn {
     @apply w-10;

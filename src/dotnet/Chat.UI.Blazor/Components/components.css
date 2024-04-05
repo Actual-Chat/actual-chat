@@ -1,14 +1,20 @@
 /* Sub-headers */
 
 .historical-playback-sub-header {
-    @apply relative flex-x py-1 px-2;
-    @apply bg-01 shadow-lg text-02;
+    @apply relative;
+    @apply flex-x;
+    @apply py-1 pl-3 pr-4 md:pl-4;
+    @apply bg-01;
+    @apply text-02;
+    @apply shadow-lg;
     @apply border-b border-separator;
     @apply animate-display-from-top;
 }
 .historical-playback-sub-header-content {
-    @apply flex-x items-center;
-    @apply w-full;
+    @apply flex-1 flex-x justify-between items-center gap-x-2;
+}
+.historical-playback-sub-header-content .c-control-buttons {
+    @apply flex-none flex-x gap-x-1;
 }
 .historical-playback-sub-header-content .c-chat-title {
     @apply font-semibold;

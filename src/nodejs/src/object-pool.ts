@@ -32,6 +32,8 @@ export class ObjectPool<T>
                 this.pool.push(obj);
             })();
         }
+        else
+            this.pool.push(obj);
     }
 }
 

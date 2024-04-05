@@ -6,15 +6,14 @@
     var cls = $"play {(m.IsListening ? "on" : "off")} {playingHistoricalClass} {Class}";
 }
 
-<ButtonRound
+<HeaderButton
     Class="@cls"
-    ContentClass="!bg-transparent"
     Click="@OnListenClick"
     Tooltip="@(m.IsListening ? "Stop listening" : "Listen")"
     TooltipPosition="FloatingPosition.Top"
     MustKeepAwake="@(!m.IsListening)">
     <i class="icon-listen text-2xl"></i>
-</ButtonRound>
+</HeaderButton>
 
 @code {
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;

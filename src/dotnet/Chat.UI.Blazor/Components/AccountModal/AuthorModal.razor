@@ -32,17 +32,17 @@
         @if (m.IsOwn) {
             if (!m.Author.IsAnonymous) {
                 <Button Class="btn-modal btn-primary" Click="OnChangeAvatarClicked">
-                    <i class="icon-sync text-lg"></i>
-                    Change avatar
+                    <Icon><i class="icon-sync text-lg"></i></Icon>
+                    <Title>Change avatar</Title>
                 </Button>
             } else {
                 <Button Class="btn-modal" Click="@(_ => OnEditAvatarClicked(m.Author))">
-                    <i class="icon-sync text-lg md:hidden"></i>
-                    Edit avatar
+                    <Icon><i class="icon-sync text-lg md:hidden"></i></Icon>
+                    <Title>Edit avatar</Title>
                 </Button>
                 <Button Class="btn-modal btn-danger" Click="OnRevealClicked">
-                    <i class="icon-eye text-xl md:hidden"></i>
-                    Reveal
+                    <Icon><i class="icon-eye text-xl md:hidden"></i></Icon>
+                    <Title>Reveal</Title>
                 </Button>
             }
         } else if (m.Author.IsAnonymous) {
@@ -53,14 +53,12 @@
                     Class="btn-modal btn-primary start-chat-btn"
                     ContentClass="truncate"
                     Click="OnStartPeerChat">
-                    <i class="icon-message-ellipse text-xl"></i>
-                    <p>
-                        Chat with @m.Author.Avatar.Name
-                    </p>
+                    <Icon><i class="icon-message-ellipse text-xl"></i></Icon>
+                    <Title>Chat with @m.Author.Avatar.Name</Title>
                 </Button>
                 <Button Class="btn-modal" Click="OnStartAnonymousPeerChat">
-                    <i class="icon-question-mark-bubble text-xl"></i>
-                    Start anonymous chat
+                    <Icon><i class="icon-question-mark-bubble text-xl"></i></Icon>
+                    <Title>Start anonymous chat</Title>
                 </Button>
             } else {
                 <Button Class="btn-modal" Click="OnCancel">Close</Button>

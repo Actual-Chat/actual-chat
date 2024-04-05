@@ -8,13 +8,13 @@
 @if (!_useInteractiveHeader) {
     <div class="modal-header">
         @if (isInnerStep) {
-            <HeaderButton Click="OnBackClick">
+            <HeaderButton Class="blackout" Click="OnBackClick">
                 <i class="icon-arrow-left"></i>
             </HeaderButton>
         }
         <h3 class="modal-title">@Title</h3>
         @if (HasCloseButton && !isInnerStep) {
-            <HeaderButton Click="OnCloseClick">
+            <HeaderButton Class="blackout" Click="OnCloseClick">
                 <i class="icon-close"></i>
             </HeaderButton>
         }
