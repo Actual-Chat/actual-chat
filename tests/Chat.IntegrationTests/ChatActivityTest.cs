@@ -17,18 +17,9 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
         await using var tester = appHost.NewBlazorTester();
         var services = tester.AppServices;
         var clientServices = tester.ScopedAppServices;
-        var commander = services.Commander();
         var authors = services.GetRequiredService<IAuthors>();
-        var account = await tester.SignInAsBob();
+        await tester.SignInAsBob();
         var session = tester.Session;
-
-        var chats = services.GetRequiredService<IChats>();
-        Chat? chat;
-        await TestExt.WhenMetAsync(async () => {
-            chat = await chats.Get(session, TestChatId, CancellationToken.None);
-            chat.Should().NotBeNull();
-            chat!.Title.Should().Be("The Actual One");
-        }, TimeSpan.FromSeconds(10));
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var ct = cts.Token;
@@ -39,17 +30,25 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
             var cStreamingAuthorIds = await Computed.Capture(() => recordingActivity.GetStreamingAuthorIds(ct), ct);
             cStreamingEntries.Value.Count.Should().Be(0);
 
-            // 2s pause, create entry, 2s pause, complete it
-            _ = Task.Run(() => AddChatEntries(session, authors, ct), ct);
+            var tcs1 = new TaskCompletionSource();
+            var tcs2 = new TaskCompletionSource();
 
-            await cStreamingEntries.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
-            await cStreamingAuthorIds.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
+            _ = Task.Run(() => AddChatEntries(session, authors, tcs1.Task, tcs2.Task, ct), ct);
+
+            cStreamingEntries.Value.Count.Should().Be(0);
+            cStreamingAuthorIds.Value.Count.Should().Be(0);
+
+            // Step1
+            tcs1.SetResult();
 
             await cStreamingEntries.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
             cStreamingAuthorIds = await cStreamingAuthorIds.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(1), ct);
             var authorId = cStreamingAuthorIds.Value.Single();
             var cIsAuthorActive = await Computed.Capture(() => recordingActivity.IsAuthorStreaming(authorId, ct), ct);
             await cIsAuthorActive.When(x => x, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
+
+            // Step2
+            tcs2.SetResult();
 
             await cStreamingEntries.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
             await cStreamingAuthorIds.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
@@ -63,10 +62,12 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
     private async Task AddChatEntries(
         Session session,
         IAuthors authors,
+        Task step1,
+        Task step2,
         CancellationToken cancellationToken)
     {
-        using var testClock = new TestClock();
-        await testClock.Delay(2000, cancellationToken);
+        await step1.ConfigureAwait(false);
+
         var author = await authors.EnsureJoined(session, TestChatId, CancellationToken.None).ConfigureAwait(false);
         var clock = MomentClockSet.Default.SystemClock;
         var id = new ChatEntryId(TestChatId, ChatEntryKind.Audio, 0, AssumeValid.Option);
@@ -81,7 +82,7 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
         var createCommand = new ChatsBackend_ChangeEntry(id, null, Change.Create(new ChatEntryDiff(entry)));
         entry = await commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
 
-        await testClock.Delay(2000, cancellationToken);
+        await step2.ConfigureAwait(false);
 
         var endsAt = clock.Now;
         var completeCommand = new ChatsBackend_ChangeEntry(
