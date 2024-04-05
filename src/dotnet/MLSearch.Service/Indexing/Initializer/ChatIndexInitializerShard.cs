@@ -1,7 +1,6 @@
 using ActualChat.Chat;
-using ActualChat.MLSearch.Engine.Indexing;
 
-namespace ActualChat.MLSearch.Indexing;
+namespace ActualChat.MLSearch.Indexing.Initializer;
 
 internal interface IChatIndexInitializerShard
 {

@@ -1,7 +1,6 @@
 using ActualChat.Chat;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
-using ActualChat.MLSearch.Engine.Indexing;
 using ActualChat.MLSearch.Engine.OpenSearch;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Indexing;

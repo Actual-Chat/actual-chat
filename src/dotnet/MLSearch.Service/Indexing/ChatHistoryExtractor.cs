@@ -1,7 +1,5 @@
 using ActualChat.Chat;
 
-using ActualChat.MLSearch.Engine.Indexing;
-
 namespace ActualChat.MLSearch.Indexing;
 
 internal sealed class ChatHistoryExtractor (

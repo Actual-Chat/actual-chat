@@ -1,5 +1,5 @@
 using ActualChat.Chat;
-using ActualChat.MLSearch.Engine.Indexing;
+using ActualChat.MLSearch.Indexing;
 
 namespace ActualChat.MLSearch.Bot;
 

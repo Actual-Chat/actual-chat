@@ -1,4 +1,4 @@
-namespace ActualChat.MLSearch.Engine.Indexing;
+namespace ActualChat.MLSearch.Indexing;
 
 internal interface ICursorStates<TState> where TState : class
 {

@@ -1,4 +1,4 @@
-namespace ActualChat.MLSearch.Engine.Indexing;
+namespace ActualChat.MLSearch.Indexing;
 
 internal interface ISink<in TUpdated, in TDeleted>
 {

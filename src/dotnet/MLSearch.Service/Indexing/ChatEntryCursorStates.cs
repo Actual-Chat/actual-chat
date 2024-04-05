@@ -1,5 +1,3 @@
-using ActualChat.MLSearch.Engine.Indexing;
-
 namespace ActualChat.MLSearch.Indexing;
 internal record ChatEntryCursor(long LastEntryLocalId, long LastEntryVersion);
 

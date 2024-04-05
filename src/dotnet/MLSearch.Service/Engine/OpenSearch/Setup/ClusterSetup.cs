@@ -7,6 +7,7 @@ using OpenSearchModelGroupName = string;
 using OpenSearchModelGroupId = string;
 using OpenSearchModelId = string;
 using ActualChat.MLSearch.Indexing;
+using ActualChat.MLSearch.Indexing.Initializer;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
