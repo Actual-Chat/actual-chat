@@ -58,9 +58,9 @@ public class AppScopedServiceStarter
             Tracer.Point("BrowserInfo is ready");
 
             Services.GetRequiredService<ThemeUI>().Start();
-            var timeZoneConverter = Services.GetRequiredService<TimeZoneConverter>();
-            if (timeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter)
-                serverSideTimeZoneConverter.Initialize(browserInfo.UtcOffset);
+            var dateTimeConverter = Services.GetRequiredService<DateTimeConverter>();
+            if (dateTimeConverter is ServerSideDateTimeConverter serverSideDateTimeConverter)
+                serverSideDateTimeConverter.Initialize(browserInfo.UtcOffset);
 
             // Finishing with BrowserInit
             await browserInit.WhenInitialized.ConfigureAwait(false); // Must be completed before the next call

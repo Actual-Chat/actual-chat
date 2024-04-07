@@ -4,7 +4,7 @@
     var m = State.Value;
     var tooltip = "";
     if (Moment.HasValue) {
-        var localTime = Hub.TimeZoneConverter.ToLocalTime(Moment.GetValueOrDefault());
+        var localTime = Hub.DateTimeConverter.ToLocalTime(Moment.GetValueOrDefault());
         tooltip = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
     }
 }

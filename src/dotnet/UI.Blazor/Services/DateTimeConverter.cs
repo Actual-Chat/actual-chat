@@ -1,10 +1,10 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public abstract class TimeZoneConverter
+public abstract class DateTimeConverter
 {
     protected ILogger Log { get; }
 
-    protected TimeZoneConverter(IServiceProvider services)
+    protected DateTimeConverter(IServiceProvider services)
         => Log = services.LogFor(GetType());
 
     public DateTime ToLocalTime(Moment moment)
@@ -23,9 +23,9 @@ public abstract class TimeZoneConverter
     }
 }
 
-public sealed class ClientSizeTimeZoneConverter : TimeZoneConverter
+public sealed class ClientSizeDateTimeConverter : DateTimeConverter
 {
-    public ClientSizeTimeZoneConverter(IServiceProvider services) : base(services) { }
+    public ClientSizeDateTimeConverter(IServiceProvider services) : base(services) { }
 
     public override DateTime ToLocalTime(DateTime utcTime)
     {
@@ -37,11 +37,11 @@ public sealed class ClientSizeTimeZoneConverter : TimeZoneConverter
         => utcTime.ToLocalTime();
 }
 
-public sealed class ServerSideTimeZoneConverter : TimeZoneConverter
+public sealed class ServerSideDateTimeConverter : DateTimeConverter
 {
     private TimeSpan _utcOffset;
 
-    public ServerSideTimeZoneConverter(IServiceProvider services) : base(services) { }
+    public ServerSideDateTimeConverter(IServiceProvider services) : base(services) { }
 
     public void Initialize(TimeSpan utcOffset)
         => _utcOffset = utcOffset;

@@ -50,7 +50,7 @@
     private ChatUI ChatUI => Hub.ChatUI;
     private IAuthors Authors => Hub.Authors;
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
-    private TimeZoneConverter TimeZoneConverter => Hub.TimeZoneConverter;
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private UIEventHub UIEventHub => Hub.UIEventHub();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;

@@ -46,7 +46,7 @@
             @if (ScreenSize.IsWide()) {
                 <div class="c-text truncate whitespace-nowrap">
                     @if (m.PlayingAt is { } playingAt) {
-                        var localTime = TimeZoneConverter.ToLocalTime(playingAt);
+                        var localTime = DateTimeConverter.ToLocalTime(playingAt);
                         var absoluteTime = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
                         var relativeTime = LiveTime.GetDeltaText(playingAt, Clocks.SystemClock.Now);
                         <span>
@@ -82,7 +82,7 @@
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatPlayers ChatPlayers => Hub.ChatPlayers;
     private MomentClockSet Clocks => Hub.Clocks();
-    private TimeZoneConverter TimeZoneConverter => Hub.TimeZoneConverter;
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 

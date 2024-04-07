@@ -34,7 +34,7 @@ public partial class ChatUI
         var hasVeryFirstItem = false;
         if (prevMessage != null) {
             prevEntry = prevMessage.Entry;
-            prevDate = DateOnly.FromDateTime(TimeZoneConverter.ToLocalTime(prevEntry.BeginsAt));
+            prevDate = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(prevEntry.BeginsAt));
             isPrevUnread = prevMessage.Flags.HasFlag(ChatMessageFlags.Unread);
             isPrevAudio = prevEntry.AudioEntryId != null || prevEntry.IsStreaming;
             hasVeryFirstItem = prevMessage.ReplacementKind == ChatMessageReplacementKind.WelcomeBlock;
@@ -43,7 +43,7 @@ public partial class ChatUI
         var messages = new List<ChatMessage>(entries.Count);
         var isWelcomeBlockAdded = false;
         foreach (var entry in entries) {
-            var date = DateOnly.FromDateTime(TimeZoneConverter.ToLocalTime(entry.BeginsAt));
+            var date = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(entry.BeginsAt));
             var isBlockStart = IsBlockStart(prevEntry, entry);
             var isForward = !entry.ForwardedAuthorId.IsNone;
             var isPrevForward = prevEntry is { ForwardedAuthorId.IsNone: false };
