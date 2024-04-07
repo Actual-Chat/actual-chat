@@ -116,8 +116,8 @@ module.exports = (env, args) => {
             },
         },
         // to enable ts debug uncomment the line below
-        devtool: 'source-map',
-        // devtool: isDevelopment ? 'source-map' : false,
+        // devtool: 'source-map',
+        devtool: isDevelopment ? 'eval-source-map' : 'source-map',
         // another type of inlined source maps
         //devtool: isDevelopment ? 'eval' : false,
         plugins: [
