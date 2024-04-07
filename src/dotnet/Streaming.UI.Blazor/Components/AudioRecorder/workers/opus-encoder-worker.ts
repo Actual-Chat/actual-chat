@@ -42,11 +42,21 @@ const CHUNKS_WILL_BE_SENT_ON_RECONNECT = 500; // 20ms * 500 = 10s
 const FADE_CHUNKS = 3;
 const BUFFER_CHUNKS = 4; // 80ms
 const CHUNK_SIZE = 960; // 20ms @ 48000KHz
+const DEFAULT_PRE_SKIP = 312;
+const SAMPLE_RATE = 48000;
+const BITRATE = 32000;
 
 /** buffer or callbackId: number of `end` message */
 const queue = new Denque<ArrayBuffer>();
 const worker = self as unknown as Worker;
 const bufferPool: ObjectPool<ArrayBuffer> = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(2048)).expandTo(4);
+const currentResult = new Array<Uint8Array>();
+const systemCodecConfig: AudioEncoderConfig = {
+    codec: 'opus',
+    numberOfChannels: 1,
+    sampleRate: SAMPLE_RATE,
+    bitrate: BITRATE,
+};
 
 let hubConnection: signalR.HubConnection = null;
 let recordingSubject: signalR.Subject<Array<Uint8Array>> = null;
@@ -55,6 +65,7 @@ let vadState: 'voice' | 'silence' = 'silence';
 let encoderWorklet: OpusEncoderWorklet & Disposable = null;
 let vadWorker: AudioVadWorker & Disposable = null;
 let encoder: Encoder | null;
+let systemEncoder: AudioEncoder | null;
 let lastInitArguments: { chatId: string, repliedChatEntryId: string } | null = null;
 let lastSessionToken = '';
 let isEncoding = false;
@@ -118,11 +129,22 @@ const serverImpl: OpusEncoderWorker = {
             debugLog?.log(`create: hub created`);
         }
 
-        if (!encoder) {
-            // Get fade-in window
-            kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE * FADE_CHUNKS, 2.55);
-            pinkNoiseChunk = getPinkNoiseBuffer(1.0);
+        // Get fade-in window
+        kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE * FADE_CHUNKS, 2.55);
+        pinkNoiseChunk = getPinkNoiseBuffer(1.0);
 
+        if (!systemEncoder && AudioEncoder) {
+            const configSupport = await AudioEncoder.isConfigSupported(systemCodecConfig);
+            if (configSupport.supported) {
+                systemEncoder = new AudioEncoder({
+                    error: onSystemEncoderError,
+                    output: onEncodedAudioChunk,
+                });
+                systemEncoder.configure(systemCodecConfig);
+            }
+        }
+
+        if (!systemEncoder && !encoder) {
             // Loading codec
             codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
             debugLog?.log(`create: codec loaded`);
@@ -174,10 +196,7 @@ const serverImpl: OpusEncoderWorker = {
 
         state = 'ended';
         vadState = 'silence';
-        processQueue('out');
-        recordingSubject?.complete();
-        recordingSubject = null;
-        encoder?.reset();
+        await stopRecording();
     },
 
     reconnect: async (_noWait?: RpcNoWait): Promise<void> => {
@@ -249,14 +268,9 @@ const serverImpl: OpusEncoderWorker = {
         }
 
         if (newVadState === 'silence') {
-            // set state, then complete the stream
-            vadState = newVadState;
-            processQueue('out');
-            recordingSubject?.complete();
-            recordingSubject = null;
-            encoder?.delete();
-            encoder = null;
-            chunkTimeOffset = 0;
+            // set state, then complete the stream, but we are still ready to start new one (state === 'encoding'!)
+            vadState = 'silence'
+            await stopRecording();
         }
         else {
             // set state, then start new stream - several audio chunks can be buffered at the recordingSubject
@@ -268,9 +282,37 @@ const serverImpl: OpusEncoderWorker = {
 
             await startRecording();
         }
-    }
+    },
 }
 const server = rpcClientServer<RecorderStateEventHandler>(`${logScope}.server`, worker, serverImpl);
+
+// systemEncoder handlers
+
+function onSystemEncoderError(error: DOMException): void {
+    errorLog?.log(`onSystemEncoderError: `, error, state, hubConnection.state)
+}
+
+function onEncodedAudioChunk(output: EncodedAudioChunk, metadata: EncodedAudioChunkMetadata): void {
+    const encodedChunkBuffer = bufferPool.get();
+    const encodedChunk = encodedChunkBuffer.byteLength > output.byteLength
+         ? new Uint8Array(encodedChunkBuffer, 0, output.byteLength)
+         : new Uint8Array(output.byteLength);
+
+    output.copyTo(encodedChunk);
+
+    currentResult.push(encodedChunk);
+    ensureCurrentResultIsSent();
+}
+
+function ensureCurrentResultIsSent(): void {
+    if (currentResult.length >= BUFFER_CHUNKS) {
+        recordingSubject?.next(currentResult);
+        // release buffers for reuse
+        currentResult.forEach(chunk => bufferPool.release(chunk.buffer));
+        // reset result buffer
+        currentResult.length = 0;
+    }
+}
 
 // Helpers
 
@@ -305,9 +347,8 @@ async function startRecording(): Promise<void> {
 
     recordingSubject?.complete(); // Just in case
     recordingSubject = new signalR.Subject<Array<Uint8Array>>();
-    if (!encoder)
-        encoder = new codecModule.Encoder();
-    const preSkip = encoder.preSkip;
+    systemEncoder?.configure(systemCodecConfig);
+    const preSkip = encoder?.preSkip ?? DEFAULT_PRE_SKIP;
     await hubConnection.send('ProcessAudioChunks', lastSessionToken, chatId, repliedChatEntryId, Date.now() / 1000, preSkip, recordingSubject);
     processQueue('in');
 }
@@ -321,7 +362,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
     if (isEncoding)
         return;
 
-    if (!encoder)
+    if (!encoder && !systemEncoder)
         return;
 
     if (queue.length < BUFFER_CHUNKS)
@@ -329,15 +370,14 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
 
     try {
         isEncoding = true;
-        const result = new Array<Uint8Array>();
         let fadeWindowIndex: number | null = null;
         if (fade === 'in' || fade === 'out')
             fadeWindowIndex = 0;
 
         while (!queue.isEmpty()) {
             const samplesBuffer = queue.shift();
+            const samples = new Float32Array(samplesBuffer);
             if (fadeWindowIndex !== null) {
-                const samples = new Float32Array(samplesBuffer);
                 if (fade === 'in')
                     for (let i = 0; i < samples.length; i++)
                         samples[i] *= kbdWindow[fadeWindowIndex + i];
@@ -357,25 +397,34 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
             // fakeChunk.set(typedViewFakeChunk);
             // recordingSubject?.next(fakeChunk);
 
-            const encodedChunkBuffer = bufferPool.get();
-            const typedViewEncodedChunk = encoder.encode(samplesBuffer);
-            // typedViewEncodedChunk is a typed_memory_view to Decoder internal buffer - so you have to copy data
-            const encodedChunk = encodedChunkBuffer.byteLength > typedViewEncodedChunk.byteLength
-                ? new Uint8Array(encodedChunkBuffer, 0, typedViewEncodedChunk.byteLength)
-                : new Uint8Array(typedViewEncodedChunk.length);
-            encodedChunk.set(typedViewEncodedChunk);
-            result.push(encodedChunk);
+            if (systemEncoder) {
+                const audioChunk = new AudioData({
+                    format: 'f32-planar',
+                    sampleRate: SAMPLE_RATE,
+                    numberOfChannels: 1,
+                    numberOfFrames: CHUNK_SIZE,
+                    timestamp: chunkTimeOffset,
+                    data: samples,
+                });
+                systemEncoder.encode(audioChunk);
+            }
+            else {
+                const encodedChunkBuffer = bufferPool.get();
+                const typedViewEncodedChunk = encoder.encode(samplesBuffer);
+                // typedViewEncodedChunk is a typed_memory_view to Decoder internal buffer - so you have to copy data
+                const encodedChunk = encodedChunkBuffer.byteLength > typedViewEncodedChunk.byteLength
+                    ? new Uint8Array(encodedChunkBuffer, 0, typedViewEncodedChunk.byteLength)
+                    : new Uint8Array(typedViewEncodedChunk.length);
+                encodedChunk.set(typedViewEncodedChunk);
+                currentResult.push(encodedChunk);
+            }
 
             lastFrameProcessedAt = Date.now();
             void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
 
             chunkTimeOffset += 20;
         }
-
-        // next will copy data during serialization synchronously - see `_launchStreams` override
-        recordingSubject?.next(result);
-        // release buffers for reuse
-        result.forEach(chunk => bufferPool.release(chunk.buffer));
+        ensureCurrentResultIsSent();
     }
     catch (error) {
         errorLog?.log(`processQueue: unhandled error:`, error);
@@ -383,6 +432,19 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
     finally {
         isEncoding = false;
     }
+}
+
+async function stopRecording(): Promise<void> {
+    processQueue('out');
+    if (systemEncoder) {
+        await systemEncoder.flush();
+        ensureCurrentResultIsSent();
+    }
+    recordingSubject?.complete();
+    recordingSubject = null;
+    encoder?.reset();
+    systemEncoder?.reset();
+    chunkTimeOffset = 0;
 }
 
 async function onReconnect(): Promise<void> {

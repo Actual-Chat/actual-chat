@@ -26,6 +26,7 @@
     var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
     var blazorMaxReconnectRetries = 0; // 100_000_000;
     var blazorScriptSuffix = HostInfo.IsDevelopmentInstance ? "" : HostHelper.GetBlazorScriptSuffix();
+    var isLocal = HostInfo.BaseUrlKind == BaseUrlKind.Local;
     Layout = null;
     var nonceGenerator = RandomStringGenerator.Default;
     var startupNonce = nonceGenerator.Next(12);
@@ -33,7 +34,8 @@
     var showOverlayNonce = nonceGenerator.Next(12);
     var closeLoginNonce = nonceGenerator.Next(12);
     // TODO(AK): remove unsafe-eval at .NET 8
-    var unsafeEval = isBlazorServer ? "" : "'unsafe-eval'";
+    // unsafe-eval is required for 'eval-source-map' to debug during local development
+    var unsafeEval = isBlazorServer && !isLocal ? "" : "'unsafe-eval'";
     var connectLocalhost = Env.IsDevelopment() ? "wss://localhost:*" : "";
 }
 
