@@ -1,5 +1,6 @@
 @using ActualChat.Kvas
 @using System.ComponentModel.DataAnnotations
+@using TimeZoneNames
 @implements IDisposable
 @{
     var timeZoneChanged = !string.Equals(
@@ -97,8 +98,8 @@
         _emailFormEditContext = new EditContext(_emailFormModel);
         _emailFormEditContext.OnFieldChanged += EmailFormEditContextOnOnFieldChanged;
 
-        var timeZones = TimeZoneInfo.GetSystemTimeZones();
-        _timeZones = timeZones.ToDictionary(x => x.Id, x => x.DisplayName);
+        var timeZones = TZNames.GetDisplayNames("en-US", useIanaZoneIds: true);
+        _timeZones = timeZones.ToDictionary(x => x.Key, x => x.Value);
         var currentTimeZoneId = Hub.BrowserInfo.TimeZone;
         _timeZoneFormModel = new TimeZoneFormModel(ComponentIdGenerator) {
             SelectedTimeZoneId = _account.TimeZone,
