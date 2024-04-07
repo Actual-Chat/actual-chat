@@ -21,6 +21,14 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 // Raw audio chunk consists of SAMPLES_PER_WINDOW floats
 // 20ms * 48000Khz
 const SAMPLES_PER_WINDOW = 960;
+const SAMPLE_RATE = 48000;
+
+const systemCodecConfig: AudioDecoderConfig = {
+    codec: 'opus',
+    numberOfChannels: 1,
+    sampleRate: SAMPLE_RATE,
+};
+
 
 export class OpusDecoder implements BufferHandler, AsyncDisposable {
     private readonly streamId: string;
@@ -29,21 +37,31 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     private readonly bufferPool: ObjectPool<ArrayBuffer>;
     private readonly largeBufferPool: ObjectPool<ArrayBuffer>;
     private mustAbort = false;
+    private chunkTimeOffset = 0;
 
-    public decoder: Decoder;
+    private decoder: Decoder | null;
+    private systemDecoder: AudioDecoder | null;
 
-    public static async create(streamId: string, decoder: Decoder, feederNodePort: MessagePort): Promise<OpusDecoder> {
+    public static async create(streamId: string, decoder: Decoder | null, feederNodePort: MessagePort): Promise<OpusDecoder> {
         return new OpusDecoder(streamId, decoder, feederNodePort);
     }
 
     /** accepts fully initialized decoder only, use the factory method `create` to construct an object */
-    private constructor(streamId: string, decoder: Decoder, feederWorkletPort: MessagePort) {
+    private constructor(streamId: string, decoder: Decoder | null, feederWorkletPort: MessagePort) {
         this.streamId = streamId;
         this.processor = new AsyncProcessor<Uint8Array | 'end'>('OpusDecoder', item => this.process(item));
         this.feederWorklet = rpcClientServer<FeederAudioWorklet>(`${logScope}.feederNode`, feederWorkletPort, this);
-        this.decoder = decoder;
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(SAMPLES_PER_WINDOW * 4)).expandTo(4);
         this.largeBufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(SAMPLES_PER_WINDOW * 4 * 3)).expandTo(2);
+        this.decoder = decoder;
+        if (!this.decoder) {
+            // use system decoder
+            this.systemDecoder = new AudioDecoder({
+                error: this.onSystemDecoderError,
+                output: this.onDecodedAudioChunk,
+            });
+            this.systemDecoder.configure(systemCodecConfig);
+        }
     }
 
     public init(): void {
@@ -53,7 +71,11 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     public async disposeAsync(): Promise<void> {
         if (this.processor.isRunning)
             await this.end(true);
+
+        this.decoder?.delete();
+        this.systemDecoder?.close();
         this.decoder = null;
+        this.systemDecoder = null;
         this.mustAbort = true;
     }
 
@@ -95,29 +117,55 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
                 return true;
             }
 
-            // typedViewSamples is a typed_memory_view to Decoder internal buffer - so you have to copy data
-            const typedViewSamples = this.decoder.decode(item);
-            if (typedViewSamples == null || typedViewSamples.length === 0) {
-                warnLog?.log(`#${this.streamId}.process: decoder returned empty result`);
-                return true;
+            if (this.systemDecoder) {
+                const chunk = new EncodedAudioChunk({
+                    data: item,
+                    type: 'key',
+                    duration: 20000, // 20ms
+                    timestamp: this.chunkTimeOffset,
+                });
+                this.chunkTimeOffset += 20;
+                this.systemDecoder.decode(chunk);
             }
+            else {
+                // typedViewSamples is a typed_memory_view to Decoder internal buffer - so you have to copy data
+                const typedViewSamples = this.decoder.decode(item);
+                if (typedViewSamples == null || typedViewSamples.length === 0) {
+                    warnLog?.log(`#${this.streamId}.process: decoder returned empty result`);
+                    return true;
+                }
 
-            const samplesBuffer = typedViewSamples.length == SAMPLES_PER_WINDOW
-                ? this.bufferPool.get()
-                : this.largeBufferPool.get();
-            const samples = new Float32Array(samplesBuffer, 0, typedViewSamples.length);
-            samples.set(typedViewSamples);
+                const samplesBuffer = typedViewSamples.length == SAMPLES_PER_WINDOW
+                    ? this.bufferPool.get()
+                    : this.largeBufferPool.get();
+                const samples = new Float32Array(samplesBuffer, 0, typedViewSamples.length);
+                samples.set(typedViewSamples);
 
-            if (enableFrequentDebugLog)
-                debugLog?.log(
-                    `#${this.streamId}.process: decoded ${item.byteLength} byte(s) into ` +
-                    `${samples.byteLength} byte(s) / ${samples.length} samples`);
-            void this.feederWorklet.frame(samples.buffer, samples.byteOffset, samples.length, rpcNoWait);
+                if (enableFrequentDebugLog)
+                    debugLog?.log(
+                        `#${this.streamId}.process: decoded ${item.byteLength} byte(s) into ` +
+                        `${samples.byteLength} byte(s) / ${samples.length} samples`);
+                void this.feederWorklet.frame(samples.buffer, samples.byteOffset, samples.length, rpcNoWait);
+            }
         }
         catch (e) {
             errorLog?.log(`#${this.streamId}.process: error:`, e);
         }
         // Keep running for reuse
         return true;
+    }
+
+    private onSystemDecoderError = (error: DOMException): void => {
+        errorLog?.log(`onSystemDecoderError: `, error, this.streamId)
+    }
+
+    private onDecodedAudioChunk = (output: AudioData): void => {
+        const samplesBuffer = output.numberOfFrames == SAMPLES_PER_WINDOW
+            ? this.bufferPool.get()
+            : this.largeBufferPool.get();
+        const samples = new Float32Array(samplesBuffer, 0, output.numberOfFrames);
+        output.copyTo(samples, { planeIndex: 0, format: 'f32-planar'})
+
+        void this.feederWorklet.frame(samples.buffer, samples.byteOffset, samples.length, rpcNoWait);
     }
 }

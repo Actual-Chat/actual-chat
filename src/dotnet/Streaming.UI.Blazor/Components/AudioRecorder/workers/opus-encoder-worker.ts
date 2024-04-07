@@ -368,6 +368,9 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
     if (queue.length < BUFFER_CHUNKS)
         return;
 
+    if (systemEncoder && systemEncoder.state === 'unconfigured')
+        systemEncoder.configure(systemCodecConfig);
+
     try {
         isEncoding = true;
         let fadeWindowIndex: number | null = null;
@@ -403,7 +406,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
                     sampleRate: SAMPLE_RATE,
                     numberOfChannels: 1,
                     numberOfFrames: CHUNK_SIZE,
-                    timestamp: chunkTimeOffset,
+                    timestamp: chunkTimeOffset * 1000, // microseconds instead of ms
                     data: samples,
                 });
                 systemEncoder.encode(audioChunk);
@@ -436,7 +439,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
 
 async function stopRecording(): Promise<void> {
     processQueue('out');
-    if (systemEncoder) {
+    if (systemEncoder && systemEncoder.state === 'configured') {
         await systemEncoder.flush();
         ensureCurrentResultIsSent();
     }
