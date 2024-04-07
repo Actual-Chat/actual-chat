@@ -72,11 +72,11 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c));
         services.AddScoped(c => c.AccountSettings(c.Session()));
         if (hostKind.IsServer()) {
-            services.AddScoped<TimeZoneConverter>(c => new ServerSideTimeZoneConverter(c));
+            services.AddScoped<DateTimeConverter>(c => new ServerSideDateTimeConverter(c));
             MomentClockSet.Default.ServerClock.Offset = TimeSpan.Zero;
         }
         else {
-            services.AddScoped<TimeZoneConverter>(c => new ClientSizeTimeZoneConverter(c)); // WASM
+            services.AddScoped<DateTimeConverter>(c => new ClientSizeDateTimeConverter(c)); // WASM
             services.AddHostedService(c => new ServerTimeSync(c));
         }
 

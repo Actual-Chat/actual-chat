@@ -10,7 +10,7 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
 
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
-    private TimeZoneConverter TimeZoneConverter => Hub.TimeZoneConverter;
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
     private ModalUI ModalUI => Hub.ModalUI;
     private ToastUI ToastUI => Hub.ToastUI;
@@ -74,7 +74,7 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
                 currentAuthor = chatEntry.AuthorId;
                 var author = await Authors.Get(Session, chatEntry.ChatId, chatEntry.AuthorId, default).ConfigureAwait(false);
                 var authorName = author?.Avatar.Name ?? "(N/A)";
-                var timestamp = TimeZoneConverter.ToLocalTime(chatEntry.BeginsAt).ToString("g", CultureInfo.InvariantCulture);
+                var timestamp = DateTimeConverter.ToLocalTime(chatEntry.BeginsAt).ToString("g", CultureInfo.InvariantCulture);
                 sb.AppendFormat("{0}, [{1}]", authorName, timestamp);
                 sb.AppendLine();
             }

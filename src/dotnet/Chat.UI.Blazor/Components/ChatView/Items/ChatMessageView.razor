@@ -85,7 +85,7 @@
                     AuthorSid="@entry.AuthorId"
                     Click="@_onClickCallback"/>
             } else {
-                var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
+                var timestamp = DateTimeConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
                 <div class="c-empty">
                     <span class="chat-message-timestamp-on-hover">@timestamp</span>
                 </div>
@@ -206,7 +206,7 @@
     private AuthorUI AuthorUI => ChatContext.Hub.AuthorUI;
     private ShareUI ShareUI => ChatContext.Hub.ShareUI;
     private ModalUI ModalUI => ChatContext.Hub.ModalUI;
-    private TimeZoneConverter TimeZoneConverter => ChatContext.Hub.TimeZoneConverter;
+    private DateTimeConverter DateTimeConverter => ChatContext.Hub.DateTimeConverter;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
     private ILogger Log => _log ??= ChatContext.Hub.LogFor(GetType());
 

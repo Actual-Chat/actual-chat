@@ -38,7 +38,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private IAuthors Authors => Hub.Authors;
     private NavigationManager Nav => Hub.Nav;
     private History History => Hub.History;
-    private TimeZoneConverter TimeZoneConverter => Hub.TimeZoneConverter;
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private IStateFactory StateFactory => Hub.StateFactory();
     private Dispatcher Dispatcher => Hub.Dispatcher;
     private CancellationToken DisposeToken { get; }

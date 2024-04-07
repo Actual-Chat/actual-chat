@@ -7,13 +7,13 @@ public class LiveTime : SafeAsyncDisposableBase, IComputeService
     private readonly TimeSpan _maxInvalidationDelay;
 
     private HostInfo HostInfo { get; }
-    private TimeZoneConverter TimeZoneConverter { get; }
+    private DateTimeConverter DateTimeConverter { get; }
     private MomentClockSet Clocks { get; }
 
     public LiveTime(IServiceProvider services)
     {
         HostInfo = services.HostInfo();
-        TimeZoneConverter = services.GetRequiredService<TimeZoneConverter>();
+        DateTimeConverter = services.GetRequiredService<DateTimeConverter>();
         Clocks = services.Clocks();
         _maxInvalidationDelay = HostInfo.IsDevelopmentInstance
             ? TimeSpan.FromSeconds(30)
@@ -68,9 +68,9 @@ public class LiveTime : SafeAsyncDisposableBase, IComputeService
             return (result, delay);
         }
 
-        var localTime = TimeZoneConverter.ToLocalTime(time);
+        var localTime = DateTimeConverter.ToLocalTime(time);
         var localTimeDate = localTime.Date;
-        var localNow = TimeZoneConverter.ToLocalTime(now);
+        var localNow = DateTimeConverter.ToLocalTime(now);
         var localToday = localNow.Date;
         if (localTimeDate == localToday) {
             result = $"today at {localTime.ToShortTimeString()}";

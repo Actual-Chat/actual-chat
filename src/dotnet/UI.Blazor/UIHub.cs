@@ -34,7 +34,7 @@ public class UIHub(IServiceProvider services) : Hub(services)
     private RenderVars? _renderVars;
     private RenderModeSelector? _renderModeSelector;
     private BrowserInfo? _browserInfo;
-    private TimeZoneConverter? _timeZoneConverter;
+    private DateTimeConverter? _dateTimeConverter;
     private NavigationManager? _nav;
     private History? _history;
     private Dispatcher? _dispatcher;
@@ -68,7 +68,7 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public RenderVars RenderVars => _renderVars ??= Services.GetRequiredService<RenderVars>();
     public RenderModeSelector RenderModeSelector => _renderModeSelector ??= Services.GetRequiredService<RenderModeSelector>();
     public BrowserInfo BrowserInfo => _browserInfo ??= Services.GetRequiredService<BrowserInfo>();
-    public TimeZoneConverter TimeZoneConverter => _timeZoneConverter ??= Services.GetRequiredService<TimeZoneConverter>();
+    public DateTimeConverter DateTimeConverter => _dateTimeConverter ??= Services.GetRequiredService<DateTimeConverter>();
     public NavigationManager Nav => _nav ??= Services.GetRequiredService<NavigationManager>();
     public History History => _history ??= Services.GetRequiredService<History>();
     public Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();

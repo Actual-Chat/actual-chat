@@ -31,7 +31,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private IPlaces Places => Hub.Places;
     private IChatPositions ChatPositions => Hub.ChatPositions;
     private IMentions Mentions => Hub.Mentions;
-    private TimeZoneConverter TimeZoneConverter => Hub.TimeZoneConverter;
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;

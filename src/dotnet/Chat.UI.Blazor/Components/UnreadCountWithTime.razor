@@ -9,7 +9,7 @@
 
     var timestamp = "";
     if (LastEntry != null) {
-        timestamp = TimeZoneConverter.ToLocalTime(LastEntry.BeginsAt).ToShortTimeString();
+        timestamp = DateTimeConverter.ToLocalTime(LastEntry.BeginsAt).ToShortTimeString();
     }
     var text = HasMentions ? "@" : Value == 0 ? "" : Value.FormatK();
     var isMuted = NotificationMode switch {
@@ -36,7 +36,7 @@
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private MomentClockSet Clocks => Hub.Clocks();
-    private TimeZoneConverter TimeZoneConverter => Hub.TimeZoneConverter;
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
 
     [Parameter, EditorRequired] public Trimmed<int> Value { get; set; }
     [Parameter] public ChatEntry? LastEntry { get; set; }
