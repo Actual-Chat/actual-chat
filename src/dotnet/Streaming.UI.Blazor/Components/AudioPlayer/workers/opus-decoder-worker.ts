@@ -26,9 +26,17 @@ const { logScope, debugLog, errorLog } = Log.get('OpusDecoderWorker');
 // TODO: create wrapper around module for all workers
 
 let codecModule: Codec | null = null;
+let useSystemDecoder = false;
+
+const SAMPLE_RATE = 48000;
 
 const worker = self as unknown as Worker;
 const decoders = new Map<string, OpusDecoder>();
+const systemCodecConfig: AudioEncoderConfig = {
+    codec: 'opus',
+    numberOfChannels: 1,
+    sampleRate: SAMPLE_RATE,
+};
 
 const serverImpl: OpusDecoderWorker = {
     create: async (artifactVersions: Map<string, string>, _timeout?: RpcTimeout): Promise<void> => {
@@ -38,17 +46,26 @@ const serverImpl: OpusDecoderWorker = {
 
         Versioning.init(artifactVersions);
 
-        // Load & warm-up codec
-        codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
-        const decoder = new codecModule.Decoder();
-        decoder.delete();
+        if (!useSystemDecoder && AudioDecoder) {
+            const configSupport = await AudioDecoder.isConfigSupported(systemCodecConfig);
+            useSystemDecoder = configSupport.supported;
+        }
+
+        if (!useSystemDecoder) {
+            // Load & warm-up codec
+            codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
+            const decoder = new codecModule.Decoder();
+            decoder.delete();
+        }
 
         debugLog?.log(`<- init`);
     },
 
     init: async (streamId: string, feederWorkletPort: MessagePort): Promise<void> => {
         debugLog?.log(`-> #${streamId}.create`);
-        const decoder = new codecModule.Decoder();
+        const decoder: Decoder | null = useSystemDecoder
+            ? null
+            : new codecModule.Decoder();
         const opusDecoder = await OpusDecoder.create(streamId, decoder, feederWorkletPort);
         opusDecoder.init();
         decoders.set(streamId, opusDecoder);
@@ -71,11 +88,9 @@ const serverImpl: OpusDecoderWorker = {
         if (!opusDecoder)
             return;
 
-        const decoder = opusDecoder.decoder;
         try {
             await opusDecoder.end(true);
             await opusDecoder.disposeAsync();
-            decoder.delete();
         }
         catch (e) {
             errorLog?.log(`#${streamId}.close: error while closing the decoder:`, e);
