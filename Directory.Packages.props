@@ -159,6 +159,7 @@
     <PackageVersion Include="System.Threading.Channels" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Ulid" Version="1.3.3" />
     <PackageVersion Include="ZString" Version="2.5.0" />
+    <PackageVersion Include="TimeZoneNames" Version="6.0.0" />
     <!-- MAUI  -->
     <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
