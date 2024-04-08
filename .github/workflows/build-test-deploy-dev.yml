@@ -522,7 +522,7 @@ jobs:
     name: Deploy app package to apple app store for ${{ github.ref_name }}
     if: |
       github.ref == 'refs/heads/master' ||
-      startsWith(github.ref, 'refs/heads/dev/') ||
+      github.ref == 'refs/heads/dev'    ||
       startsWith(github.ref, 'refs/heads/release/')
     runs-on: macos-13
     needs:
