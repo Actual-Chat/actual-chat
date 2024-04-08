@@ -136,6 +136,16 @@ export class MarkupEditor {
         });
     }
 
+    public blur() {
+        if (!this.hasFocus())
+            return;
+
+        if (!DeviceInfo.isIos) {
+            this.contentDiv.blur();
+            return;
+        }
+    }
+
     public hasFocus(): boolean {
         const activeElement = document.activeElement;
         if (!activeElement)

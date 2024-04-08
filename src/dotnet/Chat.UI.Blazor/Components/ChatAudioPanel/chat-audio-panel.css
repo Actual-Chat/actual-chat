@@ -235,7 +235,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 }
 
 /* Buttons, Mobile view, Text mode */
-.narrow-panel.narrow .chat-audio-panel .btn.btn-round .btn-content {
+.narrow-panel.narrow .chat-audio-panel .btn.btn-round {
     @apply min-w-20 max-w-20 min-h-12 max-h-12;
 }
 .narrow-panel.narrow .chat-audio-panel .btn.btn-round svg {
@@ -302,11 +302,11 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .narrow.to-thin .chat-audio-panel .recorder-wrapper {
     border-width: 0;
 }
-.narrow.to-thin .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content {
+.narrow.to-thin .chat-audio-panel .recorder-wrapper .btn.btn-round {
     @apply min-w-20 max-w-20 min-h-12 max-h-12;
     transition: all 0ms;
 }
-.narrow.to-thin.smooth .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content {
+.narrow.to-thin.smooth .chat-audio-panel .recorder-wrapper .btn.btn-round {
     transition: all 150ms ease-in-out;
 }
 
