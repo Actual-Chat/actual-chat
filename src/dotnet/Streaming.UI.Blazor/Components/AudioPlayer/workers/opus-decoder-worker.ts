@@ -46,7 +46,7 @@ const serverImpl: OpusDecoderWorker = {
 
         Versioning.init(artifactVersions);
 
-        if (!useSystemDecoder && AudioDecoder) {
+        if (!useSystemDecoder && globalThis.AudioDecoder) {
             const configSupport = await AudioDecoder.isConfigSupported(systemCodecConfig);
             useSystemDecoder = configSupport.supported;
         }
