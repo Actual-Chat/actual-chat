@@ -133,7 +133,7 @@ const serverImpl: OpusEncoderWorker = {
         kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE * FADE_CHUNKS, 2.55);
         pinkNoiseChunk = getPinkNoiseBuffer(1.0);
 
-        if (!systemEncoder && AudioEncoder) {
+        if (!systemEncoder && globalThis.AudioEncoder) {
             const configSupport = await AudioEncoder.isConfigSupported(systemCodecConfig);
             if (configSupport.supported) {
                 systemEncoder = new AudioEncoder({
