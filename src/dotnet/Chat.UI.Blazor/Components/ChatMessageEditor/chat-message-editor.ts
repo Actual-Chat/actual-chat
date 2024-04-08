@@ -29,6 +29,8 @@ export class ChatMessageEditor {
     private readonly attachmentListObserver: MutationObserver;
     private readonly notifyPanel: HTMLDivElement;
     private readonly notifyPanelObserver: MutationObserver;
+    private readonly sideNavs: NodeListOf<Element>;
+    private readonly sideNavObserver: MutationObserver;
     private markupEditor: MarkupEditor;
     private attachmentList: AttachmentList;
     private attachmentListElement: HTMLDivElement;
@@ -95,6 +97,19 @@ export class ChatMessageEditor {
         this.notifyPanelObserver.observe(this.notifyPanel, {
             attributes: true,
         });
+
+        this.sideNavObserver = new MutationObserver(this.updateEditorFocus);
+        this.sideNavs = document.querySelectorAll('.side-nav');
+        if (ScreenSize.isNarrow()) {
+            this.sideNavs.forEach(panel => {
+                if (panel != null) {
+                    this.sideNavObserver.observe(panel, {
+                        attributes: true,
+                        attributeFilter: ['data-side-nav'],
+                    });
+                }
+            });
+        }
     }
 
     public dispose() {
@@ -109,6 +124,9 @@ export class ChatMessageEditor {
         }
         this.attachmentListObserver.disconnect();
         this.notifyPanelObserver.disconnect();
+        this.sideNavs.forEach(_ => {
+            this.sideNavObserver.disconnect();
+        });
     }
 
     // Public methods
@@ -332,6 +350,18 @@ export class ChatMessageEditor {
             }, 150);
         }
     };
+
+    private updateEditorFocus = (mutationList, observer) => {
+        mutationList.forEach(m => {
+            if (m.type == 'attributes') {
+                let dataValue = m.target.dataset['sideNav'];
+                if (dataValue == 'open' && this.markupEditor.hasFocus()) {
+                    this.markupEditor.blur();
+                    return;
+                }
+            }
+        });
+    }
 
     private endAnimations(): void {
         this.notifyPanel.classList.remove('ha-opening', 'panel-closing');

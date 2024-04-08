@@ -4,17 +4,21 @@
 @inherits ComputedStateComponent<bool>
 
 <Banner
-    Class="add-members-banner"
     IsVisible="@State.Value"
+    Severity="BannerSeverity.Warning"
     ShowDismissButton="true"
-    Dismiss="OnDismiss">
-    <Icon>@* Intentionally empty *@</Icon>
+    Dismiss="@OnDismiss">
+    <Icon>
+        <i class="icon-bell text-2xl"></i>
+    </Icon>
     <Body>
-    <Button Class="btn-transparent unhovered" Click="OnInviteClick">
-        <Icon><i class="text-xl icon-person-add"></i></Icon>
-        <Title>Add members</Title>
-    </Button>
+        You are the only person in this chat!
     </Body>
+    <Buttons>
+        <Button
+            Class="btn-transparent unhovered"
+            Click="@OnInviteClick">Add members</Button>
+    </Buttons>
 </Banner>
 
 @code {
