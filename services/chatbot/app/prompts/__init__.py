@@ -53,6 +53,8 @@ def set_per_request(langfuse, dynamic_prompt):
     ) -> Dict[str, Any]:
         if "configurable" not in config:
             config["configurable"] = {}
+        # if "metadata" not in config:
+        #     config["metadata"] = {}
         prompt = langfuse.get_prompt(_LANGFUSE_PROMPT_KEY.MAIN, cache_ttl_seconds=30)
         prompt_id = _into_key(prompt)
         if hasattr(dynamic_prompt, 'alternatives'):
@@ -61,7 +63,7 @@ def set_per_request(langfuse, dynamic_prompt):
                     prompt.get_langchain_prompt(),
                     partial_variables={"chat_history": []},
                 )
-        config["configurable"]["prompt-version"] = prompt_id
+        config["configurable"]["prompt"] = prompt_id
         return config
 
     return add_per_request
@@ -69,13 +71,13 @@ def set_per_request(langfuse, dynamic_prompt):
 
 def create_dynamic_prompt(langfuse):
     default_prompt = langfuse.get_prompt(_LANGFUSE_PROMPT_KEY.MAIN, cache_ttl_seconds=30)
+    prompt_id = _into_key(default_prompt)
     default_langchain_prompt = ChatPromptTemplate.from_template(
         default_prompt.get_langchain_prompt(),
         partial_variables={"chat_history": []},
     )
-
     dynamic_prompt = default_langchain_prompt.configurable_alternatives(
-        which=ConfigurableField(id='prompt-version'),
+        which=ConfigurableField(id='prompt'),
         default_key = _into_key(default_prompt),
         prefix_keys=False,
     )

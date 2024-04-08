@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 from . import chain
 from . import prompts
+from . import utils
 
 from langfuse import Langfuse
 
@@ -82,7 +83,11 @@ async def redirect_root_to_docs():
     return RedirectResponse("/docs")
 
 
-dynamic_prompt = prompts.create_dynamic_prompt(langfuse)
+(the_chain, dynamic_prompt) = chain.create(
+    claude_api_key = os.getenv("CLAUDE_API_KEY"),
+    prompt = prompts.create_dynamic_prompt(langfuse)
+)
+# Inject real prompt here.
 _set_prompt = prompts.set_per_request(langfuse, dynamic_prompt = dynamic_prompt)
 
 def _per_request_config(config, request):
@@ -92,10 +97,7 @@ def _per_request_config(config, request):
 # Edit this to add the chain you want to add
 add_routes(
     app,
-    chain.create(
-        claude_api_key = os.getenv("CLAUDE_API_KEY"),
-        prompt = dynamic_prompt
-    ),
+    the_chain,
     per_req_config_modifier = _per_request_config,
     config_keys = ["configurable", "conversation_id", "user_id"]
 )

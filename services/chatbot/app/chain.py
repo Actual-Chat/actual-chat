@@ -22,6 +22,7 @@ else:
     from pydantic.v1 import BaseModel as V1BaseModel
     from pydantic.v1 import Field as V1Field
 from .tools import all as all_tools
+from . import utils
 
 set_debug(True)
 
@@ -62,8 +63,12 @@ def create(*, claude_api_key, prompt):
     )
 
     agent_runnable = create_xml_agent(llm, tools, prompt)
+    # utils.add_traces(agent_runnable.middle[0])
     agent_executor = AgentExecutor(agent=agent_runnable, tools=tools, verbose=True)
-    return agent_executor.with_types(input_type=Input, output_type=Output).with_config(
-        {"run_name": "agent"}
+    return (
+        agent_executor.with_types(input_type=Input, output_type=Output).with_config(
+            {"run_name": "agent"}
+        ),
+        agent_runnable.middle[0]
     )
 
