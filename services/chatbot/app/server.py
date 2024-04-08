@@ -6,6 +6,9 @@ from fastapi import Request
 from langserve import add_routes
 from inspect import cleandoc
 from typing import Dict, Any
+from langchain_core.runnables import ConfigurableField
+from langchain_core.runnables.configurable import RunnableConfigurableAlternatives
+from langchain_core.prompts import ChatPromptTemplate
 
 import os
 import logging
@@ -15,7 +18,6 @@ from . import chain
 from . import prompts
 
 from langfuse import Langfuse
-#from langfuse.callback import CallbackHandler
 
 langfuse = Langfuse()
 
@@ -80,18 +82,21 @@ async def redirect_root_to_docs():
     return RedirectResponse("/docs")
 
 
+dynamic_prompt = prompts.create_dynamic_prompt(langfuse)
+_set_prompt = prompts.set_per_request(langfuse, dynamic_prompt = dynamic_prompt)
+
+def _per_request_config(config, request):
+    config = _add_tracing(config, request)
+    return _set_prompt(config, request)
+
 # Edit this to add the chain you want to add
 add_routes(
     app,
     chain.create(
         claude_api_key = os.getenv("CLAUDE_API_KEY"),
-        main_prompt_config_key = prompts.PER_REQUEST_CONFIG_KEY.MAIN_PROMPT,
-        prompt = langfuse.get_prompt(prompts._LANGFUSE_PROMPT_KEY.MAIN)
+        prompt = dynamic_prompt
     ),
-    per_req_config_modifier = [
-        _add_tracing,
-        prompts.set_per_request(langfuse)
-    ],
+    per_req_config_modifier = _per_request_config,
     config_keys = ["configurable", "conversation_id", "user_id"]
 )
 

@@ -1,15 +1,19 @@
 from typing import Dict, Any
 from fastapi import Request
 from inspect import cleandoc
-
-class PER_REQUEST_CONFIG_KEY:
-    MAIN_PROMPT = "main_prompt"
+from langchain_core.prompts import ChatPromptTemplate, BaseChatPromptTemplate, PromptTemplate
+from langchain_core.runnables.configurable import RunnableConfigurableAlternatives
+from langchain_core.runnables import ConfigurableField
 
 class _LANGFUSE_PROMPT_KEY:
     MAIN = "main"
 
 
 def init(langfuse):
+#    from langchain import hub
+#    prompt = hub.pull("hwchase17/xml-agent-convo")
+#    assert False, str(prompt)
+
     langfuse.create_prompt(
         name = _LANGFUSE_PROMPT_KEY.MAIN,
         prompt = cleandoc("""
@@ -39,16 +43,46 @@ def init(langfuse):
     )
 
 
-def set_per_request(langfuse):
+def _into_key(prompt):
+    return "ver-" + str(prompt.version)
+
+def set_per_request(langfuse, dynamic_prompt):
     def add_per_request(
         config: Dict[str, Any],
         request: Request
     ) -> Dict[str, Any]:
         if "configurable" not in config:
             config["configurable"] = {}
-        prompt = langfuse.get_prompt(_LANGFUSE_PROMPT_KEY.MAIN)
-        config["configurable"][PER_REQUEST_CONFIG_KEY.MAIN_PROMPT] = prompt
+        prompt = langfuse.get_prompt(_LANGFUSE_PROMPT_KEY.MAIN, cache_ttl_seconds=30)
+        prompt_id = _into_key(prompt)
+        if hasattr(dynamic_prompt, 'alternatives'):
+            if prompt_id not in dynamic_prompt.alternatives:
+                dynamic_prompt.alternatives[prompt_id] = ChatPromptTemplate.from_template(
+                    prompt.get_langchain_prompt(),
+                    partial_variables={"chat_history": []},
+                )
+        config["configurable"]["prompt-version"] = prompt_id
         return config
 
     return add_per_request
 
+
+def create_dynamic_prompt(langfuse):
+    default_prompt = langfuse.get_prompt(_LANGFUSE_PROMPT_KEY.MAIN, cache_ttl_seconds=30)
+    default_langchain_prompt = ChatPromptTemplate.from_template(
+        default_prompt.get_langchain_prompt(),
+        partial_variables={"chat_history": []},
+    )
+
+    dynamic_prompt = default_langchain_prompt.configurable_alternatives(
+        which=ConfigurableField(id='prompt-version'),
+        default_key = _into_key(default_prompt),
+        prefix_keys=False,
+    )
+
+    # Bug workaround: example of RunnableConfigurableAlternatives doesn't work with create_xml_agent
+    # Monkey patching configurable to match required prompt fields.
+    dynamic_prompt.__dict__['input_variables'] = default_langchain_prompt.input_variables
+    dynamic_prompt.__dict__['partial'] = default_langchain_prompt.partial
+
+    return dynamic_prompt

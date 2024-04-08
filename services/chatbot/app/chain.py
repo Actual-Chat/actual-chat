@@ -32,7 +32,6 @@ class Output(V1BaseModel):
     output: str
 
 
-
 class InMemoryHistory(BaseChatMessageHistory, V1BaseModel):
     """In memory implementation of chat message history."""
 
@@ -55,23 +54,14 @@ def get_by_session_id(session_id: str) -> BaseChatMessageHistory:
     return store[session_id]
 
 
-def create(*, claude_api_key, main_prompt_config_key, prompt):
+def create(*, claude_api_key, prompt):
     tools = all_tools()
     llm = ChatAnthropic(
         model = 'claude-2',
         anthropic_api_key = claude_api_key
     )
-    prompt = ChatPromptTemplate.from_template(prompt.get_langchain_prompt())
+
     agent_runnable = create_xml_agent(llm, tools, prompt)
-    """
-    .configurable_fields(
-        prompt = ConfigurableField(
-            id = main_prompt_config_key,
-            name = "Main prompt",
-            description = "Main prompt retrieved per request from langfuse server (could be cached).",
-        )
-    )
-    """
     agent_executor = AgentExecutor(agent=agent_runnable, tools=tools, verbose=True)
     return agent_executor.with_types(input_type=Input, output_type=Output).with_config(
         {"run_name": "agent"}
