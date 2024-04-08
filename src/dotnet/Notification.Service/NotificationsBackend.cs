@@ -3,6 +3,7 @@ using ActualChat.Chat.Events;
 using ActualChat.Notification.Db;
 using ActualChat.Queues;
 using ActualChat.Users;
+using ActualLab.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using ActualLab.Fusion.EntityFramework;
@@ -33,6 +34,7 @@ public class NotificationsBackend(IServiceProvider services)
     private FirebaseMessagingClient FirebaseMessagingClient { get; }
         = services.GetRequiredService<FirebaseMessagingClient>();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
+    private ILogger? DebugLog => !UrlMapper.IsActualChat ? Log.IfEnabled(LogLevel.Debug) : null;
 
     // [ComputeMethod]
     public virtual async Task<Notification?> Get(
@@ -107,21 +109,30 @@ public class NotificationsBackend(IServiceProvider services)
         var notification = command.Notification;
         var userId = notification.UserId.Require();
 
+        DebugLog?.LogInformation("-> OnNotify. EntryId={EntryId}, UserId={UserIdsCount}, NotificationId={NotificationId}",
+            notification.EntryId, userId, notification.Id);
+
         var similar = await Get(notification.Id, cancellationToken).ConfigureAwait(false);
         if (similar != null) {
             var throttleInterval = GetThrottleInterval(notification);
             if (throttleInterval is { } vThrottleInterval) {
                 var delta = notification.SentAt - similar.SentAt;
-                if (delta <= vThrottleInterval)
+                if (delta <= vThrottleInterval) {
+                    DebugLog?.LogInformation("OnNotify. Skipping (Throttling). EntryId={EntryId}, UserId={UserIdsCount}, NotificationId={NotificationId}",
+                        notification.EntryId, userId, notification.Id);
                     return;
+                }
             }
             notification = notification.WithSimilar(similar);
         }
 
         var upsertCommand = new NotificationsBackend_Upsert(notification);
         var hasUpserted = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
-        if (!hasUpserted)
+        if (!hasUpserted) {
+            DebugLog?.LogInformation("OnNotify. Skipping (Upsert failed). EntryId={EntryId}, UserId={UserIdsCount}, NotificationId={NotificationId}",
+                notification.EntryId, userId, notification.Id);
             return;
+        }
 
         await Send(userId, notification, cancellationToken).ConfigureAwait(false);
     }
@@ -281,9 +292,11 @@ public class NotificationsBackend(IServiceProvider services)
             cacheEntry.Value = "";
             cacheEntry.AbsoluteExpirationRelativeToNow = Constants.Notification.ThrottleIntervals.Message;
         }
-        else if (mentionIds.Count == 0)
+        else if (mentionIds.Count == 0) {
             // throttle low priority notifications
+            DebugLog?.LogInformation("Throttle low priority notifications. EntryId={EntryId}", entry.Id);
             return;
+        }
 
         var userIds = await ListSubscribedUserIds(entry.ChatId, cancellationToken).ConfigureAwait(false);
         var similarityKey = entry.ChatId;
@@ -332,7 +345,11 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         var deviceIds = devices.Select(d => d.DeviceId).ToList();
+        DebugLog?.LogInformation("-> Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdsCount}",
+            notification.EntryId, userId, notification.Id, deviceIds.Count);
         await FirebaseMessagingClient.SendMessage(notification, deviceIds, cancellationToken1).ConfigureAwait(false);
+        DebugLog?.LogInformation("<- Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdsCount}",
+            notification.EntryId, userId, notification.Id, deviceIds.Count);
     }
 
     private async ValueTask EnqueueMessageRelatedNotifications(
@@ -341,9 +358,12 @@ public class NotificationsBackend(IServiceProvider services)
         string content,
         NotificationKind kind,
         Symbol similarityKey,
-        IEnumerable<UserId> userIds,
+        IReadOnlyCollection<UserId> userIds,
         CancellationToken cancellationToken)
     {
+        DebugLog?.LogInformation("-> EnqueueMessageRelatedNotifications. EntryId={EntryId}, Kind={Kind}, UserIds#={UserIdsCount}",
+            entry.Id, kind, userIds.Count);
+
         var chat = await ChatsBackend.Get(entry.ChatId, cancellationToken).Require().ConfigureAwait(false);
         var title = GetTitle(chat, changeAuthor);
         var iconUrl = GetIconUrl(chat, changeAuthor);
@@ -353,8 +373,11 @@ public class NotificationsBackend(IServiceProvider services)
         foreach (var otherUserId in otherUserIds) {
             var presence = await UserPresences.Get(otherUserId, cancellationToken).ConfigureAwait(false);
             // Do not send notifications to users who are online
-            if (presence is Presence.Online or Presence.Recording)
+            if (presence is Presence.Online or Presence.Recording){
+                DebugLog?.LogInformation("EnqueueMessageRelatedNotifications. Skipping online user. EntryId={EntryId}, UserId={UserId}",
+                    entry.Id, otherUserId);
                 continue;
+            }
             var notificationId = new NotificationId(otherUserId, kind, similarityKey);
             var notification = new Notification(notificationId) {
                 Title = title,

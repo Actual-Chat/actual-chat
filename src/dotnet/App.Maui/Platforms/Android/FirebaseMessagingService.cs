@@ -43,8 +43,9 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
     public override void OnMessageReceived(RemoteMessage message)
     {
-        Log.LogDebug("OnMessageReceived: message #{MessageId}, CollapseKey='{CollapseKey}'",
-            message.MessageId, message.CollapseKey);
+        Log.LogDebug("OnMessageReceived: message #{MessageId}, CollapseKey='{CollapseKey}'" +
+            ", Priority={Priority}, OriginalPriority={OriginalPriority}, IsDeprioritized={IsDeprioritized}",
+            message.MessageId, message.CollapseKey, message.Priority, message.OriginalPriority, message.Priority != message.OriginalPriority);
 
         base.OnMessageReceived(message);
 
