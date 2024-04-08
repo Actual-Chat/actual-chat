@@ -1,3 +1,4 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.MLSearch;
@@ -22,7 +23,7 @@ public sealed partial record MLSearch_TriggerChatIndexingCompletion(
     public string ShardKey => ChatIndexInitializerShardKey.Value;
 }
 
-public interface IChatIndexInitializerTrigger
+public interface IChatIndexInitializerTrigger: IComputeService, IBackendService
 {
     [CommandHandler]
     Task OnCommand(MLSearch_TriggerChatIndexingCompletion e, CancellationToken cancellationToken);
