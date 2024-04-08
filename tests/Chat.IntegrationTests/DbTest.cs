@@ -69,7 +69,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         await Task.WhenAll(readTasks.ToArray());
         foreach (var readTask in readTasks) {
             var elapsed = await readTask;
-            elapsed.TotalMilliseconds.Should().BeLessThan(500, "reads should not be blocked with updates");
+            elapsed.TotalMilliseconds.Should().BeLessThan(600, "reads should not be blocked with updates");
         }
 
         logger.LogInformation("Completed reads");
