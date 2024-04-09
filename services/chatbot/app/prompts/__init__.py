@@ -4,6 +4,7 @@ from inspect import cleandoc
 from langchain_core.prompts import ChatPromptTemplate, BaseChatPromptTemplate, PromptTemplate
 from langchain_core.runnables.configurable import RunnableConfigurableAlternatives
 from langchain_core.runnables import ConfigurableField
+from app.runnables.configurable import RunnableConfigurableRuntimeAlternatives
 
 class _LANGFUSE_PROMPT_KEY:
     MAIN = "main"
@@ -57,12 +58,13 @@ def set_per_request(langfuse, dynamic_prompt):
         #     config["metadata"] = {}
         prompt = langfuse.get_prompt(_LANGFUSE_PROMPT_KEY.MAIN, cache_ttl_seconds=30)
         prompt_id = _into_key(prompt)
-        if hasattr(dynamic_prompt, 'alternatives'):
-            if prompt_id not in dynamic_prompt.alternatives:
-                dynamic_prompt.alternatives[prompt_id] = ChatPromptTemplate.from_template(
-                    prompt.get_langchain_prompt(),
-                    partial_variables={"chat_history": []},
-                )
+        dynamic_prompt.set_alternative(
+            key = prompt_id,
+            prompt = ChatPromptTemplate.from_template(
+                prompt.get_langchain_prompt(),
+                partial_variables={"chat_history": []},
+            )
+        )
         config["configurable"]["prompt"] = prompt_id
         return config
 
@@ -76,15 +78,11 @@ def create_dynamic_prompt(langfuse):
         default_prompt.get_langchain_prompt(),
         partial_variables={"chat_history": []},
     )
-    dynamic_prompt = default_langchain_prompt.configurable_alternatives(
-        which=ConfigurableField(id='prompt'),
+    dynamic_prompt = RunnableConfigurableRuntimeAlternatives(
+        which = ConfigurableField(id='prompt'),
+        default = default_langchain_prompt,
         default_key = _into_key(default_prompt),
-        prefix_keys=False,
+        prefix_keys = False,
+        use_inplace_partial = False
     )
-
-    # Bug workaround: example of RunnableConfigurableAlternatives doesn't work with create_xml_agent
-    # Monkey patching configurable to match required prompt fields.
-    dynamic_prompt.__dict__['input_variables'] = default_langchain_prompt.input_variables
-    dynamic_prompt.__dict__['partial'] = default_langchain_prompt.partial
-
     return dynamic_prompt

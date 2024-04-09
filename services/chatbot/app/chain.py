@@ -66,7 +66,10 @@ def create(*, claude_api_key, prompt):
     # utils.add_traces(agent_runnable.middle[0])
     agent_executor = AgentExecutor(agent=agent_runnable, tools=tools, verbose=True)
     return (
-        agent_executor.with_types(input_type=Input, output_type=Output).with_config(
+        agent_executor.with_types(
+            input_type=Input,
+            output_type=Output
+        ).with_config(
             {"run_name": "agent"}
         ),
         agent_runnable.middle[0]
