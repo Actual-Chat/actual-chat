@@ -7,18 +7,18 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.MLSearch.UnitTests.Indexing.Initializer;
 
+internal static class ChatIndexInitializerTestsExt
+{
+    // Provides access to the protected ChatIndexInitializer.OnRun method
+    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(OnRun))]
+    public static extern Task OnRun(this ChatIndexInitializer instance, int shardIndex, CancellationToken cancellationToken);
+}
+
 public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
 {
     private const int InactiveShardIndex1 = 1;
     private const int ActiveShardIndex = 2;
     private const int InactiveShardIndex2 = 3;
-
-    private static readonly MethodInfo _onRun = typeof(ChatIndexInitializer).GetMethod(
-        "OnRun",
-        BindingFlags.Instance | BindingFlags.NonPublic,
-        Type.DefaultBinder,
-        new[] {typeof (int), typeof (CancellationToken)},
-        null)!;
 
     [Fact]
     public async Task ShardIndexResolverReceivesExpectedValues()
@@ -35,7 +35,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard, logger);
 
         // Trigger shard index evaluation
-        _onRun.Invoke(initializer, [InactiveShardIndex1, CancellationToken.None]);
+        _ = initializer.OnRun(InactiveShardIndex1, CancellationToken.None);
 
         shardIndexResolver
             .Verify(resolver => resolver.Resolve(
@@ -71,8 +71,8 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         var logger = Mock.Of<ILogger<ChatIndexInitializer>>();
         await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard, logger);
         // Emulate staring of some inactive shards
-        _onRun.Invoke(initializer, [InactiveShardIndex1, CancellationToken.None]);
-        _onRun.Invoke(initializer, [InactiveShardIndex2, CancellationToken.None]);
+        _ = initializer.OnRun(InactiveShardIndex1, CancellationToken.None);
+        _ = initializer.OnRun(InactiveShardIndex2, CancellationToken.None);
         await Assert.ThrowsAsync<NotFoundException<ChatIndexInitializerShard>>(
             async () => await initializer.PostAsync(
                 new MLSearch_TriggerChatIndexingCompletion(ChatId.None), CancellationToken.None));
@@ -103,7 +103,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard.Object, logger);
         // Emulate staring of inactive & active shards
         foreach (var shardId in shardIds) {
-            _onRun.Invoke(initializer, [shardId, CancellationToken.None]);
+            _ = initializer.OnRun(shardId, CancellationToken.None);
         }
 
         var completionEvt = new MLSearch_TriggerChatIndexingCompletion(new ChatId(Generate.Option));
@@ -144,7 +144,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard.Object, logger.Object);
 
         var cancellationToken = new CancellationTokenSource().Token;
-        _onRun.Invoke(initializer, [ActiveShardIndex, cancellationToken]);
+        _ = initializer.OnRun(ActiveShardIndex, cancellationToken);
         shard.Verify(sh => sh.UseAsync(
                 It.Is<CancellationToken>(token => token == cancellationToken)
             ), Times.Once());
@@ -172,7 +172,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
 
         var cancellationTokenSource = new CancellationTokenSource();
         // Emulate staring of an inactive shard
-        var onRunTask = (Task)_onRun.Invoke(initializer, [InactiveShardIndex1, cancellationTokenSource.Token])!;
+        var onRunTask = initializer.OnRun(InactiveShardIndex1, cancellationTokenSource.Token);
         Assert.False(onRunTask.IsCompleted);
         Assert.False(onRunTask.IsCanceled);
         Assert.False(onRunTask.IsFaulted);
