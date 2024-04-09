@@ -34,7 +34,7 @@ public class ContactLinker(IAccountsBackend accountsBackend, IContactsBackend co
         {
             try {
                 var userId = await FindUserId(link, cancellationToken).ConfigureAwait(false);
-                var ownerId = new ExternalContactId(link.DbExternalContactId).OwnerId;
+                var ownerId = new ExternalContactId(link.DbExternalContactId).UserDeviceId.OwnerId;
                 await EnsureContactExists(ownerId, userId, cancellationToken).ConfigureAwait(false);
                 link.IsChecked = true;
             }

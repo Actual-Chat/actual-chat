@@ -1,12 +1,9 @@
-using System.Globalization;
 using System.Security.Claims;
 using ActualChat.Performance;
-using ActualChat.Queues;
 using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Contacts.IntegrationTests;
 
@@ -16,9 +13,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 {
     private WebClientTester _tester = null!;
     private IExternalContacts _externalContacts = null!;
-    private IQueues _queues = null!;
     private ICommander _commander = null!;
-    private IAccounts _accounts = null!;
     private IContacts _contacts = null!;
 
     private static string BobEmail => "bob@actual.chat";
@@ -41,10 +36,8 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         _tester = AppHost.NewWebClientTester(Out);
         var services = AppHost.Services;
         _externalContacts = services.GetRequiredService<IExternalContacts>();
-        _accounts = services.GetRequiredService<IAccounts>();
         _contacts = services.GetRequiredService<IContacts>();
         _commander = services.Commander();
-        _queues = services.Queues();
 
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
         return Task.CompletedTask;
@@ -155,7 +148,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
-        var externalContact = new ExternalContact(new ExternalContactId(bob.Id, bobDeviceId, NewDeviceContactId()))
+        var externalContact = new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, bobDeviceId), NewDeviceContactId()))
             .WithPhone(jack.Phone)
             .WithPhone(new ("1-11111111111"));
 
@@ -180,7 +173,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
         var bobContacts0 = await ListContactIds(0);
-        var externalContact = new ExternalContact(new ExternalContactId(bob.Id, bobDeviceId, NewDeviceContactId()))
+        var externalContact = new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, bobDeviceId), NewDeviceContactId()))
             .WithPhone(JackPhone)
             .WithPhone(new ("1-11111111111"));
 
@@ -211,7 +204,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         // arrange
         var botDeviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
-        var externalContact = new ExternalContact(new ExternalContactId(bob.Id, botDeviceId, NewDeviceContactId()))
+        var externalContact = new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, botDeviceId), NewDeviceContactId()))
             .WithEmail(JackEmail);
 
         // act
@@ -292,9 +285,9 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     }
 
     private Task<ApiArray<ExternalContact>> List(Symbol deviceId)
-        => _externalContacts.List(_tester.Session, deviceId, CancellationToken.None);
+        => _externalContacts.List2(_tester.Session, deviceId, CancellationToken.None);
 
-    private async Task Add(params ExternalContact[] externalContacts)
+    private async Task Add(params ExternalContactFull[] externalContacts)
     {
         var changes = externalContacts.Select(x => new ExternalContactChange(x.Id, null, Change.Create(x)));
         var results = await _commander.Call(new ExternalContacts_BulkChange(_tester.Session, changes.ToApiArray()));
@@ -304,29 +297,13 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             throw new AggregateException("Failed to create external contacts", errors);
     }
 
-    private Task<ApiArray<Result<ExternalContact?>>> Update(ExternalContact externalContact)
+    private Task<ApiArray<Result<ExternalContactFull?>>> Update(ExternalContactFull externalContactFull)
         => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
-            ApiArray.New(new ExternalContactChange(externalContact.Id, null, Change.Update(externalContact)))));
+            ApiArray.New(new ExternalContactChange(externalContactFull.Id, null, Change.Update(externalContactFull)))));
 
-    private Task<ApiArray<Result<ExternalContact?>>> Remove(ExternalContact externalContact)
+    private Task<ApiArray<Result<ExternalContactFull?>>> Remove(ExternalContactFull externalContactFull)
         => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
-            ApiArray.New(new ExternalContactChange(externalContact.Id, null, Change.Remove<ExternalContact>()))));
-
-    private async Task AssertConnectedUsers(AccountFull account, AccountFull[] allAccounts)
-    {
-        await _queues.WhenProcessing();
-        var userMap = allAccounts.ToDictionary(x => x.Id, x => x.User);
-        var contactIds = await ListContactIds(allAccounts.Length - 1);
-        var connectedUsers = contactIds.ConvertAll(GetUser).OrderBy(x => x.Name);
-        var otherUsers = allAccounts.Where(x => x.Id != account.Id).Select(x => x.User).OrderBy(x => x.Name);
-        connectedUsers.Should().BeEquivalentTo(otherUsers);
-        return;
-
-        User GetUser(ContactId x)
-            => userMap[x.ChatId.IsPeerChat(out var peerChatId)
-                ? peerChatId.UserIds.OtherThan(account.Id)
-                : throw new Exception("Peer chat contact was expected")];
-    }
+            ApiArray.New(new ExternalContactChange(externalContactFull.Id, null, Change.Remove<ExternalContactFull>()))));
 
     private async Task<List<ContactId>> ListContactIds(int expectedCount)
     {
@@ -346,11 +323,8 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     }
 
 
-    private static ExternalContact NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
-        => new (new ExternalContactId(owner.Id, ownerDeviceId, NewDeviceContactId()));
-
-    private static ExternalContact NewExternalContact(AccountFull owner, Symbol deviceId, string prefix, int i)
-        => NewExternalContact(owner, deviceId).WithPhone(BuildPhone(prefix, i)).WithEmail(BuildEmail(prefix, i));
+    private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
+        => new (new ExternalContactId(new UserDeviceId(owner.Id, ownerDeviceId), NewDeviceContactId()));
 
     private static Symbol NewDeviceId()
         => new (Guid.NewGuid().ToString());
@@ -360,19 +334,4 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
     private static ContactId BuildContactId(AccountFull owner, AccountFull friendAccount)
         => ContactId.Peer(owner.Id, friendAccount.Id);
-
-    private static User BuildUser(string prefix, int i)
-        => new User("", BuildUserName(i))
-            .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme,  $"{prefix}-{i.ToString("00000", CultureInfo.InvariantCulture)}"))
-            .WithPhone(BuildPhone(prefix, i))
-            .WithClaim(ClaimTypes.Email, BuildEmail(prefix, i));
-
-    private static string BuildUserName(int i)
-        => $"user{i:00000}";
-
-    private static Phone BuildPhone(string prefix, int i)
-        => new ($"1-{Math.Abs(prefix.GetDjb2HashCode() % 100000):00000}{i:00000}");
-
-    private static string BuildEmail(string prefix, int i)
-        => $"{prefix}.user.{i:00000}@actual.chat";
 }

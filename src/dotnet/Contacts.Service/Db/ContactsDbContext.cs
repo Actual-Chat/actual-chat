@@ -9,6 +9,7 @@ public class ContactsDbContext(DbContextOptions<ContactsDbContext> options) : Db
 {
     public DbSet<DbContact> Contacts { get; protected set; } = null!;
     public DbSet<DbExternalContact> ExternalContacts { get; protected set; } = null!;
+    public DbSet<DbExternalContactsHash> ExternalContactsHashes { get; protected set; } = null!;
     public DbSet<DbExternalContactLink> ExternalContactLinks { get; protected set; } = null!;
     public DbSet<DbPlaceContact> PlaceContacts { get; protected set; } = null!;
 

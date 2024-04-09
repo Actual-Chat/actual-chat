@@ -24,9 +24,7 @@ public readonly partial struct ExternalContactId : ISymbolIdentifier<ExternalCon
 
     // Set on deserialization
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public UserId OwnerId { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public Symbol DeviceId { get; }
+    public UserDeviceId UserDeviceId { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Symbol DeviceContactId { get; }
 
@@ -39,36 +37,34 @@ public readonly partial struct ExternalContactId : ISymbolIdentifier<ExternalCon
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public ExternalContactId(Symbol id)
         => this = Parse(id);
-    public ExternalContactId(UserId ownerId, Symbol deviceId, Symbol deviceContactId)
-        => this = Parse(Format(ownerId, deviceId, deviceContactId));
-    public ExternalContactId(UserId ownerId, Symbol deviceId, Symbol deviceContactId, ParseOrNone _)
-        => this = ParseOrNone(Format(ownerId, deviceId, deviceContactId));
+    public ExternalContactId(UserDeviceId userDeviceId, Symbol deviceContactId)
+        => this = Parse(Format(userDeviceId, deviceContactId));
+    public ExternalContactId(UserDeviceId userDeviceId, Symbol deviceContactId, ParseOrNone _)
+        => this = ParseOrNone(Format(userDeviceId, deviceContactId));
     public ExternalContactId(string id)
         => this = Parse(id);
     public ExternalContactId(string id, ParseOrNone _)
         => this = ParseOrNone(id);
 
-    public ExternalContactId(Symbol id, UserId ownerId, Symbol deviceId, Symbol deviceContactId, AssumeValid _)
+    public ExternalContactId(Symbol id, UserDeviceId userDeviceId, Symbol deviceContactId, AssumeValid _)
     {
         if (id.IsEmpty) {
             this = None;
             return;
         }
         Id = id;
-        OwnerId = ownerId;
-        DeviceId = deviceId;
+        UserDeviceId = userDeviceId;
         DeviceContactId = deviceContactId;
     }
 
-    public ExternalContactId(UserId ownerId, Symbol deviceId, Symbol deviceContactId, AssumeValid _)
+    public ExternalContactId(UserDeviceId userDeviceId, Symbol deviceContactId, AssumeValid _)
     {
-        if (ownerId.IsNone || deviceId.IsEmpty || deviceContactId.IsEmpty) {
+        if (userDeviceId.IsNone || deviceContactId.IsEmpty) {
             this = None;
             return;
         }
-        Id = Format(ownerId, deviceId, deviceContactId);
-        OwnerId = ownerId;
-        DeviceId = deviceId;
+        Id = Format(userDeviceId, deviceContactId);
+        UserDeviceId = userDeviceId;
         DeviceContactId = deviceContactId;
     }
 
@@ -88,8 +84,8 @@ public readonly partial struct ExternalContactId : ISymbolIdentifier<ExternalCon
 
     // Parsing
 
-    private static string Format(UserId ownerId, Symbol deviceId, Symbol deviceContactId)
-        => ownerId.IsNone || deviceId.IsEmpty || deviceContactId.IsEmpty ? "" : $"{ownerId}{Delimiter}{deviceId}{Delimiter}{deviceContactId}";
+    private static string Format(UserDeviceId userDeviceId, Symbol deviceContactId)
+        => userDeviceId.IsNone || deviceContactId.IsEmpty ? "" : $"{userDeviceId}{Delimiter}{deviceContactId}";
 
     public static ExternalContactId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ExternalContactId>(s);
@@ -102,23 +98,23 @@ public readonly partial struct ExternalContactId : ISymbolIdentifier<ExternalCon
         if (s.IsNullOrEmpty())
             return true; // None
 
-        var parts = s.Split(Delimiter, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length != 3)
+        var delimIndex = s.LastIndexOf(Delimiter);
+        if (delimIndex < 0 || delimIndex >= s.Length - 1)
             return false;
 
-        if (!UserId.TryParse(parts[0], out var ownerId))
+        if (!UserDeviceId.TryParse(s[..delimIndex], out var userDeviceId))
             return false;
+        var deviceContactId = new Symbol(s[(delimIndex + 1)..]);
 
         result = new ExternalContactId(s,
-            ownerId,
-            new Symbol(parts[1]),
-            new Symbol(parts[2]),
+            userDeviceId,
+            new Symbol(deviceContactId),
             AssumeValid.Option);
         return true;
     }
 
     public static string Prefix(UserId ownerId)
-        => $"{ownerId}{Delimiter}";
-    public static string Prefix(UserId ownerId, Symbol deviceId)
-        => $"{ownerId}{Delimiter}{deviceId}{Delimiter}";
+        => UserDeviceId.Prefix(ownerId);
+    public static string Prefix(UserDeviceId userDeviceId)
+        => $"{userDeviceId}{Delimiter}";
 }

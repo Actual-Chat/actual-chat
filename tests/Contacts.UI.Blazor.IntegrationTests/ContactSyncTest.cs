@@ -17,7 +17,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
     private IExternalContacts _externalContacts = null!;
 
     private Symbol DeviceId { get; set; } = RandomStringGenerator.Default.Next();
-    private List<ExternalContact> DeviceContacts { get; set; } = new ();
+    private List<ExternalContactFull> DeviceContacts { get; set; } = new ();
     private static Phone BobPhone { get; } = new ("1-2345678901");
     private static string BobEmail => "bob@actual.chat";
 
@@ -37,7 +37,6 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
         var deviceContacts = new Mock<DeviceContacts>();
         deviceContacts.SetupGet(x => x.DeviceId).Returns(() => DeviceId);
         deviceContacts.Setup(x => x.List(It.IsAny<CancellationToken>())).Returns(() => Task.FromResult(DeviceContacts.ToApiArray()));
-        // _appHost = await NewAppHost(TestAppHostOptions.Default with { ServerUrls = "http://localhost:7080" });
         _externalContacts = AppHost.Services.GetRequiredService<IExternalContacts>();
         _tester = AppHost.NewWebClientTester( Out,services => {
             TrueSessionResolver? sessionResolver = null;
@@ -62,7 +61,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task ShouldAddAndUpdate()
     {
         // arrange
-        var bob = await _tester.SignIn(Bob);
+        var bob = await _tester.SignInClientSide(Bob);
         DeviceContacts.Add(NewExternalContact(bob).WithPhone(JackPhone).WithEmail(JackEmail));
 
         // act
@@ -90,8 +89,8 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
         await scope.DisposeAsync();
     }
 
-    private ExternalContact NewExternalContact(AccountFull owner)
-        => new (new ExternalContactId(owner.Id, DeviceId, RandomStringGenerator.Default.Next()));
+    private ExternalContactFull NewExternalContact(AccountFull owner)
+        => new (new ExternalContactId(new UserDeviceId(owner.Id, DeviceId), RandomStringGenerator.Default.Next()));
 
     private async Task<ApiArray<ExternalContact>> ListExternalContacts(int expectedCount)
     {
@@ -105,5 +104,5 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     private Task<ApiArray<ExternalContact>> ListExternalContacts()
-        => _externalContacts.List(_tester.Session, DeviceId, CancellationToken.None);
+        => _externalContacts.List2(_tester.Session, DeviceId, CancellationToken.None);
 }

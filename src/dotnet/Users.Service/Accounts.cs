@@ -88,6 +88,9 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
         var deleteExternalContactsCommand = new ExternalContactsBackend_RemoveAccount(ownAccount.Id);
         await Commander.Call(deleteExternalContactsCommand, true, cancellationToken).ConfigureAwait(false);
 
+        var deleteExternalContactHashesCommand = new ExternalContactHashesBackend_RemoveAccount(ownAccount.Id);
+        await Commander.Call(deleteExternalContactHashesCommand, true, cancellationToken).ConfigureAwait(false);
+
         var deleteOwnAccountCommand = new AccountsBackend_Delete(ownAccount.Id);
         await Commander.Call(deleteOwnAccountCommand, false, cancellationToken).ConfigureAwait(false);
     }

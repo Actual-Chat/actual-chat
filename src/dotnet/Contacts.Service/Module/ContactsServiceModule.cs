@@ -25,7 +25,9 @@ public sealed class ContactsServiceModule(IServiceProvider moduleServices)
 
         // External contacts
         rpcHost.AddApi<IExternalContacts, ExternalContacts>();
+        rpcHost.AddApi<IExternalContactHashes, ExternalContactHashes>();
         rpcHost.AddBackend<IExternalContactsBackend, ExternalContactsBackend>();
+        rpcHost.AddBackend<IExternalContactHashesBackend, ExternalContactHashesBackend>();
 
         // Commander handlers
         rpcHost.Commander.AddHandlerFilter((handler, commandType) => {
@@ -65,6 +67,7 @@ public sealed class ContactsServiceModule(IServiceProvider moduleServices)
             db.AddEntityResolver<string, DbContact>();
 
             // DbExternalContact
+            db.AddEntityResolver<string, DbExternalContactsHash>();
             db.AddEntityResolver<string, DbExternalContact>(_ => new () {
                 QueryTransformer = query => query.Include(a => a.ExternalContactLinks),
             });

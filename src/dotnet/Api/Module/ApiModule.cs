@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat;
+using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
 
@@ -39,5 +40,7 @@ public sealed class ApiModule(IServiceProvider moduleServices)
             services.AddScoped<IPlaybackFactory>(c => new PlaybackFactory(c));
             fusion.AddService<ActivePlaybackInfo>(ServiceLifetime.Scoped);
         }
+
+        services.AddSingleton<ExternalContactHasher>();
     }
 }
