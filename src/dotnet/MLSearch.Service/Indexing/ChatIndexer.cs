@@ -1,5 +1,6 @@
 
 using ActualChat.Chat;
+using ActualChat.MLSearch.Documents;
 
 namespace ActualChat.MLSearch.Indexing;
 
@@ -11,7 +12,8 @@ internal interface IChatIndexer
 }
 
 internal sealed class ChatIndexer(
-    ISink<ChatEntry, ChatEntry> sink
+    IDocumentMapper<ChatEntry, ChatEntry, ChatSlice> documentMapper,
+    ISink<ChatSlice, string> sink
 ) : IChatIndexer
 {
     private ChatEntryCursor _cursor = new(0, 0);
@@ -35,7 +37,9 @@ internal sealed class ChatIndexer(
 
     public async Task<ChatEntryCursor> FlushAsync(CancellationToken cancellationToken)
     {
-        await sink.ExecuteAsync(_creates.Concat(_updates), _deletes, cancellationToken).ConfigureAwait(false);
+        var updatedDocuments = _creates.Concat(_updates).Select(documentMapper.Map);
+        var deletedDocuments = _deletes.Select(documentMapper.MapId);
+        await sink.ExecuteAsync(updatedDocuments, deletedDocuments, cancellationToken).ConfigureAwait(false);
         _creates.Clear();
         _updates.Clear();
         _deletes.Clear();
