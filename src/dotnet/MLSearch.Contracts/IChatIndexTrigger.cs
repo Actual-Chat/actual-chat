@@ -1,4 +1,5 @@
 using ActualChat.Chat.Events;
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.MLSearch;
@@ -38,7 +39,7 @@ public sealed partial record MLSearch_CancelChatIndexing(
 /// Its responsibility is to translate incoming events into corresponding shards
 /// through commands.
 /// </summary>
-public interface IChatIndexTrigger
+public interface IChatIndexTrigger: IComputeService, IBackendService
 {
     [EventHandler]
     Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);

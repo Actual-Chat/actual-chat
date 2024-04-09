@@ -1,4 +1,5 @@
 using ActualChat.Chat.Events;
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.MLSearch;
@@ -18,7 +19,7 @@ public sealed partial record MLSearch_TriggerContinueConversationWithBot (
     public ChatId ShardKey => Id;
 }
 
-public interface IChatBotConversationTrigger
+public interface IChatBotConversationTrigger: IComputeService, IBackendService
 {
     [EventHandler]
     Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);

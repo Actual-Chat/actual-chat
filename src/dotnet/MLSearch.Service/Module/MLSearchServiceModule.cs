@@ -65,8 +65,10 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 || commandType == typeof(TextEntryChangedEvent);
         });
 
+        // RPC host
+        var rpcHost = services.AddRpcHost(HostInfo);
+
         // Module's own services
-        var fusion = services.AddFusion();
 
         var openSearchClusterUri = Settings.OpenSearchClusterUri
             ?? throw new InvalidOperationException("OpenSearchClusterUri is not set");
@@ -90,7 +92,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         // -- Register chat indexer --
         const string IndexServiceGroup = "OpenSearch Chat Index";
-        fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
+        rpcHost.AddBackend<IChatIndexTrigger, ChatIndexTrigger>();
 
         services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
         services.AddSingleton<ICursorStates<ChatHistoryExtractor.Cursor>>(static services
@@ -114,7 +116,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         }
         else {
             // -- Register chat index initializer --
-            fusion.AddService<IChatIndexInitializerTrigger, ChatIndexInitializerTrigger>();
+            rpcHost.AddBackend<IChatIndexInitializerTrigger, ChatIndexInitializerTrigger>();
             services.AddSingleton<ICursorStates<ChatIndexInitializerShard.Cursor>>(static services
                 => services.CreateInstanceWith<CursorStates<ChatIndexInitializerShard.Cursor>>(IndexNames.ChatCursor));
             services.AddSingleton<IChatIndexInitializerShard, ChatIndexInitializerShard>();
@@ -127,7 +129,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         // -- Register ML bot --
         const string ConversationBotServiceGroup = "ML Chat Bot";
-        fusion.AddService<IChatBotConversationTrigger, ChatBotConversationTrigger>();
+        rpcHost.AddBackend<IChatBotConversationTrigger, ChatBotConversationTrigger>();
 
         services.AddKeyedSingleton<IBotConversationHandler, SampleChatBot>(ConversationBotServiceGroup);
         services.AddKeyedSingleton<IDataIndexer<ChatId>>(
