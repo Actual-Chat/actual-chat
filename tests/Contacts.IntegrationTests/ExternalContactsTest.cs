@@ -3,6 +3,7 @@ using ActualChat.Performance;
 using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
+using FluentAssertions.Equivalency;
 using Microsoft.AspNetCore.Authentication.Google;
 
 namespace ActualChat.Contacts.IntegrationTests;
@@ -15,6 +16,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     private IExternalContacts _externalContacts = null!;
     private ICommander _commander = null!;
     private IContacts _contacts = null!;
+    private ExternalContactHasher _hasher = null!;
 
     private static string BobEmail => "bob@actual.chat";
     private static Phone BobPhone => new ("1-2345678901");
@@ -36,6 +38,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         _tester = AppHost.NewWebClientTester(Out);
         var services = AppHost.Services;
         _externalContacts = services.GetRequiredService<IExternalContacts>();
+        _hasher = services.GetRequiredService<ExternalContactHasher>();
         _contacts = services.GetRequiredService<IContacts>();
         _commander = services.Commander();
 
@@ -74,15 +77,15 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             .WithPhone(new Phone("1-234567890"))
             .WithPhone(new Phone("2-345678901"))
             .WithEmail("John.White@gmail.com")
-            .WithEmail("John.White@icloud.com");
+            .WithEmail("John.White@icloud.com")
+            .WithHash(_hasher);
 
         // act
         await Add(externalContact);
         var externalContacts = await List(deviceId);
 
         // assert
-        externalContacts.Should()
-            .BeEquivalentTo(new[] { externalContact }, o => o.ExcludingSystemProperties());
+        externalContacts.Should().BeEquivalentTo(new[] { externalContact }, Including);
     }
 
     [Fact]
@@ -95,7 +98,8 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             .WithPhone(new Phone("1-234567890"))
             .WithPhone(new Phone("2-345678901"))
             .WithEmail("John.White@gmail.com")
-            .WithEmail("John.White@icloud.com");
+            .WithEmail("John.White@icloud.com")
+            .WithHash(_hasher);
 
         // act
         await Add(externalContact);
@@ -109,8 +113,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var externalContacts = await List(deviceId);
 
         // assert
-        externalContacts.Should()
-            .BeEquivalentTo(new[] { externalContact }, o => o.ExcludingSystemProperties());
+        externalContacts.Should().BeEquivalentTo(new[] { externalContact }, Including);
     }
 
     [Fact]
@@ -123,12 +126,14 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             .WithPhone(new Phone("1-234567890"))
             .WithPhone(new Phone("2-345678901"))
             .WithEmail("John.White@gmail.com")
-            .WithEmail("John.White@icloud.com");
+            .WithEmail("John.White@icloud.com")
+            .WithHash(_hasher);
         var externalContact2 = NewExternalContact(bob, deviceId)
             .WithPhone(new Phone("3-34567890"))
             .WithPhone(new Phone("4-345678901"))
             .WithEmail("Jack.Snack@gmail.com")
-            .WithEmail("jack.snack@icloud.com");
+            .WithEmail("jack.snack@icloud.com")
+            .WithHash(_hasher);
 
         // act
         await Add(externalContact1, externalContact2);
@@ -136,8 +141,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var externalContacts = await List(deviceId);
 
         // assert
-        externalContacts.Should()
-            .BeEquivalentTo(new[] { externalContact2 }, o => o.ExcludingSystemProperties());
+        externalContacts.Should().BeEquivalentTo(new[] { externalContact2 }, Including);
     }
 
     [Fact]
@@ -150,7 +154,8 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var bob = await _tester.SignIn(Bob);
         var externalContact = new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, bobDeviceId), NewDeviceContactId()))
             .WithPhone(jack.Phone)
-            .WithPhone(new ("1-11111111111"));
+            .WithPhone(new ("1-11111111111"))
+            .WithHash(_hasher);
 
         // act
         await Add(externalContact);
@@ -175,7 +180,8 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var bobContacts0 = await ListContactIds(0);
         var externalContact = new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, bobDeviceId), NewDeviceContactId()))
             .WithPhone(JackPhone)
-            .WithPhone(new ("1-11111111111"));
+            .WithPhone(new ("1-11111111111"))
+            .WithHash(_hasher);
 
         // act
         await Add(externalContact);
@@ -204,8 +210,10 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         // arrange
         var botDeviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
-        var externalContact = new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, botDeviceId), NewDeviceContactId()))
-            .WithEmail(JackEmail);
+        var externalContact =
+            new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, botDeviceId), NewDeviceContactId()))
+                .WithEmail(JackEmail)
+                .WithHash(_hasher);
 
         // act
         await Add(externalContact);
@@ -234,7 +242,9 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
-        var externalContact = NewExternalContact(bob, bobDeviceId).WithEmail(JackEmail);
+        var externalContact = NewExternalContact(bob, bobDeviceId)
+            .WithEmail(JackEmail)
+            .WithHash(_hasher);
 
         // act
         await Add(externalContact);
@@ -252,7 +262,10 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
-        var externalContact = NewExternalContact(bob, bobDeviceId).WithPhone(JackPhone).WithEmail(JackEmail);
+        var externalContact = NewExternalContact(bob, bobDeviceId)
+            .WithPhone(JackPhone)
+            .WithEmail(JackEmail)
+            .WithHash(_hasher);
 
         // act
         await Add(externalContact);
@@ -276,7 +289,8 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var bob = await _tester.SignIn(Bob);
         var externalContact = NewExternalContact(bob, bobDeviceId)
             .WithPhone(new ("1-1111111111"))
-            .WithEmail("jack.2@some.com");
+            .WithEmail("jack.2@some.com")
+            .WithHash(_hasher);
 
         // act
         await Add(externalContact);
@@ -334,4 +348,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
     private static ContactId BuildContactId(AccountFull owner, AccountFull friendAccount)
         => ContactId.Peer(owner.Id, friendAccount.Id);
+
+    private static EquivalencyAssertionOptions<ExternalContactFull> Including(EquivalencyAssertionOptions<ExternalContactFull> o)
+        => o.Including(x => x.Id).Including(x => x.Sha256Hash);
 }
