@@ -5,9 +5,11 @@
 </Button>
 
 @code {
-    private FakeDeviceContacts DeviceContacts { get; init; } = null!;
+    [Inject] private FakeDeviceContacts FakeDeviceContacts { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     private async Task OnGenerateClick() {
-        await DeviceContacts.Regenerate(CancellationToken.None);
+        await FakeDeviceContacts.BumpSeed(CancellationToken.None);
+        Nav.Refresh(true);
     }
 }

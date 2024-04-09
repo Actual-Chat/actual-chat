@@ -1,32 +1,58 @@
 using ActualChat.Contacts.Db;
-using ActualChat.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Contacts;
 
-public class ExternalContactsBackend(IAccountsBackend accountsBackend, ContactLinker contactLinker, AgentInfo agentInfo, IServiceProvider services) : DbServiceBase<ContactsDbContext>(services),
+public class ExternalContactsBackend(
+    IAccountsBackend accountsBackend,
+    ContactLinker contactLinker,
+    AgentInfo agentInfo,
+    IServiceProvider services) : DbServiceBase<ContactsDbContext>(services),
     IExternalContactsBackend
 {
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ExternalContact>> List(UserId ownerId, Symbol deviceId, CancellationToken cancellationToken)
+    [Obsolete("2024.04: Replaced with List - contact info list")]
+    public virtual async Task<ApiArray<ExternalContactFull>> ListFull(UserId ownerId, Symbol deviceId, CancellationToken cancellationToken)
     {
         ownerId.Require();
+        deviceId.Require();
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var idPrefix = ExternalContactId.Prefix(ownerId, deviceId);
+        var idPrefix = ExternalContactId.Prefix(new UserDeviceId(ownerId, deviceId));
         var dbExternalContacts = await dbContext.ExternalContacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
             .Include(x => x.ExternalContactLinks)
-            .Log(Log)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
         return dbExternalContacts.OrderBy(x => x.DisplayName, StringComparer.Ordinal)
             .Select(x => x.ToModel())
+            .ToApiArray();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<ExternalContact>> List(
+        UserDeviceId userDeviceId,
+        CancellationToken cancellationToken)
+    {
+        userDeviceId.Require();
+
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var idPrefix = ExternalContactId.Prefix(userDeviceId);
+        var dbExternalContacts = await dbContext.ExternalContacts
+            .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
+            .Select(x => new { x.Id, x.Version, x.Sha256Hash })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return dbExternalContacts.Select(x =>
+                new ExternalContact(new ExternalContactId(x.Id), x.Version) { Sha256Hash = x.Sha256Hash })
             .ToApiArray();
     }
 
@@ -47,7 +73,7 @@ public class ExternalContactsBackend(IAccountsBackend accountsBackend, ContactLi
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return externalContactIds.Select(sid => new ExternalContactId(sid).OwnerId).ToApiSet();
+        return externalContactIds.Select(sid => new ExternalContactId(sid).UserDeviceId.OwnerId).ToApiSet();
 
         IEnumerable<string> GetLinks()
         {
@@ -62,14 +88,18 @@ public class ExternalContactsBackend(IAccountsBackend accountsBackend, ContactLi
     }
 
     // [CommandHandler]
-    public virtual async Task<ApiArray<Result<ExternalContact?>>> OnBulkChange(
+    public virtual async Task<ApiArray<Result<ExternalContactFull?>>> OnBulkChange(
         ExternalContactsBackend_BulkChange command,
         CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating()) {
-            var invIds = command.Changes.Select(x => x.Id).DistinctBy(x => (x.OwnerId, x.DeviceId));
-            foreach (var invId in invIds)
-                _ = List(invId.OwnerId, invId.DeviceId, default);
+            var invIds = command.Changes.Select(x => x.Id.UserDeviceId).Distinct();
+            foreach (var invId in invIds) {
+ #pragma warning disable CS0618 // Type or member is obsolete
+                _ = ListFull(invId.OwnerId, invId.DeviceId, default);
+ #pragma warning restore CS0618 // Type or member is obsolete
+                _ = List(invId, default);
+            }
             // NOTE(DF): force sync after changes are committed
             var context = CommandContext.GetCurrent();
             var isLocal = context.Operation().AgentId == agentInfo.Id;
@@ -78,31 +108,28 @@ public class ExternalContactsBackend(IAccountsBackend accountsBackend, ContactLi
             return default!;
         }
 
-        var result = new List<Result<ExternalContact?>>(command.Changes.Count);
+        var result = new List<Result<ExternalContactFull?>>(command.Changes.Count);
         foreach (var itemChange in command.Changes)
             try {
                 var externalContact = await ChangeItem(itemChange, cancellationToken).ConfigureAwait(false);
-                result.Add(new Result<ExternalContact?>(externalContact, null));
+                result.Add(new Result<ExternalContactFull?>(externalContact, null));
             }
             catch (Exception e) {
                 Log.LogError(e,
                     "Failed to {ChangeKind} external contact #{ExternalContactId}",
                     itemChange.Change.Kind.ToString().ToLowerInvariant(),
                     itemChange.Id);
-                result.Add(new Result<ExternalContact?>(null, e));
+                result.Add(new Result<ExternalContactFull?>(null, e));
             }
         return result.ToApiArray();
     }
 
-    private async Task<ExternalContact?> ChangeItem(
+    private async Task<ExternalContactFull?> ChangeItem(
         ExternalContactChange itemChange,
         CancellationToken cancellationToken)
     {
         var (id, expectedVersion, change) = itemChange;
-        var ownerId = id.OwnerId;
-
         id.Require();
-        ownerId.Require();
         change.RequireValid();
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
@@ -141,15 +168,12 @@ public class ExternalContactsBackend(IAccountsBackend accountsBackend, ContactLi
             // Remove
             if (dbExternalContact == null)
                 return null;
-            if (expectedVersion != null)
-                dbExternalContact.RequireVersion(expectedVersion);
-
+            dbExternalContact.RequireVersion(expectedVersion);
             dbContext.Remove(dbExternalContact);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false); // TODO(FC): bulk save
-        externalContact = dbExternalContact.ToModel();
-        return externalContact;
+        return dbExternalContact.ToModel();
     }
 
     // [CommandHandler]

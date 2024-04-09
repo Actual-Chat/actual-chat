@@ -1,5 +1,6 @@
 using System.Text;
 using ActualChat.Hashing;
+using MemoryPack;
 using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Core.Server.UnitTests.Hashing;
@@ -29,6 +30,32 @@ public class HashTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public Task SHA256_Test()
         => Test(bytes => bytes.Hash().SHA256(), stream => stream.Hash().SHA256());
+
+    [Fact]
+    public void SHA256OfBaseClass_Test()
+    {
+        var obj = new HashedObject {
+            Id = "1",
+            Name = "Obj 1",
+        };
+        var obj2 = new HashedObject {
+            Id = "1",
+        };
+        var hash = Sha256(obj);
+        var hash2 = Sha256(obj2);
+        var baseHash = Sha256<HashedObjectBase>(obj);
+        var baseHash2 = Sha256<HashedObjectBase>(obj2);
+        hash.Should().NotBe(baseHash);
+        hash.Should().NotBe(hash2);
+        baseHash.Should().Be(baseHash2);
+        return;
+
+        string Sha256<T>(T hashedObject)
+        {
+            using var buffer = ByteSerializer<T>.Default.Write(hashedObject);
+            return buffer.WrittenSpan.Hash().SHA256().Base16();
+        }
+    }
 
     [Fact]
     public Task Blake2s_Test()
@@ -90,4 +117,17 @@ public class HashTest(ITestOutputHelper @out) : TestBase(@out)
             }
         }
     }
+}
+
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record HashedObjectBase
+{
+    [DataMember, MemoryPackOrder(0)] public string Id { get; init; } = "";
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record HashedObject : HashedObjectBase
+{
+    [DataMember, MemoryPackOrder(1)] public string Name { get; init; } = "";
 }

@@ -17,10 +17,8 @@ public sealed class ContactsBlazorUIModule(IServiceProvider moduleServices)
     {
         var fusion = services.AddFusion();
         fusion.AddService<ContactSync>(ServiceLifetime.Scoped);
-        if (HostInfo.IsDevelopmentInstance && FakeDeviceContacts.AllowGeneratedContacts) {
-            services.AddScoped<FakeDeviceContacts>();
-            services.AddScoped<DeviceContacts>(c => c.GetRequiredService<FakeDeviceContacts>());
-        }
+        if (HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp)
+            services.AddScoped<FakeDeviceContacts>().AddAlias<DeviceContacts, FakeDeviceContacts>(ServiceLifetime.Scoped);
         else
             services.AddScoped<DeviceContacts>();
 

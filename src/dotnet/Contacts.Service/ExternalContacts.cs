@@ -1,4 +1,5 @@
 ﻿using ActualChat.Users;
+#pragma warning disable CS0618 // Type or member is obsolete
 
 namespace ActualChat.Contacts;
 
@@ -9,18 +10,32 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
     private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ExternalContact>> List(Session session, Symbol deviceId, CancellationToken cancellationToken)
+    [Obsolete("2024.04: Replaced with List2")]
+    public virtual async Task<ApiArray<ExternalContactFull>> List(Session session, Symbol deviceId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
        if (!account.IsActive())
             return default;
 
-        return await Backend.List(account.Id, deviceId, cancellationToken).ConfigureAwait(false);
+        return await Backend.ListFull(account.Id, deviceId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<ExternalContact>> List2(
+        Session session,
+        Symbol deviceId,
+        CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (!account.IsActive())
+            return ApiArray<ExternalContact>.Empty;
+
+        return await Backend.List(new UserDeviceId(account.Id, deviceId), cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
     [Obsolete("2023.10: Replaced with OnBulkChange.")]
-    public virtual async Task<ExternalContact?> OnChange(ExternalContacts_Change command, CancellationToken cancellationToken)
+    public virtual async Task<ExternalContactFull?> OnChange(ExternalContacts_Change command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
@@ -33,11 +48,11 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
         id.Require();
         change.RequireValid();
 
-        if (id.OwnerId != account.Id)
+        if (id.UserDeviceId.OwnerId != account.Id)
             throw Unauthorized();
 
         var results = await Commander
-            .Call(new ExternalContactsBackend_BulkChange(ApiArray.New<ExternalContactChange>(new ExternalContactChange(id, expectedVersion, change))), cancellationToken)
+            .Call(new ExternalContactsBackend_BulkChange(ApiArray.New(new ExternalContactChange(id, expectedVersion, change))), cancellationToken)
             .ConfigureAwait(false);
         if (results[0].Error is { } error)
             throw error;
@@ -46,7 +61,7 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
     }
 
     // [CommandHandler]
-    public virtual async Task<ApiArray<Result<ExternalContact?>>> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<Result<ExternalContactFull?>>> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
@@ -54,13 +69,13 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
         var (session, changes) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!account.IsActive())
-            return Enumerable.Repeat(new Result<ExternalContact?>(null, null), changes.Count).ToApiArray();
+            return Enumerable.Repeat(new Result<ExternalContactFull?>(null, null), changes.Count).ToApiArray();
 
         foreach (var itemChange in changes) {
             var (id, _, change) = itemChange;
             id.Require();
             change.RequireValid();
-            if (id.OwnerId != account.Id)
+            if (id.UserDeviceId.OwnerId != account.Id)
                 throw Unauthorized();
         }
 

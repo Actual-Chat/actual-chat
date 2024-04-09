@@ -1,3 +1,4 @@
+using ActualLab.Versioning;
 using MemoryPack;
 
 namespace ActualChat;
@@ -79,4 +80,7 @@ public static class Change
         => new() {
             Remove = true,
         };
+
+    public static Change<T> Upsert<T>(T item) where T : IHasVersion<long>
+        => item.IsStored() ? Update(item) : Create(item);
 }
