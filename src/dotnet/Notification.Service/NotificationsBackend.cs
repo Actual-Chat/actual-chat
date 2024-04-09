@@ -34,7 +34,7 @@ public class NotificationsBackend(IServiceProvider services)
     private FirebaseMessagingClient FirebaseMessagingClient { get; }
         = services.GetRequiredService<FirebaseMessagingClient>();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
-    private ILogger? DebugLog => !UrlMapper.IsActualChat ? Log.IfEnabled(LogLevel.Debug) : null;
+    private ILogger? DebugLog => !UrlMapper.IsActualChat ? Log : null;
 
     // [ComputeMethod]
     public virtual async Task<Notification?> Get(
