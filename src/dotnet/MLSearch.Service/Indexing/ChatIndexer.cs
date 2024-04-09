@@ -36,6 +36,9 @@ internal sealed class ChatIndexer(
     public async Task<ChatEntryCursor> FlushAsync(CancellationToken cancellationToken)
     {
         await sink.ExecuteAsync(_creates.Concat(_updates), _deletes, cancellationToken).ConfigureAwait(false);
+        _creates.Clear();
+        _updates.Clear();
+        _deletes.Clear();
         return _cursor;
     }
 }
