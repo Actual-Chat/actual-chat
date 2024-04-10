@@ -9,7 +9,11 @@ from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.globals import set_debug
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables.utils import ConfigurableField
-
+from langchain_core.runnables import Runnable, RunnablePassthrough
+from langchain.tools.render import render_text_description
+from langchain.agents.format_scratchpad import format_xml
+from langchain.agents.output_parsers import XMLAgentOutputParser
+from app.runnables.configurable import RuntimeConfigurableAgentExecutor
 
 # Note: As of current state (Apr 1, 2024) Langserve has issues working
 # with Pydantic models v2. Skipping this for later investigation..
@@ -61,17 +65,18 @@ def create(*, claude_api_key, prompt):
         model = 'claude-2',
         anthropic_api_key = claude_api_key
     )
-
     agent_runnable = create_xml_agent(llm, tools, prompt)
-    # utils.add_traces(agent_runnable.middle[0])
-    agent_executor = AgentExecutor(agent=agent_runnable, tools=tools, verbose=True)
+    agent_executor = RuntimeConfigurableAgentExecutor(
+        agent = agent_runnable,
+        tools = tools
+    )
     return (
         agent_executor.with_types(
-            input_type=Input,
-            output_type=Output
-        ).with_config(
-            {"run_name": "agent"}
+            input_type = Input,
+            output_type = Output
         ),
+        # TODO: check if workaround implemented in the RunnableConfigurableRuntimeAlternatives class works.
+        # Remove this workaround if it does
         agent_runnable.middle[0]
     )
 

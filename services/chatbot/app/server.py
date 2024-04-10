@@ -100,7 +100,7 @@ add_routes(
     app,
     the_chain,
     per_req_config_modifier = _per_request_config,
-    config_keys = ["configurable", "conversation_id", "user_id"]
+    config_keys = ["configurable"]
 )
 
 

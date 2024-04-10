@@ -54,8 +54,6 @@ def set_per_request(langfuse, dynamic_prompt):
     ) -> Dict[str, Any]:
         if "configurable" not in config:
             config["configurable"] = {}
-        # if "metadata" not in config:
-        #     config["metadata"] = {}
         prompt = langfuse.get_prompt(_LANGFUSE_PROMPT_KEY.MAIN, cache_ttl_seconds=30)
         prompt_id = _into_key(prompt)
         dynamic_prompt.set_alternative(
@@ -66,6 +64,11 @@ def set_per_request(langfuse, dynamic_prompt):
             )
         )
         config["configurable"]["prompt"] = prompt_id
+        # Bug:
+        # Configurable field is not passed inside AgentExecutors.
+        # Actually it doesnt seem to pass anything at all.
+        # config["tags"] = [f"prompt={prompt_id}"]
+        config["run_name"] = "agent"
         return config
 
     return add_per_request

@@ -26,14 +26,16 @@ class RunnableConfigurableRuntimeAlternatives(RunnableConfigurableAlternatives):
         return self.default.input_variables
 
     def partial(self, **kwargs):
-        # Bug workaround: (Attempt)
-        # Use this flag to keep instance passed to the framework intact.
+        # 1. Bug workaround: required for create_xml_agent method.
+        # 2. Bug workaround: (Attempt)
+        # Keep instance passed to the framework intact.
         # Otherwide an internal copy of the instance will be created.
         # This will prohibit further runtime changes.
         self.default = self.default.partial(**kwargs)
 
         for key in self.alternatives.keys():
             self.alternatives[key] = self.alternatives[key].partial(**kwargs)
+        self.partial_variables.update(kwargs)
         return self
 
 
@@ -45,4 +47,11 @@ class RunnableConfigurableRuntimeAlternatives(RunnableConfigurableAlternatives):
         else:
             self.alternatives[key] = prompt.partial(**self.partial_variables)
 
+
+    def _prepare(
+        self,
+        config = None
+    ):
+        print(f"Using _prepare! >> {config}")
+        return super()._prepare(config)
 
