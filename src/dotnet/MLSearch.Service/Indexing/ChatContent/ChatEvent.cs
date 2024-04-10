@@ -1,7 +1,7 @@
 
 using ActualChat.Chat;
 
-namespace ActualChat.MLSearch.Indexing;
+namespace ActualChat.MLSearch.Indexing.ChatContent;
 
 internal enum ChatEventType
 {

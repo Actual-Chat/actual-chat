@@ -1,4 +1,4 @@
-namespace ActualChat.MLSearch.Indexing;
+namespace ActualChat.MLSearch.Indexing.ChatContent;
 internal record ChatEntryCursor(long LastEntryLocalId, long LastEntryVersion);
 
 internal interface IChatEntryCursorStates

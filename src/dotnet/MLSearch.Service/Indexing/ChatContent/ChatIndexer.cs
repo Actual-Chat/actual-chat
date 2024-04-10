@@ -2,7 +2,7 @@
 using ActualChat.Chat;
 using ActualChat.MLSearch.Documents;
 
-namespace ActualChat.MLSearch.Indexing;
+namespace ActualChat.MLSearch.Indexing.ChatContent;
 
 internal interface IChatIndexer
 {
@@ -12,6 +12,8 @@ internal interface IChatIndexer
 }
 
 internal sealed class ChatIndexer(
+    IChatEntryLoader chatEntryLoader,
+    IDocumentLoader documentLoader,
     IDocumentMapper<ChatEntry, ChatEntry, ChatSlice> documentMapper,
     ISink<ChatSlice, string> sink
 ) : IChatIndexer

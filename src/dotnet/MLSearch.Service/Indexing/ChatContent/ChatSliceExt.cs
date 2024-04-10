@@ -1,7 +1,7 @@
 using ActualChat.Chat;
 using ActualChat.MLSearch.Documents;
 
-namespace ActualChat.MLSearch.Indexing;
+namespace ActualChat.MLSearch.Indexing.ChatContent;
 
 internal static class ChatSliceExt
 {

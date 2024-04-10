@@ -1,5 +1,7 @@
 
-namespace ActualChat.MLSearch.Indexing.Initializer;
+using ActualChat.MLSearch.Indexing.Initializer;
+
+namespace ActualChat.MLSearch.Indexing;
 
 internal class ChatIndexInitializerTrigger(IChatIndexInitializer indexInitializer)
     : IChatIndexInitializerTrigger, IComputeService

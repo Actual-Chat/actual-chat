@@ -1,4 +1,4 @@
-namespace ActualChat.MLSearch.Indexing;
+namespace ActualChat.MLSearch.Indexing.ChatContent;
 
 internal interface IChatIndexerFactory
 {

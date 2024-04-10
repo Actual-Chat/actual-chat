@@ -6,7 +6,7 @@ using ActualChat.MLSearch.Documents;
 using OpenSearchModelGroupName = string;
 using OpenSearchModelGroupId = string;
 using OpenSearchModelId = string;
-using ActualChat.MLSearch.Indexing;
+using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.Indexing.Initializer;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
@@ -122,7 +122,7 @@ internal sealed class ClusterSetup(
         // Assumption: This is a script.
         // There's no reason make this script efficient.
         // It must fail and retried on any error.
-        // It has to succeed once and only once to setup an OpenSearch cluster.
+        // It has to succeed once and only once to set up an OpenSearch cluster.
         // After the initial setup this would never be called again.
         using var _1 = tracing.TraceRegion();
         var settings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
