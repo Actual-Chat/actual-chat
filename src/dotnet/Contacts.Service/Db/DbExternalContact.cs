@@ -20,6 +20,8 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
     public string NamePrefix { get; set; } = "";
     public string NameSuffix { get; set; } = "";
 
+    public string Sha256Hash { get; set; } = "";
+
     public DateTime ModifiedAt {
         get => _modifiedAt.DefaultKind(DateTimeKind.Utc);
         set => _modifiedAt = value.DefaultKind(DateTimeKind.Utc);
@@ -32,10 +34,11 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
 
     public List<DbExternalContactLink> ExternalContactLinks { get; } = new();
 
-    public DbExternalContact() { }
-    public DbExternalContact(ExternalContact externalContact) => UpdateFrom(externalContact);
 
-    public ExternalContact ToModel()
+    public DbExternalContact() { }
+    public DbExternalContact(ExternalContactFull externalContactFull) => UpdateFrom(externalContactFull);
+
+    public ExternalContactFull ToModel()
         => new(new ExternalContactId(Id), Version) {
             CreatedAt = CreatedAt.ToMoment(),
             ModifiedAt = ModifiedAt.ToMoment(),
@@ -47,9 +50,10 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
             NameSuffix = NameSuffix,
             PhoneHashes = ExternalContactLinks.Select(x => x.ToPhoneHash()).SkipNullItems().ToApiSet(),
             EmailHashes = ExternalContactLinks.Select(x => x.ToEmailHash()).SkipNullItems().ToApiSet(),
+            Sha256Hash = Sha256Hash,
         };
 
-    public void UpdateFrom(ExternalContact model)
+    public void UpdateFrom(ExternalContactFull model)
     {
         this.RequireSameOrEmptyId(model.Id);
         model.Id.Require();
@@ -62,6 +66,7 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
         MiddleName = model.MiddleName;
         NamePrefix = model.NamePrefix;
         NameSuffix = model.NameSuffix;
+        Sha256Hash = model.Sha256Hash;
         Version = model.Version;
         CreatedAt = model.CreatedAt.ToDateTimeClamped();
         ModifiedAt = model.ModifiedAt.ToDateTimeClamped();

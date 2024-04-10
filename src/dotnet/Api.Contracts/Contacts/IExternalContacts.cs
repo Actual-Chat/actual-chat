@@ -5,11 +5,15 @@ namespace ActualChat.Contacts;
 public interface IExternalContacts : IComputeService
 {
     [ComputeMethod]
-    Task<ApiArray<ExternalContact>> List(Session session, Symbol deviceId, CancellationToken cancellationToken);
+    // TODO: Change to ListV1 when API backward compatibility attributes are supported
+    Task<ApiArray<ExternalContactFull>> List(Session session, Symbol deviceId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    // TODO: Change to List when API backward compatibility attributes are supported
+    Task<ApiArray<ExternalContact>> List2(Session session, Symbol deviceId, CancellationToken cancellationToken);
     [CommandHandler, Obsolete("2023.10: Replaced with OnBulkChange.")]
-    Task<ExternalContact?> OnChange(ExternalContacts_Change command, CancellationToken cancellationToken);
+    Task<ExternalContactFull?> OnChange(ExternalContacts_Change command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<ApiArray<Result<ExternalContact?>>> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken);
+    Task<ApiArray<Result<ExternalContactFull?>>> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken);
 }
 
 [Obsolete("2023.10: Replaced with ExternalContacts_BulkChange.")]
@@ -19,19 +23,19 @@ public sealed partial record ExternalContacts_Change(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ExternalContactId Id,
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(3)] Change<ExternalContact> Change
-) : ISessionCommand<ExternalContact?>;
+    [property: DataMember, MemoryPackOrder(3)] Change<ExternalContactFull> Change
+) : ISessionCommand<ExternalContactFull?>;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContacts_BulkChange(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ApiArray<ExternalContactChange> Changes
-) : ISessionCommand<ApiArray<Result<ExternalContact?>>>;
+) : ISessionCommand<ApiArray<Result<ExternalContactFull?>>>;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record ExternalContactChange(
     [property: DataMember, MemoryPackOrder(1)] ExternalContactId Id,
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(3)] Change<ExternalContact> Change
+    [property: DataMember, MemoryPackOrder(3)] Change<ExternalContactFull> Change
 );

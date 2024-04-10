@@ -29,11 +29,10 @@ public static class TestAuthExt
         User user,
         CancellationToken cancellationToken = default)
     {
+        var services = appHost.Services;
         if (user.Identities.IsEmpty)
             user = user.WithIdentity(new UserIdentity("test", Ulid.NewUlid().ToString()!));
         var userIdentity = user.Identities.Keys.First();
-
-        var services = appHost.Services;
         var commander = services.Commander();
         var accounts = services.GetRequiredService<IAccounts>();
 
@@ -46,6 +45,35 @@ public static class TestAuthExt
             .ConfigureAwait(false);
         cAccount = await cAccount
             .When(x => !x.IsGuestOrNone, FixedDelayer.ZeroUnsafe, cancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
+            .ConfigureAwait(false);
+        return cAccount.Value;
+    }
+
+    // TODO: (FC) Remove when AY takes a look at hanging Account.GetOwn on client side
+    public static async Task<AccountFull> SignInClientSide(
+        this IWebClientTester tester,
+        User user,
+        CancellationToken cancellationToken = default)
+    {
+        if (user.Identities.IsEmpty)
+            user = user.WithIdentity(new UserIdentity("test", Ulid.NewUlid().ToString()!));
+        var userIdentity = user.Identities.Keys.First();
+        var commander = tester.AppServices.Commander();
+
+        var command = new AuthBackend_SignIn(tester.Session, user, userIdentity);
+        await commander.Call(command, cancellationToken).ConfigureAwait(false);
+
+        // Wait till the authentication happens
+        var accounts = tester.ClientServices.GetRequiredService<IAccounts>();
+        // TODO(FC): remove this debug line after AY
+        var accountFull = await accounts.GetOwn(tester.Session, cancellationToken);
+        var cAccount = await Computed
+            .Capture(() => accounts.GetOwn(tester.Session, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        cAccount = await cAccount
+            .When(x => !x.IsGuestOrNone, cancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
             .ConfigureAwait(false);
         return cAccount.Value;
     }

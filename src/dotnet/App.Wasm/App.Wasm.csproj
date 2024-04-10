@@ -66,4 +66,9 @@ Use:
     <Folder Include="wwwroot\landing" />
   </ItemGroup>
 
+  <ItemGroup>
+      <BlazorWebAssemblyLazyLoad Include="Microsoft.CodeAnalysis.wasm" />
+      <BlazorWebAssemblyLazyLoad Include="Microsoft.CodeAnalysis.CSharp.wasm" />
+  </ItemGroup>
+
 </Project>

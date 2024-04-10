@@ -18,9 +18,9 @@
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenSearchClientVersion>1.6.0</OpenSearchClientVersion>
-    <OpenTelemetryVersion>1.7.0</OpenTelemetryVersion>
-    <OpenTelemetryAspNetCoreVersion>1.7.1</OpenTelemetryAspNetCoreVersion>
-    <OpenTelemetryGrpcClientVersion>1.6.0-beta.3</OpenTelemetryGrpcClientVersion>
+    <OpenTelemetryVersion>1.8.0</OpenTelemetryVersion>
+    <OpenTelemetryAspNetCoreVersion>1.8.0</OpenTelemetryAspNetCoreVersion>
+    <OpenTelemetryGrpcClientVersion>1.8.0-beta.1</OpenTelemetryGrpcClientVersion>
     <OpenTelemetryNpgsqlVersion>8.0.2</OpenTelemetryNpgsqlVersion>
     <SentryVersion>3.40.1</SentryVersion>
     <MemoryPackVersion>1.10.0</MemoryPackVersion>
@@ -189,11 +189,14 @@
     <PackageVersion Include="OpenTelemetry" Version="$(OpenTelemetryVersion)" />
     <PackageVersion Include="OpenTelemetry.Api" Version="$(OpenTelemetryVersion)" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="$(OpenTelemetryVersion)" />
-    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.6.0-rc.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.8.0-rc.1" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="$(OpenTelemetryVersion)" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="$(OpenTelemetryAspNetCoreVersion)" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="$(OpenTelemetryAspNetCoreVersion)" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.GrpcNetClient" Version="$(OpenTelemetryGrpcClientVersion)" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.0.0-beta.11" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Process" Version="0.5.0-beta.5" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.8.0" />
     <PackageVersion Include="Npgsql.OpenTelemetry" Version="$(OpenTelemetryNpgsqlVersion)" />
     <!-- For the build project -->
     <PackageVersion Include="CliWrap" Version="3.6.6" />

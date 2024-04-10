@@ -19,16 +19,18 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
     private Session? _session;
     private IAccounts? _accounts;
     private ContactsPermissionHandler? _permissions;
+    private ExternalContactHasher? _externalContactHashes;
     private ILogger? _log;
 
     public override Symbol DeviceId => _deviceId ??= DeviceIdProvider.GetDeviceId();
     private Session Session => _session ??= services.Session();
     private IAccounts Accounts => _accounts ??= services.GetRequiredService<IAccounts>();
     private ContactsPermissionHandler Permissions => _permissions ??= services.GetRequiredService<ContactsPermissionHandler>();
+    private ExternalContactHasher ExternalContactHasher => _externalContactHashes ??= services.GetRequiredService<ExternalContactHasher>();
     private IDeviceIdProvider DeviceIdProvider { get; } = services.GetRequiredService<IDeviceIdProvider>();
     private ILogger Log => _log ??= services.LogFor<MauiContacts>();
 
-    public override async Task<ApiArray<ExternalContact>> List(CancellationToken cancellationToken)
+    public override async Task<ApiArray<ExternalContactFull>> List(CancellationToken cancellationToken)
     {
         try {
             var isGranted = await Permissions.Check(cancellationToken).ConfigureAwait(false);
@@ -51,20 +53,23 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
         }
     }
 
-    private ExternalContact ToExternalContact(
+    private ExternalContactFull ToExternalContact(
         UserId ownerId,
         PhoneNumberExtractor phoneNumberExtractor,
         MauiContact mauiContact)
-        => new (new ExternalContactId(ownerId, DeviceId, mauiContact.Id.Replace(':', '_'))) {
+        => new ExternalContactFull(new ExternalContactId(new UserDeviceId(ownerId, DeviceId),
+            mauiContact.Id.Replace(':', '_'))) {
             GivenName = mauiContact.GivenName ?? "",
             DisplayName = mauiContact.DisplayName ?? "",
             FamilyName = mauiContact.FamilyName ?? "",
             MiddleName = mauiContact.MiddleName ?? "",
             NamePrefix = mauiContact.NamePrefix ?? "",
             NameSuffix = mauiContact.NameSuffix ?? "",
-            PhoneHashes = mauiContact.Phones.Select(p => GetPhoneHash(p, phoneNumberExtractor)).SkipNullItems().ToApiSet(),
+            PhoneHashes = mauiContact.Phones.Select(p => GetPhoneHash(p, phoneNumberExtractor))
+                .SkipNullItems()
+                .ToApiSet(),
             EmailHashes = mauiContact.Emails.Select(GetEmailHash).SkipNullItems().ToApiSet(),
-        };
+        }.WithHash(ExternalContactHasher);
 
     private static string? GetPhoneHash(ContactPhone mauiPhone, PhoneNumberExtractor phoneNumberExtractor)
     {

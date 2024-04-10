@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Security.Claims;
 using ActualChat.Performance;
-using ActualChat.Queues;
 using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
@@ -17,7 +16,6 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
 {
     private WebClientTester _tester = null!;
     private ICommander _commander = null!;
-    private IQueues _queues = null!;
     private IAccounts _accounts = null!;
     private IContacts _contacts = null!;
 
@@ -29,7 +27,6 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
         _accounts = services.GetRequiredService<IAccounts>();
         _contacts = services.GetRequiredService<IContacts>();
         _commander = services.Commander();
-        _queues = services.Queues();
 
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
         return Task.CompletedTask;
@@ -115,7 +112,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
         }
     }
 
-    private async Task Add(params ExternalContact[] externalContacts)
+    private async Task Add(params ExternalContactFull[] externalContacts)
     {
         var changes = externalContacts.Select(x => new ExternalContactChange(x.Id, null, Change.Create(x)));
         var results = await _commander.Call(new ExternalContacts_BulkChange(_tester.Session, changes.ToApiArray()));
@@ -157,10 +154,10 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     }
 
 
-    private static ExternalContact NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
-        => new (new ExternalContactId(owner.Id, ownerDeviceId, NewDeviceContactId()));
+    private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
+        => new (new ExternalContactId(new UserDeviceId(owner.Id, ownerDeviceId), NewDeviceContactId()));
 
-    private static ExternalContact NewExternalContact(AccountFull owner, Symbol deviceId, string prefix, int i)
+    private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol deviceId, string prefix, int i)
         => NewExternalContact(owner, deviceId).WithPhone(BuildPhone(prefix, i)).WithEmail(BuildEmail(prefix, i));
 
     private static Symbol NewDeviceId()

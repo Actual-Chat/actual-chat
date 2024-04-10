@@ -74,6 +74,14 @@ public static class ApiCollectionExt
         where TKey : notnull
         => new(source, comparer);
 
+    public static ApiMap<TKey, TValue> ToApiMap<T, TKey, TValue>(
+        this IEnumerable<T> source,
+        Func<T, TKey> keySelector,
+        Func<T, TValue> valueSelector,
+        IEqualityComparer<TKey>? comparer = null)
+        where TKey : notnull
+        => new(source.Select(x => KeyValuePair.Create(keySelector(x), valueSelector(x))), comparer);
+
     // ToApiSet
 
     public static ApiSet<T> ToApiSet<T>(this IEnumerable<T> source)
