@@ -78,7 +78,7 @@ public partial class MarkupParser : IMarkupParser
     private const string UrlProtoRe = @"(http|ftp)s?\:\/\/";
     private const string UrlHostRe = @"[0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*";
     private const string UrlPortRe = @":(0-9)*";
-    private const string UrlPathRe = @"\/[a-zA-Z0-9\-\.\?\,\'\/\\\+&%\$#_]*";
+    private const string UrlPathRe = @"\/[a-zA-Z0-9\-\.\?\*\,\'\/\\\+&%\$#_]*";
     private const string FullUrlRe = $"{UrlProtoRe}{UrlHostRe}({UrlPortRe})?({UrlPathRe})?";
     private const string ShortUrlRe = $@"www\.{UrlHostRe}({UrlPortRe})?({UrlPathRe})?";
     private const string UrlRe = $"^({FullUrlRe})|({ShortUrlRe})$";
