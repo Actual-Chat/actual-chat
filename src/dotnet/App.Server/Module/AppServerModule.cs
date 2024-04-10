@@ -242,6 +242,10 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             .WithMetrics(builder => builder
                 // gcloud exporter doesn't support some of metrics yet:
                 // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
+                .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation()
+                .AddRuntimeInstrumentation()
+                .AddProcessInstrumentation()
                 .AddMeter(typeof(RpcHub).GetMeter().Name) // ActualLab.Rpc
                 .AddMeter(typeof(ICommand).GetMeter().Name) // ActualLab.Commander
                 .AddMeter(typeof(IComputed).GetMeter().Name) // ActualLab.Fusion
