@@ -309,54 +309,59 @@ namespace ActualChat.Chat.Migrations
                     b.ToTable("chat_entries");
                 });
 
-            modelBuilder.Entity("ActualChat.Chat.Db.DbCopiedChat", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
+            modelBuilder.Entity("ActualChat.Chat.Db.DbChatCopyState", b =>
+            {
+                b.Property<string>("Id")
+                    .HasColumnType("text")
+                    .HasColumnName("id");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
+                b.Property<DateTime>("CreatedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("created_at");
 
-                    b.Property<bool>("IsCopiedSuccessfully")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_copied_successfully");
+                b.Property<bool>("IsCopiedSuccessfully")
+                    .HasColumnType("boolean")
+                    .HasColumnName("is_copied_successfully");
 
-                    b.Property<bool>("IsPublished")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_published");
+                b.Property<bool>("IsPublished")
+                    .HasColumnType("boolean")
+                    .HasColumnName("is_published");
 
-                    b.Property<DateTime>("LastCopyingAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_copying_at");
+                b.Property<DateTime>("LastCopyingAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("last_copying_at");
 
-                    b.Property<long>("LastEntryId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("last_entry_id");
+                b.Property<string>("LastCorrelationId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("last_correlation_id");
 
-                    b.Property<DateTime>("PublishedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("published_at");
+                b.Property<long>("LastEntryId")
+                    .HasColumnType("bigint")
+                    .HasColumnName("last_entry_id");
 
-                    b.Property<string>("SourceChatId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("source_chat_id");
+                b.Property<DateTime>("PublishedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("published_at");
 
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
+                b.Property<string>("SourceChatId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("source_chat_id");
 
-                    b.HasKey("Id")
-                        .HasName("pk_copied_chats");
+                b.Property<long>("Version")
+                    .IsConcurrencyToken()
+                    .HasColumnType("bigint")
+                    .HasColumnName("version");
 
-                    b.HasIndex("SourceChatId")
-                        .HasDatabaseName("ix_copied_chats_source_chat_id");
+                b.HasKey("Id")
+                    .HasName("pk_chat_copy_states");
 
-                    b.ToTable("copied_chats");
-                });
+                b.HasIndex("SourceChatId")
+                    .HasDatabaseName("ix_chat_copy_states_source_chat_id");
+
+                b.ToTable("chat_copy_states");
+            });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbMention", b =>
                 {
