@@ -1,18 +1,13 @@
-"""An example that shows how to create a custom agent executor like Runnable.
-
-At the time of writing, there is a bug in the current AgentExecutor that
-prevents it from correctly propagating configuration of the underlying
-runnable. While that bug should be fixed, this is an example shows
-how to create a more complex custom runnable.
-
-Please see documentation for custom agent streaming here:
-
-https://python.langchain.com/docs/modules/agents/how_to/streaming#stream-tokens
-
-**ATTENTION**
-To support streaming individual tokens you will need to manually set the streaming=True
-on the LLM and use the stream_log endpoint rather than stream endpoint.
 """
+Bug workaround:
+At the time of writing, there is a bug in the current AgentExecutor that
+prevents it from correctly propagating configuration of the underlying runnable.
+
+Ref:
+https://github.com/langchain-ai/langserve/blob/v0.0.51/examples/configurable_agent_executor/server.py
+
+"""
+
 from typing import Any, AsyncIterator, Dict, List, Optional, cast
 
 from fastapi import FastAPI
