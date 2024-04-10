@@ -9,6 +9,7 @@ public class ExternalContactsBackend(
     IAccountsBackend accountsBackend,
     ContactLinker contactLinker,
     AgentInfo agentInfo,
+    ExternalContactHasher hasher,
     IServiceProvider services) : DbServiceBase<ContactsDbContext>(services),
     IExternalContactsBackend
 {
@@ -146,7 +147,7 @@ public class ExternalContactsBackend(
             if (existing != null)
                 return existing; // Already exists, so we don't recreate one
 
-            externalContact = externalContact with {
+            externalContact = externalContact.WithHash(hasher, false) with {
                 Id = id,
                 Version = VersionGenerator.NextVersion(),
                 CreatedAt = now,
@@ -157,7 +158,7 @@ public class ExternalContactsBackend(
         }
         else if (change.IsUpdate(out externalContact)) {
             dbExternalContact.RequireVersion(expectedVersion);
-            externalContact = externalContact with {
+            externalContact = externalContact.WithHash(hasher, false) with {
                 Version = VersionGenerator.NextVersion(dbExternalContact.Version),
                 ModifiedAt = now,
             };

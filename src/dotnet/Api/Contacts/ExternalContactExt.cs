@@ -17,8 +17,10 @@ public static class ExternalContactExt
     public static ExternalContactFull WithEmail(this ExternalContactFull externalContact, string email)
         => externalContact with { EmailHashes = externalContact.EmailHashes.With(Hash(email)) };
 
-    public static ExternalContactFull WithHash(this ExternalContactFull externalContact, ExternalContactHasher hasher)
-        => externalContact with { Sha256Hash = hasher.Compute(externalContact) };
+    public static ExternalContactFull WithHash(this ExternalContactFull externalContact, ExternalContactHasher hasher, bool recompute = true)
+        => recompute || externalContact.Sha256Hash.IsNullOrEmpty()
+            ? externalContact with { Sha256Hash = hasher.Compute(externalContact) }
+            : externalContact;
 
     // Private methods
 
