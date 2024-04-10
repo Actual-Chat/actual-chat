@@ -44,21 +44,10 @@ class RuntimeConfigurableAgentExecutor(Runnable):
         self.tools = tools
 
     def invoke(self, input: Input, config: Optional[RunnableConfig] = None) -> Output:
-        configurable = cast(Dict[str, Any], config.pop("configurable", {}))
-
-        if configurable:
-            configured_agent = self.agent.with_config(
-                {
-                    "configurable": configurable,
-                }
-            )
-        else:
-            configured_agent = self.agent
-
         executor = AgentExecutor(
-            agent = configured_agent,
+            agent = _into_configured_agent(self.agent, config),
             tools = self.tools,
-        ).with_config({"run_name": "agent"})
+        )
         return executor.invoke(input, config)
 
     @property
@@ -72,26 +61,22 @@ class RuntimeConfigurableAgentExecutor(Runnable):
         **kwargs: Optional[Any],
     ) -> AsyncIterator[Output]:
         """Stream the agent's output."""
-        configurable = cast(Dict[str, Any], config.pop("configurable", {}))
-
-        if configurable:
-            configured_agent = self.agent.with_config(
-                {
-                    "configurable": configurable,
-                }
-            )
-        else:
-            configured_agent = self.agent
-
+        # Note: creating a separate instance per call since it
+        # is being used as a context later in the iterator
         executor = AgentExecutor(
-            agent = configured_agent,
+            agent = _into_configured_agent(self.agent, config),
             tools = self.tools,
-        ).with_config({"run_name": "agent"})
+        )
 
         async for output in executor.astream(input, config=config, **kwargs):
             yield output
 
-
-
-
+def _into_configured_agent(agent, config):
+    configurable = cast(Dict[str, Any], config.pop("configurable", {}))
+    if configurable:
+        return agent.with_config({
+            "configurable": configurable,
+        })
+    else:
+        return agent
 

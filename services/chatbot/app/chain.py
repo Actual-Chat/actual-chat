@@ -74,6 +74,8 @@ def create(*, claude_api_key, prompt):
         agent_executor.with_types(
             input_type = Input,
             output_type = Output
+        ).with_config(
+            {"run_name": "agent"}
         ),
         # TODO: check if workaround implemented in the RunnableConfigurableRuntimeAlternatives class works.
         # Remove this workaround if it does
