@@ -1,6 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using System.ComponentModel.DataAnnotations
-@using TimeZoneNames
 @inherits Step;
 
 @if (CurrentStep != this) {
@@ -53,6 +52,7 @@
     private Dictionary<string, string>? _timeZones;
 
     [Inject] private UIHub Hub { get; init; } = null!;
+    [Inject] private ITimeZones TimeZones { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
 
@@ -75,10 +75,9 @@
     protected override void MarkCompleted()
         => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsTimeZoneStepCompleted = true });
 
-    protected override void OnInitialized() {
-        base.OnInitialized();
-        var timeZones = TZNames.GetDisplayNames("en-US", useIanaZoneIds: true);
-        _timeZones = timeZones.ToDictionary(x => x.Key, x => x.Value);
+    protected override async Task OnInitializedAsync() {
+        var timeZones = await TimeZones.List("en-US", CancellationToken.None);
+        _timeZones = timeZones.ToDictionary(x => x.Id, x => x.IanaName);
         _model.TimeZone = Hub.BrowserInfo.TimeZone;
     }
 

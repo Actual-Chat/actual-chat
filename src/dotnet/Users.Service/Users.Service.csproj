@@ -19,6 +19,7 @@
     <PackageReference Include="ActualLab.Fusion.Ext.Services" />
     <PackageReference Include="Twilio" />
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
+    <PackageReference Include="TimeZoneNames" />
   </ItemGroup>
 
 </Project>
