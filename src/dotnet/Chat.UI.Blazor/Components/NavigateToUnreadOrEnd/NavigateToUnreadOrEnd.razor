@@ -53,7 +53,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.None,
-            UpdateDelayer = FixedDelayer.Zero,
+            UpdateDelayer = FixedDelayer.MinDelay,
             Category = GetStateCategory(),
         };
 

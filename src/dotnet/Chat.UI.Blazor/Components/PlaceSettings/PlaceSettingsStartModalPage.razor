@@ -194,7 +194,7 @@
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
             InitialValue = ComputedModel.Loading,
-            UpdateDelayer = FixedDelayer.Zero,
+            UpdateDelayer = FixedDelayer.MinDelay,
             Category = GetStateCategory(),
         };
 

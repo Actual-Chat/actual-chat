@@ -20,7 +20,7 @@ public class LanguageUI : ScopedServiceBase<ChatUIHub>, IDisposable
             new (AccountSettings, UserLanguageSettings.KvasKey) {
                 InitialValue = new UserLanguageSettings(),
                 MissingValueFactory = CreateLanguageSettings,
-                UpdateDelayer = FixedDelayer.Zero,
+                UpdateDelayer = FixedDelayer.MinDelay,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
 

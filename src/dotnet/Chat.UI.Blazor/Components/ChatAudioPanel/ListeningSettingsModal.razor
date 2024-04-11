@@ -59,7 +59,7 @@
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
-            UpdateDelayer = FixedDelayer.Zero,
+            UpdateDelayer = FixedDelayer.MinDelay,
             Category = GetStateCategory(),
             InitialValue = new (ListeningMode.Default),
         };

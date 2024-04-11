@@ -11,7 +11,6 @@ using ActualChat.Users.Models;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders.Physical;
 using Newtonsoft.Json;
 using ActualLab.Fusion.Authentication.Services;
@@ -235,7 +234,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         // ServerAuthHelper replacement
         services.AddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
         fusionWebServer.ConfigureServerAuthHelper(_ => new() {
-            NameClaimKeys = Array.Empty<string>(),
+            NameClaimKeys = [],
             SessionInfoUpdatePeriod = Constants.Session.SessionInfoUpdatePeriod,
             AllowSignIn = HostInfo.IsDevelopmentInstance
                 ? ServerAuthHelper.Options.AllowAnywhere

@@ -27,7 +27,7 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
         _userSettings = stateFactory.NewKvasSynced<UserOnboardingSettings>(
             new (accountSettings, UserOnboardingSettings.KvasKey) {
                 InitialValue = new UserOnboardingSettings(),
-                UpdateDelayer = FixedDelayer.Zero,
+                UpdateDelayer = FixedDelayer.MinDelay,
                 Category = StateCategories.Get(type, nameof(UserSettings)),
             });
         _localSettings = stateFactory.NewKvasStored<LocalOnboardingSettings>(

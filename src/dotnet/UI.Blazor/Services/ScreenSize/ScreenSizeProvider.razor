@@ -16,7 +16,7 @@
 
     protected override ComputedState<ScreenSize>.Options GetStateOptions()
         => new() {
-            UpdateDelayer = FixedDelayer.Zero,
+            UpdateDelayer = FixedDelayer.MinDelay,
             Category = GetStateCategory(),
         };
 

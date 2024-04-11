@@ -86,7 +86,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = new Model(AccountUI.OwnAccount.Value),
-            UpdateDelayer = FixedDelayer.Zero,
+            UpdateDelayer = FixedDelayer.MinDelay,
             Category = GetStateCategory(),
         };
 

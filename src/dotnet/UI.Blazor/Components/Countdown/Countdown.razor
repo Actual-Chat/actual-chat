@@ -22,7 +22,7 @@
 
     protected override ComputedState<string>.Options GetStateOptions()
         => new() {
-            UpdateDelayer = FixedDelayer.Zero,
+            UpdateDelayer = FixedDelayer.MinDelay,
             Category = GetStateCategory(),
         };
 
