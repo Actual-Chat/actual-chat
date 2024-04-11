@@ -22,7 +22,7 @@
     <OpenTelemetryAspNetCoreVersion>1.8.0</OpenTelemetryAspNetCoreVersion>
     <OpenTelemetryGrpcClientVersion>1.8.0-beta.1</OpenTelemetryGrpcClientVersion>
     <OpenTelemetryNpgsqlVersion>8.0.2</OpenTelemetryNpgsqlVersion>
-    <SentryVersion>3.40.1</SentryVersion>
+    <SentryVersion>4.3.0</SentryVersion>
     <MemoryPackVersion>1.10.0</MemoryPackVersion>
     <MessagePackVersion>2.4.59</MessagePackVersion>
   </PropertyGroup>
