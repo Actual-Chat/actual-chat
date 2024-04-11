@@ -23,8 +23,7 @@ public static class EndpointsExt
     public static IEndpointRouteBuilder MapAppMetrics(this IEndpointRouteBuilder endpoints, params string[] tags)
     {
         var host = Environment.GetEnvironmentVariable("POD_IP") ?? "local.actual.chat";
-        // TODO(AK): revert back after testing metrics ingestion
-        endpoints.MapPrometheusScrapingEndpoint();//.RequireHost("localhost", host);
+        endpoints.MapPrometheusScrapingEndpoint().RequireHost("localhost", host);
         return endpoints;
     }
 }

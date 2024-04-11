@@ -237,8 +237,15 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         });
 
         // OpenTelemetry
+        var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;
+        if (openTelemetryEndpoint.IsNullOrEmpty())
+            return;
+
+        var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
+        var openTelemetryEndpointUri = $"http://{host}:{port.Format()}".ToUri();
+        Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
         services.AddSingleton<OtelMetrics>();
-        var otelBuilder = services.AddOpenTelemetry()
+        services.AddOpenTelemetry()
             .WithMetrics(builder => builder
                 // gcloud exporter doesn't support some of metrics yet:
                 // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
@@ -246,6 +253,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddHttpClientInstrumentation()
                 .AddRuntimeInstrumentation()
                 .AddProcessInstrumentation()
+                .AddMeter("Npgsql") // Npgsql meter at Npgsql.MetricsReporter
                 .AddMeter(typeof(RpcHub).GetMeter().Name) // ActualLab.Rpc
                 .AddMeter(typeof(ICommand).GetMeter().Name) // ActualLab.Commander
                 .AddMeter(typeof(IComputed).GetMeter().Name) // ActualLab.Fusion
@@ -256,13 +264,19 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                     cfg.ScrapeEndpointPath = "/metrics";
                     cfg.ScrapeResponseCacheDurationMilliseconds = 300;
                 })
-            );
-        var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;
-        if (!openTelemetryEndpoint.IsNullOrEmpty()) {
-            var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
-            var openTelemetryEndpointUri = $"http://{host}:{port.Format()}".ToUri();
-            Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
-            otelBuilder = otelBuilder.WithTracing(builder => builder
+                .AddOtlpExporter(cfg => {
+                    cfg.ExportProcessorType = ExportProcessorType.Batch;
+                    cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions {
+                        ExporterTimeoutMilliseconds = 10_000,
+                        MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
+                        MaxQueueSize = 1024,
+                        ScheduledDelayMilliseconds = 20_000,
+                    };
+                    cfg.Protocol = OtlpExportProtocol.Grpc;
+                    cfg.Endpoint = openTelemetryEndpointUri;
+                })
+            )
+            .WithTracing(builder => builder
                 .SetErrorStatusOnException()
                 .AddSource(typeof(RpcHub).GetActivitySource().Name) // ActualLab.Rpc
                 .AddSource(typeof(ICommand).GetActivitySource().Name) // ActualLab.Commander
@@ -314,9 +328,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                     cfg.Protocol = OtlpExportProtocol.Grpc;
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })
-            );
-        }
-        otelBuilder.ConfigureResource(builder => builder
-            .AddService("App", "actualchat", AppVersion));
+            )
+            .ConfigureResource(builder => builder
+                .AddService("App", "actualchat", AppVersion));
     }
 }
