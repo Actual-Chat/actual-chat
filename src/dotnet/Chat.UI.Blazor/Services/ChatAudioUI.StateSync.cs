@@ -307,7 +307,9 @@ public partial class ChatAudioUI
                         ListeningMode.TurnOffAfter15Minutes => TimeSpan.FromMinutes(15),
                         ListeningMode.TurnOffAfter2Hours => TimeSpan.FromHours(2),
                         ListeningMode.KeepListening => TimeSpan.MaxValue,
-                        _ => throw new ArgumentOutOfRangeException(nameof(ListeningMode)),
+ #pragma warning disable CA2208
+                        _ => throw new ArgumentOutOfRangeException($"{nameof(userChatSettings)}.{nameof(ListeningMode)}"),
+ #pragma warning restore CA2208
                     },
                 };
                 var watcher = FuncWorker.Start(ct => StopListeningWhenIdle(chatId, chatOptions, ct), cancellationToken);

@@ -108,6 +108,9 @@
             await BrowserInfo.WhenReady;
             await BubbleUI.WhenReadyToShowBubbles();
             var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
+            if (_blazorRef == null!)
+                return; // Dispose may happen during await above
+
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _blazorRef, readBubbles);
         }
     }

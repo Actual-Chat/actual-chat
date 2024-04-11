@@ -23,7 +23,7 @@ public abstract class DbInitializer<
     public bool ShouldRepairData => DbInfo.ShouldRepairDb;
     public bool ShouldVerifyData => DbInfo.ShouldVerifyDb;
 
-    public new TDbContext CreateDbContext(bool readWrite = false)
+    public TDbContext CreateDbContext(bool readWrite = false)
     {
         var dbContext = DbHub.ContextFactory.CreateDbContext(default);
         dbContext.ReadWrite(readWrite);

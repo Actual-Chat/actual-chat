@@ -59,14 +59,17 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
                     chat = chat with { IsRecording = false };
 
                 var userChatSettings = await AccountSettings
-                    .GetUserChatSettings(chat.ChatId, cancellationToken);
+                    .GetUserChatSettings(chat.ChatId, cancellationToken)
+                    .ConfigureAwait(false);
                 var listeningMode = userChatSettings.ListeningMode;
                 var continueListeningRecency = listeningMode switch {
                     ListeningMode.Default => MaxContinueListeningRecency,
                     ListeningMode.TurnOffAfter15Minutes => TimeSpan.FromMinutes(15),
                     ListeningMode.TurnOffAfter2Hours => TimeSpan.FromHours(2),
                     ListeningMode.KeepListening => TimeSpan.MaxValue,
-                    _ => throw new ArgumentOutOfRangeException(nameof(ListeningMode)),
+ #pragma warning disable CA2208
+                    _ => throw new ArgumentOutOfRangeException(nameof(listeningMode)),
+ #pragma warning restore CA2208
                 };
                 var listeningRecency = Moment.Max(chat.Recency, chat.ListeningRecency);
                 if (chat.IsListening && CpuNow - listeningRecency > continueListeningRecency)
@@ -77,7 +80,8 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
                 return chat;
             })
             .Collect()
-            .ToApiArray();
+            .ToApiArray()
+            .ConfigureAwait(false);
         return await FixActiveChats(activeChats, cancellationToken).ConfigureAwait(false);
     }
 

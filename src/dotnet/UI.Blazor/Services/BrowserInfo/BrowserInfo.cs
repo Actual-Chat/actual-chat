@@ -21,7 +21,7 @@ public class BrowserInfo : ScopedServiceBase<UIHub>, IBrowserInfoBackend
     public IState<bool> IsVisible => _isVisible;
     public IState<ThemeInfo> ThemeInfo => _themeInfo;
     public TimeSpan UtcOffset { get; protected set; }
-    public string TimeZone { get; protected set; }
+    public string TimeZone { get; protected set; } = "";
     public bool IsMobile { get; protected set; }
     public bool IsAndroid { get; protected set; }
     public bool IsIos { get; protected set; }

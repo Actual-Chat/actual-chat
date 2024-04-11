@@ -1,15 +1,11 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IChatMessageEditorBackend
 @implements IAsyncDisposable
-@using ActualChat.Chat.UI.Blazor.Services
-@using ActualChat.Streaming.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Events
 @using ActualChat.Chat.UI.Blazor.Module
 @using ActualChat.Contacts
 @using ActualChat.Hosting
 @using ActualChat.Kvas
-@using ActualChat.MediaPlayback
-@using ActualChat.Search
 @using ActualLab.Locking
 @using System.Diagnostics.CodeAnalysis
 @{
@@ -152,9 +148,15 @@
             BlazorRef = DotNetObjectReference.Create<IChatMessageEditorBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
             await Task.WhenAll(MarkupEditorRef.WhenReady, AttachmentListRef.WhenReady);
+            if (JSRef == null! || MarkupEditorRef.JSRef == null! || AttachmentListRef.JSRef == null!)
+                return; // Dispose may happen during await above
+
             await JSRef.InvokeVoidAsync("onNestedControlsReady", MarkupEditorRef.JSRef, AttachmentListRef.JSRef);
             await UpdateChatId();
             await ChatEditorUI.RestoreRelatedEntry(Chat.Id);
+            if (JSRef == null! || MarkupEditorRef.JSRef == null! || AttachmentListRef.JSRef == null!)
+                return; // Dispose may happen during await above
+
             AttachmentsStorage = Hub.GetRequiredService<SentAttachmentsStorage>();
             if (AttachmentsStorage.ChatId == Chat.Id && AttachmentsStorage.Urls.Length > 0)
                 await SetAttachments(AttachmentsStorage);

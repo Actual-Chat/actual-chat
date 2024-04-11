@@ -409,7 +409,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
     public async ValueTask DisposeAsync()
     {
-        await _readPositionStates.DisposeAsync();
+        await _readPositionStates.DisposeAsync().ConfigureAwait(false);
         _navbarSettings.Dispose();
     }
 

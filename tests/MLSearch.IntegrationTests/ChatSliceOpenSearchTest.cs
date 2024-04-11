@@ -85,8 +85,8 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
         await Task.Delay(200);
 
         var query1 = new SearchQuery() {
-            Keywords=["command"],
-            FreeTextFilter="Tools for mobile development",
+            Keywords = ["command"],
+            FreeTextFilter = "Tools for mobile development",
         };
         var queryResult1 = await searchEngine.Find(query1, CancellationToken.None);
         Assert.True(queryResult1.Documents.Count > 0);
@@ -96,10 +96,10 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
         var chatIdField = JsonNamingPolicy.CamelCase.ConvertName(nameof(ChatSliceMetadata.ChatId));
         var dateBound = DateTime.Now.AddDays(-3);
         var query2 = new SearchQuery() {
-            MetadataFilters=[
+            MetadataFilters = [
                 new DateRangeFilter($"{metadataField}.{timestampField}", new RangeBound<DateTime>(dateBound, true), null),
             ],
-            FreeTextFilter="Search engines and technologies",
+            FreeTextFilter = "Search engines and technologies",
         };
 
         var queryResult2 = await searchEngine.Find(query2, CancellationToken.None);
@@ -107,11 +107,11 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
         Assert.True(query2Count > 0);
 
         var query3 = new SearchQuery() {
-            MetadataFilters=[
+            MetadataFilters = [
                 new DateRangeFilter($"{metadataField}.{timestampField}", new RangeBound<DateTime>(dateBound, true), null),
                 new EqualityFilter<ChatId>($"{metadataField}.{chatIdField}", chatId1),
             ],
-            FreeTextFilter="Search engines and technologies",
+            FreeTextFilter = "Search engines and technologies",
         };
         var queryResult3 = await searchEngine.Find(query3, CancellationToken.None);
         var query3Count = queryResult3.Documents.Count;

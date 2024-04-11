@@ -1,15 +1,11 @@
-@using ActualChat.Kvas
 @using System.ComponentModel.DataAnnotations
 @using TimeZoneNames
 @implements IDisposable
 @{
-    var timeZoneChanged = !string.Equals(
-        _timeZoneFormModel.CurrentTimeZoneId,
-        _timeZoneFormModel.SelectedTimeZoneId,
-        StringComparison.Ordinal);
+    var timeZoneChanged = !OrdinalEquals(_timeZoneFormModel.BrowserTimeZone, _timeZoneFormModel.SelectedTimeZone);
     var isEmailVerified = _account.HasVerifiedEmail();
     var isEmailEmpty = _emailFormModel.Email.IsNullOrEmpty();
-    var isEmailValid = _emailFormEditContext.IsValid(() => _emailFormModel.Email);
+    var isEmailValid = _emailFormEditContext.IsValid(() => _emailFormModel.Email ?? "");
 }
 
 <TileTopic Topic="Email"/>
@@ -52,15 +48,15 @@
         <ValidationSummary/>
         <FormBlock>
             <FormSection
-                For="() => _timeZoneFormModel.SelectedTimeZoneId"
-                InputId="@_timeZoneFormModel.UserTimeZoneFormId"
+                For="() => _timeZoneFormModel.SelectedTimeZone"
+                InputId="@_timeZoneFormModel.SelectedTimeZoneFormId"
                 IsLabelInsideInput="true"
                 Label="Time zone">
                 <InputSelect
-                    Value="_timeZoneFormModel.SelectedTimeZoneId"
-                    ValueExpression="@(() => _timeZoneFormModel.SelectedTimeZoneId)"
+                    Value="_timeZoneFormModel.SelectedTimeZone"
+                    ValueExpression="@(() => _timeZoneFormModel.SelectedTimeZone)"
                     ValueChanged="@(async (string timeZoneId) => await OnTimeZoneSelected(timeZoneId))">
-                    @if (_timeZoneFormModel.SelectedTimeZoneId == "") {
+                    @if (_timeZoneFormModel.SelectedTimeZone == "") {
                         <option value="">None</option>
                     }
                     @if (_timeZones != null) {
@@ -71,7 +67,7 @@
                 </InputSelect>
             </FormSection>
             @if (timeZoneChanged) {
-                <span>'@(_timeZoneFormModel.CurrentTimeZoneName)' is detected.</span>
+                <span>'@(_timeZoneFormModel.BrowserTimeZoneName)' is detected.</span>
                 <Button Class="btn-outline" ContentClass="text-sm" Click="@OnUpdateTimeZone">Update</Button>
             }
         </FormBlock>
@@ -100,18 +96,17 @@
 
         var timeZones = TZNames.GetDisplayNames("en-US", useIanaZoneIds: true);
         _timeZones = timeZones.ToDictionary(x => x.Key, x => x.Value);
-        var currentTimeZoneId = Hub.BrowserInfo.TimeZone;
+        var currentTimeZone = Hub.BrowserInfo.TimeZone;
         _timeZoneFormModel = new TimeZoneFormModel(ComponentIdGenerator) {
-            SelectedTimeZoneId = _account.TimeZone,
-            CurrentTimeZoneId = currentTimeZoneId,
-            CurrentTimeZoneName = _timeZones.GetValueOrDefault(currentTimeZoneId, "N/A"),
+            SelectedTimeZone = _account.TimeZone,
+            BrowserTimeZone = currentTimeZone,
+            BrowserTimeZoneName = _timeZones.GetValueOrDefault(currentTimeZone, "N/A"),
         };
     }
 
     public void Dispose() {
-        if (_emailFormEditContext != null) {
+        if (_emailFormEditContext != null!)
             _emailFormEditContext.OnFieldChanged -= EmailFormEditContextOnOnFieldChanged;
-        }
     }
 
     private void EmailFormEditContextOnOnFieldChanged(object? sender, FieldChangedEventArgs e) {
@@ -123,7 +118,7 @@
     }
 
     private async Task OnUpdateTimeZone() {
-        await UpdateTimezone(_timeZoneFormModel.CurrentTimeZoneId);
+        await UpdateTimezone(_timeZoneFormModel.BrowserTimeZone);
     }
 
     private async Task OnEmailVerified() {
@@ -132,7 +127,7 @@
     }
 
     private async Task UpdateTimezone(string timeZoneId) {
-        _timeZoneFormModel.SelectedTimeZoneId = timeZoneId;
+        _timeZoneFormModel.SelectedTimeZone = timeZoneId;
         var account = await Hub.Accounts.GetOwn(Session, default);
         var updateAccountCommand = new Accounts_Update(
             Session,
@@ -145,17 +140,19 @@
         Hub.ToastUI.Show("Time zone has been updated", "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
+    // Nested types
+
     public sealed class TimeZoneFormModel {
-        public string SelectedTimeZoneId { get; set; } = "";
-        public string CurrentTimeZoneId { get; set; } = "";
-        public string CurrentTimeZoneName { get; set; } = "";
+        public string SelectedTimeZone { get; set; } = "";
+        public string BrowserTimeZone { get; set; } = "";
+        public string BrowserTimeZoneName { get; set; } = "";
 
         private string FormId { get; }
-        public string UserTimeZoneFormId { get; }
+        public string SelectedTimeZoneFormId { get; }
 
         public TimeZoneFormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("time-zone-form");
-            UserTimeZoneFormId = $"{FormId}-user-time-zone";
+            SelectedTimeZoneFormId = $"{FormId}-user-time-zone";
         }
     }
 

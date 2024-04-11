@@ -68,7 +68,7 @@
             if (Account.TimeZone.IsNullOrEmpty())
                 return false;
 
-            return string.Equals(Account.TimeZone, Hub.BrowserInfo.TimeZone, StringComparison.Ordinal);
+            return OrdinalEquals(Account.TimeZone, Hub.BrowserInfo.TimeZone);
         }
     }
 

@@ -18,7 +18,7 @@ public readonly partial struct MLSearchChatId : ISymbolIdentifier<MLSearchChatId
 
     public static MLSearchChatId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<MLSearchChatId>(s);
-    public static MLSearchChatId ParseOrNone(string s)
+    public static MLSearchChatId ParseOrNone(string? s)
         => TryParse(s, out var result) ? result : None;
     public static bool TryParse(string? s, out MLSearchChatId result)
     {

@@ -2,6 +2,7 @@ namespace ActualChat.Db;
 
 public enum ConflictStrategy
 {
-    DoNothing = 1,
-    DoUpdate,
+    Unspecified = 0,
+    DoNothing,
+    Update,
 }

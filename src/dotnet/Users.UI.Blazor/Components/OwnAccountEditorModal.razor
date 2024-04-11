@@ -1,12 +1,13 @@
 @using System.ComponentModel.DataAnnotations
 @implements IModalView<OwnAccountEditorModal.Model>
 @{
-    if (ReferenceEquals(_account, AccountFull.Loading))
+    if (ReferenceEquals(_account, AccountFull.Loading) || _form == null!)
         return;
+
     var phone = PhoneFormatterExt.FromReadable(_form.Phone);
     var isPhoneVerified = _account.HasVerifiedPhone();
     var isEmailVerified = _account.HasVerifiedEmail();
-    var isEmailEmpty = _form?.Email.IsNullOrEmpty() ?? true;
+    var isEmailEmpty = _form.Email.IsNullOrEmpty();
 }
 
 <Form @ref="@_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">

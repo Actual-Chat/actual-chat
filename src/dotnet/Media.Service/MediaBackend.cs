@@ -115,7 +115,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var existentMediaSidSet = new HashSet<string>(existentMediaSids);
+        var existentMediaSidSet = new HashSet<string>(existentMediaSids, StringComparer.Ordinal);
 
         var updateCount = 0;
 

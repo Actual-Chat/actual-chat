@@ -46,7 +46,8 @@ public static class ChatsBackendExt
         // GetTile hasn't invalidated yet for the new Entry
         cTile = await cTile
             .When(ct => ct.Entries.Any(e => e.LocalId == entryId.LocalId), cancellationToken)
-            .WaitAsync(timeout, cancellationToken);
+            .WaitAsync(timeout, cancellationToken)
+            .ConfigureAwait(false);
 
         tile = cTile.Value;
         return tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);

@@ -4,10 +4,12 @@ using Base_NpgsqlUpdateSqlGenerator = Npgsql.EntityFrameworkCore.PostgreSQL.Upda
 
 namespace ActualChat.Db.Npgsql;
 
+#pragma warning disable EF1001
+
 public class NpgsqlUpdateSqlGenerator(UpdateSqlGeneratorDependencies dependencies)
     : Base_NpgsqlUpdateSqlGenerator(dependencies)
 {
-    private static readonly ConcurrentDictionary<Type, ConflictStrategy?> _conflictResolutionMap = new ();
+    private static readonly ConcurrentDictionary<Type, ConflictStrategy> ConflictStrategies = new();
 
     protected override void AppendInsertCommand(
         StringBuilder commandStringBuilder,
@@ -25,26 +27,25 @@ public class NpgsqlUpdateSqlGenerator(UpdateSqlGeneratorDependencies dependencie
         AppendValuesHeader(commandStringBuilder, writeOperations);
         AppendValues(commandStringBuilder, name, schema, writeOperations);
 
-        ConflictStrategy? conflictStrategy = null;
-        var operation = writeOperations.FirstOrDefault();
+        var operation = writeOperations.Count != 0 ? writeOperations[0] : null;
         if (operation?.Entry != null) {
             var type = operation.Entry.EntityType.ClrType;
-            conflictStrategy = _conflictResolutionMap.GetOrAdd(
+            var conflictStrategy = ConflictStrategies.GetOrAdd(
                 type,
                 static (_, entityType) => {
                     var conflictStrategyAnnotation = entityType.FindAnnotation(nameof(ConflictStrategy));
-                    return (ConflictStrategy?)conflictStrategyAnnotation?.Value;
+                    var conflictStrategyValue = conflictStrategyAnnotation?.Value;
+                    return conflictStrategyValue != null
+                        ? (ConflictStrategy)conflictStrategyValue
+                        : ConflictStrategy.Unspecified;
                 },
                 operation.Entry.EntityType
             );
-
-            if (conflictStrategy != null)
-                AppendConflictClause(commandStringBuilder, writeOperations, conflictStrategy.Value);
+            if (conflictStrategy != ConflictStrategy.Unspecified)
+                AppendConflictClause(commandStringBuilder, writeOperations, conflictStrategy);
         }
-
         if (readOperations.Count > 0)
             AppendReturningClause(commandStringBuilder, readOperations);
-
         commandStringBuilder.AppendLine(SqlGenerationHelper.StatementTerminator);
     }
 
@@ -53,15 +54,16 @@ public class NpgsqlUpdateSqlGenerator(UpdateSqlGeneratorDependencies dependencie
         IReadOnlyList<IColumnModification> writeOperations,
         ConflictStrategy conflictStrategy)
     {
-
-        if (conflictStrategy == ConflictStrategy.DoUpdate && writeOperations.Count == 0)
+        switch (conflictStrategy) {
+        case ConflictStrategy.Unspecified:
+        case ConflictStrategy.Update when writeOperations.Count == 0:
             return;
-
-        if (conflictStrategy == ConflictStrategy.DoNothing)
+        case ConflictStrategy.DoNothing:
             commandStringBuilder
                 .AppendLine()
                 .Append("ON CONFLICT DO NOTHING ");
-        else {
+            break;
+        default:
             var (keyOperations, updateOperations) = writeOperations.Split(op => op.IsKey);
             commandStringBuilder
                 .AppendLine()
@@ -70,7 +72,7 @@ public class NpgsqlUpdateSqlGenerator(UpdateSqlGeneratorDependencies dependencie
                     keyOperations,
                     SqlGenerationHelper,
                     (sb, o, helper) => helper.DelimitIdentifier(sb, o.ColumnName))
-                .Append(")")
+                .Append(')')
                 .AppendLine()
                 .Append("DO UPDATE SET ")
                 .AppendJoin(
@@ -81,6 +83,7 @@ public class NpgsqlUpdateSqlGenerator(UpdateSqlGeneratorDependencies dependencie
                         sb.Append(" = EXCLUDED.");
                         helper.DelimitIdentifier(sb, o.ColumnName);
                     });
+            break;
         }
     }
 }

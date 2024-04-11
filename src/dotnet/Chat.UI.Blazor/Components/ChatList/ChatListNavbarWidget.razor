@@ -87,6 +87,7 @@
         // If chatListView has been changed during we reading settings, do nothing now, wait new chatListView is rendered.
         if (chatListView != _chatListView)
             return;
+
         _updateSelectedTab = false;
         _tabPanel.SelectedTabId = settings.FilterId;
     }
