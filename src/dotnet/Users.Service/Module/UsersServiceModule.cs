@@ -147,6 +147,9 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         // Emails
         rpcHost.AddApi<IEmails, Emails>();
 
+        // TimeZones
+        rpcHost.AddApi<ITimeZones, TimeZones>();
+
         // Mobile authentication
         rpcHost.AddApi<IMobileSessions, MobileSessions>();
 #pragma warning disable CS0618
