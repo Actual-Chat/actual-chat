@@ -237,6 +237,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         });
 
         // OpenTelemetry
+        services.AddSingleton<OtelMetrics>();
         var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;
         if (openTelemetryEndpoint.IsNullOrEmpty())
             return;
@@ -244,7 +245,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
         var openTelemetryEndpointUri = $"http://{host}:{port.Format()}".ToUri();
         Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
-        services.AddSingleton<OtelMetrics>();
         services.AddOpenTelemetry()
             .WithMetrics(builder => builder
                 // gcloud exporter doesn't support some of metrics yet:
