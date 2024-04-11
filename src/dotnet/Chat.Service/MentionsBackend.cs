@@ -16,7 +16,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
         Symbol mentionId,
         CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbMention = await dbContext.Mentions
@@ -37,7 +37,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invChangedMentionIds = context.Operation().Items.Get<HashSet<MentionId>>();
+            var invChangedMentionIds = context.Operation.Items.Get<HashSet<MentionId>>();
             if (invChangedMentionIds != null) {
                 foreach (var mentionId in invChangedMentionIds)
                     _ = GetLast(entry.ChatId, mentionId, default);
@@ -45,7 +45,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
             return;
         }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var existingMentions = await dbContext.Mentions
@@ -81,7 +81,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
             return;
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(changedMentionIds);
+        context.Operation.Items.Set(changedMentionIds);
     }
 
     private async Task<HashSet<MentionId>> GetMentionIds(ChatEntry entry, CancellationToken cancellationToken)

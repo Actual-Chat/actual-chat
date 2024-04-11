@@ -29,7 +29,7 @@ public static class CommandExt
             throw StandardError.Internal("The operation has already completed.");
 
         var context = CommandContext.GetCurrent();
-        var operationItems = GetOperation(context).Items;
+        var operationItems = context.Operation.Items;
         var list = operationItems.GetOrDefault(ImmutableList<QueuedCommand>.Empty);
         list = list.Add(QueuedCommand.New(command));
         operationItems.Set(list);
@@ -44,17 +44,5 @@ public static class CommandExt
         var clone = MemberwiseCloner.Invoke(command);
         ChainIdSetter.Invoke(clone, chainId);
         return clone;
-    }
-
-    // Private methods
-
-    private static IOperation GetOperation(CommandContext? commandContext)
-    {
-        while (commandContext != null) {
-            if (commandContext.Items.TryGet<IOperation>(out var operation))
-                return operation;
-            commandContext = commandContext.OuterContext;
-        }
-        throw StandardError.Internal("No operation is running.");
     }
 }

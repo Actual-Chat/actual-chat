@@ -48,12 +48,12 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invChat = context.Operation().Items.Get<Chat>()!;
+            var invChat = context.Operation.Items.Get<Chat>()!;
             _ = ChatsBackend.Get(invChat.Id, default);
             return;
         }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbChat = await dbContext.Chats
@@ -114,7 +114,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         chat = dbChat.ToModel();
-        context.Operation().Items.Set(chat);
+        context.Operation.Items.Set(chat);
     }
 
     // [CommandHandler]

@@ -219,18 +219,18 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             auth.ConfigureSessionInfoTrimmer(_ => new DbSessionInfoTrimmer<UsersDbContext>.Options {
                 MaxSessionAge = TimeSpan.FromDays(60),
             });
-            // override IDbSessionInfoRepo for efficient trimming
-            services.RemoveAll(sd => sd.ServiceType == typeof(IDbSessionInfoRepo<UsersDbContext, DbSessionInfo, string>));
-            services.TryAddSingleton<IDbSessionInfoRepo<UsersDbContext, DbSessionInfo, string>, DbSessionInfoRepo>();
         });
         services.AddSingleton<UserNamer>();
         services.AddSingleton<ClaimMapper>();
         commander.AddService<AuthCommandFilters>();
         commander.AddService<AuthBackendCommandFilters>();
 
+        // DbSessionInfoRepo replacement
+        services.AddSingleton<DbSessionInfoRepo>();
+        services.AddAlias<IDbSessionInfoRepo<UsersDbContext, DbSessionInfo, string>, DbSessionInfoRepo>();
         // DbUserRepo replacement
-        services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepo>());
-        services.AddSingleton(c => (DbUserRepo)c.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>());
+        services.AddSingleton<DbUserRepo>();
+        services.AddAlias<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepo>();
 
         // ServerAuthHelper replacement
         services.AddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own

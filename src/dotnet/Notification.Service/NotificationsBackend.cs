@@ -48,7 +48,7 @@ public class NotificationsBackend(IServiceProvider services)
     // [ComputeMethod]
     public virtual async Task<IReadOnlyList<Device>> ListDevices(UserId userId, CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbDevices = await dbContext.Devices
@@ -62,7 +62,7 @@ public class NotificationsBackend(IServiceProvider services)
     // [ComputeMethod]
     public virtual async Task<IReadOnlyList<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var userIds = await AuthorsBackend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
@@ -89,7 +89,7 @@ public class NotificationsBackend(IServiceProvider services)
         await PseudoListRecentNotificationIds(userId).ConfigureAwait(false);
 
         // Get notifications for last day
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         return (
@@ -146,7 +146,7 @@ public class NotificationsBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invIsCreate = context.Operation().Items.GetOrDefault(false);
+            var invIsCreate = context.Operation.Items.GetOrDefault(false);
             if (invIsCreate) // Created
                 _ = PseudoListRecentNotificationIds(userId);
 
@@ -156,7 +156,7 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         try {
-            var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             await using var __ = dbContext.ConfigureAwait(false);
 
             var dbNotification = await dbContext.Notifications.ForUpdate()
@@ -174,7 +174,7 @@ public class NotificationsBackend(IServiceProvider services)
                 dbNotification = new DbNotification();
                 dbNotification.UpdateFrom(notification);
                 dbContext.Notifications.Add(dbNotification);
-                context.Operation().Items.Set(true);
+                context.Operation.Items.Set(true);
             }
             else {
                 // Update
@@ -186,7 +186,7 @@ public class NotificationsBackend(IServiceProvider services)
                     Version = VersionGenerator.NextVersion(notification.Version),
                 };
                 dbNotification.UpdateFrom(notification);
-                context.Operation().Items.Set(false);
+                context.Operation.Items.Set(false);
             }
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -205,7 +205,7 @@ public class NotificationsBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invUserIds = context.Operation().Items.Get<HashSet<UserId>>();
+            var invUserIds = context.Operation.Items.Get<HashSet<UserId>>();
             if (invUserIds is { Count: > 0 })
                 foreach (var invUserId in invUserIds)
                     _ = ListDevices(invUserId, default);
@@ -213,7 +213,7 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         var affectedUserIds = new HashSet<UserId>();
-        var dbContext = CreateDbContext(readWrite: true);
+        var dbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         foreach (var deviceId in command.DeviceIds) {
@@ -229,7 +229,7 @@ public class NotificationsBackend(IServiceProvider services)
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("Removed {Count} devices", affectedUserIds.Count);
-        context.Operation().Items.Set(affectedUserIds);
+        context.Operation.Items.Set(affectedUserIds);
     }
 
     // [CommandHandler]
@@ -239,7 +239,7 @@ public class NotificationsBackend(IServiceProvider services)
             return;
 
         var userId = command.UserId;
-        var dbContext = CreateDbContext(readWrite: true);
+        var dbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var removedDevicesCount = await dbContext.Devices

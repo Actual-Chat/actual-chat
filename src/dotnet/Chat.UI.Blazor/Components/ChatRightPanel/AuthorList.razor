@@ -85,7 +85,7 @@
         => new() {
             InitialValue = Model.None,
             Category = GetStateCategory(),
-            UpdateDelayer = FixedDelayer.Instant,
+            UpdateDelayer = FixedDelayer.Get(0.1),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

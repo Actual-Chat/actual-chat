@@ -7,6 +7,7 @@ using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services; // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using ActualLab.CommandR.Rpc;
+using ActualLab.Rpc;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 // ReSharper disable once RedundantUsingDirective
 using Microsoft.Extensions.Configuration;
@@ -31,8 +32,9 @@ public static class Program
         Tracer.Point($"{nameof(Main)} started");
         OtelDiagnostics.SetupConditionalPropagator();
 
+        RpcSettings.Mode = RpcMode.Client;
         FusionSettings.Mode = FusionMode.Client;
-        RpcOutboundCommandCallMiddleware.DefaultCallTimeout = TimeSpan.FromSeconds(20);
+        RpcOutboundCommandCallMiddleware.Default.CallTimeout = TimeSpan.FromSeconds(20);
 
         // NOTE(AY): This thing takes 1 second on Windows!
         var isSentryEnabled = Constants.Sentry.EnabledFor.Contains(HostKind.MauiApp);

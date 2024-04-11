@@ -15,7 +15,7 @@ public class ReactionsBackend(IServiceProvider services)
     // [ComputeMethod]
     public virtual async Task<Reaction?> Get(TextEntryId entryId, AuthorId authorId, CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var id = DbReaction.ComposeId(entryId, authorId);
@@ -29,7 +29,7 @@ public class ReactionsBackend(IServiceProvider services)
         TextEntryId entryId,
         CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbReactionSummaries = await dbContext.ReactionSummaries
@@ -58,7 +58,7 @@ public class ReactionsBackend(IServiceProvider services)
         var entryAuthor = await AuthorsBackend.Get(chatId, entry.AuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).Require().ConfigureAwait(false);
         var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).Require().ConfigureAwait(false);
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var id = DbReaction.ComposeId(entryId, authorId);

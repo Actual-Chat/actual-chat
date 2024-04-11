@@ -29,12 +29,12 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            if (context.Operation().Items.GetOrDefault<bool>())
+            if (context.Operation.Items.GetOrDefault<bool>())
                 _ = Get(userId, chatId, kind, default);
             return;
         }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var id = DbChatPosition.ComposeId(userId, chatId, kind);
@@ -58,6 +58,6 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
 
         if (hasChanges)
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(hasChanges);
+        context.Operation.Items.Set(hasChanges);
     }
 }

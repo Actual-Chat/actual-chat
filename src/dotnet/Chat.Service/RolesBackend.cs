@@ -37,7 +37,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var systemRoles = await ListSystem(chatId, cancellationToken).ConfigureAwait(false);
         systemRoles = systemRoles.Where(IsInSystemRole).ToApiArray();
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbRoles = await dbContext.Roles
@@ -75,7 +75,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         await PseudoList(chatId).ConfigureAwait(false);
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbRoles = await dbContext.Roles
@@ -96,7 +96,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         await PseudoList(chatId).ConfigureAwait(false);
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbAuthorIds = await dbContext.AuthorRoles
@@ -115,7 +115,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invRole = context.Operation().Items.Get<Role>();
+            var invRole = context.Operation.Items.Get<Role>();
             if (invRole != null) {
                 _ = Get(chatId, invRole.Id, default);
                 _ = PseudoList(chatId);
@@ -125,7 +125,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         change.RequireValid();
         chatId.Require("Command.ChatId");
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         // Fetching chat: if it doesn't exist, this command can't proceed anyway
@@ -241,7 +241,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         role = dbRole.ToModel();
-        context.Operation().Items.Set(role);
+        context.Operation.Items.Set(role);
         return role;
     }
 

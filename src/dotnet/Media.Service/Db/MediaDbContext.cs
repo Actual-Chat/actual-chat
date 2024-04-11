@@ -12,6 +12,8 @@ public class MediaDbContext(DbContextOptions<MediaDbContext> options) : DbContex
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
+    public DbSet<DbOperationEvent> OperationEvents { get; protected set; } = null!;
+    public DbSet<DbOperationTimer> OperationTimers { get; protected set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder model)
         => model.ApplyConfigurationsFromAssembly(typeof(MediaDbContext).Assembly).UseSnakeCaseNaming();

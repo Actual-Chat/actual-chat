@@ -223,19 +223,19 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         { // Test 1
             using var cts = new CancellationTokenSource(500);
-            var result = await reader.Observe(idRange.End, cts.Token).TrimOnCancellation().ToListAsync();
+            var result = await reader.Observe(idRange.End, cts.Token).SuppressCancellation().ToListAsync();
             result.Count.Should().Be(0);
         }
 
         { // Test 2
             using var cts = new CancellationTokenSource(500);
-            var result = await reader.Observe(idRange.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
+            var result = await reader.Observe(idRange.End - 1, cts.Token).SuppressCancellation().ToListAsync();
             result.Count.Should().Be(1);
         }
 
         { // Test 3 + entry creation
             using var cts = new CancellationTokenSource(2000);
-            var resultTask = reader.Observe(idRange.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
+            var resultTask = reader.Observe(idRange.End - 1, cts.Token).SuppressCancellation().ToListAsync();
             _ = BackgroundTask.Run(() => CreateChatEntries(
                     tester.AppServices.GetRequiredService<IChats>(), session, TestChatId,
                     (int)Constants.Chat.ReaderIdTileStack.MinTileSize));
@@ -269,7 +269,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         { // Test 1
             using var cts = new CancellationTokenSource(2000);
             var idRange = await idRangeTask;
-            var resultTask = reader.Observe(idRange.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
+            var resultTask = reader.Observe(idRange.End - 1, cts.Token).SuppressCancellation().ToListAsync();
             _ = BackgroundTask.Run(() => CreateChatEntries(
                     chats, session, TestChatId,
                     (int)Constants.Chat.ReaderIdTileStack.MinTileSize));

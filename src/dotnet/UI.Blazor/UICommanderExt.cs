@@ -6,7 +6,7 @@ public static class UICommanderExt
 {
     public static Task RunNothing(this UICommander uiCommander)
     {
-        var command = new LocalActionCommand() { Handler = static _ => Task.CompletedTask };
+        var command = LocalCommand.New(static () => Task.CompletedTask);
         return uiCommander.Run(command, CancellationToken.None);
     }
 
@@ -25,13 +25,13 @@ public static class UICommanderExt
         Func<CancellationToken, Task> commandTaskFactory,
         CancellationToken cancellationToken)
     {
-        var command = new LocalActionCommand() { Handler = _ => commandTaskFactory.Invoke(cancellationToken) };
+        var command = LocalCommand.New(() => commandTaskFactory.Invoke(cancellationToken));
         return uiCommander.Run(command, CancellationToken.None);
     }
 
     public static void ShowError(this UICommander uiCommander, Exception error)
     {
-        var command = new LocalActionCommand() { Handler = _ => throw error };
+        var command = LocalCommand.New(() => throw error);
         _ = uiCommander.Run(command, CancellationToken.None);
     }
 }

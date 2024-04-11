@@ -105,7 +105,7 @@ public class StreamHub(IServiceProvider services) : Hub
                 Offset = TimeSpan.FromMilliseconds(i * Constants.Audio.OpusFrameDurationMs), // we support only 20-ms packets
                 Duration = Constants.Audio.OpusFrameDuration,
             })
-            .TrimOnCancellation(stopCts.Token);
+            .SuppressCancellation(stopCts.Token);
         var frameStream = RpcStream.New(frames);
         await Backend
             .ProcessAudio(audioRecord, preSkipFrames, frameStream, CancellationToken.None)

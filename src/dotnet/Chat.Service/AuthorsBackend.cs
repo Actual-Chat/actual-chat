@@ -102,7 +102,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (targetChatId.IsNone)
             return default!;
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var authorSids = await dbContext.Authors
@@ -133,7 +133,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (targetChatId.IsNone)
             return default!;
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var userIds = await dbContext.Authors
@@ -157,7 +157,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
-            var (invAuthor, invOldAuthor) = context.Operation().Items.GetOrDefault<(AuthorFull, AuthorFull?)>();
+            var (invAuthor, invOldAuthor) = context.Operation.Items.GetOrDefault<(AuthorFull, AuthorFull?)>();
             if (!invAuthor.Id.IsNone) {
                 _ = GetInternal(chatId, invAuthor.Id, default);
                 _ = GetByUserIdInternal(chatId, invAuthor.UserId, default);
@@ -174,7 +174,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             ? GetDefaultPeerChatAuthor(peerChatId, authorId, userId).RequireValid()
             : null;
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbAuthors = dbContext.Authors.ForUpdate().Include(a => a.Roles);
@@ -283,7 +283,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
         { // Nested to get a new var scope
             var author = dbAuthor.ToModel();
-            context.Operation().Items.Set((author, existingAuthor));
+            context.Operation.Items.Set((author, existingAuthor));
 
             if (existingAuthor == null) {
                 // Set chat read position to the very end
@@ -323,7 +323,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
-            var invAuthors = context.Operation().Items.GetOrDefault<AuthorFull[]>();
+            var invAuthors = context.Operation.Items.GetOrDefault<AuthorFull[]>();
             foreach (var invAuthor in invAuthors) {
                 _ = GetInternal(chatId, invAuthor.Id, default);
                 _ = GetByUserIdInternal(chatId, invAuthor.UserId, default);
@@ -333,7 +333,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             return;
         }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var authors = new List<AuthorFull>();
@@ -375,7 +375,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        context.Operation().Items.Set(authors.ToArray());
+        context.Operation.Items.Set(authors.ToArray());
     }
 
     // CommandHandler
@@ -384,10 +384,10 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         var (chatId, newChatId, rolesMap, correlationId) = command;
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
-            if (context.Operation().Items[typeof(List<UserId>)] is List<string> invAuthorUserSids)
+            if (context.Operation.Items[typeof(List<UserId>)] is List<string> invAuthorUserSids)
                 foreach (var invAuthorUserSid in invAuthorUserSids)
                     _ = GetByUserIdInternal(newChatId, new UserId(invAuthorUserSid), default);
-            if (context.Operation().Items[typeof(List<AuthorId>)] is List<string> invAuthorSids)
+            if (context.Operation.Items[typeof(List<AuthorId>)] is List<string> invAuthorSids)
                 foreach (var invAuthorSid in invAuthorSids)
                     _ = GetInternal(newChatId, new AuthorId(invAuthorSid), default);
             return default;
@@ -401,7 +401,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         var newAuthorIds = new List<AuthorId>();
         var newAuthorUserIds = new List<UserId>();
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         // Create place members and update chat authors.
@@ -491,8 +491,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         }
 
         Log.LogInformation("OnCopyChat({CorrelationId}) created {Count} authors", correlationId, createdAuthors);
-        context.Operation().Items[typeof(List<AuthorId>)] = newAuthorIds.ConvertAll(c => c.Value);
-        context.Operation().Items[typeof(List<UserId>)] = newAuthorUserIds.ConvertAll(c => c.Value);
+        context.Operation.Items[typeof(List<AuthorId>)] = newAuthorIds.ConvertAll(c => c.Value);
+        context.Operation.Items[typeof(List<UserId>)] = newAuthorUserIds.ConvertAll(c => c.Value);
         return hasChanges;
     }
 
@@ -522,7 +522,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
     private async Task<ImmutableList<AuthorFull>> ListAuthorsByAvatarId(UserId userId, Symbol avatarId, CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbAuthors = await dbContext.Authors
@@ -578,7 +578,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
         AuthorFull? author;
         { // Closes "using" block earlier
-            var dbContext = CreateDbContext();
+            var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
             await using var _ = dbContext.ConfigureAwait(false);
 
             var dbAuthor = await dbContext.Authors

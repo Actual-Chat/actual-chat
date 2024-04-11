@@ -3,7 +3,7 @@ namespace ActualChat;
 public static class OptionSetExt
 {
     public static T GetId<T>(this OptionSet optionSet, T @default = default!)
-        where T: ISymbolIdentifier<T>
+        where T: struct, ISymbolIdentifier<T>
     {
         var value = optionSet[typeof(T)];
         return value switch {
@@ -15,7 +15,7 @@ public static class OptionSetExt
     }
 
     public static OptionSet SetId<T>(this OptionSet optionSet, T value)
-        where T: ISymbolIdentifier<T>
+        where T: struct, ISymbolIdentifier<T>
     {
         optionSet.Set(value);
         return optionSet;

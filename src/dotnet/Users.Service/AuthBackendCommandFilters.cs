@@ -25,18 +25,18 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
         var context = CommandContext.GetCurrent();
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
-        var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
+        var sessionInfo = context.Operation.Items.Get<SessionInfo>(); // Set by default command handler
         if (sessionInfo == null)
             throw StandardError.Internal("No SessionInfo in operation's items.");
 
         var userId = new UserId(sessionInfo.UserId);
         if (Computed.IsInvalidating()) {
-            if (context.Operation().Items.Get<UserNameChangedTag>() != null)
+            if (context.Operation.Items.Get<UserNameChangedTag>() != null)
                 _ = AuthBackend.GetUser(default, userId, default);
             return;
         }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbUser = await DbUsers.Get(dbContext, userId, true, cancellationToken).ConfigureAwait(false);
@@ -46,7 +46,7 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
         // Let's try to fix auto-generated user name here
         var newName = UserNamer.NormalizeName(dbUser.Name);
         if (!OrdinalEquals(newName, dbUser.Name)) {
-            context.Operation().Items.Set(new UserNameChangedTag());
+            context.Operation.Items.Set(new UserNameChangedTag());
             dbUser.Name = newName;
         }
 
@@ -66,7 +66,7 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
         if (Computed.IsInvalidating())
             return;
 
-        var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
+        var sessionInfo = context.Operation.Items.Get<SessionInfo>(); // Set by default command handler
         if (sessionInfo == null)
             throw StandardError.Internal("No SessionInfo in operation's items.");
 
@@ -78,7 +78,7 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
         //     .EnqueueOnCompletion();
 
         // Raise events
-        var isNewUser = context.Operation().Items.GetOrDefault<bool>(); // Set by default command handler
+        var isNewUser = context.Operation.Items.GetOrDefault<bool>(); // Set by default command handler
         if (isNewUser)
             new NewUserEvent(userId)
                 .EnqueueOnCompletion();

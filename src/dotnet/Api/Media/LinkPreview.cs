@@ -10,7 +10,7 @@ namespace ActualChat.Media;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record LinkPreview : IHasId<Symbol>, IHasVersion<long>, IHasMetadata, IRequirementTarget
 {
-    private readonly NewtonsoftJsonSerialized<ImmutableOptionSet> _metadata =
+    private NewtonsoftJsonSerialized<ImmutableOptionSet> _metadata =
         NewtonsoftJsonSerialized.New(ImmutableOptionSet.Empty);
 
     public static readonly LinkPreview Updating = new();
@@ -28,16 +28,16 @@ public sealed partial record LinkPreview : IHasId<Symbol>, IHasVersion<long>, IH
     [DataMember, MemoryPackOrder(9)] public string MetadataJson {
 #pragma warning disable IL2026
         get => _metadata.Data;
+        init => _metadata = new() { Data = value };
 #pragma warning restore IL2026
-        init => _metadata.Data = value;
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ImmutableOptionSet Metadata {
 #pragma warning disable IL2026
         get => _metadata.Value;
+        set => _metadata = new () { Value = value };
 #pragma warning restore IL2026
-        set => _metadata.Value = value;
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

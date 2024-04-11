@@ -7,7 +7,7 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>System Test Page</MainHeader>
 
-<p>AgentId: <b>@(AgentInfo.Id)</b></p>
+<p>HostId: <b>@(HostId)</b></p>
 <p>App kind: <b>@(HostInfo.HostKind)</b></p>
 <p>Host roles: <b>@(HostInfo.Roles.ToDelimitedString())</b></p>
 
@@ -30,7 +30,7 @@
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private AgentInfo AgentInfo { get; init; } = null!;
+    [Inject] private HostId HostId { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private ComputedGraphPruner ComputedGraphPruner { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;

@@ -79,7 +79,7 @@ public class AppActivityTest: TestBase
         }, CancellationToken.None);
 
         var stateChangeCount = 0;
-        await foreach (var computed in appActivity.State.Computed.Changes(cts.Token).TrimOnCancellation(cts.Token)) {
+        await foreach (var computed in appActivity.State.Computed.Changes(cts.Token).SuppressCancellation(cts.Token)) {
             log.LogInformation("Computed background state = {State}", computed.Value);
             stateChangeCount++;
         }

@@ -25,16 +25,14 @@ public class LocalIdGeneratorTest(ChatCollection.AppHostFixture fixture, ITestOu
         var resultTasks = new List<Task<long>>();
         for (int i = 0; i < 200; i++) {
             var next1Task = BackgroundTask.Run(async () => {
-                var dbContext1 = hub1.CreateDbContext();
-                await using var __1 = dbContext1.ConfigureAwait(false);
+                await using var dbContext1 = await hub1.CreateDbContext();
                 return await idGenerator1.Next(dbContext1,
                     shardRef,
                     CancellationToken.None);
             });
             resultTasks.Add(next1Task);
             var next2Task = BackgroundTask.Run(async () => {
-                var dbContext2 = hub2.CreateDbContext();
-                await using var __2 = dbContext2.ConfigureAwait(false);
+                await using var dbContext2 = await hub2.CreateDbContext();
                 return await idGenerator2.Next(dbContext2,
                     shardRef,
                     CancellationToken.None);

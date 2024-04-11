@@ -118,18 +118,14 @@ public sealed class DbModule(IServiceProvider moduleServices)
             });
             */
             db.AddOperations(operations => {
-                operations.ConfigureOperationLogReader(_ => new() {
-                    UnconditionalCheckPeriod = TimeSpan.FromSeconds(HostInfo.IsDevelopmentInstance ? 60 : 5).ToRandom(0.1),
+                operations.ConfigureOperationLogProcessor(_ => new() {
+                    CheckPeriod = TimeSpan.FromSeconds(HostInfo.IsDevelopmentInstance ? 60 : 5).ToRandom(0.1),
                 });
-                operations.ConfigureOperationLogTrimmer(_ => new DbOperationLogTrimmer<TDbContext>.Options {
-                    MaxOperationAge = TimeSpan.FromMinutes(10),
+                operations.ConfigureOperationLogTrimmer(_ => new() {
+                    MaxEntryAge = TimeSpan.FromMinutes(10),
                 });
                 // operations.AddNpgsqlOperationLogChangeTracking();
-                operations.AddRedisOperationLogChangeTracking();
-
-                // override DbOperationLog for efficient trimming
-                services.RemoveAll(sd => sd.ServiceType == typeof(IDbOperationLog<TDbContext>));
-                services.TryAddSingleton<IDbOperationLog<TDbContext>, DbOperationLog<TDbContext>>();
+                operations.AddRedisOperationLogWatchers();
             });
 
             configure?.Invoke(db);

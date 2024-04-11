@@ -67,7 +67,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     // [ComputeMethod]
     public virtual async Task<UserId> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var sid = identity.Id.Value;
@@ -85,7 +85,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         int limit,
         CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbAccounts = await dbContext.Accounts
@@ -122,7 +122,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
     public async Task<AccountFull?> GetLastChanged(CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbAccount = await dbContext.Accounts
@@ -149,7 +149,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             return;
         }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var sid = account.Id;
@@ -185,7 +185,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         if (existingAccount is null)
             return;
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         await dbContext.UserPresences
@@ -239,7 +239,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         Log.LogInformation("-> OnCopyChat({CorrelationId}): copy chat '{ChatId}' to place '{PlaceId}'",
             correlationId, chatSid, placeId);
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var hasChanges = false;

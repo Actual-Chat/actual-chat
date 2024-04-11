@@ -55,7 +55,7 @@
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
             InitialValue = AccountUI.OwnAccount.Value,
-            UpdateDelayer = FixedDelayer.Instant,
+            UpdateDelayer = FixedDelayer.Zero,
             Category = GetStateCategory(),
         };
 

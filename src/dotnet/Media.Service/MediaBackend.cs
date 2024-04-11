@@ -28,7 +28,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         if (contentId.IsNullOrEmpty())
             return null;
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbMedia = await dbContext.Media
@@ -49,7 +49,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         }
 
         change.RequireValid();
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         if (change.IsCreate(out var media)) {
@@ -90,7 +90,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
 
         Log.LogInformation("-> OnCopyChat({CorrelationId})", correlationId);
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var sids = mediaIds.Select(c => c.Id.Value).ToList();

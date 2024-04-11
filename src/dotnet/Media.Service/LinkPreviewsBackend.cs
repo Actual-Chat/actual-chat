@@ -53,7 +53,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var wasChanged = context.Operation().Items.GetOrDefault(false);
+            var wasChanged = context.Operation.Items.GetOrDefault(false);
             if (wasChanged)
                 _ = GetFromDb(id, default);
             return default!;
@@ -92,7 +92,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
     private async Task<LinkPreview> RefreshUnsafe(Symbol id, string url, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbLinkPreview = await dbContext.LinkPreviews.AsNoTracking()
@@ -148,7 +148,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(true);
+        context.Operation.Items.Set(true);
         return dbLinkPreview.ToModel();
     }
 
@@ -212,7 +212,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
     [ComputeMethod]
     protected virtual async Task<LinkPreview?> GetFromDb(Symbol id, CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbLinkPreview = await dbContext.LinkPreviews

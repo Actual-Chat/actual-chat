@@ -127,7 +127,7 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
 
     private async Task EnsureNotesChatsExist(CancellationToken cancellationToken)
     {
-        var dbContext = DbHub.CreateDbContext();
+        var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
         // Get users who don't have Notes chat

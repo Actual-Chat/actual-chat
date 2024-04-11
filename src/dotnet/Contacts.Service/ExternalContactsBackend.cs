@@ -8,7 +8,7 @@ namespace ActualChat.Contacts;
 public class ExternalContactsBackend(
     IAccountsBackend accountsBackend,
     ContactLinker contactLinker,
-    AgentInfo agentInfo,
+    HostId hostId,
     ExternalContactHasher hasher,
     IServiceProvider services) : DbServiceBase<ContactsDbContext>(services),
     IExternalContactsBackend
@@ -20,7 +20,7 @@ public class ExternalContactsBackend(
         ownerId.Require();
         deviceId.Require();
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var idPrefix = ExternalContactId.Prefix(new UserDeviceId(ownerId, deviceId));
@@ -42,7 +42,7 @@ public class ExternalContactsBackend(
     {
         userDeviceId.Require();
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var idPrefix = ExternalContactId.Prefix(userDeviceId);
@@ -64,7 +64,7 @@ public class ExternalContactsBackend(
         if (account is null)
             return ApiSet<UserId>.Empty;
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var links = GetLinks().ToList();
@@ -103,7 +103,7 @@ public class ExternalContactsBackend(
             }
             // NOTE(DF): force sync after changes are committed
             var context = CommandContext.GetCurrent();
-            var isLocal = context.Operation().AgentId == agentInfo.Id;
+            var isLocal = context.Operation.HostId == hostId.Id;
             if (isLocal && command.Changes.Any(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Create))
                 contactLinker.Activate();
             return default!;
@@ -133,7 +133,7 @@ public class ExternalContactsBackend(
         id.Require();
         change.RequireValid();
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbExternalContact = await dbContext.ExternalContacts.ForUpdate()
@@ -184,7 +184,7 @@ public class ExternalContactsBackend(
         if (Computed.IsInvalidating())
             return; // we can skip invalidation for own contacts
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var idPrefix = ExternalContactId.Prefix(userId);

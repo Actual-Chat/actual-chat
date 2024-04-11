@@ -18,7 +18,7 @@ public partial class ChatsBackend
 
         if (Computed.IsInvalidating()) {
             _ = GetPublicChatIdsFor(placeId, default);
-            if (context.Operation().Items[typeof(ChatEntryId)] is string invLastEntrySid)
+            if (context.Operation.Items[typeof(ChatEntryId)] is string invLastEntrySid)
                 InvalidateTiles(newChatId, ChatEntryKind.Text, new ChatEntryId(invLastEntrySid).LocalId, ChangeKind.Create);
             return default!;
         }
@@ -37,7 +37,7 @@ public partial class ChatsBackend
         ChatCopyState chatCopyState;
 
         {
-            var dbContext = CreateDbContext(true);
+            var dbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
             dbContext.Database.SetCommandTimeout(commandTimeout);
             await using var __ = dbContext.ConfigureAwait(false);
 
@@ -91,7 +91,7 @@ public partial class ChatsBackend
             hasChanges |= hasChanges2;
         }
         {
-            var dbContext = CreateDbContext();
+            var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
             dbContext.Database.SetCommandTimeout(commandTimeout);
             migratedAuthors = await GetAuthorsMap(dbContext,
                     chatSid,
@@ -149,10 +149,10 @@ public partial class ChatsBackend
                 .ConfigureAwait(false);
         }
         if (!lastProcessedEntryId.IsNone) {
-            var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             dbContext.Database.SetCommandTimeout(commandTimeout);
             await using var __ = dbContext.ConfigureAwait(false);
-            context.Operation().Items[typeof(ChatEntryId)] = lastProcessedEntryId.Value;
+            context.Operation.Items[typeof(ChatEntryId)] = lastProcessedEntryId.Value;
         }
 
         Log.LogInformation("<- OnCopyChat({CorrelationId})", correlationId);
@@ -303,7 +303,7 @@ public partial class ChatsBackend
         Log.LogInformation("-> CopyChatEntries({CorrelationId}). EntryId range is [{Start},{End})",
             context.CorrelationId, entryIdRange.Start, entryIdRange.End);
 
-        var dbContext = CreateDbContext(true);
+        var dbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
         dbContext.Database.SetCommandTimeout(TimeSpan.FromSeconds(30));
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -803,7 +803,3 @@ public partial class ChatsBackend
 
     public sealed record CopyChatEntriesResult(long ProcessedChatEntriesCount, ChatEntryId LastEntryId, Range<long> AudioEntryId);
 }
-
-
-
-

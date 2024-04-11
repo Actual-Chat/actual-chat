@@ -1,7 +1,7 @@
 using System.ComponentModel;
-using ActualChat.Internal;
 using MemoryPack;
 using ActualLab.Fusion.Blazor;
+using ActualLab.Identifiers.Internal;
 
 namespace ActualChat;
 
@@ -89,7 +89,7 @@ public readonly partial struct PeerChatId : ISymbolIdentifier<PeerChatId>
         return -1;
     }
 
-    public bool HasUser(UserId userId) 
+    public bool HasUser(UserId userId)
         => IndexOf(userId) != -1;
 
     public PeerChatId FixOwnerId(UserId ownerId)
@@ -100,7 +100,7 @@ public readonly partial struct PeerChatId : ISymbolIdentifier<PeerChatId>
             return this;
         if (userId == ownerId)
             return None;
-        return new PeerChatId(ownerId, userId, ActualChat.ParseOrNone.Option);
+        return new PeerChatId(ownerId, userId, ActualLab.ParseOrNone.Option);
     }
 
     public bool HasSingleNonGuestUserId(out UserId userId)

@@ -68,7 +68,7 @@
     protected override ComputedState<AuthorRules>.Options GetStateOptions()
         => new() {
             InitialValue = AuthorRules.None(Chat.Id),
-            UpdateDelayer = FixedDelayer.Instant,
+            UpdateDelayer = FixedDelayer.Zero,
             Category = GetStateCategory(),
         };
 

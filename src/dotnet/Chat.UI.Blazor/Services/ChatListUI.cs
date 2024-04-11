@@ -54,7 +54,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     {
         _unreadChatCount = StateFactory.NewComputed(
             new ComputedState<Trimmed<int>>.Options() {
-                UpdateDelayer = FixedDelayer.Instant,
+                UpdateDelayer = FixedDelayer.Zero,
                 TryComputeSynchronously = false,
                 Category = StateCategories.Get(GetType(), nameof(UnreadChatCount)),
             },

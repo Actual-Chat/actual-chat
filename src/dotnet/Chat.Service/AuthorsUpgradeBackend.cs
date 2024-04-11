@@ -15,7 +15,7 @@ public class AuthorsUpgradeBackend(IServiceProvider services)
         if (userId.IsNone)
             return new List<ChatId>();
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var chatIds = await dbContext.Authors

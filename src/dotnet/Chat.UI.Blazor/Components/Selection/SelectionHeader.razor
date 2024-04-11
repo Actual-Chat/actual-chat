@@ -106,7 +106,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.None,
-            UpdateDelayer = FixedDelayer.Instant,
+            UpdateDelayer = FixedDelayer.Zero,
             Category = GetStateCategory(),
         };
 

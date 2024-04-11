@@ -14,7 +14,7 @@ public class ContactLinker(IAccountsBackend accountsBackend, IContactsBackend co
     protected override async Task<bool> OnActivate(CancellationToken cancellationToken)
     {
         using var _1 = Tracer.Default.Region();
-        var dbContext = DbHub.CreateDbContext(true);
+        var dbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var dbExternalContactLinks = await dbContext.ExternalContactLinks.ForUpdate()
             .Where(x => !x.IsChecked)

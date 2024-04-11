@@ -58,7 +58,7 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
 
         if (Computed.IsInvalidating()) {
             // TODO(AY): support UserId (any non-string/non-int) type for multi-instance deployment
-            var userId = context.Operation().Items.GetId<UserId>();
+            var userId = context.Operation.Items.GetId<UserId>();
             if (!userId.IsNone)
                 _ = AuthBackend.GetUser(default, userId, cancellationToken);
             return default;
@@ -74,7 +74,7 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
         var cmd = new AccountsBackend_Update(account, account.Version);
         await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
 
-        context.Operation().Items.SetId(account.Id);
+        context.Operation.Items.SetId(account.Id);
         return true;
     }
 

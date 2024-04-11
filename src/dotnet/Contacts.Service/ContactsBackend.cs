@@ -117,7 +117,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (ownerId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(ownerId));
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var idPrefix = ownerId.Value + ' ';
@@ -168,7 +168,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (ownerId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(ownerId));
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var idPrefix = ownerId.Value + ' ';
@@ -198,7 +198,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invIndex = context.Operation().Items.GetOrDefault(long.MinValue);
+            var invIndex = context.Operation.Items.GetOrDefault(long.MinValue);
             if (invIndex != long.MinValue) {
                 _ = Get(ownerId, id, default);
                 if (invIndex < 0 || invIndex > Constants.Contacts.MinLoadLimit)
@@ -212,7 +212,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         change.RequireValid();
         var oldContactIds = await ListIds(ownerId, placeId, cancellationToken).ConfigureAwait(false);
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbContact = await dbContext.Contacts.ForUpdate()
@@ -261,7 +261,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(change.Update.HasValue ? oldContactIds.IndexOf(id) : -1L);
+        context.Operation.Items.Set(change.Update.HasValue ? oldContactIds.IndexOf(id) : -1L);
         contact = dbContact.ToModel();
         return contact;
     }
@@ -276,7 +276,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invIndex = context.Operation().Items.GetOrDefault(long.MinValue);
+            var invIndex = context.Operation.Items.GetOrDefault(long.MinValue);
             if (invIndex != long.MinValue) {
                 _ = Get(ownerId, id, default);
                 // Contacts are sorted by TouchedAt and we load contacts in 2 stages: the 1st is limited by MinLoadLimit,
@@ -289,7 +289,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         var contactIds = await ListIds(ownerId, placeId, cancellationToken).ConfigureAwait(false);
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbContact = await dbContext.Contacts.ForUpdate()
@@ -306,7 +306,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         dbContact.UpdateFrom(contact);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set((long)contactIds.IndexOf(id));
+        context.Operation.Items.Set((long)contactIds.IndexOf(id));
     }
 
     // [CommandHandler]
@@ -318,7 +318,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         // var contactIds = await ListIds(userId, cancellationToken).ConfigureAwait(false);
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var idPrefix = userId.Value + ' ';
@@ -348,10 +348,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invPlaceId = context.Operation().Items.GetId<PlaceId>();
+            var invPlaceId = context.Operation.Items.GetId<PlaceId>();
             if (!invPlaceId.IsNone)
                 _ = PseudoPlaceContact(invPlaceId);
-            var invChatId = context.Operation().Items.GetId<ChatId>();
+            var invChatId = context.Operation.Items.GetId<ChatId>();
             if (!invChatId.IsNone)
                 _ = PseudoChatContact(invChatId);
             return;
@@ -360,7 +360,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (chatId.IsPlaceChat && chatId.PlaceChatId.IsRoot) {
             var placeId = chatId.PlaceId;
 
-            var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             await using var __ = dbContext.ConfigureAwait(false);
 
             await dbContext.PlaceContacts
@@ -369,10 +369,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 .ConfigureAwait(false);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation().Items.SetId(placeId);
+            context.Operation.Items.SetId(placeId);
         }
         else {
-            var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             await using var __ = dbContext.ConfigureAwait(false);
 
             await dbContext.Contacts
@@ -381,7 +381,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 .ConfigureAwait(false);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation().Items.SetId(chatId);
+            context.Operation.Items.SetId(chatId);
         }
     }
 
@@ -444,7 +444,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invOwnerId = context.Operation().Items.GetId<UserId>();
+            var invOwnerId = context.Operation.Items.GetId<UserId>();
             if (!invOwnerId.IsNone)
                 _ = ListPlaceIds(invOwnerId, default);
             return;
@@ -453,7 +453,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         ownerId.Require();
         placeId.Require();
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var id = DbPlaceContact.FormatId(ownerId, placeId);
@@ -475,7 +475,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.SetId(ownerId);
+        context.Operation.Items.SetId(ownerId);
     }
 
     // [CommandHandler]

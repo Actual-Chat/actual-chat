@@ -20,7 +20,7 @@ public sealed class BubbleUI : ScopedServiceBase<UIHub>, IHasAcceptor<BubbleHost
         _settings = StateFactory.NewKvasSynced<UserBubbleSettings>(
             new (AccountSettings, UserBubbleSettings.KvasKey) {
                 InitialValue = new UserBubbleSettings(),
-                UpdateDelayer = FixedDelayer.Instant,
+                UpdateDelayer = FixedDelayer.Zero,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
         Hub.RegisterDisposable(_settings);

@@ -83,7 +83,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (userId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(userId));
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbChat = await dbContext.Chats
@@ -96,7 +96,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [ComputeMethod]
     public virtual async Task<long?> GetMaxEntryVersion(ChatId chatId, CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var sid = chatId.Value;
@@ -108,7 +108,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [ComputeMethod]
     public virtual async Task<ApiArray<ChatId>> GetPublicChatIdsFor(PlaceId placeId, CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var idPrefix = PlaceChatId.IdPrefix + placeId.Value;
@@ -162,7 +162,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         bool includeRemoved,
         CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbChatEntries = dbContext.ChatEntries
@@ -190,7 +190,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         var minId = await GetMinId(chatId, entryKind, cancellationToken).ConfigureAwait(false);
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbChatEntries = dbContext.ChatEntries
@@ -233,7 +233,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
 
         // If we're here, it's the smallest tile & includeRemoved = true
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var idRange = idTile.Range;
@@ -323,7 +323,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (sourceChatId.IsNone)
             return ChatId.None;
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var chatCopyStates = await dbContext.ChatCopyStates
@@ -344,7 +344,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     [ComputeMethod]
     protected virtual async Task<ApiArray<TextEntryAttachment>> GetEntryAttachments(TextEntryId entryId, CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var idPrefix = DbTextEntryAttachment.IdPrefix(entryId);
@@ -397,7 +397,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         int limit,
         CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var dMinCreatedAt = minCreatedAt.ToDateTime(DateTime.MinValue, DateTime.MaxValue);
         var dbChats = await dbContext.Chats
@@ -428,7 +428,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         int limit,
         CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var dbChats = await dbContext.Chats
             .Where(x => x.Version >= minVersion
@@ -467,7 +467,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     // Not a [ComputeMethod]!
     public async Task<Chat?> GetLastChanged(CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbChat = await dbContext.Chats
@@ -486,7 +486,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         long minVersionExclusive,
         CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbChatEntries = await dbContext.ChatEntries.Where(x
@@ -508,7 +508,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         string text,
         CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbEntry = await dbContext.ChatEntries
@@ -528,7 +528,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invChat = context.Operation().Items.Get<Chat>();
+            var invChat = context.Operation.Items.Get<Chat>();
             if (invChat != null) {
                 _ = Get(invChat.Id, default);
                 if (invChat is { TemplateId: not null, TemplatedForUserId: not null })
@@ -540,7 +540,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
 
         change.RequireValid();
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbChat = chatId.IsNone ? null :
@@ -746,7 +746,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         chat = dbChat.Require().ToModel();
-        context.Operation().Items.Set(chat);
+        context.Operation.Items.Set(chat);
 
         // Raise events
         new ChatChangedEvent(chat, oldChat, change.Kind)
@@ -822,7 +822,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invChatEntry = context.Operation().Items.Get<ChatEntry>();
+            var invChatEntry = context.Operation.Items.Get<ChatEntry>();
             if (invChatEntry != null)
                 InvalidateTiles(chatId, entryKind, invChatEntry.LocalId, changeKind);
 
@@ -841,7 +841,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         change.RequireValid();
         ChatEntry entry;
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using (var __ = dbContext.ConfigureAwait(false)) {
             var dbEntry = chatEntryId.IsNone
                 ? null
@@ -899,7 +899,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             else
                 throw StandardError.Internal("Invalid ChatEntryDiff state.");
 
-            context.Operation().Items.Set(entry);
+            context.Operation.Items.Set(entry);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -1014,7 +1014,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return default!;
         }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbAttachments = new List<DbTextEntryAttachment>();
@@ -1046,7 +1046,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return; // It just spawns other commands, so nothing to do here
 
         var userId = command.UserId;
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var chatIdsToDelete = new List<string>();
@@ -1089,7 +1089,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invChats = context.Operation().Items.Get<Dictionary<string,long>>();
+            var invChats = context.Operation.Items.Get<Dictionary<string,long>>();
             if (invChats == null)
                 return;
 
@@ -1109,7 +1109,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var chatEntriesToInvalidate = new Dictionary<string, long>(StringComparer.Ordinal);
         var userId = command.UserId;
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var chatAuthors = await dbContext.Authors
@@ -1174,7 +1174,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .ConfigureAwait(false);
         }
 
-        context.Operation().Items.Set(chatEntriesToInvalidate);
+        context.Operation.Items.Set(chatEntriesToInvalidate);
     }
 
     public virtual async Task OnCreateNotesChat(ChatsBackend_CreateNotesChat command, CancellationToken cancellationToken)
@@ -1183,7 +1183,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return; // It just spawns other commands, so nothing to do here
 
         var userId = command.UserId;
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var hasNotesChat = await dbContext.Chats
@@ -1227,7 +1227,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         change.RequireValid();
         ChatCopyState chatCopyState;
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var dbChatCopyState = await dbContext.ChatCopyStates.ForUpdate()
             // ReSharper disable once AccessToModifiedClosure
@@ -1398,7 +1398,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         ChatEntryKind entryKind,
         CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         return await dbContext.ChatEntries

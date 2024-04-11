@@ -25,7 +25,8 @@ public abstract class DbInitializer<
 
     public new TDbContext CreateDbContext(bool readWrite = false)
     {
-        var dbContext = DbHub.CreateDbContext(readWrite);
+        var dbContext = DbHub.ContextFactory.CreateDbContext(default);
+        dbContext.ReadWrite(readWrite);
         ConfigureContext(dbContext);
         return dbContext;
     }

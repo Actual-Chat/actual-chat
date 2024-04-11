@@ -29,8 +29,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
 
         var dbHub = appHost.Services.GetRequiredService<DbHub<ChatDbContext>>();
 
-        var dbContext = dbHub.CreateDbContext(true);
-        await using var __ = dbContext.ConfigureAwait(false);
+        await using var dbContext = await dbHub.CreateDbContext(true);
         var q = dbContext.Database.SqlQuery<string>(FormattableStringFactory.Create("SHOW max_connections;"));
         var maxConnections = q.AsEnumerable().FirstOrDefault();
         logger.LogInformation("max_connections='{MaxConnections}'", maxConnections);
@@ -127,8 +126,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         Range<long> range,
         CancellationToken cancellationToken)
     {
-        var dbContext = dbHub.CreateDbContext();
-        await using var __ = dbContext.ConfigureAwait(false);
+        await using var dbContext = await dbHub.CreateDbContext(cancellationToken);
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         var dbEntries = await dbContext.ChatEntries
@@ -153,8 +151,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         TimeSpan delay,
         CancellationToken cancellationToken)
     {
-        var dbContext = dbHub.CreateDbContext(true);
-        await using var __ = dbContext.ConfigureAwait(false);
+        await using var dbContext = await dbHub.CreateDbContext(true, cancellationToken);
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         var dbEntry = await dbContext.ChatEntries
@@ -189,8 +186,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         long entry2LocalId,
         CancellationToken cancellationToken)
     {
-        var dbContext = dbHub.CreateDbContext(true);
-        await using var __ = dbContext.ConfigureAwait(false);
+        await using var dbContext = await dbHub.CreateDbContext(true, cancellationToken);
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         var entry1Id = new ChatEntryId(chatId, entryKind, entry1LocalId, AssumeValid.Option);

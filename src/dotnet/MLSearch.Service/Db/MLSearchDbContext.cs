@@ -7,8 +7,10 @@ namespace ActualChat.MLSearch.Db;
 
 public class MLSearchDbContext(DbContextOptions<MLSearchDbContext> options) : DbContextBase(options)
 {
-    // Stl.Fusion.EntityFramework tables
+    // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
+    public DbSet<DbOperationEvent> OperationEvents { get; protected set; } = null!;
+    public DbSet<DbOperationTimer> OperationTimers { get; protected set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder model)
         => model.ApplyConfigurationsFromAssembly(typeof(MLSearchDbContext).Assembly).UseSnakeCaseNaming();

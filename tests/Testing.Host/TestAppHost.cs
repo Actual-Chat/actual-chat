@@ -17,7 +17,8 @@ public class TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor ou
     protected override void Dispose(bool disposing)
     {
         if (disposing) {
-            DisposeDbOperationCompletionNotifiers();
+            // NOTE(AY): These types were heavily rewritten, so let's try to disable this for now.
+            // DisposeDbOperationCompletionNotifiers();
             _ = Services.Queues().Purge();
         }
         base.Dispose(disposing);
@@ -49,7 +50,7 @@ public class TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor ou
         }
 
         foreach (var listener in completionListeners) {
-            if (!IsGenericTypeImplementation(listener, typeof(DbOperationCompletionNotifierBase<,>)))
+            if (!IsGenericTypeImplementation(listener, typeof(DbOperationCompletionListener<>)))
                 continue;
             if (listener is IAsyncDisposable asyncDisposable)
                 _ = asyncDisposable.DisposeAsync();

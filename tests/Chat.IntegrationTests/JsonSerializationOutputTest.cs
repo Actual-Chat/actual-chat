@@ -19,8 +19,9 @@ public class JsonSerializationOutputTest(ITestOutputHelper @out) : TestBase(@out
     [Fact]
     public void SerializeOperation()
     {
-        var command = NewtonsoftJsonSerialized.New(default(ICommand));
-        command.Value = new ChatsBackend_ChangeEntry(ChatEntryId.None, null, Change.Create(new ChatEntryDiff()));
+        var command = new NewtonsoftJsonSerialized<ICommand>() {
+            Value = new ChatsBackend_ChangeEntry(ChatEntryId.None, null, Change.Create(new ChatEntryDiff())),
+        };
         var data = command.Data;
         data.Should().NotContain("Attachments");
     }
@@ -75,11 +76,10 @@ public class JsonSerializationOutputTest(ITestOutputHelper @out) : TestBase(@out
                           }
                           """;
 
-
-        var command = NewtonsoftJsonSerialized.New(default(ICommand));
-        command.Data = op;
-        var val = command.Value as ICommand;
-        val.Should().NotBeNull();
+        var command = new NewtonsoftJsonSerialized<ICommand>() {
+            Data = op,
+        };
+        command.Value.Should().NotBeNull();
     }
 
     private void Dump<T>(T instance)

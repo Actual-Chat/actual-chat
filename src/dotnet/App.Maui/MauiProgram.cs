@@ -18,6 +18,7 @@ using Sentry;
 using Sentry.Maui.Internal;
 using Serilog;
 using ActualLab.CommandR.Rpc;
+using ActualLab.Rpc;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 #if IOS
 using Foundation;
@@ -41,8 +42,9 @@ public static partial class MauiProgram
     {
         using var _1 = Tracer.Region();
 
+        RpcSettings.Mode = RpcMode.Client;
         FusionSettings.Mode = FusionMode.Client;
-        RpcOutboundCommandCallMiddleware.DefaultCallTimeout = TimeSpan.FromSeconds(20);
+        RpcOutboundCommandCallMiddleware.Default.CallTimeout = TimeSpan.FromSeconds(20);
 
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();

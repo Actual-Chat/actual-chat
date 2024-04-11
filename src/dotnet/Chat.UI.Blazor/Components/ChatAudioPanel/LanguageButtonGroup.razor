@@ -41,7 +41,7 @@
 
     protected override ComputedState<(List<Language>?, Language)>.Options GetStateOptions()
         => new() {
-            UpdateDelayer = FixedDelayer.Instant,
+            UpdateDelayer = FixedDelayer.Zero,
             Category = GetStateCategory(),
         };
 

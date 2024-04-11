@@ -54,8 +54,8 @@ public class Notifications(IServiceProvider services) : DbServiceBase<Notificati
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var device = context.Operation().Items.Get<DbDevice>();
-            var isNew = context.Operation().Items.GetOrDefault(false);
+            var device = context.Operation.Items.Get<DbDevice>();
+            var isNew = context.Operation.Items.GetOrDefault(false);
             if (isNew && device != null)
                 _ = Backend.ListDevices(new UserId(device.UserId), default);
             return;
@@ -64,7 +64,7 @@ public class Notifications(IServiceProvider services) : DbServiceBase<Notificati
         var (session, deviceId, deviceType) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var existingDbDevice = await dbContext.Devices.ForUpdate()
             .FirstOrDefaultAsync(d => d.Id == deviceId.Value, cancellationToken)
@@ -85,8 +85,8 @@ public class Notifications(IServiceProvider services) : DbServiceBase<Notificati
             dbDevice.AccessedAt = Clocks.SystemClock.Now;
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(dbDevice);
-        context.Operation().Items.Set(existingDbDevice == null);
+        context.Operation.Items.Set(dbDevice);
+        context.Operation.Items.Set(existingDbDevice == null);
     }
 
     // Private methods

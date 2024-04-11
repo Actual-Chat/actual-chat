@@ -25,7 +25,7 @@ public class ServerKvasBackend(IServiceProvider services) : DbServiceBase<UsersD
         if (prefix.IsNullOrEmpty())
             return new ApiList<(string Key, byte[] Value)>();
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbKvasEntryList = await dbContext.KvasEntries
@@ -51,7 +51,7 @@ public class ServerKvasBackend(IServiceProvider services) : DbServiceBase<UsersD
             return;
         }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var keys = command.Items.Select(i => prefix + i.Key).ToHashSet(StringComparer.Ordinal);

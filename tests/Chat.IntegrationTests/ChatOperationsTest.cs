@@ -160,8 +160,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         // assert
         await TestExt.WhenMetAsync(async () => {
             var dbHub = services.DbHub<ChatDbContext>();
-            var dbContext = dbHub.CreateDbContext();
-            await using var __ = dbContext.ConfigureAwait(false);
+            await using var dbContext = await dbHub.CreateDbContext();
             var dbChat = await dbContext.Chats
                 .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
                 .Where(x => x.a.UserId == account.Id && x.c.SystemTag == Constants.Chat.SystemTags.Notes.Value)

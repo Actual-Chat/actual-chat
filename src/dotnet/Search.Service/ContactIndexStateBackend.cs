@@ -29,7 +29,7 @@ public class ContactIndexStateBackend(IServiceProvider services) : DbServiceBase
             return default!;
         }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var sid = id.Value;

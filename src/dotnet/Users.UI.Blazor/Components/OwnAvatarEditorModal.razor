@@ -136,9 +136,7 @@
         var (avatarId, chatId, _) = ModalModel;
         var avatar = await Avatars.GetOwn(Session, avatarId, default);
         if (avatar == null) {
-            _ = UICommander.Run(new LocalActionCommand() {
-                Handler = _ => throw StandardError.NotFound<Avatar>(),
-            });
+            _ = UICommander.Run(LocalCommand.New(static () => throw StandardError.NotFound<Avatar>()));
             return;
         }
         avatar = avatar.WithPicture(_form.Picture) with {

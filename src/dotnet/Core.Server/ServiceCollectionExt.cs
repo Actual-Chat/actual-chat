@@ -128,40 +128,4 @@ public static class ServiceCollectionExt
         services.AddSingleton(optionsBuilder ?? (static _ => new NatsQueues.Options()));
         return services;
     }
-
-    // EntityResolver
-
-    public static IServiceCollection OverrideEntityResolver(this IServiceCollection services)
-    {
-        var serviceResolverDescriptors = services
-            .Where(sd => sd.ServiceType.IsGenericType && sd.ServiceType.GetGenericTypeDefinition() == typeof(IDbEntityResolver<,>))
-            .ToList();
-        foreach (var serviceDescriptor in serviceResolverDescriptors) {
-            var existingFactory = serviceDescriptor.ImplementationFactory;
-            if (existingFactory == null)
-                continue;
-
-            var implementationType = ServiceDescriptorGetImplementationType(serviceDescriptor);
-            if (implementationType == null)
-                continue;
-
-            if (!implementationType.IsGenericType)
-                continue;
-
-            if (implementationType.GetGenericTypeDefinition() != typeof(IDbEntityResolver<,>))
-                continue;
-
-            var genericArgs = existingFactory.Method.DeclaringType!.GetGenericArguments();
-            var overriddenResolver = typeof(EntityFramework.DbEntityResolver<,,>).MakeGenericType(genericArgs);
-            var optionsType = typeof(DbEntityResolver<,,>.Options).MakeGenericType(genericArgs);
-            var ctor = overriddenResolver.GetConstructor([optionsType, typeof(IServiceProvider)]);
-
-            ServiceDescriptorImplementationFactory(serviceDescriptor) = (Func<IServiceProvider, object>)Factory;
-            continue;
-
-            object Factory(IServiceProvider c)
-                => ctor!.Invoke([c.GetRequiredService(optionsType), c]);
-        }
-        return services;
-    }
 }

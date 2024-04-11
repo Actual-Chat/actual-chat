@@ -35,7 +35,7 @@ public class InvitesBackend(IServiceProvider services)
     {
         await PseudoGetAll(searchKey).ConfigureAwait(false);
 
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbInvites = await dbContext.Invites
@@ -61,7 +61,7 @@ public class InvitesBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invInvite = context.Operation().Items.Get<Invite>();
+            var invInvite = context.Operation.Items.Get<Invite>();
             if (invInvite != null) {
                 _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
                 _ = Get(invInvite.Id, default);
@@ -69,7 +69,7 @@ public class InvitesBackend(IServiceProvider services)
             return default!;
         }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var expiresOn = command.Invite.ExpiresOn;
@@ -84,7 +84,7 @@ public class InvitesBackend(IServiceProvider services)
         dbContext.Invites.Add(new DbInvite(invite));
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(invite);
+        context.Operation.Items.Set(invite);
         return invite;
     }
 
@@ -96,12 +96,12 @@ public class InvitesBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invInvite = context.Operation().Items.Get<Invite>();
+            var invInvite = context.Operation.Items.Get<Invite>();
             if (invInvite != null) {
                 _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
                 _ = Get(invInvite.Id, default);
             }
-            var invActivationKey = context.Operation().Items.Get<string>();
+            var invActivationKey = context.Operation.Items.Get<string>();
             if (invActivationKey != null)
                 _ = IsValid(invActivationKey, default);
             return default!;
@@ -110,7 +110,7 @@ public class InvitesBackend(IServiceProvider services)
         var session = command.Session;
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbInvite = await dbContext.Invites
@@ -158,7 +158,7 @@ public class InvitesBackend(IServiceProvider services)
         dbInvite.UpdateFrom(invite);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(invite);
+        context.Operation.Items.Set(invite);
         return invite;
 
         async Task OnUseForChat(ChatId chatId)
@@ -167,7 +167,7 @@ public class InvitesBackend(IServiceProvider services)
 
             var dbActivationKey = new DbActivationKey(invite.Id);
             dbContext.Add(dbActivationKey);
-            context.Operation().Items.Set(dbActivationKey.Id);
+            context.Operation.Items.Set(dbActivationKey.Id);
 
             var accountSettings = new AccountSettings(ServerKvas, session);
             await accountSettings
@@ -184,7 +184,7 @@ public class InvitesBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invInvite = context.Operation().Items.Get<Invite>();
+            var invInvite = context.Operation.Items.Get<Invite>();
             if (invInvite != null) {
                 _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
                 _ = Get(invInvite.Id, default);
@@ -192,7 +192,7 @@ public class InvitesBackend(IServiceProvider services)
             return;
         }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbInvite = await dbContext.Invites
@@ -205,7 +205,7 @@ public class InvitesBackend(IServiceProvider services)
         dbInvite.UpdateFrom(invite);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(invite);
+        context.Operation.Items.Set(invite);
     }
 
     [ComputeMethod]

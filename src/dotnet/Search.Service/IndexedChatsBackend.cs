@@ -14,7 +14,7 @@ public class IndexedChatsBackend(IServiceProvider services) : DbServiceBase<Sear
     // [ComputeMethod]
     public virtual async Task<IndexedChat?> GetLast(CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbIndexedChat = await dbContext.IndexedChats
@@ -39,7 +39,7 @@ public class IndexedChatsBackend(IServiceProvider services) : DbServiceBase<Sear
         int limit,
         CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var dMinCreatedAt = minCreatedAt.ToDateTime(DateTime.MinValue, DateTime.MaxValue);
 
@@ -78,7 +78,7 @@ public class IndexedChatsBackend(IServiceProvider services) : DbServiceBase<Sear
             return default;
         }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var sidsUpdatedAndRemoved = changes.Where(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Remove)

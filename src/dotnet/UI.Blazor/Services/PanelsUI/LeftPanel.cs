@@ -28,7 +28,7 @@ public class LeftPanel : IDisposable
         _isVisible = stateFactory.NewMutable(true, StateCategories.Get(GetType(), nameof(IsVisible)));
         _canBeHidden = stateFactory.NewComputed(
             new ComputedState<bool>.Options() {
-                UpdateDelayer = FixedDelayer.Instant,
+                UpdateDelayer = FixedDelayer.Zero,
                 Category = StateCategories.Get(GetType(), nameof(CanBeHidden)),
             },
             ComputeCanBeHidden);

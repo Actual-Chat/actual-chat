@@ -89,7 +89,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.NotPlaying,
-            UpdateDelayer = FixedDelayer.Instant,
+            UpdateDelayer = FixedDelayer.MinDelay,
             Category = GetStateCategory(),
         };
 

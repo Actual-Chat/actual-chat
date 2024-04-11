@@ -96,6 +96,7 @@ public static class AsyncEnumerableExt
         if (whileTask.IsCompleted)
             yield break;
 
+        // ReSharper disable once NotDisposedResource
         var enumerator = source.GetAsyncEnumerator(cancellationToken);
         await using var _ = enumerator.ConfigureAwait(false);
 
@@ -672,7 +673,7 @@ public static class AsyncEnumerableExt
 
     public static IAsyncEnumerable<T> TrimOnCancellation<T>(this IAsyncEnumerable<T> source,
         CancellationToken cancellationToken = default)
-        => source.TrimOnCancellation(1, cancellationToken);
+        => source.SuppressCancellation(1, cancellationToken);
 
     public static IAsyncEnumerable<T> TrimOnCancellation<T>(this IAsyncEnumerable<T> source,
         int bufferSize,

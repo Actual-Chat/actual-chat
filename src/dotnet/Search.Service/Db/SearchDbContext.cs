@@ -9,8 +9,11 @@ public class SearchDbContext(DbContextOptions<SearchDbContext> options) : DbCont
 {
     public DbSet<DbIndexedChat> IndexedChats { get; protected set; } = null!;
     public DbSet<DbContactIndexState> ContactIndexStates { get; protected set; } = null!;
-    // Stl.Fusion.EntityFramework tables
+
+    // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
+    public DbSet<DbOperationEvent> OperationEvents { get; protected set; } = null!;
+    public DbSet<DbOperationTimer> OperationTimers { get; protected set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder model)
         => model.ApplyConfigurationsFromAssembly(typeof(SearchDbContext).Assembly).UseSnakeCaseNaming();
