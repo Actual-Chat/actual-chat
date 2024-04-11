@@ -125,6 +125,7 @@
     <TrimmableAssembly Include="System.Private.Xml" />
     <TrimmableAssembly Include="System.Reactive" />
     <TrimmableAssembly Include="System.Xml" />
+    <TrimmableAssembly Include="TimeZoneNames" />
     <TrimmableAssembly Include="ZString" />
   </ItemGroup>
 
