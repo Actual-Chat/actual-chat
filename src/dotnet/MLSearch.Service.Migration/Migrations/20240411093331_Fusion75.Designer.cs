@@ -3,6 +3,7 @@ using System;
 using ActualChat.MLSearch.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.MLSearch.Migrations
 {
     [DbContext(typeof(MLSearchDbContext))]
-    partial class MLSearchDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240411093331_Fusion75")]
+    partial class Fusion75
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

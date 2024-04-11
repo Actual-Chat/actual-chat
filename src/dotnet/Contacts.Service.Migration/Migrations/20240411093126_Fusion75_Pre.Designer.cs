@@ -3,6 +3,7 @@ using System;
 using ActualChat.Contacts.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Contacts.Migrations
 {
     [DbContext(typeof(ContactsDbContext))]
-    partial class ContactsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240411093126_Fusion75_Pre")]
+    partial class Fusion75_Pre
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -211,141 +214,6 @@ namespace ActualChat.Contacts.Migrations
                         .HasDatabaseName("ix_place_contacts_owner_id");
 
                     b.ToTable("place_contacts");
-                });
-
-            modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbOperation", b =>
-                {
-                    b.Property<long>("Index")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("index");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Index"));
-
-                    b.Property<string>("CommandJson")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("command_json");
-
-                    b.Property<string>("HostId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("host_id");
-
-                    b.Property<string>("ItemsJson")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("items_json");
-
-                    b.Property<DateTime>("LoggedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("logged_at");
-
-                    b.Property<string>("NestedOperations")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("nested_operations");
-
-                    b.Property<string>("Uuid")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("uuid");
-
-                    b.HasKey("Index")
-                        .HasName("pk_operations");
-
-                    b.HasIndex("LoggedAt")
-                        .HasDatabaseName("ix_operations_logged_at");
-
-                    b.HasIndex("Uuid")
-                        .IsUnique()
-                        .HasDatabaseName("ix_operations_uuid");
-
-                    b.ToTable("_operations");
-                });
-
-            modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbOperationEvent", b =>
-                {
-                    b.Property<long>("Index")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("index");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Index"));
-
-                    b.Property<DateTime>("LoggedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("logged_at");
-
-                    b.Property<int>("State")
-                        .HasColumnType("integer")
-                        .HasColumnName("state");
-
-                    b.Property<string>("Uuid")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("uuid");
-
-                    b.Property<string>("ValueJson")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("value_json");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Index")
-                        .HasName("pk_events");
-
-                    b.HasIndex("LoggedAt")
-                        .HasDatabaseName("ix_events_logged_at");
-
-                    b.HasIndex("Uuid")
-                        .IsUnique()
-                        .HasDatabaseName("ix_events_uuid");
-
-                    b.HasIndex("State", "LoggedAt")
-                        .HasDatabaseName("ix_events_state_logged_at");
-
-                    b.ToTable("_events");
-                });
-
-            modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbOperationTimer", b =>
-                {
-                    b.Property<string>("Uuid")
-                        .HasColumnType("text")
-                        .HasColumnName("uuid");
-
-                    b.Property<DateTime>("FiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("fires_at");
-
-                    b.Property<int>("State")
-                        .HasColumnType("integer")
-                        .HasColumnName("state");
-
-                    b.Property<string>("ValueJson")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("value_json");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Uuid")
-                        .HasName("pk_timers");
-
-                    b.HasIndex("FiresAt")
-                        .HasDatabaseName("ix_timers_fires_at");
-
-                    b.HasIndex("State", "FiresAt")
-                        .HasDatabaseName("ix_timers_state_fires_at");
-
-                    b.ToTable("_timers");
                 });
 
             modelBuilder.Entity("ActualChat.Contacts.Db.DbExternalContactLink", b =>
