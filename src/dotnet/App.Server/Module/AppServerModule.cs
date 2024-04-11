@@ -240,7 +240,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         services.AddSingleton<OtelMetrics>();
         var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;
         if (openTelemetryEndpoint.IsNullOrEmpty())
-            return;
+            openTelemetryEndpoint = "localhost";
 
         var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
         var openTelemetryEndpointUri = $"http://{host}:{port.Format()}".ToUri();
