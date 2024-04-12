@@ -263,6 +263,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddPrometheusExporter(cfg => { // OtlpExporter doesn't work for metrics ???
                     cfg.ScrapeEndpointPath = "/metrics";
                     cfg.ScrapeResponseCacheDurationMilliseconds = 300;
+                    cfg.DisableTotalNameSuffixForCounters = true;
                 })
                 .AddOtlpExporter(cfg => {
                     cfg.ExportProcessorType = ExportProcessorType.Batch;
