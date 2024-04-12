@@ -30,6 +30,10 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
+        // TODO(Frol): Please fix the bug in TrySync.
+        if (OSInfo.IsWebAssembly)
+            return Task.CompletedTask;
+
         var retryDelays = RetryDelaySeq.Exp(3, 600);
         return AsyncChain.From(TrySync)
             .Log(LogLevel.Debug, Log)
@@ -52,6 +56,9 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
                 await Task.WhenAny(whenSynced, whenSignedOut).ConfigureAwait(false);
                 if (whenSynced.IsCompletedSuccessfully)
                     return;
+
+                // NOTE(AY): This loop never ends in WASM & prob. some other scenarios.
+                // If it ends up here, more likely than not it will spin for indefinitely long time.
             }
             finally {
                 cts.CancelAndDisposeSilently();
