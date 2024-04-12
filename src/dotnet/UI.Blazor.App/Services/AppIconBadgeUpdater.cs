@@ -20,17 +20,22 @@ public class AppIconBadgeUpdater(ChatUIHub hub) : ScopedWorkerBase<ChatUIHub>(hu
         if (badge is null)
             return;
 
+        var lastUnreadCount = -1;
         var chatListUI = Hub.ChatListUI;
-        var cChatsCount0 = await Computed
+        var cUnreadCount0 = await Computed
             .Capture(() => chatListUI.UnreadChatCount.Use(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        var changes = cChatsCount0.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
-        await foreach (var cChatsCount in changes.ConfigureAwait(false)) {
-            if (cChatsCount.HasError)
+        var changes = cUnreadCount0.Changes(cancellationToken);
+        await foreach (var cUnreadCount in changes.ConfigureAwait(false)) {
+            if (cUnreadCount.HasError)
                 continue;
 
-            var chatsCount = cChatsCount.Value;
-            badge.SetUnreadChatCount(chatsCount.Value);
+            var unreadCount = cUnreadCount.Value.Value;
+            if (unreadCount == lastUnreadCount)
+                continue;
+
+            badge.SetUnreadChatCount(unreadCount);
+            lastUnreadCount = unreadCount;
         }
     }
 }
