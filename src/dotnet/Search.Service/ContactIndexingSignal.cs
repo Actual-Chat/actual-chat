@@ -13,10 +13,8 @@ public sealed class ContactIndexingSignal : IAsyncDisposable
     public ContactIndexingSignal(IServiceProvider services)
     {
         Settings = services.GetRequiredService<SearchSettings>();
-        _timers = new ConcurrentTimerSet<Moment>(ConcurrentTimerSetOptions.Default with {
-                Quanta = Settings.ContactIndexingSignalInterval,
-            },
-            OnTimer);
+        var tickSource = new TickSource(Settings.ContactIndexingSignalInterval);
+        _timers = new ConcurrentTimerSet<Moment>(new ConcurrentTimerSetOptions { TickSource = tickSource }, OnTimer);
         Clocks = services.Clocks();
         NeedsSync = services.StateFactory().NewMutable<bool>();
     }

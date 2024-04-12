@@ -75,7 +75,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         _navbarSettings = StateFactory.NewKvasSynced<UserNavbarSettings>(
             new (AccountSettings, UserNavbarSettings.KvasKey) {
                 InitialValue = new UserNavbarSettings(),
-                UpdateDelayer = FixedDelayer.MinDelay,
+                UpdateDelayer = FixedDelayer.NextTick,
                 Category = StateCategories.Get(GetType(), nameof(NavbarSettings)),
             });
         Hub.RegisterDisposable(_navbarSettings);

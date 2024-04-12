@@ -52,7 +52,7 @@
     protected override ComputedState<FailedRequirementSet>.Options GetStateOptions()
         => new() {
             InitialValue = FailedRequirementSet.Empty,
-            UpdateDelayer = FixedDelayer.MinDelay,
+            UpdateDelayer = FixedDelayer.NextTick,
             Category = GetStateCategory(),
         };
 

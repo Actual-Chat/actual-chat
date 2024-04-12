@@ -79,7 +79,7 @@
     protected override ComputedState<MentionSearchResult[]>.Options GetStateOptions()
         => new() {
             InitialValue = Array.Empty<MentionSearchResult>(),
-            UpdateDelayer = FixedDelayer.MinDelay,
+            UpdateDelayer = FixedDelayer.NextTick,
             Category = GetStateCategory(),
         };
 

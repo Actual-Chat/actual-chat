@@ -4,10 +4,10 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>7.5.26</ActualLabFusionVersion>
-    <AspNetCoreVersion>8.0.4</AspNetCoreVersion>
+    <ActualLabFusionVersion>7.5.28</ActualLabFusionVersion>
+    <AspNetCoreVersion>8.0.3</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
-    <EntityFrameworkCoreVersion>8.0.4</EntityFrameworkCoreVersion>
+    <EntityFrameworkCoreVersion>8.0.3</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>8.0.2</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreCheckConstraintsVersion>8.0.1</EntityFrameworkCoreCheckConstraintsVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>

@@ -23,7 +23,7 @@
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
             InitialValue = ComputedModel.None,
-            UpdateDelayer = FixedDelayer.MinDelay,
+            UpdateDelayer = FixedDelayer.NextTick,
             Category = GetStateCategory(),
         };
 

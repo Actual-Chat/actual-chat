@@ -10,7 +10,7 @@ public abstract class RequirementComponent : ComputedStateComponent<Unit>
 
     protected override ComputedState<Unit>.Options GetStateOptions()
         => new() {
-            UpdateDelayer = FixedDelayer.MinDelay,
+            UpdateDelayer = FixedDelayer.NextTick,
             Category = GetStateCategory(),
         };
 

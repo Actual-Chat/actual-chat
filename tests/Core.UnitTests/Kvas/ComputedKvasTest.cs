@@ -75,7 +75,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         var kvas = services.GetRequiredService<IKvas>();
         var stateFactory = services.StateFactory();
         var timeout = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 10 : 1);
-        var updateDelayer = FixedDelayer.MinDelay;
+        var updateDelayer = FixedDelayer.NextTick;
 
         // Instant set
 
@@ -111,7 +111,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         var services = CreateServices();
         var kvas = services.GetRequiredService<IKvas>();
         var stateFactory = services.StateFactory();
-        var updateDelayer = FixedDelayer.MinDelay;
+        var updateDelayer = FixedDelayer.NextTick;
         var timeout = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 10 : 1);
 
         // Instant set

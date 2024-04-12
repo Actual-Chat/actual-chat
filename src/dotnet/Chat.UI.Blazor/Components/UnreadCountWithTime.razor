@@ -1,5 +1,4 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.Notification
 @inherits FusionComponentBase
 @implements IDisposable
 @{
@@ -58,13 +57,13 @@
         _cancelRenderDelayCts = null;
 
         var now = Clock.Now;
-        var delay = _lastRenderTime + UpdateDelay - now;
-        if (delay <= FixedDelayer.Defaults.MinDelay)
+        var remainingDelay = _lastRenderTime + UpdateDelay - now;
+        if (remainingDelay <= TickSource.Default.Period)
             return true;
 
         _cancelRenderDelayCts = new CancellationTokenSource();
         var cancelDelayToken = _cancelRenderDelayCts.Token;
-        Clock.Delay(delay, cancelDelayToken).ContinueWith(_ => {
+        Clock.Delay(remainingDelay, cancelDelayToken).ContinueWith(_ => {
             if (cancelDelayToken.IsCancellationRequested)
                 return;
 

@@ -114,7 +114,7 @@ public partial class ChatAudioUI
             .ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
             var cRecordingState = await cRecordingStateBase
-                .When(x => !x.ChatId.IsNone, FixedDelayer.ZeroUnsafe, cancellationToken)
+                .When(x => !x.ChatId.IsNone, FixedDelayer.NoneUnsafe, cancellationToken)
                 .ConfigureAwait(false);
             await BackgroundTask.Run(
                 () => RecordChat(cRecordingState, cancellationToken),
@@ -135,7 +135,7 @@ public partial class ChatAudioUI
             .ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
             cRecordingState = await cRecordingState
-                .When(x => !x.ChatId.IsNone, FixedDelayer.ZeroUnsafe, cancellationToken)
+                .When(x => !x.ChatId.IsNone, FixedDelayer.NoneUnsafe, cancellationToken)
                 .ConfigureAwait(false);
             var chatId = cRecordingState.Value.ChatId;
             if (ChatPlayers.PlaybackState.Value is HistoricalPlaybackState historicalPlaybackState && historicalPlaybackState.ChatId != chatId)

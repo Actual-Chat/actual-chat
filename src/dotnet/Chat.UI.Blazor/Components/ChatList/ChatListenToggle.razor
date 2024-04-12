@@ -18,7 +18,7 @@
     protected override ComputedState<ChatAudioState>.Options GetStateOptions()
         => new() {
             InitialValue = ChatAudioState.None,
-            UpdateDelayer = FixedDelayer.MinDelay,
+            UpdateDelayer = FixedDelayer.NextTick,
             Category = GetStateCategory(),
         };
 

@@ -59,7 +59,7 @@ public sealed class AndroidAudioOutputController : ScopedServiceBase<UIHub>, IAu
                 ComputedOptions = new ComputedOptions() {
                     AutoInvalidationDelay = TimeSpan.FromSeconds(5),
                 },
-                UpdateDelayer = FixedDelayer.ZeroUnsafe,
+                UpdateDelayer = FixedDelayer.NextTick,
                 Category = StateCategories.Get(type, nameof(IsSpeakerphoneOn)),
             },
             (_, _) => Task.FromResult(IsSpeakerphoneActuallyOn(true)));

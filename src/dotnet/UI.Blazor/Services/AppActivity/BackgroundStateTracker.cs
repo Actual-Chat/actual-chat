@@ -13,7 +13,7 @@ public class WebBackgroundStateTracker : BackgroundStateTracker
         var browserInfo = services.GetRequiredService<BrowserInfo>();
         IsBackground = services.StateFactory().NewComputed(
             new ComputedState<bool>.Options() {
-                UpdateDelayer = FixedDelayer.MinDelay,
+                UpdateDelayer = FixedDelayer.NextTick,
                 TryComputeSynchronously = false,
                 Category = StateCategories.Get(GetType(), nameof(IsBackground)),
             },

@@ -16,7 +16,7 @@ public partial class AppActivity
         var cGetState = await Computed
             .Capture(() => ComputeState(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        var changes = cGetState.Changes(FixedDelayer.MinDelay, cancellationToken);
+        var changes = cGetState.Changes(cancellationToken);
         await foreach (var cState in changes.ConfigureAwait(false)) {
             var state = cState.Value;
             if (_state.Value == state)

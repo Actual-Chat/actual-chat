@@ -55,7 +55,7 @@ public abstract class ShardWorker : WorkerBase
         var addedShards = new List<int>();
         var removedShards = new List<int>();
         try {
-            var changes = MeshWatcher.State.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+            var changes = MeshWatcher.State.Changes(FixedDelayer.NoneUnsafe, cancellationToken);
             await foreach (var (state, error) in changes.ConfigureAwait(false)) {
                 if (error != null) {
                     if (error is ObjectDisposedException)
