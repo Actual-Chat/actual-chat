@@ -42,6 +42,7 @@ public sealed class ApiClientModule(IServiceProvider moduleServices)
         // Contacts
         fusion.AddClient<IContacts>();
         fusion.AddClient<IExternalContacts>();
+        fusion.AddClient<IExternalContactHashes>();
 
         // Feedback
         fusion.AddClient<IFeedbacks>();
