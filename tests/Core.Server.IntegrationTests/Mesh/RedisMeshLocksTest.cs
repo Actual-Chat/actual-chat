@@ -110,7 +110,9 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
             try {
                 await using (var h = await locks.Lock(key, "", lockOptions)) {
                     Out.WriteLine("Locked.");
-                    await ActualLab.Async.TaskExt.NeverEndingTask.WaitAsync(h.StopToken).SilentAwait();
+                    await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced()
+                        .WaitAsync(h.StopToken)
+                        .SilentAwait();
                 }
                 Out.WriteLine("Unlocked.");
             }

@@ -86,7 +86,9 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
         foreach (var processor in Processors.Values)
             processor.Start();
         try {
-            await ActualLab.Async.TaskExt.NeverEndingTask.WaitAsync(stopToken).ConfigureAwait(false);
+            await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced()
+                .WaitAsync(stopToken)
+                .ConfigureAwait(false);
         }
         finally {
             Log.LogInformation("Stopping queue processors...");

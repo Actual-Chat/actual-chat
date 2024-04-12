@@ -40,7 +40,7 @@ public class ShardWorkerTest(ITestOutputHelper @out)
         using var h = await NewAppHost();
         await using var w = new ShardWorker2(h.Services, Out, "w");
         w.Start();
-        await ActualLab.Async.TaskExt.NeverEndingTask;
+        await Task.Delay(TimeSpan.FromMinutes(5));
     }
 
     // Nested types
@@ -94,7 +94,9 @@ public class ShardWorkerTest(ITestOutputHelper @out)
         protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
         {
             Out.WriteLine($"-> OnRun({shardIndex} @ {ThisNode.Ref}-{name})");
-            await ActualLab.Async.TaskExt.NeverEndingTask.WaitAsync(cancellationToken).SilentAwait();
+            await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced()
+                .WaitAsync(cancellationToken)
+                .SilentAwait();
             Out.WriteLine($"<- OnRun({shardIndex} @ {ThisNode.Ref}-{name})");
         }
     }

@@ -173,7 +173,9 @@ public sealed class MeshWatcher : WorkerBase
                     whenLockedTcs.TrySetResult();
                     Log.LogInformation("[+] {MeshNode}", key);
                     using var lts = cancellationToken.LinkWith(holder.StopToken);
-                    await ActualLab.Async.TaskExt.NeverEndingTask.WaitAsync(lts.Token).ConfigureAwait(false);
+                    await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced()
+                        .WaitAsync(lts.Token)
+                        .ConfigureAwait(false);
                 }
                 catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                     // Intended: we keep the lock unless cancellationToken is cancelled
