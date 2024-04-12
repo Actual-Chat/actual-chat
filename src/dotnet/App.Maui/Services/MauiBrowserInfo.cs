@@ -20,6 +20,7 @@ public class MauiBrowserInfo : BrowserInfo
             || deviceIdiom == DeviceIdiom.Watch;
 
         UtcOffset = TimeZoneInfo.Local.BaseUtcOffset;
+        TimeZone = TimeZoneInfo.Local.Id;
         IsMobile = isMobile && !isWindowsOrMacOS;
         IsAndroid = appKind == AppKind.Android;
         IsIos = appKind == AppKind.Ios;

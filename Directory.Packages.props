@@ -22,7 +22,7 @@
     <OpenTelemetryAspNetCoreVersion>1.8.0</OpenTelemetryAspNetCoreVersion>
     <OpenTelemetryGrpcClientVersion>1.8.0-beta.1</OpenTelemetryGrpcClientVersion>
     <OpenTelemetryNpgsqlVersion>8.0.2</OpenTelemetryNpgsqlVersion>
-    <SentryVersion>3.40.1</SentryVersion>
+    <SentryVersion>4.3.0</SentryVersion>
     <MemoryPackVersion>1.10.0</MemoryPackVersion>
     <MessagePackVersion>2.4.59</MessagePackVersion>
   </PropertyGroup>
@@ -128,8 +128,8 @@
     <PackageVersion Include="Polly" Version="8.3.1" />
     <PackageVersion Include="Sentry" Version="$(SentryVersion)" />
     <PackageVersion Include="Sentry.Extensions.Logging" Version="$(SentryVersion)" />
-    <PackageVersion Include="Sentry.Serilog" Version="$(SentryVersion) " />
-    <PackageVersion Include="Sentry.OpenTelemetry" Version="3.39.1" />
+    <PackageVersion Include="Sentry.Serilog" Version="$(SentryVersion)" />
+    <PackageVersion Include="Sentry.OpenTelemetry" Version="$(SentryVersion)" />
     <PackageVersion Include="Serilog" Version="2.12.0" />
     <PackageVersion Include="Serilog.AspNetCore" Version="6.0.1" />
     <PackageVersion Include="Serilog.Extensions.Logging" Version="3.1.0" />
@@ -189,7 +189,7 @@
     <PackageVersion Include="OpenTelemetry" Version="$(OpenTelemetryVersion)" />
     <PackageVersion Include="OpenTelemetry.Api" Version="$(OpenTelemetryVersion)" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="$(OpenTelemetryVersion)" />
-    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.8.0-rc.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.7.0-rc.1" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="$(OpenTelemetryVersion)" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="$(OpenTelemetryAspNetCoreVersion)" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="$(OpenTelemetryAspNetCoreVersion)" />
