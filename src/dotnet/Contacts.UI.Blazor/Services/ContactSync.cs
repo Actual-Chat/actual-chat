@@ -30,11 +30,7 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
-        // TODO(Frol): Please fix the bug in TrySync.
-        if (OSInfo.IsWebAssembly)
-            return Task.CompletedTask;
-
-        var retryDelays = RetryDelaySeq.Exp(3, 600);
+        var retryDelays = RetryDelaySeq.Exp(30, 600);
         return AsyncChain.From(TrySync)
             .Log(LogLevel.Debug, Log)
             .RetryForever(retryDelays, Log)
@@ -47,22 +43,19 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
         if (deviceId.IsEmpty)
             return;
 
-        while (!cancellationToken.IsCancellationRequested) {
-            var cAccount = await WhenAuthenticated(cancellationToken).ConfigureAwait(false);
-            var cts = cancellationToken.CreateLinkedTokenSource();
-            try {
-                var whenSignedOut = cAccount.When(x => x.IsGuestOrNone || x.Id != cAccount.Value.Id, cts.Token);
-                var whenSynced = Sync(cAccount.Value, cts.Token);
-                await Task.WhenAny(whenSynced, whenSignedOut).ConfigureAwait(false);
-                if (whenSynced.IsCompletedSuccessfully)
-                    return;
+        var cAccount = await WhenAuthenticated(cancellationToken).ConfigureAwait(false);
+        var cts = cancellationToken.CreateLinkedTokenSource();
+        try {
+            var whenSignedOut = cAccount.When(x => x.IsGuestOrNone || x.Id != cAccount.Value.Id, cts.Token);
+            var whenSynced = Sync(cAccount.Value, cts.Token);
+            var completedTask = await Task.WhenAny(whenSynced, whenSignedOut).ConfigureAwait(false);
+            if (whenSynced.IsCompletedSuccessfully)
+                return;
 
-                // NOTE(AY): This loop never ends in WASM & prob. some other scenarios.
-                // If it ends up here, more likely than not it will spin for indefinitely long time.
-            }
-            finally {
-                cts.CancelAndDisposeSilently();
-            }
+            await completedTask.ConfigureAwait(false);
+        }
+        finally {
+            cts.CancelAndDisposeSilently();
         }
     }
 
