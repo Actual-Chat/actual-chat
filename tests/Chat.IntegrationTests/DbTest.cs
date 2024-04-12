@@ -154,8 +154,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         await using var dbContext = await dbHub.CreateDbContext(true, cancellationToken);
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
-        var dbEntry = await dbContext.ChatEntries
-            .ForUpdate()
+        var dbEntry = await dbContext.ChatEntries.ForUpdate()
             .Where(e => e.Id == entryId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -190,8 +189,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         var entry1Id = new ChatEntryId(chatId, entryKind, entry1LocalId, AssumeValid.Option);
-        var dbEntry1 = await dbContext.ChatEntries
-            .ForUpdate()
+        var dbEntry1 = await dbContext.ChatEntries.ForUpdate()
             .Where(e => e.Id == entry1Id)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -200,8 +198,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         await Task.Delay(1000, cancellationToken);
 
         var entry2Id = new ChatEntryId(chatId, entryKind, entry2LocalId, AssumeValid.Option);
-        var dbEntry2 = await dbContext.ChatEntries
-            .ForUpdate()
+        var dbEntry2 = await dbContext.ChatEntries.ForUpdate()
             .Where(e => e.Id == entry2Id)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);

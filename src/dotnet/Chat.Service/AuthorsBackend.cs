@@ -177,7 +177,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbAuthors = dbContext.Authors.ForUpdate().Include(a => a.Roles);
+        // Can't use .ForUpdate() here due to join
+        var dbAuthors = dbContext.Authors.Include(a => a.Roles);
         var dbAuthor = await (authorId.IsNone
             ? dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
             : dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.Id == authorId, cancellationToken)

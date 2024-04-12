@@ -136,7 +136,8 @@ public class ExternalContactsBackend(
         var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbExternalContact = await dbContext.ExternalContacts.ForUpdate()
+        // Can't use .ForUpdate() here due to join
+        var dbExternalContact = await dbContext.ExternalContacts
             .Include(x => x.ExternalContactLinks)
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
             .ConfigureAwait(false);
