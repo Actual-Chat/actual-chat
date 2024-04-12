@@ -19,6 +19,14 @@ Use:
     <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
   </PropertyGroup>
 
+  <!-- WASM Profiling -->
+  <!--
+  <PropertyGroup>
+    <WasmProfilers>browser;</WasmProfilers>
+    <WasmBuildNative>true</WasmBuildNative>
+  </PropertyGroup>
+  -->
+
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
