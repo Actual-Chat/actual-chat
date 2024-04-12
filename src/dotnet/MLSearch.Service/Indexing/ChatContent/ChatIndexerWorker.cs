@@ -22,21 +22,19 @@ internal sealed class ChatIndexerWorker(
         var cursor = await cursorStates.LoadAsync(chatId, cancellationToken).ConfigureAwait(false);
 
         var indexer = indexerFactory.Create();
-        await indexer.InitAsync(cancellationToken).ConfigureAwait(false);
+        await indexer.InitAsync(cursor, cancellationToken).ConfigureAwait(false);
 
         await foreach (var entry in GetUpdatedEntriesAsync(chatId, cursor, cancellationToken).ConfigureAwait(false)) {
-            var eventType = entry.IsRemoved ? ChatEventType.Remove
-                : entry.LocalId > cursor.LastEntryLocalId ? ChatEventType.New : ChatEventType.Update;
-            await indexer.ApplyAsync(new ChatEvent(eventType, entry), cancellationToken).ConfigureAwait(false);
+            await indexer.ApplyAsync(entry, cancellationToken).ConfigureAwait(false);
             if (++eventCount % batchSize == 0) {
-                cursor = await FlushAsync().ConfigureAwait(false);
+                await FlushAsync().ConfigureAwait(false);
             }
             if (eventCount==maxEventCount) {
                 break;
             }
         }
 
-        _ = await FlushAsync().ConfigureAwait(false);
+        await FlushAsync().ConfigureAwait(false);
 
         if (eventCount==maxEventCount) {
             await commander.Call(job, cancellationToken).ConfigureAwait(false);
@@ -45,12 +43,12 @@ internal sealed class ChatIndexerWorker(
             var completionNotification = new MLSearch_TriggerChatIndexingCompletion(job.Id);
             await commander.Call(completionNotification, cancellationToken).ConfigureAwait(false);
         }
+        return;
 
-        async Task<ChatEntryCursor> FlushAsync()
+        async Task FlushAsync()
         {
             var newCursor = await indexer.FlushAsync(cancellationToken).ConfigureAwait(false);
             await cursorStates.SaveAsync(chatId, newCursor, cancellationToken).ConfigureAwait(false);
-            return newCursor;
         }
     }
 
