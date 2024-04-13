@@ -481,29 +481,31 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     public async Task<ApiList<ChatEntry>> ListChangedEntries(
         ChatId chatId,
-        int limit,
-        long maxLocalIdExclusive,
+        long maxLocalIdInclusive,
         long minVersionExclusive,
+        int limit,
         CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbChatEntries = await dbContext.ChatEntries.Where(x
+        // TODO: This method on subsequent calls has risk to stuck or return duplicates
+        // in the case there are multiple entries with the same version.
+        return await dbContext.ChatEntries.Where(x
                 => x.ChatId == chatId.Value
                 && x.Kind == ChatEntryKind.Text
                 && x.Version > minVersionExclusive
-                && x.LocalId < maxLocalIdExclusive)
+                && x.LocalId <= maxLocalIdInclusive)
             .OrderBy(x => x.Version)
             .Take(limit)
-            .ToListAsync(cancellationToken)
+            .AsAsyncEnumerable()
+            .Select(x => x.ToModel())
+            .ToApiListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbChatEntries.Select(x => x.ToModel()).ToApiList();
     }
 
-    public async Task<ApiList<ChatEntry>> ListChangedEntries2(
+    public async Task<ApiList<ChatEntry>> ListNewEntries(
         ChatId chatId,
-        long minVersionExclusive,
         long minLocalIdExclusive,
         int limit,
         CancellationToken cancellationToken)
@@ -514,10 +516,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return await dbContext.ChatEntries.Where(x
                 => x.ChatId == chatId.Value
                 && x.Kind == ChatEntryKind.Text
-                && x.Version > minVersionExclusive
                 && x.LocalId > minLocalIdExclusive)
-            .OrderBy(x => x.Version)
-            .ThenBy(x => x.LocalId)
+            .OrderBy(x => x.LocalId)
             .Take(limit)
             .AsAsyncEnumerable()
             .Select(x => x.ToModel())

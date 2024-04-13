@@ -58,15 +58,31 @@ internal sealed class ChatIndexerWorker(
         bool continueProcessing;
         var (lastEntryVersion, lastEntryLocalId) = (cursor.LastEntryVersion, cursor.LastEntryLocalId);
         do {
-            var entries = await chats
-                .ListChangedEntries2(targetId, lastEntryVersion, lastEntryLocalId, batchSize, cancellationToken)
+            // We must read all updated entries with LocalId <= lastEntryLocalId
+            // before reading next batch. Otherwise, we risk to lose some updates.
+            bool continueReadUpdates;
+            do {
+                var updatedEntries = await chats
+                    .ListChangedEntries(targetId, lastEntryLocalId, lastEntryVersion, batchSize, cancellationToken)
+                    .ConfigureAwait(false);
+                foreach (var entry in updatedEntries) {
+                    lastEntryVersion = Math.Max(lastEntryVersion, entry.Version);
+                    yield return entry;
+                }
+                continueReadUpdates = updatedEntries.Count == batchSize;
+            }
+            while (continueReadUpdates);
+
+            // Now read next batch of entries in chat
+            var createdEntries = await chats
+                .ListNewEntries(targetId, lastEntryLocalId, batchSize, cancellationToken)
                 .ConfigureAwait(false);
-            foreach (var entry in entries) {
-                lastEntryVersion = entry.Version;
-                lastEntryLocalId = entry.LocalId;
+            foreach (var entry in createdEntries) {
+                lastEntryVersion = Math.Max(lastEntryVersion, entry.Version);
+                lastEntryLocalId = Math.Max(lastEntryLocalId, entry.LocalId);
                 yield return entry;
             }
-            continueProcessing = entries.Count == batchSize;
+            continueProcessing = createdEntries.Count == batchSize;
         }
         while (continueProcessing);
     }

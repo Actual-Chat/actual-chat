@@ -77,9 +77,9 @@ internal sealed class ChatHistoryExtractor (
 
         var changedEntries = await chats
             .ListChangedEntries(chatId,
-                EntryBatchSize,
                 cursor.LastEntryLocalId,
                 cursor.LastEntryVersion,
+                EntryBatchSize,
                 cancellationToken)
             .ConfigureAwait(false);
         updates.AddRange(
