@@ -80,6 +80,7 @@
 
   <!-- Project references -->
   <ItemGroup>
+    <ProjectReference Include="..\Core.NonWasm\Core.NonWasm.csproj" />
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
   </ItemGroup>
 

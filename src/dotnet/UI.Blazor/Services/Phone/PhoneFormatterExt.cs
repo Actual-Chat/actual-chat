@@ -1,5 +1,3 @@
-using PhoneNumbers;
-
 namespace ActualChat.UI.Blazor.Services;
 
 public static class PhoneFormatterExt
@@ -17,6 +15,9 @@ public static class PhoneFormatterExt
         const int areaCodeLength = 3;
         const int defaultGroupSize = 3;
         sb.Append(phoneCode.DisplayCode);
+        if (phone.Number.Length < areaCodeLength)
+            return sb.Append(phone.Number).ToStringAndRelease();
+
         sb.Append(" (")
             .Append(phone.Number.AsSpan(0, areaCodeLength))
             .Append(") ");
@@ -40,13 +41,5 @@ public static class PhoneFormatterExt
                 sb.Append(phone.Number.AsSpan(i, groupSize));
             }
         }
-    }
-
-    public static Phone FromReadable(string s)
-    {
-        var phoneNumberUtil = PhoneNumberUtil.GetInstance();
-        if (!phoneNumberUtil.TryParse(s, null, out var phoneNumber))
-            return Phone.None;
-        return phoneNumber.CreatePhone();
     }
 }

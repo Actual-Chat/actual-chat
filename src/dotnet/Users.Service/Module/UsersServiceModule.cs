@@ -147,6 +147,9 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         // Emails
         rpcHost.AddApi<IEmails, Emails>();
 
+        // Phones
+        rpcHost.AddApi<IPhones, Phones>();
+
         // TimeZones
         rpcHost.AddApi<ITimeZones, TimeZones>();
 

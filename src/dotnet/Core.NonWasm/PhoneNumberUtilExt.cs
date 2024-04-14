@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using PhoneNumbers;
 
-namespace ActualChat.UI.Blazor.Services;
+namespace ActualChat.Core.NonWasm;
 
 public static class PhoneNumberUtilExt
 {

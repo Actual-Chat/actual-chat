@@ -68,6 +68,7 @@ public sealed class ApiClientModule(IServiceProvider moduleServices)
         fusion.AddClient<IUserPresences>();
         fusion.AddClient<IChatPositions>();
         fusion.AddClient<IPhoneAuth>();
+        fusion.AddClient<IPhones>();
         fusion.AddClient<IEmails>();
         fusion.AddClient<ITimeZones>();
     }

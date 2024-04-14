@@ -1,7 +1,6 @@
 @page "/test/totp"
 @using ActualChat.Users
 @using System.ComponentModel.DataAnnotations
-@using ActualChat.UI.Blazor.Services
 @layout NoLayout
 
 <RequireAccount MustBeAdmin="true"/>
@@ -46,13 +45,17 @@
 @code {
     private readonly Model _model = new();
 
+    [Inject] private IPhones Phones { get; init; } = null!;
+
     private void OnVerified() {
         _model.IsVerified = true;
         _model.ShowVerifier = false;
     }
 
-    private void OnVerifyClick()
-        => _model.ShowVerifier = true;
+    private async Task OnVerifyClick() {
+        _model.ShowVerifier = true;
+        _model.Phone = await Phones.Parse(_model.ReadablePhone, CancellationToken.None);
+    }
 
     private void OnCancelClick() {
         _model.ShowVerifier = false;
@@ -60,9 +63,9 @@
     }
 
     public class Model {
-        [Required, PhoneNumber] public string ReadablePhone { get; set; } = "+1(234)-567-89-10";
+        [Required] public string ReadablePhone { get; set; } = "+1(234)-567-89-10";
         public bool IsVerified { get; set; }
         public bool ShowVerifier { get; set; }
-        public Phone Phone => PhoneFormatterExt.FromReadable(ReadablePhone);
+        public Phone Phone { get; set; }
     }
 }

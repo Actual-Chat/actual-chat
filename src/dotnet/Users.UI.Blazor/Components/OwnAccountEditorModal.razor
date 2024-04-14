@@ -3,8 +3,8 @@
 @{
     if (ReferenceEquals(_account, AccountFull.Loading) || _form == null!)
         return;
-
-    var phone = PhoneFormatterExt.FromReadable(_form.Phone);
+    // TODO(FC): show verify by sms on phone change
+    var phone = _form.ParsedPhone;
     var isPhoneVerified = _account.HasVerifiedPhone();
     var isEmailVerified = _account.HasVerifiedEmail();
     var isEmailEmpty = _form.Email.IsNullOrEmpty();
@@ -138,6 +138,7 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private IPhones Phones { get; init; } = null!;
     [Inject] private UIHub UIHub { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -150,18 +151,23 @@
         _form.LastName = _account.LastName;
         _form.Email = _account.Email.NullIfEmpty();
         _form.Phone = !_account.Phone.IsNone ? _account.Phone.ToReadable() : PhoneCodes.Default.DisplayCode;
+        _form.ParsedPhone = _account.Phone;
 
         _form.CopyToBase();
     }
 
     private async void OnSave() {
+        var phone = _form.ParsedPhone = await Phones.Parse(_form.Phone, CancellationToken.None);
+        if (!phone.IsValid)
+            return;
+
         var account = await UIHub.Accounts.GetOwn(Session, default);
         var updateAccountCommand = new Accounts_Update(
             Session,
             account with {
                 Name = _form.Name,
                 LastName = _form.LastName,
-                Phone = PhoneFormatterExt.FromReadable(_form.Phone),
+                Phone = phone,
             },
             account.Version);
         var (_, error) = await UIHub.UICommander().Run(updateAccountCommand);
@@ -195,7 +201,8 @@
         public string LastNameFieldId { get; set; } = "";
         [EmailAddress] public string? Email { get; set; }
         public string EmailFieldId { get; set; } = "";
-        [PhoneNumber] public string Phone { get; set; } = "";
+        public string Phone { get; set; } = "";
+        public Phone ParsedPhone { get; set; }
         public string PhoneFieldId { get; set; } = "";
     }
 

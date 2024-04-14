@@ -2,7 +2,6 @@
 @using ActualChat.UI.Blazor.Services
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Users
-@using TaskExt = ActualLab.Async.TaskExt
 @inherits Step;
 @if (CurrentStep != this) {
     return;
@@ -75,6 +74,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private IPhones Phones { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
@@ -105,15 +105,16 @@
             .ToList();
     }
 
-    protected override Task<bool> Validate() {
+    protected override async Task<bool> Validate() {
         var isValid = _formRef.EditContext?.Validate() ?? false;
-        return Task.FromResult(isValid);
+        var phone = await Phones.Parse(_stepModel.Phone, CancellationToken.None);
+        return isValid && phone.IsValid;
     }
 
-    protected override Task<bool> Save() {
-        var phone = PhoneFormatterExt.FromReadable(_stepModel.Phone);
+    protected override async Task<bool> Save() {
+        var phone = await Phones.Parse(_stepModel.Phone, CancellationToken.None);
         PhoneSignInModel.Phone = phone;
-        return TaskExt.TrueTask;
+        return phone.IsValid;
     }
 
     private void OnSignInWith(string schema) {
@@ -135,7 +136,7 @@
 
     public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
         : FormModel<StepModel>("phone-signin", componentIdGenerator) {
-        [Required, PhoneNumber] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
+        [Required] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
         public string PhoneFieldId { get; set; } = "";
     }
 }
