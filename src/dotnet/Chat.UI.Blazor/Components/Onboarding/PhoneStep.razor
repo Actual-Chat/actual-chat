@@ -56,6 +56,7 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IPhones Phones { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
@@ -91,9 +92,10 @@
             _model.Phone = account.Phone.ToReadable();
     }
 
-    protected override Task<bool> Validate() {
+    protected override async Task<bool> Validate() {
         var isValid = _formRef?.EditContext?.Validate() ?? false;
-        return Task.FromResult(isValid);
+        var phone = await Phones.Parse(_model.Phone, CancellationToken.None);
+        return isValid && phone.IsValid;
     }
 
     protected override ValueTask OnSkip() {
@@ -102,7 +104,7 @@
     }
 
     protected override async Task<bool> Save() {
-        var phone = PhoneFormatterExt.FromReadable(_model.Phone);
+        var phone = await Phones.Parse(_model.Phone, CancellationToken.None);
         var account = await Accounts.GetOwn(Session, default);
         var command = new Accounts_Update(Session, account with { Phone = phone }, account.Version);
         var (_, error) = await UICommander.Run(command);
@@ -124,6 +126,6 @@
     }
 
     public class Model {
-        [Required, PhoneNumber] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
+        [Required] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
     }
 }

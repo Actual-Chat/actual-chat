@@ -1,6 +1,6 @@
 ﻿using PhoneNumbers;
 
-namespace ActualChat.UI.Blazor.Services;
+namespace ActualChat.Core.NonWasm;
 
 public class PhoneNumberExtractor(string? defaultRegion)
 {
