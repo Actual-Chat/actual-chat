@@ -5,7 +5,7 @@
     var timeZoneChanged = !OrdinalEquals(_timeZoneFormModel.BrowserTimeZone, _timeZoneFormModel.SelectedTimeZone);
     var isEmailVerified = _account.HasVerifiedEmail();
     var isEmailEmpty = _emailFormModel.Email.IsNullOrEmpty();
-    var isEmailValid = _emailFormEditContext.IsValid(() => _emailFormModel.Email ?? "");
+    var isEmailValid = _emailFormEditContext.IsValid(() => _emailFormModel.Email!);
 }
 
 <TileTopic Topic="Email"/>
@@ -96,11 +96,12 @@
 
         var timeZones = TZNames.GetDisplayNames("en-US", useIanaZoneIds: true);
         _timeZones = timeZones.ToDictionary(x => x.Key, x => x.Value);
-        var currentTimeZone = Hub.BrowserInfo.TimeZone;
+        var browserTimeZone = Hub.BrowserInfo.TimeZone;
+        var browserTimeZoneName = _timeZones.GetValueOrDefault(browserTimeZone, "N/A");
         _timeZoneFormModel = new TimeZoneFormModel(ComponentIdGenerator) {
             SelectedTimeZone = _account.TimeZone,
-            BrowserTimeZone = currentTimeZone,
-            BrowserTimeZoneName = _timeZones.GetValueOrDefault(currentTimeZone, "N/A"),
+            BrowserTimeZone = browserTimeZone,
+            BrowserTimeZoneName = browserTimeZoneName,
         };
     }
 
