@@ -1,4 +1,4 @@
-@using ActualChat.Hosting
+@using System.Text
 @namespace ActualChat.UI.Blazor.Components
 
 <button class="@Class btn btn-square"
@@ -9,16 +9,13 @@
         data-tooltip="@Tooltip"
         data-tooltip-position="@(TooltipPosition.ToPositionString())"
         @attributes="@AdditionalAttributes"
-        @onpointerup="@OnPointerUp"
-        @onclick="@OnClick">
+        @onclick="@Click">
     <div class="@ContentClass btn-content" tabindex="-1">
         @ChildContent
     </div>
 </button>
 
 @code {
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
-
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ContentClass { get; set; } = "";
     [Parameter] public string Name { get; set; } = "";
@@ -35,16 +32,4 @@
 
     private string GetButtonType()
         => Type.ToString().ToLower();
-
-    private async Task OnClick() {
-        if (HostInfo.AppKind != AppKind.Ios) {
-            await Click.InvokeAsync();
-        }
-    }
-
-    private async Task OnPointerUp() {
-        if (HostInfo.AppKind == AppKind.Ios) {
-            await Click.InvokeAsync();
-        }
-    }
 }

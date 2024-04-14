@@ -1,4 +1,5 @@
-@using ActualChat.Hosting
+@using System.Text
+@using Sentry
 @namespace ActualChat.UI.Blazor.Components
 @{
     var hasIcon = Icon != null;
@@ -11,8 +12,7 @@
     type="@GetButtonType()"
     data-button-class="default"
     @attributes="@GetAttributes()"
-    @onpointerup="@OnPointerUp"
-    @onclick="@OnClick">
+    @onclick="@Click">
     <div class="@ContentClass @btnContentCls btn-content" tabindex="-1">
         @if (Icon == null) {
             @ChildContent
@@ -27,8 +27,6 @@
 
 @code {
     private ElementReference _buttonRef;
-
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "btn-primary";
     [Parameter] public string ContentClass { get; set; } = "";
@@ -85,17 +83,5 @@
             attributes.Add("data-tooltip-position", TooltipPosition.ToPositionString());
         }
         return attributes;
-    }
-
-    private async Task OnClick() {
-        if (HostInfo.AppKind != AppKind.Ios) {
-            await Click.InvokeAsync();
-        }
-    }
-
-    private async Task OnPointerUp() {
-        if (HostInfo.AppKind == AppKind.Ios) {
-            await Click.InvokeAsync();
-        }
     }
 }
