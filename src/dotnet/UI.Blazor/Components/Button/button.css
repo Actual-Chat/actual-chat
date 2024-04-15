@@ -252,7 +252,6 @@ body.hoverable .btn.btn-modal:hover::after {
     @apply bg-square;
     @apply text-square-title;
 }
-/* new code start */
 .btn.btn-square:disabled {
     @apply opacity-70;
 }
@@ -323,7 +322,6 @@ body.hoverable .btn.btn-square.btn-cancel:hover {
     @apply bg-round;
     @apply text-round-title;
 }
-/* new code start */
 .btn.btn-round:disabled {
     @apply opacity-70;
 }

@@ -552,3 +552,14 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .options-item > .c-title {
     @apply flex-1 flex-y;
 }
+
+.selected-language {
+    @apply absolute z-10 top-1 right-3;
+    @apply px-1;
+    @apply rounded-full;
+    @apply bg-05;
+    @apply text-primary-title text-xs;
+}
+body.narrow .selected-language {
+    @apply -top-0.5 -right-1;
+}

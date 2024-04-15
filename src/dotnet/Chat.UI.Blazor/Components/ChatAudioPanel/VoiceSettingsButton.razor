@@ -1,8 +1,14 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Streaming.UI.Blazor.Components
 @using ActualLab.CommandR.Internal
+@inherits ComputedStateComponent<Language>
+@{
+    var language = State.Value;
+}
+
 
 <div class="language-wrapper">
+    <div class="selected-language">@language.ShortTitle</div>
     <ButtonRound
         Class="transcription-options-btn" Click="@OnClick">
         <i class="icon-options-2"></i>
@@ -11,8 +17,19 @@
 
 @code {
     [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private LanguageUI LanguageUI => Hub.LanguageUI;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<Language>.Options GetStateOptions()
+        => new() {
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Language> ComputeState(CancellationToken cancellationToken)
+        => await LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).ConfigureAwait(false);
 
     private void OnClick()
         => ModalUI.Show(new VoiceSettingsModal.Model(Chat.Id));
