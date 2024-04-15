@@ -39,6 +39,7 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
                 await EnsureNotesChatsExist(cancellationToken).ConfigureAwait(false);
             if (options.AddFeedbackTemplateChat)
                 await EnsureFeedbackTemplateChatExists(cancellationToken).ConfigureAwait(false);
+            await EnsureAiChatExists(cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -121,6 +122,26 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
         }
         catch (Exception e) {
             Log.LogCritical(e, "Failed to create 'Feedback' chat!");
+            throw;
+        }
+    }
+
+    private async Task EnsureAiChatExists(CancellationToken cancellationToken)
+    {
+        var chatsBackend = Services.GetRequiredService<IChatsBackend>();
+        var chatId = Constants.Chat.AiChatId;
+        var chat = await chatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat != null)
+            return;
+
+        try {
+            Log.LogInformation("There is no 'AI' chat, creating one");
+            var command = new ChatsUpgradeBackend_CreateAiChat();
+            await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("'AI' chat is created");
+        }
+        catch (Exception e) {
+            Log.LogCritical(e, "Failed to create 'Ai' chat!");
             throw;
         }
     }

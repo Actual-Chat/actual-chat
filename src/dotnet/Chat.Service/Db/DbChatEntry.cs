@@ -34,6 +34,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string AuthorId { get; set; } = null!;
     public long? RepliedChatEntryId { get; set; }
     public bool IsSystemEntry { get; set; }
+    public bool IsSearchResult { get; set; }
+    public bool IsSearchSummary { get; set; }
 
     public string? ForwardedChatTitle { get; set; }
     public string? ForwardedAuthorId { get; set; }
@@ -111,6 +113,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
                     ? JsonSerializer.Deserialize<LinearMap>(TimeMap)
                     : default
                 : default,
+            IsSearchResult = IsSearchResult,
+            IsSearchSummary = IsSearchSummary,
         };
     }
 
@@ -150,6 +154,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         TimeMap = !model.TimeMap.IsEmpty
             ? JsonSerializer.Serialize(model.TimeMap)
             : null;
+        IsSearchResult = model.IsSearchResult;
+        IsSearchSummary = model.IsSearchSummary;
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatEntry>

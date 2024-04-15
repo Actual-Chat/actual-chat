@@ -13,6 +13,8 @@
 
     // Flags
     var isSystem = entry.IsSystemEntry;
+    var isSearchResult = entry.IsSearchResult;
+    var isSearchSummary = entry.IsSearchSummary;
     var isReply = m.RepliedEntry != null;
     var isForward = !entry.ForwardedAuthorId.IsNone;
     var isReplyToOwnMessage = m.RepliedEntry?.AuthorId == entry.AuthorId;
@@ -23,6 +25,8 @@
 
     // Classes
     var systemClass = isSystem ? "system-entry" : "";
+    var searchResultClass = isSearchResult ? "search-result" : "";
+    var searchSummaryClass = isSearchSummary ? "search-summary" : "";
     var forwardedClass = isForward ? "forwarded-message" : "";
     var forwardedBorderClass = isForward && !showAuthor ? "forwarded-border" : "";
     var marginClass = isBlockStart ? "mt-2" : "";
@@ -31,7 +35,7 @@
     var repliedClass = m.IsReplyTarget ? "replied-message" : "";
     var selectedClass = m.IsSelected ? "replied-message" : "";
     var mentionClass = m.IsOwnAuthorMentioned && !isReplyToOwnMessage ? "mention" : "";
-    var cls = $"{systemClass} {forwardedClass} {forwardedBorderClass} {ownMessageClass} {mentionClass} {marginClass} {highlightClass} {repliedClass} {selectedClass} message-wrapper";
+    var cls = $"{systemClass} {searchResultClass} {searchSummaryClass} {forwardedClass} {forwardedBorderClass} {ownMessageClass} {mentionClass} {marginClass} {highlightClass} {repliedClass} {selectedClass} message-wrapper";
 
     switch (message.ReplacementKind) {
     case ChatMessageReplacementKind.None:
@@ -68,6 +72,56 @@
                 @if (entry.HasReactions) {
                     <MessageReactions Entry="@entry"/>
                 }
+        </div>
+    </div>
+    return;
+}
+
+@if (isSearchResult || isSearchSummary) {
+    <div class="@cls">
+        <div class="chat-message group">
+            <div class="c-author-badge">
+            @if (showAuthor) {
+                <ChatMessageAuthorCircle
+                    AuthorSid="@entry.AuthorId"
+                    Click="@_onClickCallback"/>
+            } else {
+                <div class="c-empty"></div>
+            }
+            </div>
+            <div class="c-content">
+                @if (isSearchResult) {
+                    <div class="search-result-header">
+                        <AuthorName AuthorSid="@entry.AuthorId" Class="chat-message-author-name"/>
+                        <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@entry.BeginsAt"/>
+                    </div>
+                }
+                @if (isSearchSummary) {
+                    <div class="search-summary-header">
+                        <i class="icon-create-thread text-2xl text-primary"></i>
+                        <span>Design Daily update</span>
+                    </div>
+                    <div class="search-summary-subheader">
+                        <div class="c-authors">
+                            <AuthorCircle
+                                AuthorSid="@entry.AuthorId"
+                                Size="SquareSize.Size5"/>
+                            <AuthorCircle
+                                AuthorSid="@entry.AuthorId"
+                                Size="SquareSize.Size5"/>
+
+                        </div>
+                        <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@entry.BeginsAt"/>
+                    </div>
+                }
+                <div class="message-content">
+                    <p class="chat-message-markup">
+                        <CascadingValue Value="@entry" IsFixed="true">
+                            <MarkupView Markup="@markup"/>
+                        </CascadingValue>
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
     return;

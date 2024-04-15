@@ -477,4 +477,133 @@ public partial class ChatsUpgradeBackend
 
         return chat;
     }
+
+    // [CommandHandler]
+    public virtual async Task<Chat> OnCreateAiChat(ChatsUpgradeBackend_CreateAiChat command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return default!; // It just spawns other commands, so nothing to do here
+
+        var chatId = Constants.Chat.AiChatId;
+        var historyMessages = new[] {
+            "what design ideas we discussed yesterday",
+            "send me summary of all of last week's discussions",
+            "when sending the invoice for the work",
+            "translate into English the main points from yesterday morning's call",
+            "go to 24 May",
+            "write a greeting for your parents",
+            "Make the message X shorter",
+            "show all posts tagged with #idea",
+            "what design ideas we discussed yesterday",
+            "show all messages from Alex",
+            "write down the top 5 most talked about bugs from the last week.",
+        };
+        var searchSummaryMessages = new[] {
+            "A thread about faith. Claudius thinks there's no God. Ophelia thinks there is a God. Hamlet doubts God, but does not deny it.",
+        };
+        var searchResultMessages = new[] {
+            "Loudness is perceived as the \"loudness\" or of a sound and is relate loudness is perceived as the \"loudness\" or of a sound and is relate",
+            "сame all the conversations in which we discussed the idea of a new search сame all the conversations in which we discussed the idea of a new search",
+        };
+        var promptMessages = new[] {
+            "anything in the chat",
+            "by date",
+            "by contact",
+            "in period",
+            "help with the answer",
+            "summarize all day conversations",
+        };
+        var randomWords = new[] { "most", "chat", "actual", "ever", "amazing", "absolutely", "terrific", "truly", "level 100500" };
+
+        // Signing in admin
+        var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken).ConfigureAwait(false);
+        admin.Require(AccountFull.MustBeAdmin);
+
+        var changeCommand = new ChatsBackend_Change(chatId, null, new() {
+            Create = new ChatDiff {
+                Title = "AI Chat",
+                IsPublic = true,
+            },
+        }, admin.Id);
+        var chat = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+        var adminAuthor = await AuthorsBackend.EnsureJoined(chatId, admin.Id, cancellationToken).ConfigureAwait(false);
+
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        await AddEntries(adminAuthor, historyMessages, null).ConfigureAwait(false);
+        await AddEntries(adminAuthor, searchSummaryMessages, null, isSearchSummary: true, count: 2).ConfigureAwait(false);
+        await AddEntries(adminAuthor, searchResultMessages, null, isSearchResult: true).ConfigureAwait(false);
+        await AddEntries(adminAuthor, promptMessages, null).ConfigureAwait(false);
+
+        return chat;
+
+        async Task AddEntries(AuthorFull author,
+            string[] messages,
+            Moment? beginsAt,
+            bool isSearchResult = false,
+            bool isSearchSummary = false,
+            int count = 0)
+        {
+            var lastBeginsAt = beginsAt ?? Clocks.SystemClock.Now - TimeSpan.FromDays(1);
+            var lastEndsAt = lastBeginsAt;
+            if (!beginsAt.HasValue && await dbContext.ChatEntries.AnyAsync(cancellationToken).ConfigureAwait(false)) {
+                lastBeginsAt = await dbContext.ChatEntries
+                    .Select(e => e.BeginsAt)
+                    .MaxAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                lastEndsAt = await dbContext.ChatEntries
+                        .Select(e => e.EndsAt)
+                        .MaxAsync(cancellationToken)
+                        .ConfigureAwait(false)
+                    ?? lastBeginsAt;
+            }
+
+            var rnd = new Random(1);
+            if (count == 0) {
+                foreach (var message in messages)
+                    await AddTextEntry(message).ConfigureAwait(false);
+            }
+            else {
+                for (var i = 0; i < count; i++) {
+                    foreach (var message in messages)
+                        await AddTextEntry(message).ConfigureAwait(false);
+                }
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return;
+
+            async Task AddTextEntry(string? content = null)
+            {
+                lastEndsAt += TimeSpan.FromSeconds(rnd.NextDouble() * 5);
+                lastBeginsAt = lastEndsAt;
+                var localId = await ChatsBackend
+                    .DbNextLocalId(dbContext, chatId, ChatEntryKind.Text, cancellationToken)
+                    .ConfigureAwait(false);
+                var id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, AssumeValid.Option);
+                var entry = new DbChatEntry {
+                    Id = id,
+                    ChatId = chatId,
+                    Kind = ChatEntryKind.Text,
+                    LocalId = localId,
+                    Version = VersionGenerator.NextVersion(),
+                    BeginsAt = lastBeginsAt,
+                    EndsAt = lastEndsAt,
+                    Content = $"{content ?? GetRandomSentence(rnd, 30)}",
+                    AuthorId = author.Id,
+                    IsSearchResult = isSearchResult,
+                    IsSearchSummary = isSearchSummary,
+                };
+                dbContext.Add(entry);
+            }
+        }
+
+        string GetRandomSentence(Random random, int maxLength)
+            => Enumerable
+                .Range(0, random.Next(maxLength))
+                .Select(_ => randomWords[Random.Shared.Next(randomWords.Length)])
+                .ToDelimitedString(" ")
+                .Capitalize();
+    }
 }

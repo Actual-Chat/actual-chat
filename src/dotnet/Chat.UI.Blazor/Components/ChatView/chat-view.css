@@ -322,3 +322,66 @@ body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
     @apply relative;
     @apply py-1;
 }
+
+/* Right panel AI Chat Search Result message */
+body.hoverable .search-result.message-wrapper:hover,
+body.hoverable .search-summary.message-wrapper:hover {
+    @apply bg-transparent;
+    @apply border-transparent;
+}
+.search-result.message-wrapper .chat-message > .c-author-badge {
+    @apply min-w-9;
+}
+body.hoverable .search-result.message-wrapper .chat-message-timestamp-on-hover,
+body.hoverable .search-summary.message-wrapper .chat-message-timestamp-on-hover {
+    @apply hidden;
+}
+.search-result.message-wrapper .chat-message > .c-content {
+    @apply px-2 py-1 mr-4;
+    @apply rounded-r-md;
+    @apply bg-01;
+    @apply border-l-2 border-primary;
+}
+.search-result.message-wrapper .c-content .search-result-header {
+    @apply flex-x items-center gap-x-2;
+}
+.search-result.message-wrapper .c-content .search-result-header .avatar-name {
+    @apply text-primary text-headline-1;
+}
+.search-result.message-wrapper .c-content .search-result-header .chat-message-timestamp {
+    @apply flex-none;
+    @apply text-end;
+}
+.search-result.message-wrapper .c-content .message-content {
+    @apply py-0;
+}
+.search-result.message-wrapper .c-content .message-content .chat-message-markup {
+    @apply text-text-1;
+    @apply line-clamp-2;
+    @apply text-ellipsis;
+}
+
+/* Right panel AI Chat Search Summary message */
+.search-summary.message-wrapper .chat-message > .c-content {
+    @apply gap-y-2;
+    @apply px-4 py-2 mr-4;
+    @apply rounded-md;
+    @apply bg-01;
+}
+.search-summary-header {
+    @apply flex-x items-center gap-x-4;
+    @apply text-text-1 text-01;
+}
+.search-summary-subheader {
+    @apply flex-x items-center gap-x-2;
+}
+.search-summary-subheader .c-authors {
+    @apply flex-1 flex-x items-center gap-x-1;
+}
+.search-summary-subheader .chat-message-timestamp {
+    @apply w-1/3 md:w-1/4;
+    @apply text-end;
+}
+.search-summary.message-wrapper .c-content .message-content .chat-message-markup {
+    @apply text-caption-6 font-normal text-02;
+}

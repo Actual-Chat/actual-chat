@@ -1,0 +1,14 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ActualChat.Chat.UI.Blazor.Pages.ChatPage
+@{
+    var m = Rendered = State.Value;
+    var chatContext = m.ChatContext;
+    var chat = m.ChatContext.Chat;
+    var chatKey = chat.Id.Value;
+}
+
+@if (chat.Id == "ai-chat") {
+    <ChatView @ref="ChatViewRef" @key="@chatKey" ChatContext="@chatContext"/>
+} else {
+    <ChatNotFound />
+}

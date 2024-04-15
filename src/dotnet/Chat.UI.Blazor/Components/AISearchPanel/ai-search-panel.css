@@ -21,6 +21,7 @@
 }
 .ai-search-panel .c-body {
     @apply flex-1 flex-y;
+    @apply overflow-y-hidden;
 }
 .ai-search-panel .c-footer {
     @apply flex-none flex-x items-end gap-x-1;
@@ -49,4 +50,36 @@
 .ai-search-panel .c-footer .btn-h {
     @apply w-10 h-10;
     @apply my-2;
+}
+
+.ai-search-panel .c-virtual-container {
+    @apply gap-y-2;
+}
+
+/* Messages */
+.prompt-message {
+    @apply flex-x items-center gap-x-2;
+    @apply py-1 px-2;
+    @apply rounded-full;
+    @apply overflow-hidden;
+    @apply bg-01;
+    @apply text-text-1 text-01;
+}
+.history-message {
+    @apply flex-x items-center gap-x-1;
+}
+.history-message .c-left {
+    @apply flex-none;
+    @apply px-2;
+    @apply text-03;
+}
+.history-message .c-message {
+    @apply flex-1;
+    @apply text-text-1 text-01;
+}
+.history-message .c-chat-title {
+    @apply text-caption-4 text-03;
+}
+.history-message .c-right {
+    @apply text-caption-4 text-03;
 }

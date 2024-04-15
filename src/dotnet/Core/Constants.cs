@@ -15,8 +15,9 @@ public static partial class Constants
         public static readonly ChatId DefaultChatId = ChatId.Group("the-actual-one");
         public static readonly ChatId AnnouncementsChatId = ChatId.Group("announcements");
         public static readonly ChatId FeedbackTemplateChatId = ChatId.Group("feedback-template");
+        public static readonly ChatId AiChatId = ChatId.Group("ai-chat");
         public static readonly IReadOnlySet<Symbol> SystemChatIds =
-            new HashSet<Symbol>(new [] { DefaultChatId.Id, AnnouncementsChatId.Id, FeedbackTemplateChatId.Id });
+            new HashSet<Symbol>(new [] { DefaultChatId.Id, AnnouncementsChatId.Id, FeedbackTemplateChatId.Id, AiChatId.Id });
         public static readonly string[] SystemChatSids = SystemChatIds.Select(x => x.Value).ToArray();
 
         public static readonly TileStack<long> ServerIdTileStack = TileStacks.Long5To1K;

@@ -124,9 +124,7 @@ export class ChatMessageEditor {
         }
         this.attachmentListObserver.disconnect();
         this.notifyPanelObserver.disconnect();
-        this.sideNavs.forEach(_ => {
-            this.sideNavObserver.disconnect();
-        });
+        this.sideNavObserver.disconnect();
     }
 
     // Public methods
@@ -148,7 +146,6 @@ export class ChatMessageEditor {
             childList: true,
             subtree: true,
         });
-
     }
 
     private updateAttachmentListState = (mutationList, observer) => {

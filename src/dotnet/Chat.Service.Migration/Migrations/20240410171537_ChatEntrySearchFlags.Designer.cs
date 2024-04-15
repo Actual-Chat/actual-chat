@@ -4,6 +4,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,13 +13,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    partial class ChatDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240410171537_ChatEntrySearchFlags")]
+    partial class ChatEntrySearchFlags
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.4")
+                .HasAnnotation("ProductVersion", "8.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -606,98 +609,43 @@ namespace ActualChat.Chat.Migrations
                     b.ToTable("text_entry_attachments");
                 });
 
-            modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbEvent", b =>
-                {
-                    b.Property<string>("Uuid")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasColumnName("uuid");
-
-                    b.Property<DateTime>("DelayUntil")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("delay_until");
-
-                    b.Property<DateTime>("LoggedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("logged_at");
-
-                    b.Property<int>("State")
-                        .HasColumnType("integer")
-                        .HasColumnName("state");
-
-                    b.Property<string>("ValueJson")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("value_json");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Uuid")
-                        .HasName("pk_events");
-
-                    b.HasIndex("DelayUntil")
-                        .HasDatabaseName("ix_events_delay_until");
-
-                    b.HasIndex("Uuid")
-                        .IsUnique()
-                        .HasDatabaseName("ix_events_uuid");
-
-                    b.HasIndex("State", "DelayUntil")
-                        .HasDatabaseName("ix_events_state_delay_until");
-
-                    b.ToTable("_events");
-                });
-
             modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbOperation", b =>
                 {
-                    b.Property<long>("Index")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("index");
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Index"));
+                    b.Property<string>("AgentId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("agent_id");
 
                     b.Property<string>("CommandJson")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("command_json");
 
-                    b.Property<string>("HostId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("host_id");
+                    b.Property<DateTime>("CommitTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("commit_time");
 
                     b.Property<string>("ItemsJson")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("items_json");
 
-                    b.Property<DateTime>("LoggedAt")
+                    b.Property<DateTime>("StartTime")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("logged_at");
+                        .HasColumnName("start_time");
 
-                    b.Property<string>("NestedOperations")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("nested_operations");
-
-                    b.Property<string>("Uuid")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("uuid");
-
-                    b.HasKey("Index")
+                    b.HasKey("Id")
                         .HasName("pk_operations");
 
-                    b.HasIndex("LoggedAt")
-                        .HasDatabaseName("ix_operations_logged_at");
+                    b.HasIndex(new[] { "CommitTime" }, "IX_CommitTime")
+                        .HasDatabaseName("ix_commit_time");
 
-                    b.HasIndex("Uuid")
-                        .IsUnique()
-                        .HasDatabaseName("ix_operations_uuid");
+                    b.HasIndex(new[] { "StartTime" }, "IX_StartTime")
+                        .HasDatabaseName("ix_start_time");
 
                     b.ToTable("_operations");
                 });

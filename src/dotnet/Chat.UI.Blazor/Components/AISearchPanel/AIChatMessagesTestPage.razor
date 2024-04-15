@@ -1,0 +1,88 @@
+@page "/test/ai-chat-messages"
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>AI Chat Messages Test Page</MainHeader>
+
+<div class="side-nav side-nav-right bg-03">
+    <div class="right-chat-panel p-2 gap-y-4 !overflow-auto" style="scrollbar-width: none;">
+        <h1>Class "prompt-message"</h1>
+        <div class="flex-wrap flex-x gap-2">
+            <div class="prompt-message">
+                <i class="icon-ai-search"></i>
+                <span>Search anything in the chat</span>
+            </div>
+            <div class="prompt-message">
+                <i class="icon-ai-search"></i>
+                <span>Search by date</span>
+            </div>
+            <div class="prompt-message">
+                <i class="icon-ai-search"></i>
+                <span>Search by contact</span>
+            </div>
+            <div class="prompt-message">
+                <i class="icon-ai-search"></i>
+                <span>Help with the answer</span>
+            </div>
+            <div class="prompt-message">
+                <i class="icon-ai-search"></i>
+                <span>Ask to summarize all day conversations</span>
+            </div>
+        </div>
+
+        <h1>Class "history-message"</h1>
+        <div class="flex-wrap flex-x gap-2">
+            <div class="history-message">
+                <div class="c-left">
+                    <i class="icon-history text-xl"></i>
+                </div>
+                <div class="c-content">
+                    <div class="c-message">what design ideas we discussed yesterday</div>
+                    <div class="c-chat-title">Denmark</div>
+                </div>
+                <div class="c-right">19:10</div>
+            </div>
+            <div class="history-message">
+                <div class="c-left">
+                    <i class="icon-history text-xl"></i>
+                </div>
+                <div class="c-content">
+                    <div class="c-message">what design ideas we discussed yesterday</div>
+                    <div class="c-chat-title">Denmark</div>
+                </div>
+                <div class="c-right">19:10</div>
+            </div>
+            <div class="history-message">
+                <div class="c-left">
+                    <i class="icon-history text-xl"></i>
+                </div>
+                <div class="c-content">
+                    <div class="c-message">when sending the invoice for the work</div>
+                    <div class="c-chat-title">Denmark</div>
+                </div>
+                <div class="c-right">19:10</div>
+            </div>
+            <div class="history-message">
+                <div class="c-left">
+                    <i class="icon-history text-xl"></i>
+                </div>
+                <div class="c-content">
+                    <div class="c-message">go to 24 May</div>
+                    <div class="c-chat-title">Denmark</div>
+                </div>
+                <div class="c-right">19:10</div>
+            </div>
+            <div class="history-message">
+                <div class="c-left">
+                    <i class="icon-history text-xl"></i>
+                </div>
+                <div class="c-content">
+                    <div class="c-message">translate into English the main points from yesterday morning's call</div>
+                    <div class="c-chat-title">Denmark</div>
+                </div>
+                <div class="c-right">19:10</div>
+            </div>
+        </div>
+
+    </div>
+</div>
