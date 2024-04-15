@@ -34,7 +34,6 @@
     <PackageVersion Include="Blake3" Version="1.1.0" />
     <PackageVersion Include="CommunityToolkit.Maui.Core" Version="8.0.1" />
     <PackageVersion Include="EFCore.CheckConstraints" Version="$(EntityFrameworkCoreCheckConstraintsVersion)" />
-    <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="8.12.1" />
     <PackageVersion Include="FFMpegCore" Version="5.1.0" />
     <PackageVersion Include="FirebaseAdmin" Version="2.4.1" />
     <PackageVersion Include="Google.Api.Gax" Version="4.8.0" />

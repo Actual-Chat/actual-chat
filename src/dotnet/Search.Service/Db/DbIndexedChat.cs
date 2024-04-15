@@ -10,7 +10,7 @@ namespace ActualChat.Search.Db;
 public class DbIndexedChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private const string IndexSchemaVersionDelimiter = "-";
-    public static readonly string IdIndexSchemaVersionPrefix = ElasticNames.EntryIndexVersion + IndexSchemaVersionDelimiter;
+    public static readonly string IdIndexSchemaVersionPrefix = OpenSearchNames.EntryIndexVersion + IndexSchemaVersionDelimiter;
     private DateTime _chatCreatedAt;
     public DbIndexedChat() { }
     public DbIndexedChat(IndexedChat model) => UpdateFrom(model);

@@ -1,4 +1,4 @@
-version: '3.8'
+name: actual-chat-infra
 include:
   - ./services/opensearch/docker-compose.yaml
 services:
@@ -76,40 +76,6 @@ services:
     ports:
       - "5000:80"
       - "25:25"
-  elasticsearch:
-    image: elasticsearch:8.11.4
-    ports:
-      - 9200:9200
-    environment:
-      - ELASTIC_USERNAME=elastic
-      - ELASTIC_PASSWORD=elastic
-      - xpack.security.enabled=false
-      - discovery.type=single-node
-    healthcheck:
-      interval: 10s
-      retries: 80
-      test: curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null http://localhost:9200/
-    deploy:
-      resources:
-        limits:
-          memory: 6G
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-  kibana:
-    depends_on:
-      - elasticsearch
-    image: kibana:8.11.4
-    ports:
-     - 5601:5601
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '0.2'
   nats:
     image: nats:2.10.10-alpine3.19
     expose:

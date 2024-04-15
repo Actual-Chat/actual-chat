@@ -4,31 +4,29 @@ using ActualChat.Contacts;
 using ActualChat.Queues;
 using ActualChat.Search.Db;
 using ActualChat.Users.Events;
-using Elastic.Clients.Elasticsearch;
-using Elastic.Clients.Elasticsearch.Core.Search;
 using Microsoft.AspNetCore.Http;
 using ActualLab.Fusion.EntityFramework;
-using Elastic.Clients.Elasticsearch.QueryDsl;
+using OpenSearch.Client;
 
 namespace ActualChat.Search;
 
 public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbContext>(services), ISearchBackend
 {
     private const int MaxRefreshChatCount = 100;
-    private ElasticNames? _elasticNames;
-    private ElasticsearchClient? _elastic;
+    private OpenSearchNames? _elasticNames;
+    private IOpenSearchClient? _openSearchClient;
     private IChatsBackend? _chatsBackend;
     private IContactsBackend? _contactsBackend;
     private UserContactIndexer? _userContactIndexer;
     private ChatContactIndexer? _chatContactIndexer;
 
-    private ElasticNames ElasticNames => _elasticNames ??= Services.GetRequiredService<ElasticNames>();
-    private ElasticsearchClient Elastic => _elastic ??= Services.GetRequiredService<ElasticsearchClient>();
+    private OpenSearchNames OpenSearchNames => _elasticNames ??= Services.GetRequiredService<OpenSearchNames>();
+    private IOpenSearchClient OpenSearchClient => _openSearchClient ??= Services.GetRequiredService<IOpenSearchClient>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
     private IContactsBackend ContactsBackend => _contactsBackend ??= Services.GetRequiredService<IContactsBackend>();
     private UserContactIndexer UserContactIndexer => _userContactIndexer ??= Services.GetRequiredService<UserContactIndexer>();
     private ChatContactIndexer ChatContactIndexer => _chatContactIndexer ??= Services.GetRequiredService<ChatContactIndexer>();
-    private ElasticConfigurator ElasticConfigurator { get; } = services.GetRequiredService<ElasticConfigurator>();
+    private OpenSearchConfigurator OpenSearchConfigurator { get; } = services.GetRequiredService<OpenSearchConfigurator>();
     private IQueues Queues { get; } = services.Queues();
 
     [ComputeMethod]
@@ -36,8 +34,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     {
         // public place chats are not returned since we use scoped indexes
         var contactIds = await ContactsBackend.ListIdsForEntrySearch(userId, cancellationToken).ConfigureAwait(false);
-        var indices = new List<IndexName>(ElasticNames.GetPeerChatSearchIndexNamePatterns(userId));
-        indices.AddRange(contactIds.Select(x => ElasticNames.GetIndexName(x.ChatId, false)));
+        var indices = new List<IndexName>(OpenSearchNames.GetPeerChatSearchIndexNamePatterns(userId));
+        indices.AddRange(contactIds.Select(x => OpenSearchNames.GetIndexName(x.ChatId, false)));
         return indices.Select(x => x.ToString()).ToApiSet();
     }
 
@@ -52,7 +50,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         CancellationToken cancellationToken)
     {
         var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
-        return await FindEntries(ElasticNames.GetIndexName(chat),
+        return await FindEntries(OpenSearchNames.GetIndexName(chat),
             criteria,
             skip,
             limit,
@@ -67,8 +65,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         int limit,
         CancellationToken cancellationToken)
     {
-        if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
-            await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
+        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
+            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
         var indices = await GetIndicesForEntrySearch(userId, cancellationToken).ConfigureAwait(false);
         return await FindEntries(indices.ToArray(),
@@ -87,39 +85,39 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         int limit,
         CancellationToken cancellationToken)
     {
-        if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
-            await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
+        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
+            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
         skip = skip.Clamp(0, int.MaxValue);
         limit = limit.Clamp(0, Constants.Search.PageSizeLimit);
 
         var searchResponse =
-            await Elastic.SearchAsync<IndexedUserContact>(s
-                        => s.Index(ElasticNames.PublicUserIndexName)
-                            .From(skip)
-                            .Size(limit)
-                            .Query(qq
-                                => qq.Bool(b
-                                    => b.Must(q
-                                            => q.MultiMatch(
-                                                m
-                                                    => m.Fields(x => x.FullName, x => x.FirstName, x => x.SecondName)
-                                                        .Query(criteria)
-                                                        .Type(TextQueryType.PhrasePrefix)))
-                                        .MustNot(q => q.Match(m
-                                            => m.Field(x => x.Id).Query(userId)))))
-                            .IgnoreUnavailable(),
-                    cancellationToken)
+            await OpenSearchClient.SearchAsync<IndexedUserContact>(s
+                => s.Index(OpenSearchNames.PublicUserIndexName)
+                    .From(skip)
+                    .Size(limit)
+                    .Query(qq
+                        => qq.Bool(b
+                            => b.Must(q
+                                => q.MultiMatch(
+                                    m
+                                    => m.Fields(x => x.FullName, x => x.FirstName, x => x.SecondName)
+                                        .Query(criteria)
+                                        .Type(TextQueryType.PhrasePrefix)))
+                                .MustNot(q => q.Match(m
+                                    => m.Field(x => x.Id).Query(userId)))))
+                    .IgnoreUnavailable(),
+                cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
-        if (searchResponse.ApiCallDetails.HttpStatusCode == StatusCodes.Status404NotFound)
+        if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
             return ContactSearchResultPage.Empty;
         return new ContactSearchResultPage {
             Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
             Offset = skip,
         };
 
-        ContactSearchResult ToSearchResult(Hit<IndexedUserContact> x)
+        ContactSearchResult ToSearchResult(IHit<IndexedUserContact> x)
         {
             // TODO: highlighting
             var peerChatId = new PeerChatId(userId, x.Source!.Id);
@@ -137,8 +135,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         int limit,
         CancellationToken cancellationToken)
     {
-        if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
-            await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
+        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
+            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
         skip = skip.Clamp(0, int.MaxValue);
         limit = limit.Clamp(0, Constants.Search.PageSizeLimit);
@@ -147,31 +145,31 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             ? await ContactsBackend.ListIdsForContactSearch(userId, cancellationToken).ConfigureAwait(false)
             : ApiArray<ContactId>.Empty;
         var searchResponse =
-            await Elastic.SearchAsync<IndexedChatContact>(s
-                        => s.Index(ElasticNames.GetChatContactIndexName(isPublic))
-                            .From(skip)
-                            .Size(limit)
-                            .Query(qq => qq.Bool(b => {
-                                b.Must(q => q.MatchPhrasePrefix(p => p.Query(criteria).Field(x => x.Title)));
-                                if (!isPublic) {
-                                    var terms = new TermsQueryField(chatContactIds
-                                        .Select(x => (FieldValue)x.ChatId.Value)
-                                        .ToList());
-                                    b.Filter(q => q.Terms(t => t.Field(x => x.Id).Terms(terms)));
-                                }
-                            }))
-                            .IgnoreUnavailable(),
+            await OpenSearchClient.SearchAsync<IndexedChatContact>(s
+                => s.Index(OpenSearchNames.GetChatContactIndexName(isPublic))
+                    .From(skip)
+                    .Size(limit)
+                    .Query(qq => qq.Bool(b => {
+                            var prefixCondition = b.Must(q => q.MatchPhrasePrefix(p => p.Query(criteria).Field(x => x.Title)));
+                            var terms = chatContactIds
+                                .Select(x => x.ChatId.Value)
+                                .ToList();
+                            return isPublic
+                                ? prefixCondition
+                                : prefixCondition.Filter(q => q.Terms(t => t.Field(x => x.Id).Terms(terms)));
+                    }))
+                    .IgnoreUnavailable(),
                     cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
-        if (searchResponse.ApiCallDetails.HttpStatusCode == StatusCodes.Status404NotFound)
+        if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
             return ContactSearchResultPage.Empty;
         return new ContactSearchResultPage {
             Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
             Offset = skip,
         };
 
-        ContactSearchResult ToSearchResult(Hit<IndexedChatContact> x)
+        ContactSearchResult ToSearchResult(IHit<IndexedChatContact> x)
         {
             // TODO: highlighting
             return new ContactSearchResult(new ContactId(userId, x.Source!.Id), SearchMatch.New(x.Source.Title));
@@ -195,11 +193,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (updated.Count == 0 && command.Deleted.Count == 0)
             return;
 
-        if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
-            await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
+        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
+            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
         var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
-        var indexName = ElasticNames.GetIndexName(chat);
+        var indexName = OpenSearchNames.GetIndexName(chat);
 
         await IndexEntries(updated, command.Deleted, indexName, cancellationToken).ConfigureAwait(false);
     }
@@ -213,8 +211,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (command.Deleted.IsEmpty && command.Updated.IsEmpty)
             return;
 
-        if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
-            await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
+        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
+            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
         await IndexUserContacts(command.Updated, command.Deleted, cancellationToken).ConfigureAwait(false);
     }
@@ -225,8 +223,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (Computed.IsInvalidating())
             return;
 
-        if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
-            await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
+        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
+            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
         await IndexChatContacts(command.Updated, command.Deleted, cancellationToken).ConfigureAwait(false);
     }
@@ -244,16 +242,16 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         var chats = await chatIds.Select(x => ChatsBackend.Get(x, cancellationToken)).Collect().ConfigureAwait(false);
         var indices = new List<IndexName>();
         if (command.RefreshUsers)
-            indices.Add(ElasticNames.PublicUserIndexName);
+            indices.Add(OpenSearchNames.PublicUserIndexName);
         if (command.RefreshPublicChats)
-            indices.Add(ElasticNames.GetChatContactIndexName(true));
+            indices.Add(OpenSearchNames.GetChatContactIndexName(true));
         if (command.RefreshPrivateChats)
-            indices.Add(ElasticNames.GetChatContactIndexName(false));
-        indices.AddRange(chats.SkipNullItems().Select(ElasticNames.GetIndexName).Distinct());
+            indices.Add(OpenSearchNames.GetChatContactIndexName(false));
+        indices.AddRange(chats.SkipNullItems().Select(OpenSearchNames.GetIndexName).Distinct());
         if (indices.Count == 0)
             return;
 
-        await Elastic.Indices.RefreshAsync(r => r.Indices(indices.ToArray()), cancellationToken).ConfigureAwait(false);
+        await OpenSearchClient.Indices.RefreshAsync(Indices.Index(indices), ct:cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -325,7 +323,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         IReadOnlyCollection<IndexedEntry> deleted,
         IndexName indexName,
         CancellationToken cancellationToken)
-        => Elastic
+        => OpenSearchClient
             .BulkAsync(r => r
                     .IndexMany(updated, (op, _) => op.Index(indexName))
                     .DeleteMany(deleted, (op, _) => op.Index(indexName)),
@@ -336,10 +334,10 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         IReadOnlyCollection<IndexedUserContact> updated,
         IReadOnlyCollection<IndexedUserContact> deleted,
         CancellationToken cancellationToken)
-        => Elastic
+        => OpenSearchClient
             .BulkAsync(r => r
-                    .IndexMany(updated, (op, _) => op.Index(ElasticNames.PublicUserIndexName))
-                    .DeleteMany(deleted, (op, _) => op.Index(ElasticNames.PublicUserIndexName)),
+                    .IndexMany(updated, (op, _) => op.Index(OpenSearchNames.PublicUserIndexName))
+                    .DeleteMany(deleted, (op, _) => op.Index(OpenSearchNames.PublicUserIndexName)),
                 cancellationToken)
             .Assert(Log);
 
@@ -347,10 +345,10 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         IReadOnlyCollection<IndexedChatContact> updated,
         IReadOnlyCollection<IndexedChatContact> deleted,
         CancellationToken cancellationToken)
-        => Elastic
+        => OpenSearchClient
             .BulkAsync(r
-                    => r.IndexMany(updated, (op, x) => op.Index(ElasticNames.GetChatContactIndexName(x.IsPublic)))
-                        .DeleteMany(deleted, (op, x) => op.Index(ElasticNames.GetChatContactIndexName(x.IsPublic))),
+                    => r.IndexMany(updated, (op, x) => op.Index(OpenSearchNames.GetChatContactIndexName(x.IsPublic)))
+                        .DeleteMany(deleted, (op, x) => op.Index(OpenSearchNames.GetChatContactIndexName(x.IsPublic))),
                 cancellationToken)
             .Assert(Log);
 
@@ -361,22 +359,22 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         int limit,
         CancellationToken cancellationToken)
     {
-        if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
-            await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
+        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
+            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
         skip = skip.Clamp(0, int.MaxValue);
         limit = limit.Clamp(0, Constants.Search.PageSizeLimit);
 
         var searchResponse =
-            await Elastic.SearchAsync<IndexedEntry>(s
-                        => s.Index(indices)
-                            .From(skip)
-                            .Size(limit)
-                            .Query(q => q.MatchPhrasePrefix(p => p.Query(criteria).Field(x => x.Content)))
-                            .IgnoreUnavailable(),
-                    cancellationToken)
+            await OpenSearchClient.SearchAsync<IndexedEntry>(s
+                => s.Index(indices)
+                    .From(skip)
+                    .Size(limit)
+                    .Query(q => q.MatchPhrasePrefix(p => p.Query(criteria).Field(x => x.Content)))
+                    .IgnoreUnavailable(),
+                cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
-        if (searchResponse.ApiCallDetails.HttpStatusCode == StatusCodes.Status404NotFound)
+        if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
             return EntrySearchResultPage.Empty;
 
         return new EntrySearchResultPage {
@@ -384,7 +382,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             Offset = skip,
         };
 
-        EntrySearchResult ToSearchResult(Hit<IndexedEntry> x)
+        EntrySearchResult ToSearchResult(IHit<IndexedEntry> x)
             => new (x.Source!.Id, SearchMatch.New(x.Source.Content));
     }
 }
