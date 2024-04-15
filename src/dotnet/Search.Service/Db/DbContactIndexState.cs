@@ -8,8 +8,8 @@ namespace ActualChat.Search.Db;
 public class DbContactIndexState : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private const string IndexSchemaVersionDelimiter = "-";
-    public static readonly string UserContactIndexStateId = $"{OpenSearchNames.UserIndexVersion}{IndexSchemaVersionDelimiter}users";
-    public static readonly string ChatContactIndexStateId = $"{OpenSearchNames.ChatIndexVersion}{IndexSchemaVersionDelimiter}chats";
+    public static readonly string UserContactIndexStateId = $"{IndexNames.UserIndexVersion}{IndexSchemaVersionDelimiter}users";
+    public static readonly string ChatContactIndexStateId = $"{IndexNames.ChatIndexVersion}{IndexSchemaVersionDelimiter}chats";
     public DbContactIndexState() { }
     public DbContactIndexState(ContactIndexState model) => UpdateFrom(model);
 

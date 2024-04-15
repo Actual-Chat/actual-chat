@@ -71,13 +71,15 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices)
         });
 
         // OpenSearch
-        var openSearchClusterUri = Settings.ElasticLocalUri
+        var openSearchClusterUri = Settings.LocalUri
             ?? throw new InvalidOperationException("OpenSearchClusterUri is not set");
 
-        var connectionSettings = new ConnectionSettings(new SingleNodeConnectionPool(new Uri(openSearchClusterUri)));
+        var connectionSettings = new ConnectionSettings(
+            new SingleNodeConnectionPool(new Uri(openSearchClusterUri)),
+            sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
         services.AddSingleton<IOpenSearchClient>(_ => new OpenSearchClient(connectionSettings));
         services.AddSingleton<OpenSearchConfigurator>()
             .AddHostedService(c => c.GetRequiredService<OpenSearchConfigurator>());
-        services.AddSingleton<OpenSearchNames>();
+        services.AddSingleton<IndexNames>();
     }
 }

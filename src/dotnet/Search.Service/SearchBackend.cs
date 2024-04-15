@@ -10,17 +10,18 @@ using OpenSearch.Client;
 
 namespace ActualChat.Search;
 
+// ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbContext>(services), ISearchBackend
 {
     private const int MaxRefreshChatCount = 100;
-    private OpenSearchNames? _elasticNames;
+    private IndexNames? _indexNames;
     private IOpenSearchClient? _openSearchClient;
     private IChatsBackend? _chatsBackend;
     private IContactsBackend? _contactsBackend;
     private UserContactIndexer? _userContactIndexer;
     private ChatContactIndexer? _chatContactIndexer;
 
-    private OpenSearchNames OpenSearchNames => _elasticNames ??= Services.GetRequiredService<OpenSearchNames>();
+    private IndexNames IndexNames => _indexNames ??= Services.GetRequiredService<IndexNames>();
     private IOpenSearchClient OpenSearchClient => _openSearchClient ??= Services.GetRequiredService<IOpenSearchClient>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
     private IContactsBackend ContactsBackend => _contactsBackend ??= Services.GetRequiredService<IContactsBackend>();
@@ -34,8 +35,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     {
         // public place chats are not returned since we use scoped indexes
         var contactIds = await ContactsBackend.ListIdsForEntrySearch(userId, cancellationToken).ConfigureAwait(false);
-        var indices = new List<IndexName>(OpenSearchNames.GetPeerChatSearchIndexNamePatterns(userId));
-        indices.AddRange(contactIds.Select(x => OpenSearchNames.GetIndexName(x.ChatId, false)));
+        var indices = new List<IndexName>(IndexNames.GetPeerChatSearchIndexNamePatterns(userId));
+        indices.AddRange(contactIds.Select(x => IndexNames.GetIndexName(x.ChatId, false)));
         return indices.Select(x => x.ToString()).ToApiSet();
     }
 
@@ -50,7 +51,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         CancellationToken cancellationToken)
     {
         var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
-        return await FindEntries(OpenSearchNames.GetIndexName(chat),
+        return await FindEntries(IndexNames.GetIndexName(chat),
             criteria,
             skip,
             limit,
@@ -93,7 +94,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
 
         var searchResponse =
             await OpenSearchClient.SearchAsync<IndexedUserContact>(s
-                => s.Index(OpenSearchNames.PublicUserIndexName)
+                => s.Index(IndexNames.PublicUserIndexName)
                     .From(skip)
                     .Size(limit)
                     .Query(qq
@@ -120,7 +121,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         ContactSearchResult ToSearchResult(IHit<IndexedUserContact> x)
         {
             // TODO: highlighting
-            var peerChatId = new PeerChatId(userId, x.Source!.Id);
+            var peerChatId = new PeerChatId(userId, UserId.Parse(x.Source!.Id));
             var contactId = new ContactId(userId, peerChatId.ToChatId());
             return new ContactSearchResult(contactId, SearchMatch.New(x.Source.FullName));
         }
@@ -146,7 +147,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             : ApiArray<ContactId>.Empty;
         var searchResponse =
             await OpenSearchClient.SearchAsync<IndexedChatContact>(s
-                => s.Index(OpenSearchNames.GetChatContactIndexName(isPublic))
+                => s.Index(IndexNames.GetChatContactIndexName(isPublic))
                     .From(skip)
                     .Size(limit)
                     .Query(qq => qq.Bool(b => {
@@ -172,7 +173,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         ContactSearchResult ToSearchResult(IHit<IndexedChatContact> x)
         {
             // TODO: highlighting
-            return new ContactSearchResult(new ContactId(userId, x.Source!.Id), SearchMatch.New(x.Source.Title));
+            return new ContactSearchResult(new ContactId(userId, ChatId.Parse(x.Source!.Id)), SearchMatch.New(x.Source.Title));
         }
     }
 
@@ -197,7 +198,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
         var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
-        var indexName = OpenSearchNames.GetIndexName(chat);
+        var indexName = IndexNames.GetIndexName(chat);
 
         await IndexEntries(updated, command.Deleted, indexName, cancellationToken).ConfigureAwait(false);
     }
@@ -242,12 +243,12 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         var chats = await chatIds.Select(x => ChatsBackend.Get(x, cancellationToken)).Collect().ConfigureAwait(false);
         var indices = new List<IndexName>();
         if (command.RefreshUsers)
-            indices.Add(OpenSearchNames.PublicUserIndexName);
+            indices.Add(IndexNames.PublicUserIndexName);
         if (command.RefreshPublicChats)
-            indices.Add(OpenSearchNames.GetChatContactIndexName(true));
+            indices.Add(IndexNames.GetChatContactIndexName(true));
         if (command.RefreshPrivateChats)
-            indices.Add(OpenSearchNames.GetChatContactIndexName(false));
-        indices.AddRange(chats.SkipNullItems().Select(OpenSearchNames.GetIndexName).Distinct());
+            indices.Add(IndexNames.GetChatContactIndexName(false));
+        indices.AddRange(chats.SkipNullItems().Select(IndexNames.GetIndexName).Distinct());
         if (indices.Count == 0)
             return;
 
@@ -336,8 +337,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         CancellationToken cancellationToken)
         => OpenSearchClient
             .BulkAsync(r => r
-                    .IndexMany(updated, (op, _) => op.Index(OpenSearchNames.PublicUserIndexName))
-                    .DeleteMany(deleted, (op, _) => op.Index(OpenSearchNames.PublicUserIndexName)),
+                    .IndexMany(updated, (op, _) => op.Index(IndexNames.PublicUserIndexName))
+                    .DeleteMany(deleted, (op, _) => op.Index(IndexNames.PublicUserIndexName)),
                 cancellationToken)
             .Assert(Log);
 
@@ -347,8 +348,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         CancellationToken cancellationToken)
         => OpenSearchClient
             .BulkAsync(r
-                    => r.IndexMany(updated, (op, x) => op.Index(OpenSearchNames.GetChatContactIndexName(x.IsPublic)))
-                        .DeleteMany(deleted, (op, x) => op.Index(OpenSearchNames.GetChatContactIndexName(x.IsPublic))),
+                    => r.IndexMany(updated, (op, x) => op.Index(IndexNames.GetChatContactIndexName(x.IsPublic)))
+                        .DeleteMany(deleted, (op, x) => op.Index(IndexNames.GetChatContactIndexName(x.IsPublic))),
                 cancellationToken)
             .Assert(Log);
 

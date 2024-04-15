@@ -2,7 +2,7 @@ using OpenSearch.Client;
 
 namespace ActualChat.Search;
 
-public sealed class OpenSearchNames
+public sealed class IndexNames
 {
     public const string EntryIndexVersion = "v2";
     public const string UserIndexVersion = "v2";
