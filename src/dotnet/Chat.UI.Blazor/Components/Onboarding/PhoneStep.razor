@@ -17,10 +17,9 @@
         We collect this information to help you find friends in your contacts list who are already using Actual Chat.
     </p>
     <Form
-        @ref="_formRef"
         Class="mt-6"
         Model="@_model">
-        <DataAnnotationsValidator/>
+        <AsyncDataAnnotationsValidator @ref="_validator"/>
         <FormSection
             For="() => _model.Phone"
             InputId="phone"
@@ -49,10 +48,10 @@
 
 @code {
     private readonly Model _model = new();
-    private Form? _formRef;
     private bool _showVerificationStatus;
     private bool? _isVerified;
     private bool? _skipped;
+    private AsyncDataAnnotationsValidator _validator = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -86,17 +85,14 @@
         => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsVerifyPhoneStepCompleted = true });
 
     protected override async Task OnInitializedAsync() {
-        var account = await Accounts.GetOwn(Session, CancellationToken.None);
+        var account = await Accounts.GetOwn(Session, default);
         _showVerificationStatus = !account.HasVerifiedPhone();
         if (!account.Phone.IsNone)
             _model.Phone = account.Phone.ToReadable();
     }
 
-    protected override async Task<bool> Validate() {
-        var isValid = _formRef?.EditContext?.Validate() ?? false;
-        var phone = await Phones.Parse(_model.Phone, CancellationToken.None);
-        return isValid && phone.IsValid;
-    }
+    protected override Task<bool> Validate()
+        => _validator.Validate(CancellationToken.None);
 
     protected override ValueTask OnSkip() {
         _skipped = true;
@@ -104,7 +100,7 @@
     }
 
     protected override async Task<bool> Save() {
-        var phone = await Phones.Parse(_model.Phone, CancellationToken.None);
+        var phone = await Phones.Parse(_model.Phone, default);
         var account = await Accounts.GetOwn(Session, default);
         var command = new Accounts_Update(Session, account with { Phone = phone }, account.Version);
         var (_, error) = await UICommander.Run(command);
@@ -126,6 +122,6 @@
     }
 
     public class Model {
-        [Required] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
+        [Required, PhoneNumber] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
     }
 }

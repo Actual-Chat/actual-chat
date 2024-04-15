@@ -10,7 +10,7 @@
         Class="m-6 w-80"
         Model="@_model"
         OnValidSubmit="OnVerifyClick">
-        <DataAnnotationsValidator/>
+        <AsyncDataAnnotationsValidator/>
         <FormSection
             For="() => _model.ReadablePhone"
             InputId="phone"
@@ -63,7 +63,7 @@
     }
 
     public class Model {
-        [Required] public string ReadablePhone { get; set; } = "+1(234)-567-89-10";
+        [Required, PhoneNumber] public string ReadablePhone { get; set; } = "+1(234)-567-89-10";
         public bool IsVerified { get; set; }
         public bool ShowVerifier { get; set; }
         public Phone Phone { get; set; }

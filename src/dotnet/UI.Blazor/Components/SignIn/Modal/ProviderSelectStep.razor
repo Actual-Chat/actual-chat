@@ -39,11 +39,10 @@
         </div>
 
         <Form
-            @ref="_formRef"
             Class="c-phone-form"
             Model="@_stepModel"
             OnValidSubmit="OnSignInWithPhone">
-            <DataAnnotationsValidator/>
+            <AsyncDataAnnotationsValidator @ref="_validator"/>
             <FormSection
                 For="() => _stepModel.Phone"
                 InputId="@_stepModel.PhoneFieldId"
@@ -66,10 +65,10 @@
 </div>
 
 @code {
-    private Form _formRef = null!;
     private StepModel _stepModel = null!;
     private List<AuthSchemaModel>? _authSchemas;
     private bool _isPhoneAuthEnabled;
+    private AsyncDataAnnotationsValidator _validator = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
@@ -105,11 +104,8 @@
             .ToList();
     }
 
-    protected override async Task<bool> Validate() {
-        var isValid = _formRef.EditContext?.Validate() ?? false;
-        var phone = await Phones.Parse(_stepModel.Phone, CancellationToken.None);
-        return isValid && phone.IsValid;
-    }
+    protected override Task<bool> Validate()
+        => _validator.Validate();
 
     protected override async Task<bool> Save() {
         var phone = await Phones.Parse(_stepModel.Phone, CancellationToken.None);
@@ -136,7 +132,7 @@
 
     public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
         : FormModel<StepModel>("phone-signin", componentIdGenerator) {
-        [Required] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
+        [Required, PhoneNumber] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
         public string PhoneFieldId { get; set; } = "";
     }
 }
