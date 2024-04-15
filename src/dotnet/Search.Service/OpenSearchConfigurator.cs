@@ -9,12 +9,12 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
 {
     private readonly TaskCompletionSource _whenCompleted = new ();
     private SearchSettings? _settings;
-    private OpenSearchNames? _elasticNames;
+    private IndexNames? _openSearchNames;
     private IOpenSearchClient? _openSearchClient;
     private ILogger? _log;
 
     private SearchSettings Settings => _settings ??= services.GetRequiredService<SearchSettings>();
-    private OpenSearchNames OpenSearchNames => _elasticNames ??= services.GetRequiredService<OpenSearchNames>();
+    private IndexNames IndexNames => _openSearchNames ??= services.GetRequiredService<IndexNames>();
     private IOpenSearchClient OpenSearchClient => _openSearchClient ??= services.GetRequiredService<IOpenSearchClient>();
     private IMeshLocks MeshLocks { get; }
         = services.GetRequiredService<IMeshLocks<SearchDbContext>>().WithKeyPrefix(nameof(OpenSearchConfigurator));
@@ -77,26 +77,26 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
     private async Task EnsureEntryIndexTemplateUnsafe(CancellationToken cancellationToken)
     {
         var existsIndexTemplateResponse = await OpenSearchClient.Indices
-            .TemplateExistsAsync(OpenSearchNames.EntryIndexTemplateName, ct: cancellationToken)
+            .TemplateExistsAsync(IndexNames.EntryIndexTemplateName, ct: cancellationToken)
             .ConfigureAwait(false);
         if (existsIndexTemplateResponse.Exists)
             return;
 
         await OpenSearchClient.Indices
-            .PutTemplateAsync(OpenSearchNames.EntryIndexTemplateName, ConfigureEntryIndexTemplate, cancellationToken)
+            .PutTemplateAsync(IndexNames.EntryIndexTemplateName, ConfigureEntryIndexTemplate, cancellationToken)
             .Assert(Log)
             .ConfigureAwait(false);
     }
 
     private Task EnsureContactIndicesUnsafe(CancellationToken cancellationToken)
         => Task.WhenAll(
-            EnsureContactIndex<IndexedUserContact>(OpenSearchNames.PublicUserIndexName,
+            EnsureContactIndex<IndexedUserContact>(IndexNames.PublicUserIndexName,
                 ConfigureUserContactIndex,
                 cancellationToken),
-            EnsureContactIndex<IndexedChatContact>(OpenSearchNames.GetChatContactIndexName(true),
+            EnsureContactIndex<IndexedChatContact>(IndexNames.GetChatContactIndexName(true),
                 ConfigureChatContactIndex,
                 cancellationToken),
-            EnsureContactIndex<IndexedChatContact>(OpenSearchNames.GetChatContactIndexName(false),
+            EnsureContactIndex<IndexedChatContact>(IndexNames.GetChatContactIndexName(false),
                 ConfigureChatContactIndex,
                 cancellationToken));
 
@@ -117,9 +117,9 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
             => m.Properties(p
                 => p.Keyword(x => x.Name(e => e.Id))
                     .Text(x => x.Name(e => e.Content))
-                    .Keyword(x => x.Name(e => e.ChatId))))
-            .Settings(s => s.RefreshInterval(Settings.ElasticRefreshInterval))
-            .IndexPatterns(OpenSearchNames.EntryIndexPattern);
+                    .Keyword(x => x.Name(e =>  e.ChatId))))
+            .Settings(s => s.RefreshInterval(Settings.RefreshInterval))
+            .IndexPatterns(IndexNames.EntryIndexPattern);
 
     private ICreateIndexRequest ConfigureUserContactIndex(CreateIndexDescriptor index)
         => index.Map<IndexedUserContact>(m
@@ -128,7 +128,7 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
                     .Text(x => x.Name(e => e.FullName))
                     .Text(x => x.Name(e => e.FirstName))
                     .Text(x => x.Name(e => e.SecondName))))
-            .Settings(s => s.RefreshInterval(Settings.ElasticRefreshInterval));
+            .Settings(s => s.RefreshInterval(Settings.RefreshInterval));
 
     private ICreateIndexRequest ConfigureChatContactIndex(CreateIndexDescriptor index)
         => index.Map<IndexedChatContact>(m
@@ -136,5 +136,5 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
                 => p.Keyword(x => x.Name(e => e.Id))
                     .Keyword(x => x.Name(e => e.PlaceId))
                     .Text(x => x.Name(e => e.Title))))
-            .Settings(s => s.RefreshInterval(Settings.ElasticRefreshInterval));
+            .Settings(s => s.RefreshInterval(Settings.RefreshInterval));
 }

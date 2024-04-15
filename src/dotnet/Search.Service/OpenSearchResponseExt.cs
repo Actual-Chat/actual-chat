@@ -14,17 +14,28 @@ public static class OpenSearchResponseExt
         // response received
         var error = response.ServerError;
         if (error != null)
-            throw StandardError.External($"Elastic request failed: {error.Error.Reason}.".TrimSuffix(":", ".")
+            throw StandardError.External($"OpenSearch request failed: {error.Error.Reason}.".TrimSuffix(":", ".")
                 .EnsureSuffix("."));
+
+        log ??= DefaultLogFor(typeof(OpenSearchResponseExt));
+        if (response is BulkResponse bulkResponse) {
+            var failureCount = bulkResponse.ItemsWithErrors.Count();
+            var firstFailed = bulkResponse.ItemsWithErrors.FirstOrDefault();
+            var firstFailedReason = firstFailed?.Error?.Reason ?? "N/A";
+            log.LogError("OpenSearch Bulk request failed: {ItemsFailed}, {FailureReason}", failureCount, firstFailedReason);
+            throw StandardError.External($"OpenSearch bulk request failed for {failureCount} items: {firstFailedReason}."
+                .TrimSuffix(":", ".")
+                .Trim()
+                .EnsureSuffix("."));
+        }
 
         // request sending failed
         if (response.ApiCall.OriginalException is { } exc) {
-            log ??= DefaultLogFor(typeof(OpenSearchResponseExt));
-            log.LogError(exc, "Failed to perform elastic operation");
-            throw StandardError.External($"Elastic request failed: {exc.Message}");
+            log.LogError(exc, "Failed to perform OpenSearch operation");
+            throw StandardError.External($"OpenSearch request failed: {exc.Message}");
         }
 
-        throw StandardError.External("Elastic request failed");
+        throw StandardError.External("OpenSearch request failed");
     }
 
     public static MultiMatchQueryDescriptor<TDocument> Fields<TDocument, TValue>(

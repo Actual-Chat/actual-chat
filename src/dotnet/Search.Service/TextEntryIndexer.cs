@@ -15,7 +15,7 @@ public sealed class TextEntryIndexer(IServiceProvider services) : WorkerBase, IH
     private SearchSettings? _settings;
     private IChatsBackend? _chatsBackend;
     private IIndexedChatsBackend? _indexedChatsBackend;
-    private OpenSearchConfigurator? _elasticConfigurator;
+    private OpenSearchConfigurator? _openSearchConfigurator;
     private IMeshLocks<SearchDbContext>? _meshLocks;
     private ICommander? _commander;
     private ILogger? _log;
@@ -24,7 +24,7 @@ public sealed class TextEntryIndexer(IServiceProvider services) : WorkerBase, IH
 
     private SearchSettings Settings => _settings ??= Services.GetRequiredService<SearchSettings>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-    private OpenSearchConfigurator OpenSearchConfigurator => _elasticConfigurator ??= Services.GetRequiredService<OpenSearchConfigurator>();
+    private OpenSearchConfigurator OpenSearchConfigurator => _openSearchConfigurator ??= Services.GetRequiredService<OpenSearchConfigurator>();
 
     private IIndexedChatsBackend IndexedChatsBackend
         => _indexedChatsBackend ??= Services.GetRequiredService<IIndexedChatsBackend>();
