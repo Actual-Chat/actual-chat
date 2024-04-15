@@ -19,7 +19,7 @@
         ButtonsClass="full-width">
         <Body>
         <FormBlock>
-            <DataAnnotationsValidator/>
+            <AsyncDataAnnotationsValidator @ref="_validator"/>
             <ValidationSummary/>
 
             <FormSection
@@ -135,6 +135,7 @@
     private Form _formRef = null!;
     private FormModel _form = null!;
     private AccountFull _account = AccountFull.Loading;
+    private AsyncDataAnnotationsValidator _validator = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
@@ -157,7 +158,10 @@
     }
 
     private async void OnSave() {
-        var phone = _form.ParsedPhone = await Phones.Parse(_form.Phone, CancellationToken.None);
+        if (!await _validator.Validate())
+            return;
+
+        var phone = _form.ParsedPhone = await Phones.Parse(_form.Phone, default);
         if (!phone.IsValid)
             return;
 
@@ -201,7 +205,7 @@
         public string LastNameFieldId { get; set; } = "";
         [EmailAddress] public string? Email { get; set; }
         public string EmailFieldId { get; set; } = "";
-        public string Phone { get; set; } = "";
+        [PhoneNumber] public string Phone { get; set; } = "";
         public Phone ParsedPhone { get; set; }
         public string PhoneFieldId { get; set; } = "";
     }
