@@ -3,7 +3,7 @@ using MemoryPack;
 
 namespace ActualChat.Media;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable]
 [MemoryPackUnion(0 ,typeof(AudioFrame))]
 public abstract partial class MediaFrame
 {
