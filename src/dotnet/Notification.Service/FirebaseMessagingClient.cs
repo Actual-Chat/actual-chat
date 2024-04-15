@@ -12,6 +12,7 @@ public class FirebaseMessagingClient(
     private FirebaseMessaging FirebaseMessaging { get; } = firebaseMessaging;
     private ICommander Commander { get; } = commander;
     private ILogger Log { get; } = log;
+    private ILogger? DebugLog => !UrlMapper.IsActualChat ? Log : null;
 
     public async Task SendMessage(Notification entry, IReadOnlyCollection<Symbol> deviceIds, CancellationToken cancellationToken)
     {
@@ -24,6 +25,7 @@ public class FirebaseMessagingClient(
         var chatEntryNotification = entry.ChatEntryNotification;
         var chatEntryId = chatEntryNotification?.EntryId ?? default;
         var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl, true);
+        var isDev = UrlMapper.IsDevActualChat;
 
         var isChatRelated = !chatId.IsNone;
         var isTextEntryRelated = chatEntryId is { IsNone: false, Kind: ChatEntryKind.Text };
@@ -85,8 +87,23 @@ public class FirebaseMessagingClient(
                 },
             },
         };
+        if (isDev)
+            multicastMessage.Android.FcmOptions = new AndroidFcmOptions {
+                AnalyticsLabel = "dev test" // Add label to see data messages statistics in Message delivery reports.
+            };
         var batchResponse = await FirebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken)
             .ConfigureAwait(false);
+        if (isDev) {
+            var messageIds = string.Join(", ",
+                batchResponse.Responses.Select(c =>
+                    c.IsSuccess
+                        ? c.MessageId
+                        : c.Exception.MessagingErrorCode.HasValue
+                            ? "errCode=" + c.Exception.MessagingErrorCode
+                            : c.Exception.Message));
+            DebugLog?.LogInformation("Sent {Successfully}/{Total} messages. Result: '{MessageIds}'",
+                batchResponse.SuccessCount, batchResponse.Responses.Count, messageIds);
+        }
 
         if (batchResponse.FailureCount > 0) {
             var responses = batchResponse.Responses
