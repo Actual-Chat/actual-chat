@@ -89,7 +89,7 @@ body.hoverable .post-panel-btn:hover {
 }
 
 
-[contenteditable=true]:empty:not(:focus):before {
+[contenteditable=true]:empty:before {
     @apply truncate;
     @apply text-placeholder text-base;
     content:attr(data-text)

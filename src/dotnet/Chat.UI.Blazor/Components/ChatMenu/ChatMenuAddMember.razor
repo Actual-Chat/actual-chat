@@ -1,0 +1,21 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits FusionComponentBase
+
+@if (EditMembersUI.CanAddMembers(Chat)) {
+    <MenuEntry
+        Icon="icon-person-add text-2xl"
+        Text="Add members"
+        Click="@OnClick">
+    </MenuEntry>
+}
+
+@code {
+    private Chat Chat => ChatState.Chat;
+
+    [Inject] public ModalUI ModalUI { get; init; } = null!;
+
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
+
+    private Task OnClick()
+        => ModalUI.Show(new AddMemberModal.Model(Chat.Id));
+}

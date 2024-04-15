@@ -29,9 +29,9 @@
 }
 
 /* Placeholder */
-.markup-editor .editor-content:empty:not(:focus):before {
+.markup-editor .editor-content:empty:before {
     content: attr(data-placeholder);
-    @apply text-04 !opacity-100 truncate;
+    @apply text-04 truncate;
 }
 
 /* Permanent mobile cursor */

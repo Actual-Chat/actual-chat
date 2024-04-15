@@ -27,3 +27,9 @@
 .navigate-to-end .btn.btn-round .btn-content {
     @apply font-bold text-4xl;
 }
+body.hoverable .navigate-to-end .btn.btn-round:hover {
+    @apply bg-round;
+}
+body.hoverable .navigate-to-end .btn.btn-round:hover::after {
+    @apply bg-transparent;
+}
