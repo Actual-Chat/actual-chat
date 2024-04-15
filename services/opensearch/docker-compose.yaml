@@ -28,9 +28,9 @@ services:
       - opensearch-net
     healthcheck:
       test: "curl --fail 'http://opensearch-node:9200/_cluster/health?wait_for_status=green&timeout=1s' || exit 1"
-      interval: 3s
-      timeout: 3s
-      retries: 6
+      interval: 4s
+      timeout: 5s
+      retries: 8
 
   opensearch-config:
     build:
@@ -44,7 +44,8 @@ services:
     environment:
       OPENSEARCH_CLUSTER_URL: 'http://opensearch-node:9200'
       OPENSEARCH_ML_MODEL_GROUP: 'NLP_model_group'
-      SLEEP_ON_FAILURE_SECONDS: 10
+      SLEEP_ON_FAILURE_SECONDS: 15
+      MAX_RETRY_ATTEMPTS: 3
       TORCHSCRIPT_MODEL_PATH: /ml_model/sentence-transformers_paraphrase-MiniLM-L3-v2-1.0.1-torch_script.zip
       TORCHSCRIPT_MODEL_CONFIG_PATH: /ml_model/config.json
     volumes:

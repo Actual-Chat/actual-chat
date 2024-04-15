@@ -93,7 +93,7 @@ jobs:
           node.name: opensearch-node
           discovery.type: single-node
           bootstrap.memory_lock: true # along with the memlock settings below, disables swapping
-          OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
+          OPENSEARCH_JAVA_OPTS: -Xms4096m -Xmx4096m # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
           DISABLE_SECURITY_PLUGIN: true
           cluster.routing.allocation.disk.threshold_enabled: false
           plugins.ml_commons.only_run_on_ml_node: false # allow running ml tasks on data nodes
