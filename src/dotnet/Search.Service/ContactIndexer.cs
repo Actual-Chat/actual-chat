@@ -11,7 +11,7 @@ public abstract class ContactIndexer(IServiceProvider services)
     private readonly TaskCompletionSource _whenInitialized = new ();
     private SearchSettings? _settings;
     private IContactIndexStatesBackend? _indexedChatsBackend;
-    private ElasticConfigurator? _elasticConfigurator;
+    private OpenSearchConfigurator? _elasticConfigurator;
     private ICommander? _commander;
 
     public Task WhenInitialized => _whenInitialized.Task;
@@ -21,7 +21,7 @@ public abstract class ContactIndexer(IServiceProvider services)
     protected long MaxVersion => (Clocks.CoarseSystemClock.Now - Settings.ContactIndexingDelay).EpochOffset.Ticks;
     protected IContactIndexStatesBackend ContactIndexStatesBackend => _indexedChatsBackend ??= Services.GetRequiredService<IContactIndexStatesBackend>();
     protected ICommander Commander => _commander ??= Services.Commander();
-    private ElasticConfigurator ElasticConfigurator => _elasticConfigurator ??= Services.GetRequiredService<ElasticConfigurator>();
+    private OpenSearchConfigurator OpenSearchConfigurator => _elasticConfigurator ??= Services.GetRequiredService<OpenSearchConfigurator>();
     private SearchSettings Settings => _settings ??= Services.GetRequiredService<SearchSettings>();
 
     void INotifyInitialized.Initialized()
@@ -38,8 +38,8 @@ public abstract class ContactIndexer(IServiceProvider services)
         if (!Settings.IsSearchEnabled)
             return;
 
-        if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
-            await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
+        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
+            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
         _whenInitialized.TrySetResult();
         while (!cancellationToken.IsCancellationRequested)

@@ -76,7 +76,7 @@ public static class TestAppHostFactory
                 services.AddSingleton(options.ChatDbInitializerOptions);
                 services.AddSingleton<IBlobStorages, TempFolderBlobStorages>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
-                services.AddSingleton<ElasticNames>(_ => new ElasticNames {
+                services.AddSingleton<OpenSearchNames>(_ => new OpenSearchNames {
                     IndexPrefix = UniqueNames.Elastic("test"),
                 });
             },

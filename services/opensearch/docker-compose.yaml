@@ -22,8 +22,8 @@ services:
     volumes:
       - opensearch-data:/usr/share/opensearch/data
     ports:
-      - 9201:9200
-      - 9601:9600 # required for Performance Analyzer
+      - 9200:9200
+      - 9600:9600 # required for Performance Analyzer
     networks:
       - opensearch-net
     healthcheck:
@@ -68,9 +68,9 @@ services:
       dockerfile: opensearch-dashboard-no-security.dockerfile
     container_name: opensearch-dashboards
     ports:
-      - 5602:5601
+      - 5601:5601
     expose:
-      - "5602"
+      - "5601"
     environment:
       ml_commons_dashboards.enabled: true
       OPENSEARCH_HOSTS: '["http://opensearch-node:9200"]'

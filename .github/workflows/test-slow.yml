@@ -62,18 +62,6 @@ jobs:
         ports:
           # Maps tcp port 5432 on service container to the host
           - 5432:5432
-      elasticsearch:
-        image: elasticsearch:8.11.3
-        ports:
-          - 9200:9200
-        env:
-          ELASTIC_USERNAME: elastic
-          ELASTIC_PASSWORD: elastic
-          xpack.security.enabled: false
-          discovery.type: single-node
-          cluster.routing.allocation.disk.threshold_enabled: false
-        volumes:
-          - elasticsearch-data:/usr/share/elasticsearch/data
       nats:
         image: ghcr.io/actual-chat/nats-jetstream:2.10.10-alpine3.19
         # Set health checks to wait until postgres has started
@@ -107,8 +95,8 @@ jobs:
           --health-timeout 5s
           --health-retries 15
         ports:
-          - 9201:9200
-          - 9601:9600
+          - 9200:9200
+          - 9600:9600
         volumes:
           - opensearch-data:/usr/share/opensearch/data
     steps:
@@ -150,7 +138,7 @@ jobs:
           --name opensearch-configurator \
           --env SLEEP_ON_FAILURE_SECONDS=5 \
           --env MAX_RETRY_ATTEMPTS=6 \
-          --env OPENSEARCH_CLUSTER_URL='http://localhost:9201' \
+          --env OPENSEARCH_CLUSTER_URL='http://localhost:9200' \
           --env OPENSEARCH_ML_MODEL_GROUP='NLP_model_group' \
           --env TORCHSCRIPT_MODEL_PATH='/ml_model/sentence-transformers_paraphrase-MiniLM-L3-v2-1.0.1-torch_script.zip' \
           --env TORCHSCRIPT_MODEL_CONFIG_PATH='/ml_model/config.json' \

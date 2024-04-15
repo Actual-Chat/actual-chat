@@ -5,8 +5,8 @@ using ActualChat.Hosting;
 using ActualChat.Search.Db;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
-using Elastic.Clients.Elasticsearch;
-using Elastic.Transport;
+using OpenSearch.Client;
+using OpenSearch.Net;
 
 namespace ActualChat.Search.Module;
 
@@ -70,19 +70,14 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices)
             db.AddEntityResolver<string, DbContactIndexState>();
         });
 
-        // Elastic
-        services.AddSingleton(c => {
-            if (!HostInfo.IsDevelopmentInstance || Settings.IsCloudElastic) {
-                var cloudElasticClientSettings = new ElasticsearchClientSettings(Settings.ElasticCloudId, new Base64ApiKey(Settings.ElasticApiKey));
-                return new ElasticsearchClient(cloudElasticClientSettings);
-            }
-            if (!Settings.ElasticLocalUri.IsNullOrEmpty()) {
-                return new ElasticsearchClient(new Uri(Settings.ElasticLocalUri));
-            }
-            return new ElasticsearchClient();
-        });
-        services.AddSingleton<ElasticConfigurator>()
-            .AddHostedService(c => c.GetRequiredService<ElasticConfigurator>());
-        services.AddSingleton<ElasticNames>();
+        // OpenSearch
+        var openSearchClusterUri = Settings.ElasticLocalUri
+            ?? throw new InvalidOperationException("OpenSearchClusterUri is not set");
+
+        var connectionSettings = new ConnectionSettings(new SingleNodeConnectionPool(new Uri(openSearchClusterUri)));
+        services.AddSingleton<IOpenSearchClient>(_ => new OpenSearchClient(connectionSettings));
+        services.AddSingleton<OpenSearchConfigurator>()
+            .AddHostedService(c => c.GetRequiredService<OpenSearchConfigurator>());
+        services.AddSingleton<OpenSearchNames>();
     }
 }

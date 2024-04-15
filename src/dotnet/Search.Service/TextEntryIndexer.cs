@@ -15,7 +15,7 @@ public sealed class TextEntryIndexer(IServiceProvider services) : WorkerBase, IH
     private SearchSettings? _settings;
     private IChatsBackend? _chatsBackend;
     private IIndexedChatsBackend? _indexedChatsBackend;
-    private ElasticConfigurator? _elasticConfigurator;
+    private OpenSearchConfigurator? _elasticConfigurator;
     private IMeshLocks<SearchDbContext>? _meshLocks;
     private ICommander? _commander;
     private ILogger? _log;
@@ -24,7 +24,7 @@ public sealed class TextEntryIndexer(IServiceProvider services) : WorkerBase, IH
 
     private SearchSettings Settings => _settings ??= Services.GetRequiredService<SearchSettings>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-    private ElasticConfigurator ElasticConfigurator => _elasticConfigurator ??= Services.GetRequiredService<ElasticConfigurator>();
+    private OpenSearchConfigurator OpenSearchConfigurator => _elasticConfigurator ??= Services.GetRequiredService<OpenSearchConfigurator>();
 
     private IIndexedChatsBackend IndexedChatsBackend
         => _indexedChatsBackend ??= Services.GetRequiredService<IIndexedChatsBackend>();
@@ -54,8 +54,8 @@ public sealed class TextEntryIndexer(IServiceProvider services) : WorkerBase, IH
     {
         try {
             using var _1 = Tracer.Default.Region();
-            if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
-                await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
+            if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
+                await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
             var runOptions = RunLockedOptions.NoRelock with { Log = Log };
             await MeshLocks
                 .TryRunLocked(nameof(SyncHistory), runOptions, EnsureIndexedChatsCreated, cancellationToken)

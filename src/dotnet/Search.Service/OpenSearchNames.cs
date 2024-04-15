@@ -1,8 +1,8 @@
-using Elastic.Clients.Elasticsearch;
+using OpenSearch.Client;
 
 namespace ActualChat.Search;
 
-public sealed class ElasticNames
+public sealed class OpenSearchNames
 {
     public const string EntryIndexVersion = "v2";
     public const string UserIndexVersion = "v2";
