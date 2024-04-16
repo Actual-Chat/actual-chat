@@ -18,7 +18,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         if (HostInfo.HasRole(HostRole.Api)) {
             // SignalR hub endpoints
             app.UseEndpoints(endpoints => {
-                endpoints.MapHub<StreamHub>("/api/hub/streams", options => options.AllowStatefulReconnects = true);
+                endpoints.MapHub<StreamHub>("/api/hub/streams");
                 endpoints.MapHub<StreamHub>("/api/hub/audio"); // For backward compatibility!
             });
         }
