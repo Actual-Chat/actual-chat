@@ -263,7 +263,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddPrometheusExporter(cfg => { // OtlpExporter doesn't work for metrics ???
                     cfg.ScrapeEndpointPath = "/metrics";
                     cfg.ScrapeResponseCacheDurationMilliseconds = 300;
-                    cfg.DisableTotalNameSuffixForCounters = true;
+                    // commented out as OpenTelemetry.Exporter.Prometheus.AspNetCore 1.7.0-rc.1 doesn't support it
+                    // and 1.8.0 doesn't allow the managed Prometheus collector to collect metrics
+                    // cfg.DisableTotalNameSuffixForCounters = true;
                 })
                 .AddOtlpExporter(cfg => {
                     cfg.ExportProcessorType = ExportProcessorType.Batch;
