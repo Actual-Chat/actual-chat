@@ -14,7 +14,6 @@ using Microsoft.Extensions.Configuration;
 // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenTelemetry.Trace;
-using Sentry;
 using Tracer = ActualChat.Performance.Tracer;
 
 namespace ActualChat.App.Wasm;

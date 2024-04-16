@@ -19,7 +19,6 @@ public abstract class HubClientBase : IDisposable
         HubUrl = hubUrl;
         Connector = new(Connect) {
             ReconnectDelayer = reconnectDelayer,
-            TerminalErrorDetector = e => e is ObjectDisposedException,
             Log = Log,
             LogTag = $"SignalR hub @ {HubUrl}",
             LogLevel = LogLevel.Debug,

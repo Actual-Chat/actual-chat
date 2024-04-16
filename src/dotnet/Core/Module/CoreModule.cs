@@ -7,6 +7,7 @@ using ActualLab.Fusion.Extensions;
 using ActualLab.Fusion.Internal;
 using ActualLab.Generators;
 using ActualLab.Mathematics.Internal;
+using ActualLab.Resilience;
 using ActualLab.Rpc;
 
 namespace ActualChat.Module;
@@ -47,16 +48,17 @@ public sealed class CoreModule(IServiceProvider moduleServices)
             (User? u) => u?.IsAuthenticated() == true);
 
         // Any AccountException isn't a transient error
-        var oldDefaultPreferTransient = TransientErrorDetector.DefaultPreferTransient;
-        TransientErrorDetector.DefaultPreferTransient = TransientErrorDetector.New(e => {
-            if (!oldDefaultPreferTransient.IsTransient(e))
-                return false;
+        var oldPreferTransient = TransiencyResolvers.PreferTransient;
+        TransiencyResolvers.PreferTransient = e => {
+            var transiency = oldPreferTransient.Invoke(e);
+            if (!transiency.IsTransient())
+                return transiency;
 
             return e switch {
-                AccountException => false,
-                _ => true,
+                AccountException => Transiency.NonTransient,
+                _ => transiency,
             };
-        });
+        };
     }
 
     protected internal override void InjectServices(IServiceCollection services)

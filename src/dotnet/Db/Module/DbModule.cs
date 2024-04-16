@@ -118,11 +118,11 @@ public sealed class DbModule(IServiceProvider moduleServices)
             });
             */
             db.AddOperations(operations => {
-                operations.ConfigureOperationLogProcessor(_ => new() {
+                operations.ConfigureOperationLogReader(_ => new() {
                     CheckPeriod = TimeSpan.FromSeconds(HostInfo.IsDevelopmentInstance ? 60 : 5).ToRandom(0.1),
                 });
                 operations.ConfigureOperationLogTrimmer(_ => new() {
-                    MaxEntryAge = TimeSpan.FromMinutes(10),
+                    MaxEntryAge = TimeSpan.FromMinutes(30),
                 });
                 // operations.AddNpgsqlOperationLogChangeTracking();
                 operations.AddRedisOperationLogWatchers();

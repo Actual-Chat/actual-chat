@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>7.5.35</ActualLabFusionVersion>
+    <ActualLabFusionVersion>7.6.5</ActualLabFusionVersion>
     <AspNetCoreVersion>8.0.4</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>8.0.4</EntityFrameworkCoreVersion>
@@ -23,7 +23,8 @@
     <OpenTelemetryGrpcClientVersion>1.8.0-beta.1</OpenTelemetryGrpcClientVersion>
     <OpenTelemetryNpgsqlVersion>8.0.2</OpenTelemetryNpgsqlVersion>
     <SentryVersion>4.4.0</SentryVersion>
-    <MemoryPackVersion>1.21.1</MemoryPackVersion>
+    <!-- NOTE(AY): v1.20.X is broken, please don't upgrade to it! -->
+    <MemoryPackVersion>1.10.0</MemoryPackVersion>
     <MessagePackVersion>2.4.59</MessagePackVersion>
   </PropertyGroup>
   <ItemGroup Label="Nupkg Versions">

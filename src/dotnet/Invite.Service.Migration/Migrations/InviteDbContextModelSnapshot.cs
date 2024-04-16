@@ -81,6 +81,51 @@ namespace ActualChat.Invite.Migrations
                     b.ToTable("invites");
                 });
 
+            modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbEvent", b =>
+                {
+                    b.Property<string>("Uuid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasColumnName("uuid");
+
+                    b.Property<DateTime>("DelayUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("delay_until");
+
+                    b.Property<DateTime>("LoggedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("logged_at");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer")
+                        .HasColumnName("state");
+
+                    b.Property<string>("ValueJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("value_json");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Uuid")
+                        .HasName("pk_events");
+
+                    b.HasIndex("DelayUntil")
+                        .HasDatabaseName("ix_events_delay_until");
+
+                    b.HasIndex("Uuid")
+                        .IsUnique()
+                        .HasDatabaseName("ix_events_uuid");
+
+                    b.HasIndex("State", "DelayUntil")
+                        .HasDatabaseName("ix_events_state_delay_until");
+
+                    b.ToTable("_events");
+                });
+
             modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbOperation", b =>
                 {
                     b.Property<long>("Index")
@@ -130,90 +175,6 @@ namespace ActualChat.Invite.Migrations
                         .HasDatabaseName("ix_operations_uuid");
 
                     b.ToTable("_operations");
-                });
-
-            modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbOperationEvent", b =>
-                {
-                    b.Property<long>("Index")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("index");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Index"));
-
-                    b.Property<DateTime>("LoggedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("logged_at");
-
-                    b.Property<int>("State")
-                        .HasColumnType("integer")
-                        .HasColumnName("state");
-
-                    b.Property<string>("Uuid")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("uuid");
-
-                    b.Property<string>("ValueJson")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("value_json");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Index")
-                        .HasName("pk_events");
-
-                    b.HasIndex("LoggedAt")
-                        .HasDatabaseName("ix_events_logged_at");
-
-                    b.HasIndex("Uuid")
-                        .IsUnique()
-                        .HasDatabaseName("ix_events_uuid");
-
-                    b.HasIndex("State", "LoggedAt")
-                        .HasDatabaseName("ix_events_state_logged_at");
-
-                    b.ToTable("_events");
-                });
-
-            modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbOperationTimer", b =>
-                {
-                    b.Property<string>("Uuid")
-                        .HasColumnType("text")
-                        .HasColumnName("uuid");
-
-                    b.Property<DateTime>("FiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("fires_at");
-
-                    b.Property<int>("State")
-                        .HasColumnType("integer")
-                        .HasColumnName("state");
-
-                    b.Property<string>("ValueJson")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("value_json");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Uuid")
-                        .HasName("pk_timers");
-
-                    b.HasIndex("FiresAt")
-                        .HasDatabaseName("ix_timers_fires_at");
-
-                    b.HasIndex("State", "FiresAt")
-                        .HasDatabaseName("ix_timers_state_fires_at");
-
-                    b.ToTable("_timers");
                 });
 #pragma warning restore 612, 618
         }

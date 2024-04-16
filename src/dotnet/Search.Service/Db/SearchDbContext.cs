@@ -12,8 +12,7 @@ public class SearchDbContext(DbContextOptions<SearchDbContext> options) : DbCont
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
-    public DbSet<DbOperationEvent> OperationEvents { get; protected set; } = null!;
-    public DbSet<DbOperationTimer> OperationTimers { get; protected set; } = null!;
+    public DbSet<DbEvent> Events { get; protected set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder model)
         => model.ApplyConfigurationsFromAssembly(typeof(SearchDbContext).Assembly).UseSnakeCaseNaming();
