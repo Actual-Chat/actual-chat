@@ -277,9 +277,10 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         await commander.Call(new Places_Leave(anotherSession, placeId));
         await services.Queues().WhenProcessing();
 
-        await TestExt.WhenMetAsync(
-            async () => {
-                var placeIds = await contacts.ListPlaceIds(anotherSession, default);
+        await ComputedTestExt.WhenMet(
+            services,
+            async ct => {
+                var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
                 placeIds.Should().BeEmpty();
             },
             TimeSpan.FromSeconds(5));
