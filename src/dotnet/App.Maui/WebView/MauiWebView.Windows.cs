@@ -24,6 +24,7 @@ public partial class MauiWebView
             var webView = sender.CoreWebView2;
             webView.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
         };
+        WindowsWebView.CoreWebView2.PermissionRequested += OnPermissionRequested;
     }
 
     public partial void HardNavigateTo(string url)
@@ -41,6 +42,19 @@ public partial class MauiWebView
     {
         var webView = eventArgs.WebView;
         SetPlatformWebView(webView);
+    }
+
+    private static void OnPermissionRequested(CoreWebView2 sender, CoreWebView2PermissionRequestedEventArgs args)
+    {
+        if (args.PermissionKind != CoreWebView2PermissionKind.Microphone && args.PermissionKind != CoreWebView2PermissionKind.Camera)
+            return;
+
+        if (!args.IsUserInitiated)
+            return; // use default permission handler for non-user requests
+
+        args.State = CoreWebView2PermissionState.Allow;
+        args.Handled = true;
+        args.SavesInProfile = true;
     }
 
     private partial void OnLoaded(object? sender, EventArgs eventArgs) { }
