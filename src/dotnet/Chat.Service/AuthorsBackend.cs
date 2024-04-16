@@ -298,14 +298,10 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
             if (chatId.IsPeerChat(out _))
                 context.Operation.AddEvent(
-                    new ChatPositionsBackend_Set(
-                        author.UserId,
-                        command.ChatId,
-                        ChatPositionKind.Read,
-                        new ChatPosition()));
+                    new ChatPositionsBackend_Set(author.UserId, command.ChatId, ChatPositionKind.Read, new ChatPosition()));
 
+            // Raise events
             if (!doNotNotify)
-                // Raise events
                 context.Operation.AddEvent(new AuthorChangedEvent(author, existingAuthor));
             return author;
         }

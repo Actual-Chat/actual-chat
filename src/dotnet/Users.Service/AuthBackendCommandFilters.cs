@@ -1,9 +1,7 @@
-using ActualChat.Queues;
 using ActualChat.Users.Db;
 using ActualChat.Users.Events;
 using ActualLab.Fusion.Authentication.Services;
 using ActualLab.Fusion.EntityFramework;
-using ActualLab.Fusion.EntityFramework.Internal;
 
 namespace ActualChat.Users;
 
@@ -51,31 +49,9 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    [CommandFilter(Priority = FusionEntityFrameworkCommandHandlerPriority.DbOperationScopeProvider + 1)]
-    public virtual async Task OnSignedIn(AuthBackend_SignIn command, CancellationToken cancellationToken)
-    {
-        // This command filter takes the following actions on sign-in:
-        // - moves session keys to user keys in IServerKvas
-        // - publishes NewUserEvent when user was created within sign-in.
-
-        var context = CommandContext.GetCurrent();
-        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-
-        if (Computed.IsInvalidating())
-            return;
-
-        var sessionInfo = context.Operation.Items.Get<SessionInfo>(); // Set by default command handler
-        if (sessionInfo == null)
-            throw StandardError.Internal("No SessionInfo in operation's items.");
-
-        // Follow-up actions
-        var userId = new UserId(sessionInfo.UserId);
 
         // MigrateGuestKeys is disabled for now, coz it causes more problems than solves
-        // new ServerKvas_MigrateGuestKeys(command.Session)
-        //     .EnqueueOnCompletion();
+        // context.Operation.AddEvent(new ServerKvas_MigrateGuestKeys(command.Session));
 
         // Raise events
         var isNewUser = context.Operation.Items.GetOrDefault<bool>(); // Set by default command handler

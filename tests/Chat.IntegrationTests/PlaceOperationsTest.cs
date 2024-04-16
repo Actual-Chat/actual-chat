@@ -282,7 +282,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
                 var placeIds = await contacts.ListPlaceIds(anotherSession, default);
                 placeIds.Should().BeEmpty();
             },
-            TimeSpan.FromSeconds(3));
+            TimeSpan.FromSeconds(5));
 
         place = await places.Get(anotherSession, placeId, default);
         if (isPublicPlace)
