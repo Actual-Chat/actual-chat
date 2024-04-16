@@ -12,7 +12,7 @@ public static class CommandExt
                 : CommandKind.BoundEvent
             : CommandKind.Command;
 
-    public static Task Enqueue<TCommand>(
+    public static Task EnqueueDirectly<TCommand>(
         this TCommand command,
         CancellationToken cancellationToken = default)
         where TCommand : ICommand
@@ -25,20 +25,30 @@ public static class CommandExt
     public static TCommand EnqueueOnCompletion<TCommand>(this TCommand command)
         where TCommand : ICommand
     {
-        if (Computed.IsInvalidating())
-            throw StandardError.Internal("The operation has already completed.");
-
         var context = CommandContext.GetCurrent();
-        var operationItems = context.Operation.Items;
-        var list = operationItems.GetOrDefault(ImmutableList<QueuedCommand>.Empty);
-        list = list.Add(QueuedCommand.New(command));
-        operationItems.Set(list);
+        context.Operation.AddEvent(command);
+        return command;
+    }
+
+    public static TCommand EnqueueOnCompletion<TCommand>(this TCommand command, Moment delayUntil)
+        where TCommand : ICommand
+    {
+        var context = CommandContext.GetCurrent();
+        context.Operation.AddEvent(command, delayUntil);
+        return command;
+    }
+
+    public static TCommand EnqueueOnCompletion<TCommand>(this TCommand command, TimeSpan delay)
+        where TCommand : ICommand
+    {
+        var context = CommandContext.GetCurrent();
+        context.Operation.AddEvent(command, delay);
         return command;
     }
 
     // Internal methods
 
-    public static TCommand WithChainId<TCommand>(this TCommand command, Symbol chainId)
+    internal static TCommand WithChainId<TCommand>(this TCommand command, Symbol chainId)
         where TCommand: IEventCommand
     {
         var clone = MemberwiseCloner.Invoke(command);

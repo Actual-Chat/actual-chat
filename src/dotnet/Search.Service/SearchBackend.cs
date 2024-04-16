@@ -293,7 +293,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         }
         else {
-            await new SearchBackend_StartUserContactIndexing().Enqueue(cancellationToken).ConfigureAwait(false);
+            await new SearchBackend_StartUserContactIndexing().EnqueueDirectly(cancellationToken).ConfigureAwait(false);
             await Commander.Call(new SearchBackend_StartUserContactIndexing(), cancellationToken).ConfigureAwait(false);
         }
     }
@@ -312,7 +312,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         }
         else {
-            await new SearchBackend_StartUserContactIndexing().Enqueue(cancellationToken).ConfigureAwait(false);
+            await new SearchBackend_StartUserContactIndexing().EnqueueDirectly(cancellationToken).ConfigureAwait(false);
             await Commander.Call(new SearchBackend_StartChatContactIndexing(), cancellationToken).ConfigureAwait(false);
         }
     }

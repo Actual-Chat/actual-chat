@@ -105,7 +105,6 @@ public static class ServiceCollectionExt
             services.AddHostedService(c => c.Queues());
             services.AddSingleton(c => new BackendServiceDefs(c));
             services.AddSingleton<IQueueRefResolver>(c => new QueueRefResolver(c));
-            services.TryAddEnumerable(ServiceDescriptor.Singleton<IOperationCompletionListener, EnqueueOnCompletionProcessor>());
         }
         services.AddSingleton(optionsBuilder ?? (static _ => new InMemoryQueues.Options()));
         return services;
@@ -123,7 +122,6 @@ public static class ServiceCollectionExt
             services.AddHostedService(c => c.Queues());
             services.AddSingleton(c => new BackendServiceDefs(c));
             services.AddSingleton<IQueueRefResolver>(c => new QueueRefResolver(c));
-            services.TryAddEnumerable(ServiceDescriptor.Singleton<IOperationCompletionListener, EnqueueOnCompletionProcessor>());
         }
         services.AddSingleton(optionsBuilder ?? (static _ => new NatsQueues.Options()));
         return services;

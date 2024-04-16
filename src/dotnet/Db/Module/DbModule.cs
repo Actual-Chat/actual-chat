@@ -4,7 +4,6 @@ using ActualChat.Hosting;
 using ActualChat.Module;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Fusion.EntityFramework.Npgsql;
 using ActualLab.Fusion.EntityFramework.Operations;
@@ -130,6 +129,7 @@ public sealed class DbModule(IServiceProvider moduleServices)
 
             configure?.Invoke(db);
         });
+        services.AddSingleton<DbEventProcessor<TDbContext>, DbEventForwarder<TDbContext>>();
     }
 
     protected override void InjectServices(IServiceCollection services)

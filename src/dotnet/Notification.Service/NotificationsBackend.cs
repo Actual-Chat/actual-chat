@@ -387,7 +387,7 @@ public class NotificationsBackend(IServiceProvider services)
                 ChatEntryNotification = new ChatEntryNotificationOption(entry.Id, changeAuthor.Id),
             };
             await new NotificationsBackend_Notify(notification)
-                .Enqueue(cancellationToken)
+                .EnqueueDirectly(cancellationToken)
                 .ConfigureAwait(false);
         }
     }
