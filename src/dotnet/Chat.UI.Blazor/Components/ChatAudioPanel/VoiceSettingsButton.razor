@@ -28,8 +28,8 @@
             Category = GetStateCategory(),
         };
 
-    protected override async Task<Language> ComputeState(CancellationToken cancellationToken)
-        => await LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).ConfigureAwait(false);
+    protected override Task<Language> ComputeState(CancellationToken cancellationToken)
+        => LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).AsTask();
 
     private void OnClick()
         => ModalUI.Show(new VoiceSettingsModal.Model(Chat.Id));
