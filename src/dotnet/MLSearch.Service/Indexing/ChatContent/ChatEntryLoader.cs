@@ -9,10 +9,12 @@ internal interface IChatEntryLoader
         CancellationToken cancellationToken);
 }
 
-internal class ChatEntryLoader: IChatEntryLoader
+internal class ChatEntryLoader(IChatsBackend chatsBackend): IChatEntryLoader
 {
-    public Task<IReadOnlyCollection<ChatEntry>> LoadByIdsAsync(
+    public async Task<IReadOnlyCollection<ChatEntry>> LoadByIdsAsync(
         IEnumerable<ChatEntryId> entryIds,
         CancellationToken cancellationToken)
-        => throw new NotImplementedException();
+    {
+        return await chatsBackend.GetEntries(entryIds, true, cancellationToken).ConfigureAwait(false);
+    }
 }
