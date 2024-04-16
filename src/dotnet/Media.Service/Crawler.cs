@@ -90,8 +90,7 @@ public sealed class Crawler(IServiceProvider services)
 
         async Task<OpenGraph> GetGraph(HttpClient httpClient)
         {
-            using var cts = cancellationToken.CreateLinkedTokenSource();
-            cts.CancelAfter(GraphParseTimeout);
+            using var cts = cancellationToken.CreateDelayedTokenSource(GraphParseTimeout);
             var html = await httpClient.GetStringAsync(url, cts.Token).ConfigureAwait(false);
             return OpenGraph.ParseHtml(html);
         }
@@ -150,8 +149,7 @@ public sealed class Crawler(IServiceProvider services)
 
     private Task<ProcessedFile?> DownloadImageToFile(Uri imageUri, CancellationToken cancellationToken)
     {
-        using var cts = cancellationToken.CreateLinkedTokenSource();
-        cts.CancelAfter(ImageDownloadTimeout);
+        using var cts = cancellationToken.CreateDelayedTokenSource(ImageDownloadTimeout);
         return Download(cts.Token);
 
         async Task<ProcessedFile?> Download(CancellationToken cancellationToken1)
