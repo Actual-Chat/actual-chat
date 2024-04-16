@@ -39,7 +39,7 @@ public class DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceP
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        new AccountChangedEvent(dbAccount.ToModel(user), null, ChangeKind.Create).EnqueueOnCompletion();
+        new AccountChangedEvent(dbAccount.ToModel(user), null, ChangeKind.Create).Enqueue();
         return dbUser;
     }
 }

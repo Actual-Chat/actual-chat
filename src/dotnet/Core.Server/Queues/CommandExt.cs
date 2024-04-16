@@ -22,7 +22,7 @@ public static class CommandExt
         return queues.Enqueue(command, cancellationToken);
     }
 
-    public static TCommand EnqueueOnCompletion<TCommand>(this TCommand command)
+    public static TCommand Enqueue<TCommand>(this TCommand command)
         where TCommand : ICommand
     {
         var context = CommandContext.GetCurrent();
@@ -30,7 +30,7 @@ public static class CommandExt
         return command;
     }
 
-    public static TCommand EnqueueOnCompletion<TCommand>(this TCommand command, Moment delayUntil)
+    public static TCommand Enqueue<TCommand>(this TCommand command, Moment delayUntil)
         where TCommand : ICommand
     {
         var context = CommandContext.GetCurrent();
@@ -38,7 +38,7 @@ public static class CommandExt
         return command;
     }
 
-    public static TCommand EnqueueOnCompletion<TCommand>(this TCommand command, TimeSpan delay)
+    public static TCommand Enqueue<TCommand>(this TCommand command, TimeSpan delay)
         where TCommand : ICommand
     {
         var context = CommandContext.GetCurrent();

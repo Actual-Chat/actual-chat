@@ -77,7 +77,7 @@ public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbCo
 
         // Raise events
         new AvatarChangedEvent(avatar, existingAvatar, change.Kind)
-            .EnqueueOnCompletion();
+            .Enqueue();
         return avatar;
     }
 }

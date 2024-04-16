@@ -293,17 +293,17 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                     .ConfigureAwait(false);
                 var readPosition = new ChatPosition(chatTextIdRange.End - 1);
                 new ChatPositionsBackend_Set(author.UserId, command.ChatId, ChatPositionKind.Read, readPosition)
-                    .EnqueueOnCompletion();
+                    .Enqueue();
             }
 
             if (chatId.IsPeerChat(out _))
                 new ChatPositionsBackend_Set(author.UserId, command.ChatId, ChatPositionKind.Read, new ChatPosition())
-                    .EnqueueOnCompletion();
+                    .Enqueue();
 
             if (!doNotNotify)
                 // Raise events
                 new AuthorChangedEvent(author, existingAuthor)
-                    .EnqueueOnCompletion();
+                    .Enqueue();
             return author;
         }
     }

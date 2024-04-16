@@ -107,7 +107,7 @@ public class ReactionsBackend(IServiceProvider services)
 
         // Raise events
         new ReactionChangedEvent(reaction, entry, entryAuthor, author, changeKind)
-            .EnqueueOnCompletion();
+            .Enqueue();
         return;
 
         async Task<DbReactionSummary> UpsertDbSummary(Emoji emoji1, bool mustIncrementCount)

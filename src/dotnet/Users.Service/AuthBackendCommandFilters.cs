@@ -81,7 +81,7 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
         var isNewUser = context.Operation.Items.GetOrDefault<bool>(); // Set by default command handler
         if (isNewUser)
             new NewUserEvent(userId)
-                .EnqueueOnCompletion();
+                .Enqueue();
     }
 
     // Nested types

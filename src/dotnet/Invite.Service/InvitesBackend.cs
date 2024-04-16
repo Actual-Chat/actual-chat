@@ -132,7 +132,7 @@ public class InvitesBackend(IServiceProvider services)
 
             // Follow-up actions
             new AccountsBackend_Update(account with { Status = AccountStatus.Active }, null)
-                .EnqueueOnCompletion();
+                .Enqueue();
             break;
         }
         case ChatInviteOption chatInviteOption: {

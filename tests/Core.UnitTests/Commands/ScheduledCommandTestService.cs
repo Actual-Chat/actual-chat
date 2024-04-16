@@ -14,7 +14,7 @@ public class ScheduledCommandTestService : IComputeService
             return Task.CompletedTask;
 
         // Raise events
-        new TestEvent(command.Error).EnqueueOnCompletion();
+        new TestEvent(command.Error).Enqueue();
         return Task.CompletedTask;
     }
 
@@ -25,8 +25,8 @@ public class ScheduledCommandTestService : IComputeService
             return Task.CompletedTask;
 
         // Raise events
-        new TestEvent(null).EnqueueOnCompletion();
-        new TestEvent2().EnqueueOnCompletion();
+        new TestEvent(null).Enqueue();
+        new TestEvent2().Enqueue();
         return Task.CompletedTask;
     }
 
@@ -37,9 +37,9 @@ public class ScheduledCommandTestService : IComputeService
             return Task.CompletedTask;
 
         new TestEvent(null)
-            .EnqueueOnCompletion();
+            .Enqueue();
         new TestEvent2()
-            .EnqueueOnCompletion(); // Same as above, actually, but for UserId.None
+            .Enqueue(); // Same as above, actually, but for UserId.None
         return Task.CompletedTask;
     }
 
