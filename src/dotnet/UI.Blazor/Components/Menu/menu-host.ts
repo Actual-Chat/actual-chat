@@ -301,7 +301,7 @@ export class MenuHost implements Disposable {
             return stopEvent(event);
         }
 
-        const position = isDesktopMode && event instanceof PointerEvent
+        const position = isDesktopMode && (event instanceof PointerEvent || event instanceof MouseEvent)
             ? new Vector2D(event.clientX, event.clientY)
             : null;
         const menu = this.create(menuRef, false, triggerElement, null, position);
