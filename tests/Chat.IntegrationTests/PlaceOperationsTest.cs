@@ -261,13 +261,11 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         await commander.Call(new Places_Join(anotherSession, placeId));
 
-        await TestExt.WhenMetAsync(
-            async () => {
-                var placeIds = await contacts.ListPlaceIds(anotherSession, default);
-                placeIds.Should().HaveCount(1);
-                placeIds.Should().Contain(placeId);
-            },
-            TimeSpan.FromSeconds(3));
+        await ComputedTestExt.When(services, async ct => {
+            var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
+            placeIds.Should().HaveCount(1);
+            placeIds.Should().Contain(placeId);
+        });
 
         place = await places.Get(anotherSession, placeId, default);
         place.Should().NotBeNull();
@@ -277,13 +275,10 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         await commander.Call(new Places_Leave(anotherSession, placeId));
         await services.Queues().WhenProcessing();
 
-        await ComputedTestExt.When(
-            services,
-            async ct => {
-                var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
-                placeIds.Should().BeEmpty();
-            },
-            TimeSpan.FromSeconds(5));
+        await ComputedTestExt.When(services, async ct => {
+            var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
+            placeIds.Should().BeEmpty();
+        });
 
         place = await places.Get(anotherSession, placeId, default);
         if (isPublicPlace)

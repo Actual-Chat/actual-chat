@@ -28,10 +28,10 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         await services.Queues().WhenProcessing();
 
-        await TestExt.WhenMetAsync(async () => {
-            var author = await authors.GetOwn(session, chat!.Id, default);
+        await ComputedTestExt.When(services, async ct => {
+            var author = await authors.GetOwn(session, chat!.Id, ct);
             author.Should().NotBeNull();
-        }, TimeSpan.FromSeconds(2));
+        });
 
         var entries = await CreateChatEntries(chats, session, TestChatId, 3);
 
