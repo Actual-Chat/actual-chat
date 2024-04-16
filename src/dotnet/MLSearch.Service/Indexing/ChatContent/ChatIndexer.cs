@@ -35,7 +35,7 @@ internal sealed class ChatIndexer(
     public async Task InitAsync(ChatEntryCursor cursor, CancellationToken cancellationToken)
     {
         _cursor = cursor;
-        var tailDocuments = await documentLoader.LoadTailAsync(cancellationToken).ConfigureAwait(false);
+        var tailDocuments = await documentLoader.LoadTailAsync(cursor, cancellationToken).ConfigureAwait(false);
         foreach (var document in tailDocuments) {
 //            _docs.Add(document.Id, document);
             _tailDocs.Add(document.Id, document);

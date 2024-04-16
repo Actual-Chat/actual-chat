@@ -105,8 +105,10 @@ internal sealed class OpenSearchQueryBuilder(IndexSettings settings) : IQueryBui
             .Index(settings.IndexName)
             .Source(src => src.Excludes(excl => excl.Field(EmbeddingFieldName)));
 
-        if (searchQuery.IsEmpty()) {
-            return queryRoot;
+        if (searchQuery.IsUnfiltered()) {
+            return queryRoot
+                .Sort(SortSelector)
+                .Size(searchQuery.Limit);
         }
 
         _metadataFilters.Clear();
@@ -143,6 +145,23 @@ internal sealed class OpenSearchQueryBuilder(IndexSettings settings) : IQueryBui
         return queryRoot.Query(query => query
             .Bool(boolQuery => boolQuery
                 .Filter(_metadataFilters.ToArray())
-                .Should(queries.ToArray())));
+                .Should(queries.ToArray())))
+            .Sort(SortSelector)
+            .Size(searchQuery.Limit);
+
+        IPromise<IList<ISort>>? SortSelector(SortDescriptor<ChatSlice> ss)
+        {
+            if (searchQuery.SortStatements is null || searchQuery.SortStatements.Length == 0) {
+                return null;
+            }
+            foreach (var sortStatement in searchQuery.SortStatements) {
+                ss.Field(_ => new FieldSort {
+                    Field = sortStatement.Field,
+                    Order = sortStatement.SortOrder == QuerySortOrder.Ascending ? SortOrder.Ascending : SortOrder.Descending,
+                    Mode = sortStatement.Mode == MultivalueFieldMode.Min ? SortMode.Min : SortMode.Max,
+                });
+            }
+            return ss;
+        }
     }
 }

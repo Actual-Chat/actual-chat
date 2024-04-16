@@ -157,6 +157,7 @@ internal sealed class ClusterSetup(
         var placeIdField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.PlaceId));
         // ChatSliceEntry fields
         var chatSliceEntryIdField = namingPolicy.ConvertName(nameof(ChatSliceEntry.Id));
+        var chatSliceEntryLocalIdField = namingPolicy.ConvertName(nameof(ChatSliceEntry.LocalId));
         var chatSliceEntryVersionField = namingPolicy.ConvertName(nameof(ChatSliceEntry.Version));
         // ChatSliceAttachment fields
         var attachmentIdField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Id));
@@ -306,6 +307,7 @@ internal sealed class ClusterSetup(
                                         "type": "object",
                                         "properties": {
                                             "{{chatSliceEntryIdField}}":  { "type": "keyword" },
+                                            "{{chatSliceEntryLocalIdField}}": { "type": "long" }
                                             "{{chatSliceEntryVersionField}}": { "type": "long" }
                                         }
                                     },

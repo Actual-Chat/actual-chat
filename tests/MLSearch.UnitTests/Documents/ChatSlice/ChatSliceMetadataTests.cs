@@ -32,7 +32,7 @@ public class ChatSliceMetadataTests(ITestOutputHelper @out) : TestBase(@out)
         var chatId = new ChatId(Generate.Option);
         var chatEntryId1 = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
         var chatEntryId2 = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
-        var chatEntries = ImmutableArray.Create<ChatSliceEntry>(new (chatEntryId1, 1), new (chatEntryId2, 1));
+        var chatEntries = ImmutableArray.Create<ChatSliceEntry>(new (chatEntryId1, 1, 1), new (chatEntryId2, 2, 1));
         var (startOffset, endOffset) = (0, 100);
         var replyToEntries = ImmutableArray.Create(new ChatEntryId(chatId, ChatEntryKind.Text, 100, AssumeValid.Option));
         var activeUser = new PrincipalId(UserId.New(), AssumeValid.Option);
@@ -94,7 +94,7 @@ public class ChatSliceMetadataTests(ITestOutputHelper @out) : TestBase(@out)
 
         static ChatSliceMetadata CreateMetadata(ChatEntryId chatEntryId) => new (
             PrincipalId.None,
-            [new (chatEntryId, 1)], null, null,
+            [new (chatEntryId, 1, 1)], null, null,
             [], [], [], [], [],
             false,
             "en-US",

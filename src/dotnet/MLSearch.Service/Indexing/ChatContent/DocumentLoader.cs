@@ -5,7 +5,7 @@ namespace ActualChat.MLSearch.Indexing.ChatContent;
 
 internal interface IDocumentLoader
 {
-    Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(ChatEntryCursor cursor, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<ChatSlice>> LoadByEntryIdsAsync(
         IEnumerable<ChatEntryId> entryIds,
@@ -14,8 +14,24 @@ internal interface IDocumentLoader
 
 internal class DocumentLoader(ISearchEngine<ChatSlice> searchEngine): IDocumentLoader
 {
-    public Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(CancellationToken cancellationToken)
-        => throw new NotImplementedException();
+    public async Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(ChatEntryCursor cursor, CancellationToken cancellationToken)
+    {
+        const string chatEntryLocalIdField =
+            $"{nameof(ChatSlice.Metadata)}.{nameof(ChatSliceMetadata.ChatEntries)}.{nameof(ChatSliceEntry.LocalId)}";
+
+        var query = new SearchQuery {
+            MetadataFilters = [
+                new Int64RangeFilter(chatEntryLocalIdField, null, new RangeBound<long>(cursor.LastEntryLocalId, true)),
+            ],
+            SortStatements = [
+                new SortStatement(chatEntryLocalIdField, QuerySortOrder.Descenging, MultivalueFieldMode.Max),
+            ],
+            Limit = 10,
+        };
+
+        var result = await searchEngine.Find(query, cancellationToken).ConfigureAwait(false);
+        return result.Documents.Select(doc => doc.Document).ToList().AsReadOnly();
+    }
 
     public async Task<IReadOnlyCollection<ChatSlice>> LoadByEntryIdsAsync(
         IEnumerable<ChatEntryId> entryIds,

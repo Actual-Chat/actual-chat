@@ -66,7 +66,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
                 var (id, text) = args;
                 var metadata = new ChatSliceMetadata(
                     authorId,
-                    [new (id, 1)], null, null,
+                    [new (id, 1, 1)], null, null,
                     [], [], [], [], [],
                     false,
                     "en-US",

@@ -25,7 +25,7 @@ public class IndexedDocumentTests(ITestOutputHelper @out): TestBase(@out)
 
         static ChatSliceMetadata CreateMetadata(ChatEntryId chatEntryId1, ChatEntryId chatEntryId2, int startOffset, int endOffset) => new (
             PrincipalId.None,
-            [new (chatEntryId1, 1), new (chatEntryId2, 1)], startOffset, endOffset,
+            [new (chatEntryId1, 1, 1), new (chatEntryId2, 2, 1)], startOffset, endOffset,
             [], [], [], [], [],
             false,
             "en-US",
