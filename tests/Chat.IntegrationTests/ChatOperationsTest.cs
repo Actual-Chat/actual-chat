@@ -407,36 +407,35 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
     public async Task RemovingChatShouldRemoveItFromContactsList()
     {
         var appHost = AppHost;
+        var services = appHost.Services;
         await using var ownerTester = appHost.NewBlazorTester();
         await ownerTester.SignInAsAlice();
         var session = ownerTester.Session;
 
         var (chatId, _) = await ownerTester.CreateChat(true);
-        await appHost.Services.Queues().WhenProcessing();
+        await services.Queues().WhenProcessing();
 
-        var contacts = ownerTester.AppServices.GetRequiredService<IContacts>();
-        await TestExt.WhenMetAsync(async () => {
-                var contactIds = await contacts.ListIds(session, PlaceId.None, default);
-                var chatIds = contactIds.Select(c => c.ChatId).ToArray();
-                chatIds.Should().Contain(chatId);
-            },
-            TimeSpan.FromSeconds(3));
+        var contacts = services.GetRequiredService<IContacts>();
+        await ComputedTestExt.When(services, async ct => {
+            var contactIds = await contacts.ListIds(session, PlaceId.None, ct);
+            var chatIds = contactIds.Select(c => c.ChatId).ToArray();
+            chatIds.Should().Contain(chatId);
+        });
 
-        var commander = ownerTester.AppServices.Commander();
+        var commander = services.Commander();
         var removeChatCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> { Remove = true });
         await commander.Call(removeChatCommand);
 
-        var chats = ownerTester.AppServices.GetRequiredService<IChats>();
+        var chats = services.GetRequiredService<IChats>();
         var chat = await chats.Get(session, chatId, default);
         chat.Should().BeNull();
 
-        await appHost.Services.Queues().WhenProcessing();
-        await TestExt.WhenMetAsync(async () => {
-                var contactIds = await contacts.ListIds(session, PlaceId.None, default);
-                var chatIds = contactIds.Select(c => c.ChatId).ToArray();
-                chatIds.Should().NotContain(chatId);
-            },
-            TimeSpan.FromSeconds(10));
+        await services.Queues().WhenProcessing();
+        await ComputedTestExt.When(services, async ct => {
+            var contactIds = await contacts.ListIds(session, PlaceId.None, ct);
+            var chatIds = contactIds.Select(c => c.ChatId).ToArray();
+            chatIds.Should().NotContain(chatId);
+        });
     }
 
     // Private methods

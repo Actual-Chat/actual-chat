@@ -85,49 +85,49 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         await TestExt.WhenMetAsync(async () => {
-                var expectedNonPlaceChatIds = new[] {
+            var expectedNonPlaceChatIds = new[] {
+                new ContactId(bob.Id, publicChatId),
+                new ContactId(bob.Id, privateChatId),
+            };
+            var expectedPublicPlaceChatIds = new[] {
+                new ContactId(bob.Id, publicPlacePublicChatId),
+                new ContactId(bob.Id, publicPlacePrivateChatId),
+            };
+            var expectedPrivatePlaceChatIds = new[] {
+                new ContactId(bob.Id, privatePlacePublicChatId),
+                new ContactId(bob.Id, privatePlacePrivateChatId),
+            };
+            var contactIds = await ListIds(PlaceId.None);
+            contactIds.Should().BeEquivalentTo(expectedNonPlaceChatIds);
+
+            contactIds = await ListIds(publicPlaceId);
+            contactIds.Should().BeEquivalentTo(expectedPublicPlaceChatIds);
+
+            contactIds = await ListIds(privatePlaceId);
+            contactIds.Should().BeEquivalentTo(expectedPrivatePlaceChatIds);
+
+            contactIds = await ListIdsForEntrySearch();
+            contactIds.Should()
+                .BeEquivalentTo(new[] {
                     new ContactId(bob.Id, publicChatId),
                     new ContactId(bob.Id, privateChatId),
-                };
-                var expectedPublicPlaceChatIds = new[] {
-                    new ContactId(bob.Id, publicPlacePublicChatId),
                     new ContactId(bob.Id, publicPlacePrivateChatId),
-                };
-                var expectedPrivatePlaceChatIds = new[] {
+                    new ContactId(bob.Id, publicPlaceId.ToRootChatId()),
+                    new ContactId(bob.Id, privatePlacePrivateChatId),
+                    new ContactId(bob.Id, privatePlaceId.ToRootChatId()),
+                });
+
+            contactIds = await ListIdsForContactSearch();
+            contactIds.Should()
+                .BeEquivalentTo(new[] {
+                    new ContactId(bob.Id, privateChatId),
+                    new ContactId(bob.Id, publicPlacePrivateChatId),
                     new ContactId(bob.Id, privatePlacePublicChatId),
                     new ContactId(bob.Id, privatePlacePrivateChatId),
-                };
-                var contactIds = await ListIds(PlaceId.None);
-                contactIds.Should().BeEquivalentTo(expectedNonPlaceChatIds);
-
-                contactIds = await ListIds(publicPlaceId);
-                contactIds.Should().BeEquivalentTo(expectedPublicPlaceChatIds);
-
-                contactIds = await ListIds(privatePlaceId);
-                contactIds.Should().BeEquivalentTo(expectedPrivatePlaceChatIds);
-
-                contactIds = await ListIdsForEntrySearch();
-                contactIds.Should()
-                    .BeEquivalentTo(new[] {
-                        new ContactId(bob.Id, publicChatId),
-                        new ContactId(bob.Id, privateChatId),
-                        new ContactId(bob.Id, publicPlacePrivateChatId),
-                        new ContactId(bob.Id, publicPlaceId.ToRootChatId()),
-                        new ContactId(bob.Id, privatePlacePrivateChatId),
-                        new ContactId(bob.Id, privatePlaceId.ToRootChatId()),
-                    });
-
-                contactIds = await ListIdsForContactSearch();
-                contactIds.Should()
-                    .BeEquivalentTo(new[] {
-                        new ContactId(bob.Id, privateChatId),
-                        new ContactId(bob.Id, publicPlacePrivateChatId),
-                        new ContactId(bob.Id, privatePlacePublicChatId),
-                        new ContactId(bob.Id, privatePlacePrivateChatId),
-                        new ContactId(bob.Id, privatePlaceId.ToRootChatId()),
-                    });
-            },
-            TimeSpan.FromSeconds(10));
+                    new ContactId(bob.Id, privatePlaceId.ToRootChatId()),
+                });
+        },
+        TimeSpan.FromSeconds(10));
     }
 
     [Fact]

@@ -9,7 +9,7 @@ public static class ComputedTestExt
         Func<CancellationToken, Task> condition,
         TimeSpan? waitDuration = null)
     {
-        var anonymousComputedSource = new AnonymousComputedSource<bool>(services,
+        var computedSource = new AnonymousComputedSource<bool>(services,
             async (_, ct) => {
                 try {
                     await condition.Invoke(ct).ConfigureAwait(false);
@@ -19,9 +19,8 @@ public static class ComputedTestExt
                     return false;
                 }
             });
-
-        using var cts = new CancellationTokenSource(waitDuration ?? DefaultWaitDuration);
-        await anonymousComputedSource.When(x => x, cts.Token).ConfigureAwait(false);
+        using var timeoutCts = new CancellationTokenSource(waitDuration ?? DefaultWaitDuration);
+        await computedSource.When(x => x, timeoutCts.Token).ConfigureAwait(false);
         await condition.Invoke(CancellationToken.None); // Should throw or pass
     }
 
@@ -30,7 +29,7 @@ public static class ComputedTestExt
         Func<CancellationToken, Task<T>> condition,
         TimeSpan? waitDuration = null)
     {
-        var anonymousComputedSource = new AnonymousComputedSource<bool>(services,
+        var computedSource = new AnonymousComputedSource<bool>(services,
             async (_, ct) => {
                 try {
                     await condition.Invoke(ct).ConfigureAwait(false);
@@ -40,9 +39,8 @@ public static class ComputedTestExt
                     return false;
                 }
             });
-
-        using var cts = new CancellationTokenSource(waitDuration ?? DefaultWaitDuration);
-        await anonymousComputedSource.When(x => x, cts.Token).ConfigureAwait(false);
+        using var timeoutCts = new CancellationTokenSource(waitDuration ?? DefaultWaitDuration);
+        await computedSource.When(x => x, timeoutCts.Token).ConfigureAwait(false);
         return await condition.Invoke(CancellationToken.None); // Should throw or pass
     }
 }

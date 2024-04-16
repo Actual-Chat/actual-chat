@@ -47,24 +47,20 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         await services.Queues().WhenProcessing();
 
-        await TestExt.WhenMetAsync(
-            async () => {
-                place = await places.Get(session, place.Id, default);
-                place.Should().NotBeNull();
-            },
-            TimeSpan.FromSeconds(1));
+        await ComputedTestExt.When(services, async ct => {
+            place = await places.Get(session, place.Id, ct);
+            place.Should().NotBeNull();
+        });
 
         place.Title.Should().Be(PlaceTitle);
         place.IsPublic.Should().Be(isPublicPlace);
 
         var contacts = services.GetRequiredService<IContacts>();
-        await TestExt.WhenMetAsync(
-            async () => {
-                var placeIds = await contacts.ListPlaceIds(session, default);
-                placeIds.Count.Should().Be(1);
-                placeIds.Should().Contain(place.Id);
-            },
-            TimeSpan.FromSeconds(3));
+        await ComputedTestExt.When(services, async ct => {
+            var placeIds = await contacts.ListPlaceIds(session, ct);
+            placeIds.Count.Should().Be(1);
+            placeIds.Should().Contain(place.Id);
+        });
 
         await using var tester2 = appHost.NewBlazorTester();
         var anotherSession = tester2.Session;
@@ -72,15 +68,13 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         await services.Queues().WhenProcessing();
 
-        await TestExt.WhenMetAsync(
-            async () => {
-                var place2 = await places.Get(anotherSession, place.Id, default);
-                if (isPublicPlace)
-                    place2.Should().NotBeNull();
-                else
-                    place2.Should().BeNull();
-            },
-            TimeSpan.FromSeconds(1));
+        await ComputedTestExt.When(services, async ct => {
+            var place2 = await places.Get(anotherSession, place.Id, ct);
+            if (isPublicPlace)
+                place2.Should().NotBeNull();
+            else
+                place2.Should().BeNull();
+        });
     }
 
     [Theory]
@@ -106,12 +100,10 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         await services.Queues().WhenProcessing();
 
-        await TestExt.WhenMetAsync(
-            async () => {
-                chat = await chats.Get(session, chat.Id, default);
-                chat.Should().NotBeNull();
-            },
-            TimeSpan.FromSeconds(1));
+        await ComputedTestExt.When(services, async ct => {
+            chat = await chats.Get(session, chat.Id, ct);
+            chat.Should().NotBeNull();
+        });
 
         chat.Title.Should().Be(ChatTitle);
         chat.IsPublic.Should().Be(isPublicChat);
@@ -120,18 +112,16 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         var contacts = services.GetRequiredService<IContacts>();
         await Task.Delay(100); // Let's wait events are processed
-        await TestExt.WhenMetAsync(
-            async () => {
-                var contactIds = await contacts.ListIds(session, place.Id, default);
-                var chatIds = (await contactIds.Select(id => contacts.Get(session, id, default))
-                        .Collect())
-                    .SkipNullItems()
-                    .Select(c => c.ChatId)
-                    .ToArray();
-                chatIds.Length.Should().Be(1);
-                chatIds.Should().Contain(chat.Id);
-            },
-            TimeSpan.FromSeconds(3));
+        await ComputedTestExt.When(services, async ct => {
+            var contactIds = await contacts.ListIds(session, place.Id, ct);
+            var chatIds = (await contactIds.Select(id => contacts.Get(session, id, ct))
+                .Collect())
+                .SkipNullItems()
+                .Select(c => c.ChatId)
+                .ToArray();
+            chatIds.Length.Should().Be(1);
+            chatIds.Should().Contain(chat.Id);
+        });
     }
 
     [Theory]
@@ -173,12 +163,10 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             await commander2.Call(new Invites_Use(anotherSession, invite.Id));
         }
 
-        await TestExt.WhenMetAsync(
-            async () => {
-                var welcomeChatId = await places.GetWelcomeChatId(anotherSession, place.Id, default);
-                welcomeChatId.Should().Be(welcomeChat.Id);
-            },
-            TimeSpan.FromSeconds(3));
+        await ComputedTestExt.When(services, async ct => {
+            var welcomeChatId = await places.GetWelcomeChatId(anotherSession, place.Id, ct);
+            welcomeChatId.Should().Be(welcomeChat.Id);
+        });
     }
 
     [Theory]
@@ -216,13 +204,11 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         await commander.Call(new Places_Join(anotherSession, place.Id));
         await services.Queues().WhenProcessing();
 
-        await TestExt.WhenMetAsync(
-            async () => {
-                var placeIds = await contacts.ListPlaceIds(anotherSession, default);
-                placeIds.Count.Should().Be(1);
-                placeIds.Should().Contain(place.Id);
-            },
-            TimeSpan.FromSeconds(3));
+        await ComputedTestExt.When(services, async ct => {
+            var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
+            placeIds.Count.Should().Be(1);
+            placeIds.Should().Contain(place.Id);
+        });
     }
 
     [Theory]
@@ -291,13 +277,11 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             await tester2.Commander.Call(new Invites_Use(anotherSession, inviteId));
         await commander.Call(new Places_Join(anotherSession, placeId));
 
-        await TestExt.WhenMetAsync(
-            async () => {
-                var placeIds = await contacts.ListPlaceIds(anotherSession, default);
-                placeIds.Should().HaveCount(1);
-                placeIds.Should().Contain(placeId);
-            },
-            TimeSpan.FromSeconds(3));
+        await ComputedTestExt.When(services, async ct => {
+            var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
+            placeIds.Should().HaveCount(1);
+            placeIds.Should().Contain(placeId);
+        });
 
         place = await places.Get(anotherSession, placeId, default);
         place.Should().NotBeNull();
@@ -311,6 +295,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     public async Task JoinPlaceChat(bool isPublicPlace, bool isPublicChat)
     {
         var appHost = AppHost;
+        var services = appHost.Services;
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.SignInAsBob();
@@ -335,34 +320,30 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
             await commander2.Call(new Invites_Use(anotherSession, invite.Id));
         }
-        await appHost.Services.Queues().WhenProcessing();
+        await services.Queues().WhenProcessing();
 
         if (isPublicChat) {
             // Assert user can see the Chat while previewing the Place.
-            await TestExt.WhenMetAsync(
-                async () => {
-                    var contactIds = await contacts.ListIds(anotherSession, place.Id, default);
-                    var chatIds = (await contactIds.Select(id => contacts.Get(anotherSession, id, default))
-                            .Collect())
-                        .SkipNullItems()
-                        .Select(c => c.ChatId)
-                        .ToArray();
-                    chatIds.Length.Should().Be(1);
-                    chatIds.Should().Contain(chat.Id);
-                },
-                TimeSpan.FromSeconds(3));
+            await ComputedTestExt.When(services, async ct => {
+                var contactIds = await contacts.ListIds(anotherSession, place.Id, ct);
+                var chatIds = (await contactIds.Select(id => contacts.Get(anotherSession, id, ct))
+                    .Collect())
+                    .SkipNullItems()
+                    .Select(c => c.ChatId)
+                    .ToArray();
+                chatIds.Length.Should().Be(1);
+                chatIds.Should().Contain(chat.Id);
+            });
         }
         await commander2.Call(new Places_Join(anotherSession, place.Id));
-        await appHost.Services.Queues().WhenProcessing();
+        await services.Queues().WhenProcessing();
 
         // Assert user can see the Place.
-        await TestExt.WhenMetAsync(
-            async () => {
-                var placeIds = await contacts.ListPlaceIds(anotherSession, default);
-                placeIds.Count.Should().Be(1);
-                placeIds.Should().Contain(place.Id);
-            },
-            TimeSpan.FromSeconds(3));
+        await ComputedTestExt.When(services, async ct => {
+            var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
+            placeIds.Count.Should().Be(1);
+            placeIds.Should().Contain(place.Id);
+        });
 
         if (!isPublicChat) {
             var contactIds = await contacts.ListIds(anotherSession, place.Id, default);
@@ -374,21 +355,19 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             await commander2.Call(new Invites_Use(anotherSession, invite.Id));
             await commander2.Call(new Authors_Join(anotherSession, chat.Id));
         }
-        await appHost.Services.Queues().WhenProcessing();
+        await services.Queues().WhenProcessing();
 
         // Assert user can see the Chat.
-        await TestExt.WhenMetAsync(
-            async () => {
-                var contactIds = await contacts.ListIds(anotherSession, place.Id, default);
-                var chatIds = (await contactIds.Select(id => contacts.Get(anotherSession, id, default))
-                        .Collect())
-                    .SkipNullItems()
-                    .Select(c => c.ChatId)
-                    .ToArray();
-                chatIds.Length.Should().Be(1);
-                chatIds.Should().Contain(chat.Id);
-            },
-            TimeSpan.FromSeconds(3));
+        await ComputedTestExt.When(services, async ct => {
+            var contactIds = await contacts.ListIds(anotherSession, place.Id, ct);
+            var chatIds = (await contactIds.Select(id => contacts.Get(anotherSession, id, ct))
+                .Collect())
+                .SkipNullItems()
+                .Select(c => c.ChatId)
+                .ToArray();
+            chatIds.Length.Should().Be(1);
+            chatIds.Should().Contain(chat.Id);
+        });
     }
 
     [Fact]
@@ -477,12 +456,10 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         var (_, chat) = await CreatePlaceWithDefaultChat(commander, session, isPublicPlace: isPublicPlace);
 
-        await TestExt.WhenMetAsync(
-            async () => {
-                chat = await chats.Get(session, chat.Id, default);
-                chat.Should().NotBeNull();
-            },
-            TimeSpan.FromSeconds(1));
+        await ComputedTestExt.When(services, async ct => {
+            chat = await chats.Get(session, chat.Id, ct);
+            chat.Should().NotBeNull();
+        });
 
         chat.IsPublic.Should().BeTrue();
         chat.Rules.CanLeave().Should().BeFalse();
