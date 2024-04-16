@@ -89,10 +89,10 @@ public class FirebaseMessagingClient(
         };
         if (isDev)
             multicastMessage.Android.FcmOptions = new AndroidFcmOptions {
-                AnalyticsLabel = "dev test" // Add label to see data messages statistics in Message delivery reports.
+                AnalyticsLabel = "dev_test" // Add label to see data messages statistics in Message delivery reports.
             };
         var batchResponse = await FirebaseMessaging
-            .SendMulticastAsync(multicastMessage, cancellationToken)
+            .SendEachForMulticastAsync(multicastMessage, cancellationToken)
             .ConfigureAwait(false);
         if (isDev) {
             var messageIds = string.Join(", ",
