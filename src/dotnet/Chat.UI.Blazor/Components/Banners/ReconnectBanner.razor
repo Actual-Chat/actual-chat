@@ -19,7 +19,7 @@
         @if (m.Kind == RpcPeerStateKind.JustConnected) {
             <div class="c-main-text">Connected!</div>
         } else { // JustDisconnected or Disconnected
-            <div class="c-main-text">Connection lost.</div>
+            <div class="c-main-text desktop">Connection lost.</div>
             @if (m.ReconnectsIn == default) {
                 <div class="c-secondary-text">Reconnecting...</div>
             } else {

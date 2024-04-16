@@ -13,6 +13,9 @@
 .banner.reconnect-banner .banner-body > .c-main-text {
     @apply text-caption-1;
 }
+body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
+    @apply hidden;
+}
 .banner.reconnect-banner .banner-body > .c-secondary-text {
     @apply text-caption-4;
 }
