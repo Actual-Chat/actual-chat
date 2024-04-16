@@ -223,7 +223,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
             });
             auth.ConfigureSessionInfoTrimmer(_ => new DbSessionInfoTrimmer<UsersDbContext>.Options {
-                MaxSessionAge = TimeSpan.FromDays(60),
+                MaxSessionAge = TimeSpan.FromDays(180),
             });
         });
         services.AddSingleton<UserNamer>();
