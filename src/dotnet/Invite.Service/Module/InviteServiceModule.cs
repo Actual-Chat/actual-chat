@@ -35,7 +35,8 @@ public sealed class InviteServiceModule(IServiceProvider moduleServices)
 
             // 3. Make sure the handler is intact only for local commands
             var commandNamespace = commandType.Namespace;
-            return commandNamespace.OrdinalStartsWith(typeof(IInvites).Namespace!);
+            return commandNamespace.OrdinalStartsWith(typeof(IInvites).Namespace!)
+                || commandNamespace.OrdinalContains("Tests");
         });
         if (isBackendClient)
             return;

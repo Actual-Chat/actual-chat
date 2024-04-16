@@ -53,6 +53,7 @@ public class ReactionsBackend(IServiceProvider services)
             return;
         }
 
+        var context = CommandContext.GetCurrent();
         var emoji = Emoji.Get(reaction.EmojiId).Require();
         var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).Require().ConfigureAwait(false);
         var entryAuthor = await AuthorsBackend.Get(chatId, entry.AuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).Require().ConfigureAwait(false);
@@ -106,8 +107,7 @@ public class ReactionsBackend(IServiceProvider services)
             await UpdateHasReactions().ConfigureAwait(false);
 
         // Raise events
-        new ReactionChangedEvent(reaction, entry, entryAuthor, author, changeKind)
-            .Enqueue();
+        context.Operation.AddEvent(new ReactionChangedEvent(reaction, entry, entryAuthor, author, changeKind));
         return;
 
         async Task<DbReactionSummary> UpsertDbSummary(Emoji emoji1, bool mustIncrementCount)

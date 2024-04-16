@@ -29,6 +29,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     private UserContactIndexer UserContactIndexer => _userContactIndexer ??= Services.GetRequiredService<UserContactIndexer>();
     private ChatContactIndexer ChatContactIndexer => _chatContactIndexer ??= Services.GetRequiredService<ChatContactIndexer>();
     private ElasticConfigurator ElasticConfigurator { get; } = services.GetRequiredService<ElasticConfigurator>();
+    private IQueues Queues { get; } = services.Queues();
 
     [ComputeMethod]
     protected virtual async Task<ApiSet<string>> GetIndicesForEntrySearch(UserId userId, CancellationToken cancellationToken)
@@ -293,7 +294,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         }
         else {
-            await new SearchBackend_StartUserContactIndexing().EnqueueDirectly(cancellationToken).ConfigureAwait(false);
+            await Queues.Enqueue(new SearchBackend_StartUserContactIndexing(), cancellationToken).ConfigureAwait(false);
             await Commander.Call(new SearchBackend_StartUserContactIndexing(), cancellationToken).ConfigureAwait(false);
         }
     }
@@ -312,7 +313,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         }
         else {
-            await new SearchBackend_StartUserContactIndexing().EnqueueDirectly(cancellationToken).ConfigureAwait(false);
+            await Queues.Enqueue(new SearchBackend_StartUserContactIndexing(), cancellationToken).ConfigureAwait(false);
             await Commander.Call(new SearchBackend_StartChatContactIndexing(), cancellationToken).ConfigureAwait(false);
         }
     }

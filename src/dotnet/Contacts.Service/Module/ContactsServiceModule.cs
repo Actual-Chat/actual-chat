@@ -44,6 +44,7 @@ public sealed class ContactsServiceModule(IServiceProvider moduleServices)
             // 3. Make sure the handler is intact only for local commands
             var commandNamespace = commandType.Namespace;
             return commandNamespace.OrdinalStartsWith(typeof(IContacts).Namespace!)
+                || commandNamespace.OrdinalContains("Tests")
                 || commandType == typeof(NewUserEvent); // Event
         });
         if (isBackendClient)

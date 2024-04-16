@@ -33,6 +33,7 @@ public class NotificationsBackend(IServiceProvider services)
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private FirebaseMessagingClient FirebaseMessagingClient { get; }
         = services.GetRequiredService<FirebaseMessagingClient>();
+    private IQueues Queues { get; } = services.Queues();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
     private ILogger? DebugLog => !UrlMapper.IsActualChat ? Log : null;
 
@@ -386,9 +387,7 @@ public class NotificationsBackend(IServiceProvider services)
                 SentAt = now,
                 ChatEntryNotification = new ChatEntryNotificationOption(entry.Id, changeAuthor.Id),
             };
-            await new NotificationsBackend_Notify(notification)
-                .EnqueueDirectly(cancellationToken)
-                .ConfigureAwait(false);
+            await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken).ConfigureAwait(false);
         }
     }
 

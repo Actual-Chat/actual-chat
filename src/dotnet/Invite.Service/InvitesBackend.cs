@@ -131,8 +131,7 @@ public class InvitesBackend(IServiceProvider services)
                 throw StandardError.StateTransition("Your account is already active.");
 
             // Follow-up actions
-            new AccountsBackend_Update(account with { Status = AccountStatus.Active }, null)
-                .Enqueue();
+            context.Operation.AddEvent(new AccountsBackend_Update(account with { Status = AccountStatus.Active }, null));
             break;
         }
         case ChatInviteOption chatInviteOption: {

@@ -39,7 +39,8 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
 
             // 3. Make sure the handler is intact only for local commands
             var commandNamespace = commandType.Namespace;
-            return commandNamespace.OrdinalStartsWith(typeof(INotifications).Namespace!);
+            return commandNamespace.OrdinalStartsWith(typeof(INotifications).Namespace!)
+                || commandNamespace.OrdinalContains("Tests");
         });
 
         // NOTE(AY): Notifications service uses NotificationDbContext and FirebaseMessaging,

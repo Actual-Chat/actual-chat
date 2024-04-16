@@ -185,7 +185,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
             // 5. Make sure the handler is intact only for local commands
             var commandNamespace = commandType.Namespace;
-            return commandNamespace.OrdinalStartsWith(typeof(IAccounts).Namespace!);
+            return commandNamespace.OrdinalStartsWith(typeof(IAccounts).Namespace!)
+                || commandNamespace.OrdinalContains("Tests");
         });
 
         // NOTE(AY): We don't have a clear separation between the backend and the front-end

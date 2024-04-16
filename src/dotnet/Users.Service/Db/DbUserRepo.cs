@@ -19,6 +19,7 @@ public class DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceP
         var dbUser = await base.Create(dbContext, user, cancellationToken).ConfigureAwait(false);
         user = UserConverter.ToModel(dbUser);
 
+        var context = CommandContext.GetCurrent();
         var isAdmin = AccountsBackend.IsAdmin(user);
         var dbAccount = new DbAccount {
             Id = user.Id,
@@ -39,7 +40,7 @@ public class DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceP
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        new AccountChangedEvent(dbAccount.ToModel(user), null, ChangeKind.Create).Enqueue();
+        context.Operation.AddEvent(new AccountChangedEvent(dbAccount.ToModel(user), null, ChangeKind.Create));
         return dbUser;
     }
 }

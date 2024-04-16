@@ -292,18 +292,21 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                     .GetIdRange(command.ChatId, ChatEntryKind.Text, false, cancellationToken)
                     .ConfigureAwait(false);
                 var readPosition = new ChatPosition(chatTextIdRange.End - 1);
-                new ChatPositionsBackend_Set(author.UserId, command.ChatId, ChatPositionKind.Read, readPosition)
-                    .Enqueue();
+                context.Operation.AddEvent(
+                    new ChatPositionsBackend_Set(author.UserId, command.ChatId, ChatPositionKind.Read, readPosition));
             }
 
             if (chatId.IsPeerChat(out _))
-                new ChatPositionsBackend_Set(author.UserId, command.ChatId, ChatPositionKind.Read, new ChatPosition())
-                    .Enqueue();
+                context.Operation.AddEvent(
+                    new ChatPositionsBackend_Set(
+                        author.UserId,
+                        command.ChatId,
+                        ChatPositionKind.Read,
+                        new ChatPosition()));
 
             if (!doNotNotify)
                 // Raise events
-                new AuthorChangedEvent(author, existingAuthor)
-                    .Enqueue();
+                context.Operation.AddEvent(new AuthorChangedEvent(author, existingAuthor));
             return author;
         }
     }

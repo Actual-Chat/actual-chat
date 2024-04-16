@@ -22,30 +22,6 @@ public static class CommandExt
         return queues.Enqueue(command, cancellationToken);
     }
 
-    public static TCommand Enqueue<TCommand>(this TCommand command)
-        where TCommand : ICommand
-    {
-        var context = CommandContext.GetCurrent();
-        context.Operation.AddEvent(command);
-        return command;
-    }
-
-    public static TCommand Enqueue<TCommand>(this TCommand command, Moment delayUntil)
-        where TCommand : ICommand
-    {
-        var context = CommandContext.GetCurrent();
-        context.Operation.AddEvent(command, delayUntil);
-        return command;
-    }
-
-    public static TCommand Enqueue<TCommand>(this TCommand command, TimeSpan delay)
-        where TCommand : ICommand
-    {
-        var context = CommandContext.GetCurrent();
-        context.Operation.AddEvent(command, delay);
-        return command;
-    }
-
     // Internal methods
 
     internal static TCommand WithChainId<TCommand>(this TCommand command, Symbol chainId)

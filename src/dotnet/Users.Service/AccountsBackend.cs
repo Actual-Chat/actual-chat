@@ -149,6 +149,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             return;
         }
 
+        var context = CommandContext.GetCurrent();
         var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -165,7 +166,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         dbAccount.UpdateFrom(account);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        new AccountChangedEvent(dbAccount.ToModel(account.User), existing, ChangeKind.Update).Enqueue();
+        context.Operation.AddEvent(
+            new AccountChangedEvent(dbAccount.ToModel(account.User), existing, ChangeKind.Update));
         if (mustGreet)
             ContactGreeter.Activate();
     }
@@ -181,6 +183,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             return;
         }
 
+        var context = CommandContext.GetCurrent();
         var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
         if (existingAccount is null)
             return;
@@ -214,7 +217,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .ConfigureAwait(false);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        new AccountChangedEvent(existingAccount, existingAccount, ChangeKind.Remove).Enqueue();
+        context.Operation.AddEvent(
+            new AccountChangedEvent(existingAccount, existingAccount, ChangeKind.Remove));
 
         // authors
         var removeAuthorsCommand = new AuthorsBackend_Remove(ChatId.None, AuthorId.None, userId);

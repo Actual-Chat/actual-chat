@@ -42,6 +42,7 @@ public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbCo
         }
 
         change.RequireValid();
+        var context = CommandContext.GetCurrent();
         var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -76,8 +77,8 @@ public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbCo
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         // Raise events
-        new AvatarChangedEvent(avatar, existingAvatar, change.Kind)
-            .Enqueue();
+        context.Operation.AddEvent(
+            new AvatarChangedEvent(avatar, existingAvatar, change.Kind));
         return avatar;
     }
 }

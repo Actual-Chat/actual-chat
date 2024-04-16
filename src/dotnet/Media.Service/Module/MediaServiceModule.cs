@@ -42,6 +42,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
             // 3. Make sure the handler is intact only for local commands
             var commandNamespace = commandType.Namespace;
             return commandNamespace.OrdinalStartsWith(typeof(IMediaLinkPreviews).Namespace!)
+                || commandNamespace.OrdinalContains("Tests")
                 || commandType == typeof(TextEntryChangedEvent); // Event
         });
         if (isBackendClient)

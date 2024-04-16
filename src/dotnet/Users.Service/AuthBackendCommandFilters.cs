@@ -80,8 +80,7 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
         // Raise events
         var isNewUser = context.Operation.Items.GetOrDefault<bool>(); // Set by default command handler
         if (isNewUser)
-            new NewUserEvent(userId)
-                .Enqueue();
+            context.Operation.AddEvent(new NewUserEvent(userId));
     }
 
     // Nested types

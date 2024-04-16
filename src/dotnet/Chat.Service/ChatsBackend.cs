@@ -749,8 +749,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         context.Operation.Items.Set(chat);
 
         // Raise events
-        new ChatChangedEvent(chat, oldChat, change.Kind)
-            .Enqueue();
+        context.Operation.AddEvent(new ChatChangedEvent(chat, oldChat, change.Kind));
         return chat;
 
         Chat ApplyDiff(Chat originalChat, ChatDiff? diff) {
@@ -920,9 +919,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         // Let's enqueue the TextEntryChangedEvent
         var authorId = entry.AuthorId;
         var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+
         // Raise events
-        new TextEntryChangedEvent(entry, author!, changeKind)
-            .Enqueue();
+        context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind));
         return entry;
 
         ChatEntry ApplyDiff(ChatEntry originalEntry, ChatEntryDiff? diff, bool isUpdate)
