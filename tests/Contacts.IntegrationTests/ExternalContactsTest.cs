@@ -320,19 +320,15 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             ApiArray.New(new ExternalContactChange(externalContactFull.Id, null, Change.Remove<ExternalContactFull>()))));
 
     private async Task<List<ContactId>> ListContactIds(int expectedCount)
-    {
-        await TestExt.WhenMetAsync(async () => {
-                var peerContactIds = await ListContactIds();
-                peerContactIds.Should().HaveCountGreaterOrEqualTo(expectedCount);
-            },
-            TimeSpan.FromSeconds(10));
+        => await ComputedTestExt.When(AppHost.Services, async ct => {
+            var contactIds = await ListContactIds(ct);
+            contactIds.Should().HaveCountGreaterOrEqualTo(expectedCount);
+            return contactIds;
+        }, TimeSpan.FromSeconds(10));
 
-        return await ListContactIds();
-    }
-
-    private async Task<List<ContactId>> ListContactIds()
+    private async Task<List<ContactId>> ListContactIds(CancellationToken cancellationToken = default)
     {
-        var ids = await _contacts.ListIds(_tester.Session, CancellationToken.None);
+        var ids = await _contacts.ListIds(_tester.Session, cancellationToken);
         return ids.Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
     }
 

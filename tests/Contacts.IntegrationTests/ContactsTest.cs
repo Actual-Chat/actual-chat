@@ -84,7 +84,7 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Task.Delay(TimeSpan.FromSeconds(1));
 
         // assert
-        await TestExt.WhenMetAsync(async () => {
+        await ComputedTestExt.When(AppHost.Services, async ct => {
             var expectedNonPlaceChatIds = new[] {
                 new ContactId(bob.Id, publicChatId),
                 new ContactId(bob.Id, privateChatId),
@@ -97,16 +97,16 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
                 new ContactId(bob.Id, privatePlacePublicChatId),
                 new ContactId(bob.Id, privatePlacePrivateChatId),
             };
-            var contactIds = await ListIds(PlaceId.None);
+            var contactIds = await ListIds(PlaceId.None, ct);
             contactIds.Should().BeEquivalentTo(expectedNonPlaceChatIds);
 
-            contactIds = await ListIds(publicPlaceId);
+            contactIds = await ListIds(publicPlaceId, ct);
             contactIds.Should().BeEquivalentTo(expectedPublicPlaceChatIds);
 
-            contactIds = await ListIds(privatePlaceId);
+            contactIds = await ListIds(privatePlaceId, ct);
             contactIds.Should().BeEquivalentTo(expectedPrivatePlaceChatIds);
 
-            contactIds = await ListIdsForEntrySearch();
+            contactIds = await ListIdsForEntrySearch(ct);
             contactIds.Should()
                 .BeEquivalentTo(new[] {
                     new ContactId(bob.Id, publicChatId),
@@ -117,7 +117,7 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
                     new ContactId(bob.Id, privatePlaceId.ToRootChatId()),
                 });
 
-            contactIds = await ListIdsForContactSearch();
+            contactIds = await ListIdsForContactSearch(ct);
             contactIds.Should()
                 .BeEquivalentTo(new[] {
                     new ContactId(bob.Id, privateChatId),
@@ -126,8 +126,7 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
                     new ContactId(bob.Id, privatePlacePrivateChatId),
                     new ContactId(bob.Id, privatePlaceId.ToRootChatId()),
                 });
-        },
-        TimeSpan.FromSeconds(10));
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
@@ -168,69 +167,68 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
         });
 
         // act, assert
-        await TestExt.WhenMetAsync(async () => {
-                var expectedNonPlaceChatIds = new[] {
+        await ComputedTestExt.When(AppHost.Services, async ct => {
+            var expectedNonPlaceChatIds = new[] {
+                new ContactId(bob.Id, publicChatId),
+                new ContactId(bob.Id, privateChatId),
+            };
+            var expectedPublicPlaceChatIds = new[] {
+                new ContactId(bob.Id, publicPlacePublicChatId),
+                new ContactId(bob.Id, publicPlacePrivateChatId),
+            };
+            var expectedPrivatePlaceChatIds = new[] {
+                new ContactId(bob.Id, privatePlacePublicChatId),
+                new ContactId(bob.Id, privatePlacePrivateChatId),
+            };
+            var contactIds = await ListIds(PlaceId.None, ct);
+            contactIds.Should().BeEquivalentTo(expectedNonPlaceChatIds);
+
+            contactIds = await ListIds(publicPlaceId, ct);
+            contactIds.Should().BeEquivalentTo(expectedPublicPlaceChatIds);
+
+            contactIds = await ListIds(privatePlaceId, ct);
+            contactIds.Should().BeEquivalentTo(expectedPrivatePlaceChatIds);
+
+            contactIds = await ListIdsForEntrySearch(ct);
+            contactIds.Should()
+                .BeEquivalentTo(new[] {
                     new ContactId(bob.Id, publicChatId),
                     new ContactId(bob.Id, privateChatId),
-                };
-                var expectedPublicPlaceChatIds = new[] {
-                    new ContactId(bob.Id, publicPlacePublicChatId),
                     new ContactId(bob.Id, publicPlacePrivateChatId),
-                };
-                var expectedPrivatePlaceChatIds = new[] {
+                    new ContactId(bob.Id, publicPlaceId.ToRootChatId()),
+                    new ContactId(bob.Id, privatePlacePrivateChatId),
+                    new ContactId(bob.Id, privatePlaceId.ToRootChatId()),
+                });
+
+            contactIds = await ListIdsForContactSearch(ct);
+            contactIds.Should()
+                .Contain(new[] {
+                    new ContactId(bob.Id, privateChatId),
+                    new ContactId(bob.Id, publicPlacePrivateChatId),
                     new ContactId(bob.Id, privatePlacePublicChatId),
                     new ContactId(bob.Id, privatePlacePrivateChatId),
-                };
-                var contactIds = await ListIds(PlaceId.None);
-                contactIds.Should().BeEquivalentTo(expectedNonPlaceChatIds);
-
-                contactIds = await ListIds(publicPlaceId);
-                contactIds.Should().BeEquivalentTo(expectedPublicPlaceChatIds);
-
-                contactIds = await ListIds(privatePlaceId);
-                contactIds.Should().BeEquivalentTo(expectedPrivatePlaceChatIds);
-
-                contactIds = await ListIdsForEntrySearch();
-                contactIds.Should()
-                    .BeEquivalentTo(new[] {
-                        new ContactId(bob.Id, publicChatId),
-                        new ContactId(bob.Id, privateChatId),
-                        new ContactId(bob.Id, publicPlacePrivateChatId),
-                        new ContactId(bob.Id, publicPlaceId.ToRootChatId()),
-                        new ContactId(bob.Id, privatePlacePrivateChatId),
-                        new ContactId(bob.Id, privatePlaceId.ToRootChatId()),
-                    });
-
-                contactIds = await ListIdsForContactSearch();
-                contactIds.Should()
-                    .Contain(new[] {
-                        new ContactId(bob.Id, privateChatId),
-                        new ContactId(bob.Id, publicPlacePrivateChatId),
-                        new ContactId(bob.Id, privatePlacePublicChatId),
-                        new ContactId(bob.Id, privatePlacePrivateChatId),
-                        new ContactId(bob.Id, privatePlaceId.ToRootChatId()),
-                    });
-            },
-            TimeSpan.FromSeconds(10));
+                    new ContactId(bob.Id, privatePlaceId.ToRootChatId()),
+                });
+        }, TimeSpan.FromSeconds(10));
     }
 
-    private async Task<List<ContactId>> ListIds(PlaceId placeId)
+    private async Task<List<ContactId>> ListIds(PlaceId placeId, CancellationToken cancellationToken = default)
     {
-        var contactIds = await _contacts.ListIds(_tester.Session, placeId, CancellationToken.None);
+        var contactIds = await _contacts.ListIds(_tester.Session, placeId, cancellationToken);
         return contactIds.Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
     }
 
-    private async Task<List<ContactId>> ListIdsForEntrySearch()
+    private async Task<List<ContactId>> ListIdsForEntrySearch(CancellationToken cancellationToken = default)
     {
-        var account = await _accounts.GetOwn(_tester.Session, CancellationToken.None);
-        var contactIds = await _contactsBackend.ListIdsForEntrySearch(account.Id, CancellationToken.None);
+        var account = await _accounts.GetOwn(_tester.Session, cancellationToken);
+        var contactIds = await _contactsBackend.ListIdsForEntrySearch(account.Id, cancellationToken);
         return contactIds.Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId)).OrderBy(x => x.Id).ToList();
     }
 
-    private async Task<List<ContactId>> ListIdsForContactSearch()
+    private async Task<List<ContactId>> ListIdsForContactSearch(CancellationToken cancellationToken = default)
     {
-        var account = await _accounts.GetOwn(_tester.Session, CancellationToken.None);
-        var contactIds = await _contactsBackend.ListIdsForContactSearch(account.Id, CancellationToken.None);
+        var account = await _accounts.GetOwn(_tester.Session, cancellationToken);
+        var contactIds = await _contactsBackend.ListIdsForContactSearch(account.Id, cancellationToken);
         return contactIds.Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId)).OrderBy(x => x.Id).ToList();
     }
 }

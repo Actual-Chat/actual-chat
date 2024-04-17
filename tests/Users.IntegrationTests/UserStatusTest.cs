@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Testing.Host;
-using ActualLab.Versioning;
 
 namespace ActualChat.Users.IntegrationTests;
 
@@ -34,7 +33,7 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out, ILog
         await _tester.SignInAsAlice();
 
         // act
-        var account = await GetOwnAccount();
+        var account = await _accounts.GetOwn(_tester.Session, default);
 
         // assert
         account.Status.Should().Be(AccountStatus.Active);
@@ -53,15 +52,10 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out, ILog
             Log.LogInformation("Updated Status to '{NewStatus}'", newStatus);
 
             // assert
-            await TestExt.WhenMetAsync(async () => {
-                account = await GetOwnAccount();
-                Log.LogInformation("About to test Status. Expected status: '{ExpectedStatus}', Account: '{Account}'",
-                    newStatus, account);
+            await ComputedTestExt.When(AppHost.Services, async ct => {
+                account = await _accounts.GetOwn(_tester.Session, ct);
                 account.Status.Should().Be(newStatus);
-            }, TimeSpan.FromSeconds(10));
+            });
         }
     }
-
-    private Task<AccountFull> GetOwnAccount()
-        => _accounts.GetOwn(_tester.Session, default);
 }

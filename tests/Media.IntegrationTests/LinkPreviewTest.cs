@@ -85,25 +85,15 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     private async Task<LinkPreview> GetEntryLinkPreview(ChatEntryId entryId, Symbol expectedId)
-    {
-        LinkPreview? linkPreview = null;
-        await TestExt.WhenMetAsync(async () => {
-                var chatEntry = await Chats.GetEntry(Session, entryId).Require();
-                chatEntry.LinkPreviewId.Should().Be(expectedId);
-                linkPreview = chatEntry.LinkPreview;
-            },
-            TimeSpan.FromSeconds(5));
-        return linkPreview!;
-    }
+        => await ComputedTestExt.When(AppHost.Services, async ct => {
+            var chatEntry = await Chats.GetEntry(Session, entryId, ct).Require();
+            chatEntry.LinkPreviewId.Should().Be(expectedId);
+            return chatEntry.LinkPreview.Require();
+        });
 
     private async Task<LinkPreview> GetLinkPreview(Symbol id)
-    {
-        LinkPreview? linkPreview = null;
-        await TestExt.WhenMetAsync(async () => {
-                linkPreview = await LinkPreviews.Get(id, CancellationToken.None);
-                linkPreview.Should().NotBeNull();
-            },
-            TimeSpan.FromSeconds(5));
-        return linkPreview!;
-    }
+        => await ComputedTestExt.When(AppHost.Services, async ct => {
+            var linkPreview = await LinkPreviews.Get(id, ct);
+            return linkPreview.Require();
+        });
 }

@@ -1,5 +1,3 @@
-using ActualChat.Queues;
-
 namespace ActualChat.Testing.Host;
 
 public abstract class SharedAppHostTestBase<TAppHostFixture>(

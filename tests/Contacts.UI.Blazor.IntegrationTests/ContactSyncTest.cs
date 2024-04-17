@@ -93,16 +93,12 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
         => new (new ExternalContactId(new UserDeviceId(owner.Id, DeviceId), RandomStringGenerator.Default.Next()));
 
     private async Task<ApiArray<ExternalContact>> ListExternalContacts(int expectedCount)
-    {
-        await TestExt.WhenMetAsync(async () => {
-                var externalContacts = await ListExternalContacts();
-                externalContacts.Should().HaveCountGreaterOrEqualTo(expectedCount);
-            },
-            TimeSpan.FromSeconds(10));
+        => await ComputedTestExt.When(AppHost.Services, async ct => {
+            var externalContacts = await ListExternalContacts(ct);
+            externalContacts.Should().HaveCountGreaterOrEqualTo(expectedCount);
+            return externalContacts;
+        }, TimeSpan.FromSeconds(10));
 
-        return await ListExternalContacts();
-    }
-
-    private Task<ApiArray<ExternalContact>> ListExternalContacts()
-        => _externalContacts.List2(_tester.Session, DeviceId, CancellationToken.None);
+    private Task<ApiArray<ExternalContact>> ListExternalContacts(CancellationToken cancellationToken = default)
+        => _externalContacts.List2(_tester.Session, DeviceId, cancellationToken);
 }

@@ -156,6 +156,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var account = await tester.SignInAsNew("NotesTest");
         account.Should().NotBeNull();
 
+        // pre-assert wait
         await ComputedTestExt.When(services, async ct => {
             var chats = (await (await contacts.ListIds(session, ct))
                 .Select(x => chatsBackend.Get(x.ChatId, ct))
