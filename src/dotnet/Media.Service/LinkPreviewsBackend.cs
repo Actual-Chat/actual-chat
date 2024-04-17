@@ -8,20 +8,10 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Media;
 
-public class LinkPreviewsBackend(IServiceProvider services)
+public class LinkPreviewsBackend(MediaSettings settings, IChatsBackend chatsBackend, IMediaBackend mediaBackend, IMarkupParser markupParser, Crawler crawler, IMeshLocks<MediaDbContext> meshLocks, IServiceProvider services)
     : DbServiceBase<MediaDbContext>(services), ILinkPreviewsBackend
 {
-    public TimeSpan LinkPreviewUpdatePeriod { get; set; } = TimeSpan.FromDays(1);
-
-    private IMediaBackend? _mediaBackend;
-    private IChatsBackend? _chatsBackend;
-
-    private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-    private IMediaBackend MediaBackend => _mediaBackend ??= Services.GetRequiredService<IMediaBackend>();
-    private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
-    private Crawler Crawler { get; } = services.GetRequiredService<Crawler>();
-    private IMeshLocks CrawlLocks { get; }
-        = services.GetRequiredService<IMeshLocks<MediaDbContext>>().WithKeyPrefix(nameof(CrawlLocks));
+    private IMeshLocks CrawlLocks { get; } = meshLocks.WithKeyPrefix(nameof(CrawlLocks));
     private Moment SystemNow => Clocks.SystemClock.Now;
 
     // [ComputeMethod]
@@ -32,7 +22,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
     [Obsolete("2023.10: Remains for backward compability.")]
     public virtual async Task<LinkPreview?> GetForEntry(ChatEntryId entryId, CancellationToken cancellationToken)
     {
-        var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
+        var entry = await chatsBackend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
         if (entry is null)
             return null;
 
@@ -91,6 +81,8 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
     private async Task<LinkPreview> RefreshUnsafe(Symbol id, string url, CancellationToken cancellationToken)
     {
+        var linkMeta = await crawler.Crawl(url, cancellationToken).ConfigureAwait(false);
+
         var context = CommandContext.GetCurrent();
         var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -102,24 +94,24 @@ public class LinkPreviewsBackend(IServiceProvider services)
         if (dbLinkPreview != null && SystemNow - dbLinkPreview.ModifiedAt.ToMoment() < TimeSpan.FromDays(1))
             return dbLinkPreview.ToModel();
 
-        var linkMeta = await Crawler.Crawl(url, cancellationToken).ConfigureAwait(false);
+        var videoMeta = linkMeta.OpenGraph.Video;
         if (dbLinkPreview == null) {
             var linkPreview = new LinkPreview {
                 Id = LinkPreview.ComposeId(url),
                 Version = VersionGenerator.NextVersion(),
                 Url = url,
-                Title = linkMeta.Title,
-                Description = linkMeta.Description,
+                Title = linkMeta.OpenGraph.Title,
+                Description = linkMeta.OpenGraph.Description,
                 PreviewMediaId = linkMeta.PreviewMediaId,
                 CreatedAt = SystemNow,
                 ModifiedAt = SystemNow,
             };
-            if (!linkMeta.VideoMetadata.IsNone)
+            if (videoMeta != OpenGraphVideo.None)
                 linkPreview = linkPreview with {
-                    VideoSite = linkMeta.VideoMetadata.SiteName,
-                    VideoUrl = linkMeta.VideoMetadata.SecureUrl,
-                    VideoWidth = linkMeta.VideoMetadata.Width,
-                    VideoHeight = linkMeta.VideoMetadata.Height,
+                    VideoSite = linkMeta.OpenGraph.SiteName,
+                    VideoUrl = linkMeta.OpenGraph.Video.SecureUrl,
+                    VideoWidth = linkMeta.OpenGraph.Video.Width,
+                    VideoHeight = linkMeta.OpenGraph.Video.Height,
                 };
 
             dbLinkPreview = new DbLinkPreview(linkPreview);
@@ -130,20 +122,23 @@ public class LinkPreviewsBackend(IServiceProvider services)
                 .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
                 .ConfigureAwait(false);
             var linkPreview = dbLinkPreview!.ToModel();
+            if (linkMeta.OpenGraph != OpenGraph.None)
+                linkPreview = linkPreview with {
+                    Title = linkMeta.OpenGraph.Title,
+                    Description = linkMeta.OpenGraph.Description,
+                };
+            if (videoMeta != OpenGraphVideo.None)
+                linkPreview = linkPreview with {
+                    VideoSite = linkMeta.OpenGraph.SiteName,
+                    VideoUrl = videoMeta.SecureUrl,
+                    VideoWidth = videoMeta.Width,
+                    VideoHeight = videoMeta.Height,
+                };
             linkPreview = linkPreview with {
                 PreviewMediaId = linkMeta.PreviewMediaId,
-                Title = linkMeta.Title,
-                Description = linkMeta.Description,
                 ModifiedAt = SystemNow,
                 Version = VersionGenerator.NextVersion(linkPreview.Version),
             };
-            if (!linkMeta.VideoMetadata.IsNone)
-                linkPreview = linkPreview with {
-                    VideoSite = linkMeta.VideoMetadata.SiteName,
-                    VideoUrl = linkMeta.VideoMetadata.SecureUrl,
-                    VideoWidth = linkMeta.VideoMetadata.Width,
-                    VideoHeight = linkMeta.VideoMetadata.Height,
-                };
             dbLinkPreview.UpdateFrom(linkPreview);
         }
 
@@ -156,9 +151,11 @@ public class LinkPreviewsBackend(IServiceProvider services)
     {
         var linkPreview = await GetAndRefreshIfRequired(entry, false, cancellationToken).ConfigureAwait(false);
         var linkPreviewId = linkPreview?.Id ?? Symbol.Empty;
+        Log.LogDebug("Retrieved LinkPreview #{LinkPreviewId} for entry #{EntryId}. Current Entry.LinkPreview: #{PreviousLinkPreviewId}", linkPreviewId, entry.Id, entry.LinkPreviewId);
         if (entry.LinkPreviewId == linkPreviewId)
             return linkPreview;
 
+        Log.LogDebug("Setting LinkPreview #{LinkPreviewId} for entry #{EntryId}", linkPreviewId, entry.Id);
         var changeTextEntryCmd = new ChatsBackend_ChangeEntry(
             entry.Id,
             null, // The entry passed here may have an outdated version
@@ -186,7 +183,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         var linkPreview = await GetFromDb(id, cancellationToken).ConfigureAwait(false);
         url ??= linkPreview?.Url;
         var mustRefresh = !url.IsNullOrEmpty()
-            && (linkPreview == null || linkPreview.ModifiedAt + LinkPreviewUpdatePeriod < SystemNow);
+            && (linkPreview == null || linkPreview.ModifiedAt + settings.LinkPreviewUpdatePeriod < SystemNow);
         if (mustRefresh) {
             if (await IsCrawling(id, cancellationToken).ConfigureAwait(false))
                 return linkPreview;
@@ -200,12 +197,11 @@ public class LinkPreviewsBackend(IServiceProvider services)
             else if (linkPreview == LinkPreview.UseExisting)
                 return linkPreview;
         }
-        if (linkPreview == null || linkPreview.PreviewMediaId.IsNone)
+        if (linkPreview?.PreviewMediaId.IsNone != false)
             return linkPreview;
 
         return linkPreview with {
-            PreviewMedia = await MediaBackend.Get(linkPreview.PreviewMediaId, cancellationToken)
-                .ConfigureAwait(false),
+            PreviewMedia = await mediaBackend.Get(linkPreview.PreviewMediaId, cancellationToken).ConfigureAwait(false),
         };
     }
 
@@ -224,7 +220,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
     private HashSet<string> ExtractUrls(ChatEntry entry)
     {
-        var markup = MarkupParser.Parse(entry.Content);
+        var markup = markupParser.Parse(entry.Content);
         return new LinkExtractor().GetLinks(markup);
     }
 

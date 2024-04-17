@@ -32,7 +32,7 @@ public class OpenGrapHtmlBuilder
     {
         var sb = new StringBuilder();
         sb.AppendLine("""
-                      html prefix="og: https://ogp.me/ns#">
+                      <html prefix="og: https://ogp.me/ns#">
                       <head>
                       <title>Bla bla bla</title>
                       """);

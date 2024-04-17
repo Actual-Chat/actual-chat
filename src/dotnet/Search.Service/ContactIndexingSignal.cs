@@ -35,7 +35,8 @@ public sealed class ContactIndexingSignal : IAsyncDisposable
 
     public async Task WhenSet(TimeSpan timeout, CancellationToken cancellationToken)
     {
-        using var cts = cancellationToken.CreateDelayedTokenSource(timeout);
+        using var cts = cancellationToken.CreateLinkedTokenSource();
+        cts.CancelAfter(timeout);
         await NeedsSync.When(x => x, cts.Token).ConfigureAwait(false);
     }
 

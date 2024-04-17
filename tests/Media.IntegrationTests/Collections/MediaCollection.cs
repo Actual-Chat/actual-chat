@@ -9,5 +9,6 @@ public class AppHostFixture(IMessageSink messageSink)
     : ActualChat.Testing.Host.AppHostFixture("media", messageSink, TestAppHostOptions.Default with {
         ConfigureServices = (_, services) => {
             services.AddSingleton<HttpClientFactoryMock>().AddAlias<IHttpClientFactory, HttpClientFactoryMock>();
+            services.AddSingleton<HttpHandlerMock>().AddAlias<IHttpClientFactory, HttpClientFactoryMock>();
         },
     });
