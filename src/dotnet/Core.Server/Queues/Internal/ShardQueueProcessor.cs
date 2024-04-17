@@ -42,7 +42,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
         while (delay > TimeSpan.Zero) {
             await Clock.Delay(delay + TimeSpan.FromMilliseconds(20), cancellationToken).ConfigureAwait(false);
             var lastCommandCompletedAt = new Moment(Interlocked.Read(ref _lastCommandCompletedAt));
-            delay = maxCommandGap - (Clock.Now - lastCommandCompletedAt);
+            delay = lastCommandCompletedAt + maxCommandGap - Clock.Now;
         }
     }
 

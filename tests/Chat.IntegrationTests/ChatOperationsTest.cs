@@ -3,7 +3,6 @@ using ActualChat.Chat.Module;
 using ActualChat.Contacts;
 using ActualChat.Testing.Host;
 using ActualChat.Invite;
-using ActualChat.Queues;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -151,11 +150,20 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var services = tester.AppServices;
         var chatsBackend = services.GetRequiredService<IChatsBackend>();
         var authors = services.GetRequiredService<IAuthors>();
+        var contacts = services.GetRequiredService<IContacts>();
         var session = tester.Session;
 
         var account = await tester.SignInAsNew("NotesTest");
         account.Should().NotBeNull();
-        await services.Queues().WhenProcessing();
+
+        await ComputedTestExt.When(services, async ct => {
+            var chats = (await (await contacts.ListIds(session, ct))
+                .Select(x => chatsBackend.Get(x.ChatId, ct))
+                .Collect())
+                .SkipNullItems()
+                .ToList();
+            chats.Any(c => c.SystemTag == Constants.Chat.SystemTags.Notes).Should().BeTrue();
+        });
 
         // assert
         await TestExt.WhenMetAsync(async () => {
@@ -410,12 +418,10 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var services = appHost.Services;
         await using var ownerTester = appHost.NewBlazorTester();
         await ownerTester.SignInAsAlice();
+        var contacts = services.GetRequiredService<IContacts>();
         var session = ownerTester.Session;
 
         var (chatId, _) = await ownerTester.CreateChat(true);
-        await services.Queues().WhenProcessing();
-
-        var contacts = services.GetRequiredService<IContacts>();
         await ComputedTestExt.When(services, async ct => {
             var contactIds = await contacts.ListIds(session, PlaceId.None, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
@@ -430,7 +436,6 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var chat = await chats.Get(session, chatId, default);
         chat.Should().BeNull();
 
-        await services.Queues().WhenProcessing();
         await ComputedTestExt.When(services, async ct => {
             var contactIds = await contacts.ListIds(session, PlaceId.None, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();

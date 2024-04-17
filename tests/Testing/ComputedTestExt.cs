@@ -20,7 +20,12 @@ public static class ComputedTestExt
                 }
             });
         using var timeoutCts = new CancellationTokenSource(timeout ?? DefaultTimeout);
-        await computedSource.When(x => x, timeoutCts.Token).ConfigureAwait(false);
+        try {
+            await computedSource.When(x => x, timeoutCts.Token).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e.IsCancellationOf(timeoutCts.Token)) {
+            throw new TimeoutException($"{nameof(ComputedTestExt)}.{nameof(When)} timed out.");
+        }
         await condition.Invoke(CancellationToken.None); // Should throw or pass
     }
 
@@ -40,7 +45,12 @@ public static class ComputedTestExt
                 }
             });
         using var timeoutCts = new CancellationTokenSource(timeout ?? DefaultTimeout);
-        await computedSource.When(x => x, timeoutCts.Token).ConfigureAwait(false);
+        try {
+            await computedSource.When(x => x, timeoutCts.Token).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e.IsCancellationOf(timeoutCts.Token)) {
+            throw new TimeoutException($"{nameof(ComputedTestExt)}.{nameof(When)} timed out.");
+        }
         return await condition.Invoke(CancellationToken.None); // Should throw or pass
     }
 }

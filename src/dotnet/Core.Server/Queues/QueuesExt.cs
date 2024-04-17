@@ -26,7 +26,7 @@ public static class QueuesExt
     // WhenProcessing
 
     public static Task WhenProcessing(this IQueues queues, CancellationToken cancellationToken = default)
-        => queues.WhenProcessing(TimeSpan.FromSeconds(2), cancellationToken);
+        => queues.WhenProcessing(TimeSpan.FromSeconds(3), cancellationToken);
 
     public static Task WhenProcessing(this IQueues queues, TimeSpan maxCommandGap, CancellationToken cancellationToken = default)
     {
