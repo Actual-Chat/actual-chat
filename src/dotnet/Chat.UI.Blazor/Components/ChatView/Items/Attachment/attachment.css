@@ -20,12 +20,6 @@
 .image-attachment {
     @apply w-full;
 }
-.file-attachment-name {
-    @apply text-blue-700 cursor-pointer overflow-hidden text-ellipsis hover:underline;
-}
-.file-attachment-size {
-    @apply text-03 text-xs;
-}
 .image-attachment image-skeleton.loading {
     @apply bg-skeleton rounded-md animate-pulse;
     @apply w-full;
@@ -39,4 +33,31 @@
 }
 .image-attachment image-skeleton::part(image) {
     object-fit: cover;
+}
+
+/* File Attachment */
+.file-attachment {
+    @apply gap-x-2;
+    @apply h-12 max-w-80;
+    @apply px-2 py-1;
+    @apply rounded-lg border border-message-hover;
+    @apply bg-01;
+}
+.file-attachment .c-icon {
+    @apply flex-none flex items-center justify-center;
+    @apply w-10 h-10;
+    @apply rounded-full;
+    @apply bg-03;
+    @apply text-primary;
+}
+.file-attachment .c-info {
+    @apply flex-y justify-between;
+}
+.file-attachment .c-title {
+    @apply line-clamp-1;
+    @apply text-headline-1 text-02;
+}
+.file-attachment .c-size {
+    @apply flex-x gap-x-2;
+    @apply text-text-1 text-03;
 }

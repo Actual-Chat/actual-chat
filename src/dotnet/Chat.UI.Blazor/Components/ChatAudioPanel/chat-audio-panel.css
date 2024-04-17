@@ -61,6 +61,9 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover {
     @apply rounded-full;
     @apply transition-all ease-linear duration-100;
 }
+.chat-audio-panel .language-button {
+    @apply relative;
+}
 .chat-audio-panel .language-button .btn.btn-round,
 .chat-audio-panel .playback-wrapper .btn.btn-round,
 .chat-audio-panel .recorder-wrapper .btn.btn-round {
@@ -554,12 +557,9 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 }
 
 .selected-language {
-    @apply absolute z-10 top-1 right-3;
+    @apply absolute z-10 -top-1 -right-0.5;
     @apply px-1;
     @apply rounded-full;
     @apply bg-05;
     @apply text-primary-title text-xs;
-}
-body.narrow .selected-language {
-    @apply -top-0.5 -right-1;
 }

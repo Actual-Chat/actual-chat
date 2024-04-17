@@ -11,60 +11,77 @@
     var imageUrl = GetImageUrl(m.PreviewMedia);
     Uri.TryCreate(m.Url, UriKind.Absolute, out var uri);
     var compactCls = m.PreviewMedia != null ? "" : "compact";
-}
 
-@* Keep height fixed *@
-<div class="link-preview @compactCls">
-    @if (m.PreviewMedia != null) {
-        @if (m.IsYouTubeVideo) {
-            <div
-                class="c-thumbnail c-video"
-                @onclick="@OnVideoClick">
-                <image-skeleton
-                    class="c-skeleton"
-                    src="@imageUrl"/>
-                <div class="c-overlay">
-                    <i class="c-play icon-play-fill"></i>
-                </div>
-            </div>
-        } else {
-            <image-skeleton
+    RenderFragment RenderMedia() {
+        if (m.PreviewMedia != null) {
+            if (m.IsYouTubeVideo) {
+                return @<div
+                    class="c-thumbnail c-video"
+                    @onclick="@OnVideoClick">
+                   <image-skeleton
+                       class="c-skeleton"
+                       src="@imageUrl"/>
+                   <div class="c-overlay">
+                       <i class="c-play icon-play-fill"></i>
+                   </div>
+               </div>;
+            }
+            return @<image-skeleton
                 class="c-thumbnail"
-                src="@imageUrl"/>
-        }
-    } else {
-        <div class="c-icon">
+                src="@imageUrl"/>;
+            }
+        return @<div class="c-icon">
             <i class="icon-link-2"></i>
-        </div>
+        </div>;
     }
-    <div class="c-info">
-        <div>
-            <a href="@m.Url" target="_blank" class="c-title">@m.Title</a>
+
+    RenderFragment RenderInfo() =>
+        @<div>
+            <span class="c-title">@m.Title</span>
             @if (!m.Description.IsNullOrEmpty()) {
                 <div class="c-description">@m.Description</div>
             }
-        </div>
-        @if (uri != null) {
-            <a href="@(uri.Scheme)://@(uri.Authority)" target="_blank" class="c-domain">@uri.Host</a>
-        }
-    </div>
+        </div>;
 
-    <div class="link-buttons">
-        @if (uri != null) {
-            <CopyTrigger Tooltip="@Entry.Content" CopyText="@Entry.Content">
-                <ButtonRound Class="btn-xs">
-                    <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
-                    <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
-                </ButtonRound>
-            </CopyTrigger>
-        }
-        <ButtonRound
-            Tooltip="Forward"
-            Class="btn-xs"
-            Click="@(() => SelectionUI.Forward(Entry.Id))">
+    RenderFragment RenderForward() =>
+        @<ButtonRound
+             Tooltip="Forward"
+             Class="btn-xs"
+             Click="@(() => SelectionUI.Forward(Entry.Id))">
             <i class="icon-share"></i>
-        </ButtonRound>
+        </ButtonRound>;
+
+}
+
+@if (uri != null) {
+    <a class="link-preview @compactCls" href="@(uri.Scheme)://@(uri.Authority)" target="_blank">
+        @RenderMedia()
+        <div class="c-info">
+            @RenderInfo()
+            <span class="c-domain">@uri.Host</span>
+        </div>
+        <div class="incut"></div>
+    </a>
+} else {
+    <div class="link-preview @compactCls">
+        @RenderMedia()
+        <div class="c-info">
+            @RenderInfo()
+        </div>
+        <div class="incut"></div>
     </div>
+}
+
+<div class="link-buttons">
+    @if (uri != null) {
+        <CopyTrigger Tooltip="@Entry.Content" CopyText="@Entry.Content">
+            <ButtonRound Class="btn-xs">
+                <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
+                <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
+            </ButtonRound>
+        </CopyTrigger>
+    }
+    @RenderForward()
 </div>
 
 @code {
