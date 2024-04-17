@@ -43,6 +43,7 @@ public record TestAppHostOptions
     public DbInitializeOptions DbInitializeOptions { get; init; } = DbInitializeOptions.Default;
     public ChatDbInitializer.Options ChatDbInitializerOptions { get; init; } = ChatDbInitializer.Options.None;
     public bool? UseNatsQueues { get; init; }
+    public bool MustCleanupRedis { get; init; }
     public bool MustInitializeDb { get; init; }
     public bool MustStart { get; init; }
 

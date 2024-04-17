@@ -89,8 +89,9 @@ public static class TestAppHostFactory
         _ = appHost.Services.GetRequiredService<PostgreSqlPoolCleaner>(); // Force instantiation to ensure it's disposed in the end
 
         // Clean up infrastructure MeshLocks
-        if (appHost.Services.MeshLocks<InfrastructureDbContext>() is RedisMeshLocks meshLocks) {
-            var keyCount = await meshLocks.RemoveKeys("*");
+        var meshLocks = appHost.Services.MeshLocks<InfrastructureDbContext>();
+        if (options.MustCleanupRedis && meshLocks is RedisMeshLocks redisMeshLocks) {
+            var keyCount = await redisMeshLocks.RemoveKeys("*");
             outputAccessor.Output?.WriteLine($"Removed {keyCount} Redis keys.");
         }
 

@@ -19,6 +19,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
             },
             DbInitializeOptions = new() { InitializeData = false },
             UseNatsQueues = true,
+            MustCleanupRedis = true,
         });
         var services = host.Services;
         var queues = services.Queues();
@@ -45,6 +46,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
             },
             DbInitializeOptions = new() { InitializeData = false },
             UseNatsQueues = true,
+            MustCleanupRedis = true,
         });
         var services = host.Services;
         var queues = services.Queues();
@@ -76,6 +78,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
             },
             DbInitializeOptions = new() { InitializeData = false },
             UseNatsQueues = true,
+            MustCleanupRedis = true,
         });
         var services = host.Services;
         var queues = services.Queues();
