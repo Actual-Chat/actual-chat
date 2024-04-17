@@ -17,10 +17,11 @@ public class NatsQueueTest(ITestOutputHelper @out)
                 var rpcHost = services.AddRpcHost(ctx.HostInfo);
                 rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },
+            DbInitializeOptions = new() { InitializeData = false },
             UseNatsQueues = true,
         });
         var services = host.Services;
-        var queues = services.Queues().Start();
+        var queues = services.Queues();
         queues.Should().BeAssignableTo<NatsQueues>();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
@@ -42,10 +43,11 @@ public class NatsQueueTest(ITestOutputHelper @out)
                 var rpcHost = services.AddRpcHost(ctx.HostInfo);
                 rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },
+            DbInitializeOptions = new() { InitializeData = false },
             UseNatsQueues = true,
         });
         var services = host.Services;
-        var queues = services.Queues().Start();
+        var queues = services.Queues();
         queues.Should().BeAssignableTo<NatsQueues>();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
@@ -72,10 +74,11 @@ public class NatsQueueTest(ITestOutputHelper @out)
                 var rpcHost = services.AddRpcHost(ctx.HostInfo);
                 rpcHost.AddBackend<IScheduledCommandTestService, ScheduledCommandTestService>();
             },
+            DbInitializeOptions = new() { InitializeData = false },
             UseNatsQueues = true,
         });
         var services = host.Services;
-        var queues = services.Queues().Start();
+        var queues = services.Queues();
         queues.Should().BeAssignableTo<NatsQueues>();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();

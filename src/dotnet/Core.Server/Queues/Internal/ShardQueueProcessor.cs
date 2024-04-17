@@ -9,6 +9,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
 {
     private static bool DebugMode => Constants.DebugMode.QueueProcessor;
 
+    private readonly TaskCompletionSource _whenStarted = new();
     private long _lastCommandCompletedAt;
 
     protected ICommander Commander { get; }
@@ -38,6 +39,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
 
     public virtual async Task WhenProcessing(TimeSpan maxCommandGap, CancellationToken cancellationToken = default)
     {
+        await _whenStarted.Task.ConfigureAwait(false);
         var delay = maxCommandGap;
         while (delay > TimeSpan.Zero) {
             await Clock.Delay(delay + TimeSpan.FromMilliseconds(20), cancellationToken).ConfigureAwait(false);
@@ -54,6 +56,12 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
         int shardIndex, TMessage message, QueuedCommand? command, Exception exception, CancellationToken cancellationToken);
     protected abstract Task MarkPostponed(
         int shardIndex, TMessage message, QueuedCommand queuedCommand, TimeSpan delay, CancellationToken cancellationToken);
+
+    protected void MarkStarted()
+    {
+        InterlockedExt.ExchangeIfGreater(ref _lastCommandCompletedAt, Clock.Now.EpochOffsetTicks);
+        _whenStarted.TrySetResult();
+    }
 
     protected virtual async ValueTask Process(int shardIndex, TMessage message, CancellationToken cancellationToken)
     {

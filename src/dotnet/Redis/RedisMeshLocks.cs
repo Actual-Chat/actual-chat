@@ -24,53 +24,71 @@ public class RedisMeshLocks : MeshLocksBase
     // redis.log(redis.LOG_WARNING, string.format(cjson.encode(r)))
     private static readonly string TryLockScript =
         """
-            local key, anyLockKey, value, expiresIn = KEYS[1], KEYS[2], ARGV[1], ARGV[2]
-            local r = redis.call('SET', key, value, 'NX', 'PX', expiresIn)
-            local rt = type(r)
-            if (rt == 'boolean' and r) or (rt == 'table' and r['ok'] == 'OK') then
-                redis.call('PUBLISH', key, '')
-                redis.call('PUBLISH', anyLockKey, key)
-                return 0
-            end
-            return -1
+        local key, anyLockKey, value, expiresIn = KEYS[1], KEYS[2], ARGV[1], ARGV[2]
+        local r = redis.call('SET', key, value, 'NX', 'PX', expiresIn)
+        local rt = type(r)
+        if (rt == 'boolean' and r) or (rt == 'table' and r['ok'] == 'OK') then
+            redis.call('PUBLISH', key, '')
+            redis.call('PUBLISH', anyLockKey, key)
+            return 0
+        end
+        return -1
         """;
     private static readonly string TryRenewScript =
         // Ideally we want to use GT option with PEXPIRE, but it's available only since Redis 7.0
         """
-            local key, value, expiresIn = KEYS[1], ARGV[1], ARGV[2]
-            if redis.call('GET', key) ~= value then
-                return -1
-            end
-            redis.call('PEXPIRE', key, expiresIn)
-            if redis.call('GET', key) ~= value then
-                return -1
-            end
-            return 0
+        local key, value, expiresIn = KEYS[1], ARGV[1], ARGV[2]
+        if redis.call('GET', key) ~= value then
+            return -1
+        end
+        redis.call('PEXPIRE', key, expiresIn)
+        if redis.call('GET', key) ~= value then
+            return -1
+        end
+        return 0
         """;
     private static readonly string TryReleaseScript =
         """
-            local key, anyLockKey, value = KEYS[1], KEYS[2], ARGV[1]
-            if redis.call('GET', key) ~= value then
-                return -2
-            end
-            if redis.call('DEL', key) <= 0 then
-                return -1
-            end
-            redis.call('PUBLISH', key, '')
-            redis.call('PUBLISH', anyLockKey, key)
-            return 0
+        local key, anyLockKey, value = KEYS[1], KEYS[2], ARGV[1]
+        if redis.call('GET', key) ~= value then
+            return -2
+        end
+        if redis.call('DEL', key) <= 0 then
+            return -1
+        end
+        redis.call('PUBLISH', key, '')
+        redis.call('PUBLISH', anyLockKey, key)
+        return 0
         """;
     private static readonly string ForceReleaseScript =
         """
-            local key, anyLockKey, mustNotify = KEYS[1], KEYS[2], ARGV[1]
-            if redis.call('DEL', key) <= 0 then
-                return -1
-            end
-            if mustNotify ~= 0 then
-                redis.call('PUBLISH', key, '')
-                redis.call('PUBLISH', anyLockKey, key)
-            end
-            return 0
+        local key, anyLockKey, mustNotify = KEYS[1], KEYS[2], ARGV[1]
+        if redis.call('DEL', key) <= 0 then
+            return -1
+        end
+        if mustNotify ~= 0 then
+            redis.call('PUBLISH', key, '')
+            redis.call('PUBLISH', anyLockKey, key)
+        end
+        return 0
+        """;
+    private static readonly string RemoveKeysScript =
+        """
+        local pattern = ARGV[1]
+        local count = 0;
+        local cursor = "0";
+        repeat
+            local scanResult = redis.call("SCAN", cursor, "MATCH", pattern, "COUNT", 100);
+        	local keys = scanResult[2];
+        	for i = 1, #keys do
+        		local key = keys[i];
+        		redis.replicate_commands()
+        		redis.call("DEL", key);
+        		count = count + 1;
+        	end;
+        	cursor = scanResult[1];
+        until cursor == "0";
+        return count;
         """;
 
     public static readonly string DefaultKeyPrefix = "MeshLocks";
@@ -164,6 +182,16 @@ public class RedisMeshLocks : MeshLocksBase
             keys.Add(key);
         }
         return keys;
+    }
+
+    public async Task<long> RemoveKeys(string pattern, CancellationToken cancellationToken = default)
+    {
+        // Must not auto-retry!
+        var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var r = (long)await database
+            .ScriptEvaluateAsync(RemoveKeysScript, [], [_fullKeyPrefix + pattern], CommandFlags.DemandMaster)
+            .ConfigureAwait(false);
+        return r;
     }
 
     public override IMeshLocks With(string? keyPrefix, MeshLockOptions? lockOptions)

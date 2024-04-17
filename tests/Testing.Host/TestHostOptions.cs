@@ -1,4 +1,5 @@
 using ActualChat.App.Server;
+using ActualChat.App.Server.Initializers;
 using ActualChat.Chat.Module;
 using ActualChat.Testing.Internal;
 using Microsoft.AspNetCore.Builder;
@@ -39,6 +40,7 @@ public record TestAppHostOptions
     public Action<AppHost.IConfigureModuleServicesContext, IServiceCollection>? ConfigureModuleServices { get; init; }
     public Action<AppHost.IConfigureServicesContext, IServiceCollection>? ConfigureServices { get; init; }
     public Action<AppHost.IConfigureAppContext, WebApplication>? ConfigureApp { get; set; }
+    public DbInitializeOptions DbInitializeOptions { get; init; } = DbInitializeOptions.Default;
     public ChatDbInitializer.Options ChatDbInitializerOptions { get; init; } = ChatDbInitializer.Options.None;
     public bool? UseNatsQueues { get; init; }
     public bool MustInitializeDb { get; init; }

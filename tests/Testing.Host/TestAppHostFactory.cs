@@ -1,6 +1,7 @@
 using ActualChat.App.Server;
 using ActualChat.Blobs.Internal;
 using ActualChat.Module;
+using ActualChat.Redis;
 using ActualChat.Search;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
@@ -71,6 +72,7 @@ public static class TestAppHostFactory
 
                 // The code below runs after module service registration & everything else
                 services.AddSettings<TestSettings>();
+                services.AddSingleton(options.DbInitializeOptions);
                 services.AddSingleton(options.ChatDbInitializerOptions);
                 services.AddSingleton<IBlobStorages, TempFolderBlobStorages>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
@@ -86,13 +88,19 @@ public static class TestAppHostFactory
             Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(), true);
         _ = appHost.Services.GetRequiredService<PostgreSqlPoolCleaner>(); // Force instantiation to ensure it's disposed in the end
 
+        // Clean up infrastructure MeshLocks
+        if (appHost.Services.MeshLocks<InfrastructureDbContext>() is RedisMeshLocks meshLocks) {
+            var keyCount = await meshLocks.RemoveKeys("*");
+            outputAccessor.Output?.WriteLine($"Removed {keyCount} Redis keys.");
+        }
+
+        // Cleanup existing queues
+        await appHost.Services.Queues().Purge();
+
         if (options.MustInitializeDb)
             // TODO: Improve initializers init code.
             // Issue: Not granular or too specific.
             await appHost.InvokeInitializers();
-
-        // Cleanup existing queues
-        await appHost.Services.Queues().Purge();
 
         if (options.MustStart)
             await appHost.Start();

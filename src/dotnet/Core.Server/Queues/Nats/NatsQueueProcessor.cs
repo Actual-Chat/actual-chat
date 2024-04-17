@@ -97,6 +97,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             opts: new NatsJSConsumeOpts { MaxMsgs = 10 },
             cancellationToken: cancellationToken);
 
+        MarkStarted();
         var parallelOptions = new ParallelOptions {
             MaxDegreeOfParallelism = Settings.ConcurrencyLevel,
             CancellationToken = cancellationToken,

@@ -45,6 +45,7 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
             if (!stream.Info.Config.Name.OrdinalStartsWith(instancePrefix))
                 continue;
 
+            // await stream.DeleteAsync(cancellationToken).ConfigureAwait(false);
             await stream.PurgeAsync(new StreamPurgeRequest(), cancellationToken).ConfigureAwait(false);
         }
     }

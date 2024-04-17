@@ -124,7 +124,7 @@ public sealed class DbModule(IServiceProvider moduleServices)
                     MaxEntryAge = TimeSpan.FromMinutes(30),
                 });
                 // operations.AddNpgsqlOperationLogChangeTracking();
-                operations.AddRedisOperationLogWatchers();
+                operations.AddRedisOperationLogWatcher();
             });
 
             configure?.Invoke(db);

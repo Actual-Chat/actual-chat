@@ -17,6 +17,10 @@ public class ExecuteDbInitializers(IServiceProvider services): IAggregateInitial
             cancellationToken
         ).ConfigureAwait(false);
 
+        var options = services.GetService<DbInitializeOptions>() ?? DbInitializeOptions.Default;
+        if (!options.InitializeData)
+            return;
+
         // InitializeData
         await InvokeDbInitializers(
             nameof(IDbInitializer.InitializeData),
@@ -40,6 +44,7 @@ public class ExecuteDbInitializers(IServiceProvider services): IAggregateInitial
             cancellationToken
         ).ConfigureAwait(false);
     }
+
     private Task InvokeDbInitializers(
         string name,
         Func<IDbInitializer, CancellationToken, Task> invoker,
