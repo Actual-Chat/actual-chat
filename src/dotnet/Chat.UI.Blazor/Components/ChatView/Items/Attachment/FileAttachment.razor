@@ -5,27 +5,17 @@
 }
 
 <div class="file-attachment">
-    <div class="flex w-[400px] p-2 bg-zinc-200 rounded-md items-center">
-        <div class="pr-2">
-            <svg class="text-indigo-400 fill-current w-8 h-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M11.362 2c4.156 0 2.638 6 2.638 6s6-1.65 6 2.457v11.543h-16v-20h7.362zm.827-2h-10.189v24h20v-14.386c0-2.391-6.648-9.614-9.811-9.614zm4.811 13h-3v-1h3v1zm0 2h-3v1h3v-1zm0 3h-10v1h10v-1zm-5-6h-5v4h5v-4z"/>
-            </svg>
+    <a class="c-icon" href="@url" target="_blank" role="button">
+        <i class="icon-download text-xl"></i>
+    </a>
+    <div class="c-info">
+        <div class="c-title">
+            <a href="@url" target="_blank" role="button">@Attachment.Media.FileName</a>
         </div>
-        <div class="flex-1">
-            <div>
-                <a class="file-attachment-name" href="@url" target="_blank" role="button">@Attachment.Media.FileName</a>
-            </div>
-            <div class="file-attachment-size">@fileSize.ToString("N2") MB</div>
-        </div>
-        <div>
-            <a class="cursor-pointer" href="@url" target="_blank" role="button">
-                <svg class="text-03 fill-current h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path d="M12 21l-8-9h6v-12h4v12h6l-8 9zm9-1v2h-18v-2h-2v4h22v-4h-2z"/>
-                </svg>
-            </a>
+        <div class="c-size">
+            <span>@fileSize.ToString("N2") MB</span>
         </div>
     </div>
-
 </div>
 
 @code {

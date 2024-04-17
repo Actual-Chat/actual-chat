@@ -317,3 +317,8 @@ body.narrow .chat-link .c-link-buttons {
 body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
     @apply bg-transparent border-transparent;
 }
+
+.message-link-preview {
+    @apply relative;
+    @apply py-1;
+}

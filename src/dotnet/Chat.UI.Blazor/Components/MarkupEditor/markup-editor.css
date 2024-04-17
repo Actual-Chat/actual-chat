@@ -33,7 +33,9 @@
     content: attr(data-placeholder);
     @apply text-04 truncate;
 }
-
+body.narrow .markup-editor .editor-content:empty:before {
+    @apply text-caption-1;
+}
 /* Permanent mobile cursor */
 
 .markup-editor > .c-cursor {
@@ -45,9 +47,6 @@
 body.wide .editor-content + .c-cursor,
 body.narrow .editor-content:focus + .c-cursor {
     @apply hidden;
-}
-body.narrow .editor-content:not(:focus) {
-    @apply ml-0.5;
 }
 body.narrow .editor-content:focus {
     @apply ml-0;

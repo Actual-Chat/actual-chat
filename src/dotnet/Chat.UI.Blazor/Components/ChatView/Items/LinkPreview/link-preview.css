@@ -4,6 +4,7 @@
     @apply h-34;
     @apply rounded-lg border border-separator;
     @apply overflow-hidden;
+    @apply bg-01;
 }
 body.narrow .link-preview {
     @apply flex-y items-start;
@@ -15,6 +16,9 @@ body.narrow .link-preview {
 .link-preview:not(:has(.c-thumbnail)):not(:has(.c-description)) {
     @apply h-16 md:h-14;
 }
+body.hoverable .link-preview:hover {
+    @apply brightness-105;
+}
 .link-preview.compact {
     @apply flex-x flex-x items-center;
     @apply h-auto;
@@ -22,8 +26,9 @@ body.narrow .link-preview {
     @apply rounded-full;
 }
 body.narrow .link-preview.compact {
-    @apply flex-x items-center gap-x-2;
+    @apply flex-x items-center gap-x-1;
     @apply h-auto;
+    @apply p-1;
 }
 .link-preview .c-info {
     @apply flex-1 flex-y justify-between gap-y-4;
@@ -32,10 +37,11 @@ body.narrow .link-preview.compact {
 }
 .link-preview.compact .c-info {
     @apply gap-y-1;
-    @apply pr-20;
+    @apply py-0 pr-20;
 }
 body.narrow .link-preview.compact .c-info {
-    @apply p-0 pr-20;
+    @apply p-0;
+    overflow-wrap: anywhere;
 }
 
 /* thumbnail */
@@ -65,24 +71,38 @@ body.narrow .link-preview.compact .c-info {
     @apply rounded-full;
     @apply bg-hover;
 }
+body.narrow .link-preview.compact .c-icon {
+    @apply w-8 h-8;
+    @apply bg-transparent;
+}
 .link-preview:not(:has(.c-description)) .c-icon {
     @apply h-10 w-10;
 }
 .link-preview .c-icon > i {
     @apply text-2xl text-primary;
 }
+body.narrow .link-preview.compact .c-icon > i {
+    @apply text-xl;
+}
 /* text */
 .link-preview .c-title {
-    @apply text-headline-1 leading-4 text-primary;
+    @apply text-caption-1 md:text-headline-1 leading-4 text-primary;
     @apply line-clamp-1;
 }
 .link-preview .c-description {
     @apply text-caption-2 text-02;
     @apply line-clamp-1;
 }
+.body.narrow .link-preview.compact .c-description {
+    @apply text-xs font-normal leading-3;
+}
 .link-preview .c-domain {
+    @apply w-fit;
     @apply text-caption-6 text-04;
     @apply line-clamp-1;
+}
+body.narrow .message-link-preview:not(:has(.compact)) .c-domain {
+    @apply mb-1;
 }
 .link-preview .c-play {
     @apply text-white text-xl;
@@ -97,25 +117,39 @@ body.narrow .link-preview.compact .c-info {
 }
 
 /* Link Buttons */
-.link-preview .link-buttons {
-    @apply absolute bottom-0 md:bottom-1 right-1;
-    @apply flex-x gap-x-1;
+.message-link-preview .link-buttons {
+    @apply absolute bottom-3 right-1;
+    @apply flex-x items-center gap-x-1;
+    @apply h-fit;
 }
-.link-preview.compact .link-buttons {
-    @apply right-2 top-1/2;
+body.narrow .message-link-preview:not(:has(.compact)) .link-buttons {
+    @apply bottom-2;
+}
+body.narrow .message-link-preview:has(.compact) .link-buttons {
+    @apply gap-x-0;
+}
+.message-link-preview:has(.compact) .link-buttons {
+    @apply right-2 inset-y-1/2;
     transform: translateY(-50%);
 }
-.link-preview .link-buttons .btn.btn-round {
+.message-link-preview .link-buttons .btn.btn-round {
     @apply bg-transparent;
 }
-.link-preview .link-buttons .btn.btn-round:hover,
-.link-preview .link-buttons .btn.btn-round:hover .btn-content {
+body.hoverable .message-link-preview .link-buttons .btn.btn-round:hover,
+body.hoverable .message-link-preview .link-buttons .btn.btn-round:hover .btn-content {
     @apply bg-transparent;
 }
-.link-preview .link-buttons .btn.btn-round i {
+.message-link-preview .link-buttons .btn.btn-round i {
     @apply text-xl text-04;
 }
-body.hoverable .link-preview .link-buttons .btn.btn-round:hover i {
+body.hoverable .message-link-preview .link-buttons .btn.btn-round:hover i {
     @apply text-primary;
 }
 
+.incut {
+    @apply hidden;
+}
+body.narrow .link-preview.compact .incut {
+    @apply flex-none;
+    @apply w-15 h-12;
+}
