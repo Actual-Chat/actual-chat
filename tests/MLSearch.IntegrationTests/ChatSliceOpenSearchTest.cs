@@ -65,9 +65,9 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
             .Select((args, i) => {
                 var (id, text) = args;
                 var metadata = new ChatSliceMetadata(
-                    authorId,
+                    [authorId],
                     [new (id, 1, 1)], null, null,
-                    [], [], [], [], [],
+                    [], [], [], [],
                     false,
                     "en-US",
                     DateTime.Now.AddDays(-(i/2))

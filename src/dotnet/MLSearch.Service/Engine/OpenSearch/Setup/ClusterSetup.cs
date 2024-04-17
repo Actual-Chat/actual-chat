@@ -141,14 +141,13 @@ internal sealed class ClusterSetup(
         var metadataField = namingPolicy.ConvertName(nameof(ChatSlice.Metadata));
         var textField = namingPolicy.ConvertName(nameof(ChatSlice.Text));
         // ChatSliceMetadata fields
-        var authorIdField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.AuthorId));
+        var authorsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Authors));
         var chatEntriesField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ChatEntries));
         var startOffsetField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.StartOffset));
         var endOffsetField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.EndOffset));
         var replyToEntriesField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ReplyToEntries));
         var mentionsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Mentions));
         var reactionsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Reactions));
-        var participantsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ConversationParticipants));
         var attachmentsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Attachments));
         var isPublicField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.IsPublic));
         var languageField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Language));
@@ -300,7 +299,7 @@ internal sealed class ClusterSetup(
                             "{{metadataField}}": {
                                 "type": "object",
                                 "properties": {
-                                    "{{authorIdField}}": { "type": "keyword" },
+                                    "{{authorsField}}": { "type": "keyword" },
                                     "{{chatIdField}}": { "type": "keyword" },
                                     "{{placeIdField}}": { "type": "keyword" },
                                     "{{chatEntriesField}}": {
@@ -316,7 +315,6 @@ internal sealed class ClusterSetup(
                                     "{{replyToEntriesField}}": { "type": "keyword" },
                                     "{{mentionsField}}": { "type": "keyword" },
                                     "{{reactionsField}}": { "type": "keyword" },
-                                    "{{participantsField}}": { "type": "keyword" },
                                     "{{attachmentsField}}": {
                                         "type": "nested",
                                         "properties": {

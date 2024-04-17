@@ -69,7 +69,6 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
         var activeUser = new PrincipalId(UserId.New(), AssumeValid.Option);
         var mentions = ImmutableArray.Create(activeUser);
         var reactions = ImmutableArray.Create(activeUser);
-        var participants = ImmutableArray.Create(authorId, activeUser);
         var attachments = ImmutableArray.Create(
             new ChatSliceAttachment(new MediaId("chat", Generate.Option), "summary1"),
             new ChatSliceAttachment(new MediaId("chat", Generate.Option), "summary2")
@@ -78,8 +77,8 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
         var timestamp = DateTime.Now;
 
         return new ChatSliceMetadata(
-            authorId, chatEntries, startOffset, endOffset,
-            replyToEntries, mentions, reactions, participants, attachments,
+            [authorId], chatEntries, startOffset, endOffset,
+            replyToEntries, mentions, reactions, attachments,
             true, lang, timestamp
         );
     }
