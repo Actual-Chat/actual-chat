@@ -14,19 +14,13 @@ namespace ActualChat.Search;
 public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbContext>(services), ISearchBackend
 {
     private const int MaxRefreshChatCount = 100;
-    private IndexNames? _indexNames;
-    private IOpenSearchClient? _openSearchClient;
-    private IChatsBackend? _chatsBackend;
-    private IContactsBackend? _contactsBackend;
-    private UserContactIndexer? _userContactIndexer;
-    private ChatContactIndexer? _chatContactIndexer;
 
-    private IndexNames IndexNames => _indexNames ??= Services.GetRequiredService<IndexNames>();
-    private IOpenSearchClient OpenSearchClient => _openSearchClient ??= Services.GetRequiredService<IOpenSearchClient>();
-    private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-    private IContactsBackend ContactsBackend => _contactsBackend ??= Services.GetRequiredService<IContactsBackend>();
-    private UserContactIndexer UserContactIndexer => _userContactIndexer ??= Services.GetRequiredService<UserContactIndexer>();
-    private ChatContactIndexer ChatContactIndexer => _chatContactIndexer ??= Services.GetRequiredService<ChatContactIndexer>();
+    private IndexNames IndexNames { get; } = services.GetRequiredService<IndexNames>();
+    private IOpenSearchClient OpenSearchClient { get; } = services.GetRequiredService<IOpenSearchClient>();
+    private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
+    private UserContactIndexer UserContactIndexer { get; } = services.GetRequiredService<UserContactIndexer>();
+    private ChatContactIndexer ChatContactIndexer { get; } = services.GetRequiredService<ChatContactIndexer>();
     private OpenSearchConfigurator OpenSearchConfigurator { get; } = services.GetRequiredService<OpenSearchConfigurator>();
     private IQueues Queues { get; } = services.Queues();
 
@@ -289,12 +283,12 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         // NOTE: we don't have any other chance to process removed items
         Log.LogDebug("Received AccountChangedEvent {ChangeKind} #{Id}", changeKind, account.Id);
         if (changeKind == ChangeKind.Remove) {
-            var cmd = new SearchBackend_UserContactBulkIndex([], ApiArray.New(account.ToIndexedUserContact()));
-            await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+            var deletedContacts = ApiArray.New(account.ToIndexedUserContact());
+            await Queues.Enqueue(new SearchBackend_UserContactBulkIndex([], deletedContacts), cancellationToken).ConfigureAwait(false);
         }
         else {
             await Queues.Enqueue(new SearchBackend_StartUserContactIndexing(), cancellationToken).ConfigureAwait(false);
-            await Commander.Call(new SearchBackend_StartUserContactIndexing(), cancellationToken).ConfigureAwait(false);
+            await Queues.Enqueue(new SearchBackend_StartUserContactIndexing(), cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -308,12 +302,12 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         // NOTE: we don't have any other chance to process removed items
         if (changeKind == ChangeKind.Remove) {
             var place = await ChatsBackend.GetPlace(chat.Id.PlaceId, cancellationToken).ConfigureAwait(false);
-            var cmd = new SearchBackend_ChatContactBulkIndex([], ApiArray.New(chat.ToIndexedChatContact(place)));
-            await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+            var deletedContacts = ApiArray.New(chat.ToIndexedChatContact(place));
+            await Queues.Enqueue(new SearchBackend_ChatContactBulkIndex([], deletedContacts), cancellationToken).ConfigureAwait(false);
         }
         else {
             await Queues.Enqueue(new SearchBackend_StartUserContactIndexing(), cancellationToken).ConfigureAwait(false);
-            await Commander.Call(new SearchBackend_StartChatContactIndexing(), cancellationToken).ConfigureAwait(false);
+            await Queues.Enqueue(new SearchBackend_StartChatContactIndexing(), cancellationToken).ConfigureAwait(false);
         }
     }
 
