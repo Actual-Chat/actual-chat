@@ -286,10 +286,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             var deletedContacts = ApiArray.New(account.ToIndexedUserContact());
             await Queues.Enqueue(new SearchBackend_UserContactBulkIndex([], deletedContacts), cancellationToken).ConfigureAwait(false);
         }
-        else {
+        else
             await Queues.Enqueue(new SearchBackend_StartUserContactIndexing(), cancellationToken).ConfigureAwait(false);
-            await Queues.Enqueue(new SearchBackend_StartUserContactIndexing(), cancellationToken).ConfigureAwait(false);
-        }
     }
 
     [EventHandler]
@@ -305,10 +303,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             var deletedContacts = ApiArray.New(chat.ToIndexedChatContact(place));
             await Queues.Enqueue(new SearchBackend_ChatContactBulkIndex([], deletedContacts), cancellationToken).ConfigureAwait(false);
         }
-        else {
-            await Queues.Enqueue(new SearchBackend_StartUserContactIndexing(), cancellationToken).ConfigureAwait(false);
+        else
             await Queues.Enqueue(new SearchBackend_StartChatContactIndexing(), cancellationToken).ConfigureAwait(false);
-        }
     }
 
     // Private methods
