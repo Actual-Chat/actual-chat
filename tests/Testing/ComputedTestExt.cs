@@ -23,9 +23,7 @@ public static class ComputedTestExt
         try {
             await computedSource.When(x => x, timeoutCts.Token).ConfigureAwait(false);
         }
-        catch (Exception e) when (e.IsCancellationOf(timeoutCts.Token)) {
-            throw new TimeoutException($"{nameof(ComputedTestExt)}.{nameof(When)} timed out.");
-        }
+        catch (Exception e) when (e.IsCancellationOf(timeoutCts.Token)) { }
         await condition.Invoke(CancellationToken.None); // Should throw or pass
     }
 
@@ -48,9 +46,7 @@ public static class ComputedTestExt
         try {
             await computedSource.When(x => x, timeoutCts.Token).ConfigureAwait(false);
         }
-        catch (Exception e) when (e.IsCancellationOf(timeoutCts.Token)) {
-            throw new TimeoutException($"{nameof(ComputedTestExt)}.{nameof(When)} timed out.");
-        }
+        catch (Exception e) when (e.IsCancellationOf(timeoutCts.Token)) { }
         return await condition.Invoke(CancellationToken.None); // Should throw or pass
     }
 }

@@ -3,9 +3,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Testing.Host\Testing.Host.csproj" />
   </ItemGroup>
-
+  
   <ItemGroup>
-    <PackageReference Include="Moq.Contrib.HttpClient" />
+    <EmbeddedResource Include="TestImages/*"/>
   </ItemGroup>
 
 </Project>

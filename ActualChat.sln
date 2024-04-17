@@ -319,6 +319,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.NonWasm", "src\dotnet\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.NonWasm.UnitTests", "tests\Core.NonWasm.UnitTests\Core.NonWasm.UnitTests.csproj", "{17B0F5C3-5391-4FDC-80E9-CAC4488AF236}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Media.UnitTests", "tests\Media.UnitTests\Media.UnitTests.csproj", "{DA26CF4E-9B27-490B-98EF-DCAEB1709000}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -633,6 +635,10 @@ Global
 		{17B0F5C3-5391-4FDC-80E9-CAC4488AF236}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{17B0F5C3-5391-4FDC-80E9-CAC4488AF236}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{17B0F5C3-5391-4FDC-80E9-CAC4488AF236}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DA26CF4E-9B27-490B-98EF-DCAEB1709000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA26CF4E-9B27-490B-98EF-DCAEB1709000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA26CF4E-9B27-490B-98EF-DCAEB1709000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA26CF4E-9B27-490B-98EF-DCAEB1709000}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -737,6 +743,7 @@ Global
 		{AFD390F6-42FB-4618-9930-D38404A6A43C} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{9C5B981D-0656-4BFA-BA26-CB27948A14D9} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{17B0F5C3-5391-4FDC-80E9-CAC4488AF236} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
+		{DA26CF4E-9B27-490B-98EF-DCAEB1709000} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}
