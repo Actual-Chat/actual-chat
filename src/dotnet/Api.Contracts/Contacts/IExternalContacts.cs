@@ -4,8 +4,8 @@ namespace ActualChat.Contacts;
 
 public interface IExternalContacts : IComputeService
 {
-    [ComputeMethod]
-    // TODO: Change to ListV1 when API backward compatibility attributes are supported
+    [ComputeMethod, Obsolete("2024.04: Not available for clients anymore")]
+    // TODO(FC): Change to ListV1 when API backward compatibility attributes are supported
     Task<ApiArray<ExternalContactFull>> List(Session session, Symbol deviceId, CancellationToken cancellationToken);
     [ComputeMethod]
     // TODO: Change to List when API backward compatibility attributes are supported

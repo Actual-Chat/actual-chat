@@ -19,7 +19,7 @@ public interface IContacts : IComputeService
     Task<Contact?> OnChange(Contacts_Change command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnTouch(Contacts_Touch command, CancellationToken cancellationToken);
-    [CommandHandler, Obsolete("2023.10: No not available for clients anymore.")]
+    [CommandHandler, Obsolete("2023.10: Not available for clients anymore.")]
     Task OnGreet(Contacts_Greet command, CancellationToken cancellationToken);
 }
 

@@ -125,7 +125,7 @@ public class Contacts(IServiceProvider services) : IContacts
     }
 
     // [CommandHandler]
-    [Obsolete("2023.10: No not available for clients anymore.")]
+    [Obsolete("2023.10: Not available for clients anymore.")]
     public virtual Task OnGreet(Contacts_Greet command, CancellationToken cancellationToken)
         => Task.CompletedTask;
 
