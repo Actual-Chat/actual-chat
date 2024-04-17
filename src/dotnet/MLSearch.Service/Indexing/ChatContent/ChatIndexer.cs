@@ -64,7 +64,7 @@ internal sealed class ChatIndexer(
         }
         else {
             // Now for updates and removes load all corresponding entries (we have ids in docs)
-            var sourceEntries = await GetSourceEntriesAsync(entry, eventType, existingDocuments, cancellationToken).ConfigureAwait(false);
+            var sourceEntries = await GetSourceEntriesAsync(entry, existingDocuments, cancellationToken).ConfigureAwait(false);
 
             // Send source entries to build document(s)
             var newDocuments = await BuildDocumentsAsync(sourceEntries, cancellationToken).ConfigureAwait(false);
@@ -161,9 +161,25 @@ internal sealed class ChatIndexer(
         throw new NotImplementedException();
     }
 
-    private async Task<SourceEntries> GetSourceEntriesAsync(ChatEntry entry, ChatEventType eventType, IReadOnlyCollection<ChatSlice> associatedDocuments, CancellationToken cancellationToken)
+    private async Task<SourceEntries> GetSourceEntriesAsync(ChatEntry entry, IReadOnlyCollection<ChatSlice> associatedDocuments, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var docs = new List<ChatSlice>(associatedDocuments);
+        docs.Sort(CompareSlices);
+
+        var entries = await chatEntryLoader
+            .LoadByIdsAsync(docs.SelectMany(doc => doc.Metadata.ChatEntries).Select(e => e.Id), cancellationToken)
+            .ConfigureAwait(false);
+
+        return new SourceEntries(docs[0].Metadata.StartOffset ?? 0, docs[docs.Count-1].Metadata.EndOffset, entries);
+
+        int CompareSlices(ChatSlice a, ChatSlice b)
+            => GetStartOffset(a, entry).CompareTo(GetStartOffset(b, entry));
+
+        static int GetStartOffset(ChatSlice slice, in ChatEntry entry)
+        {
+            var isFirst = slice.Metadata.ChatEntries[0].Id == entry.Id;
+            return isFirst ? slice.Metadata.StartOffset ?? 0 : 0;
+        }
     }
 
     private async Task<IReadOnlyCollection<ChatSlice>> LookupDocumentsAsync(ChatEntry entry, CancellationToken cancellationToken)

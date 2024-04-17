@@ -71,7 +71,7 @@ public static class ChatsBackendExt
         return tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
     }
 
-    public static async ValueTask<IReadOnlyCollection<ChatEntry>> GetEntries(
+    public static async ValueTask<IReadOnlyList<ChatEntry>> GetEntries(
         this IChatsBackend chatsBackend,
         IEnumerable<ChatEntryId> entryIds,
         bool includeRemoved = false,
