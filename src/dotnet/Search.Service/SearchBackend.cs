@@ -3,6 +3,7 @@ using ActualChat.Chat.Events;
 using ActualChat.Contacts;
 using ActualChat.Queues;
 using ActualChat.Search.Db;
+using ActualChat.Search.Module;
 using ActualChat.Users.Events;
 using Microsoft.AspNetCore.Http;
 using ActualLab.Fusion.EntityFramework;
@@ -15,6 +16,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
 {
     private const int MaxRefreshChatCount = 100;
 
+    private SearchSettings Settings { get; } = services.GetRequiredService<SearchSettings>();
     private IndexNames IndexNames { get; } = services.GetRequiredService<IndexNames>();
     private IOpenSearchClient OpenSearchClient { get; } = services.GetRequiredService<IOpenSearchClient>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
@@ -27,6 +29,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     [ComputeMethod]
     protected virtual async Task<ApiSet<string>> GetIndicesForEntrySearch(UserId userId, CancellationToken cancellationToken)
     {
+        if (!Settings.IsSearchEnabled) {
+            Log.LogWarning($"{nameof(GetIndicesForEntrySearch)}: search is disabled");
+            return ApiSet<string>.Empty;
+        }
+
         // public place chats are not returned since we use scoped indexes
         var contactIds = await ContactsBackend.ListIdsForEntrySearch(userId, cancellationToken).ConfigureAwait(false);
         var indices = new List<IndexName>(IndexNames.GetPeerChatSearchIndexNamePatterns(userId));
@@ -44,6 +51,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         int limit,
         CancellationToken cancellationToken)
     {
+        if (!Settings.IsSearchEnabled) {
+            Log.LogWarning($"{nameof(FindEntriesInChat)}: search is disabled");
+            return EntrySearchResultPage.Empty;
+        }
+
         var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
         return await FindEntries(IndexNames.GetIndexName(chat),
             criteria,
@@ -60,6 +72,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         int limit,
         CancellationToken cancellationToken)
     {
+        if (!Settings.IsSearchEnabled) {
+            Log.LogWarning($"{nameof(FindEntriesInAllChats)}: search is disabled");
+            return EntrySearchResultPage.Empty;
+        }
+
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
@@ -80,6 +97,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         int limit,
         CancellationToken cancellationToken)
     {
+        if (!Settings.IsSearchEnabled) {
+            Log.LogWarning($"{nameof(FindUserContacts)}: search is disabled");
+            return ContactSearchResultPage.Empty;
+        }
+
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
@@ -130,6 +152,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         int limit,
         CancellationToken cancellationToken)
     {
+        if (!Settings.IsSearchEnabled) {
+            Log.LogWarning($"{nameof(FindChatContacts)}: search is disabled");
+            return ContactSearchResultPage.Empty;
+        }
+
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
@@ -178,6 +205,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (Computed.IsInvalidating())
             return;
 
+        if (!Settings.IsSearchEnabled) {
+            Log.LogWarning($"{nameof(OnEntryBulkIndex)}: search is disabled");
+            return;
+        }
+
         var entriesWithUnexpectedChat = command.Updated.Where(x => !x.ChatId.IsNone && x.ChatId != chatId).ToList();
         if (entriesWithUnexpectedChat.Count > 0)
             throw StandardError.Constraint($"All indexed entries must have chat #{chatId}");
@@ -203,6 +235,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (Computed.IsInvalidating())
             return;
 
+        if (!Settings.IsSearchEnabled) {
+            Log.LogWarning($"{nameof(OnUserContactBulkIndex)}: search is disabled");
+            return;
+        }
+
         if (command.Deleted.IsEmpty && command.Updated.IsEmpty)
             return;
 
@@ -217,6 +254,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     {
         if (Computed.IsInvalidating())
             return;
+
+        if (!Settings.IsSearchEnabled) {
+            Log.LogWarning($"{nameof(OnChatContactBulkIndex)}: search is disabled");
+            return;
+        }
 
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
@@ -233,6 +275,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
 
         if (Computed.IsInvalidating())
             return;
+
+        if (!Settings.IsSearchEnabled) {
+            Log.LogWarning($"{nameof(OnRefresh)}: search is disabled");
+            return;
+        }
 
         var chats = await chatIds.Select(x => ChatsBackend.Get(x, cancellationToken)).Collect().ConfigureAwait(false);
         var indices = new List<IndexName>();
@@ -257,6 +304,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (Computed.IsInvalidating())
             return Task.CompletedTask; // it only notifies indexing job
 
+        if (!Settings.IsSearchEnabled) {
+            Log.LogWarning($"{nameof(OnStartUserContactIndexing)}: search is disabled");
+            return Task.CompletedTask;
+        }
+
         UserContactIndexer.OnSyncNeeded();
         return Task.CompletedTask;
     }
@@ -269,6 +321,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (Computed.IsInvalidating())
             return Task.CompletedTask; // it only notifies indexing job
 
+        if (!Settings.IsSearchEnabled) {
+            Log.LogWarning($"{nameof(OnStartChatContactIndexing)}: search is disabled");
+            return Task.CompletedTask;
+        }
+
         ChatContactIndexer.OnSyncNeeded();
         return Task.CompletedTask;
     }
@@ -278,6 +335,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
+
+        if (!Settings.IsSearchEnabled) {
+            Log.LogWarning($"{nameof(OnAccountChangedEvent)}: search is disabled");
+            return;
+        }
 
         var (account, _, changeKind) = eventCommand;
         // NOTE: we don't have any other chance to process removed items
@@ -295,6 +357,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
+
+        if (!Settings.IsSearchEnabled) {
+            Log.LogWarning($"{nameof(OnChatChangedEvent)}: search is disabled");
+            return;
+        }
 
         var (chat, _, changeKind) = eventCommand;
         // NOTE: we don't have any other chance to process removed items
