@@ -20,7 +20,7 @@ public sealed partial record PhoneAuth_SendTotp(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] Phone Phone,
     [property: DataMember, MemoryPackOrder(2)] TotpPurpose Purpose = TotpPurpose.SignIn
-) : ISessionCommand<Moment>;
+) : ISessionCommand<Moment>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
@@ -28,7 +28,7 @@ public sealed partial record PhoneAuth_ValidateTotp(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] Phone Phone,
     [property: DataMember, MemoryPackOrder(2)] int Totp
-) : ISessionCommand<bool>;
+) : ISessionCommand<bool>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
@@ -36,4 +36,4 @@ public sealed partial record PhoneAuth_VerifyPhone(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] Phone Phone,
     [property: DataMember, MemoryPackOrder(2)] int Totp
-) : ISessionCommand<bool>;
+) : ISessionCommand<bool>; // NOTE(AY): Add backend, implement IApiCommand

@@ -24,14 +24,14 @@ public sealed partial record ExternalContacts_Change(
     [property: DataMember, MemoryPackOrder(1)] ExternalContactId Id,
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(3)] Change<ExternalContactFull> Change
-) : ISessionCommand<ExternalContactFull?>;
+) : ISessionCommand<ExternalContactFull?>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContacts_BulkChange(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ApiArray<ExternalContactChange> Changes
-) : ISessionCommand<ApiArray<Result<ExternalContactFull?>>>;
+) : ISessionCommand<ApiArray<Result<ExternalContactFull?>>>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record ExternalContactChange(

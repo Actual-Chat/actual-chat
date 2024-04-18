@@ -24,11 +24,11 @@ public sealed partial record Avatars_Change(
     [property: DataMember, MemoryPackOrder(1)] Symbol AvatarId,
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(3)] Change<AvatarFull> Change
-) : ISessionCommand<AvatarFull>;
+) : ISessionCommand<AvatarFull>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Avatars_SetDefault(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] Symbol AvatarId
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>, IApiCommand;

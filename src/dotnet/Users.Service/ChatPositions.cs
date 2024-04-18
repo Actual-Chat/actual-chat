@@ -22,11 +22,9 @@ public class ChatPositions(IServiceProvider services) : DbServiceBase<UsersDbCon
     // [CommandHandler]
     public virtual async Task OnSet(ChatPositions_Set command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, chatId, kind, position) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+
         var backendCommand = new ChatPositionsBackend_Set(account.Id, chatId, kind, position);
         await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
     }

@@ -17,4 +17,4 @@ public sealed partial record ExternalContactHashes_Change(
     [property: DataMember, MemoryPackOrder(1)] Symbol DeviceId,
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(3)] Change<ExternalContactsHash> Change
-) : ISessionCommand<ExternalContactsHash?>;
+) : ISessionCommand<ExternalContactsHash?>, IApiCommand;

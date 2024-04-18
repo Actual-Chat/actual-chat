@@ -14,11 +14,11 @@ public interface IEmails : IComputeService
 // ReSharper disable once InconsistentNaming
 public sealed partial record Emails_SendTotp(
     [property: DataMember, MemoryPackOrder(0)] Session Session
-) : ISessionCommand<Moment>;
+) : ISessionCommand<Moment>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Emails_VerifyEmail(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] int Token
-) : ISessionCommand<bool>;
+) : ISessionCommand<bool>; // NOTE(AY): Add backend, implement IApiCommand

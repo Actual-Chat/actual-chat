@@ -11,7 +11,8 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
 
     // [ComputeMethod]
     [Obsolete("2024.04: Replaced with List2")]
-    public virtual async Task<ApiArray<ExternalContactFull>> List(Session session, Symbol deviceId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<ExternalContactFull>> List(
+        Session session, Symbol deviceId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
        if (!account.IsActive())
@@ -35,11 +36,9 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
 
     // [CommandHandler]
     [Obsolete("2023.10: Replaced with OnBulkChange.")]
-    public virtual async Task<ExternalContactFull?> OnChange(ExternalContacts_Change command, CancellationToken cancellationToken)
+    public virtual async Task<ExternalContactFull?> OnChange(
+        ExternalContacts_Change command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return default!; // It just spawns other commands, so nothing to do here
-
         var (session, id, expectedVersion, change) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!account.IsActive())
@@ -51,9 +50,9 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
         if (id.UserDeviceId.OwnerId != account.Id)
             throw Unauthorized();
 
-        var results = await Commander
-            .Call(new ExternalContactsBackend_BulkChange(ApiArray.New(new ExternalContactChange(id, expectedVersion, change))), cancellationToken)
-            .ConfigureAwait(false);
+        var bulkChangeCommand = new ExternalContactsBackend_BulkChange(
+            ApiArray.New(new ExternalContactChange(id, expectedVersion, change)));
+        var results = await Commander.Call(bulkChangeCommand, true, cancellationToken).ConfigureAwait(false);
         if (results[0].Error is { } error)
             throw error;
 
@@ -61,11 +60,9 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
     }
 
     // [CommandHandler]
-    public virtual async Task<ApiArray<Result<ExternalContactFull?>>> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<Result<ExternalContactFull?>>> OnBulkChange(
+        ExternalContacts_BulkChange command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return default!; // It just spawns other commands, so nothing to do here
-
         var (session, changes) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!account.IsActive())
@@ -79,9 +76,8 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
                 throw Unauthorized();
         }
 
-        return await Commander
-            .Call(new ExternalContactsBackend_BulkChange(changes), cancellationToken)
-            .ConfigureAwait(false);
+        var bulkChangeCommand = new ExternalContactsBackend_BulkChange(changes);
+        return await Commander.Call(bulkChangeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     private static Exception Unauthorized()

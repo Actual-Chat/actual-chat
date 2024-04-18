@@ -51,9 +51,6 @@ public class ServerKvas : IServerKvas
     // [CommandHandler]
     public virtual async Task OnSet(ServerKvas_Set command, CancellationToken cancellationToken = default)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, key, value) = command;
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
         var setManyCommand = new ServerKvasBackend_SetMany(prefix, (key, value));
@@ -78,9 +75,6 @@ public class ServerKvas : IServerKvas
     // [CommandHandler]
     public virtual async Task OnSetMany(ServerKvas_SetMany command, CancellationToken cancellationToken = default)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, items) = command;
         var backendItems = items.Select(i => (i.Key, i.Value)).ToArray();
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
@@ -106,9 +100,6 @@ public class ServerKvas : IServerKvas
     // [CommandHandler]
     public virtual async Task OnMigrateGuestKeys(ServerKvas_MigrateGuestKeys command, CancellationToken cancellationToken = default)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
 
         // This piece is tricky: since this command is started while auth info isn't committed yet,
@@ -171,17 +162,20 @@ public class ServerKvas : IServerKvas
             return null;
         }
 
-        using var _ = Computed.SuspendDependencyCapture();
-        var movedKeys = new Dictionary<string, byte[]>(StringComparer.Ordinal) {
-            { Kvas.KvasExt.MigratedKey, KvasSerializer.SerializedTrue },
-        };
-        var skippedKeys = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var (key, value) in keys) {
-            var userValue = await Backend.Get(toPrefix, key, cancellationToken).ConfigureAwait(false);
-            if (userValue == null)
-                movedKeys[key] = value;
-            else
-                skippedKeys.Add(key);
+        Dictionary<string, byte[]> movedKeys;
+        HashSet<string> skippedKeys;
+        using (Computed.SuspendDependencyCapture()) {
+            movedKeys = new Dictionary<string, byte[]>(StringComparer.Ordinal) {
+                { Kvas.KvasExt.MigratedKey, KvasSerializer.SerializedTrue },
+            };
+            skippedKeys = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var (key, value) in keys) {
+                var userValue = await Backend.Get(toPrefix, key, cancellationToken).ConfigureAwait(false);
+                if (userValue == null)
+                    movedKeys[key] = value;
+                else
+                    skippedKeys.Add(key);
+            }
         }
 
         Log.LogInformation("TryMigrateKeys: {FromPrefix} -> {ToPrefix}, move {MoveKeys}, skip {SkipKeys}",
@@ -190,15 +184,14 @@ public class ServerKvas : IServerKvas
             skippedKeys.OrderBy(x => x, StringComparer.Ordinal).ToDelimitedString());
 
         // Create missing keys in toPrefix
-        await Commander.Call(
-            new ServerKvasBackend_SetMany(toPrefix, movedKeys.Select(kv => (kv.Key, (byte[]?) kv.Value)).ToArray()),
-            true, cancellationToken
-        ).ConfigureAwait(false);
+        var createMissingKeysCommand = new ServerKvasBackend_SetMany(toPrefix,
+            movedKeys.Select(kv => (kv.Key, (byte[]?) kv.Value)).ToArray());
+        await Commander.Call(createMissingKeysCommand, true, cancellationToken).ConfigureAwait(false);
+
         // Remove all keys in fromPrefix
-        await Commander.Call(
-            new ServerKvasBackend_SetMany(fromPrefix, keys.Select(kv => (kv.Key, (byte[]?) null)).ToArray()),
-            true, cancellationToken
-        ).ConfigureAwait(false);
+        var removeOldKeysCommand = new ServerKvasBackend_SetMany(fromPrefix,
+            keys.Select(kv => (kv.Key, (byte[]?) null)).ToArray());
+        await Commander.Call(removeOldKeysCommand, true, cancellationToken).ConfigureAwait(false);
 
         return movedKeys;
     }

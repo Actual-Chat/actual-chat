@@ -21,8 +21,9 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
     // [CommandHandler]
     public virtual async Task<Moment> OnSendTotp(Emails_SendTotp command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return default; // Nothing to invalidate
+        // NOTE(AY): A bit suspicious IApiCommand design:
+        // - On one hand, it doesn't have to invalidate anything
+        // - On another, it doesn't use a backend.
 
         var session = command.Session;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -54,8 +55,9 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
     // [CommandHandler]
     public virtual async Task<bool> OnVerifyEmail(Emails_VerifyEmail command, CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
+        // NOTE(AY): Add backend, implement IApiCommand
 
+        var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             // TODO(AY): support UserId (any non-string/non-int) type for multi-instance deployment
             var userId = context.Operation.Items.GetId<UserId>();

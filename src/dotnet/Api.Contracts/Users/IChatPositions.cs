@@ -18,4 +18,4 @@ public sealed partial record ChatPositions_Set(
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2)] ChatPositionKind Kind,
     [property: DataMember, MemoryPackOrder(3)] ChatPosition Position
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>, IApiCommand;

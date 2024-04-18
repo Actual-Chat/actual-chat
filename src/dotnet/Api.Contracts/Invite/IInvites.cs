@@ -26,18 +26,18 @@ public interface IInvites : IComputeService
 public sealed partial record Invites_Generate(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] Invite Invite
-) : ISessionCommand<Invite>;
+) : ISessionCommand<Invite>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Invites_Use(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] string InviteId
-) : ISessionCommand<Invite>;
+) : ISessionCommand<Invite>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Invites_Revoke(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] string InviteId
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>, IApiCommand;
