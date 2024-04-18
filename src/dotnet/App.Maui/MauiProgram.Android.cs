@@ -5,7 +5,6 @@ using ActualChat.Streaming.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Firebase.Messaging;
-using Microsoft.JSInterop;
 using Microsoft.Maui.LifecycleEvents;
 using Activity = Android.App.Activity;
 
@@ -16,6 +15,8 @@ public static partial class MauiProgram
     private static partial void AddPlatformServices(this IServiceCollection services)
     {
 #if IS_DEV_MAUI
+        // Enable delivery data export per instance.
+        // https://firebase.google.com/docs/cloud-messaging/understand-delivery?platform=android#enable-message-delivery-data-export
         FirebaseMessaging.Instance.SetDeliveryMetricsExportToBigQuery(true);
 #endif
         services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>

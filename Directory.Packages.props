@@ -167,6 +167,7 @@
     <PackageVersion Include="banditoth.MAUI.DeviceId" Version="1.0.0" />
     <!-- MAUI - Android -->
     <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.12.0.3" />
+    <PackageVersion Include="Xamarin.Firebase.Analytics" Version="121.3.0.5" />
     <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.3.1.2" />
     <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.7.0.3" />
     <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="118.0.1.9" />
