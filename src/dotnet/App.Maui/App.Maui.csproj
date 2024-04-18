@@ -111,6 +111,8 @@
     <PackageReference Include="Xamarin.AndroidX.Core" />
     <PackageReference Include="Xamarin.AndroidX.Collection" />
     <PackageReference Include="Xamarin.AndroidX.Collection.Ktx" />
+    <!-- Enable Firebase Analytics for Dev app only -->
+    <PackageReference Include="Xamarin.Firebase.Analytics" Condition="'$(IsDevMaui)' == 'true'" />
     <PackageReference Include="Xamarin.Firebase.Messaging" />
     <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
     <PackageReference Include="Xamarin.GooglePlayServices.CroNet" />

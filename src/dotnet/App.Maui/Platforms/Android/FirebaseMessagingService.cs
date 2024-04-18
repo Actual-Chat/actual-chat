@@ -3,6 +3,7 @@ using Android.App;
 using Android.Content;
 using Android.Graphics;
 using AndroidX.Core.App;
+using Firebase.Analytics;
 using Firebase.Messaging;
 using AtomicInteger = Java.Util.Concurrent.Atomic.AtomicInteger;
 
@@ -16,7 +17,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 {
     private const int ImageCacheSize = 5;
 
-    private static readonly ThreadSafeLruCache<string, Bitmap?> _imagesCache = new (ImageCacheSize);
+    private static readonly ThreadSafeLruCache<string, Bitmap?> ImagesCache = new (ImageCacheSize);
     private static ILogger? _log;
     /**
     * Request code used by display notification pending intents.
@@ -30,10 +31,19 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     * so use the truncated uptime of when the class was instantiated. The uptime will only overflow
     * every ~50 days, and even then chances of conflict will be rare.
     */
-    private static readonly AtomicInteger _requestCodeProvider =
+    private static readonly AtomicInteger RequestCodeProvider =
         new((int)Android.OS.SystemClock.ElapsedRealtime());
 
     private static ILogger Log => _log ??= DefaultLoggerFactory.CreateLogger<FirebaseMessagingService>();
+
+#if IS_DEV_MAUI
+ #pragma warning disable CS0169 // Field is never used
+ #pragma warning disable CA1823
+    // Keep reference to FirebaseAnalytics type to ensure FA package is used and will be initialized.
+    private FirebaseAnalytics? _firebaseAnalytics;
+ #pragma warning restore CA1823
+ #pragma warning restore CS0169 // Field is never used
+#endif
 
     public override void OnNewToken(string token)
     {
@@ -111,7 +121,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         }
 
         // Generate an unique(ish) request code for a PendingIntent.
-        var pendingIntentRequestCode = _requestCodeProvider.IncrementAndGet();
+        var pendingIntentRequestCode = RequestCodeProvider.IncrementAndGet();
         var pendingIntent = PendingIntent.GetActivity(this, pendingIntentRequestCode,
             intent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
@@ -119,6 +129,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             .SetContentTitle(title)
             // The small icon should be opaque white
             // https://doc.batch.com/android/advanced/customizing-notifications/#setting-up-custom-push-icons
+            // ReSharper disable once AccessToStaticMemberViaDerivedType
             .SetSmallIcon(Resource.Drawable.notification_app_icon)
             .SetColor(0x0036A3)
             .SetContentText(text)
@@ -138,7 +149,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     private static Bitmap? GetImage(string imageUrl)
         => imageUrl.IsNullOrEmpty()
             ? null
-            : _imagesCache.GetOrCreate(imageUrl, DownloadImage);
+            : ImagesCache.GetOrCreate(imageUrl, DownloadImage);
 
     private static Bitmap? DownloadImage(string imageUrl)
     {
