@@ -80,8 +80,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 //        const string IndexServiceGroup = "OpenSearch Chat Index";
         fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
 
-        services.AddSingleton<IDocumentMapper<ChatEntry, ChatEntry, ChatSlice>, ChatSliceMapper>();
-        services.AddSingleton<IDocumentMapper<ChatSlice, string, ChatSlice>, TrivialMapper<ChatSlice>>();
         services.AddSingleton<ICursorStates<ChatEntryCursor>>(static services
             => services.CreateInstanceWith<CursorStates<ChatEntryCursor>>(IndexNames.ChatSliceCursor));
         services.AddSingleton<ISink<ChatSlice, string>>(static services
