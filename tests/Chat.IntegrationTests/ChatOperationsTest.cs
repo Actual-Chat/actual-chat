@@ -3,6 +3,7 @@ using ActualChat.Chat.Module;
 using ActualChat.Contacts;
 using ActualChat.Testing.Host;
 using ActualChat.Invite;
+using ActualChat.Queues;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -157,6 +158,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         account.Should().NotBeNull();
 
         // pre-assert wait
+        await services.Queues().WhenProcessing();
         await ComputedTestExt.When(services, async ct => {
             var chats = (await (await contacts.ListIds(session, ct))
                 .Select(x => chatsBackend.Get(x.ChatId, ct))
