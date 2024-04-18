@@ -1,0 +1,22 @@
+name: 'Install apple provisioning profile'
+description: 'Install apple provisioning profile on Mac'
+inputs:
+  base64:
+    description: 'Base 64 encoded content of provisioning profile'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Install the Apple certificate and provisioning profile
+      shell: bash
+      run: |-
+        # create variables
+        PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+
+        echo ::Importing provisioning profile from secrets
+        echo -n "${{inputs.base64}}" | base64 --decode -o $PP_PATH
+
+        echo ::Applying provisioning profile
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        uuid=`grep UUID -A1 -a $PP_PATH | grep -io "[-A-F0-9]\{36\}"`
+        cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$uuid.mobileprovision

@@ -7,7 +7,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenGraph-Net" />
+    <PackageReference Include="HtmlAgilityPack" />
   </ItemGroup>
 
 </Project>

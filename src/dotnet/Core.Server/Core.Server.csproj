@@ -14,7 +14,6 @@
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" />
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
     <PackageReference Include="NATS.Net" />
-    <PackageReference Include="OpenGraph-Net" />
     <PackageReference Include="SixLabors.ImageSharp" />
   </ItemGroup>
 </Project>

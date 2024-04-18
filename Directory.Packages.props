@@ -46,6 +46,7 @@
     <PackageVersion Include="Grpc.Core" Version="2.46.6" />
     <PackageVersion Include="Google.Cloud.Speech.V2" Version="1.0.0" />
     <PackageVersion Include="Google.Cloud.AspNetCore.DataProtection.Storage" Version="1.0.0-alpha04" />
+    <PackageVersion Include="HtmlAgilityPack" Version="1.11.60" />
     <PackageVersion Include="MailKit" Version="4.5.0" />
     <PackageVersion Include="MemoryPack" Version="$(MemoryPackVersion)" />
     <PackageVersion Include="MemoryPack.Core" Version="$(MemoryPackVersion)" />
@@ -70,7 +71,6 @@
     <PackageVersion Include="Microsoft.Extensions.FileSystemGlobbing" Version="7.0.0" />
     <PackageVersion Include="Mono.Profiler.Android" Version="7.0.0" />
     <PackageVersion Include="Mono.AotProfiler.Android" Version="7.0.0-preview1" />
-    <PackageVersion Include="OpenGraph-Net" Version="4.0.1" />
     <PackageVersion Include="SauceControl.Blake2Fast" Version="2.0.0" />
     <PackageVersion Include="Serilog.Extensions.Logging.File" Version="3.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="5.0.0" />
@@ -217,7 +217,6 @@
     <PackageVersion Include="Microsoft.Playwright" Version="1.42.0" />
     <PackageVersion Include="Moq" Version="4.20.70" />
     <PackageVersion Include="Moq.Autocomplete" Version="0.0.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <PackageVersion Include="Moq.Contrib.HttpClient" Version="1.4.0" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.6.133" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="xunit" Version="2.7.1" />
     <PackageVersion Include="Xunit.DependencyInjection" Version="8.7.2" />
