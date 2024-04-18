@@ -1,7 +1,6 @@
 namespace ActualChat.MLSearch.Indexing;
 
-internal interface IDocumentMapper<in TSource, in TSourceId, out TDocument>
+internal interface IDocumentMapper<in TSource, TDocument>
 {
-    TDocument Map(TSource source);
-    string MapId(TSourceId source);
+    ValueTask<TDocument> MapAsync(TSource source, CancellationToken cancellationToken = default);
 }
