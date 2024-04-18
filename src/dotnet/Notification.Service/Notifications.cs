@@ -33,9 +33,6 @@ public class Notifications(IServiceProvider services) : DbServiceBase<Notificati
     public virtual async Task OnHandle(
         Notifications_Handle command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, notificationId) = command;
         var notification = await Get(session, notificationId, cancellationToken).Require().ConfigureAwait(false);
         if (notification.HandledAt.HasValue)
@@ -49,8 +46,10 @@ public class Notifications(IServiceProvider services) : DbServiceBase<Notificati
     }
 
     // [CommandHandler]
-    public virtual async Task OnRegisterDevice(Notifications_RegisterDevice command, CancellationToken cancellationToken)
+    public virtual async Task OnRegisterDevice(
+        Notifications_RegisterDevice command, CancellationToken cancellationToken)
     {
+        // NOTE(AY): Add backend, implement IApiCommand
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {

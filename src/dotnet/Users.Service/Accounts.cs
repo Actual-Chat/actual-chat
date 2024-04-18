@@ -50,28 +50,24 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
     // [CommandHandler]
     public virtual async Task OnUpdate(Accounts_Update command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, account, expectedVersion) = command;
-
         await this.AssertCanUpdate(session, account, cancellationToken).ConfigureAwait(false);
-        await Commander.Call(new AccountsBackend_Update(account, expectedVersion), cancellationToken)
-            .ConfigureAwait(false);
+
+        var updateCommand = new AccountsBackend_Update(account, expectedVersion);
+        await Commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
     public virtual async Task OnDeleteOwn(Accounts_DeleteOwn command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         ownAccount.Require(AccountFull.MustBeActive);
 
-        // sign out to prevent unexpected UI invalidations
+        // NOTE(AY): This should go through the events / queues, let's discuss this.
+
+        // Sign out to prevent unexpected UI invalidations
         var signOutCommand = new Auth_SignOut(command.Session, null, false, false);
-        await Commander.Call(signOutCommand, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(signOutCommand, true, cancellationToken).ConfigureAwait(false);
 
         var deleteOwnChatsCommand = new ChatsBackend_RemoveOwnChats(ownAccount.Id);
         await Commander.Call(deleteOwnChatsCommand, true, cancellationToken).ConfigureAwait(false);
@@ -92,6 +88,6 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
         await Commander.Call(deleteExternalContactHashesCommand, true, cancellationToken).ConfigureAwait(false);
 
         var deleteOwnAccountCommand = new AccountsBackend_Delete(ownAccount.Id);
-        await Commander.Call(deleteOwnAccountCommand, false, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(deleteOwnAccountCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

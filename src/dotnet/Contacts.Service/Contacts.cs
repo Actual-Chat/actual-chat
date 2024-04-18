@@ -90,9 +90,6 @@ public class Contacts(IServiceProvider services) : IContacts
     // [CommandHandler]
     public virtual async Task<Contact?> OnChange(Contacts_Change command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return default!; // It just spawns other commands, so nothing to do here
-
         var (session, id, expectedVersion, change) = command;
         id.Require();
         change.RequireValid();
@@ -101,17 +98,13 @@ public class Contacts(IServiceProvider services) : IContacts
         if (id.OwnerId != account.Id)
             throw Unauthorized();
 
-        return await Commander
-            .Call(new ContactsBackend_Change(id, expectedVersion, change), cancellationToken)
-            .ConfigureAwait(false);
+        var changeCommand = new ContactsBackend_Change(id, expectedVersion, change);
+        return await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
     public virtual async Task OnTouch(Contacts_Touch command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, id) = command;
         id.Require();
 
@@ -119,9 +112,8 @@ public class Contacts(IServiceProvider services) : IContacts
         if (id.OwnerId != account.Id)
             throw Unauthorized();
 
-        await Commander
-            .Call(new ContactsBackend_Touch(id), cancellationToken)
-            .ConfigureAwait(false);
+        var touchCommand = new ContactsBackend_Touch(id);
+        await Commander.Call(touchCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

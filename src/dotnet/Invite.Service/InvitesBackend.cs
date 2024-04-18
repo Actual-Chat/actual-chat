@@ -1,7 +1,6 @@
 using ActualChat.Chat;
 using ActualChat.Invite.Db;
 using ActualChat.Kvas;
-using ActualChat.Queues;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;

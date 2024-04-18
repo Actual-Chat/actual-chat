@@ -6,7 +6,6 @@ public interface IUserPresences : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 30)]
     Task<Presence> Get(UserId userId, CancellationToken cancellationToken);
-
     [ComputeMethod(MinCacheDuration = 30)]
     Task<Moment?> GetLastCheckIn(UserId userId, CancellationToken cancellationToken);
 
@@ -19,4 +18,4 @@ public interface IUserPresences : IComputeService
 public sealed partial record UserPresences_CheckIn(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] bool IsActive
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>, IApiCommand;

@@ -5,6 +5,6 @@ namespace ActualChat.Users;
 public class Phones : IPhones
 {
     // [ComputeMethod]
-    public virtual Task<Phone> Parse(string sPhone, CancellationToken cancellationToken)
-        => Task.FromResult(PhoneFormatterExt.FromReadable(sPhone));
+    public virtual Task<Phone> Parse(string phone, CancellationToken cancellationToken)
+        => Task.FromResult(PhoneFormatterExt.FromReadable(phone));
 }

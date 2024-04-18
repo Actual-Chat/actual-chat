@@ -75,7 +75,8 @@ public class ExternalContactHashesBackend(
     }
 
     // [CommandHandler]
-    public virtual async Task OnRemoveAccount(ExternalContactHashesBackend_RemoveAccount command, CancellationToken cancellationToken)
+    public virtual async Task OnRemoveAccount(
+        ExternalContactHashesBackend_RemoveAccount command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
         if (Computed.IsInvalidating())

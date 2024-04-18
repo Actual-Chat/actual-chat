@@ -20,11 +20,11 @@ public interface ISystemProperties : IComputeService
 public sealed partial record SystemProperties_InvalidateEverything(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] bool Everywhere = false
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>; // NOTE(AY): Maybe add backend & implement IApiCommand?
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record SystemProperties_PruneComputedGraph(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] bool Everywhere = false
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>; // NOTE(AY): Maybe add backend & implement IApiCommand?

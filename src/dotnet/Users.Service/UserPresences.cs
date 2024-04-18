@@ -22,9 +22,6 @@ public class UserPresences(IServiceProvider services) : IUserPresences
     // [CommandHandler]
     public virtual async Task OnCheckIn(UserPresences_CheckIn command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return;
-
         var (session, isActive) = command;
 
         var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);

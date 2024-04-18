@@ -22,6 +22,8 @@ public class SystemProperties(IServiceProvider services)
         SystemProperties_InvalidateEverything command,
         CancellationToken cancellationToken)
     {
+        // NOTE(AY): Maybe add backend & implement IApiCommand?
+
         var (session, everywhere) = command;
         var context = CommandContext.GetCurrent();
 
@@ -48,6 +50,8 @@ public class SystemProperties(IServiceProvider services)
         SystemProperties_PruneComputedGraph command,
         CancellationToken cancellationToken)
     {
+        // NOTE(AY): Maybe add backend & implement IApiCommand?
+
         var (session, everywhere) = command;
         var context = CommandContext.GetCurrent();
         var computedGraphPruner = Services.GetRequiredService<ComputedGraphPruner>();

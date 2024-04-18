@@ -22,4 +22,4 @@ public interface IReactions : IComputeService
 public sealed partial record Reactions_React(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] Reaction Reaction
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>, IApiCommand;

@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Contacts;
-using ActualChat.Feedback;
 using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
@@ -43,9 +42,6 @@ public sealed class ApiClientModule(IServiceProvider moduleServices)
         fusion.AddClient<IContacts>();
         fusion.AddClient<IExternalContacts>();
         fusion.AddClient<IExternalContactHashes>();
-
-        // Feedback
-        fusion.AddClient<IFeedbacks>();
 
         // Invite
         fusion.AddClient<IInvites>();

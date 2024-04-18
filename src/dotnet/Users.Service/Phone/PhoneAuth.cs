@@ -34,8 +34,9 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     // [CommandHandler]
     public virtual async Task<Moment> OnSendTotp(PhoneAuth_SendTotp command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return default;
+        // NOTE(AY): A bit suspicious IApiCommand design:
+        // - On one hand, it doesn't have to invalidate anything
+        // - On another, it doesn't use a backend.
 
         // TODO: throttle
         var (session, phone, purpose) = command;
@@ -59,25 +60,22 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         PhoneAuth_ValidateTotp command,
         CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return default; // It just spawns other commands, so nothing to do here
-
         var (session, phone, totp) = command;
         if (!await ValidateCode(session, phone, totp, TotpPurpose.SignIn, cancellationToken).ConfigureAwait(false))
             return false;
 
         var user = new User(Symbol.Empty, string.Empty).WithPhone(phone);
-        await Commander
-            .Call(new AuthBackend_SignIn(session, user, user.GetPhoneIdentity()), cancellationToken)
-            .ConfigureAwait(false);
+        var signInCommand = new AuthBackend_SignIn(session, user, user.GetPhoneIdentity());
+        await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
         return true;
     }
 
     // [CommandHandler]
     public virtual async Task<bool> OnVerifyPhone(PhoneAuth_VerifyPhone command, CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
+        // NOTE(AY): Add backend, implement IApiCommand
 
+        var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             // TODO(AY): support UserId (any non-string/non-int) type for multi-instance deployment
             var userId = context.Operation.Items.GetId<UserId>();

@@ -89,15 +89,12 @@ public class Invites(IServiceProvider services) : IInvites
     // [CommandHandler]
     public virtual async Task<Invite> OnGenerate(Invites_Generate command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return default!;
-
         var (session, invite) = command;
         var account = await AssertCanGenerate(session, invite, cancellationToken).ConfigureAwait(false);
 
         invite = command.Invite with { CreatedBy = account.Id };
-        return await Commander.Call(new InvitesBackend_Generate(invite), cancellationToken)
-            .ConfigureAwait(false);
+        var generateCommand = new InvitesBackend_Generate(invite);
+        return await Commander.Call(generateCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -105,9 +102,6 @@ public class Invites(IServiceProvider services) : IInvites
         Invites_Use command,
         CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return default!;
-
         Log.LogInformation("On Invites_Use");
         Exception? exception = null;
         try {
@@ -115,7 +109,7 @@ public class Invites(IServiceProvider services) : IInvites
             account.Require(Account.MustNotBeGuest);
 
             var useCommand = new InvitesBackend_Use(command.Session, command.InviteId);
-            var invite = await Commander.Call(useCommand, cancellationToken).ConfigureAwait(false);
+            var invite = await Commander.Call(useCommand, true, cancellationToken).ConfigureAwait(false);
             return invite.Mask();
         }
         catch (Exception e) {
@@ -130,15 +124,13 @@ public class Invites(IServiceProvider services) : IInvites
     // [CommandHandler]
     public virtual async Task OnRevoke(Invites_Revoke command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return;
-
         var (session, inviteId) = command;
         var invite = await Backend.Get(inviteId, cancellationToken).ConfigureAwait(false);
         invite.Require();
+
         _ = await AssertCanRevoke(session, invite, cancellationToken).ConfigureAwait(false);
-        await Commander.Call(new InvitesBackend_Revoke(session, invite.Id), cancellationToken)
-            .ConfigureAwait(false);
+        var revokeCommand = new InvitesBackend_Revoke(session, invite.Id);
+        await Commander.Call(revokeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // Assertions

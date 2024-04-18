@@ -28,7 +28,7 @@ public interface IContacts : IComputeService
 public sealed partial record Contacts_Touch(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ContactId Id
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
@@ -37,11 +37,11 @@ public sealed partial record Contacts_Change(
     [property: DataMember, MemoryPackOrder(1)] ContactId Id,
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(3)] Change<Contact> Change
-) : ISessionCommand<Contact?>;
+) : ISessionCommand<Contact?>, IApiCommand;
 
 [Obsolete("2023.10: No not available for clients anymore.")]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Contacts_Greet(
     [property: DataMember, MemoryPackOrder(0)] Session Session
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>, IApiCommand;

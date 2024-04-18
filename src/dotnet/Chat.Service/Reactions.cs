@@ -33,9 +33,6 @@ public class Reactions(IServiceProvider services) : IReactions
     // [CommandHandler]
     public virtual async Task OnReact(Reactions_React command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, reaction) = command;
         var chatRules = await Chats.GetRules(session, reaction.EntryId.ChatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Write);
@@ -45,6 +42,6 @@ public class Reactions(IServiceProvider services) : IReactions
             return;
 
         reaction = reaction with { AuthorId = author.Id };
-        await Commander.Call(new ReactionsBackend_React(reaction), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new ReactionsBackend_React(reaction), true, cancellationToken).ConfigureAwait(false);
     }
 }

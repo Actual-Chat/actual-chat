@@ -11,7 +11,7 @@ namespace ActualChat.Users;
 
 public sealed class TotpCodes(UsersSettings settings)
 {
-    private static readonly Encoding _encoding = new UTF8Encoding(false, true);
+    private static readonly Encoding Encoding = new UTF8Encoding(false, true);
     private UsersSettings Settings { get; } = settings;
 
     public int Generate(byte[] securityToken, string? modifier = null)
@@ -19,7 +19,7 @@ public sealed class TotpCodes(UsersSettings settings)
         // Allow a variance of no greater than TimeStepCount * TimeStep in either direction
         var currentTimeStep = GetCurrentTimeStepNumber();
 
-        var modifierBytes = modifier is not null ? _encoding.GetBytes(modifier) : null;
+        var modifierBytes = modifier is not null ? Encoding.GetBytes(modifier) : null;
         return Compute(securityToken, currentTimeStep, modifierBytes);
     }
 
@@ -28,7 +28,7 @@ public sealed class TotpCodes(UsersSettings settings)
         // Allow a variance of no greater than TimeStepCount * TimeStep in either direction
         var currentTimeStep = GetCurrentTimeStepNumber();
 
-        var modifierBytes = modifier is not null ? _encoding.GetBytes(modifier) : null;
+        var modifierBytes = modifier is not null ? Encoding.GetBytes(modifier) : null;
         for (var i = -Settings.TotpTimestepCount; i <= Settings.TotpTimestepCount; i++) {
             var computedTotp = Compute(securityToken, (ulong)((long)currentTimeStep + i), modifierBytes);
             if (computedTotp == code)

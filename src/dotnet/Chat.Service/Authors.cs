@@ -156,9 +156,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task<AuthorFull> OnJoin(Authors_Join command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return default!; // It just spawns other commands, so nothing to do here
-
         var (session, chatId, avatarId, joinAnonymously) = command;
         var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author is { HasLeft: false })
@@ -216,9 +213,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnLeave(Authors_Leave command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, chatId) = command;
         var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author == null || author.HasLeft)
@@ -265,9 +259,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnInvite(Authors_Invite command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, chatId, userIds, joinAnonymously) = command;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.CanInvite().RequireTrue("You can't invite members in this chat.");
@@ -297,9 +288,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnExclude(Authors_Exclude command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, authorId) = command;
         var chatId = authorId.ChatId;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -327,9 +315,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnRestore(Authors_Restore command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, authorId) = command;
         var chatId = authorId.ChatId;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -345,9 +330,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnSetAvatar(Authors_SetAvatar command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, chatId, avatarId) = command;
         await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
 
@@ -374,9 +356,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnPromoteToOwner(Authors_PromoteToOwner command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, authorId) = command;
         var chatId = authorId.ChatId;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);

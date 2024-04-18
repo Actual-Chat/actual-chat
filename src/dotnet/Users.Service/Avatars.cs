@@ -40,9 +40,6 @@ public class Avatars(IServiceProvider services) : IAvatars
     // [CommandHandler]
     public virtual async Task<AvatarFull> OnChange(Avatars_Change command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return default!;
-
         var (session, avatarId, expectedVersion, change) = command;
         command.Change.RequireValid();
 
@@ -81,15 +78,13 @@ public class Avatars(IServiceProvider services) : IAvatars
     // [CommandHandler]
     public virtual async Task OnSetDefault(Avatars_SetDefault command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return;
-
         var (session, avatarId) = command;
         var avatar = await GetOwn(session, avatarId, cancellationToken).Require().ConfigureAwait(false);
         var kvas = ServerKvas.GetClient(session);
         var settings = await kvas.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
         if (settings.DefaultAvatarId == avatar.Id)
             return;
+
         settings = settings with { DefaultAvatarId = avatarId };
         await kvas.SetUserAvatarSettings(settings, cancellationToken).ConfigureAwait(false);
     }

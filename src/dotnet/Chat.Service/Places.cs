@@ -94,9 +94,6 @@ public class Places(IServiceProvider services) : IPlaces
 
     public virtual async Task<Place> OnChange(Places_Change command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return default!; // It just spawns other commands, so nothing to do here
-
         var (session, placeId, expectedVersion, placeChange) = command;
         if (placeChange.Remove)
             throw StandardError.Constraint("Use Places_Delete command instead to delete the place.");
@@ -115,20 +112,13 @@ public class Places(IServiceProvider services) : IPlaces
 
     public virtual async Task OnJoin(Places_Join command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, placeId, avatarId) = command;
-
         var joinCommand = new Authors_Join(session, placeId.ToRootChatId(), avatarId);
         await Commander.Call(joinCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task OnInvite(Places_Invite command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, placeId, userIds) = command;
         var inviteCommand = new Authors_Invite(session, placeId.ToRootChatId(), userIds);
         await Commander.Call(inviteCommand, true, cancellationToken).ConfigureAwait(false);
@@ -139,9 +129,6 @@ public class Places(IServiceProvider services) : IPlaces
         var (session, authorId) = command;
         ThrowIfNonPlaceRootChatAuthor(authorId);
 
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var excludeCommand = new Authors_Exclude(session, authorId);
         await Commander.Call(excludeCommand, true, cancellationToken).ConfigureAwait(false);
     }
@@ -150,9 +137,6 @@ public class Places(IServiceProvider services) : IPlaces
     {
         var (session, authorId) = command;
         ThrowIfNonPlaceRootChatAuthor(authorId);
-
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
 
         var restoreCommand = new Authors_Restore(session, authorId);
         await Commander.Call(restoreCommand, true, cancellationToken).ConfigureAwait(false);
@@ -163,18 +147,12 @@ public class Places(IServiceProvider services) : IPlaces
         var (session, authorId) = command;
         ThrowIfNonPlaceRootChatAuthor(authorId);
 
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var promoteCommand = new Authors_PromoteToOwner(session, authorId);
         await Commander.Call(promoteCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task OnDelete(Places_Delete command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, placeId) = command;
         var place = await Get(session, placeId, cancellationToken).ConfigureAwait(false);
         if (place == null)
@@ -203,16 +181,14 @@ public class Places(IServiceProvider services) : IPlaces
 
     public virtual async Task OnLeave(Places_Leave command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
         var (session, placeId) = command;
         var place = await Get(session, placeId, cancellationToken).ConfigureAwait(false);
         if (place == null)
             return;
 
         place.Rules.Require(PlacePermissions.Leave);
-        await Commander.Call(new Authors_Leave(session, placeId.ToRootChatId()), true, cancellationToken).ConfigureAwait(false);
+        var leaveCommand = new Authors_Leave(session, placeId.ToRootChatId());
+        await Commander.Call(leaveCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     private static ChatDiff ToChatDiff(PlaceDiff placeDiff)

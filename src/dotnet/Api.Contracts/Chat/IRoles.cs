@@ -26,4 +26,4 @@ public sealed partial record Roles_Change(
     [property: DataMember, MemoryPackOrder(2)] RoleId RoleId,
     [property: DataMember, MemoryPackOrder(3)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(4)] Change<RoleDiff> Change
-) : ISessionCommand<Role>;
+) : ISessionCommand<Role>, IApiCommand;

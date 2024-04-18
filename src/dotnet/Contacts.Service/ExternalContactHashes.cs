@@ -22,17 +22,13 @@ public class ExternalContactHashes(IAccounts accounts, IExternalContactHashesBac
         ExternalContactHashes_Change command,
         CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return default!; // It just spawns other commands, so nothing to do here
-
         var (session, deviceId, expectedVersion, change) = command;
         var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!account.IsActive())
             return null;
 
         deviceId.Require();
-        return await commander
-            .Call(new ExternalContactHashesBackend_Change(new UserDeviceId(account.Id, deviceId), expectedVersion, change), cancellationToken)
-            .ConfigureAwait(false);
+        var changeCommand = new ExternalContactHashesBackend_Change(new UserDeviceId(account.Id, deviceId), expectedVersion, change);
+        return await commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

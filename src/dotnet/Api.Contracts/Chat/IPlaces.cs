@@ -50,7 +50,7 @@ public sealed partial record Places_Change(
     [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId,
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(3)] Change<PlaceDiff> Change
-) : ISessionCommand<Place>;
+) : ISessionCommand<Place>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
@@ -58,7 +58,7 @@ public sealed partial record Places_Join(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId,
     [property: DataMember, MemoryPackOrder(2)] Symbol AvatarId = default
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
@@ -66,39 +66,39 @@ public sealed partial record Places_Invite(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId,
     [property: DataMember, MemoryPackOrder(2)] UserId[] UserIds
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Places_Exclude(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Places_Restore(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Places_PromoteToOwner(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Places_Delete(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Places_Leave(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId
-) : ISessionCommand<Unit>;
+) : ISessionCommand<Unit>, IApiCommand;
