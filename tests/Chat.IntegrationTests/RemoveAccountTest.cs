@@ -25,7 +25,7 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         // NOTE(DF): await till user has joined to default chat (for admins it happens automatically) before
         // creating text entries
 
-        await ComputedTestExt.When(services, async ct => {
+        await ComputedTest.When(async ct => {
             var author = await authors.GetOwn(session, chat!.Id, ct);
             author.Should().NotBeNull();
         });
@@ -81,7 +81,7 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var removeEntriesCommand = new ChatsBackend_RemoveOwnChats(bob.Id);
         await services.Commander().Call(removeEntriesCommand);
 
-        await ComputedTestExt.When(services, async ct => {
+        await ComputedTest.When(async ct => {
             var chat1 = await chats.Get(session, chat.Id, ct);
             chat1.Should().BeNull();
         });

@@ -50,21 +50,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         dbModule.AddDbContextServices<MLSearchDbContext>(services, Settings.Db, db => {
         });
 
-        // Commander & Fusion
-        var commander = services.AddCommander();
-        commander.AddHandlerFilter((handler, commandType) => {
-            // 1. Check if this is DbOperationScopeProvider<MLSearchDbContext> handler
-            if (handler is not InterfaceCommandHandler<ICommand> ich)
-                return true;
-            if (ich.ServiceType != typeof(DbOperationScopeProvider<MLSearchDbContext>))
-                return true;
-
-            // 2. Make sure it's intact only for local commands
-            var commandAssembly = commandType.Assembly;
-            return commandAssembly == typeof(IMLSearch).Assembly // MLSearch.Contracts assembly
-                || commandType == typeof(TextEntryChangedEvent);
-        });
-
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
 

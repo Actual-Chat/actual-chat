@@ -89,7 +89,7 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
     private async Task<ApiArray<ContactSearchResult>> Find(UserId userId, string criteria, int expectedCount, int requestCount = 20)
     {
         ContactSearchResultPage searchResults = ContactSearchResultPage.Empty;
-        await TestExt.WhenMetAsync(async () => {
+        await TestExt.When(async () => {
                 searchResults = await _searchBackend.FindUserContacts(userId,
                     criteria,
                     0,

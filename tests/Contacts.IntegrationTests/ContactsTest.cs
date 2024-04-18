@@ -84,7 +84,7 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Task.Delay(TimeSpan.FromSeconds(1));
 
         // assert
-        await ComputedTestExt.When(AppHost.Services, async ct => {
+        await ComputedTest.When(async ct => {
             var expectedNonPlaceChatIds = new[] {
                 new ContactId(bob.Id, publicChatId),
                 new ContactId(bob.Id, privateChatId),
@@ -167,7 +167,7 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
         });
 
         // act, assert
-        await ComputedTestExt.When(AppHost.Services, async ct => {
+        await ComputedTest.When(async ct => {
             var expectedNonPlaceChatIds = new[] {
                 new ContactId(bob.Id, publicChatId),
                 new ContactId(bob.Id, privateChatId),

@@ -1,3 +1,4 @@
+using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Configuration;
 using ActualChat.Hosting;
@@ -111,11 +112,9 @@ public sealed class DbModule(IServiceProvider moduleServices)
                 // Let's not waste log with successful completed command
                 LogLevel = LogLevel.Debug,
             });
-            /*
-            services.AddTransient(c => new DbOperationScope<TDbContext>(c) {
-                IsolationLevel = IsolationLevel.RepeatableRead,
-            });
-            */
+            // services.AddSingleton(_ => new DbOperationScope<TDbContext>.Options() {
+            //     IsolationLevel = IsolationLevel.RepeatableRead,
+            // });
             db.AddOperations(operations => {
                 operations.ConfigureOperationLogReader(_ => new() {
                     CheckPeriod = TimeSpan.FromSeconds(HostInfo.IsDevelopmentInstance ? 60 : 5).ToRandom(0.1),

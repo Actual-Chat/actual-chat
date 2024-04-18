@@ -93,7 +93,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
         => new (new ExternalContactId(new UserDeviceId(owner.Id, DeviceId), RandomStringGenerator.Default.Next()));
 
     private async Task<ApiArray<ExternalContact>> ListExternalContacts(int expectedCount)
-        => await ComputedTestExt.When(AppHost.Services, async ct => {
+        => await ComputedTest.When(async ct => {
             var externalContacts = await ListExternalContacts(ct);
             externalContacts.Should().HaveCountGreaterOrEqualTo(expectedCount);
             return externalContacts;

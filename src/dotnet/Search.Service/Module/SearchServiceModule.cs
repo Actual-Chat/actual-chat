@@ -27,24 +27,6 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<IIndexedChatsBackend, IndexedChatsBackend>();
         rpcHost.AddBackend<IContactIndexStatesBackend, ContactIndexStateBackend>();
 
-        // Commander handlers
-        rpcHost.Commander.AddHandlerFilter((handler, commandType) => {
-            // 1. Check if this is DbOperationScopeProvider<SearchDbContext> handler
-            if (handler is not InterfaceCommandHandler<ICommand> ich)
-                return true;
-            if (ich.ServiceType != typeof(DbOperationScopeProvider<SearchDbContext>))
-                return true;
-
-            // 2. Check if we're running on the client backend
-            if (isBackendClient)
-                return false;
-
-            // 3. Make sure the handler is intact only for local commands
-            var commandNamespace = commandType.Namespace;
-            return commandNamespace.OrdinalStartsWith(typeof(ISearchBackend).Namespace!)
-                || commandNamespace.OrdinalContains("Tests")
-                || commandType == typeof(TextEntryChangedEvent); // Event
-        });
         if (isBackendClient)
             return;
 

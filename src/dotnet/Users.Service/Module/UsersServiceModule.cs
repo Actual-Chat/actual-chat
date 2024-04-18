@@ -160,35 +160,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             rpc.AddServer<IMobileAuth, IMobileSessions>(); // ~ Alias of IMobileSessions
 #pragma warning restore CS0618
 
-        // Commander handlers
-        commander.AddHandlerFilter((handler, commandType) => {
-            // 1. Check if this is DbOperationScopeProvider<UsersDbContext> handler
-            if (handler is not InterfaceCommandHandler<ICommand> ich)
-                return true;
-            if (ich.ServiceType != typeof(DbOperationScopeProvider<UsersDbContext>))
-                return true;
-
-            // 2. ActualLab.Fusion.Ext.* commands are always processed locally
-            var commandAssembly = commandType.Assembly;
-            if (commandAssembly == typeof(Auth_EditUser).Assembly)
-                return true;
-            if (commandAssembly == typeof(AuthBackend_SetupSession).Assembly)
-                return true;
-
-            // 3. UserPresences_* and Accounts_* commands should run locally
-            if (commandType.Name.OrdinalStartsWith("UserPresences_") || commandType.Name.OrdinalStartsWith("Accounts_"))
-                return true;
-
-            // 4. Check if we're running on the client backend
-            if (isBackendClient)
-                return false;
-
-            // 5. Make sure the handler is intact only for local commands
-            var commandNamespace = commandType.Namespace;
-            return commandNamespace.OrdinalStartsWith(typeof(IAccounts).Namespace!)
-                || commandNamespace.OrdinalContains("Tests");
-        });
-
         // NOTE(AY): We don't have a clear separation between the backend and the front-end
         // due to IAuth & IAuthBackend, so these services are always local, and thus
         // they drag the DB, Redis & everything they depend on.

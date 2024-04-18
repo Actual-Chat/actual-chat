@@ -52,7 +52,7 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out, ILog
             Log.LogInformation("Updated Status to '{NewStatus}'", newStatus);
 
             // assert
-            await ComputedTestExt.When(AppHost.Services, async ct => {
+            await ComputedTest.When(async ct => {
                 account = await _accounts.GetOwn(_tester.Session, ct);
                 account.Status.Should().Be(newStatus);
             });

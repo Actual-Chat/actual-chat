@@ -103,7 +103,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
             var account = await _tester.SignIn(u);
 
             // assert
-            await TestExt.WhenMetAsync(async () => {
+            await TestExt.When(async () => {
                     var acc = await _accounts.GetOwn(_tester.Session, CancellationToken.None);
                     acc.IsGreetingCompleted.Should().BeTrue();
                 },
@@ -138,7 +138,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
 
     private async Task<List<ContactId>> ListContactIds(AccountFull account, int expectedCount)
     {
-        await TestExt.WhenMetAsync(async () => {
+        await TestExt.When(async () => {
                 var peerContactIds = await ListContactIds();
                 peerContactIds.Should().HaveCountGreaterOrEqualTo(expectedCount, $"for {account.User.Name}");
             },

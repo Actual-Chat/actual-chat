@@ -91,6 +91,7 @@
     <Using Include="ActualLab.Fusion" />
     <Using Include="ActualLab.Fusion.Authentication" />
     <Using Include="ActualLab.Fusion.Operations" />
+    <Using Include="ActualLab.Fusion.Testing" />
     <Using Include="ActualLab.CommandR" />
     <Using Include="ActualLab.CommandR.Configuration" />
     <Using Include="ActualLab.CommandR.Commands" />

@@ -21,23 +21,6 @@ public sealed class InviteServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IInvites, Invites>();
         rpcHost.AddBackend<IInvitesBackend, InvitesBackend>();
 
-        // Commander handlers
-        rpcHost.Commander.AddHandlerFilter((handler, commandType) => {
-            // 1. Check if this is DbOperationScopeProvider<InviteDbContext> handler
-            if (handler is not InterfaceCommandHandler<ICommand> ich)
-                return true;
-            if (ich.ServiceType != typeof(DbOperationScopeProvider<InviteDbContext>))
-                return true;
-
-            // 2. Check if we're running on the client backend
-            if (isBackendClient)
-                return false;
-
-            // 3. Make sure the handler is intact only for local commands
-            var commandNamespace = commandType.Namespace;
-            return commandNamespace.OrdinalStartsWith(typeof(IInvites).Namespace!)
-                || commandNamespace.OrdinalContains("Tests");
-        });
         if (isBackendClient)
             return;
 

@@ -25,24 +25,6 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<INotifications, Notifications>();
         rpcHost.AddBackend<INotificationsBackend, NotificationsBackend>();
 
-        // Commander handlers
-        rpcHost.Commander.AddHandlerFilter((handler, commandType) => {
-            // 1. Check if this is DbOperationScopeProvider<NotificationDbContext> handler
-            if (handler is not InterfaceCommandHandler<ICommand> ich)
-                return true;
-            if (ich.ServiceType != typeof(DbOperationScopeProvider<NotificationDbContext>))
-                return true;
-
-            // 2. Check if we're running on the client backend
-            // if (isBackendClient)
-            //     return false;
-
-            // 3. Make sure the handler is intact only for local commands
-            var commandNamespace = commandType.Namespace;
-            return commandNamespace.OrdinalStartsWith(typeof(INotifications).Namespace!)
-                || commandNamespace.OrdinalContains("Tests");
-        });
-
         // NOTE(AY): Notifications service uses NotificationDbContext and FirebaseMessaging,
         // so we have to register them in any case.
 
