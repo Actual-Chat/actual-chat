@@ -1,5 +1,5 @@
-name: 'Hello World'
-description: 'Greet someone'
+name: 'Install apple provisioning profile'
+description: 'Install apple provisioning profile on Mac'
 inputs:
   base64:
     description: 'Base 64 encoded content of provisioning profile'
