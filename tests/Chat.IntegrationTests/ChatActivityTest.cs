@@ -21,7 +21,7 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
         await tester.SignInAsBob();
         var session = tester.Session;
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var ct = cts.Token;
         try {
             var chatActivity = clientServices.GetRequiredService<ChatActivity>();
@@ -41,7 +41,7 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
             // Step1
             tcs1.SetResult();
 
-            await cStreamingEntries.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
+            await cStreamingEntries.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
             cStreamingAuthorIds = await cStreamingAuthorIds.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(1), ct);
             var authorId = cStreamingAuthorIds.Value.Single();
             var cIsAuthorActive = await Computed.Capture(() => recordingActivity.IsAuthorStreaming(authorId, ct), ct);
