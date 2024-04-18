@@ -17,6 +17,6 @@ public sealed class AudioController(IBlobStorages blobStorages) : ControllerBase
             return NotFound();
 
         // stream will be disposed by the asp.net framework
-        return File(byteStream, "audio/webm");
+        return File(byteStream, "application/octet-stream");
     }
 }
