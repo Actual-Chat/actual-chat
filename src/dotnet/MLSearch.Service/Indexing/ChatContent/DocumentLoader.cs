@@ -5,7 +5,7 @@ namespace ActualChat.MLSearch.Indexing.ChatContent;
 
 internal interface IDocumentLoader
 {
-    Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(ChatEntryCursor cursor, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(ChatCursor cursor, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<ChatSlice>> LoadByEntryIdsAsync(
         IEnumerable<ChatEntryId> entryIds,
@@ -14,7 +14,7 @@ internal interface IDocumentLoader
 
 internal class DocumentLoader(ISearchEngine<ChatSlice> searchEngine): IDocumentLoader
 {
-    public async Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(ChatEntryCursor cursor, CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(ChatCursor cursor, CancellationToken cancellationToken)
     {
         const string chatEntryLocalIdField =
             $"{nameof(ChatSlice.Metadata)}.{nameof(ChatSliceMetadata.ChatEntries)}.{nameof(ChatSliceEntry.LocalId)}";

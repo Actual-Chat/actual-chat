@@ -6,10 +6,10 @@ namespace ActualChat.MLSearch.Indexing.ChatContent;
 internal interface IChatIndexerWorker: IWorker<MLSearch_TriggerChatIndexing>;
 
 internal sealed class ChatIndexerWorker(
-    int batchSize,
+    int flushInterval,
     int maxEventCount,
-    IChatsBackend chats,
-    IChatEntryCursorStates cursorStates,
+    IChatUpdateLoader chatUpdateLoader,
+    IChatCursorStates cursorStates,
     IChatIndexerFactory indexerFactory,
     ICommander commander
 ) : IChatIndexerWorker
@@ -26,7 +26,7 @@ internal sealed class ChatIndexerWorker(
 
         await foreach (var entry in GetUpdatedEntriesAsync(chatId, cursor, cancellationToken).ConfigureAwait(false)) {
             await indexer.ApplyAsync(entry, cancellationToken).ConfigureAwait(false);
-            if (++eventCount % batchSize == 0) {
+            if (++eventCount % flushInterval == 0) {
                 await FlushAsync().ConfigureAwait(false);
             }
             if (eventCount==maxEventCount) {
@@ -52,38 +52,7 @@ internal sealed class ChatIndexerWorker(
         }
     }
 
-    private async IAsyncEnumerable<ChatEntry> GetUpdatedEntriesAsync(
-        ChatId targetId, ChatEntryCursor cursor, [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        bool continueProcessing;
-        var (lastEntryVersion, lastEntryLocalId) = (cursor.LastEntryVersion, cursor.LastEntryLocalId);
-        do {
-            // We must read all updated entries with LocalId <= lastEntryLocalId
-            // before reading next batch. Otherwise, we risk to lose some updates.
-            bool continueReadUpdates;
-            do {
-                var updatedEntries = await chats
-                    .ListChangedEntries(targetId, lastEntryLocalId, lastEntryVersion, batchSize, cancellationToken)
-                    .ConfigureAwait(false);
-                foreach (var entry in updatedEntries) {
-                    lastEntryVersion = Math.Max(lastEntryVersion, entry.Version);
-                    yield return entry;
-                }
-                continueReadUpdates = updatedEntries.Count == batchSize;
-            }
-            while (continueReadUpdates);
-
-            // Now read next batch of entries in chat
-            var createdEntries = await chats
-                .ListNewEntries(targetId, lastEntryLocalId, batchSize, cancellationToken)
-                .ConfigureAwait(false);
-            foreach (var entry in createdEntries) {
-                lastEntryVersion = Math.Max(lastEntryVersion, entry.Version);
-                lastEntryLocalId = Math.Max(lastEntryLocalId, entry.LocalId);
-                yield return entry;
-            }
-            continueProcessing = createdEntries.Count == batchSize;
-        }
-        while (continueProcessing);
-    }
+    private IAsyncEnumerable<ChatEntry> GetUpdatedEntriesAsync(
+        ChatId targetId, ChatCursor cursor, CancellationToken cancellationToken)
+        => chatUpdateLoader.LoadChatUpdatesAsync(targetId, cursor, cancellationToken);
 }

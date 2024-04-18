@@ -5,9 +5,9 @@ namespace ActualChat.MLSearch.Indexing.ChatContent;
 
 internal interface IChatIndexer
 {
-    Task InitAsync(ChatEntryCursor cursor, CancellationToken cancellationToken);
+    Task InitAsync(ChatCursor cursor, CancellationToken cancellationToken);
     ValueTask ApplyAsync(ChatEntry entry, CancellationToken cancellationToken);
-    Task<ChatEntryCursor> FlushAsync(CancellationToken cancellationToken);
+    Task<ChatCursor> FlushAsync(CancellationToken cancellationToken);
 }
 
 internal sealed class ChatIndexer(
@@ -17,9 +17,17 @@ internal sealed class ChatIndexer(
     ISink<ChatSlice, string> sink
 ) : IChatIndexer
 {
+    private enum ChatEventType
+    {
+        None,
+        Create,
+        Update,
+        Delete,
+    }
+
     private const int MaxTailSetSize = 5;
-    private ChatEntryCursor _cursor = new(0, 0);
-    private ChatEntryCursor _nextCursor = new(0, 0);
+    private ChatCursor _cursor = new(0, 0);
+    private ChatCursor _nextCursor = new(0, 0);
 
     private readonly Dictionary<string, ChatSlice> _tailDocs = new(StringComparer.Ordinal);
 
@@ -27,7 +35,7 @@ internal sealed class ChatIndexer(
     private readonly Dictionary<string, ChatSlice> _outUpdates = new(StringComparer.Ordinal);
     private readonly HashSet<string> _outRemoves = new(StringComparer.Ordinal);
 
-    public async Task InitAsync(ChatEntryCursor cursor, CancellationToken cancellationToken)
+    public async Task InitAsync(ChatCursor cursor, CancellationToken cancellationToken)
     {
         _cursor = cursor;
         var tailDocuments = await documentLoader.LoadTailAsync(cursor, cancellationToken).ConfigureAwait(false);
@@ -80,11 +88,11 @@ internal sealed class ChatIndexer(
                 }
             }
             // Update next cursor value
-            _nextCursor = new ChatEntryCursor(entry);
+            _nextCursor = new ChatCursor(entry);
         }
     }
 
-    public async Task<ChatEntryCursor> FlushAsync(CancellationToken cancellationToken)
+    public async Task<ChatCursor> FlushAsync(CancellationToken cancellationToken)
     {
         // Process buffer & tail
         await foreach (var entrySet in ArrangeBufferedEntriesAsync(_buffer, _tailDocs.Values, cancellationToken).ConfigureAwait(false)) {
@@ -116,7 +124,7 @@ internal sealed class ChatIndexer(
         _outUpdates.Clear();
         _outRemoves.Clear();
         // Update cursor value
-        _cursor = _nextCursor = _buffer.Select(e => new ChatEntryCursor(e)).Append(_nextCursor).Max()!;
+        _cursor = _nextCursor = _buffer.Select(e => new ChatCursor(e)).Append(_nextCursor).Max()!;
         return _cursor;
     }
 
