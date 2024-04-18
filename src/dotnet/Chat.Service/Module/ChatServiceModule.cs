@@ -56,24 +56,6 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         services.AddSingleton(c =>
             new CachingKeyedFactory<IBackendChatMarkupHub, ChatId, BackendChatMarkupHub>(c, 4096, true).ToGeneric());
 
-        // Commander handlers
-        rpcHost.Commander.AddHandlerFilter((handler, commandType) => {
-            // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler
-            if (handler is not InterfaceCommandHandler<ICommand> ich)
-                return true;
-            if (ich.ServiceType != typeof(DbOperationScopeProvider<ChatDbContext>))
-                return true;
-
-            // 2. Check if we're running on the client backend
-            if (isBackendClient)
-                return false;
-
-            // 3. Make sure the handler is intact only for local commands
-            var commandNamespace = commandType.Namespace;
-            return commandNamespace.OrdinalStartsWith(typeof(IChats).Namespace!)
-                || commandNamespace.OrdinalContains("Tests")
-                || commandType == typeof(NewUserEvent); // Event
-        });
         if (isBackendClient)
             return;
 

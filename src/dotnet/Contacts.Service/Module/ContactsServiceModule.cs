@@ -29,24 +29,6 @@ public sealed class ContactsServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<IExternalContactsBackend, ExternalContactsBackend>();
         rpcHost.AddBackend<IExternalContactHashesBackend, ExternalContactHashesBackend>();
 
-        // Commander handlers
-        rpcHost.Commander.AddHandlerFilter((handler, commandType) => {
-            // 1. Check if this is DbOperationScopeProvider<UsersDbContext> handler
-            if (handler is not InterfaceCommandHandler<ICommand> ich)
-                return true;
-            if (ich.ServiceType != typeof(DbOperationScopeProvider<ContactsDbContext>))
-                return true;
-
-            // 2. Check if we're running on the client backend
-            if (isBackendClient)
-                return false;
-
-            // 3. Make sure the handler is intact only for local commands
-            var commandNamespace = commandType.Namespace;
-            return commandNamespace.OrdinalStartsWith(typeof(IContacts).Namespace!)
-                || commandNamespace.OrdinalContains("Tests")
-                || commandType == typeof(NewUserEvent); // Event
-        });
         if (isBackendClient)
             return;
 

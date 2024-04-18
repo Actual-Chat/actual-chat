@@ -320,7 +320,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             ApiArray.New(new ExternalContactChange(externalContactFull.Id, null, Change.Remove<ExternalContactFull>()))));
 
     private async Task<List<ContactId>> ListContactIds(int expectedCount)
-        => await ComputedTestExt.When(AppHost.Services, async ct => {
+        => await ComputedTest.When(async ct => {
             var contactIds = await ListContactIds(ct);
             contactIds.Should().HaveCountGreaterOrEqualTo(expectedCount);
             return contactIds;

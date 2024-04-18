@@ -111,7 +111,7 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
     private async Task<ApiArray<ContactSearchResult>> Find(UserId userId, bool isPublic, string criteria, int expectedCount, int requestCount = 20)
     {
         ContactSearchResultPage searchResults = ContactSearchResultPage.Empty;
-        await TestExt.WhenMetAsync(async () => {
+        await TestExt.When(async () => {
                 searchResults = await _searchBackend.FindChatContacts(
                     userId,
                     isPublic,

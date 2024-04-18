@@ -40,7 +40,8 @@ public sealed class TypeMapper<TScope>
                 var match = self._map.GetValueOrDefault(cType);
                 if (match != null) {
                     if (match.IsGenericTypeDefinition)
-                        throw ActualLab.Internal.Errors.GenericMatchForConcreteType(cType, match);
+                        throw StandardError.Internal(
+                            $"A generic match '{match.GetName()}' is found for non-generic type '{cType.GetName()}'.");
                     if (!match.IsAssignableTo(typeof(TScope)))
                         throw ActualLab.Internal.Errors.MustBeAssignableTo<TScope>(match);
                     return match;
@@ -55,7 +56,8 @@ public sealed class TypeMapper<TScope>
                     continue;
 
                 if (!match.IsGenericTypeDefinition)
-                    throw ActualLab.Internal.Errors.ConcreteMatchForGenericType(gType, match);
+                    throw StandardError.Internal(
+                        $"A non-generic match '{match.GetName()}' is found for generic type '{gType.GetName()}'.");
 
 #pragma warning disable IL2055
                 match = match.MakeGenericType(gTypeArgs);
