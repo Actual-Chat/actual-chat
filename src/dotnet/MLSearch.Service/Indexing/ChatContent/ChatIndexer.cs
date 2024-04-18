@@ -2,7 +2,6 @@
 using System.Text;
 using ActualChat.Chat;
 using ActualChat.MLSearch.Documents;
-using MessagePack;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;
 
@@ -154,9 +153,27 @@ internal sealed class ChatIndexer(
     private async IAsyncEnumerable<SourceEntries> ArrangeBufferedEntriesAsync(
         IReadOnlyList<ChatEntry> bufferedEntries,
         IReadOnlyCollection<ChatSlice> tailDocuments,
-        CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        yield break;
+        // TODO: for now we just group buffered messages by three into a document
+        // but in future we want to select document depending on the content
+        var tailEntryIds = tailDocuments
+            .Where(doc => doc.Metadata.ChatEntries.Length < 3)
+            .Take(1)
+            .SelectMany(doc => doc.Metadata.ChatEntries)
+            .Select(e => e.Id);
+        var tailEntries = new List<ChatEntry>(await chatEntryLoader
+            .LoadByIdsAsync(tailEntryIds, cancellationToken)
+            .ConfigureAwait(false));
+        foreach (var entry in bufferedEntries) {
+            tailEntries.Add(entry);
+            if (tailEntries.Count == 3) {
+                yield return new SourceEntries(0, null, [.. tailEntries]);
+                tailEntries.Clear();
+            }
+        }
+
+        yield return new SourceEntries(0, null, tailEntries);
     }
 
     private async Task<IReadOnlyCollection<ChatSlice>> BuildDocumentsAsync(SourceEntries sourceEntries, CancellationToken cancellationToken)
