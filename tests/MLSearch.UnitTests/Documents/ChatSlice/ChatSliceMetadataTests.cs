@@ -27,7 +27,7 @@ public class ChatSliceMetadataTests(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void ValuesCanBeReadAfterInitialization()
     {
-        var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
+        var authors = ImmutableArray.Create(new PrincipalId(UserId.New(), AssumeValid.Option));
         var chatId = new ChatId(Generate.Option);
         var chatEntryId1 = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
         var chatEntryId2 = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
@@ -45,12 +45,12 @@ public class ChatSliceMetadataTests(ITestOutputHelper @out) : TestBase(@out)
         var timestamp = DateTime.Now;
 
         var metadata = new ChatSliceMetadata(
-            [authorId], chatEntries, startOffset, endOffset,
+            authors, chatEntries, startOffset, endOffset,
             replyToEntries, mentions, reactions, attachments,
             true, lang, timestamp
         );
 
-        Assert.Equal([authorId], metadata.Authors);
+        Assert.Equal(authors, metadata.Authors);
         Assert.Equal(chatEntries, metadata.ChatEntries);
         Assert.Equal(startOffset, metadata.StartOffset);
         Assert.Equal(endOffset, metadata.EndOffset);

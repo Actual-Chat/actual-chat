@@ -306,7 +306,7 @@ internal sealed class ClusterSetup(
                                         "type": "object",
                                         "properties": {
                                             "{{chatSliceEntryIdField}}":  { "type": "keyword" },
-                                            "{{chatSliceEntryLocalIdField}}": { "type": "long" }
+                                            "{{chatSliceEntryLocalIdField}}": { "type": "long" },
                                             "{{chatSliceEntryVersionField}}": { "type": "long" }
                                         }
                                     },

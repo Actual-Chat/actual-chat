@@ -81,7 +81,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
             await searchEngine.Ingest(document, CancellationToken.None);
         }
 
-        await Task.Delay(200);
+        await Task.Delay(300);
 
         var query1 = new SearchQuery() {
             Keywords = ["command"],
@@ -121,11 +121,16 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
     [Fact]
     public void ResolvesOfIndexingServicesWorkCorrectly()
     {
+        Assert.NotNull(AppHost.Services.GetService<IChatContentUpdateLoader>());
         Assert.NotNull(AppHost.Services.GetService<ICursorStates<ChatContentCursor>>());
-        Assert.NotNull(AppHost.Services.GetService<ISink<ChatSlice, string>>());
-        Assert.NotNull(AppHost.Services.GetService<IDocumentMapper<SourceEntries, IReadOnlyCollection<ChatSlice>>>());
 
-        var chatEntriesIndexing = AppHost.Services.GetService<IChatContentIndexWorker>();
-        Assert.NotNull(chatEntriesIndexing);
+        Assert.NotNull(AppHost.Services.GetService<IChatIndexTrigger>());
+        Assert.NotNull(AppHost.Services.GetService<IChatContentDocumentLoader>());
+        Assert.NotNull(AppHost.Services.GetService<IChatContentMapper>());
+
+        Assert.NotNull(AppHost.Services.GetService<ISink<ChatSlice, string>>());
+        Assert.NotNull(AppHost.Services.GetService<IChatContentIndexerFactory>());
+
+        Assert.NotNull(AppHost.Services.GetService<IChatContentIndexWorker>());
     }
 }
