@@ -110,11 +110,11 @@
          </FormBlock>
     }
 
-    @if (isOwner && m.EnableChatCopying) {
+    @if (isOwner && m is { EnableChatCopying: true, EnableIncompleteUI: true }) {
         <FormBlock Title="Copy chats">
-            <Button Click="OnCopyChatClick" Class="btn-modal h-10 btn-w-full">
-                <i class="icon-plus text-xl"></i>
-                Copy chat into the place
+            <Button Click="OnCopyChatClick" Class="btn-modal btn-w-full">
+                <Icon><i class="icon-plus text-xl"></i></Icon>
+                <Title>Copy chat into the place</Title>
             </Button>
         </FormBlock>
     }
@@ -212,6 +212,7 @@
             .ToApiArray();
         var welcomeChatId = await Places.GetWelcomeChatId(Session, PlaceId, cancellationToken);
         var link = !welcomeChatId.IsNone ? Links.Chat(welcomeChatId).ToDisplayUrl(Hub.UrlMapper()) : (DisplayUrl?)null;
+        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
         return new() {
             Place = place,
             Link = link,
@@ -219,6 +220,7 @@
             MembersCount = allAuthorIds.Count,
             IsOwner = place.Rules.IsOwner(),
             EnableChatCopying = Hub.AccountUI.OwnAccount.Value.IsAdmin,
+            EnableIncompleteUI = enableIncompleteUI,
         };
     }
 
@@ -307,5 +309,6 @@
         public bool IsOwner { get; init; }
         public bool EnableChatCopying { get; init; }
         public ApiArray<Invite> Invites { get; init; } = ApiArray.New<Invite>();
+        public bool EnableIncompleteUI { get; init; }
     }
 }

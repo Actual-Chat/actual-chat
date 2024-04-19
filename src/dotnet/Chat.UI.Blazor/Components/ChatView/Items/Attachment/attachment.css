@@ -38,16 +38,18 @@
 /* File Attachment */
 .file-attachment {
     @apply gap-x-2;
-    @apply h-12 max-w-80;
-    @apply px-2 py-1;
-    @apply rounded-lg border border-message-hover;
+    @apply max-w-80;
+    @apply p-1 pr-4;
+    @apply rounded-full border border-message-hover;
     @apply bg-01;
 }
 .file-attachment .c-icon {
+    @apply relative;
     @apply flex-none flex items-center justify-center;
     @apply w-10 h-10;
     @apply rounded-full;
-    @apply bg-03;
+    @apply overflow-hidden;
+    @apply bg-cancel;
     @apply text-primary;
 }
 .file-attachment .c-info {

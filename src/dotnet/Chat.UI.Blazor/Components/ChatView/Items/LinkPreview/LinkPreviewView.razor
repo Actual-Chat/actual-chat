@@ -54,7 +54,7 @@
 }
 
 @if (uri != null) {
-    <a class="link-preview @compactCls" href="@(uri.Scheme)://@(uri.Authority)" target="_blank">
+    <a class="link-preview unfocusable @compactCls" href="@(uri.Scheme)://@(uri.Authority)" target="_blank">
         @RenderMedia()
         <div class="c-info">
             @RenderInfo()
