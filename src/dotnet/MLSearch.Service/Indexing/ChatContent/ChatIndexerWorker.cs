@@ -9,7 +9,7 @@ internal sealed class ChatIndexerWorker(
     int flushInterval,
     int maxEventCount,
     IChatUpdateLoader chatUpdateLoader,
-    IChatCursorStates cursorStates,
+    ICursorStates<ChatCursor> cursorStates,
     IChatIndexerFactory indexerFactory,
     ICommander commander
 ) : IChatIndexerWorker
@@ -19,7 +19,7 @@ internal sealed class ChatIndexerWorker(
         var eventCount = 0;
         var chatId = job.Id;
 
-        var cursor = await cursorStates.LoadAsync(chatId, cancellationToken).ConfigureAwait(false);
+        var cursor = await cursorStates.LoadAsync(chatId, cancellationToken).ConfigureAwait(false) ?? new(0, 0);
 
         var indexer = indexerFactory.Create();
         await indexer.InitAsync(cursor, cancellationToken).ConfigureAwait(false);

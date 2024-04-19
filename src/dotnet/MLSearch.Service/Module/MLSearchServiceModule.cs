@@ -72,25 +72,30 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IIndexSettingsSource, IndexSettingsSource>();
         // ChatSlice engine registrations
         services.AddSingleton<ISearchEngine<ChatSlice>>(static services
-            => services.CreateInstanceWith<OpenSearchEngine<ChatSlice>>(IndexNames.ChatSlice));
+            => services.CreateInstanceWith<OpenSearchEngine<ChatSlice>>(IndexNames.ChatContent));
 
         services.AddWorkerPoolDependencies();
 
+        // -- Register indexing common components --
+        services.AddSingleton<IChatUpdateLoader>(static services
+            => services.CreateInstanceWith<ChatUpdateLoader>(
+                100 // the size of a single batch of updates to load from db
+            )
+        );
+        services.AddSingleton<ICursorStates<ChatCursor>>(static services
+            => services.CreateInstanceWith<CursorStates<ChatCursor>>(IndexNames.ChatContentCursor));
+
         // -- Register chat indexer --
-//        const string IndexServiceGroup = "OpenSearch Chat Index";
         fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
 
         services.AddSingleton<IDocumentMapper<SourceEntries, IReadOnlyCollection<ChatSlice>>, ChatSliceMapper>();
-        services.AddSingleton<ICursorStates<ChatCursor>>(static services
-            => services.CreateInstanceWith<CursorStates<ChatCursor>>(IndexNames.ChatSliceCursor));
         services.AddSingleton<ISink<ChatSlice, string>>(static services
-            => services.CreateInstanceWith<Sink<ChatSlice>>(IndexNames.ChatSlice));
+            => services.CreateInstanceWith<Sink<ChatSlice>>(IndexNames.ChatContent));
 
-        services.AddSingleton<IChatCursorStates, ChatCursorStates>();
         services.AddSingleton<IChatIndexerFactory, ChatIndexerFactory>();
         services.AddSingleton<IChatIndexerWorker>(static services
             => services.CreateInstanceWith<ChatIndexerWorker>(
-                100, // the size of a single batch of updates to load from db
+                75,  // a number of updates between flushes
                 5000 // max number of updates to process in a single run
             )
         );

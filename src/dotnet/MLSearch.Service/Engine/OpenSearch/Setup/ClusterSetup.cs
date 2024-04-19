@@ -126,11 +126,11 @@ internal sealed class ClusterSetup(
         // After the initial setup this would never be called again.
         using var _1 = tracing.TraceRegion();
         var settings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
-        var searchIndexId = settings.IntoFullIndexName(IndexNames.ChatSlice);
-        var ingestCursorIndexId = settings.IntoFullIndexName(IndexNames.ChatSliceCursor);
+        var searchIndexId = settings.IntoFullIndexName(IndexNames.ChatContent);
+        var ingestCursorIndexId = settings.IntoFullIndexName(IndexNames.ChatContentCursor);
         var chatsCursorIndexId = settings.IntoFullIndexName(IndexNames.ChatCursor);
 
-        var ingestPipelineId = settings.IntoFullIngestPipelineName(IndexNames.ChatSlice);
+        var ingestPipelineId = settings.IntoFullIngestPipelineName(IndexNames.ChatContent);
         var modelId = settings.ModelId;
         var modelDimension = settings.ModelEmbeddingDimension.ToString("D", CultureInfo.InvariantCulture);
 
@@ -195,7 +195,7 @@ internal sealed class ClusterSetup(
             ).ConfigureAwait(false);
             if (!ingestResult.Success) {
                 throw new InvalidOperationException(
-                    $"Failed to update '{IndexNames.ChatSlice}' ingest pipeline",
+                    $"Failed to update '{IndexNames.ChatContent}' ingest pipeline",
                     ingestResult.OriginalException
                 );
             }
@@ -348,7 +348,7 @@ internal sealed class ClusterSetup(
             ).ConfigureAwait(false);
             if (!searchIndexResult.Success) {
                 throw new InvalidOperationException(
-                    $"Failed to update '{IndexNames.ChatSlice}'search index",
+                    $"Failed to update '{IndexNames.ChatContent}'search index",
                     searchIndexResult.OriginalException
                 );
             }
