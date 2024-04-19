@@ -3,16 +3,16 @@ using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;
 
-internal interface IChatIndexerWorker: IWorker<MLSearch_TriggerChatIndexing>;
+internal interface IChatContentIndexWorker: IWorker<MLSearch_TriggerChatIndexing>;
 
-internal sealed class ChatIndexerWorker(
+internal sealed class ChatContentIndexWorker(
     int flushInterval,
     int maxEventCount,
-    IChatUpdateLoader chatUpdateLoader,
-    ICursorStates<ChatCursor> cursorStates,
-    IChatIndexerFactory indexerFactory,
+    IChatContentUpdateLoader chatUpdateLoader,
+    ICursorStates<ChatContentCursor> cursorStates,
+    IChatContentIndexerFactory indexerFactory,
     ICommander commander
-) : IChatIndexerWorker
+) : IChatContentIndexWorker
 {
     public async Task ExecuteAsync(MLSearch_TriggerChatIndexing job, CancellationToken cancellationToken)
     {
@@ -53,6 +53,6 @@ internal sealed class ChatIndexerWorker(
     }
 
     private IAsyncEnumerable<ChatEntry> GetUpdatedEntriesAsync(
-        ChatId targetId, ChatCursor cursor, CancellationToken cancellationToken)
+        ChatId targetId, ChatContentCursor cursor, CancellationToken cancellationToken)
         => chatUpdateLoader.LoadChatUpdatesAsync(targetId, cursor, cancellationToken);
 }

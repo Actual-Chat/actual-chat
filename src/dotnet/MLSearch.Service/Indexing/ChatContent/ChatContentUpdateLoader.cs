@@ -2,18 +2,18 @@ using ActualChat.Chat;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;
 
-internal interface IChatUpdateLoader
+internal interface IChatContentUpdateLoader
 {
-    IAsyncEnumerable<ChatEntry> LoadChatUpdatesAsync(ChatId targetId, ChatCursor cursor, CancellationToken cancellationToken);
+    IAsyncEnumerable<ChatEntry> LoadChatUpdatesAsync(ChatId targetId, ChatContentCursor cursor, CancellationToken cancellationToken);
 }
 
-internal class ChatUpdateLoader(
+internal class ChatContentUpdateLoader(
     int batchSize,
     IChatsBackend chats
-) : IChatUpdateLoader
+) : IChatContentUpdateLoader
 {
     public async IAsyncEnumerable<ChatEntry> LoadChatUpdatesAsync(
-        ChatId targetId, ChatCursor cursor, [EnumeratorCancellation] CancellationToken cancellationToken)
+        ChatId targetId, ChatContentCursor cursor, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         bool continueProcessing;
         var (lastEntryVersion, lastEntryLocalId) = (cursor.LastEntryVersion, cursor.LastEntryLocalId);

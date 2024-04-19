@@ -3,18 +3,18 @@ using ActualChat.MLSearch.Engine;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;
 
-internal interface IDocumentLoader
+internal interface IChatContentDocumentLoader
 {
-    Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(ChatCursor cursor, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(ChatContentCursor cursor, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<ChatSlice>> LoadByEntryIdsAsync(
         IEnumerable<ChatEntryId> entryIds,
         CancellationToken cancellationToken);
 }
 
-internal class DocumentLoader(ISearchEngine<ChatSlice> searchEngine): IDocumentLoader
+internal class ChatContentDocumentLoader(ISearchEngine<ChatSlice> searchEngine): IChatContentDocumentLoader
 {
-    public async Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(ChatCursor cursor, CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(ChatContentCursor cursor, CancellationToken cancellationToken)
     {
         const string chatEntryLocalIdField =
             $"{nameof(ChatSlice.Metadata)}.{nameof(ChatSliceMetadata.ChatEntries)}.{nameof(ChatSliceEntry.LocalId)}";

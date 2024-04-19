@@ -76,32 +76,31 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddWorkerPoolDependencies();
 
         // -- Register indexing common components --
-        services.AddSingleton<IChatUpdateLoader>(static services
-            => services.CreateInstanceWith<ChatUpdateLoader>(
+        services.AddSingleton<IChatContentUpdateLoader>(static services
+            => services.CreateInstanceWith<ChatContentUpdateLoader>(
                 100 // the size of a single batch of updates to load from db
             )
         );
-        services.AddSingleton<ICursorStates<ChatCursor>>(static services
-            => services.CreateInstanceWith<CursorStates<ChatCursor>>(IndexNames.ChatContentCursor));
+        services.AddSingleton<ICursorStates<ChatContentCursor>>(static services
+            => services.CreateInstanceWith<CursorStates<ChatContentCursor>>(IndexNames.ChatContentCursor));
 
         // -- Register chat indexer --
         fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
 
-        services.AddSingleton<IChatEntryLoader, ChatEntryLoader>();
-        services.AddSingleton<IDocumentLoader, DocumentLoader>();
+        services.AddSingleton<IChatContentDocumentLoader, ChatContentDocumentLoader>();
         services.AddSingleton<IChatContentMapper, ChatContentMapper>();
 
         services.AddSingleton<ISink<ChatSlice, string>>(static services
             => services.CreateInstanceWith<Sink<ChatSlice>>(IndexNames.ChatContent));
 
-        services.AddSingleton<IChatIndexerFactory, ChatIndexerFactory>();
-        services.AddSingleton<IChatIndexerWorker>(static services
-            => services.CreateInstanceWith<ChatIndexerWorker>(
+        services.AddSingleton<IChatContentIndexerFactory, ChatContentIndexerFactory>();
+        services.AddSingleton<IChatContentIndexWorker>(static services
+            => services.CreateInstanceWith<ChatContentIndexWorker>(
                 75,  // a number of updates between flushes
                 5000 // max number of updates to process in a single run
             )
         );
-        services.AddWorkerPool<IChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>(
+        services.AddWorkerPool<IChatContentIndexWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>(
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
 

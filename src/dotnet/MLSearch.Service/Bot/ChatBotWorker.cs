@@ -8,8 +8,8 @@ namespace ActualChat.MLSearch.Bot;
 internal interface IChatBotWorker: IWorker<MLSearch_TriggerContinueConversationWithBot>;
 
 internal sealed class ChatBotWorker(
-    ICursorStates<ChatCursor> cursorStates,
-    IChatUpdateLoader chatUpdateLoader,
+    ICursorStates<ChatContentCursor> cursorStates,
+    IChatContentUpdateLoader chatUpdateLoader,
     IBotConversationHandler sink
 ) : IChatBotWorker
 {
@@ -29,7 +29,7 @@ internal sealed class ChatBotWorker(
             else {
                 updatedEntries.Add(entry);
             }
-            if (new ChatCursor(entry) is var entryCursor && entryCursor > nextCursor) {
+            if (new ChatContentCursor(entry) is var entryCursor && entryCursor > nextCursor) {
                 nextCursor = entryCursor;
             }
         }
@@ -39,6 +39,6 @@ internal sealed class ChatBotWorker(
     }
 
     private IAsyncEnumerable<ChatEntry> GetUpdatedEntriesAsync(
-        ChatId targetId, ChatCursor cursor, CancellationToken cancellationToken)
+        ChatId targetId, ChatContentCursor cursor, CancellationToken cancellationToken)
         => chatUpdateLoader.LoadChatUpdatesAsync(targetId, cursor, cancellationToken);
 }

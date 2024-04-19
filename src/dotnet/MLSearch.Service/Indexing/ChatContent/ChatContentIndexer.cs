@@ -3,19 +3,19 @@ using ActualChat.MLSearch.Documents;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;
 
-internal interface IChatIndexer
+internal interface IChatContentIndexer
 {
-    Task InitAsync(ChatCursor cursor, CancellationToken cancellationToken);
+    Task InitAsync(ChatContentCursor cursor, CancellationToken cancellationToken);
     ValueTask ApplyAsync(ChatEntry entry, CancellationToken cancellationToken);
-    Task<ChatCursor> FlushAsync(CancellationToken cancellationToken);
+    Task<ChatContentCursor> FlushAsync(CancellationToken cancellationToken);
 }
 
-internal sealed class ChatIndexer(
-    IChatEntryLoader chatEntryLoader,
-    IDocumentLoader documentLoader,
+internal sealed class ChatContentIndexer(
+    IChatsBackend chatsBackend,
+    IChatContentDocumentLoader documentLoader,
     IChatContentMapper documentMapper,
     ISink<ChatSlice, string> sink
-) : IChatIndexer
+) : IChatContentIndexer
 {
     private enum ChatEventType
     {
@@ -26,8 +26,8 @@ internal sealed class ChatIndexer(
     }
 
     private const int MaxTailSetSize = 5;
-    private ChatCursor _cursor = new(0, 0);
-    private ChatCursor _nextCursor = new(0, 0);
+    private ChatContentCursor _cursor = new(0, 0);
+    private ChatContentCursor _nextCursor = new(0, 0);
 
     private readonly Dictionary<string, ChatSlice> _tailDocs = new(StringComparer.Ordinal);
 
@@ -35,7 +35,7 @@ internal sealed class ChatIndexer(
     private readonly Dictionary<string, ChatSlice> _outUpdates = new(StringComparer.Ordinal);
     private readonly HashSet<string> _outRemoves = new(StringComparer.Ordinal);
 
-    public async Task InitAsync(ChatCursor cursor, CancellationToken cancellationToken)
+    public async Task InitAsync(ChatContentCursor cursor, CancellationToken cancellationToken)
     {
         _cursor = cursor;
         var tailDocuments = await documentLoader.LoadTailAsync(cursor, cancellationToken).ConfigureAwait(false);
@@ -88,11 +88,11 @@ internal sealed class ChatIndexer(
                 }
             }
             // Update next cursor value
-            _nextCursor = new ChatCursor(entry);
+            _nextCursor = new ChatContentCursor(entry);
         }
     }
 
-    public async Task<ChatCursor> FlushAsync(CancellationToken cancellationToken)
+    public async Task<ChatContentCursor> FlushAsync(CancellationToken cancellationToken)
     {
         // Process buffer & tail
         await foreach (var entrySet in ArrangeBufferedEntriesAsync(_buffer, _tailDocs.Values, cancellationToken).ConfigureAwait(false)) {
@@ -124,7 +124,7 @@ internal sealed class ChatIndexer(
         _outUpdates.Clear();
         _outRemoves.Clear();
         // Update cursor value
-        _cursor = _nextCursor = _buffer.Select(e => new ChatCursor(e)).Append(_nextCursor).Max()!;
+        _cursor = _nextCursor = _buffer.Select(e => new ChatContentCursor(e)).Append(_nextCursor).Max()!;
         return _cursor;
     }
 
@@ -140,9 +140,8 @@ internal sealed class ChatIndexer(
             .Take(1)
             .SelectMany(doc => doc.Metadata.ChatEntries)
             .Select(e => e.Id);
-        var tailEntries = new List<ChatEntry>(await chatEntryLoader
-            .LoadByIdsAsync(tailEntryIds, cancellationToken)
-            .ConfigureAwait(false));
+        var tailEntries = new List<ChatEntry>(
+            await LoadByIdsAsync(tailEntryIds, cancellationToken).ConfigureAwait(false));
         foreach (var entry in bufferedEntries) {
             tailEntries.Add(entry);
             if (tailEntries.Count == 3) {
@@ -154,6 +153,10 @@ internal sealed class ChatIndexer(
         yield return new SourceEntries(0, null, tailEntries);
     }
 
+    private async Task<IReadOnlyList<ChatEntry>> LoadByIdsAsync(
+        IEnumerable<ChatEntryId> entryIds,
+        CancellationToken cancellationToken) => await chatsBackend.GetEntries(entryIds, true, cancellationToken).ConfigureAwait(false);
+
     private async Task<IReadOnlyCollection<ChatSlice>> BuildDocumentsAsync(SourceEntries sourceEntries, CancellationToken cancellationToken)
         => await documentMapper.MapAsync(sourceEntries, cancellationToken).ConfigureAwait(false);
 
@@ -162,8 +165,7 @@ internal sealed class ChatIndexer(
         var docs = new List<ChatSlice>(associatedDocuments);
         docs.Sort(CompareSlices);
 
-        var entries = await chatEntryLoader
-            .LoadByIdsAsync(docs.SelectMany(doc => doc.Metadata.ChatEntries).Select(e => e.Id), cancellationToken)
+        var entries = await LoadByIdsAsync(docs.SelectMany(doc => doc.Metadata.ChatEntries).Select(e => e.Id), cancellationToken)
             .ConfigureAwait(false);
 
         return new SourceEntries(docs[0].Metadata.StartOffset ?? 0, docs[docs.Count-1].Metadata.EndOffset, entries);
