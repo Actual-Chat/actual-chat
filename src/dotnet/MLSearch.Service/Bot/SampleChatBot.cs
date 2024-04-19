@@ -12,7 +12,7 @@ internal class SampleChatBot(ICommander commander, IChatsBackend chats, ISearchE
     protected virtual string NotFoundMessage()
         => "Was not able to find anything";
 
-    public async Task ExecuteAsync(IEnumerable<ChatEntry>? updatedDocuments, IEnumerable<string>? deletedDocuments, CancellationToken cancellationToken) {
+    public async Task ExecuteAsync(IEnumerable<ChatEntry>? updatedDocuments, IEnumerable<ChatEntryId>? deletedDocuments, CancellationToken cancellationToken) {
 
         if (updatedDocuments == null) {
             return;

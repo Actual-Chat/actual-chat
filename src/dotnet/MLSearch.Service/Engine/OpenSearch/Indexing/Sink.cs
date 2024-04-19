@@ -24,7 +24,7 @@ internal sealed class Sink<TDocument>(
     IOpenSearchClient client,
     IIndexSettingsSource indexSettingsSource,
     ILogger<Sink<TDocument>> log
-) : ISink<TDocument>
+) : ISink<TDocument, string>
     where TDocument: class, IHasId<string>
 {
     private IndexSettings? _indexSettings;

@@ -84,7 +84,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IDocumentMapper<ChatSlice, string, ChatSlice>, TrivialMapper<ChatSlice>>();
         services.AddSingleton<ICursorStates<ChatEntryCursor>>(static services
             => services.CreateInstanceWith<CursorStates<ChatEntryCursor>>(IndexNames.ChatSliceCursor));
-        services.AddSingleton<ISink<ChatSlice>>(static services
+        services.AddSingleton<ISink<ChatSlice, string>>(static services
             => services.CreateInstanceWith<Sink<ChatSlice>>(IndexNames.ChatSlice));
 
         services.AddSingleton<IChatEntryCursorStates, ChatEntryCursorStates>();

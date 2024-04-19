@@ -17,7 +17,7 @@ internal sealed class ChatIndexer(
     IDocumentLoader documentLoader,
     IMarkupParser markupParser,
     IReactionsBackend reactionsBackend,
-    ISink<ChatSlice> sink
+    ISink<ChatSlice, string> sink
 ) : IChatIndexer
 {
     private const int MaxTailSetSize = 5;
