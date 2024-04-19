@@ -47,7 +47,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         entryLinkPreview.Title.Should().Be("Title 1");
         entryLinkPreview.Description.Should().Be("Description 1");
         entryLinkPreview.PreviewMedia.Should().NotBeNull();
-        var linkPreview = await ComputedTestExt.When(AppHost.Services, ct => Previews.Get(id1, ct).Require());
+        var linkPreview = await ComputedTest.When(ct => Previews.Get(id1, ct).Require());
         linkPreview.Should().BeEquivalentTo(entryLinkPreview);
 
         // act
@@ -59,7 +59,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         updatedEntryLinkPreview.Title.Should().Be("Title 2");
         updatedEntryLinkPreview.Description.Should().Be("Description 2");
         updatedEntryLinkPreview.PreviewMedia.Should().NotBeNull().And.NotBe(linkPreview.PreviewMedia);
-        linkPreview = await ComputedTestExt.When(AppHost.Services, ct => Previews.Get(id2, ct).Require());
+        linkPreview = await ComputedTest.When(ct => Previews.Get(id2, ct).Require());
         linkPreview.Should().BeEquivalentTo(updatedEntryLinkPreview);
 
         // act
