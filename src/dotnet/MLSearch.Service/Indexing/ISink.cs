@@ -1,9 +1,9 @@
 namespace ActualChat.MLSearch.Indexing;
 
-internal interface ISink<in TUpdated, in TDeleted>
+internal interface ISink<TDocument>
 {
     Task ExecuteAsync(
-        IEnumerable<TUpdated>? updatedDocuments,
-        IEnumerable<TDeleted>? deletedDocuments,
+        IEnumerable<TDocument>? updatedDocuments,
+        IEnumerable<string>? deletedDocuments,
         CancellationToken cancellationToken);
 }

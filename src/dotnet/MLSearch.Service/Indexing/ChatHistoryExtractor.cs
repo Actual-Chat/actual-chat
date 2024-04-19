@@ -3,7 +3,7 @@ using ActualChat.Chat;
 namespace ActualChat.MLSearch.Indexing;
 
 internal sealed class ChatHistoryExtractor (
-    ISink<ChatEntry, ChatEntry> sink,
+    ISink<ChatEntry> sink,
     IChatsBackend chats,
     ICursorStates<ChatHistoryExtractor.Cursor> cursorStates
 ): IDataIndexer<ChatId>
@@ -34,7 +34,7 @@ internal sealed class ChatHistoryExtractor (
             // This is a simple logic to determine the end of changes currently available.
             return new DataIndexerResult(IsEndReached: true);
         }
-        await sink.ExecuteAsync(creates.Concat(updates), deletes, cancellationToken)
+        await sink.ExecuteAsync(creates.Concat(updates), null, cancellationToken)
             .ConfigureAwait(false);
         var next = new Cursor(lastTouchedEntry.LocalId, lastTouchedEntry.Version);
         await cursorStates.Save(IdOf(chatId), next, cancellationToken).ConfigureAwait(false);

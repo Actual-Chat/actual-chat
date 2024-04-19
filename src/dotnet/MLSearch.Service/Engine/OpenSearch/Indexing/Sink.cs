@@ -19,13 +19,12 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 // - All deletes MUST NOT fail if document was already
 //   deleted.
 
-internal sealed class Sink<TSource, TSourceId, TDocument>(
+internal sealed class Sink<TDocument>(
     string docIndexName,
     IOpenSearchClient client,
     IIndexSettingsSource indexSettingsSource,
-    IDocumentMapper<TSource, TSourceId, TDocument> mapper,
-    ILogger<Sink<TSource, TSourceId, TDocument>> log
-) : ISink<TSource, TSourceId>
+    ILogger<Sink<TDocument>> log
+) : ISink<TDocument>
     where TDocument: class, IHasId<string>
 {
     private IndexSettings? _indexSettings;
@@ -34,24 +33,21 @@ internal sealed class Sink<TSource, TSourceId, TDocument>(
     private IOpenSearchClient OpenSearch => client;
 
     public async Task ExecuteAsync(
-        IEnumerable<TSource>? updatedDocuments,
-        IEnumerable<TSourceId>? deletedDocuments,
+        IEnumerable<TDocument>? updatedDocuments,
+        IEnumerable<string>? deletedDocuments,
         CancellationToken cancellationToken)
     {
-        var updates = updatedDocuments?.Select(mapper.Map) ?? Enumerable.Empty<TDocument>();
-        var deletes = deletedDocuments?.Select(doc => new Id(mapper.MapId(doc))) ?? Enumerable.Empty<Id>();
-
         var result = await OpenSearch
             .BulkAsync(r => r
                     .IndexMany(
-                        updates,
+                        updatedDocuments,
                         (op, document) =>
                             op
                                 .Pipeline(IndexSettings.IngestPipelineId)
                                 .Index(IndexSettings.IndexName)
                                 .Id(document.Id)
                     )
-                    .DeleteMany(deletes, (op, _) => op.Index(IndexSettings.IndexName)),
+                    .DeleteMany(deletedDocuments, (op, _) => op.Index(IndexSettings.IndexName)),
                 cancellationToken
             ).ConfigureAwait(false);
         log.LogErrors(result);
