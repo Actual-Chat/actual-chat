@@ -25,8 +25,8 @@ internal sealed class ChatIndexer(
     private ChatEntryCursor _nextCursor = new(0, 0);
 
     private readonly Dictionary<string, ChatSlice> _tailDocs = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, ChatSlice> _docs = new(StringComparer.Ordinal);
-    private readonly Dictionary<ChatEntryId, List<ChatSlice>> _docsByEntry = [];
+    // private readonly Dictionary<string, ChatSlice> _docs = new(StringComparer.Ordinal);
+    // private readonly Dictionary<ChatEntryId, List<ChatSlice>> _docsByEntry = [];
 
     private readonly List<ChatEntry> _buffer = [];
     private readonly Dictionary<string, ChatSlice> _outUpdates = new(StringComparer.Ordinal);
@@ -37,9 +37,9 @@ internal sealed class ChatIndexer(
         _cursor = cursor;
         var tailDocuments = await documentLoader.LoadTailAsync(cancellationToken).ConfigureAwait(false);
         foreach (var document in tailDocuments) {
-            _docs.Add(document.Id, document);
+//            _docs.Add(document.Id, document);
             _tailDocs.Add(document.Id, document);
-            FillDocumentLookup(document);
+//            FillDocumentLookup(document);
         }
     }
 
@@ -75,7 +75,7 @@ internal sealed class ChatIndexer(
                 var isDeleted = !newDocuments.Any(newDoc => newDoc.Id.Equals(docId, StringComparison.Ordinal));
                 if (isDeleted) {
                     _tailDocs.Remove(docId);
-                    _docs.Remove(docId);
+                    // _docs.Remove(docId);
                     _outUpdates.Remove(docId);
                     _outRemoves.Add(docId);
                 }
@@ -83,7 +83,7 @@ internal sealed class ChatIndexer(
             // Add new documents to output buffer and update caches
             foreach (var newDoc in newDocuments) {
                 _outUpdates[newDoc.Id] = newDoc;
-                _docs[newDoc.Id] = newDoc;
+                // _docs[newDoc.Id] = newDoc;
                 if (_tailDocs.ContainsKey(newDoc.Id)) {
                     _tailDocs[newDoc.Id] = newDoc;
                 }
@@ -121,14 +121,14 @@ internal sealed class ChatIndexer(
         foreach (var (tailDoc, _) in tailSet.UnorderedItems) {
             _tailDocs.Add(tailDoc.Id, tailDoc);
         }
-        // Reset document cache
-        _docs.Clear();
-        _docs.AddRange(_tailDocs);
-        // Reset document lookup
-        _docsByEntry.Clear();
-        foreach (var doc in _docs.Values) {
-            FillDocumentLookup(doc);
-        }
+        // // Reset document cache
+        // _docs.Clear();
+        // _docs.AddRange(_tailDocs);
+        // // Reset document lookup
+        // _docsByEntry.Clear();
+        // foreach (var doc in _docs.Values) {
+        //     FillDocumentLookup(doc);
+        // }
         // Clear output buffers
         _outUpdates.Clear();
         _outRemoves.Clear();
@@ -139,13 +139,13 @@ internal sealed class ChatIndexer(
 
     private void FillDocumentLookup(ChatSlice document)
     {
-        foreach (var (entryId, _) in document.Metadata.ChatEntries) {
-            if (!_docsByEntry.TryGetValue(entryId, out var entryDocs)) {
-                entryDocs = [];
-                _docsByEntry.Add(entryId, entryDocs);
-            }
-            entryDocs.Add(document);
-        }
+        // foreach (var (entryId, _) in document.Metadata.ChatEntries) {
+        //     if (!_docsByEntry.TryGetValue(entryId, out var entryDocs)) {
+        //         entryDocs = [];
+        //         _docsByEntry.Add(entryId, entryDocs);
+        //     }
+        //     entryDocs.Add(document);
+        // }
     }
 
     private async IAsyncEnumerable<SourceEntries> ArrangeBufferedEntriesAsync(
@@ -168,39 +168,41 @@ internal sealed class ChatIndexer(
 
     private async Task<IReadOnlyCollection<ChatSlice>> LookupDocumentsAsync(ChatEntry entry, CancellationToken cancellationToken)
     {
-        if (!_docsByEntry.TryGetValue(entry.Id, out var entryDocs) || !IsEntryCovered(entry, entryDocs)) {
-            var newEntryDocs = await documentLoader.LoadByEntryIdsAsync([entry.Id], cancellationToken).ConfigureAwait(false);
-            foreach (var doc in entryDocs ?? []) {
-
-            }
-            entryDocs = [.. newEntryDocs];
-            _docsByEntry[entry.Id] = entryDocs;
-        }
+        var entryDocs = await documentLoader.LoadByEntryIdsAsync([entry.Id], cancellationToken).ConfigureAwait(false);
         return entryDocs;
+        // if (!_docsByEntry.TryGetValue(entry.Id, out var entryDocs) || !IsEntryCovered(entry, entryDocs)) {
+        //     var newEntryDocs = await documentLoader.LoadByEntryIdsAsync([entry.Id], cancellationToken).ConfigureAwait(false);
+        //     foreach (var doc in entryDocs ?? []) {
+
+        //     }
+        //     entryDocs = [.. newEntryDocs];
+        //     _docsByEntry[entry.Id] = entryDocs;
+        // }
+        // return entryDocs;
     }
 
-    private static bool IsEntryCovered(ChatEntry entry, List<ChatSlice> entryDocs)
-    {
-        var textLen = entry.Content.Length;
-        var intervals = new List<(int Start, int End)>(entryDocs.Count);
-        foreach (var doc in entryDocs) {
-            var docEntries = doc.Metadata.ChatEntries;
-            for (int i = 0, len = docEntries.Length; i < len; i++) {
-                if (docEntries[i].Id != entry.Id) {
-                    continue;
-                }
-                var (isFirst, isLast) = (i == 0, i == len-1);
-                var start = (isFirst ? doc.Metadata.StartOffset : null) ?? 0;
-                var end = (isLast ? doc.Metadata.EndOffset : null) ?? textLen;
-                intervals.Add((start, end));
-            }
-        }
+    // private static bool IsEntryCovered(ChatEntry entry, List<ChatSlice> entryDocs)
+    // {
+    //     var textLen = entry.Content.Length;
+    //     var intervals = new List<(int Start, int End)>(entryDocs.Count);
+    //     foreach (var doc in entryDocs) {
+    //         var docEntries = doc.Metadata.ChatEntries;
+    //         for (int i = 0, len = docEntries.Length; i < len; i++) {
+    //             if (docEntries[i].Id != entry.Id) {
+    //                 continue;
+    //             }
+    //             var (isFirst, isLast) = (i == 0, i == len-1);
+    //             var start = (isFirst ? doc.Metadata.StartOffset : null) ?? 0;
+    //             var end = (isLast ? doc.Metadata.EndOffset : null) ?? textLen;
+    //             intervals.Add((start, end));
+    //         }
+    //     }
 
-        intervals.Sort();
-        var count = intervals.Count;
-        return count > 0
-            && intervals[0].Start==0
-            && intervals[count-1].End==textLen
-            && intervals.Zip(intervals.Skip(1)).All(args => { var (a, b) = args; return a.End == b.Start; });
-    }
+    //     intervals.Sort();
+    //     var count = intervals.Count;
+    //     return count > 0
+    //         && intervals[0].Start==0
+    //         && intervals[count-1].End==textLen
+    //         && intervals.Zip(intervals.Skip(1)).All(args => { var (a, b) = args; return a.End == b.Start; });
+    // }
 }

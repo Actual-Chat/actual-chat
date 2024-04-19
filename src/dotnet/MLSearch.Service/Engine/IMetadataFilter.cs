@@ -6,6 +6,13 @@ internal interface IMetadataFilter
     void Apply(IQueryBuilder queryBuilder);
 }
 
+internal sealed class OrFilter(IEnumerable<IMetadataFilter> filters) : IMetadataFilter
+{
+    public IEnumerable<IMetadataFilter> Filters { get; } = filters;
+
+    public void Apply(IQueryBuilder queryBuilder) => queryBuilder.ApplyOrFilter(this);
+}
+
 internal sealed class EqualityFilter<TValue>(string fieldName, TValue value) : IMetadataFilter
 {
     public string FieldName { get; } = fieldName;
