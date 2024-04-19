@@ -16,6 +16,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
     private readonly TaskCompletionSource _whenEnabledSource = TaskCompletionSourceExt.New();
 
     private IChats Chats => Hub.Chats;
+    private IContacts Contacts => Hub.Contacts;
     private ChatActivity ChatActivity => Hub.ChatActivity;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private AudioInitializer AudioInitializer => Hub.AudioInitializer;
@@ -76,14 +77,20 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
     {
         var result = new List<ChatId>();
         await Hub.ChatUI.WhenLoaded.ConfigureAwait(false);
-        var contacts = await Hub.Contacts.ListContacts(Session, cancellationToken).ConfigureAwait(false);
-        foreach (var chatId in contacts.Select(contact => contact.ChatId)) {
-            var userChatSettings = await AccountSettings
-                .GetUserChatSettings(chatId, cancellationToken)
-                .ConfigureAwait(false);
-            var listeningMode = userChatSettings.ListeningMode;
-            if (listeningMode == ListeningMode.KeepListening)
-                result.Add(chatId);
+        // NOTE(DF) Naive and potentially expensive implementation.
+        // AK please check how to improve it.
+        var placeIds = new List<PlaceId> { PlaceId.None /* Group chats */ };
+        placeIds.AddRange(await Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false));
+        foreach (var placeId in placeIds) {
+            var contacts = await Contacts.ListContacts(Session, placeId, cancellationToken).ConfigureAwait(false);
+            foreach (var chatId in contacts.Select(contact => contact.ChatId)) {
+                var userChatSettings = await AccountSettings
+                    .GetUserChatSettings(chatId, cancellationToken)
+                    .ConfigureAwait(false);
+                var listeningMode = userChatSettings.ListeningMode;
+                if (listeningMode == ListeningMode.KeepListening)
+                    result.Add(chatId);
+            }
         }
         return result;
     }

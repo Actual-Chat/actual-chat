@@ -160,7 +160,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         // pre-assert wait
         await services.Queues().WhenProcessing();
         await ComputedTestExt.When(services, async ct => {
-            var chats = (await (await contacts.ListIds(session, ct))
+            var chats = (await (await contacts.ListIds(session, PlaceId.None, ct))
                 .Select(x => chatsBackend.Get(x.ChatId, ct))
                 .Collect())
                 .SkipNullItems()

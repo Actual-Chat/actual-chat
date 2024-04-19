@@ -70,7 +70,9 @@ public class AppNonScopedServiceStarter
                 var ownAccountTask = accounts.GetOwn(session, cancellationToken);
 
                 // Start preloading top contacts
-                var contactIdsTask = contacts.ListIds(session, cancellationToken);
+                // NOTE(DF): I doubt that it makes sense to run preload contacts here now,
+                // because we don't know selected place yet.
+                var contactIdsTask = contacts.ListIds(session, PlaceId.None, cancellationToken);
                 var contactIds = await contactIdsTask.ConfigureAwait(false);
                 foreach (var contactId in contactIds.Take(Constants.Contacts.MinLoadLimit))
                     _ = contacts.Get(session, contactId, cancellationToken);
