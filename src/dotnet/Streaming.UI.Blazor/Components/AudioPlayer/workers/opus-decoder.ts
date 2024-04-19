@@ -113,6 +113,8 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         try {
             if (item === 'end') {
                 debugLog?.log(`#${this.streamId}.process: got 'end'`, this.mustAbort);
+                await this.systemDecoder?.flush();
+
                 void this.feederWorklet.end(this.mustAbort, rpcNoWait);
                 return true;
             }
