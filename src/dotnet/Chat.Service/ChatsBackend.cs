@@ -510,8 +510,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         int limit,
         CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
 
         return await dbContext.ChatEntries.Where(x
                 => x.ChatId == chatId.Value

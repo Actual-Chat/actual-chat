@@ -85,7 +85,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             => services.CreateInstanceWith<CursorStates<ChatContentCursor>>(IndexNames.ChatContentCursor));
 
         // -- Register chat indexer --
-        fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
+        rpcHost.AddBackend<IChatIndexTrigger, ChatIndexTrigger>();
 
         services.AddSingleton<IChatContentDocumentLoader, ChatContentDocumentLoader>();
         services.AddSingleton<IChatContentMapper, ChatContentMapper>();

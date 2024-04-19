@@ -14,7 +14,6 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 internal sealed class ClusterSetup(
     OpenSearchModelGroupName modelGroupName,
     IOpenSearchClient openSearch,
-    ILogger<ClusterSetup> log,
     ITracerSource? tracing
     ) : IModuleInitializer
 {
