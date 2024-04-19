@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using ActualChat.Chat;
 using ActualChat.Chat.Events;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
@@ -88,7 +87,10 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // -- Register chat indexer --
         fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
 
-        services.AddSingleton<IDocumentMapper<SourceEntries, IReadOnlyCollection<ChatSlice>>, ChatSliceMapper>();
+        services.AddSingleton<IChatEntryLoader, ChatEntryLoader>();
+        services.AddSingleton<IDocumentLoader, DocumentLoader>();
+        services.AddSingleton<IChatContentMapper, ChatContentMapper>();
+
         services.AddSingleton<ISink<ChatSlice, string>>(static services
             => services.CreateInstanceWith<Sink<ChatSlice>>(IndexNames.ChatContent));
 

@@ -5,10 +5,12 @@ using ActualChat.MLSearch.Documents;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;
 
-internal class ChatSliceMapper(
+internal interface IChatContentMapper: IDocumentMapper<SourceEntries, IReadOnlyCollection<ChatSlice>>;
+
+internal class ChatContentMapper(
     IMarkupParser markupParser,
     IReactionsBackend reactionsBackend
-) : IDocumentMapper<SourceEntries, IReadOnlyCollection<ChatSlice>>
+) : IChatContentMapper
 {
     public async ValueTask<IReadOnlyCollection<ChatSlice>> MapAsync(SourceEntries sourceEntries, CancellationToken cancellationToken = default)
     {

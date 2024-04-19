@@ -1,6 +1,5 @@
 using ActualChat.Chat;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
-using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Indexing.ChatContent;
 
@@ -42,5 +41,4 @@ internal sealed class ChatBotWorker(
     private IAsyncEnumerable<ChatEntry> GetUpdatedEntriesAsync(
         ChatId targetId, ChatCursor cursor, CancellationToken cancellationToken)
         => chatUpdateLoader.LoadChatUpdatesAsync(targetId, cursor, cancellationToken);
-
 }

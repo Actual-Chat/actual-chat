@@ -13,7 +13,7 @@ internal interface IChatIndexer
 internal sealed class ChatIndexer(
     IChatEntryLoader chatEntryLoader,
     IDocumentLoader documentLoader,
-    IDocumentMapper<SourceEntries, IReadOnlyCollection<ChatSlice>> documentMapper,
+    IChatContentMapper documentMapper,
     ISink<ChatSlice, string> sink
 ) : IChatIndexer
 {
