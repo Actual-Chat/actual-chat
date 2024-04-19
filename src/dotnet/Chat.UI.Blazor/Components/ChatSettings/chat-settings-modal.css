@@ -127,3 +127,21 @@
     @apply text-caption-2 font-normal text-03;
     @apply whitespace-normal;
 }
+
+.copy-chat-to-place-modal .c-chat-list {
+    @apply flex-y justify-center gap-y-1;
+}
+.copy-chat-to-place-modal .c-chat-list .c-chat {
+    @apply flex-x items-center gap-x-2;
+    @apply px-2 py-1;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+}
+.copy-chat-to-place-modal .c-chat-list .c-chat .c-chat-title {
+    @apply line-clamp-1;
+    @apply text-headline-1 text-01;
+}
+body.hoverable .copy-chat-to-place-modal .c-chat-list .c-chat:hover {
+    @apply bg-hover;
+    @apply cursor-pointer;
+}

@@ -4,19 +4,19 @@
     var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
 }
 
-<div class="file-attachment">
-    <a class="c-icon" href="@url" target="_blank" role="button">
+<a class="file-attachment unfocusable" href="@url" target="_blank" role="button">
+    <div class="c-icon">
         <i class="icon-download text-xl"></i>
-    </a>
+    </div>
     <div class="c-info">
         <div class="c-title">
-            <a href="@url" target="_blank" role="button">@Attachment.Media.FileName</a>
+            <span>@Attachment.Media.FileName</span>
         </div>
         <div class="c-size">
             <span>@fileSize.ToString("N2") MB</span>
         </div>
     </div>
-</div>
+</a>
 
 @code {
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
