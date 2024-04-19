@@ -13,7 +13,7 @@ public abstract class AppClientComputedCache : BatchingKvas, IClientComputedCach
 {
     public new record Options : BatchingKvas.Options
     {
-        public string Version { get; init; } = Constants.Api.Version;
+        public string Version { get; init; } = Constants.Api.StringVersion;
         public ImmutableHashSet<(Symbol, Symbol)> ForceFlushFor { get; init; } =
             ImmutableHashSet<(Symbol, Symbol)>.Empty.Add((nameof(IAccounts), nameof(IAccounts.GetOwn)));
     }

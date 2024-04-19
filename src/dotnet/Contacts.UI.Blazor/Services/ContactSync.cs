@@ -84,7 +84,7 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
 
     private async Task<List<ExternalContactChange>> DetectChanges(ApiArray<ExternalContactFull> deviceContacts, CancellationToken cancellationToken)
     {
-        var existingContacts = await ExternalContacts.List2(Session, DeviceContacts.DeviceId, cancellationToken).ConfigureAwait(false);
+        var existingContacts = await ExternalContacts.List(Session, DeviceContacts.DeviceId, cancellationToken).ConfigureAwait(false);
         var existingMap = existingContacts.ToDictionary(x => x.Id);
         var toAdd = deviceContacts.Where(x => !existingMap.ContainsKey(x.Id)).ToList();
         var toRemove = existingMap.Keys.Except(deviceContacts.Select(x => x.Id)).ToList();

@@ -298,8 +298,10 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         contacts.Should().BeEmpty("no matching phones or emails");
     }
 
+    // Private methods
+
     private Task<ApiArray<ExternalContact>> List(Symbol deviceId)
-        => _externalContacts.List2(_tester.Session, deviceId, CancellationToken.None);
+        => _externalContacts.List(_tester.Session, deviceId, CancellationToken.None);
 
     private async Task Add(params ExternalContactFull[] externalContacts)
     {
@@ -331,7 +333,6 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var ids = await _contacts.ListIds(_tester.Session, cancellationToken);
         return ids.Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
     }
-
 
     private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
         => new (new ExternalContactId(new UserDeviceId(owner.Id, ownerDeviceId), NewDeviceContactId()));

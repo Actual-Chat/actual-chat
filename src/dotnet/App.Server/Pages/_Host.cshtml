@@ -273,13 +273,14 @@
         <script src="_framework/blazor.webassembly@(blazorScriptSuffix).js" autostart="false"></script>
         <script nonce="@blazorReloadNonce">
             Blazor.start({
-                @* // WASM Profiling & Mono logging
-                configureRuntime: dotnet => {
-                    dotnet.withConfig({ browserProfilerOptions: {} });
-                    dotnet.withEnvironmentVariable("MONO_LOG_LEVEL", "debug");
-                    dotnet.withEnvironmentVariable("MONO_LOG_MASK", "gc");
-                },
-                *@
+                /*
+               // WASM Profiling & Mono logging
+               configureRuntime: dotnet => {
+                   dotnet.withConfig({ browserProfilerOptions: {} });
+                   dotnet.withEnvironmentVariable("MONO_LOG_LEVEL", "debug");
+                   dotnet.withEnvironmentVariable("MONO_LOG_MASK", "gc");
+               },
+               */
                 loadBootResource: function (type, name, defaultUri, integrity) {
                     if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration') {
                         return (async function () {

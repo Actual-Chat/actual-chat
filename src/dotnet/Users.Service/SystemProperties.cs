@@ -7,7 +7,7 @@ namespace ActualChat.Users;
 public class SystemProperties(IServiceProvider services)
     : DbServiceBase<UsersDbContext>(services), ISystemProperties
 {
-    private static readonly Task<string> ApiVersionTask = Task.FromResult(Constants.Api.Version);
+    private static readonly Task<string> ApiVersionTask = Task.FromResult(Constants.Api.StringVersion);
 
     // Not a [ComputeMethod]!
     public Task<double> GetTime(CancellationToken cancellationToken)

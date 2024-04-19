@@ -7,7 +7,8 @@ public static partial class Constants
 {
     public static class Api
     {
-        public static readonly string Version = "1.5";
+        public static readonly string StringVersion = ThisAssembly.AssemblyVersion; // X.Y.0.0
+        public static readonly Version Version = Version.Parse(StringVersion);
     }
 
     public static class Chat

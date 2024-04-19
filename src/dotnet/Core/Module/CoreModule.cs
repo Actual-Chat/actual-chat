@@ -23,6 +23,9 @@ public sealed class CoreModule(IServiceProvider moduleServices)
     {
         // This type initializer sets all super-early defaults
 
+        // Rpc - API version
+        RpcDefaults.ApiVersion = RpcDefaults.BackendVersion = Constants.Api.Version;
+
         // Session.Factory & Validator
 #pragma warning disable CA2000
         Session.Factory = DefaultSessionFactory.New(new RandomStringGenerator(20, Alphabet.AlphaNumericDash.Symbols));
