@@ -119,15 +119,8 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         rpcHost.AddBackend<IChatBotConversationTrigger, ChatBotConversationTrigger>();
 
         services.AddKeyedSingleton<IBotConversationHandler, SampleChatBot>(ConversationBotServiceGroup);
-        services.AddKeyedSingleton<IDataIndexer<ChatId>>(
-            ConversationBotServiceGroup,
-            static (services, serviceKey) => services.CreateInstanceWith<ChatHistoryExtractor>(
-                services.GetRequiredKeyedService<IBotConversationHandler>(serviceKey)
-            )
-        );
         services.AddSingleton<IChatBotWorker>(static services
             => services.CreateInstanceWith<ChatBotWorker>(
-                services.GetRequiredKeyedService<IDataIndexer<ChatId>>(ConversationBotServiceGroup)
             )
         );
         services.AddWorkerPool<IChatBotWorker, MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId>(
