@@ -67,13 +67,13 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
         var deviceContacts = await DeviceContacts.List(cancellationToken).ConfigureAwait(false);
         var deviceRootHash = ExternalContactHasher.Compute(deviceContacts);
         var existingRootHash = await ExternalContactHashes.Get(Session, DeviceContacts.DeviceId, cancellationToken).ConfigureAwait(false);
-        if (OrdinalEquals(deviceRootHash, existingRootHash?.Sha256Hash))
+        if (deviceRootHash == existingRootHash?.Hash)
             return;
 
         var changes = await DetectChanges(deviceContacts, cancellationToken).ConfigureAwait(false);
         if (await SaveChanges(changes, cancellationToken).ConfigureAwait(false)) {
             var rootHash = existingRootHash ?? new ExternalContactsHash(new UserDeviceId(account.Id, DeviceContacts.DeviceId));
-            rootHash = rootHash with { Sha256Hash = deviceRootHash };
+            rootHash = rootHash with { Hash = deviceRootHash };
             var changeHashCmd = new ExternalContactHashes_Change(Session,
                 DeviceContacts.DeviceId,
                 existingRootHash?.Version,
@@ -92,7 +92,7 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
                 if (!existingMap.TryGetValue(deviceContact.Id, out var existing))
                     return null;
 
-                return OrdinalEquals(existing.Sha256Hash, deviceContact.Sha256Hash)
+                return existing.Hash == deviceContact.Hash
                     ? null
                     : deviceContact with { Version = existing.Version };
             })

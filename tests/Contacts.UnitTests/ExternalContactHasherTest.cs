@@ -1,4 +1,4 @@
-using ActualLab.Generators;
+using ActualChat.Testing.Contacts;
 
 namespace ActualChat.Contacts.UnitTests;
 
@@ -8,15 +8,9 @@ public class ExternalContactHasherTest
     public void ShouldGenerateSameHash()
     {
         // arrange
-        var userDeviceId = NewUserDeviceId();
-        var deviceContactId = new Symbol(RandomStringGenerator.Default.Next());
-        var id = new ExternalContactId(userDeviceId, deviceContactId);
-        var externalContact1 = new ExternalContactFull(id) {
-            PhoneHashes = new ApiSet<string>(new[] { "123" }),
-        };
-        var externalContact2 = new ExternalContactFull(id) {
-            PhoneHashes = new ApiSet<string>(new[] { "123" }),
-        };
+        var externalContactGenerator = new ExternalContactGenerator();
+        var externalContact1 = externalContactGenerator.NewExternalContact();
+        var externalContact2 = ObjectExt.Clone(externalContact1);
 
         // act
         var sut = new ExternalContactHasher();
@@ -31,14 +25,13 @@ public class ExternalContactHasherTest
     public void ShouldDetectChangesInPhone()
     {
         // arrange
-        var userDeviceId = NewUserDeviceId();
-        var deviceContactId = new Symbol(RandomStringGenerator.Default.Next());
-        var id = new ExternalContactId(userDeviceId, deviceContactId);
+        var externalContactGenerator = new ExternalContactGenerator();
+        var id = externalContactGenerator.NewId();
         var externalContact1 = new ExternalContactFull(id) {
-            PhoneHashes = new ApiSet<string>(new[] { "123" }),
+            PhoneHashes = externalContactGenerator.NewPhoneHashes(1, 1),
         };
         var externalContact2 = new ExternalContactFull(id) {
-            PhoneHashes = new ApiSet<string>(new[] { "456" }),
+            PhoneHashes = externalContactGenerator.NewPhoneHashes(1, 1),
         };
 
         // act
@@ -50,10 +43,22 @@ public class ExternalContactHasherTest
         hash1.Should().NotBe(hash2);
     }
 
-    private static UserDeviceId NewUserDeviceId()
+    [Fact]
+    public void ShouldComputeHashOfList()
     {
-        var deviceId = new Symbol(RandomStringGenerator.Default.Next());
-        var userDeviceId = new UserDeviceId(UserId.New(), deviceId);
-        return userDeviceId;
+        // arrange
+        var externalContactGenerator = new ExternalContactGenerator();
+        var userDeviceId = externalContactGenerator.NewUserDeviceId();
+        var externalContacts = Enumerable.Range(1, 10_000)
+            .Select(i => externalContactGenerator.NewExternalContact(userDeviceId, i))
+            .ToArray();
+
+        // act
+        var sut = new ExternalContactHasher();
+        var hash = sut.Compute(externalContacts);
+        var hashOfReversed = sut.Compute(externalContacts.Reverse());
+
+        // assert
+        hash.Should().Be(hashOfReversed);
     }
 }
