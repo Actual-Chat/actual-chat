@@ -77,15 +77,15 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         // -- Register chat indexer --
         const string IndexServiceGroup = "OpenSearch Chat Index";
-        rpcHost.AddBackend<IChatIndexTrigger, ChatIndexTrigger>();
+        // fusion.AddService<IChatIndexTrigger, ChatIndexTrigger>();
 
-        services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
-        services.AddSingleton<ICursorStates<ChatHistoryExtractor.Cursor>>(static services
-            => services.CreateInstanceWith<CursorStates<ChatHistoryExtractor.Cursor>>(IndexNames.ChatSliceCursor));
-        services.AddSingleton<ISink<ChatEntry, ChatEntry>>(static services
-            => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
+        // services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
+        // services.AddSingleton<ICursorStates<ChatHistoryExtractor.Cursor>>(static services
+        //     => services.CreateInstanceWith<CursorStates<ChatHistoryExtractor.Cursor>>(IndexNames.ChatSliceCursor));
+        // services.AddSingleton<ISink<ChatEntry, ChatEntry>>(static services
+        //     => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
 
-        services.AddKeyedSingleton<IDataIndexer<ChatId>, ChatHistoryExtractor>(IndexServiceGroup);
+        // services.AddKeyedSingleton<IDataIndexer<ChatId>, ChatHistoryExtractor>(IndexServiceGroup);
         services.AddSingleton<IChatIndexerWorker>(static services
             => services.CreateInstanceWith<ChatIndexerWorker>(
                 15, // max iteration count before rescheduling

@@ -501,6 +501,30 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return dbChatEntries.Select(x => x.ToModel()).ToApiList();
     }
 
+    public async Task<ApiList<ChatEntry>> ListChangedEntries2(
+        ChatId chatId,
+        long minVersionExclusive,
+        long minLocalIdExclusive,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        return await dbContext.ChatEntries.Where(x
+                => x.ChatId == chatId.Value
+                && x.Kind == ChatEntryKind.Text
+                && x.Version > minVersionExclusive
+                && x.LocalId > minLocalIdExclusive)
+            .OrderBy(x => x.Version)
+            .ThenBy(x => x.LocalId)
+            .Take(limit)
+            .AsAsyncEnumerable()
+            .Select(x => x.ToModel())
+            .ToApiListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     // Not a [ComputeMethod]!
     public virtual async Task<ChatEntry?> FindNext(
         ChatId chatId,

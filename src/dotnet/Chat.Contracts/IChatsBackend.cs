@@ -77,6 +77,13 @@ public interface IChatsBackend : IComputeService, IBackendService
         long minVersionExclusive,
         CancellationToken cancellationToken);
 
+    Task<ApiList<ChatEntry>> ListChangedEntries2(
+        ChatId chatId,
+        long minVersionExclusive,
+        long minLocalIdExclusive,
+        int limit,
+        CancellationToken cancellationToken);
+
     Task<ChatEntry?> FindNext(
         ChatId chatId,
         long? startEntryId,

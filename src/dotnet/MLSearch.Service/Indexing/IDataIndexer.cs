@@ -14,17 +14,17 @@ internal record DataIndexerResult(bool IsEndReached);
 /// the documents source type.
 /// It is responsible for:
 /// - fetching documents from the source
-/// - converting documents into an inner format and forwarding 
+/// - converting documents into an inner format and forwarding
 ///   them downstream
 /// - saving the indexing progress
-/// 
+///
 /// Notes:
 /// This is what HistoryExtractor was intended for.
-/// Compared to the HistoryExtactor where it enforced 
+/// Compared to the HistoryExtactor where it enforced
 /// one type of documents (MLSearchChatHistory) to be accepted
-/// downstream, this interface does not put any obligations on 
-/// how the forwarding process is implemented. It is assumed 
-/// though that the Engine dependent implementation will be 
+/// downstream, this interface does not put any obligations on
+/// how the forwarding process is implemented. It is assumed
+/// though that the Engine dependent implementation will be
 /// separated into another entity (ISink).
 /// </summary>
 /// <typeparam name="T">Target stream identifier.</typeparam>
