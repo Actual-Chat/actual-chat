@@ -117,6 +117,41 @@ public class HashTest(ITestOutputHelper @out) : TestBase(@out)
             }
         }
     }
+
+    [Fact]
+    public void XorStressTest()
+    {
+        // arrange
+        var hashes = Enumerable.Range(1, 1_000_000)
+            .Select(BitConverter.GetBytes)
+            .Select(b => b.Hash().SHA256())
+            .ToList();
+
+        // act
+        var result = hashes.BitwiseXor().Base64();
+        var result2 = hashes.BitwiseXor().Base64();
+
+        // assert
+        Out.WriteLine(result);
+        result.Should().NotBeEmpty().And.Be(result2);
+    }
+
+    [Fact]
+    public void XorUniquenessStressTest()
+    {
+        // arrange
+        var uniqueXorResults = new HashSet<string>();
+        var hashes = Enumerable.Range(1, 1_000_000)
+            .Select(BitConverter.GetBytes)
+            .Select(b => b.Hash().SHA256())
+            .ToList();
+
+        // act, assert
+        for (int i = 1; i < hashes.Count; i+=10_000)
+            uniqueXorResults.Add(hashes[..i].BitwiseXor().Base64())
+                .Should()
+                .BeTrue("generated xor result is supposed to be unique");
+    }
 }
 
 

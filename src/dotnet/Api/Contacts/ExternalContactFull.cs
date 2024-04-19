@@ -1,4 +1,5 @@
-﻿using MemoryPack;
+﻿using ActualChat.Hashing;
+using MemoryPack;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
 
@@ -10,7 +11,7 @@ public partial record ExternalContact(
     [property: DataMember, MemoryPackOrder(0)] ExternalContactId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0) : IHasId<ExternalContactId>, IHasVersion<long>, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(12)] public string Sha256Hash { get; set; } = "";
+    [DataMember, MemoryPackOrder(13)] public HashString Hash { get; set; }
 }
 
 [ParameterComparer(typeof(ByRefParameterComparer))]

@@ -347,5 +347,5 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         => ContactId.Peer(owner.Id, friendAccount.Id);
 
     private static EquivalencyAssertionOptions<ExternalContactFull> Including(EquivalencyAssertionOptions<ExternalContactFull> o)
-        => o.Including(x => x.Id).Including(x => x.Sha256Hash);
+        => o.Including(x => x.Id).Including(x => x.Hash);
 }

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ActualChat.Hashing;
 using ActualLab.Versioning;
 
 namespace ActualChat.Contacts.Db;
@@ -20,7 +21,7 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
     public string NamePrefix { get; set; } = "";
     public string NameSuffix { get; set; } = "";
 
-    public string Sha256Hash { get; set; } = "";
+    public string Hash { get; set; } = "";
 
     public DateTime ModifiedAt {
         get => _modifiedAt.DefaultKind(DateTimeKind.Utc);
@@ -50,7 +51,7 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
             NameSuffix = NameSuffix,
             PhoneHashes = ExternalContactLinks.Select(x => x.ToPhoneHash()).SkipNullItems().ToApiSet(),
             EmailHashes = ExternalContactLinks.Select(x => x.ToEmailHash()).SkipNullItems().ToApiSet(),
-            Sha256Hash = Sha256Hash,
+            Hash = new HashString(Hash),
         };
 
     public void UpdateFrom(ExternalContactFull model)
@@ -66,7 +67,7 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
         MiddleName = model.MiddleName;
         NamePrefix = model.NamePrefix;
         NameSuffix = model.NameSuffix;
-        Sha256Hash = model.Sha256Hash;
+        Hash = model.Hash;
         Version = model.Version;
         CreatedAt = model.CreatedAt.ToDateTimeClamped();
         ModifiedAt = model.ModifiedAt.ToDateTimeClamped();
