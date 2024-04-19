@@ -3,6 +3,7 @@ using ActualChat.Performance;
 using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
+using ActualLab.Rpc;
 using FluentAssertions.Equivalency;
 using Microsoft.AspNetCore.Authentication.Google;
 
@@ -42,6 +43,28 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
             FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
         await _tester.DisposeAsync().AsTask();
+    }
+
+    [Fact]
+    public void ShouldExposeCorrectRpcLegacyMethods()
+    {
+        var serviceRegistry = AppHost.Services.RpcHub().ServiceRegistry;
+        var mExternalContactsList = (Service: (Symbol)nameof(IExternalContacts), Method: (Symbol)"List");
+
+        var r = serviceRegistry.GetServerMethodResolver(new VersionSet($"Api={Constants.Api.StringVersion}"));
+        Out.WriteLine(r.ToString());
+        r.LegacyMethods.Should().BeNull();
+
+        var testedVersions = new[] { "", "Api=1.5", "Api=1.11", "Api=1.11.0.0" };
+        foreach (var version in testedVersions) {
+            r = serviceRegistry.GetServerMethodResolver(new VersionSet(version));
+            Out.WriteLine(r.ToString());
+            r.LegacyMethods.SingleOrDefault(x => x.Key == mExternalContactsList).Should().NotBeNull();
+        }
+
+        r = serviceRegistry.GetServerMethodResolver(new VersionSet("Api=1.12"));
+        Out.WriteLine(r.ToString());
+        (r.LegacyMethods?.SingleOrDefault(x => x.Key == mExternalContactsList) ?? null).Should().BeNull();
     }
 
     [Fact]
@@ -118,7 +141,7 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
     }
 
     private Task<ApiArray<ExternalContact>> List(Symbol deviceId)
-        => _externalContacts.List2(_tester.Session, deviceId, CancellationToken.None);
+        => _externalContacts.List(_tester.Session, deviceId, CancellationToken.None);
 
     private async Task Add(params ExternalContactFull[] externalContacts)
     {
