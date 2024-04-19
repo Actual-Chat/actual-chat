@@ -3,7 +3,7 @@
 @using ActualChat.Kvas
 @inherits ComputedStateComponent<ListeningSettingsModal.ComputedModel>
 @{
-    var m = State.Value;
+    var m = State.LastNonErrorValue;
     var mode = m.ListeningMode;
 }
 <DialogFrame
