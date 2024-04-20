@@ -55,14 +55,14 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
         Out.WriteLine(r.ToString());
         r.LegacyMethods.Should().BeNull();
 
-        var testedVersions = new[] { "", "Api=1.5", "Api=1.11", "Api=1.11.0.0" };
+        var testedVersions = new[] { "", "Api=1.5", "Api=1.10", "Api=1.10.0.0" };
         foreach (var version in testedVersions) {
             r = serviceRegistry.GetServerMethodResolver(new VersionSet(version));
             Out.WriteLine(r.ToString());
             r.LegacyMethods.SingleOrDefault(x => x.Key == mExternalContactsList).Should().NotBeNull();
         }
 
-        r = serviceRegistry.GetServerMethodResolver(new VersionSet("Api=1.12"));
+        r = serviceRegistry.GetServerMethodResolver(new VersionSet("Api=1.11"));
         Out.WriteLine(r.ToString());
         (r.LegacyMethods?.SingleOrDefault(x => x.Key == mExternalContactsList) ?? null).Should().BeNull();
     }
