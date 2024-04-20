@@ -1,6 +1,7 @@
 using System.Text;
 using ActualChat.App.Server.Initializers;
 using ActualChat.Audio.WebM;
+using ActualLab.Rpc;
 using Grpc.Core;
 
 namespace ActualChat.App.Server;
@@ -16,7 +17,8 @@ internal static class Program
             Tracer.None;
 #endif
 
-        FusionSettings.Mode = FusionMode.Server;
+        RpcDefaults.Mode = RpcMode.Server;
+        FusionDefaults.Mode = FusionMode.Server;
         Console.OutputEncoding = Encoding.UTF8;
         Activity.DefaultIdFormat = ActivityIdFormat.W3C;
         Activity.ForceDefaultIdFormat = true;

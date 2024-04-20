@@ -42,8 +42,8 @@ public static partial class MauiProgram
     {
         using var _1 = Tracer.Region();
 
-        RpcSettings.Mode = RpcMode.Client;
-        FusionSettings.Mode = FusionMode.Client;
+        RpcDefaults.Mode = RpcMode.Client;
+        FusionDefaults.Mode = FusionMode.Client;
         RpcOutboundCommandCallMiddleware.Default.CallTimeout = TimeSpan.FromSeconds(20);
 
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;

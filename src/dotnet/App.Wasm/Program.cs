@@ -31,8 +31,8 @@ public static class Program
         Tracer.Point($"{nameof(Main)} started");
         OtelDiagnostics.SetupConditionalPropagator();
 
-        RpcSettings.Mode = RpcMode.Client;
-        FusionSettings.Mode = FusionMode.Client;
+        RpcDefaults.Mode = RpcMode.Client;
+        FusionDefaults.Mode = FusionMode.Client;
         RpcOutboundCommandCallMiddleware.Default.CallTimeout = TimeSpan.FromSeconds(20);
 
         // NOTE(AY): This thing takes 1 second on Windows!
