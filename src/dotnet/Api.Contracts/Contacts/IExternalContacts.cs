@@ -13,7 +13,7 @@ public interface IExternalContacts : IComputeService
     Task<ApiArray<Result<ExternalContactFull?>>> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken);
 
     // Legacy methods
-    [ComputeMethod, LegacyName("List", "v1.11.0.0"), Obsolete("2024.04: Replaced with new List implementation.")]
+    [ComputeMethod, LegacyName("List", "v1.10.999.0"), Obsolete("2024.04: Replaced with new List implementation.")]
     Task<ApiArray<ExternalContactFull>> LegacyList1(Session session, Symbol deviceId, CancellationToken cancellationToken);
 }
 
