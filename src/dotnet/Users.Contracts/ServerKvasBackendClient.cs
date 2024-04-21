@@ -11,6 +11,9 @@ public class ServerKvasBackendClient(IServerKvasBackend serverKvasBackend, strin
     public ValueTask<byte[]?> Get(string key, CancellationToken cancellationToken = default)
         => ServerKvasBackend.Get(Prefix, key, cancellationToken).ToValueTask();
 
+    public ValueTask<ApiList<(string Key, byte[] Value)>> List(string keyPrefix, CancellationToken cancellationToken = default)
+        => ServerKvasBackend.List($"{Prefix}{keyPrefix}", cancellationToken).ToValueTask();
+
     public Task Set(string key, byte[]? value, CancellationToken cancellationToken = default)
     {
         var command = new ServerKvasBackend_SetMany(Prefix, (key, value));

@@ -13,29 +13,39 @@ public static class KvasExt
     // Get, Set, Remove w/ <T>
 
     public static async ValueTask<Option<T>> TryGet<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
-        (this IKvas kvas, string key, CancellationToken cancellationToken = default)
-  {
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        T>(this IKvas kvas, string key, CancellationToken cancellationToken = default)
+    {
         var data = await kvas.Get(key, cancellationToken).ConfigureAwait(false);
         return data is null ? Option<T>.None : Serializer.Read<T>(data);
-  }
+    }
 
     public static ValueTask<T?> Get<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
-        (this IKvas kvas, string key, CancellationToken cancellationToken = default)
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        T>(this IKvas kvas, string key, CancellationToken cancellationToken = default)
         => Get<T>(kvas, key, default, cancellationToken);
 
     public static async ValueTask<T?> Get<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
-        (this IKvas kvas, string key, T? @default, CancellationToken cancellationToken = default)
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        T>(this IKvas kvas, string key, T? @default, CancellationToken cancellationToken = default)
     {
         var (hasValue, value) = await TryGet<T>(kvas, key, cancellationToken).ConfigureAwait(false);
         return hasValue ? value ?? @default : @default;
     }
 
+    public static async ValueTask<IReadOnlyList<(string Key, T Value)>> List<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        T>(this IKvas kvas, string keyPrefix, CancellationToken cancellationToken = default)
+    {
+        var values = await kvas.List(keyPrefix, cancellationToken).ConfigureAwait(false);
+        return values
+            .Select(tuple => (tuple.Key, Serializer.Read<T>(tuple.Value)))
+            .ToList();
+    }
+
     public static Task Set<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
-        (this IKvas kvas, string key, T value, CancellationToken cancellationToken = default)
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        T>(this IKvas kvas, string key, T value, CancellationToken cancellationToken = default)
     {
         using var buffer = new ArrayPoolBufferWriter<byte>();
         Serializer.Write(buffer, value);
@@ -43,8 +53,8 @@ public static class KvasExt
     }
 
     public static Task Set<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
-        (this IKvas kvas, string key, Option<T> value, CancellationToken cancellationToken = default)
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        T>(this IKvas kvas, string key, Option<T> value, CancellationToken cancellationToken = default)
         => value.IsSome(out var v)
             ? kvas.Set(key, v, cancellationToken)
             : kvas.Remove(key, cancellationToken);
@@ -80,6 +90,7 @@ public static class KvasExt
             return kvas;
         if (kvas is PrefixedKvas kvp)
             return new PrefixedKvas(kvp.Upstream, $"{prefix}.{kvp.Prefix}");
+
         return new PrefixedKvas(kvas, prefix);
     }
 

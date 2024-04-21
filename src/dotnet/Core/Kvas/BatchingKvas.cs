@@ -65,6 +65,9 @@ public class BatchingKvas : SafeAsyncDisposableBase, IKvas
         return Reader.Process(key, cancellationToken).ToValueTask();
     }
 
+    public ValueTask<ApiList<(string Key, byte[] Value)>> List(string keyPrefix, CancellationToken cancellationToken = default)
+        => throw StandardError.Unavailable($"{nameof(List)} operation is unavailable for ${nameof(BatchingKvas)}.");
+
     public Task Set(string key, byte[]? value, CancellationToken cancellationToken = default)
     {
         ReadCache[key] = value;

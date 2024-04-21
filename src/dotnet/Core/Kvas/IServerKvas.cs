@@ -6,6 +6,8 @@ public interface IServerKvas : IComputeService
 {
     [ComputeMethod]
     Task<byte[]?> Get(Session session, string key, CancellationToken cancellationToken = default);
+    [ComputeMethod]
+    Task<ApiList<(string Key, byte[] Value)>> List(Session session, string keyPrefix, CancellationToken cancellationToken = default);
 
     [CommandHandler]
     Task OnSet(ServerKvas_Set command, CancellationToken cancellationToken = default);

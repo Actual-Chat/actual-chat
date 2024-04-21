@@ -48,6 +48,14 @@ public class ServerKvas : IServerKvas
         */
     }
 
+    // [ComputeMethod]
+    public virtual async Task<ApiList<(string Key, byte[] Value)>> List(Session session, string keyPrefix, CancellationToken cancellationToken = default)
+    {
+        var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
+        var combinedPrefix = $"{prefix}{keyPrefix}";
+        return await Backend.List(combinedPrefix, cancellationToken).ConfigureAwait(false);
+    }
+
     // [CommandHandler]
     public virtual async Task OnSet(ServerKvas_Set command, CancellationToken cancellationToken = default)
     {

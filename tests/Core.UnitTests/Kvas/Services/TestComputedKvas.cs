@@ -16,6 +16,9 @@ public class TestComputedKvas : IKvas, IComputeService
             return ValueTask.FromResult(Storage.GetValueOrDefault(key));
     }
 
+    public ValueTask<ApiList<(string Key, byte[] Value)>> List(string keyPrefix, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+
     public Task Set(string key, byte[]? value, CancellationToken cancellationToken = default)
     {
         lock (Lock) {

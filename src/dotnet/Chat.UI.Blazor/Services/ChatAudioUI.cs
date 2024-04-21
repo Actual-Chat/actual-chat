@@ -75,24 +75,12 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
     [ComputeMethod(MinCacheDuration = 300)] // Synced
     public virtual async Task<List<ChatId>> GetChatsYouNeedToKeepListeningTo(CancellationToken cancellationToken)
     {
-        var result = new List<ChatId>();
         await Hub.ChatUI.WhenLoaded.ConfigureAwait(false);
-        // NOTE(DF) Naive and potentially expensive implementation.
-        // AK please check how to improve it.
-        var placeIds = new List<PlaceId> { PlaceId.None /* Group chats */ };
-        placeIds.AddRange(await Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false));
-        foreach (var placeId in placeIds) {
-            var contacts = await Contacts.ListContacts(Session, placeId, cancellationToken).ConfigureAwait(false);
-            foreach (var chatId in contacts.Select(contact => contact.ChatId)) {
-                var userChatSettings = await AccountSettings
-                    .GetUserChatSettings(chatId, cancellationToken)
-                    .ConfigureAwait(false);
-                var listeningMode = userChatSettings.ListeningMode;
-                if (listeningMode == ListeningMode.KeepListening)
-                    result.Add(chatId);
-            }
-        }
-        return result;
+        var settingList = await AccountSettings.ListUserChatSettings(cancellationToken).ConfigureAwait(false);
+        return settingList
+            .Where(cs => cs.Value.ListeningMode == ListeningMode.KeepListening)
+            .Select(userChatSettings => userChatSettings.ChatId)
+            .ToList();
     }
 
     [ComputeMethod] // Synced

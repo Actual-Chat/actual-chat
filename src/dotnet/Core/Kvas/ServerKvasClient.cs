@@ -8,6 +8,9 @@ public class ServerKvasClient(IServerKvas serverKvas, Session session) : IKvas, 
     public ValueTask<byte[]?> Get(string key, CancellationToken cancellationToken = default)
         => ServerKvas.Get(Session, key, cancellationToken).ToValueTask();
 
+    public ValueTask<ApiList<(string Key, byte[] Value)>> List(string keyPrefix, CancellationToken cancellationToken = default)
+        => ServerKvas.List(Session, keyPrefix, cancellationToken).ToValueTask();
+
     public Task Set(string key, byte[]? value, CancellationToken cancellationToken = default)
         => ServerKvas.Set(Session, key, value, cancellationToken);
 

@@ -1,20 +1,16 @@
 namespace ActualChat.Kvas;
 
-public class PrefixedKvas : IKvas
+public class PrefixedKvas(IKvas upstream, string prefix) : IKvas
 {
-    public IKvas Upstream { get; }
-    public string Prefix { get; }
-    public string FullPrefix { get; }
-
-    public PrefixedKvas(IKvas upstream, string prefix)
-    {
-        Upstream = upstream;
-        Prefix = prefix;
-        FullPrefix = prefix + ".";
-    }
+    public IKvas Upstream { get; } = upstream;
+    public string Prefix { get; } = prefix;
+    public string FullPrefix { get; } = prefix + ".";
 
     public ValueTask<byte[]?> Get(string key, CancellationToken cancellationToken = default)
         => Upstream.Get(FullPrefix + key, cancellationToken);
+
+    public ValueTask<ApiList<(string Key, byte[] Value)>> List(string keyPrefix, CancellationToken cancellationToken = default)
+        => Upstream.List(FullPrefix + keyPrefix, cancellationToken);
 
     public Task Set(string key, byte[]? value, CancellationToken cancellationToken = default)
         => Upstream.Set(FullPrefix + key, value, cancellationToken);
