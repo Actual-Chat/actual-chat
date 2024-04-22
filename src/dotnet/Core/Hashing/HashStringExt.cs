@@ -20,6 +20,7 @@ public static class HashStringExt
             HashAlgorithm.MD5 => new HashOutput16(),
             HashAlgorithm.SHA1 => new HashOutput20(),
             HashAlgorithm.SHA256 => new HashOutput32(),
+            HashAlgorithm.SHA256Xor => new HashOutput32(),
             HashAlgorithm.Blake2s => new HashOutput32(),
             HashAlgorithm.Blake2b => new HashOutput64(),
             _ => throw new ArgumentOutOfRangeException(nameof(algorithm)),

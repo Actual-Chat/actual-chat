@@ -8,4 +8,5 @@ public enum HashAlgorithm
     SHA256 = 3,
     Blake2s = 4,
     Blake2b = 5,
+    SHA256Xor = 6,
 }

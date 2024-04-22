@@ -73,12 +73,15 @@
     private async Task UpdateListeningMode(ListeningMode listeningMode) {
 
         var chatId = ModalModel.ChatId;
-        var userChatSettings = await AccountSettings
-            .GetUserChatSettings(chatId, default);
+        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, default);
         userChatSettings = userChatSettings with { ListeningMode = listeningMode };
         await AccountSettings.SetUserChatSettings(chatId, userChatSettings, default);
-        if (listeningMode == ListeningMode.KeepListening)
+        if (listeningMode == ListeningMode.KeepListening) {
             await Hub.ChatAudioUI.SetListeningState(chatId, true);
+            await AccountSettings.AddContinuouslyListenedChat(chatId, default);
+        } else {
+            await AccountSettings.RemoveContinuouslyListenedChat(chatId, default);
+        }
 
         Modal.Close();
     }
