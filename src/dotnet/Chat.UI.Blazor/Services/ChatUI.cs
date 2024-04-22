@@ -303,7 +303,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             m => _ = LeaveChatInternal(chat, true, m)));
 
     public void DeletePlace(PlaceId placeId, Func<Task> onBeforeExecuteCommand)
-        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, "place",
+        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, "place",
             m => _ = LeavePlaceInternal(placeId, true, onBeforeExecuteCommand, m)));
 
     public void LeavePlace(PlaceId placeId)
