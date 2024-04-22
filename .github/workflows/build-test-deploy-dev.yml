@@ -5,6 +5,17 @@ concurrency:
 
 on:
   workflow_dispatch:
+    inputs:
+      buildAppFor:
+        type: choice
+        required: false
+        default: ''
+        description: Build app package for environment
+        options:
+          - ''
+          - auto
+          - dev
+          - prod
   create:
   push:
     branches:
@@ -403,15 +414,17 @@ jobs:
 
   build-ios-pkg:
     name: Build ios app package for ${{ github.ref_name }}
+    # release branch can build for both dev and prod envs while other branches can build only for dev env
     if: |
-      github.ref == 'refs/heads/master' ||
-      github.ref == 'refs/heads/dev' ||
-      startsWith(github.ref, 'refs/heads/release/')
+      github.event.inputs.buildAppFor == 'dev'
+        || github.event.inputs.buildAppFor == 'auto'
+        || ((github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev') && github.event.inputs.buildAppFor != 'prod')
+        || startsWith(github.ref, 'refs/heads/release/')
     runs-on: macos-13
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
-      IS_DEV_MAUI: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
+      IS_DEV_MAUI: ${{ github.event.inputs.buildAppFor == 'dev' || (github.event.inputs.buildAppFor == 'auto' && !startsWith(github.ref, 'refs/heads/release/')) }}
       APP_ID: chat.actual.${{ !startsWith(github.ref, 'refs/heads/release/') && 'dev.' || '' }}app
       PACKAGE_FILE_NAME: App-signed.ipa
     outputs:
@@ -539,17 +552,19 @@ jobs:
 
 
   deploy-ios-to-appstore:
-    name: Deploy app package to apple app store for ${{ github.ref_name }}
+    name: Deploy ios app package to apple app store for ${{ github.ref_name }}
+    # release branch can build for both dev and prod envs while other branches can build only for dev env
     if: |
-      github.ref == 'refs/heads/master' ||
-      github.ref == 'refs/heads/dev'    ||
-      startsWith(github.ref, 'refs/heads/release/')
+      github.event.inputs.buildAppFor == 'dev'
+        || github.event.inputs.buildAppFor == 'auto'
+        || ((github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev') && github.event.inputs.buildAppFor != 'prod')
+        || startsWith(github.ref, 'refs/heads/release/')
     runs-on: macos-13
     needs:
       - build-ios-pkg
       - unit-tests
       - integration-tests
-    environment: ${{ startsWith(github.ref, 'refs/heads/release/') && 'prod' || '' }}
+    environment: ${{ (github.event.inputs.buildAppFor == 'prod' || startsWith(github.ref, 'refs/heads/release/')) && 'prod' || '' }}
     env:
       APP_ID: ${{needs.build-ios-pkg.outputs.APP_ID}}
       ARTIFACT_NAME: ${{needs.build-ios-pkg.outputs.ARTIFACT_NAME}}
@@ -584,17 +599,19 @@ jobs:
 
   build-android-pkg:
     name: Build android app package for ${{ github.ref_name }}
+    # release branch can build for both dev and prod envs while other branches can build only for dev env
     if: |
-      github.ref == 'refs/heads/master' ||
-      github.ref == 'refs/heads/dev' ||
-      startsWith(github.ref, 'refs/heads/release/')
+      github.event.inputs.buildAppFor == 'dev'
+        || github.event.inputs.buildAppFor == 'auto'
+        || ((github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev') && github.event.inputs.buildAppFor != 'prod')
+        || startsWith(github.ref, 'refs/heads/release/')
     runs-on: macos-latest
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
       ActualChat_AndroidSigningKeyPass: ${{secrets.ANDROIDSIGNINGKEYPASS}}
       ActualChat_AndroidSigningStorePass: ${{secrets.ANDROIDSIGNINGSTOREPASS}}
-      IS_DEV_MAUI: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
+      IS_DEV_MAUI: ${{ github.event.inputs.buildAppFor == 'dev' || (github.event.inputs.buildAppFor == 'auto' && !startsWith(github.ref, 'refs/heads/release/')) }}
       APP_ID: chat.actual.${{ !startsWith(github.ref, 'refs/heads/release/') && 'dev.' || '' }}app
       PACKAGE_FILE_NAME: chat.actual.${{ !startsWith(github.ref, 'refs/heads/release/') && 'dev.' || '' }}app-Signed.aab
     outputs:
@@ -671,6 +688,7 @@ jobs:
   deploy-android-dev-to-drive:
     name: Deploy android app package to google drive for ${{ github.ref_name }}
     if: |
+      github.event.inputs.buildAppFor != '' ||
       github.ref == 'refs/heads/master' ||
       github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
@@ -716,20 +734,24 @@ jobs:
           overwrite: true
 
   deploy-android-to-play-store:
-    name: Deploy app package to google play store for ${{ github.ref_name }}
+    name: Deploy android app package to google play store for ${{ github.ref_name }}
+    # release branch can build for both dev and prod envs while other branches can build only for dev env
     if: |
-      github.ref == 'refs/heads/master' ||
-      startsWith(github.ref, 'refs/heads/release/')
+      github.event.inputs.buildAppFor == 'dev'
+        || github.event.inputs.buildAppFor == 'auto'
+        || ((github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev') && github.event.inputs.buildAppFor != 'prod')
+        || startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     needs:
       - build-android-pkg
       - unit-tests
       - integration-tests
-    environment: prod
+    environment: ${{ (github.event.inputs.buildAppFor == 'prod' || startsWith(github.ref, 'refs/heads/release/')) && 'prod' || '' }}
     env:
       APP_ID: ${{needs.build-android-pkg.outputs.APP_ID}}
       ARTIFACT_NAME: ${{needs.build-android-pkg.outputs.ARTIFACT_NAME}}
       PACKAGE_FILE_NAME: ${{needs.build-android-pkg.outputs.PACKAGE_FILE_NAME}}
+      IS_DEV_MAUI: ${{ github.event.inputs.buildAppFor == 'dev' || (github.event.inputs.buildAppFor == 'auto' && !startsWith(github.ref, 'refs/heads/release/')) }}
     steps:
       - name: Authenticate to Google Cloud
         id: auth
@@ -754,12 +776,15 @@ jobs:
           packageName: ${{env.APP_ID}}
           releaseFiles: ${{env.PACKAGE_FILE_NAME}}
           track: internal
+          status: ${{env.IS_DEV_MAUI == 'true' && 'draft' || 'completed'}}
 
   build-win-pkg:
     name: Build win app package for ${{ github.ref_name }}
     if: |
-      github.ref == 'refs/heads/master' ||
-      startsWith(github.ref, 'refs/heads/release/')
+      github.event.inputs.buildAppFor == 'prod' ||
+      (github.event.inputs.buildAppFor == 'auto'
+        && (github.ref == 'refs/heads/master' ||
+        startsWith(github.ref, 'refs/heads/release/')))
     runs-on: windows-latest
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
@@ -821,11 +846,13 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 2
-  deploy-to-microsoft-store:
-    name: Deploy app package for ${{ github.ref_name }} to microsoft store
+  deploy-win-to-microsoft-store:
+    name: Deploy win app package for ${{ github.ref_name }} to microsoft store
     if: |
-      github.ref == 'refs/heads/master' ||
-      startsWith(github.ref, 'refs/heads/release/')
+      github.event.inputs.buildAppFor == 'prod' ||
+      (github.event.inputs.buildAppFor == 'auto'
+        && (github.ref == 'refs/heads/master' ||
+        startsWith(github.ref, 'refs/heads/release/')))
     runs-on: windows-latest
     needs:
       - build-win-pkg
