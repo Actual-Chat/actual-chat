@@ -5,8 +5,6 @@ namespace ActualChat.Contacts;
 
 public sealed class ExternalContactHasher
 {
-    private const HashAlgorithm HashAlgorithm = Hashing.HashAlgorithm.SHA256;
-
     private IByteSerializer ByteSerializer { get; } = MemoryPackByteSerializer.Default;
 
     public HashString Compute(ExternalContactFull externalContactFull)
@@ -14,13 +12,13 @@ public sealed class ExternalContactHasher
  #pragma warning disable IL2026
         using var buffer = ByteSerializer.Write(HashedExternalContact.From(externalContactFull));
  #pragma warning restore IL2026
-        return buffer.WrittenSpan.Hash().SHA256().ToBase64HashString(HashAlgorithm);
+        return buffer.WrittenSpan.Hash().SHA256().ToBase64HashString(HashAlgorithm.SHA256);
     }
 
     public HashString Compute(IEnumerable<ExternalContactFull> deviceContacts)
         => deviceContacts.Select(x => (HashOutput32)x.WithHash(this, false).Hash.ToHashOutput())
             .BitwiseXor()
-            .ToBase64HashString(HashAlgorithm);
+            .ToBase64HashString(HashAlgorithm.SHA256Xor);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

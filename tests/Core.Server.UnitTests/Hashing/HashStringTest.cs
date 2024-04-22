@@ -14,6 +14,7 @@ public class HashStringTest
 
     [Theory]
     [InlineData("3 1 aaaa", HashAlgorithm.SHA256, HashEncoding.Base64, "aaaa")]
+    [InlineData("6 0 aaaa", HashAlgorithm.SHA256Xor, HashEncoding.Base16, "aaaa")]
     [InlineData("1 0 aaaa", HashAlgorithm.MD5, HashEncoding.Base16, "aaaa")]
     public void ShouldParse(
         string input,
