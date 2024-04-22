@@ -1,0 +1,30 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@implements IModalView<CopyChatFromListToPlaceModal.Model>
+
+<DialogFrame Title="Copy chat to place" HasCloseButton="true" Class="copy-chat-to-place-modal">
+    <Body>
+        <FormBlock>
+            <CopyChatFromListToPlaceModalContent OnChatClick="@OnCopyChatClick"/>
+        </FormBlock>
+    </Body>
+</DialogFrame>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private Task OnCopyChatClick(ChatId chatId) {
+        return CopyChatToPlaceUI.CopyChat(Hub,
+            ChatId.Parse(chatId),
+            ModalModel.PlaceId,
+            StateHasChanged,
+            (_) => {
+                StateHasChanged();
+                Modal.Close();
+            });
+    }
+
+    public sealed record Model(PlaceId PlaceId);
+}

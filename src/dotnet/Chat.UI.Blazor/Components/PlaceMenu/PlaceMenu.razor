@@ -9,7 +9,6 @@
 </MenuEntry>
 @if (_isOwner) {
     <MenuEntry
-        Class="important-item"
         Icon="icon-person-add"
         Text="Invite members"
         Click="OnInviteMembersClick">
@@ -19,6 +18,13 @@
         Text="Settings"
         Click="OnPlaceSettingsClick">
     </MenuEntry>
+    @if (_isOwner && EnableChatCopying && _enableIncompleteUI) {
+        <MenuEntry
+            Icon="icon-cloud-upload"
+            Text="Copy chat into the Place"
+            Click="OnImportChatsClick">
+        </MenuEntry>
+    }
 }
 @if (_canLeave) {
     <MenuEntrySeparator />
@@ -34,13 +40,19 @@
     private PlaceId _placeId;
     private bool _isOwner;
     private bool _canLeave;
+    private bool _enableIncompleteUI;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
 
     private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
     private ModalUI ModalUI => Hub.ModalUI;
     private ChatUI ChatUI => Hub.ChatUI;
+    private bool EnableChatCopying => Hub.AccountUI.OwnAccount.Value.IsAdmin;
+
+    protected override async Task OnInitializedAsync()
+        => _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is not [ var placeSid ])
@@ -70,4 +82,7 @@
 
     private void OnPlaceLeaveClick()
         => ChatUI.LeavePlace(_placeId);
+
+    private void OnImportChatsClick()
+        => ModalUI.Show(new CopyChatFromListToPlaceModal.Model(_placeId));
 }

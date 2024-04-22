@@ -160,7 +160,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         // pre-assert wait
         await services.Queues().WhenProcessing();
         await ComputedTest.When(async ct => {
-            var chats = (await (await contacts.ListIds(session, ct))
+            var chats = (await (await contacts.ListIds(session, PlaceId.None, ct))
                 .Select(x => chatsBackend.Get(x.ChatId, ct))
                 .Collect())
                 .SkipNullItems()
@@ -425,7 +425,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var session = ownerTester.Session;
 
         var (chatId, _) = await ownerTester.CreateChat(true);
-        await ComputedTest.When(async ct => {
+        await ComputedTest.When(services, async ct => {
             var contactIds = await contacts.ListIds(session, PlaceId.None, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().Contain(chatId);
@@ -439,7 +439,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var chat = await chats.Get(session, chatId, default);
         chat.Should().BeNull();
 
-        await ComputedTest.When(async ct => {
+        await ComputedTest.When(services, async ct => {
             var contactIds = await contacts.ListIds(session, PlaceId.None, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().NotContain(chatId);

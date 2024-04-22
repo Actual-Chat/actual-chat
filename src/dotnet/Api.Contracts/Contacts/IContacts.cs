@@ -9,6 +9,7 @@ public interface IContacts : IComputeService
     [ComputeMethod]
     Task<Contact?> GetForChat(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 300)]
+    [Obsolete("2024.04: Use overload that takes placeId parameter instead.")]
     Task<ApiArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 300)]
     Task<ApiArray<PlaceId>> ListPlaceIds(Session session, CancellationToken cancellationToken);

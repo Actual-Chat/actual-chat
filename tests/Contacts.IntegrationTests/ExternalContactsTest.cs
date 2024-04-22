@@ -330,7 +330,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
     private async Task<List<ContactId>> ListContactIds(CancellationToken cancellationToken = default)
     {
-        var ids = await _contacts.ListIds(_tester.Session, cancellationToken);
+        var ids = await _contacts.ListIds(_tester.Session, PlaceId.None, cancellationToken);
         return ids.Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
     }
 
