@@ -22,13 +22,13 @@ namespace ActualChat.Contacts.Migrations
 
             migrationBuilder.Sql("""
                                  delete from external_contacts_hashes
-                                 where hash not like '3 1 %';
+                                 where hash != '' and hash not like '3 1 %';
                                  """);
 
             migrationBuilder.Sql("""
                                  update external_contacts
                                  set hash = ''
-                                 where hash not like '3 1 %';
+                                 where hash != '' and hash not like '3 1 %';
                                  """);
         }
 
