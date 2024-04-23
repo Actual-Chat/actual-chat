@@ -74,14 +74,15 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var navbarSettings = await Hub.ChatUI.NavbarSettings.Use(cancellationToken);
+        var navbarSettings = await Hub.ChatUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
         var chats = (await navbarSettings.PinnedChats
                 .Select(id => Hub.ChatUI.Get(id, cancellationToken))
-                .Collect())
+                .Collect()
+                .ConfigureAwait(false))
             .SkipNullItems()
-            .ToApiArray();
+            .ToList();
 
-        return new Model {
+        return new() {
             Chats = chats,
         };
     }
@@ -91,6 +92,6 @@
         => Hub.ChatUI.SetNavbarPinnedChats(chats);
 
     public record Model {
-        public ApiArray<ChatInfo> Chats { get; init; } = ApiArray.Empty<ChatInfo>();
+        public List<ChatInfo> Chats { get; init; } = [];
     }
 }

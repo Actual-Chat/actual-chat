@@ -26,16 +26,14 @@
         var presenceComputed = Computed.GetExisting(() => UserPresences.Get(UserId, default));
         var presence = presenceComputed?.IsConsistent() == true &&  presenceComputed.HasValue ? presenceComputed.Value : Presence.Unknown;
 
-        return new ComputedState<Presence>.Options {
+        return new() {
             InitialValue = presence,
             Category = GetStateCategory(),
         };
     }
 
-    protected override async Task<Presence> ComputeState(CancellationToken cancellationToken) {
-        if (UserId.IsNone)
-            return Presence.Unknown;
-
-        return await UserPresences.Get(UserId, cancellationToken);
-    }
+    protected override Task<Presence> ComputeState(CancellationToken cancellationToken)
+        => UserId.IsNone
+            ? Task.FromResult(Presence.Unknown)
+            : UserPresences.Get(UserId, cancellationToken);
 }

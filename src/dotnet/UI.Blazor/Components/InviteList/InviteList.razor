@@ -50,7 +50,7 @@
     private UICommander UICommander => UIHub.UICommander();
     private Session Session => UIHub.Session();
 
-    [Parameter, EditorRequired] public ApiArray<Invite> Invites { get; set; }
+    [Parameter, EditorRequired] public List<Invite> Invites { get; set; } = [];
     [Parameter, EditorRequired] public string LinkFormat { get; set; } = "";
     [Parameter] public bool AllowRevoke { get; init; }
     [Parameter] public string NewInviteId { get; init; } = "";

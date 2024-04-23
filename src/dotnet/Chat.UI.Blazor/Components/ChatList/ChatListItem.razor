@@ -182,7 +182,7 @@ else {
         }
 
         DebugLog?.LogDebug("<- ComputeState: {ListKind} #{Index}, OK, ChatId={ChatId}", ListKind, Index, chatId);
-        return new Model {
+        return new() {
             ChatState = chatState,
             IsLastItemInBlock = isLastItemInBlock,
         };

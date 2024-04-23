@@ -56,8 +56,8 @@
         if (!CanBeClosed)
             return true;
 
-        await _dismissed.WhenRead;
-        var dismissed = await _dismissed.Use(cancellationToken);
+        await _dismissed.WhenRead.ConfigureAwait(false);
+        var dismissed = await _dismissed.Use(cancellationToken).ConfigureAwait(false);
         return !dismissed;
     }
 }

@@ -29,8 +29,8 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var settings = await ChatListView.GetSettings(cancellationToken);
-        return new Model {
+        var settings = await ChatListView.GetSettings(cancellationToken).ConfigureAwait(false);
+        return new() {
             SortOrder = settings.Order,
         };
     }

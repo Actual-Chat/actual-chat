@@ -21,7 +21,7 @@
     }
 
     protected override async Task<string> ComputeState(CancellationToken cancellationToken) {
-        var now = await Hub.FusionTime.Now(UpdatePeriod);
+        var now = await Hub.FusionTime.Now(UpdatePeriod).ConfigureAwait(false);
         return GetText(now);
     }
 

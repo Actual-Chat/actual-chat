@@ -31,7 +31,8 @@
         };
 
     protected override async Task<ChatNotificationMode> ComputeState(CancellationToken cancellationToken) {
-        var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken);
+        var chatId = Chat.Id;
+        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         return userChatSettings.NotificationMode;
     }
 

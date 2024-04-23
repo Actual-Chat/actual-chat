@@ -73,10 +73,11 @@
         if (Chat.HasSingleAuthor && Chat.SystemTag == Constants.Chat.SystemTags.Notes)
             message = "Welcome! You can store your notes in this chat, including recorded ones.";
 
-        var shareModel = await ShareUI.GetModel(Chat.Id, cancellationToken).ConfigureAwait(false);
+        var chatId = Chat.Id;
+        var shareModel = await ShareUI.GetModel(chatId, cancellationToken).ConfigureAwait(false);
         if (shareModel is { Kind: ShareKind.Contact })
             message = $"To share {shareModel.TargetTitle}'s contact, use:";
-        return new Model(message, shareModel);
+        return new(message, shareModel);
     }
 
     private void OnShareClick(ShareModalModel shareModel)

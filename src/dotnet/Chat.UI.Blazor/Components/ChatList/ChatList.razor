@@ -72,11 +72,12 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        DebugLog?.LogDebug("-> ComputeState: {List}", Kind);
-        var chatCount = await ChatListUI.GetCount(Kind);
-        var isSearchModeOn = await SearchUI.IsSearchModeOn.Use(cancellationToken);
-        DebugLog?.LogDebug("<- ComputeState: {List}. Count={Count}, IsSearchModeOn={IsSearchModeOn}", Kind, chatCount, isSearchModeOn);
-        return new Model(chatCount, isSearchModeOn);
+        var chatListKind = Kind;
+        DebugLog?.LogDebug("-> ComputeState: {List}", chatListKind);
+        var chatCount = await ChatListUI.GetCount(chatListKind).ConfigureAwait(false);
+        var isSearchModeOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
+        DebugLog?.LogDebug("<- ComputeState: {List}. Count={Count}, IsSearchModeOn={IsSearchModeOn}", chatListKind, chatCount, isSearchModeOn);
+        return new (chatCount, isSearchModeOn);
     }
 
     protected override bool ShouldRender()

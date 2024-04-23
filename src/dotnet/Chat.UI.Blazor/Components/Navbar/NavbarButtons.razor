@@ -119,9 +119,9 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken);
-        var enablePlacesUI = await Features.Get<Features_EnablePlacesUI, bool>(cancellationToken);
-        return new Model(ownAccount, enablePlacesUI);
+        var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        var enablePlacesUI = await Features.Get<Features_EnablePlacesUI, bool>(cancellationToken).ConfigureAwait(false);
+        return new(ownAccount, enablePlacesUI);
     }
 
     private Task OnCreateChatClick()

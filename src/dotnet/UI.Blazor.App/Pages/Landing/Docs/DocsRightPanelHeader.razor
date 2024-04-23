@@ -30,14 +30,14 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions() {
-        return new ComputedState<AccountFull>.Options() {
+        return new() {
             InitialValue = AccountUI.OwnAccount.Value,
             Category = GetStateCategory(),
         };
     }
 
     protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => await AccountUI.OwnAccount.Use(cancellationToken);
+        => await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
 
     private Task SignIn()
         => ModalUI.Show(new SignInModal.Model());

@@ -65,20 +65,20 @@
             await _dismissedAt.WhenRead;
 
         // NOTE(AY): I intentionally don't use IFusionTime here - prob. fine to don't show it back on timer
-        var dismissedAt = await _dismissedAt.Use(cancellationToken);
+        var dismissedAt = await _dismissedAt.Use(cancellationToken).ConfigureAwait(false);
         var dismissPeriod = Clocks.SystemClock.Now - dismissedAt;
         var isDismissed = dismissPeriod < Constants.Contacts.PermissionRequestDismissPeriod;
 
-        var permissionState = await ContactsPermission.Cached.Use(cancellationToken);
+        var permissionState = await ContactsPermission.Cached.Use(cancellationToken).ConfigureAwait(false);
         if (permissionState == null && _permissionStateWasDefined)
             _checkIsRequired = true;
         if (_checkIsRequired && !isDismissed) {
-            permissionState = await ContactsPermission.Check(cancellationToken);
+            permissionState = await ContactsPermission.Check(cancellationToken).ConfigureAwait(false);
             _checkIsRequired = false;
         }
         _permissionStateWasDefined = permissionState.HasValue;
 
-        return new Model(permissionState, isDismissed);
+        return new (permissionState, isDismissed);
     }
 
     // Event handlers

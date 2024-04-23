@@ -24,7 +24,7 @@
 
     protected override async Task<ComputeStateTestComponent.Model> ComputeState(CancellationToken cancellationToken) {
 
-        var value = await TestService.State.Use(cancellationToken);
+        var value = await TestService.State.Use(cancellationToken).ConfigureAwait(false);
         return new(value);
     }
 }

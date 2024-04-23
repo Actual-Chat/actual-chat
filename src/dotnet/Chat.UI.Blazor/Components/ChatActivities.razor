@@ -42,15 +42,17 @@
         if (ChatRecordingActivity == null)
             return Model.None;
 
-        var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken);
+        var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
         return new() {
-            RecordingAuthorSids = authorIds.Select(id => id.Value).ToApiArray(),
+            RecordingAuthorSids = authorIds
+                .Select(id => id.Value)
+                .ToList(),
         };
     }
 
     public sealed class Model {
         public static readonly Model None = new();
 
-        public ApiArray<string> RecordingAuthorSids { get; init; }
+        public List<string> RecordingAuthorSids { get; init; } = [];
     }
 }

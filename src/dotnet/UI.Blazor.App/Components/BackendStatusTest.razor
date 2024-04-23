@@ -32,7 +32,7 @@ else {
             return "";
 
         try {
-            var state = await _reconnectUI.State.Use(cancellationToken);
+            var state = await _reconnectUI.State.Use(cancellationToken).ConfigureAwait(false);
             return state.GetDescription();
         }
         catch (Exception e) {
