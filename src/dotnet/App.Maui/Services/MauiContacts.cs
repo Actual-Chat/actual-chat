@@ -6,7 +6,6 @@ using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Core.NonWasm;
 using ActualChat.Hashing;
 using ActualChat.Permissions;
-using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using banditoth.MAUI.DeviceId.Interfaces;
 using MauiContact = Microsoft.Maui.ApplicationModel.Communication.Contact;
@@ -16,14 +15,15 @@ namespace ActualChat.App.Maui.Services;
 [method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiContacts))]
 public class MauiContacts(IServiceProvider services) : DeviceContacts
 {
-    private Symbol? _deviceId;
+    private readonly object _lock = new();
+    private StrongBox<Symbol>? _deviceId;
     private Session? _session;
     private IAccounts? _accounts;
     private ContactsPermissionHandler? _permissions;
     private ExternalContactHasher? _externalContactHashes;
     private ILogger? _log;
 
-    public override Symbol DeviceId => _deviceId ??= DeviceIdProvider.GetDeviceId();
+    public override Symbol DeviceId => GetDeviceId();
     private Session Session => _session ??= services.Session();
     private IAccounts Accounts => _accounts ??= services.GetRequiredService<IAccounts>();
     private ContactsPermissionHandler Permissions => _permissions ??= services.GetRequiredService<ContactsPermissionHandler>();
@@ -52,6 +52,20 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
             Log.LogError(e, "Failed to read device contacts");
             return default;
         }
+    }
+
+    // Private methods
+
+    private Symbol GetDeviceId()
+    {
+        // Symbol? size is sizeof((bool, int, pointer)), so the ??= assignment is non-atomic -
+        // that's why we use StrongBox to safely access it.
+
+        // Double-check locking
+        if (_deviceId == null)
+            lock (_lock)
+                _deviceId ??= new StrongBox<Symbol>(DeviceIdProvider.GetDeviceId());
+        return _deviceId.Value;
     }
 
     private ExternalContactFull ToExternalContact(
