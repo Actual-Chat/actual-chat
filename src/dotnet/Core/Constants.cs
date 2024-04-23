@@ -207,6 +207,8 @@ public static partial class Constants
     {
         public const int OpusFrameDurationMs = 20;
         public static readonly TimeSpan OpusFrameDuration = TimeSpan.FromMilliseconds(OpusFrameDurationMs);
+        public static readonly TimeSpan ListeningDuration = TimeSpan.FromSeconds(60);
+        public static readonly TimeSpan RecordingDuration = TimeSpan.FromSeconds(30);
     }
 
     public static class Search

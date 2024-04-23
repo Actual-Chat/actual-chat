@@ -1,59 +1,43 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IModalView<ListeningSettingsModal.Model>
 @using ActualChat.Kvas
-@using ActualChat.Audio
 @inherits ComputedStateComponent<ListeningSettingsModal.ComputedModel>
 @{
     var m = State.Value;
-    var listeningMode = m.ListeningMode;
-    var defaultTimeout = (int)Math.Floor(AudioSettings.IdleListeningTimeout.TotalMinutes);
-    var pMinute = "minute".Pluralize(defaultTimeout);
+    var mode = m.ListeningMode;
 }
-<DialogFrame Title="Listening settings" Class="transcription-options-modal modal-sm" HasCloseButton="false">
+<DialogFrame
+    Title="Turn off listening in this chat:"
+    Class="transcription-options-modal modal-sm"
+    HasCloseButton="false">
     <Body>
-    <FormBlock>
-        <TileItem Click="() => UpdateListeningMode(ListeningMode.Default)">
-            <Content>Turn off after <b>@defaultTimeout @pMinute</b> of inactivity</Content>
-            <Right>
-                @if (listeningMode == ListeningMode.Default) {
-                    <i class="icon-checkmark-simple text-primary text-2xl"></i>
-                }
-            </Right>
-        </TileItem>
-        <TileItem Click="() => UpdateListeningMode(ListeningMode.TurnOffAfter15Minutes)">
-            <Content>Turn off after <b>15 minutes</b> of inactivity</Content>
-            <Right>
-                @if (listeningMode == ListeningMode.TurnOffAfter15Minutes) {
-                    <i class="icon-checkmark-simple text-primary text-2xl"></i>
-                }
-            </Right>
-        </TileItem>
-        <TileItem Click="() => UpdateListeningMode(ListeningMode.TurnOffAfter2Hours)">
-            <Content>Turn off after <b>2 hours</b> of inactivity</Content>
-            <Right>
-                @if (listeningMode == ListeningMode.TurnOffAfter2Hours) {
-                    <i class="icon-checkmark-simple text-primary text-2xl"></i>
-                }
-            </Right>
-        </TileItem>
-        <TileItem Click="() => UpdateListeningMode(ListeningMode.KeepListening)">
-            <Content><b>Keep listening</b> when app is active</Content>
-            <Right>
-                @if (listeningMode == ListeningMode.KeepListening) {
-                    <i class="icon-checkmark-simple text-primary text-2xl"></i>
-                }
-            </Right>
-        </TileItem>
+    <FormBlock Class="first last">
+        @foreach (var info in ListeningModeInfo.All) {
+            RenderFragment content;
+            if (info.Duration < TimeSpan.MaxValue) {
+                content = @<span>After <u>@info.Text</u> of inactivity</span>;
+            } else {
+                content = @<span><u>Keep listening</u> while the app is active</span>;
+            }
+            <TileItem Click="@(() => SetListeningMode(info.Mode))">
+                <Content>@content</Content>
+                <Right>
+                    @if (mode == info.Mode) {
+                        <i class="icon-checkmark-simple text-primary text-2xl"></i>
+                    }
+                </Right>
+            </TileItem>
+        }
     </FormBlock>
     </Body>
 </DialogFrame>
 
 @code {
     [Inject] public ChatUIHub Hub { get; set; } = null!;
+
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private AudioSettings AudioSettings => Hub.AudioSettings;
     private ChatUI ChatUI => Hub.ChatUI;
     private AccountSettings AccountSettings => Hub.AccountSettings();
 
@@ -70,17 +54,17 @@
         return new (chatInfo?.UserSettings.ListeningMode ?? ListeningMode.Default);
     }
 
-    private async Task UpdateListeningMode(ListeningMode listeningMode) {
+    private async Task SetListeningMode(ListeningMode listeningMode) {
 
         var chatId = ModalModel.ChatId;
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, default);
         userChatSettings = userChatSettings with { ListeningMode = listeningMode };
         await AccountSettings.SetUserChatSettings(chatId, userChatSettings, default);
-        if (listeningMode == ListeningMode.KeepListening) {
+        if (listeningMode == ListeningMode.Forever) {
             await Hub.ChatAudioUI.SetListeningState(chatId, true);
-            await AccountSettings.AddContinuouslyListenedChat(chatId, default);
+            await AccountSettings.AddAlwaysListenedChat(chatId, default);
         } else {
-            await AccountSettings.RemoveContinuouslyListenedChat(chatId, default);
+            await AccountSettings.RemoveAlwaysListenedChat(chatId, default);
         }
 
         Modal.Close();

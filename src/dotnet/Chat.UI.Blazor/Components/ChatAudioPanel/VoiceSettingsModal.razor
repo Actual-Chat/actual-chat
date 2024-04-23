@@ -1,6 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IModalView<VoiceSettingsModal.Model>
-@using ActualChat.Audio
 @inherits ComputedStateComponent<VoiceSettingsModal.ComputedModel>
 @{
     var m = State.Value;
@@ -10,22 +9,15 @@
             ? "On"
             : "Off";
 
-    var defaultTurnOffPeriod = (int)Math.Floor(AudioSettings.IdleListeningTimeout.TotalMinutes);
-    var (listenStatus, listenPeriod) = m.ListeningMode switch {
-        ListeningMode.Default => ("Off", $"{defaultTurnOffPeriod} {"minute".Pluralize(defaultTurnOffPeriod)}"),
-        ListeningMode.TurnOffAfter15Minutes => ("On", "15 minutes"),
-        ListeningMode.TurnOffAfter2Hours => ("On", "2 hours"),
-        ListeningMode.KeepListening => ("On", "When running"),
-        _ => throw new ArgumentOutOfRangeException(nameof(ListeningMode)),
-    };
+    var listeningModeInfo = m.ListeningMode.GetInfo();
 }
 
 <DialogFrame Title="Voice settings" Class="transcription-options-modal modal-sm" HasCloseButton="true">
     <Body>
-    <FormBlock>
+    <FormBlock Class="first last">
         <LanguageButtonGroup ChatId="@ModalModel.ChatId" Click="@(() => Modal.Close())"/>
 
-        <TileItem Click="OnVoiceStreamingClick">
+        <TileItem Click="@OnVoiceStreamingClick">
             <Icon><i class="icon-radio-button-on-fill text-2xl"></i></Icon>
             <Content>Voice streaming</Content>
             <Caption>@voiceStatus</Caption>
@@ -36,12 +28,12 @@
             </Right>
         </TileItem>
 
-        <TileItem Click="OnListenClick">
+        <TileItem Click="@OnListeningModeClick">
             <Icon><i class="icon-listen text-2xl"></i></Icon>
             <Content>Extended listening</Content>
-            <Caption>@listenStatus</Caption>
+            <Caption>@(listeningModeInfo.IsDefault ? "Off" : "On")</Caption>
             <Right>
-                <span class="text-primary text-sm">@listenPeriod</span>
+                <span class="text-primary text-sm">@listeningModeInfo.Text</span>
             </Right>
         </TileItem>
 
@@ -56,7 +48,6 @@
     private Session Session => Hub.Session();
     private ChatId ChatId => ModalModel.ChatId;
     private ChatUI ChatUI => Hub.ChatUI;
-    private AudioSettings AudioSettings => Hub.AudioSettings;
     private ChatVoiceSettings ChatVoiceSettings => _chatVoiceSettings ??= new(Hub.Services, Hub.AccountSettings());
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -88,7 +79,7 @@
     private Task OnVoiceStreamingClick()
         => OnMustStreamVoiceChanged(!State.Value.MustStreamVoice);
 
-    private Task OnListenClick()
+    private Task OnListeningModeClick()
         => Hub.ModalUI.Show(new ListeningSettingsModal.Model(ChatId));
 
     public sealed record ComputedModel(bool MustStreamVoice, bool CanChangeMustStreamVoice, ListeningMode ListeningMode);

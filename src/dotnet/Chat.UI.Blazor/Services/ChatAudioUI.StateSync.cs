@@ -184,7 +184,7 @@ public partial class ChatAudioUI
                 cancellationToken);
             whenIdle = ForegroundTask.Run(async () => {
                 var options = new RecordingIdleOptions(
-                    AudioSettings.IdleRecordingTimeout,
+                    Constants.Audio.RecordingDuration,
                     AudioSettings.IdleRecordingPreCountdownTimeout,
                     AudioSettings.IdleRecordingCheckPeriod);
                 var streamingIdleBoundaries = ObserveStreamingIdleBoundaries(chatId, options, ctsToken);
@@ -274,9 +274,11 @@ public partial class ChatAudioUI
         // Don't start till the moment ChatAudioUI gets enabled
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
+        var listeningDuration = Constants.Audio.ListeningDuration;
         var options = new RecordingIdleOptions(
-            AudioSettings.IdleListeningTimeout,
-            AudioSettings.IdleListeningPreCountdownTimeout,
+            listeningDuration,
+            // Must be > (listeningDuration - AudioSettings.IdleListeningCheckPeriod) and < listeningDuration
+            listeningDuration - AudioSettings.IdleListeningCheckPeriod + TimeSpan.FromSeconds(1),
             AudioSettings.IdleListeningCheckPeriod);
         var cListeningChatIds = await Computed
             .Capture(GetListeningChatIds, cancellationToken)
@@ -298,19 +300,11 @@ public partial class ChatAudioUI
                 var userChatSettings = await AccountSettings
                     .GetUserChatSettings(chatId, cancellationToken)
                     .ConfigureAwait(false);
-                if (userChatSettings.ListeningMode == ListeningMode.KeepListening)
+                if (userChatSettings.ListeningMode == ListeningMode.Forever)
                     continue; // do not start listening idle watcher
 
                 var chatOptions = options with {
-                    IdleTimeout = userChatSettings.ListeningMode switch {
-                        ListeningMode.Default => AudioSettings.IdleListeningTimeout,
-                        ListeningMode.TurnOffAfter15Minutes => TimeSpan.FromMinutes(15),
-                        ListeningMode.TurnOffAfter2Hours => TimeSpan.FromHours(2),
-                        ListeningMode.KeepListening => TimeSpan.MaxValue,
- #pragma warning disable CA2208
-                        _ => throw new ArgumentOutOfRangeException($"{nameof(userChatSettings)}.{nameof(ListeningMode)}"),
- #pragma warning restore CA2208
-                    },
+                    IdleTimeout = userChatSettings.ListeningMode.GetInfo().Duration,
                 };
                 var watcher = FuncWorker.Start(ct => StopListeningWhenIdle(chatId, chatOptions, ct), cancellationToken);
                 monitors.Add(chatId, watcher);
@@ -350,7 +344,7 @@ public partial class ChatAudioUI
                 var userChatSettings = await AccountSettings
                     .GetUserChatSettings(chatId, cancellationToken)
                     .ConfigureAwait(false);
-                if (userChatSettings.ListeningMode != ListeningMode.KeepListening)
+                if (userChatSettings.ListeningMode != ListeningMode.Forever)
                     // do not turn off listening when KeepListening is configured
                     await SetListeningState(chatId, false).ConfigureAwait(false);
             }

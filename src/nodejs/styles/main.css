@@ -56,6 +56,15 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply border-0;
 }
 
+/* Form blocks */
+
+.form-block.first {
+    @apply pt-0;
+}
+.form-block.last {
+    @apply pb-0;
+}
+
 /* Stack */
 
 .stack {
