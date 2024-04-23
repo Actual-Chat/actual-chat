@@ -20,12 +20,9 @@ public class ContentSaver(IBlobStorages blobStorages) : IContentSaver
         await Task.Delay(PostOperationDelay, CancellationToken.None).ConfigureAwait(false);
     }
 
-    public async Task<bool> Exists(string contentId, CancellationToken cancellationToken)
-        => await _blobStorage.Exists(contentId, cancellationToken).ConfigureAwait(false);
+    public Task<bool> Exists(string contentId, CancellationToken cancellationToken)
+        => _blobStorage.Exists(contentId, cancellationToken);
 
-    public async Task Copy(string sourceContentId, string destContentId, CancellationToken cancellationToken)
-    {
-        await _blobStorage.Copy(sourceContentId, destContentId, cancellationToken).ConfigureAwait(false);
-        await Task.Delay(PostOperationDelay, CancellationToken.None).ConfigureAwait(false);
-    }
+    public Task Copy(string sourceContentId, string destContentId, CancellationToken cancellationToken)
+        => _blobStorage.Copy(sourceContentId, destContentId, cancellationToken);
 }
