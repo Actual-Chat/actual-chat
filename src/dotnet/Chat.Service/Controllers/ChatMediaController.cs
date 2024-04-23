@@ -63,9 +63,8 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
     private async Task<Media.Media> SaveMedia(ChatId chatId, UploadedFile file, Size? size, CancellationToken cancellationToken)
     {
         var mediaId = new MediaId(chatId, Generate.Option);
-        var mediaIdHash = mediaId.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
         var media = new Media.Media(mediaId) {
-            ContentId = $"media/{mediaIdHash}/{mediaId.LocalId}{Path.GetExtension(file.FileName)}",
+            ContentId = mediaId.ContentId(Path.GetExtension(file.FileName)),
             FileName = file.FileName,
             Length = file.Length,
             ContentType = file.ContentType,
