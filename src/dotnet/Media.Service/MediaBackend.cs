@@ -123,8 +123,20 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             var mediaId = new MediaId(newChatId, dbMedia.LocalId);
             if (existentMediaSidSet.Contains(mediaId.Value))
                 continue;
+
+            var contentId = dbMedia.ContentId;
+            // Need to check if content is already exists because it can be second attempt to copy chat media
+            // and content might be already copied in previous attempt that did not finish successfully.
+            var newContentId = mediaId.ContentId(Path.GetExtension(dbMedia.ContentId));
+            if (!await ContentSaver.Exists(newContentId, cancellationToken).ConfigureAwait(false))
+                await ContentSaver.Copy(contentId, newContentId, cancellationToken).ConfigureAwait(false);
+            else
+                Log.LogInformation("Content with id '{NewContentId}' exists. Won't make a copy from content with id '{OriginalContentId}'",
+                    newContentId, contentId);
+
             dbMedia.Id = mediaId.Value;
             dbMedia.Scope = mediaId.Scope;
+            dbMedia.ContentId = newContentId;
             dbContext.Media.Add(dbMedia);
             updateCount++;
         }

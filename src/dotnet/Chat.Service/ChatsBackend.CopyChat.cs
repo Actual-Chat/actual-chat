@@ -168,7 +168,15 @@ public partial class ChatsBackend
             .ConfigureAwait(false);
         // Make chat private, so only owner who executed copying can see the chat.
         // Publishing copied chat command will set actual value of IsPublic property later.
-        chat = chat with { IsPublic = false };
+        var newChatMediaId = !chat.MediaId.IsNone ? new MediaId(newChatId, chat.MediaId.LocalId) : MediaId.None;
+        var copyMedia = !newChatMediaId.IsNone && (dbChat == null || !OrdinalEquals(newChatMediaId.Value, dbChat.MediaId));
+        if (copyMedia)
+            await Commander.Call(new MediaBackend_CopyChat(newChatId, correlationId, [chat.MediaId]), true, cancellationToken)
+                .ConfigureAwait(false);
+        chat = chat with {
+            IsPublic = false,
+            MediaId = newChatMediaId
+        };
         Chat newChat;
         if (dbChat == null) {
             newChat = chat with { Id = newChatId };
