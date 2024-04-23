@@ -48,6 +48,22 @@ body:not(.hoverable) .pic-upload .pic-upload-picker {
     @apply px-2;
 }
 
+.pic-upload-btn {
+    @apply relative;
+    @apply rounded-full;
+    @apply overflow-hidden;
+    @apply bg-[var(--round-right-panel)];
+}
+.pic-upload-btn > .pic {
+    @apply flex items-center justify-center;
+    @apply bg-[var(--round-right-panel)];
+    @apply text-primary;
+    @apply shadow;
+}
+body.hoverable .pic-upload-btn:hover > .pic {
+    @apply bg-[var(--hover-after-primary)];
+}
+
 .pic-size-4 {
     @apply w-4 h-4 min-w-4 min-h-4 max-w-4 max-h-4;
 }

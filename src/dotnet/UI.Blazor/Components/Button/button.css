@@ -145,7 +145,8 @@ body.hoverable .btn.btn-outline.btn-cancel:hover::after {
 
 /* Transparent Button */
 .btn.btn-transparent,
-.btn.btn-transparent.btn-primary {
+.btn.btn-transparent.btn-primary,
+.btn.btn-round.btn-transparent.btn-primary {
     @apply bg-transparent;
     @apply text-primary;
 }

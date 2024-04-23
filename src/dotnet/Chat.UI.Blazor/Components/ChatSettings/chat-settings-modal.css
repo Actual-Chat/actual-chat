@@ -12,6 +12,17 @@
     @apply mx-0;
 }
 
+.edit-chat-settings-modal .dialog-body {
+    @apply pt-0;
+    scrollbar-width: none;
+}
+
+.edit-settings-modal .form-block:not(:first-of-type) {
+    @apply border-0;
+}
+.edit-settings-modal:has(.chat-settings-header) .modal-header {
+    @apply hidden;
+}
 
 .edit-settings-modal .dialog-buttons {
     @apply pt-4;
@@ -81,12 +92,19 @@
     @apply mt-3;
 }
 .edit-settings-modal.edit-members .list {
-    @apply -mr-4 pr-1.75;
     @apply overflow-y-auto custom-scrollbar;
 }
 .edit-settings-modal.edit-members .list > li {
     @apply flex-x;
     @apply min-h-12;
+}
+.edit-settings-modal.edit-members .list > li .menu {
+    @apply flex items-center justify-center;
+    @apply min-w-4;
+}
+.edit-settings-modal.edit-members .list .avatar-badge {
+    @apply flex-1;
+    @apply overflow-x-hidden;
 }
 .edit-settings-modal.edit-members .list .avatar-badge .c-status {
     @apply text-03 text-xs leading-3.5;
@@ -124,7 +142,7 @@
     @apply font-medium text-02;
 }
 .edit-member-menu .ac-menu-hint {
-    @apply text-caption-2 font-normal text-03;
+    @apply text-caption-6 text-03;
     @apply whitespace-normal;
 }
 
@@ -144,4 +162,38 @@
 body.hoverable .copy-chat-to-place-modal .c-chat-list .c-chat:hover {
     @apply bg-hover;
     @apply cursor-pointer;
+}
+
+.form-block.chat-settings-header {
+    @apply relative;
+    @apply flex-y items-center gap-x-4;
+    @apply min-h-32;
+    @apply p-0;
+}
+.chat-settings-header > .c-top {
+    @apply relative;
+    @apply flex-none;
+    @apply h-26 w-full;
+    @apply rounded-b-xl;
+    @apply overflow-hidden;
+}
+.chat-settings-header > .c-center {
+    @apply absolute top-17 z-20;
+    @apply flex-x;
+    @apply h-16 w-full;
+    @apply px-4;
+}
+.chat-settings-header > .c-center > .c-buttons {
+    @apply flex-1 flex-x items-center justify-end gap-x-3;
+}
+.chat-settings-header > .c-center > .c-buttons .btn.btn-round {
+    @apply bg-[var(--round-right-panel)];
+    @apply text-primary;
+    @apply shadow;
+}
+.chat-settings-header > .c-bottom {
+    @apply flex-y items-start justify-end gap-y-1;
+    @apply w-full;
+    @apply px-4 pt-10;
+    @apply bg-transparent;
 }

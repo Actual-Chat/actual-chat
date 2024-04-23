@@ -28,23 +28,23 @@
         var dataMenuAttr = showMenu ? MenuRef.New<EditChatMemberMenu>(authorId).ToString() : null;
         <li data-menu="@dataMenuAttr"
             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
-            <div class="grow">
                 <AuthorBadge
                     @key="@authorId"
                     AuthorSid="@authorId"
                     ShowPresence="true"
                     StatusText="@statusText" />
-            </div>
             @if (dataMenuAttr != null) {
                 <div class="menu"
                      data-menu="@dataMenuAttr"
                      data-menu-trigger="@MenuTrigger.Primary"
                      data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
 
-                    <ButtonRound Class="btn-transparent blackout">
+                    <HeaderButton Class="blackout">
                         <i class="icon-more-vertical text-2xl"></i>
-                    </ButtonRound>
+                    </HeaderButton>
                 </div>
+            } else {
+                <div class="menu"></div>
             }
         </li>
     }

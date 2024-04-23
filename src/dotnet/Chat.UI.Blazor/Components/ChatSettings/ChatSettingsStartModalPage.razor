@@ -29,17 +29,46 @@
     @{
         _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
     }
-    <FormBlock>
+    <FormBlock Class="chat-settings-header">
         <DataAnnotationsValidator/>
 
-        <PicUpload
-            UploadUrl="@_form.ImageUploadUrl"
-            Size="@SquareSize.Size24"
-            Title="@_form.Title"
-            Picture="@_form.Picture"
-            AvatarKind="@_avatarKind"
-            AvatarKey="@_avatarKey"
-            Picked="@OnImagePicked"/>
+        <div class="c-top">
+            <ChatIcon
+                Chat="@m.Chat"
+                Size="SquareSize.SizeFull"
+                IsSquare="@true"
+                HideTitle="@true"
+                IsBlurred="@true"
+                ShowPresence="@false"/>
+        </div>
+        <div class="c-center">
+            <PicUpload
+                UploadUrl="@_form.ImageUploadUrl"
+                Size="@SquareSize.Size16"
+                Title="@_form.Title"
+                Picture="@_form.Picture"
+                AvatarKind="@_avatarKind"
+                AvatarKey="@_avatarKey"
+                Picked="@OnImagePicked"/>
+
+            <div class="c-buttons">
+                <PicUpload
+                    UploadUrl="@_form.ImageUploadUrl"
+                    Title="@_form.Title"
+                    Picture="@_form.Picture"
+                    AvatarKind="@_avatarKind"
+                    AvatarKey="@_avatarKey"
+                    IsButton="@true"
+                    Picked="@OnImagePicked"/>
+                <ButtonRound Class="btn-sm">
+                    <i class="icon-image text-2xl"></i>
+                </ButtonRound>
+            </div>
+        </div>
+    </FormBlock>
+
+    <FormBlock>
+        <DataAnnotationsValidator/>
 
         <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true">
             <TextBox
@@ -51,10 +80,22 @@
     </FormBlock>
 
     <FormBlock Title="Chat type">
+        <TileItem Click="OnManageChatTypeClick">
+            <Icon>
+                <i class="icon-key text-xl"></i>
+            </Icon>
+            <Content>
+                Chat type
+            </Content>
+            <Right>
+                @(m.IsPublic ? "Public" : "Private")
+            </Right>
+        </TileItem>
+
         <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
             <TileItem>
                 <Icon>
-                    <FormRadio Id="@_form.IsPublicTrueFormId" IsDisabled="@(!canChangeChatType)" Value="@true" />
+                    <FormRadio Id="@_form.IsPublicTrueFormId" IsDisabled="@(!canChangeChatType)" Value="@true"/>
                 </Icon>
                 <Content>
                     <Label InputId="@_form.IsPublicTrueFormId" Text="@publicChatLabel"></Label>
@@ -205,8 +246,6 @@
     }
 </Form>
 
-
-
 @code {
     private const int MaxInvitesCount = 5;
     private Form?_formRef;
@@ -295,6 +334,7 @@
             .ToList();
         var link = Links.Chat(chatId).ToDisplayUrl(Hub.UrlMapper());
         var allowEditIsTemplate = await Hub.Features().Get<Features_EnableTemplateChatUI, bool>(cancellationToken).ConfigureAwait(false);
+        var isPublic = chat.IsPublic;
         return new() {
             Chat = chat,
             Link = link,
@@ -302,6 +342,7 @@
             AllowEditIsTemplate = allowEditIsTemplate,
             IsOwner = chat.Rules.IsOwner(),
             MembersCount = allAuthorIds.Count,
+            IsPublic = isPublic,
         };
     }
 
@@ -316,6 +357,9 @@
         invite = await Hub.UICommander().Run(new Invites_Generate(Session, invite));
         _newInviteId = invite.Id;
     }
+
+    private void OnManageChatTypeClick()
+        => Context.StepIn(DiveInDialogPage.New<EditChatTypeModalPage>(ChatId));
 
     private void OnManageMembersClick()
         => Context.StepIn(DiveInDialogPage.New<EditChatMembersModalPage>(ChatId));
@@ -395,5 +439,6 @@
         public bool AllowEditIsTemplate { get; init; }
         public bool IsOwner { get; init; }
         public int MembersCount { get; init; }
+        public bool IsPublic { get; init; }
     }
 }
