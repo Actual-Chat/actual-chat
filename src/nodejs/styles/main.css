@@ -118,11 +118,12 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 }
 .layout-header > .c-content {
     @apply ordinary-header;
-    @apply gap-x-2;
     @apply justify-items-stretch;
     @apply border-b border-separator;
 }
-
+.layout-header > .c-content .chat-header-back {
+    @apply md:hidden;
+}
 .layout-subheader {
     @apply absolute flex-none flex-y top-14 z-10;
     @apply w-full;
