@@ -51,16 +51,18 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var enablePlacesUI = await Features.Get<Features_EnablePlacesUI, bool>(cancellationToken);
-        var placeIds = await Hub.Contacts.ListPlaceIds(Session, cancellationToken);
+        var session = Session;
+        var enablePlacesUI = await Features.Get<Features_EnablePlacesUI, bool>(cancellationToken).ConfigureAwait(false);
+        var placeIds = await Hub.Contacts.ListPlaceIds(session, cancellationToken).ConfigureAwait(false);
         var places = (await placeIds
-                .Select(id => Hub.Places.Get(Session, id, cancellationToken))
-                .Collect())
+                .Select(id => Hub.Places.Get(session, id, cancellationToken))
+                .Collect()
+                .ConfigureAwait(false))
             .SkipNullItems()
             .OrderBy(c => c.CreatedAt)
-            .ToApiArray();
+            .ToList();
 
-        return new Model(enablePlacesUI) {
+        return new(enablePlacesUI) {
             Places = places
         };
     }
@@ -76,6 +78,6 @@
         => Selector.SelectPlace(placeId);
 
     public record Model(bool EnablePlacesUI) {
-        public ApiArray<Place> Places { get; init; } = ApiArray.Empty<Place>();
+        public List<Place> Places { get; init; } = [];
     }
 }

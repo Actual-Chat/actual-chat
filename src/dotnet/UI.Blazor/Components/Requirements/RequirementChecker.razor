@@ -59,9 +59,11 @@
     protected override async Task<FailedRequirementSet> ComputeState(CancellationToken cancellationToken) {
         var failures = ImmutableDictionary<RequirementComponent, Exception>.Empty;
         var recoveredRequirements = ImmutableList<RequirementComponent>.Empty;
-        foreach (var requirement in _requirements.Keys) {
+        var mutableDictionary = _requirements;
+        
+        foreach (var requirement in mutableDictionary.Keys) {
             try {
-                await requirement.Require(cancellationToken);
+                await requirement.Require(cancellationToken).ConfigureAwait(false);
                 recoveredRequirements = recoveredRequirements.Add(requirement);
             }
             catch (Exception e) when (e is not OperationCanceledException) {
@@ -69,9 +71,11 @@
             }
         }
         foreach (var requirement in recoveredRequirements)
-            _requirements.Remove(requirement);
+            mutableDictionary.Remove(requirement);
 
-        return failures.Any() ? new FailedRequirementSet(failures) : FailedRequirementSet.Empty;
+        return failures.Any()
+            ? new(failures)
+            : FailedRequirementSet.Empty;
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {

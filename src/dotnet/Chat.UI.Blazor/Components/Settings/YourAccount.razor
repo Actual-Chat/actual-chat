@@ -91,7 +91,7 @@
         };
 
     protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => await AccountUI.OwnAccount.Use(cancellationToken);
+        => await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
 
     private void OnEditClick()
         => ModalUI.Show(OwnAccountEditorModal.Model.Default);

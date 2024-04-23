@@ -72,11 +72,11 @@
                 .WaitAsync(TimeSpan.FromSeconds(3), cancellationToken)
                 .SilentAwait();
 
-        var permissionState = await NotificationUI.PermissionState.Use(cancellationToken);
+        var permissionState = await NotificationUI.PermissionState.Use(cancellationToken).ConfigureAwait(false);
         // Log.LogWarning("ComputeState: {Value} @ #{Hash}", permissionState, NotificationUI.GetHashCode());
 
         // NOTE(AY): We intentionally don't use IFusionTime here - prob. fine to don't show it back on timer
-        var dismissedAt = await _dismissedAt.Use(cancellationToken);
+        var dismissedAt = await _dismissedAt.Use(cancellationToken).ConfigureAwait(false);
         var dismissPeriod = Clocks.SystemClock.Now - dismissedAt;
         var isDismissed = dismissPeriod < Constants.Notification.PermissionRequestDismissPeriod;
         return new(permissionState, isDismissed);

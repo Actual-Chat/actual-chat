@@ -106,20 +106,34 @@
         };
 
     protected override async Task<ViewModel> ComputeState(CancellationToken cancellationToken) {
-        var selectedAvatarId = await GetSelectedAvatarId(cancellationToken);
-        var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
+        var session = Session;
+        var chatId = ModalModel.ChatId;
+
+        var selectedAvatarId = await GetSelectedAvatarId(cancellationToken).ConfigureAwait(false);
+        var avatarIds = await Avatars.ListOwnAvatarIds(session, cancellationToken).ConfigureAwait(false);
         var avatars = await avatarIds
-            .Select(x => Avatars.GetOwn(Session, x, cancellationToken))
-            .Collect();
+            .Select(x => Avatars.GetOwn(session, x, cancellationToken))
+            .Collect()
+            .ConfigureAwait(false);
         var existingAvatars = avatars.SkipNullItems().ToApiArray();
         var anonymous = GetAnonymous();
-        return new ViewModel(existingAvatars, selectedAvatarId, anonymous);
-    }
+        return new (existingAvatars, selectedAvatarId, anonymous);
 
-    private Avatar? GetAnonymous() {
-        if (!ModalModel.AllowAnonymous)
-            return null;
-        return _anonymous ??= GenerateAnonymous();
+        async Task<Symbol> GetSelectedAvatarId(CancellationToken cancellationToken1) {
+            if (chatId.IsNone) {
+                var account = await Accounts.GetOwn(session, cancellationToken1).ConfigureAwait(false);
+                return account.Avatar.Id;
+            }
+
+            var author = await Authors.GetOwn(session, chatId, cancellationToken1).ConfigureAwait(false);
+            return author?.Avatar.Id ?? Symbol.Empty;
+        }
+
+        Avatar? GetAnonymous() {
+            if (!ModalModel.AllowAnonymous)
+                return null;
+            return _anonymous ??= GenerateAnonymous();
+        }
     }
 
     private Avatar GenerateAnonymous() {
@@ -134,18 +148,6 @@
     private void RegenerateAnonymousAvatar() {
         _anonymous = GenerateAnonymous();
         State.Recompute();
-    }
-
-    private async Task<Symbol> GetSelectedAvatarId(CancellationToken cancellationToken)
-    {
-        if (ModalModel.ChatId.IsNone) {
-            var account = await Accounts.GetOwn(Session, cancellationToken);
-            return account.Avatar.Id;
-        }
-        else {
-            var author = await Authors.GetOwn(Session, ModalModel.ChatId, cancellationToken);
-            return author?.Avatar.Id ?? Symbol.Empty;
-        }
     }
 
     private async Task OnAnonymousSelected(Avatar anonymous) {

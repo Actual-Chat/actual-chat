@@ -97,8 +97,8 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var languages = await Hub.LanguageUI.Settings.Use(cancellationToken);
-        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        var languages = await Hub.LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
         return new(languages, enableIncompleteUI);
     }
 

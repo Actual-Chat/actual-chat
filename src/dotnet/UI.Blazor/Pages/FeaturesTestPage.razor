@@ -25,13 +25,15 @@
         };
 
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
-        => new() {
-            ClientUser = await Features.Get<TestFeature_ClientUser, User?>(cancellationToken),
-            ServerTime = await Features.Get<TestFeature_ServerTime, Moment>(cancellationToken),
-            EnableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken),
-            Environment = HostInfo.Environment.Value,
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var hostInfo = HostInfo;
+        return new() {
+            ClientUser = await Features.Get<TestFeature_ClientUser, User?>(cancellationToken).ConfigureAwait(false),
+            ServerTime = await Features.Get<TestFeature_ServerTime, Moment>(cancellationToken).ConfigureAwait(false),
+            EnableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false),
+            Environment = hostInfo.Environment.Value,
         };
+    }
 
     // Nested types
 

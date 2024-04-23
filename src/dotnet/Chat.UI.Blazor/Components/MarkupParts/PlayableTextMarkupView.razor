@@ -46,8 +46,8 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var hasSelection = await SelectionUI.HasSelection.Use(cancellationToken);
-        var model = await InnerComputeState(cancellationToken);
+        var hasSelection = await SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
+        var model = await InnerComputeState(cancellationToken).ConfigureAwait(false);
         if (_rendered is not { Map: not null })
             return model with { // Never rendered
                 HasSelection = hasSelection,
@@ -55,7 +55,7 @@
 
         var colorLease = ActualizeColorLease(model, _rendered);
         var map = EnrichMapWithPlayedStatus(model.Map, _rendered.Map);
-        return new Model {
+        return new() {
             Map = map,
             ColorLease = colorLease,
             Color = colorLease?.Color ?? _rendered.Color,

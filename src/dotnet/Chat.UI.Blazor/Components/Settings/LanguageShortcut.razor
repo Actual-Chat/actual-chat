@@ -15,7 +15,7 @@
 
     protected override ComputedState<UserLanguageSettings>.Options GetStateOptions()
         => new() {
-            InitialValue = new UserLanguageSettings(),
+            InitialValue = new(),
             Category = GetStateCategory(),
         };
 

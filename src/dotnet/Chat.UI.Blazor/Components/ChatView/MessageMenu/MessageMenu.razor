@@ -44,14 +44,15 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatEntry = await Chats.GetEntry(Session, _entryId, CancellationToken.None);
+        var session = Session;
+        var chatEntry = await Chats.GetEntry(session, _entryId, CancellationToken.None).ConfigureAwait(false);
         if (chatEntry == null)
             return Model.None;
 
-        var requestAuthor = await Authors.GetOwn(Session, chatEntry.ChatId, CancellationToken.None);
-        var rules = await Chats.GetRules(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
+        var requestAuthor = await Authors.GetOwn(session, chatEntry.ChatId, CancellationToken.None).ConfigureAwait(false);
+        var rules = await Chats.GetRules(session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
 
-        return new Model {
+        return new() {
             Link = _link,
             IsSystem = _isSystem,
             Code = _code,

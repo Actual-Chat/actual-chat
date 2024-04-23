@@ -27,5 +27,5 @@
         };
 
     protected override async Task<Account> ComputeState(CancellationToken cancellationToken)
-        => await AccountUI.OwnAccount.Use(cancellationToken);
+        => await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
 }

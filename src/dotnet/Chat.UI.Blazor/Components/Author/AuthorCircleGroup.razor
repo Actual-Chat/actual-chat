@@ -40,6 +40,7 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public int MaxIconCount { get; set; } = 5;
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size6;
+
     [Parameter, ParameterComparer(typeof(ByItemParameterComparer))]
-    public ApiArray<string> AuthorSids { get; set; }
+    public List<string> AuthorSids { get; set; } = [];
 }

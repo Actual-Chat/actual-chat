@@ -146,9 +146,10 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var sessionInfo = await Auth.GetSessionInfo(Session, cancellationToken);
-        var account = await Accounts.GetOwn(Session, cancellationToken);
-        var sessions = await Auth.GetUserSessions(Session, cancellationToken);
+        var currentSession = Session;
+        var sessionInfo = await Auth.GetSessionInfo(currentSession, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(currentSession, cancellationToken).ConfigureAwait(false);
+        var sessions = await Auth.GetUserSessions(currentSession, cancellationToken).ConfigureAwait(false);
         var sessionList = new List<SessionModel>();
 
         foreach (var session in sessions) {
@@ -156,14 +157,14 @@
                 SessionHash = session.SessionHash,
                 IPAddress = session.IPAddress,
                 UserAgent = session.UserAgent,
-                Created = await LiveTime.GetDeltaText(session.CreatedAt, cancellationToken),
-                LastSeen = await LiveTime.GetDeltaText(session.LastSeenAt, cancellationToken),
+                Created = await LiveTime.GetDeltaText(session.CreatedAt, cancellationToken).ConfigureAwait(false),
+                LastSeen = await LiveTime.GetDeltaText(session.LastSeenAt, cancellationToken).ConfigureAwait(false),
                 Version = session.Version,
-                IsCurrent = Session.Hash == session.SessionHash,
+                IsCurrent = currentSession.Hash == session.SessionHash,
             };
             sessionList.Add(model);
         }
-        return new Model {
+        return new() {
             SessionInfo = sessionInfo,
             Account = account,
             Sessions = sessionList.ToImmutableList(),

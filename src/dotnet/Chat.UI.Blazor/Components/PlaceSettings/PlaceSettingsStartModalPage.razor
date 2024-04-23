@@ -98,7 +98,7 @@
          <FormBlock Title="Private join links">
              @if (m.Invites.Count > 0) {
                  <InviteList
-                     Invites="m.Invites"
+                     Invites="@m.Invites"
                      LinkFormat="@InviteLinkFormat.PrivateChat"
                      NewInviteId="@_newInviteId"
                      AllowRevoke="true"/>
@@ -110,7 +110,7 @@
          </FormBlock>
     }
 
-    @if (isOwner && m is { EnableChatCopying: true }) {
+    @if (isOwner && m is { EnableChatCopying: true, EnableIncompleteUI: true }) {
         <FormBlock Title="Copy chats">
             <Button Click="OnCopyChatClick" Class="btn-modal btn-w-full">
                 <Icon><i class="icon-plus text-xl"></i></Icon>
@@ -199,26 +199,32 @@
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var place = await Places.Get(Session, PlaceId, cancellationToken);
+        var session = Session;
+        var placeId = PlaceId;
+        var place = await Places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
         if (place == null || !place.Rules.CanEditProperties())
-            return new ComputedModel { Place = place };
+            return new() { Place = place };
 
-        var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken);
-        var invites = await Invites.ListPlaceInvites(Session, place.Id, cancellationToken);
+        var allAuthorIds = await Places.ListAuthorIds(session, place.Id, cancellationToken).ConfigureAwait(false);
+        var invites = await Invites.ListPlaceInvites(session, place.Id, cancellationToken).ConfigureAwait(false);
         var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
-        invites = invites
+        var activeInvites = invites
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
-            .ToApiArray();
-        var welcomeChatId = await Places.GetWelcomeChatId(Session, PlaceId, cancellationToken);
-        var link = !welcomeChatId.IsNone ? Links.Chat(welcomeChatId).ToDisplayUrl(Hub.UrlMapper()) : (DisplayUrl?)null;
+            .ToList();
+        var welcomeChatId = await Places.GetWelcomeChatId(session, placeId, cancellationToken).ConfigureAwait(false);
+        var link = !welcomeChatId.IsNone
+            ? Links.Chat(welcomeChatId).ToDisplayUrl(Hub.UrlMapper())
+            : (DisplayUrl?)null;
+        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
         return new() {
             Place = place,
             Link = link,
-            Invites = invites,
+            Invites = activeInvites,
             MembersCount = allAuthorIds.Count,
             IsOwner = place.Rules.IsOwner(),
             EnableChatCopying = Hub.AccountUI.OwnAccount.Value.IsAdmin,
+            EnableIncompleteUI = enableIncompleteUI,
         };
     }
 
@@ -306,6 +312,7 @@
         public DisplayUrl? Link { get; init; }
         public bool IsOwner { get; init; }
         public bool EnableChatCopying { get; init; }
-        public ApiArray<Invite> Invites { get; init; } = ApiArray.New<Invite>();
+        public List<Invite> Invites { get; init; } = [];
+        public bool EnableIncompleteUI { get; init; }
     }
 }

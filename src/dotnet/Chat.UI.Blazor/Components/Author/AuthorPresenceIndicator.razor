@@ -53,12 +53,15 @@
     }
 
     protected override async Task<Presence> ComputeState(CancellationToken cancellationToken) {
-        if (AuthorId.IsNone)
+        var authorId = AuthorId;
+        var session = Session;
+        var chatId = authorId.ChatId;
+        if (authorId.IsNone)
             return Presence.Offline;
 
-        var presence = await Authors.GetPresence(Session, AuthorId.ChatId, AuthorId, cancellationToken);
+        var presence = await Authors.GetPresence(session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (ShowRecording && ChatRecordingActivity != null) {
-            var isStreaming = await ChatRecordingActivity.IsAuthorStreaming(AuthorId, cancellationToken);
+            var isStreaming = await ChatRecordingActivity.IsAuthorStreaming(authorId, cancellationToken).ConfigureAwait(false);
             if (isStreaming)
                 presence = Presence.Recording;
         }

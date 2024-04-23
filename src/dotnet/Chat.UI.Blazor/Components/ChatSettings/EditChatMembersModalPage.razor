@@ -84,17 +84,20 @@
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var allAuthorIds = await Authors.ListAuthorIds(Session, ChatId, cancellationToken);
-        var ownerIds = await Roles.ListOwnerIds(Session, ChatId, cancellationToken);
-        var ownAuthor = await Authors.GetOwn(Session, ChatId, cancellationToken);
+        var session = Session;
+        var chatId = ChatId;
+        var allAuthorIds = await Authors.ListAuthorIds(session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownerIds = await Roles.ListOwnerIds(session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownAuthor = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         var authors = (await allAuthorIds
             .Select(async authorId => {
-                var authorTask = Authors.Get(Session, ChatId, authorId, cancellationToken);
+                var authorTask = Authors.Get(session, chatId, authorId, cancellationToken);
                 var author = await authorTask.ConfigureAwait(false);
                 var authorName = author?.Avatar.Name ?? "";
                 return (authorId, authorName);
             })
-            .Collect()) // Add concurrency
+            .Collect()
+            .ConfigureAwait(false)) // Add concurrency
             .ToList();
 
         if (_searchPhrase.IsEmpty) {

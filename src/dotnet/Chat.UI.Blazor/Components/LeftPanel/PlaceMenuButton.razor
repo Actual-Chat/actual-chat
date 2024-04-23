@@ -32,9 +32,10 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var places = await Contacts.ListPlaceIds(Session, cancellationToken);
-        var isMember = places.Contains(PlaceId);
-        return new Model(isMember);
+        var placeId = PlaceId;
+        var places = await Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
+        var isMember = places.Contains(placeId);
+        return new(isMember);
     }
 
     public record Model(bool IsPlaceMember);

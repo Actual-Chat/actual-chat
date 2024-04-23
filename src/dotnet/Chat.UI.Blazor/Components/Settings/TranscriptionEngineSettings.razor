@@ -65,8 +65,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-
-        var settings = await AccountSettings.GetUserTranscriptionEngineSettings(cancellationToken);
+        var settings = await AccountSettings.GetUserTranscriptionEngineSettings(cancellationToken).ConfigureAwait(false);
         return new(settings.TranscriptionEngine);
     }
 

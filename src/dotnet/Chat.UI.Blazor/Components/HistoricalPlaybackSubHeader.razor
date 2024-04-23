@@ -94,47 +94,49 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-        var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken);
+        var session = Session;
+        var lastState = State.Value;
+        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
         if (playbackState is not HistoricalPlaybackState { ChatId: var chatId } || chatId.IsNone)
             return Model.NotPlaying;
 
-        var chat = await Chats.Get(Session, chatId, cancellationToken);
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         var chatTitle = chat?.Title ?? "";
-        var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken);
+        var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
         var historicalChatPlayer = player as HistoricalChatPlayer;
         var playback = historicalChatPlayer?.Playback;
-        var lastState = State.Value;
         if (playback == null) {
             // This happens when player is being disposed, which means this method
             // will soon recompute anyway.
             return lastState; // Keep the last state to avoid blinking
         }
 
-        var isPaused = await playback.IsPaused.Use(cancellationToken);
-        var playingTracks = await playback.PlayingTracks.Use(cancellationToken);
-        var authorSids = ApiArray<string>.Empty;
+        var isPaused = await playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
+        var playingTracks = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
+        var authorSids = new HashSet<string>();
         Moment? playingAt = null;
         foreach (var playingTrack in playingTracks) {
             var trackInfo = playingTrack.TrackInfo;
             if (trackInfo is ChatAudioTrackInfo chatAudioTrackInfo) {
                 var authorId = chatAudioTrackInfo.AudioEntry.AuthorId;
-                authorSids = authorSids.TryAdd(authorId);
+                authorSids.Add(authorId);
             }
-            var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackInfo.TrackId, cancellationToken);
+            var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackInfo.TrackId, cancellationToken).ConfigureAwait(false);
             if (actualPlaybackState == null)
                 continue;
+
             playingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
         }
         if (playingAt.HasValue)
-            return new Model {
+            return new() {
                 ChatId = chatId,
                 PlayingAt = playingAt,
                 ChatPlayer = historicalChatPlayer,
                 IsPaused = isPaused,
                 ChatTitle = chatTitle,
                 ShowChatTitle = chatId != selectedChatId,
-                AuthorSids = authorSids,
+                AuthorSids = authorSids.ToList(),
             };
 
         var canUseLastModel = !ReferenceEquals(lastState, Model.NotPlaying)
@@ -204,7 +206,7 @@
         public string ChatTitle { get; init; } = "";
         public ChatId ChatId { get; init; }
         public bool ShowChatTitle { get; init; }
-        public ApiArray<string> AuthorSids { get; init; }
+        public List<string> AuthorSids { get; init; } = [];
     }
 
     private class RewindController

@@ -62,11 +62,11 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken);
+        var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
         if (playbackState is not HistoricalPlaybackState { ChatId: var chatId })
             return Model.NotPlaying;
 
-        var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken);
+        var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
         var historicalChatPlayer = player as HistoricalChatPlayer;
         var playback = historicalChatPlayer?.Playback;
         var lastState = State.Value;
@@ -76,8 +76,8 @@
             return lastState; // Keep the last state to avoid blinking
         }
 
-        var isPaused = await playback.IsPaused.Use(cancellationToken);
-        var playingTracks = await playback.PlayingTracks.Use(cancellationToken);
+        var isPaused = await playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
+        var playingTracks = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
         Moment? playingAt = null;
         var canPlay = true;
         foreach (var playingTrack in playingTracks) {
@@ -99,7 +99,7 @@
                 return lastState;
         }
 
-        return new Model {
+        return new() {
             CanPlay = canPlay,
         };
     }

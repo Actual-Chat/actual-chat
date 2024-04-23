@@ -64,12 +64,12 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var recordingChat = await GetRecordingElsewhereChat(cancellationToken);
-        var stopRecordingAt = await ChatAudioUI.StopRecordingAt.Use(cancellationToken);
+        var recordingChat = await GetRecordingElsewhereChat(cancellationToken).ConfigureAwait(false);
+        var stopRecordingAt = await ChatAudioUI.StopRecordingAt.Use(cancellationToken).ConfigureAwait(false);
         if (recordingChat == null && stopRecordingAt == null)
             return Model.NotRecording;
 
-        return new Model {
+        return new() {
             RecordingChat = recordingChat,
             RecordingChatUrl = recordingChat != null ? Links.Chat(recordingChat.Id) : "",
             StopRecordingAt = stopRecordingAt,

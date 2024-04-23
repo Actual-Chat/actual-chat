@@ -64,17 +64,19 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var audioState = await ChatAudioUI.GetState(Chat.Id);
+        var chat = Chat;
+        var chatId = chat.Id;
+        var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var isAnimated = false;
         if (!audioState.IsListening) {
-            var chatInfo = await ChatUI.Get(Chat.Id, cancellationToken);
+            var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
             if (chatInfo?.News.LastTextEntry is { IsStreaming: true, HasAudioEntry: true } lastTextEntry) {
-                var ownAuthor = await Authors.GetOwn(Session, Chat.Id, cancellationToken);
+                var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
                 isAnimated = ownAuthor == null || lastTextEntry.AuthorId != ownAuthor.Id;
             }
         }
-        var isSpeakerphoneOn = await AudioOutputController.IsSpeakerphoneOn.Use(cancellationToken);
-        return new Model(Chat, audioState, isAnimated, isSpeakerphoneOn);
+        var isSpeakerphoneOn = await AudioOutputController.IsSpeakerphoneOn.Use(cancellationToken).ConfigureAwait(false);
+        return new (chat, audioState, isAnimated, isSpeakerphoneOn);
     }
 
     private void OnListenClick() {
