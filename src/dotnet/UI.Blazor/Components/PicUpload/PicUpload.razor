@@ -11,9 +11,10 @@
     var sizeClass = $"pic-size-{(int)Size}";
     var hasButtons = GenerateAvatar.HasDelegate;
     var picUploadCls = hasButtons ? " left-0" : " inset-x-auto";
+    var btnCls = IsButton ? "pic-upload-btn" : "";
 }
 
-<div class="pic-upload pic-upload-drop-zone" @ref="_dropZoneRef">
+<div class="pic-upload pic-upload-drop-zone @btnCls" @ref="_dropZoneRef">
     <Pic
         Title="@Title"
         Picture="@Picture"
@@ -22,6 +23,7 @@
         IsSquare="@IsSquare"
         AvatarKind="@AvatarKind"
         AvatarKey="@AvatarKey"
+        IsButton="@IsButton"
         Click="@Click"/>
     <div class="pic-upload-picker @(sizeClass) @picUploadCls">
         <FileUpload
@@ -36,7 +38,7 @@
                class="pic-upload-input-file-label">
         </label>
     </div>
-    @if (GenerateAvatar.HasDelegate) {
+    @if (GenerateAvatar.HasDelegate && !IsButton) {
         <div class="c-btn-group">
             <Button Class="btn-modal btn-sm">
                 <Icon><i class="icon-image"></i></Icon>
@@ -70,6 +72,7 @@
     [Parameter] public Picture? Picture { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
     [Parameter] public AvatarKind AvatarKind { get; set; } = AvatarKind.Beam;
+    [Parameter] public bool IsButton { get; set; }
     [Parameter] public bool IsSquare { get; set; }
     [Parameter] public string? AvatarKey { get; set; }
     [Parameter] public string UploadUrl { get; set; } = "";

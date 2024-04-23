@@ -109,8 +109,6 @@
 }
 .right-chat-panel > .c-header > .c-center > .c-buttons .btn.btn-round {
     @apply bg-[var(--round-right-panel)];
-}
-.right-chat-panel > .c-header > .c-center > .c-buttons .btn.btn-round .btn-content {
     @apply text-primary;
 }
 
