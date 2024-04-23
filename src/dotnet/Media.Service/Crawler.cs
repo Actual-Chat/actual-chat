@@ -82,7 +82,7 @@ public sealed class Crawler(
 
         // TODO: image size limit
         var processedFile = await DownloadImageToFile(imageUri, cancellationToken).ConfigureAwait(false);
-        if (processedFile is null)
+        if (processedFile is null || !MediaTypeExt.IsSupportedImage(processedFile.File.ContentType))
             return MediaId.None;
 
         var mediaIdScope = imageUri.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
@@ -97,7 +97,7 @@ public sealed class Crawler(
 
         // TODO: extract common part with ChatMediaController
         media = new Media(mediaId) {
-            ContentId = $"media/{mediaId.LocalId}/{processedFile.File.FileName}",
+            ContentId = mediaId.ContentId(processedFile.File.FileName.Extension),
             FileName = processedFile.File.FileName,
             Length = processedFile.File.Length,
             ContentType = processedFile.File.ContentType,
