@@ -24,8 +24,8 @@ public partial class GoogleTranscriber : ITranscriber
     private static readonly Regex EndsWithWhitespaceOrEmptyRegex = EndsWithWhitespaceOrEmptyRegexFactory();
 
     private static readonly string RegionId = "us";
-    private static readonly TimeSpan SilentPrefixDuration = TimeSpan.FromSeconds(0);
-    private static readonly TimeSpan SilentSuffixDuration = TimeSpan.FromSeconds(0);
+    private static readonly TimeSpan SilentPrefixDuration = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan SilentSuffixDuration = TimeSpan.FromSeconds(4);
     private static readonly double TranscriptionSpeed = 2;
 
     private ILogger Log { get; }
