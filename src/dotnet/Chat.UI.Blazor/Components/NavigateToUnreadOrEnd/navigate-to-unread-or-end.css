@@ -24,12 +24,17 @@
 .navigate-to-end .btn.btn-round {
     @apply shadow-md md:shadow-none;
 }
-.navigate-to-end .btn.btn-round .btn-content {
+.navigate-to-end .btn.btn-round {
     @apply font-bold text-4xl;
 }
+/* Hover */
 body.hoverable .navigate-to-end .btn.btn-round:hover {
     @apply bg-round;
 }
-body.hoverable .navigate-to-end .btn.btn-round:hover::after {
-    @apply bg-transparent;
+/* Active */
+.navigate-to-end .btn.btn-round:active,
+.navigate-to-end .btn.btn-round:hover:active,
+.navigate-to-end .btn.btn-round:focus:active,
+.navigate-to-end .btn.btn-round:hover:focus:active {
+    @apply bg-round;
 }
