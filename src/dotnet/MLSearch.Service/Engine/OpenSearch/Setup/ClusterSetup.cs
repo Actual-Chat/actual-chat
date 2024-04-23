@@ -11,6 +11,7 @@ using ActualChat.MLSearch.Indexing;
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
 internal sealed class ClusterSetup(
+    bool isDevelopmentInstance,
     OpenSearchModelGroupName modelGroupName,
     IOpenSearchClient openSearch,
     IndexNames indexNames,
@@ -22,7 +23,12 @@ internal sealed class ClusterSetup(
         "Initialization script was not called."
     );
 
-    public Task Initialize(CancellationToken cancellationToken) => EnsureChatSliceIndex(cancellationToken);
+    public async Task Initialize(CancellationToken cancellationToken)
+    {
+        var settings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
+        await EnsureTemplatesAsync(settings, cancellationToken).ConfigureAwait(false);
+        await EnsureIndexesAsync(settings, cancellationToken).ConfigureAwait(false);
+    }
 
     private async Task<ClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)
     {
@@ -115,7 +121,34 @@ internal sealed class ClusterSetup(
         }
         return _result = new ClusterSettings(modelAllConfig, modelId, modelEmbeddingDimension);
     }
-    private async Task EnsureChatSliceIndex(CancellationToken cancellationToken)
+    private async Task EnsureTemplatesAsync(ClusterSettings settings, CancellationToken cancellationToken)
+    {
+        using var _ = tracing.TraceRegion();
+
+        var mlIndexTemplateName = IndexNames.MLTemplateName;
+        var existsIndexTemplateResponse = await openSearch.Indices
+            .TemplateExistsAsync(mlIndexTemplateName, ct: cancellationToken)
+            .ConfigureAwait(false);
+
+        if (existsIndexTemplateResponse.Exists) {
+            return;
+        }
+
+        var numReplicas = isDevelopmentInstance ? 0 : 1;
+        await openSearch.Indices
+            .PutTemplateAsync(mlIndexTemplateName, index => ConfigureMLIndexTemplate(index, numReplicas, IndexNames.MLIndexPattern), cancellationToken)
+            .ConfigureAwait(false);
+
+        return;
+
+        IPutIndexTemplateRequest ConfigureMLIndexTemplate(PutIndexTemplateDescriptor index, int numReplicas, string indexPattern)
+            => index
+                .Settings(s => s.NumberOfReplicas(numReplicas))
+                .IndexPatterns(indexPattern);
+    }
+
+
+    private async Task EnsureIndexesAsync(ClusterSettings settings, CancellationToken cancellationToken)
     {
         // Notes:
         // Assumption: This is a script.
@@ -124,7 +157,6 @@ internal sealed class ClusterSetup(
         // It has to succeed once and only once to setup an OpenSearch cluster.
         // After the initial setup this would never be called again.
         using var _1 = tracing.TraceRegion();
-        var settings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
         var searchIndexId = indexNames.GetFullName(IndexNames.ChatSlice, settings);
         var ingestCursorIndexId = indexNames.GetFullName(IndexNames.ChatSliceCursor, settings);
         var chatsCursorIndexId = indexNames.GetFullName(IndexNames.ChatCursor, settings);

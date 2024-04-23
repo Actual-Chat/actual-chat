@@ -66,7 +66,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IndexNames>();
 
         services.AddSingleton<IOpenSearchClient>(_ => new OpenSearchClient(connectionSettings));
-        services.AddSingleton(e => ActivatorUtilities.CreateInstance<ClusterSetup>(e, modelGroupName))
+        services.AddSingleton(e => ActivatorUtilities.CreateInstance<ClusterSetup>(e, HostInfo.IsDevelopmentInstance, modelGroupName))
             .AddAlias<IModuleInitializer, ClusterSetup>();
 
         services.AddSingleton<IIndexSettingsSource, IndexSettingsSource>();

@@ -15,7 +15,7 @@ public class AppHostFixture(IMessageSink messageSink)
         },
         ConfigureServices = (_, cfg) => {
             cfg.AddSingleton(_ => new IndexNames {
-                IndexPrefix = UniqueNames.Elastic("test"),
+                IndexPrefix = UniqueNames.Elastic(IndexNames.TestPrefix),
             });
         }
     });
