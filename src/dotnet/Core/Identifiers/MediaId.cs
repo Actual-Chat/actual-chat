@@ -1,8 +1,10 @@
 using System.ComponentModel;
+using System.Text;
 using MemoryPack;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Generators;
 using ActualLab.Identifiers.Internal;
+using ActualChat.Hashing;
 
 namespace ActualChat;
 
@@ -103,4 +105,12 @@ public readonly partial struct MediaId : ISymbolIdentifier<MediaId>
         result = new MediaId(s, scope, localId, AssumeValid.Option);
         return true;
     }
+
+    // ContentId
+
+    public string ContentId(string fileExt)
+        => $"media/{Hash()}/{LocalId}{fileExt}";
+
+    private string Hash()
+        => this.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
 }

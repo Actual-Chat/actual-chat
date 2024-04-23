@@ -151,6 +151,16 @@ body.hoverable .navbar-place-buttons .navbar-button .btn.btn-square:hover::after
 body.hoverable .navbar-chat-buttons .navbar-button .btn.btn-square:hover::after {
     @apply bg-transparent;
 }
+body.hoverable .navbar-place-buttons .navbar-button .btn.btn-square:active::after,
+body.hoverable .navbar-chat-buttons .navbar-button .btn.btn-square:active::after,
+body.hoverable .navbar-place-buttons .navbar-button .btn.btn-square:hover:active::after,
+body.hoverable .navbar-chat-buttons .navbar-button .btn.btn-square:hover:active::after,
+body.hoverable .navbar-place-buttons .navbar-button .btn.btn-square:focus:active::after,
+body.hoverable .navbar-chat-buttons .navbar-button .btn.btn-square:focus:active::after,
+body.hoverable .navbar-place-buttons .navbar-button .btn.btn-square:hover:focus:active::after,
+body.hoverable .navbar-chat-buttons .navbar-button .btn.btn-square:hover:focus:active::after {
+    @apply bg-transparent;
+}
 
 .navbar-chat-buttons {
     @apply flex-y items-center gap-y-2 md:gap-y-1;
