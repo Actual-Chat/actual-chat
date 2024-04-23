@@ -1,3 +1,4 @@
+using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Module;
 using ActualChat.Testing.Host;
 
@@ -12,4 +13,9 @@ public class AppHostFixture(IMessageSink messageSink)
             cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsEnabled)}", "true"));
             cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsInitialIndexingDisabled)}", "true"));
         },
+        ConfigureServices = (_, cfg) => {
+            cfg.AddSingleton(_ => new IndexNames {
+                IndexPrefix = UniqueNames.Elastic("test"),
+            });
+        }
     });

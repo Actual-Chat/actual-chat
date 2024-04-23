@@ -13,7 +13,7 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 internal sealed class ClusterSetup(
     OpenSearchModelGroupName modelGroupName,
     IOpenSearchClient openSearch,
-    ILogger<ClusterSetup> log,
+    IndexNames indexNames,
     ITracerSource? tracing
     ) : IModuleInitializer
 {
@@ -125,11 +125,12 @@ internal sealed class ClusterSetup(
         // After the initial setup this would never be called again.
         using var _1 = tracing.TraceRegion();
         var settings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
-        var searchIndexId = settings.IntoFullIndexName(IndexNames.ChatSlice);
-        var ingestCursorIndexId = settings.IntoFullIndexName(IndexNames.ChatSliceCursor);
-        var chatsCursorIndexId = settings.IntoFullIndexName(IndexNames.ChatCursor);
+        var searchIndexId = indexNames.GetFullName(IndexNames.ChatSlice, settings);
+        var ingestCursorIndexId = indexNames.GetFullName(IndexNames.ChatSliceCursor, settings);
+        var chatsCursorIndexId = indexNames.GetFullName(IndexNames.ChatCursor, settings);
 
-        var ingestPipelineId = settings.IntoFullIngestPipelineName(IndexNames.ChatSlice);
+        var ingestPipelineId = indexNames.GetFullIngestPipelineName(IndexNames.ChatSlice, settings);
+
         var modelId = settings.ModelId;
         var modelDimension = settings.ModelEmbeddingDimension.ToString("D", CultureInfo.InvariantCulture);
 

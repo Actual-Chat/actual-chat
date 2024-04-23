@@ -3,10 +3,10 @@ using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch;
 
-public sealed class IndexSettings(string indexName, ClusterSettings settings)
+internal sealed class IndexSettings(string indexId, IndexNames indexNames, ClusterSettings settings)
 {
     public string ModelId => settings.ModelId;
 
-    public string IngestPipelineId { get; } = settings.IntoFullIngestPipelineName(indexName);
-    public IndexName IndexName { get; } = settings.IntoFullIndexName(indexName);
+    public string IngestPipelineId { get; } = indexNames.GetFullIngestPipelineName(indexId, settings);
+    public IndexName IndexName { get; } = indexNames.GetFullName(indexId, settings);
 }

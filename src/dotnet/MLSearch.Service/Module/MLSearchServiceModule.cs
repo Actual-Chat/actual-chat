@@ -63,6 +63,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         var connectionSettings = new ConnectionSettings(
             new SingleNodeConnectionPool(new Uri(openSearchClusterUri)),
             sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
+        services.AddSingleton<IndexNames>();
 
         services.AddSingleton<IOpenSearchClient>(_ => new OpenSearchClient(connectionSettings));
         services.AddSingleton(e => ActivatorUtilities.CreateInstance<ClusterSetup>(e, modelGroupName))
