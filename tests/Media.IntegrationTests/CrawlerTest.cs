@@ -56,4 +56,23 @@ public class CrawlerTest(AppHostFixture fixture, ITestOutputHelper @out)
         meta2.OpenGraph.Title.Should().Be("Title 2");
         meta2.OpenGraph.Description.Should().Be("Description 2");
     }
+
+    [Fact]
+    public async Task ShouldNotUseInvalidImage()
+    {
+        // arrange
+        var url = $"https://domain.some/{RandomStringGenerator.Next()}";
+        var imgUrl = $"https://domain2.some/images/{RandomStringGenerator.Next()}.jpg";
+        Http.SetupImageResponse(imgUrl, "non-image.jpg")
+            .SetupHtmlResponse(url, h => h.Title("Title 1").Description("Description 1").Image(imgUrl));
+
+        // act
+        var sut = AppHost.Services.GetRequiredService<Crawler>();
+        var meta = await sut.Crawl(url, CancellationToken.None);
+
+        // assert
+        meta.PreviewMediaId.Should().Be(MediaId.None);
+        meta.OpenGraph.Title.Should().Be("Title 1");
+        meta.OpenGraph.Description.Should().Be("Description 1");
+    }
 }
