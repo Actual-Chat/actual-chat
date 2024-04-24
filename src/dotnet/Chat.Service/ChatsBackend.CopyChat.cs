@@ -740,7 +740,8 @@ public partial class ChatsBackend
             if (mentionSid.StartsWith(mentionIdAuthorPrefix, StringComparison.Ordinal)) {
                 var authorSid = mentionSid.Substring(mentionIdAuthorPrefix.Length);
                 if (!AuthorId.TryParse(authorSid, out _)) {
-                    Log.LogWarning("Ignore mention with id '{ID}'. Reason: invalid author id", mention.Id);
+                    Log.LogWarning("OnCopyChat({CorrelationId}) ignores mention with id '{ID}'. Reason: invalid author id",
+                        correlationId, mention.Id);
                     continue;
                 }
                 var newAuthorId = migratedAuthors.GetNewAuthorId(authorSid);
