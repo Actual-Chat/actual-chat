@@ -17,19 +17,18 @@ internal sealed class IndexNames
     public static string MLIndexPattern => $"{NamePrefix}-*";
     public static string MLTestIndexPattern => $"{NamePrefix}-{TestPrefix}-*";
     public static string MLTemplateName => $"{NamePrefix}-{TemplateNameSuffix}";
+    private string FullPrefix => string.IsNullOrEmpty(IndexPrefix) ? NamePrefix : $"{NamePrefix}-{IndexPrefix}";
 
     internal string GetFullName(string id, ClusterSettings settings)
         => string.Join('-',
-            NamePrefix,
-            IndexPrefix,
+            FullPrefix,
             id,
             IndexNameSuffix,
             settings.UniqueKey);
 
     internal string GetFullIngestPipelineName(string id, ClusterSettings settings)
         => string.Join('-',
-            NamePrefix,
-            IndexPrefix,
+            FullPrefix,
             id,
             IngestPipelineNameSuffix,
             settings.UniqueKey);
