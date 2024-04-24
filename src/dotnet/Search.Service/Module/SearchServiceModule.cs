@@ -60,7 +60,7 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices)
             new SingleNodeConnectionPool(new Uri(openSearchClusterUri)),
             sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
         services.AddSingleton<IOpenSearchClient>(_ => new OpenSearchClient(connectionSettings));
-        services.AddSingleton<OpenSearchConfigurator>()
+        services.AddSingleton(s => ActivatorUtilities.CreateInstance<OpenSearchConfigurator>(s, HostInfo.IsDevelopmentInstance))
             .AddHostedService(c => c.GetRequiredService<OpenSearchConfigurator>());
         services.AddSingleton<IndexNames>();
     }

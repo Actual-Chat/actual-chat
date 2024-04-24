@@ -5,7 +5,7 @@ using OpenSearch.Client;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 namespace ActualChat.Search;
 
-public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBase
+public sealed class OpenSearchConfigurator(IServiceProvider services, bool isDevelopmentInstance) : WorkerBase
 {
     private readonly TaskCompletionSource _whenCompleted = new ();
     private SearchSettings? _settings;
@@ -19,6 +19,8 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
     private IMeshLocks MeshLocks { get; }
         = services.GetRequiredService<IMeshLocks<SearchDbContext>>().WithKeyPrefix(nameof(OpenSearchConfigurator));
     private ILogger Log => _log ??= services.LogFor(GetType());
+
+    private readonly int _numberOfReplicas = isDevelopmentInstance ? 0 : 1;
 
     public Task WhenCompleted => _whenCompleted.Task;
 
@@ -40,27 +42,26 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
         }
     }
 
-    private Task Run(CancellationToken cancellationToken)
+    private async Task Run(CancellationToken cancellationToken)
     {
-        var baseChains = new[] {
-            AsyncChain.From(EnsureEntryIndexTemplate),
-            AsyncChain.From(EnsureContactIndices),
-        };
+        await RunChain(AsyncChain.From(EnsureTemplates), cancellationToken).ConfigureAwait(false);
+        await RunChain(AsyncChain.From(EnsureContactIndices), cancellationToken).ConfigureAwait(false);
 
-        return (from chain in baseChains
-            select chain
-                .Retry(RetryDelaySeq.Exp(0, 60), 10)
-                .Log(LogLevel.Debug, Log))
-            .RunIsolated(cancellationToken);
+        return;
+
+        Task RunChain(AsyncChain chain, CancellationToken cancellationToken)
+            => chain.Retry(RetryDelaySeq.Exp(0, 60), 10)
+                .Log(LogLevel.Debug, Log)
+                .RunIsolated(cancellationToken);
     }
 
-    private Task EnsureEntryIndexTemplate(CancellationToken cancellationToken)
+    private Task EnsureTemplates(CancellationToken cancellationToken)
     {
         var runOptions = RunLockedOptions.Default with { Log = Log };
         return MeshLocks.RunLocked(
-            nameof(EnsureEntryIndexTemplate),
+            nameof(EnsureTemplates),
             runOptions,
-            EnsureEntryIndexTemplateUnsafe,
+            EnsureTemplatesUnsafe,
             cancellationToken);
     }
 
@@ -74,12 +75,25 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
             cancellationToken);
     }
 
-    private async Task EnsureEntryIndexTemplateUnsafe(CancellationToken cancellationToken)
+    private async Task EnsureTemplatesUnsafe(CancellationToken cancellationToken)
     {
-        var existsIndexTemplateResponse = await OpenSearchClient.Indices
+        // Common template
+        var commonTemplateExistsResponse = await OpenSearchClient.Indices
+            .TemplateExistsAsync(IndexNames.CommonIndexTemplateName, ct: cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!commonTemplateExistsResponse.Exists) {
+            await OpenSearchClient.Indices
+                .PutTemplateAsync(IndexNames.EntryIndexTemplateName, ConfigureCommonIndexTemplate, cancellationToken)
+                .Assert(Log)
+                .ConfigureAwait(false);
+        }
+
+        // Entry index template
+        var entryTemplateExistsResponse = await OpenSearchClient.Indices
             .TemplateExistsAsync(IndexNames.EntryIndexTemplateName, ct: cancellationToken)
             .ConfigureAwait(false);
-        if (existsIndexTemplateResponse.Exists)
+        if (entryTemplateExistsResponse.Exists)
             return;
 
         await OpenSearchClient.Indices
@@ -112,13 +126,22 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
             .ConfigureAwait(false);
     }
 
+    private IPutIndexTemplateRequest ConfigureCommonIndexTemplate(PutIndexTemplateDescriptor index)
+        => index
+            .Settings(s => s
+                .RefreshInterval(Settings.RefreshInterval)
+                .NumberOfReplicas(_numberOfReplicas))
+            .IndexPatterns(IndexNames.CommonIndexPattern);
+
     private IPutIndexTemplateRequest ConfigureEntryIndexTemplate(PutIndexTemplateDescriptor index)
         => index.Map<IndexedEntry>(m
             => m.Properties(p
                 => p.Keyword(x => x.Name(e => e.Id))
                     .Text(x => x.Name(e => e.Content))
                     .Keyword(x => x.Name(e =>  e.ChatId))))
-            .Settings(s => s.RefreshInterval(Settings.RefreshInterval))
+            .Settings(s => s
+                .RefreshInterval(Settings.RefreshInterval)
+                .NumberOfReplicas(_numberOfReplicas))
             .IndexPatterns(IndexNames.EntryIndexPattern);
 
     private ICreateIndexRequest ConfigureUserContactIndex(CreateIndexDescriptor index)
