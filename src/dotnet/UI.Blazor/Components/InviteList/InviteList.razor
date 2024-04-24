@@ -11,7 +11,7 @@
 
         <div class="invite-list-item">
             <div class="link">
-                <TileItem>
+                <TileItem Class="unhovered">
                     <Icon>
                         <i class="icon-link-2 text-2xl"></i>
                     </Icon>
@@ -24,19 +24,17 @@
                     <Caption>
                         @caption
                     </Caption>
+                    <Right>
+                        @if (AllowRevoke) {
+                            <HeaderButton Class="blackout" Click="@(() => Revoke(invite))">
+                                <i class="icon-trash03 text-xl"></i>
+                            </HeaderButton>
+                        }
+                        <HeaderButton Class="blackout" Click="@(() => OnShareClick(invite).AsTask())">
+                            <i class="icon-share text-xl"></i>
+                        </HeaderButton>
+                    </Right>
                 </TileItem>
-            </div>
-            <div class="actions">
-                @if (AllowRevoke) {
-                    <Button Class="btn-modal" Click="@(() => Revoke(invite))">
-                        <Icon><i class="icon-trash03 text-xl"></i></Icon>
-                        <Title>Revoke</Title>
-                    </Button>
-                }
-                <Button Class="btn-modal" Click="@(() => OnShareClick(invite).AsTask())">
-                    <Icon><i class="icon-share-more text-xl"></i></Icon>
-                    <Title>Share</Title>
-                </Button>
             </div>
         </div>
     }

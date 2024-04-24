@@ -39,9 +39,22 @@
 .edit-settings-modal .form-block {
     @apply px-4;
 }
-
-.edit-settings-modal .tile-item {
-    @apply hover:bg-inherit;
+.edit-settings-modal .form-block.with-input-radio {
+    @apply px-2;
+}
+.edit-settings-modal .form-block.with-input-radio .tile-item {
+    @apply h-16;
+    @apply px-4;
+}
+.edit-settings-modal .form-block.with-input-radio .tile-item .tile-item-icon {
+    @apply min-w-8;
+}
+.edit-settings-modal .form-block.with-input-radio .tile-item .tile-item-body-content label,
+.edit-settings-modal .form-block.with-input-radio .tile-item .tile-item-body-caption * {
+    @apply text-01;
+}
+.edit-settings-modal .form-block.with-input-radio .tile-item .tile-item-body-caption * {
+    @apply font-normal;
 }
 .chat-settings-container .tile-item {
     @apply h-12;
@@ -51,8 +64,14 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply bg-hover;
 }
 
-.form .field-chat-public-url section {
+.field-chat-public-url .tile-item-body-content {
+    @apply relative;
+}
+.field-chat-public-url section {
     @apply mt-0;
+}
+.field-chat-public-url .copy-to-clipboard {
+    @apply absolute top-0 right-0;
 }
 
 .form.form-y .field-chat-public-url section .form-section-content {

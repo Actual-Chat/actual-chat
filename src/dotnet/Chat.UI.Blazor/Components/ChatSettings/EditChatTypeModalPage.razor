@@ -25,7 +25,7 @@
     @{
         _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
     }
-    <FormBlock>
+    <FormBlock Class="with-input-radio">
         <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
             <TileItem>
                 <Icon>
@@ -55,8 +55,8 @@
     @if (_form.IsPublic) {
         @if (m.Link is { } publicUrl) {
             _form.PublicUrl = publicUrl.ShortLocalUrl;
-            <FormBlock>
-                <TileItem Class="field-chat-public-url">
+            <FormBlock Class="with-input-radio">
+                <TileItem Class="field-chat-public-url unhovered">
                     <Icon>
                         <i class="icon-link-2"></i>
                     </Icon>
@@ -65,15 +65,13 @@
                                      Label="Public link" IsLabelInsideInput="true">
                             <TextBox @bind-Value="@_form.PublicUrl" Id="@_form.PublicUrlFormId" readonly/>
                         </FormSection>
+                        <CopyToClipboard ButtonClass="btn-transparent" Text="@publicUrl.AbsoluteUrl"/>
                     </Content>
-                    <Right>
-                        <CopyToClipboard Text="@publicUrl.AbsoluteUrl"/>
-                    </Right>
                 </TileItem>
             </FormBlock>
         }
     } else if (m.Chat.CanInvite()) {
-        <FormBlock Title="Private join links">
+        <FormBlock Title="Manage links">
             @if (m.Invites.Count > 0) {
                 <InviteList
                     Invites="m.Invites"
@@ -89,7 +87,7 @@
     }
 
     @if (!isPlaceChat) {
-        <FormBlock>
+        <FormBlock Class="with-input-radio">
             @if (_isAdmin && _form.IsPublic) {
                 <TileItem Class="field-allow-guest">
                     <Icon>
@@ -108,7 +106,7 @@
             }
             <TileItem Class="field-allow-anonym">
                 <Icon>
-                    <i class="icon-question-mark-bubble"></i>
+                    <i class="icon-anonym"></i>
                 </Icon>
                 <Content>
                     <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously"></Label>
@@ -122,7 +120,7 @@
             </TileItem>
         </FormBlock>
         @if (m.AllowEditIsTemplate && _form.IsPublic) {
-            <FormBlock>
+            <FormBlock Class="with-input-radio">
                 <TileItem Class="field-is-template">
                     <Icon>
                         <i class="icon-file-text"></i>
