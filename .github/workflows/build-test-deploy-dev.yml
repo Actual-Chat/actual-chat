@@ -781,10 +781,10 @@ jobs:
   build-win-pkg:
     name: Build win app package for ${{ github.ref_name }}
     if: |
-      github.event.inputs.buildAppFor == 'prod' ||
-      (github.event.inputs.buildAppFor == 'auto'
-        && (github.ref == 'refs/heads/master' ||
-        startsWith(github.ref, 'refs/heads/release/')))
+      github.event.inputs.buildAppFor == 'dev'
+        || github.event.inputs.buildAppFor == 'auto'
+        || ((github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev') && github.event.inputs.buildAppFor != 'prod')
+        || startsWith(github.ref, 'refs/heads/release/')
     runs-on: windows-latest
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
@@ -848,11 +848,7 @@ jobs:
           retention-days: 2
   deploy-win-to-microsoft-store:
     name: Deploy win app package for ${{ github.ref_name }} to microsoft store
-    if: |
-      github.event.inputs.buildAppFor == 'prod' ||
-      (github.event.inputs.buildAppFor == 'auto'
-        && (github.ref == 'refs/heads/master' ||
-        startsWith(github.ref, 'refs/heads/release/')))
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/')
     runs-on: windows-latest
     needs:
       - build-win-pkg
