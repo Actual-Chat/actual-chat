@@ -739,6 +739,7 @@ public partial class ChatsBackend
             MentionId mentionId;
             if (mentionSid.StartsWith(mentionIdAuthorPrefix, StringComparison.Ordinal)) {
                 var authorSid = mentionSid.Substring(mentionIdAuthorPrefix.Length);
+                authorSid = FixMentionAuthorSid(mention, authorSid);
                 if (!AuthorId.TryParse(authorSid, out _)) {
                     Log.LogWarning("OnCopyChat({CorrelationId}) ignores mention with id '{ID}'. Reason: invalid author id",
                         correlationId, mention.Id);
@@ -746,11 +747,11 @@ public partial class ChatsBackend
                 }
                 var newAuthorId = migratedAuthors.GetNewAuthorId(authorSid);
                 mentionId = new MentionId(newAuthorId, AssumeValid.Option);
-                mention.MentionId = mentionId;
             }
             else {
                 mentionId = new MentionId(mentionSid);
             }
+            mention.MentionId = mentionId;
             mention.Id = DbMention.ComposeId(new ChatEntryId(newChatId, ChatEntryKind.Text, mention.EntryId, AssumeValid.Option), mentionId);
             dbContext.Mentions.Add(mention);
             entryIdsCollector.Add(mention.EntryId);
@@ -759,6 +760,34 @@ public partial class ChatsBackend
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("OnCopyChat({CorrelationId}) updated ChatId and Id for {Count} mention records",
             correlationId, mentions.Count);
+
+        string FixMentionAuthorSid(DbMention mention, string authorSid)
+        {
+            if (mention.Id.EndsWith(authorSid, StringComparison.Ordinal))
+                return authorSid;
+
+            // At some point DbMention.AuthorId field (later renamed to MentionId) mistakenly hold value of author of text entry instead of mentioned author.
+            // Fixed in https://github.com/Actual-Chat/actual-chat/commit/de35ccfe1f756546bdb68c7ada016791773637a1
+            // Extract mention_id from id.
+            var parts = mention.Id.Split(':');
+            var hasFixedMentionId = false;
+            if ((parts.Length == 5 || parts.Length == 6) && OrdinalEquals(parts[^3], "a")) {
+                var authorChatSid = parts[^2];
+                var authorLocalSid = parts[^1];
+                if (ChatId.TryParse(authorChatSid, out var authorChatId)
+                    && long.TryParse(authorLocalSid, CultureInfo.InvariantCulture, out var authorLocalId)) {
+                    var authorId = new AuthorId(authorChatId, authorLocalId, AssumeValid.Option);
+                    authorSid = authorId.Value;
+                    hasFixedMentionId = true;
+                }
+            }
+            if (!hasFixedMentionId)
+                throw StandardError.Constraint(
+                    $"OnCopyChat({correlationId}) failed to process mention with Id '{mention.Id}' and MentionId '{mention.MentionId}'."
+                    + " Reason: MentionId mismatch.");
+
+            return authorSid;
+        }
     }
 
     private record MigratedRole(Role OriginalRole, Role NewRole)
