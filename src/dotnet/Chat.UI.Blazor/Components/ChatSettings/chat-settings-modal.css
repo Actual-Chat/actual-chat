@@ -17,6 +17,10 @@
     scrollbar-width: none;
 }
 
+.edit-chat-settings-modal .chat-settings-container {
+    @apply px-2;
+}
+
 .edit-settings-modal .form-block:not(:first-of-type) {
     @apply border-0;
 }
@@ -38,6 +42,13 @@
 
 .edit-settings-modal .tile-item {
     @apply hover:bg-inherit;
+}
+.chat-settings-container .tile-item {
+    @apply h-12;
+    @apply px-4;
+}
+body.hoverable .chat-settings-container .tile-item:hover {
+    @apply bg-hover;
 }
 
 .form .field-chat-public-url section {
@@ -61,23 +72,30 @@
     @apply text-danger;
 }
 
-.wide .field-chat-title input {
-    @apply h-10;
-}
+/*.wide .field-chat-title input {*/
+/*    @apply h-10;*/
+/*}*/
 
 .edit-settings-modal .tile-item-icon i {
     @apply text-2xl;
 }
 
+body.hoverable .edit-settings-modal .item-leave-group.tile-item:hover {
+    @apply bg-menuitem-hover-warning;
+}
 .edit-settings-modal .item-leave-group .tile-item-icon,
 .edit-settings-modal .item-leave-group .tile-item-body-content {
     @apply text-danger;
 }
 
+.chat-type-tile-item .tile-item-right {
+    @apply text-headline-1 text-primary;
+}
+
 /* Edit members page */
 
 .tile-item.item-manage-members .tile-item-right {
-    @apply min-w-8 justify-start;
+    @apply min-w-8 justify-end;
     @apply text-03;
 }
 .tile-item.item-manage-members .tile-item-right i {

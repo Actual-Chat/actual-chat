@@ -57,6 +57,7 @@
     @apply overflow-hidden;
 }
 .file-attachment .c-title {
+    @apply w-64;
     @apply line-clamp-1;
     @apply text-headline-1 text-02;
 }
