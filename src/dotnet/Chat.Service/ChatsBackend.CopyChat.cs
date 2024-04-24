@@ -739,12 +739,12 @@ public partial class ChatsBackend
             MentionId mentionId;
             if (mentionSid.StartsWith(mentionIdAuthorPrefix, StringComparison.Ordinal)) {
                 var authorSid = mentionSid.Substring(mentionIdAuthorPrefix.Length);
-                authorSid = FixMentionAuthorSid(mention, authorSid);
                 if (!AuthorId.TryParse(authorSid, out _)) {
-                    Log.LogWarning("OnCopyChat({CorrelationId}) ignores mention with id '{ID}'. Reason: invalid author id",
+                    Log.LogWarning("OnCopyChat({CorrelationId}) skips mention with id '{ID}'. Reason: invalid author id",
                         correlationId, mention.Id);
                     continue;
                 }
+                authorSid = FixMentionAuthorSid(mention, authorSid);
                 var newAuthorId = migratedAuthors.GetNewAuthorId(authorSid);
                 mentionId = new MentionId(newAuthorId, AssumeValid.Option);
             }
