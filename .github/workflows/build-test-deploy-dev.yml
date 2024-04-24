@@ -425,7 +425,7 @@ jobs:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
       IS_DEV_MAUI: ${{ github.event.inputs.buildAppFor == 'dev' || (github.event.inputs.buildAppFor == 'auto' && !startsWith(github.ref, 'refs/heads/release/')) }}
-      APP_ID: chat.actual.${{ !startsWith(github.ref, 'refs/heads/release/') && 'dev.' || '' }}app
+      APP_ID: chat.actual.${{ (github.event.inputs.buildAppFor == 'dev' || (github.event.inputs.buildAppFor == 'auto' && !startsWith(github.ref, 'refs/heads/release/'))) && 'dev.' || '' }}app
       PACKAGE_FILE_NAME: App-signed.ipa
     outputs:
       APP_ID: ${{env.APP_ID}}
@@ -612,7 +612,7 @@ jobs:
       ActualChat_AndroidSigningKeyPass: ${{secrets.ANDROIDSIGNINGKEYPASS}}
       ActualChat_AndroidSigningStorePass: ${{secrets.ANDROIDSIGNINGSTOREPASS}}
       IS_DEV_MAUI: ${{ github.event.inputs.buildAppFor == 'dev' || (github.event.inputs.buildAppFor == 'auto' && !startsWith(github.ref, 'refs/heads/release/')) }}
-      APP_ID: chat.actual.${{ !startsWith(github.ref, 'refs/heads/release/') && 'dev.' || '' }}app
+      APP_ID: chat.actual.${{ (github.event.inputs.buildAppFor == 'dev' || (github.event.inputs.buildAppFor == 'auto' && !startsWith(github.ref, 'refs/heads/release/'))) && 'dev.' || '' }}app
       PACKAGE_FILE_NAME: chat.actual.${{ !startsWith(github.ref, 'refs/heads/release/') && 'dev.' || '' }}app-Signed.aab
     outputs:
       APP_ID: ${{env.APP_ID}}
@@ -870,7 +870,7 @@ jobs:
           name: ${{env.ARTIFACT_NAME}}
           path: ./packages
 
-      - name: Publish to Store
+      - name: Deploy to Store
         uses: ActualLab/windows-store-action@main
         with:
           tenant-id: ${{ secrets.MSFT_TENANT_ID }}
