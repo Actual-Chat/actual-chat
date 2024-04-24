@@ -319,6 +319,7 @@ internal static class Program
                     "-f net8.0-windows10.0.22000.0",
                     @"/p:TargetFrameworks=\""net8.0-windows10.0.22000.0;net8.0\""", // otherwise needs maui-ios etc
                     "-p:RuntimeIdentifierOverride=win10-x64",
+                    $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}")
                 .WithWorkingDirectory("src/dotnet/App.Maui")
                 .ToConsole(Green("dotnet: "))
