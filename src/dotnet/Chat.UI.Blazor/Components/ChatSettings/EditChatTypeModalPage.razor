@@ -201,17 +201,17 @@
 
         var invites = await Hub.Invites.ListChatInvites(Session, ChatId, cancellationToken);
         var threshold = Hub.Clocks().SystemClock.Now - TimeSpan.FromDays(3);
-        invites = invites
+        var activeInvites = invites
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
-            .ToApiArray();
+            .ToList();
         var link = Links.Chat(ChatId).ToDisplayUrl(Hub.UrlMapper());
         var allowEditIsTemplate = await Hub.Features().Get<Features_EnableTemplateChatUI, bool>(cancellationToken);
         var isPublic = chat.IsPublic;
         return new() {
             Chat = chat,
             Link = link,
-            Invites = invites,
+            Invites = activeInvites,
             AllowEditIsTemplate = allowEditIsTemplate,
             IsPublic = isPublic,
         };
@@ -279,7 +279,7 @@
 
         public Chat? Chat { get; init; }
         public DisplayUrl? Link { get; init; }
-        public ApiArray<Invite> Invites { get; init; } = ApiArray.New<Invite>();
+        public List<Invite> Invites { get; init; } = [];
         public bool AllowEditIsTemplate { get; init; }
         public bool IsPublic { get; init; }
     }
