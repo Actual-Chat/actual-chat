@@ -84,7 +84,7 @@ public sealed class OpenSearchConfigurator(IServiceProvider services, bool isDev
 
         if (!commonTemplateExistsResponse.Exists) {
             await OpenSearchClient.Indices
-                .PutTemplateAsync(IndexNames.EntryIndexTemplateName, ConfigureCommonIndexTemplate, cancellationToken)
+                .PutTemplateAsync(IndexNames.CommonIndexTemplateName, ConfigureCommonIndexTemplate, cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
         }
