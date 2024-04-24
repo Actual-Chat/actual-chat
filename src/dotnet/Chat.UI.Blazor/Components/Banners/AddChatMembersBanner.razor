@@ -53,11 +53,11 @@
         };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        if (!_dismissed.WhenRead.IsCompleted)
-            await _dismissed.WhenRead.ConfigureAwait(false);
-        var session = Session;
         var chat = Chat;
         var chatId = chat.Id;
+        if (!_dismissed.WhenRead.IsCompleted)
+            await _dismissed.WhenRead.ConfigureAwait(false);
+
         if (!EditMembersUI.CanAddMembers(chat))
             return false;
 
@@ -65,11 +65,11 @@
         if (dismissed)
             return false;
 
-        var allAuthorIds = await Authors.ListAuthorIds(session, chatId, cancellationToken).ConfigureAwait(false);
+        var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (allAuthorIds.Count > 1)
             return false;
 
-        var ownerIds = await Roles.ListOwnerIds(session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownerIds = await Roles.ListOwnerIds(Session, chatId, cancellationToken).ConfigureAwait(false);
         var hasRegularMembers = allAuthorIds.Except(ownerIds).Any();
         if (hasRegularMembers)
             return false;

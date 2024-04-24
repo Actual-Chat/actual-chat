@@ -68,21 +68,20 @@
         // computed.Invalidated += c => {
         //     Log.LogDebug("Invalidated: {Computed}", c.DebugDump());
         // };
-        var session = Session;
         var chatSid = ChatSid;
 
         await ChatUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
         var pChatId = new ChatId(chatSid, ParseOrNone.Option);
         var isInaccessiblePlace = !pChatId.PlaceChatId.PlaceId.IsNone;
         var enableIncompleteUI = await ChatUI.Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
         try {
             var chat = SpecialChat.NoChatSelected;
             if (!chatId.IsNone) {
-                chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+                chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
                 chat ??= SpecialChat.Unavailable;
             }
             if (chat is not { IsTemplate: true }) {
@@ -93,7 +92,7 @@
 
             // Create new chat based on a template and redirect to the new clone
             {
-                var command = new Chats_GetOrCreateFromTemplate(session, chatId);
+                var command = new Chats_GetOrCreateFromTemplate(Session, chatId);
                 var (newChat, createChatError) = await UICommander.Run(command, CancellationToken.None).ConfigureAwait(false);
                 if (createChatError != null)
                     throw StandardError.Unavailable("Unable to create new chat from template");
@@ -108,7 +107,7 @@
                 });
 
                 // Subscribe to chat changes
-                chat = await Chats.Get(session, newChat.Id, cancellationToken).ConfigureAwait(false);
+                chat = await Chats.Get(Session, newChat.Id, cancellationToken).ConfigureAwait(false);
                 chat.Require();
                 var footerModel = await GetFooterModel(chat, account, cancellationToken).ConfigureAwait(false);
                 var chatContext = new ChatContext(Hub, chat, account);

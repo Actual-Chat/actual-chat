@@ -59,10 +59,9 @@
         };
 
     protected override async Task<List<AvatarFull>> ComputeState(CancellationToken cancellationToken) {
-        var session = Session;
-        var avatarIds = await Avatars.ListOwnAvatarIds(session, cancellationToken).ConfigureAwait(false);
+        var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken).ConfigureAwait(false);
         var avatars = await avatarIds
-            .Select(id => Avatars.GetOwn(session, id, cancellationToken))
+            .Select(id => Avatars.GetOwn(Session, id, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
         return avatars.SkipNullItems().ToList();

@@ -87,12 +87,18 @@
         var managerLimit = Manager.Limit;
         var lastFilter = _lastFilter;
         var selection = _selection;
+
         var filter = await Filter.Use(cancellationToken).ConfigureAwait(false);
         var mentions = filter != null
             ? await Manager.SearchProvider.Find(filter, managerLimit, cancellationToken).ConfigureAwait(false)
             : [];
-        _selection = FixSelection(filter == lastFilter ? selection : null, mentions);
-        _lastFilter = filter;
+
+        var fixedSelection = FixSelection(filter == lastFilter ? selection : null, mentions);
+        await InvokeAsync(() => {
+            _selection = fixedSelection;
+            _lastFilter = filter;
+        }).ConfigureAwait(false);
+
         return mentions;
     }
 
@@ -119,7 +125,7 @@
     private MentionSearchResult? FixSelection(MentionSearchResult? selection, MentionSearchResult[] mentions) {
         if (mentions.Length == 0)
             return null;
-        
+
         var firstMention = mentions[0];
         selection ??= firstMention;
         return mentions.FirstOrDefault(o => o.MentionId == selection.MentionId) ?? firstMention;

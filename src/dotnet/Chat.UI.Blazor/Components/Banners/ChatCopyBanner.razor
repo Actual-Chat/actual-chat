@@ -41,11 +41,11 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasChat = ChatContext.HasChat;
         var chat = ChatContext.Chat;
-        var session = Session;
+        
         if (!hasChat || !chat.Id.IsPlaceChat || !chat.Rules.IsOwner())
             return Model.Hidden;
 
-        var copiedChat = await Chats.GetChatCopyState(session, chat.Id, cancellationToken).ConfigureAwait(false);
+        var copiedChat = await Chats.GetChatCopyState(Session, chat.Id, cancellationToken).ConfigureAwait(false);
         if (copiedChat == null)
             return Model.Hidden;
 

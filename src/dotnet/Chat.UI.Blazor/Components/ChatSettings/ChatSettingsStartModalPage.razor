@@ -276,14 +276,14 @@
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var session = Session;
         var chatId = ChatId;
-        var chat = await Hub.Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+
+        var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null || !chat.Rules.CanEditProperties())
             return new() { Chat = chat };
 
-        var allAuthorIds = await Hub.Authors.ListAuthorIds(session, chatId, cancellationToken).ConfigureAwait(false);
-        var invites = await Hub.Invites.ListChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
+        var allAuthorIds = await Hub.Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var invites = await Hub.Invites.ListChatInvites(Session, chatId, cancellationToken).ConfigureAwait(false);
         var threshold = Hub.Clocks().SystemClock.Now - TimeSpan.FromDays(3);
         var activeInvites = invites
             .Where(c => c.ExpiresOn > threshold)

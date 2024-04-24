@@ -73,6 +73,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatListKind = Kind;
+
         DebugLog?.LogDebug("-> ComputeState: {List}", chatListKind);
         var chatCount = await ChatListUI.GetCount(chatListKind).ConfigureAwait(false);
         var isSearchModeOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);

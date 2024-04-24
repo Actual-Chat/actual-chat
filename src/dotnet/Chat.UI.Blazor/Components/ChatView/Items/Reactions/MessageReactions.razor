@@ -42,12 +42,11 @@
         if (!Entry.Id.IsTextEntry(out var textEntryId))
             return Model.None;
 
-        var session = Session;
-        var summaries = await Reactions.ListSummaries(session, textEntryId, cancellationToken).ConfigureAwait(false);
+        var summaries = await Reactions.ListSummaries(Session, textEntryId, cancellationToken).ConfigureAwait(false);
         if (summaries.Count == 0)
             return new(false, summaries);
 
-        var ownReaction = await Reactions.Get(session, textEntryId, cancellationToken).ConfigureAwait(false);
+        var ownReaction = await Reactions.Get(Session, textEntryId, cancellationToken).ConfigureAwait(false);
         return new(true, summaries, ownReaction);
     }
 

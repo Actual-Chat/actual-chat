@@ -92,9 +92,8 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var session = Session;
         var navbarSettings = await Hub.ChatUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
-        var placeIds = await Hub.Contacts.ListPlaceIds(session, cancellationToken).ConfigureAwait(false);
+        var placeIds = await Hub.Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
 
         var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         if (selectedChatId.IsPlaceChat && !placeIds.Contains(selectedChatId.PlaceId))
@@ -107,12 +106,12 @@
         }
 
         var previewPlace = !previewPlaceId.IsNone
-            ? await Hub.Places.Get(session, previewPlaceId, cancellationToken).ConfigureAwait(false)
+            ? await Hub.Places.Get(Session, previewPlaceId, cancellationToken).ConfigureAwait(false)
             : null;
 
         var places = (await placeIds
             .OrderBy(x => navbarSettings.PlacesOrder.IndexOf(x))
-            .Select(id => Hub.Places.Get(session, id, cancellationToken))
+            .Select(id => Hub.Places.Get(Session, id, cancellationToken))
             .Collect()
             .ConfigureAwait(false))
             .SkipNullItems()

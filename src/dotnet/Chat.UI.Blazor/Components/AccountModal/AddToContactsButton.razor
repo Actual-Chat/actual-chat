@@ -34,13 +34,12 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var session = Session;
         var authorId = Author.Id;
         var peerChatId = await AuthorUI.GetPeerChatId(authorId, cancellationToken).ConfigureAwait(false);
         if (peerChatId == PeerChatId.None)
             return new ();
 
-        var contact = await Contacts.GetForChat(session, peerChatId, cancellationToken).ConfigureAwait(false);
+        var contact = await Contacts.GetForChat(Session, peerChatId, cancellationToken).ConfigureAwait(false);
         return new(contact);
     }
 

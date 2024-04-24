@@ -36,11 +36,10 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var minSentAt = Clocks.SystemClock.Now - TimeSpan.FromDays(1);
-        var session = Session;
-        var notificationIds = await Notifications.ListRecentNotificationIds(session, minSentAt, cancellationToken).ConfigureAwait(false);
+        var notificationIds = await Notifications.ListRecentNotificationIds(Session, minSentAt, cancellationToken).ConfigureAwait(false);
         var notifications = new List<ActualChat.Notification.Notification>();
         foreach (var notificationId in notificationIds) {
-            var notification = await Notifications.Get(session, notificationId, cancellationToken).ConfigureAwait(false);
+            var notification = await Notifications.Get(Session, notificationId, cancellationToken).ConfigureAwait(false);
             if (notification != null)
                 notifications.Add(notification);
         }
