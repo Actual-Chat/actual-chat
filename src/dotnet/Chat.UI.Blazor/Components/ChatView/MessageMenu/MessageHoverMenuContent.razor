@@ -50,8 +50,8 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var entry = Message.Entry;
-        var session = Session;
-        var rules = await Chats.GetRules(session, entry.ChatId, cancellationToken).ConfigureAwait(false);
+
+        var rules = await Chats.GetRules(Session, entry.ChatId, cancellationToken).ConfigureAwait(false);
         // Default scheduler is used from here
         var canReply = rules.CanWrite();
         return new(canReply);

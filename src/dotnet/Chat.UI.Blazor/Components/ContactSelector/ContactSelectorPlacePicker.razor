@@ -51,11 +51,10 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var session = Session;
         var enablePlacesUI = await Features.Get<Features_EnablePlacesUI, bool>(cancellationToken).ConfigureAwait(false);
-        var placeIds = await Hub.Contacts.ListPlaceIds(session, cancellationToken).ConfigureAwait(false);
+        var placeIds = await Hub.Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
         var places = (await placeIds
-                .Select(id => Hub.Places.Get(session, id, cancellationToken))
+                .Select(id => Hub.Places.Get(Session, id, cancellationToken))
                 .Collect()
                 .ConfigureAwait(false))
             .SkipNullItems()

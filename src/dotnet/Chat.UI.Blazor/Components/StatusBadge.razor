@@ -27,7 +27,6 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var session = Session;
         var status = "";
         var textColor = "text-[var(--status)]";
         var badgeColor = "bg-transparent";
@@ -51,14 +50,14 @@
         if (peerAccountId.IsNone)
             return Model.Loading;
 
-        var ownAuthor = await Authors.GetOwn(session, peerChatId, cancellationToken).ConfigureAwait(false);
+        var ownAuthor = await Authors.GetOwn(Session, peerChatId, cancellationToken).ConfigureAwait(false);
         var anotherAuthorId = new AuthorId(peerChatId, ownAuthor != null && peerChatId.UserId1 == ownAuthor.UserId ? 2 : 1, AssumeValid.Option);
-        var anotherAuthor = await Authors.Get(session, peerChatId, anotherAuthorId, cancellationToken).ConfigureAwait(false);
+        var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken).ConfigureAwait(false);
 
         if (anotherAuthor == null)
             return Model.Loading;
 
-        var presence = await Authors.GetPresence(session, chatId, anotherAuthor.Id, cancellationToken).ConfigureAwait(false);
+        var presence = await Authors.GetPresence(Session, chatId, anotherAuthor.Id, cancellationToken).ConfigureAwait(false);
 
         status = presence switch {
             Presence.Offline => "Offline",

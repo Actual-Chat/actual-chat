@@ -69,11 +69,11 @@
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat.Id;
+
         var message = "Welcome! Share the link to this chat to invite more people here:";
         if (Chat.HasSingleAuthor && Chat.SystemTag == Constants.Chat.SystemTags.Notes)
             message = "Welcome! You can store your notes in this chat, including recorded ones.";
-
-        var chatId = Chat.Id;
         var shareModel = await ShareUI.GetModel(chatId, cancellationToken).ConfigureAwait(false);
         if (shareModel is { Kind: ShareKind.Contact })
             message = $"To share {shareModel.TargetTitle}'s contact, use:";

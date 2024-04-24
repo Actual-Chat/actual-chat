@@ -65,7 +65,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         if (HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows)
-            return new Model(true, false);
+            return new(true, false);
 
         if (!_dismissedAt.WhenRead.IsCompleted)
             await _dismissedAt.WhenRead

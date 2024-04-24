@@ -30,7 +30,7 @@
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var chatId = chat.Id;
-        var session = Session;
+
         var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken).ConfigureAwait(false);
         if (!isEmpty || chat.HasSingleAuthor)
             return null;
@@ -43,7 +43,7 @@
         if (peerAccountId.IsNone)
             return Model.NoPeerAccount;
 
-        var peerAccount = await Accounts.Get(session, peerAccountId, cancellationToken).ConfigureAwait(false);
+        var peerAccount = await Accounts.Get(Session, peerAccountId, cancellationToken).ConfigureAwait(false);
         return new() { PeerAccount = peerAccount };
     }
 

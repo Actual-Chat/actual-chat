@@ -30,6 +30,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var placeId = ChatListView.PlaceId;
         var chatListFilter = ChatListFilter;
+
         var count = await ChatListUI.GetUnreadChatCount(placeId, chatListFilter, cancellationToken).ConfigureAwait(false);
 
         return new() {

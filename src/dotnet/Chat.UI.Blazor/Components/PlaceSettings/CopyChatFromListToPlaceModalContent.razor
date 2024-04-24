@@ -36,11 +36,10 @@
         };
 
     protected override async Task<List<Contact?>> ComputeState(CancellationToken cancellationToken) {
-        var session = Session;
-        var contactIds = await Contacts.ListIds(session, PlaceId.None, cancellationToken).ConfigureAwait(false);
+        var contactIds = await Contacts.ListIds(Session, PlaceId.None, cancellationToken).ConfigureAwait(false);
         var allContacts = await contactIds
-            .Select(x => Contacts.Get(session, x, cancellationToken))
-            .Collect()
+            .Select(x => Contacts.Get(Session, x, cancellationToken))
+            .Collect(256)
             .ConfigureAwait(false);
         var allowedContacts = allContacts
             .SkipNullItems()

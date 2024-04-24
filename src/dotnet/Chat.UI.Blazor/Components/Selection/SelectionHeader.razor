@@ -111,15 +111,13 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var session = Session;
         var selection = await SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
-        if (selection.IsEmpty) {
+        if (selection.IsEmpty)
             return Model.None;
-        }
 
         var chatId = selection.First().ChatId;
-        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        var ownAuthor = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
 
         var canDelete = true;
         foreach (var chatEntryId in selection) {
@@ -136,7 +134,7 @@
                 break;
             }
 
-            var chatEntry = await Chats.GetEntry(session, chatEntryId, cancellationToken).ConfigureAwait(false);
+            var chatEntry = await Chats.GetEntry(Session, chatEntryId, cancellationToken).ConfigureAwait(false);
             if (chatEntry == null) {
                 canDelete = false;
                 break;

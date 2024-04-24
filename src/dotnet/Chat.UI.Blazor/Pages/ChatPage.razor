@@ -120,6 +120,7 @@
 
         var hostInfo = Services.HostInfo();
         var chatSid = ChatSid;
+
         await ChatUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         var lastState = State.ValueOrDefault;

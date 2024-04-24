@@ -52,7 +52,7 @@
         var lastState = State.LastNonErrorValue;
         try {
             var chatId = ModalModel.ChatId;
-            var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken);
+            var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
 
             return new (userChatSettings.ListeningMode);
         }

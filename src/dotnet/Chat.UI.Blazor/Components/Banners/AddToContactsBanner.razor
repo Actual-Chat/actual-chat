@@ -33,9 +33,9 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var ownAccount = AccountUI.OwnAccount.Value;
-        var session = Session;
         var chatId = Chat.Id;
-        var contact = await Contacts.GetForChat(session, chatId, cancellationToken).ConfigureAwait(false);
+        
+        var contact = await Contacts.GetForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
         return new(!ownAccount.IsGuestOrNone, contact);
     }
 

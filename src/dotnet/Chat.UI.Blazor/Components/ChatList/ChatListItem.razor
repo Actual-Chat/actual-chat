@@ -144,12 +144,12 @@ else {
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("-> ComputeState: {ListKind} #{Index}", ListKind, Index);
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.
         var listKind = ListKind;
         var index = Index;
 
+        DebugLog?.LogDebug("-> ComputeState: {ListKind} #{Index}", listKind, index);
         var (indexIsValid, chatId) = await ChatListUI.GetItem(listKind, index).ConfigureAwait(false);
         if (chatId.IsNone) {
             if (indexIsValid) {

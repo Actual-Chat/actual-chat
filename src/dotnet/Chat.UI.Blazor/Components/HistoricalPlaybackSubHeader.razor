@@ -94,14 +94,13 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var session = Session;
         var lastState = State.Value;
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
         if (playbackState is not HistoricalPlaybackState { ChatId: var chatId } || chatId.IsNone)
             return Model.NotPlaying;
 
-        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var chatTitle = chat?.Title ?? "";
         var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
         var historicalChatPlayer = player as HistoricalChatPlayer;

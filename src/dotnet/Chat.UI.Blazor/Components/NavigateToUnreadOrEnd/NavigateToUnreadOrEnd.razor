@@ -61,6 +61,7 @@
         var chatView = ChatView;
         var chatId = Chat.Id;
         var oldState = State;
+
         if (chatId.IsNone || !await RegionVisibility.IsVisible.Use(cancellationToken).ConfigureAwait(false))
             return Model.None;
 
@@ -95,6 +96,12 @@
         var canScrollToUnread = readEntryLid < lastEntryId && readEntryLid > itemVisibility.MaxEntryLid;
         var unreadCount = await ChatUI.GetUnreadCount(chatId, cancellationToken).ConfigureAwait(false);
         return new(true, lastEntryId, canScrollToUnread ? readEntryLid : null, unreadCount);
+
+        async ValueTask<long> GetLastTextEntryLid(CancellationToken cancellationToken1)
+        {
+            var chatNews = await Chats.GetNews(Session, chatId, cancellationToken1).ConfigureAwait(false);
+            return chatNews.LastTextEntry?.LocalId ?? 0;
+        }
     }
 
     private void OnClick() {
@@ -111,12 +118,6 @@
         _ = mustNavigateToUnread
             ? ChatView.NavigateToNext(m.ReadEntryLid.GetValueOrDefault(), true)
             : ChatView.NavigateTo(m.LastEntryLid, false, true);
-    }
-
-    private async ValueTask<long> GetLastTextEntryLid(CancellationToken cancellationToken)
-    {
-        var chatNews = await Chats.GetNews(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
-        return chatNews.LastTextEntry?.LocalId ?? 0;
     }
 
     // Nested types
