@@ -1,7 +1,7 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @using System.ComponentModel.DataAnnotations
-@using ActualChat.Invite
 @using ActualChat.Media
+@using ActualLab.Generators
 @inherits ComputedStateComponent<ChatSettingsStartModalPage.ComputedModel>
 
 @{
@@ -49,14 +49,16 @@
                 <PicUpload
                     UploadUrl="@_form.ImageUploadUrl"
                     Title="@_form.Title"
-                    Picture="@_form.Picture"
                     AvatarKind="@_avatarKind"
                     AvatarKey="@_avatarKey"
                     IsButton="@true"
                     Picked="@OnImagePicked"/>
-                <ButtonRound Class="btn-sm">
-                    <i class="icon-image text-2xl"></i>
-                </ButtonRound>
+
+                @if (m.EnableIncompleteUI) {
+                    <ButtonRound Class="btn-sm" Click="@OnGenerateAvatarClick">
+                        <i class="icon-image text-2xl"></i>
+                    </ButtonRound>
+                }
             </div>
         </div>
     </FormBlock>
@@ -124,14 +126,12 @@
 </Form>
 
 @code {
-    private const int MaxInvitesCount = 5;
+    private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
     private Form?_formRef;
     private FormModel? _form;
-    private Symbol _newInviteId = Symbol.Empty;
     private DialogButtonInfo _submitButtonInfo = null!;
     private AvatarKind _avatarKind;
     private string? _avatarKey;
-    private bool _isAdmin;
     private PlaceId _placeId;
     private Place? _place;
     private bool _isPlaceWelcomeChat;
@@ -147,16 +147,13 @@
     private ChatId ChatId { get; set; }
 
     protected override void OnInitialized() {
-        _isAdmin = Hub.AccountUI.OwnAccount.Value.IsAdmin;
         ChatId = Context.GetTypedModel<ChatId>();
         Context.SetTitle("Edit chat settings");
         if (ChatId.IsPeerChat(out _)) {
-            _avatarKind = AvatarKind.Beam;
-            _avatarKey = null;
-        } else {
-            _avatarKind = AvatarKind.Marble;
-            _avatarKey = ChatId.Value;
+            throw StandardError.NotSupported("Peer chat is not supported.");
         }
+        _avatarKind = AvatarKind.Marble;
+        _avatarKey = ChatId.Value;
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
         Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
         base.OnInitialized();
@@ -173,9 +170,6 @@
             Title = chat.Title,
             Picture = chat.Picture?.ToPicture(),
             IsPublic = chat.IsPublic,
-            IsTemplate = chat.IsTemplate,
-            AllowGuestAuthors = chat.AllowGuestAuthors,
-            AllowAnonymousAuthors = chat.AllowAnonymousAuthors,
             ImageUploadUrl = $"/api/chat-media/{chat.Id}/upload",
         };
         _placeId = chat.Id.PlaceChatId.PlaceId;
@@ -202,24 +196,15 @@
         if (chat == null || !chat.Rules.CanEditProperties())
             return new() { Chat = chat };
 
-        var allAuthorIds = await Hub.Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var invites = await Hub.Invites.ListChatInvites(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var threshold = Hub.Clocks().SystemClock.Now - TimeSpan.FromDays(3);
-        var activeInvites = invites
-            .Where(c => c.ExpiresOn > threshold)
-            .OrderByDescending(c => c.ExpiresOn)
-            .ToList();
-        var link = Links.Chat(chatId).ToDisplayUrl(Hub.UrlMapper());
-        var allowEditIsTemplate = await Hub.Features().Get<Features_EnableTemplateChatUI, bool>(cancellationToken).ConfigureAwait(false);
+        var allAuthorIds = await Hub.Authors.ListAuthorIds(Session, chatId, cancellationToken);
         var isPublic = chat.IsPublic;
+        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
         return new() {
             Chat = chat,
-            Link = link,
-            Invites = activeInvites,
-            AllowEditIsTemplate = allowEditIsTemplate,
             IsOwner = chat.Rules.IsOwner(),
             MembersCount = allAuthorIds.Count,
             IsPublic = isPublic,
+            EnableIncompleteUI = enableIncompleteUI,
         };
     }
 
@@ -228,11 +213,11 @@
         StateHasChanged();
     }
 
-    private async Task OnNewInviteClick() {
-        // TODO: make it configurable
-        var invite = Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(ChatId));
-        invite = await Hub.UICommander().Run(new Invites_Generate(Session, invite));
-        _newInviteId = invite.Id;
+    private void OnGenerateAvatarClick() {
+        // TODO: To generate an avatar for chat we need the AvatarKey field for the chat avatar
+        _avatarKey = DefaultUserPicture.GetAvatarKey(IdGenerator.Next());
+        _form!.Picture = new Picture(null, null, _avatarKey);
+        StateHasChanged();
     }
 
     private void OnManageChatTypeClick()
@@ -255,15 +240,11 @@
 
     private async Task Save() {
         var chat = await Hub.Chats.Get(Session, ChatId, default).Require();
-        var isPlaceChat = chat.Id.IsPlaceChat;
         var newChat = chat with {
             Title = _form!.Title,
             IsPublic = _form.IsPublic,
-            IsTemplate = !isPlaceChat && _form.IsTemplate,
-            AllowGuestAuthors = !isPlaceChat && _form.AllowGuestAuthors,
-            AllowAnonymousAuthors = !isPlaceChat && _form.AllowAnonymousAuthors,
             MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
-            };
+        };
         var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
         });
@@ -274,36 +255,16 @@
         [Required, MinLength(1)]
         public string Title { get; set; } = "";
 
-        public string PublicUrl { get; set; } = "";
         public Picture? Picture { get; set; }
         public bool IsPublic { get; set; }
-        public bool IsTemplate { get; set; }
-        public bool AllowGuestAuthors { get; set; }
-        public bool AllowAnonymousAuthors { get; set; }
         public string ImageUploadUrl { get; init; } = "";
 
         public string FormId { get; }
         public string TitleId { get; }
-        public string PictureFormId { get; }
-        public string PublicUrlFormId { get; }
-        public string IsPublicFormId { get; }
-        public string IsPublicTrueFormId { get; }
-        public string IsPublicFalseFormId { get; }
-        public string IsTemplateFormId { get; }
-        public string AllowGuestAuthorsFormId { get; }
-        public string AllowAnonymousAuthorsFormId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
             TitleId = $"{FormId}-title";
-            PictureFormId = $"{FormId}-picture";
-            PublicUrlFormId = $"{FormId}-public-url";
-            IsPublicFormId = $"{FormId}-is-public";
-            IsPublicTrueFormId = IsPublicFormId + "-true";
-            IsPublicFalseFormId = IsPublicFormId + "-false";
-            IsTemplateFormId = $"{FormId}-is-template";
-            AllowGuestAuthorsFormId = $"{FormId}-allows-guests";
-            AllowAnonymousAuthorsFormId = $"{FormId}-allows-anonymous";
         }
     }
 
@@ -311,11 +272,9 @@
         public static readonly ComputedModel Loading = new();
 
         public Chat? Chat { get; init; }
-        public DisplayUrl? Link { get; init; }
-        public List<Invite> Invites { get; init; } = [];
-        public bool AllowEditIsTemplate { get; init; }
         public bool IsOwner { get; init; }
         public int MembersCount { get; init; }
         public bool IsPublic { get; init; }
+        public bool EnableIncompleteUI { get; init; }
     }
 }

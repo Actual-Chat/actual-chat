@@ -114,8 +114,8 @@ body.hoverable .tile:hover {
     @apply hover:bg-hover;
     @apply pr-2;
 }
-.tile-item.not-hover {
-    @apply hover:bg-transparent;
+.tile-item.unhovered:hover {
+    @apply bg-transparent;
 }
 .tile-item.unselected {
     @apply hover:bg-transparent;
@@ -150,7 +150,7 @@ body.hoverable .tile:hover {
     @apply leading-5 text-02;
 }
 .tile-item-body-caption {
-    @apply text-xs font-normal text-03;
+    @apply text-caption-6 font-normal text-03;
 }
 .tile-item-right {
     @apply flex-1 flex-x justify-end items-center;

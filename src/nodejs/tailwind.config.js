@@ -884,6 +884,7 @@ module.exports = {
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
+      inherit: 'inherit',
     }),
     inset: ({ theme }) => ({
       auto: 'auto',
@@ -1512,6 +1513,7 @@ module.exports = {
       max: 'max-content',
       fit: 'fit-content',
       modal: '22.5rem',
+      inherit: 'inherit',
     }),
     willChange: {
       auto: 'auto',

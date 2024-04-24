@@ -1,21 +1,26 @@
 ﻿.invite-list-item {
-    @apply flex-y gap-y-2;
-    @apply px-4 py-2;
-    @apply border rounded-lg border-separator;
+    @apply flex-x gap-x-2;
+    @apply py-2 px-4;
+    @apply rounded-lg;
+    @apply border border-separator;
 }
 
 .invite-list-item .link {
-    @apply flex-x items-center;
+    @apply flex-1 flex-x items-center;
 }
 
-.invite-list-item .actions {
+.invite-list-item .tile-item {
+    @apply gap-x-4;
+    @apply p-0;
+}
+.invite-list-item .tile-item-icon {
+    @apply justify-center;
+    @apply min-w-0 max-w-none;
+}
+.invite-list-item .tile-item-right {
     @apply flex-x gap-x-4;
 }
 
-.invite-list-item .actions > * {
+.invite-list-item .tile-item-right > * {
     @apply grow;
-}
-
-.invite-list-item .actions .btn {
-    @apply max-w-none;
 }

@@ -155,6 +155,9 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply ordinary-header;
     @apply bg-02 border-separator border-b;
 }
+.modal-header-interactive .btn-submit {
+    @apply mr-2;
+}
 
 .modal-header-interactive .btn .btn-content {
     @apply bg-transparent;

@@ -328,6 +328,18 @@ body.hoverable .btn.btn-square.btn-cancel:hover {
 }
 .btn.btn-round.btn-transparent {
     @apply bg-transparent;
+    @apply text-03;
+}
+body.hoverable .btn.btn-round.btn-transparent:hover {
+    @apply bg-transparent;
+    @apply text-02;
+}
+body.hoverable .btn.btn-round.btn-transparent:hover::after,
+.btn.btn-round.btn-transparent:active::after,
+.btn.btn-round.btn-transparent:hover:active::after,
+.btn.btn-round.btn-transparent:focus:active::after,
+.btn.btn-round.btn-transparent:hover:focus:active::after {
+    @apply bg-transparent;
 }
 body.hoverable .btn.btn-round:hover::after {
     @apply hover-after;
