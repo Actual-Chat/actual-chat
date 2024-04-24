@@ -55,7 +55,10 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (AuthorId.IsNone)
+        var authorId = AuthorId;
+        var chatId = authorId.ChatId;
+        
+        if (authorId.IsNone)
             return Model.None;
 
         var streamingActivity = ShowRecording && ChatRecordingActivity != null
@@ -63,15 +66,15 @@
             : null;
 
         // Code below doesn't use any component prop, so we can use .ConfigureAwait(false)
-        var presence = await Authors.GetPresence(Session, AuthorId.ChatId, AuthorId, cancellationToken).ConfigureAwait(false);
+        var presence = await Authors.GetPresence(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (streamingActivity != null) {
-            var isStreaming = await streamingActivity.IsAuthorStreaming(AuthorId, cancellationToken).ConfigureAwait(false);
+            var isStreaming = await streamingActivity.IsAuthorStreaming(authorId, cancellationToken).ConfigureAwait(false);
             if (isStreaming)
                 presence = Presence.Recording;
         }
 
-        var lastCheckIn = await Authors.GetLastCheckIn(Session, AuthorId.ChatId, AuthorId, cancellationToken).ConfigureAwait(false);
-        return new Model {
+        var lastCheckIn = await Authors.GetLastCheckIn(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
+        return new() {
             Presence = presence,
             LastCheckIn = lastCheckIn,
         };

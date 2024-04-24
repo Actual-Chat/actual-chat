@@ -39,8 +39,8 @@
         };
 
     protected override async Task<string> ComputeState(CancellationToken cancellationToken) {
-        var activeDemand = await InteractiveUI.ActiveDemand.Use(cancellationToken);
-        var isInteractive = await InteractiveUI.IsInteractive.Use(cancellationToken);
+        var activeDemand = await InteractiveUI.ActiveDemand.Use(cancellationToken).ConfigureAwait(false);
+        var isInteractive = await InteractiveUI.IsInteractive.Use(cancellationToken).ConfigureAwait(false);
         if (isInteractive) {
             // This means user clicked on something, and:
             // - If it's "Ok", we'll close soon anyway (once event comes)

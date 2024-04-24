@@ -46,10 +46,13 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken);
+        var chat = Chat;
+        var chatId = chat.Id;
+
+        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         return new() {
             NotificationMode = userChatSettings.NotificationMode,
-            HideNotificationsToggle = Chat.HasSingleAuthor,
+            HideNotificationsToggle = chat.HasSingleAuthor,
         };
     }
 

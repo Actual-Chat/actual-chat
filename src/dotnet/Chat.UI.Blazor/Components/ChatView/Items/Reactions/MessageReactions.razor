@@ -42,11 +42,12 @@
         if (!Entry.Id.IsTextEntry(out var textEntryId))
             return Model.None;
 
-        var summaries = await Reactions.ListSummaries(Session, textEntryId, cancellationToken);
+        var summaries = await Reactions.ListSummaries(Session, textEntryId, cancellationToken).ConfigureAwait(false);
         if (summaries.Count == 0)
-            return new Model(false, summaries);
-        var ownReaction = await Reactions.Get(Session, textEntryId, cancellationToken);
-        return new Model(true, summaries, ownReaction);
+            return new(false, summaries);
+
+        var ownReaction = await Reactions.Get(Session, textEntryId, cancellationToken).ConfigureAwait(false);
+        return new(true, summaries, ownReaction);
     }
 
     private Task ToggleReaction(Symbol emojiId) {

@@ -5,20 +5,20 @@ namespace ActualChat.Chat;
 
 public interface IAuthors : IComputeService
 {
-    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
     Task<Author?> Get(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
-    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
     Task<AuthorFull?> GetOwn(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<AuthorFull?> GetFull(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Account?> GetAccount(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
-    [ComputeMethod]
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
     Task<Presence> GetPresence(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Moment?> GetLastCheckIn(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
 
-    [ComputeMethod]
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
     Task<ApiArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken);

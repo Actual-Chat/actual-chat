@@ -27,6 +27,6 @@
             Category = GetStateCategory(),
         };
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
-        => await PanelsUI.Right.IsVisible.Use(cancellationToken);
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
+        => PanelsUI.Right.IsVisible.Use(cancellationToken).AsTask();
 }

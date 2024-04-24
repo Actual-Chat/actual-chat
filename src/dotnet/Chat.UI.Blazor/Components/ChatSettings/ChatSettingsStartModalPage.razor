@@ -276,23 +276,25 @@
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var chat = await Hub.Chats.Get(Session, ChatId, cancellationToken);
-        if (chat == null || !chat.Rules.CanEditProperties())
-            return new ComputedModel { Chat = chat };
+        var chatId = ChatId;
 
-        var allAuthorIds = await Hub.Authors.ListAuthorIds(Session, ChatId, cancellationToken);
-        var invites = await Hub.Invites.ListChatInvites(Session, ChatId, cancellationToken);
+        var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null || !chat.Rules.CanEditProperties())
+            return new() { Chat = chat };
+
+        var allAuthorIds = await Hub.Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var invites = await Hub.Invites.ListChatInvites(Session, chatId, cancellationToken).ConfigureAwait(false);
         var threshold = Hub.Clocks().SystemClock.Now - TimeSpan.FromDays(3);
-        invites = invites
+        var activeInvites = invites
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
-            .ToApiArray();
-        var link = Links.Chat(ChatId).ToDisplayUrl(Hub.UrlMapper());
-        var allowEditIsTemplate = await Hub.Features().Get<Features_EnableTemplateChatUI, bool>(cancellationToken);
+            .ToList();
+        var link = Links.Chat(chatId).ToDisplayUrl(Hub.UrlMapper());
+        var allowEditIsTemplate = await Hub.Features().Get<Features_EnableTemplateChatUI, bool>(cancellationToken).ConfigureAwait(false);
         return new() {
             Chat = chat,
             Link = link,
-            Invites = invites,
+            Invites = activeInvites,
             AllowEditIsTemplate = allowEditIsTemplate,
             IsOwner = chat.Rules.IsOwner(),
             MembersCount = allAuthorIds.Count,
@@ -385,7 +387,7 @@
 
         public Chat? Chat { get; init; }
         public DisplayUrl? Link { get; init; }
-        public ApiArray<Invite> Invites { get; init; } = ApiArray.New<Invite>();
+        public List<Invite> Invites { get; init; } = [];
         public bool AllowEditIsTemplate { get; init; }
         public bool IsOwner { get; init; }
         public int MembersCount { get; init; }

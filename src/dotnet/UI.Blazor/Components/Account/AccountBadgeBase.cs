@@ -22,10 +22,11 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (UserId.IsNone)
+        var userId = UserId;
+        if (userId.IsNone)
             return Model.None;
 
-        var account = await Accounts.Get(Session, UserId, cancellationToken);
+        var account = await Accounts.Get(Session, userId, cancellationToken).ConfigureAwait(false);
         return account == null
             ? Model.None
             : new(account);

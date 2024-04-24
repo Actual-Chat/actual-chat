@@ -112,13 +112,12 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var selection = await SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
-        if (selection.IsEmpty) {
+        if (selection.IsEmpty)
             return Model.None;
-        }
 
         var chatId = selection.First().ChatId;
-        var chat = await Chats.Get(Session, chatId, cancellationToken);
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken);
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
 
         var canDelete = true;
         foreach (var chatEntryId in selection) {
@@ -135,7 +134,7 @@
                 break;
             }
 
-            var chatEntry = await Chats.GetEntry(Session, chatEntryId, cancellationToken);
+            var chatEntry = await Chats.GetEntry(Session, chatEntryId, cancellationToken).ConfigureAwait(false);
             if (chatEntry == null) {
                 canDelete = false;
                 break;
@@ -148,7 +147,7 @@
             }
         }
 
-        return new Model {
+        return new() {
             Selection = selection,
             CanDelete = canDelete,
         };

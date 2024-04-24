@@ -53,24 +53,28 @@
         };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var chat = Chat;
+        var chatId = chat.Id;
         if (!_dismissed.WhenRead.IsCompleted)
-            await _dismissed.WhenRead;
-        if (!EditMembersUI.CanAddMembers(Chat))
+            await _dismissed.WhenRead.ConfigureAwait(false);
+
+        if (!EditMembersUI.CanAddMembers(chat))
             return false;
 
-        var dismissed = await _dismissed.Use(cancellationToken);
+        var dismissed = await _dismissed.Use(cancellationToken).ConfigureAwait(false);
         if (dismissed)
             return false;
 
-        var allAuthorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
+        var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (allAuthorIds.Count > 1)
             return false;
-        var ownerIds = await Roles.ListOwnerIds(Session, Chat.Id, cancellationToken);
+
+        var ownerIds = await Roles.ListOwnerIds(Session, chatId, cancellationToken).ConfigureAwait(false);
         var hasRegularMembers = allAuthorIds.Except(ownerIds).Any();
         if (hasRegularMembers)
             return false;
 
-        return await EditMembersUI.HaveMembersToAdd(Chat);
+        return await EditMembersUI.HaveMembersToAdd(chat).ConfigureAwait(false);
     }
 
     // Event handlers

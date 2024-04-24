@@ -23,21 +23,24 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var ownAccount = ChatContext.OwnAccount;
+
         if (!Chat.Id.IsPeerChat(out var peerChatId))
             return Model.Loading;
+
         var peerAccountId = peerChatId.UserIds.OtherThanOrDefault(ownAccount.Id);
         if (peerAccountId.IsNone)
             return Model.Loading;
 
-        var ownAuthor = await Authors.GetOwn(Session, peerChatId, cancellationToken);
+
+        var ownAuthor = await Authors.GetOwn(Session, peerChatId, cancellationToken).ConfigureAwait(false);
         var anotherAuthorId = new AuthorId(peerChatId, ownAuthor != null && peerChatId.UserId1 == ownAuthor.UserId ? 2 : 1, AssumeValid.Option);
-        var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken);
+        var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken).ConfigureAwait(false);
 
         if (anotherAuthor == null)
             return Model.Loading;
 
         var bio = anotherAuthor.Avatar.Bio;
-        return new Model() {
+        return new() {
             Bio = bio,
         };
     }

@@ -91,7 +91,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        return new Model(await AccountUI.OwnAccount.Use(cancellationToken));
+        return new(await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false));
     }
 
     public override async ValueTask DisposeAsync() {

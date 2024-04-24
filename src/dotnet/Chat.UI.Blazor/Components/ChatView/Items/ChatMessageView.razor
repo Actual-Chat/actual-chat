@@ -244,7 +244,7 @@
         var ownAuthorId = ownAuthor?.Id ?? AuthorId.None;
         var repliedEntry = Entry.RepliedEntryLocalId != null ? ChatEntry.Loading : null;
         if (!ownAuthorId.IsNone || repliedEntry != null)
-            initialValue = new Model {
+            initialValue = new() {
                 OwnAuthorId = ownAuthorId,
                 RepliedEntry = repliedEntry,
             };
@@ -256,35 +256,37 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var entry = Entry;
-        var chatId = entry.ChatId;
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken);
+        var chatId = ChatId;
+        var chatMessage = Message;
+
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthorId = ownAuthor?.Id ?? AuthorId.None;
 
-        var markup = await _markupTask;
-        var repliedEntry = await GetRepliedEntry(cancellationToken);
+        var markup = await _markupTask.ConfigureAwait(false);
+        var repliedEntry = await GetRepliedEntry(cancellationToken).ConfigureAwait(false);
         var hasAnyMentions = HasAnyMentions(markup);
         var isOwnAuthorMentioned = IsMentioned(markup, repliedEntry, ownAuthorId, hasAnyMentions);
-        var relatedChatEntry = await ChatContext.Hub.ChatEditorUI.RelatedChatEntry.Use(cancellationToken);
+        var relatedChatEntry = await ChatContext.Hub.ChatEditorUI.RelatedChatEntry.Use(cancellationToken).ConfigureAwait(false);
         var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, Id: var repliedEntryId } && repliedEntryId == entry.Id;
-        var isHighlighted = entry.Id == await ChatUI.HighlightedEntryId.Use(cancellationToken);
+        var isHighlighted = entry.Id == await ChatUI.HighlightedEntryId.Use(cancellationToken).ConfigureAwait(false);
         Chat? forwardedChat = null;
         var forwardedChatEntryId = ChatEntryId.None;
         if (!entry.ForwardedChatEntryId.IsNone) {
-            forwardedChat = await Chats.Get(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken);
+            forwardedChat = await Chats.Get(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken).ConfigureAwait(false);
             if (forwardedChat != null)
                 forwardedChatEntryId = entry.ForwardedChatEntryId;
             else {
                 // May be chat was copied to place and removed afterwards. Try to find out copied chat.
-                var replacementChatId = await Chats.GetForwardChatReplacement(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken);
+                var replacementChatId = await Chats.GetForwardChatReplacement(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken).ConfigureAwait(false);
                 if (!replacementChatId.IsNone) {
-                    forwardedChat = await Chats.Get(Session, replacementChatId, cancellationToken);
-                    forwardedChatEntryId = new ChatEntryId(replacementChatId, entry.ForwardedChatEntryId.Kind, entry.ForwardedChatEntryId.LocalId, AssumeValid.Option);
+                    forwardedChat = await Chats.Get(Session, replacementChatId, cancellationToken).ConfigureAwait(false);
+                    forwardedChatEntryId = new(replacementChatId, entry.ForwardedChatEntryId.Kind, entry.ForwardedChatEntryId.LocalId, AssumeValid.Option);
                 }
             }
         }
-        var forwardedAuthor = await GetForwardedAuthor(entry, ownAuthor, cancellationToken);
-        var forwardedPeerAuthor = await GetForwardedPeerAuthor(entry, ownAuthor, cancellationToken);
-        var selectedChatEntries = await ChatContext.Hub.SelectionUI.Selection.Use(cancellationToken);
+        var forwardedAuthor = await GetForwardedAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
+        var forwardedPeerAuthor = await GetForwardedPeerAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
+        var selectedChatEntries = await ChatContext.Hub.SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,
@@ -298,17 +300,16 @@
             ForwardedPeerAuthor = forwardedPeerAuthor,
         };
         return result.Equals(_rendered) ? _rendered! : result;
-    }
 
-    private async Task<ChatEntry?> GetRepliedEntry(CancellationToken cancellationToken) {
-        if (Entry.RepliedEntryLocalId is not { } repliedEntryLocalId)
-            return null;
+        async Task<ChatEntry?> GetRepliedEntry(CancellationToken cancellationToken1) {
+            if (Entry.RepliedEntryLocalId is not { } repliedEntryLocalId)
+                return null;
 
-        var repliedEntryId = new ChatEntryId(Message.Entry.ChatId, Message.Entry.Kind, repliedEntryLocalId, AssumeValid.Option);
-        var repliedEntry = await Chats.GetEntry(Session, repliedEntryId, cancellationToken)
-            ?? ChatEntry.Removed(repliedEntryId);
-
-        return repliedEntry;
+            var messageEntry = chatMessage.Entry;
+            var repliedEntryId1 = new ChatEntryId(chatId, messageEntry.Kind, repliedEntryLocalId, AssumeValid.Option);
+            var repliedEntry1 = await Chats.GetEntry(Session, repliedEntryId1, cancellationToken1).ConfigureAwait(false) ?? ChatEntry.Removed(repliedEntryId1);
+            return repliedEntry1;
+        }
     }
 
     private void OnQuoteClick()

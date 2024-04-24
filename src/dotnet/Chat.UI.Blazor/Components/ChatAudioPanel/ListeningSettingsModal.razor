@@ -3,7 +3,7 @@
 @using ActualChat.Kvas
 @inherits ComputedStateComponent<ListeningSettingsModal.ComputedModel>
 @{
-    var m = State.Value;
+    var m = State.LastNonErrorValue;
     var mode = m.ListeningMode;
 }
 <DialogFrame
@@ -49,9 +49,16 @@
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var chatInfo = await ChatUI.Get(ModalModel.ChatId, cancellationToken);
+        var lastState = State.LastNonErrorValue;
+        try {
+            var chatId = ModalModel.ChatId;
+            var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
 
-        return new (chatInfo?.UserSettings.ListeningMode ?? ListeningMode.Default);
+            return new (userChatSettings.ListeningMode);
+        }
+        catch (OperationCanceledException) {
+            return lastState;
+        }
     }
 
     private async Task SetListeningMode(ListeningMode listeningMode) {

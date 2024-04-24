@@ -25,8 +25,8 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var count = await ChatListUI.GetUnmutedUnreadChatCount(PlaceId, cancellationToken);
-        return new Model(count);
+        var count = await ChatListUI.GetUnmutedUnreadChatCount(PlaceId, cancellationToken).ConfigureAwait(false);
+        return new(count);
     }
 
     protected override bool ShouldRender()

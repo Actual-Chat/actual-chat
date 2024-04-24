@@ -61,8 +61,10 @@
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var settings = await ChatVoiceSettings.Get(Session, ChatId, cancellationToken);
-        var chatInfo = await ChatUI.Get(ModalModel.ChatId, cancellationToken);
+        var chatId = ChatId;
+        
+        var settings = await ChatVoiceSettings.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
 
         var listeningMode = chatInfo?.UserSettings.ListeningMode ?? ListeningMode.Default;
         var mustStreamVoice = settings.VoiceMode.HasVoice();

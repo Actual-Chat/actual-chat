@@ -81,9 +81,9 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        return new Model(
-            await AccountUI.OwnAccount.Use(cancellationToken),
-            await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken));
+        return new(
+            await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false),
+            await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false));
     }
 
     private void NavigateTo(string url) {

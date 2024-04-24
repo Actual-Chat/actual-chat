@@ -28,7 +28,7 @@
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var bannerRefs = await BannerUI.Banners.Use(cancellationToken);
+        var bannerRefs = await BannerUI.Banners.Use(cancellationToken).ConfigureAwait(false);
         return new(bannerRefs);
     }
 

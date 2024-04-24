@@ -26,8 +26,8 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         await Task.Delay(200, cancellationToken).ConfigureAwait(false);
-        var value = await TestService.GetValue(cancellationToken);
-        return new Model(value);
+        var value = await TestService.GetValue(cancellationToken).ConfigureAwait(false);
+        return new(value);
     }
 
     private async Task OnMutateClick() {
