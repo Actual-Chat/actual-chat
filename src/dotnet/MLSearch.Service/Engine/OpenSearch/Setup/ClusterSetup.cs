@@ -3,16 +3,16 @@ using OpenSearch.Client;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Documents;
-using OpenSearchModelGroupName = string;
 using OpenSearchModelGroupId = string;
 using OpenSearchModelId = string;
 using ActualChat.MLSearch.Indexing;
+using Microsoft.Extensions.Options;
+using ActualChat.MLSearch.Module;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
 internal sealed class ClusterSetup(
-    bool isDevelopmentInstance,
-    OpenSearchModelGroupName modelGroupName,
+    IOptions<OpenSearchSettings> openSearchSettings,
     IOpenSearchClient openSearch,
     IndexNames indexNames,
     ITracerSource? tracing
@@ -25,9 +25,9 @@ internal sealed class ClusterSetup(
 
     public async Task Initialize(CancellationToken cancellationToken)
     {
-        var settings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
-        await EnsureTemplatesAsync(settings, cancellationToken).ConfigureAwait(false);
-        await EnsureIndexesAsync(settings, cancellationToken).ConfigureAwait(false);
+        var clusterSettings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
+        await EnsureTemplatesAsync(clusterSettings, cancellationToken).ConfigureAwait(false);
+        await EnsureIndexesAsync(clusterSettings, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<ClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)
@@ -44,7 +44,7 @@ internal sealed class ClusterSetup(
                   {
                       "query": {
                           "match": {
-                              "name": "{{modelGroupName}}"
+                              "name": "{{openSearchSettings.Value.ModelGroup}}"
                           }
                       },
                       "sort": [{
@@ -134,14 +134,14 @@ internal sealed class ClusterSetup(
             return;
         }
 
-        var numReplicas = isDevelopmentInstance ? 0 : 1;
+        var numReplicas = openSearchSettings.Value.DefaultNumberOfReplicas;
         await openSearch.Indices
             .PutTemplateAsync(mlIndexTemplateName, index => ConfigureMLIndexTemplate(index, numReplicas, IndexNames.MLIndexPattern), cancellationToken)
             .ConfigureAwait(false);
 
         return;
 
-        IPutIndexTemplateRequest ConfigureMLIndexTemplate(PutIndexTemplateDescriptor index, int numReplicas, string indexPattern)
+        IPutIndexTemplateRequest ConfigureMLIndexTemplate(PutIndexTemplateDescriptor index, int? numReplicas, string indexPattern)
             => index
                 .Settings(s => s.NumberOfReplicas(numReplicas))
                 .IndexPatterns(indexPattern);
