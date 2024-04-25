@@ -146,26 +146,14 @@ jobs:
           --mount type=bind,src=${{github.workspace}}/services/opensearch/opensearch-setup.py,dst=/workdir/opensearch-setup.py \
           opensearch-configurator-image:latest
 
-      - name: Install dotnet 8.0 SDK
-        uses: actions/setup-dotnet@v3
+      - name: Setup dotnet
+        uses: ./.github/actions/setup-dotnet
         with:
-          dotnet-version: '8.0'
-          dotnet-quality: 'ga'
-
-      - name: Use cached dependencies
-        uses: actions/cache@v3
-        with:
-          path: ${{ github.workspace }}/.nuget/packages
-          key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-
-      - name: Restore dependencies
-        run: |-
-          ./run-build.cmd restore
+          restore-tools: false
+          restore-workloads: false
 
       - name: Debug Build for tests
-        run: |-
+        run: |
           dotnet build ActualChat.CI.slnf --nologo --no-restore --configuration Debug
 
       - name: Run slow tests
