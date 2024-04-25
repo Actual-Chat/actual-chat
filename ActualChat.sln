@@ -321,6 +321,18 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.NonWasm.UnitTests", "t
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Media.UnitTests", "tests\Media.UnitTests\Media.UnitTests.csproj", "{DA26CF4E-9B27-490B-98EF-DCAEB1709000}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "actions", "actions", "{0C33EE35-ED23-4B6F-A7EC-C1760DCFE938}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "setup-dotnet", "setup-dotnet", "{2DE91069-221D-477A-AAA6-B0A9E34EB3D7}"
+	ProjectSection(SolutionItems) = preProject
+		.github\actions\setup-dotnet\action.yml = .github\actions\setup-dotnet\action.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "install-provisioning-profile", "install-provisioning-profile", "{1C05141A-B402-416A-86C0-6574EA631DEF}"
+	ProjectSection(SolutionItems) = preProject
+		.github\actions\install-provisioning-profile\action.yml = .github\actions\install-provisioning-profile\action.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -744,6 +756,9 @@ Global
 		{9C5B981D-0656-4BFA-BA26-CB27948A14D9} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{17B0F5C3-5391-4FDC-80E9-CAC4488AF236} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{DA26CF4E-9B27-490B-98EF-DCAEB1709000} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
+		{0C33EE35-ED23-4B6F-A7EC-C1760DCFE938} = {16126688-A04E-44A8-9EA3-A6A45A1D2CE8}
+		{2DE91069-221D-477A-AAA6-B0A9E34EB3D7} = {0C33EE35-ED23-4B6F-A7EC-C1760DCFE938}
+		{1C05141A-B402-416A-86C0-6574EA631DEF} = {0C33EE35-ED23-4B6F-A7EC-C1760DCFE938}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}
