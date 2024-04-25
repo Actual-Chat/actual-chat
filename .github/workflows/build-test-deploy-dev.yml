@@ -48,6 +48,7 @@ jobs:
       APP_ID: ${{ steps.calc.outputs.APP_ID }}
       MUST_BUILD_PACKAGE: ${{ steps.calc.outputs.MUST_BUILD_PACKAGE }}
       ENVIRONMENT: ${{ steps.calc.outputs.ENVIRONMENT }}
+      IS_PROD_BRANCH: ${{ steps.calc.outputs.IS_PROD_BRANCH }}
     steps:
       - id: calc
         name: Calculate params for package jobs
@@ -80,7 +81,8 @@ jobs:
           echo "IS_DEV_MAUI=$isDevMaui" | tee -a $GITHUB_OUTPUT
           echo "APP_ID=$appId" | tee -a $GITHUB_OUTPUT
           echo "MUST_BUILD_PACKAGE=$mustBuildPkg" | tee -a $GITHUB_OUTPUT
-          echo "ENVIRONMENT='$environment'" | tee -a $GITHUB_OUTPUT
+          echo "ENVIRONMENT=$environment" | tee -a $GITHUB_OUTPUT
+          echo "IS_PROD_BRANCH=$isProdBranch" | tee -a $GITHUB_OUTPUT
 
   build:
     name: Build image for ${{ github.ref_name }}
