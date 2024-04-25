@@ -235,7 +235,7 @@ body.hoverable .copy-chat-to-place-modal .c-chat-list .c-chat:hover {
     @apply flex-1 flex-x items-center justify-end gap-x-3;
 }
 .chat-settings-header > .c-center > .c-buttons > div,
-.chat-settings-header > .c-center > .c-buttons > .btn-round {
+.chat-settings-header > .c-center > .c-buttons > .btn.btn-round {
     @apply bg-[var(--round-right-panel)];
     @apply text-primary;
     @apply shadow;
