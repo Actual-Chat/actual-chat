@@ -10,6 +10,7 @@ using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
 using ActualLab.Rpc.Internal;
 using ActualLab.Rpc.Server;
+using ActualLab.Rpc.Testing;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.Rpc;
@@ -206,6 +207,12 @@ public readonly struct RpcHostBuilder
         AddRpcServer(); // Must follow AddWebServer
         AddRpcClient();
         AddRpcPeerFactory();
+
+        // Debug stuff
+        if (Constants.DebugMode.RpcCalls.AnyServerInboundDelay is { } delay)
+            Rpc.AddInboundMiddleware(c => new RpcRandomDelayMiddleware(c) {
+                Delay = delay,
+            });
     }
 
     private void AddMeshServices()

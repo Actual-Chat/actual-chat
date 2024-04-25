@@ -15,6 +15,7 @@ public static partial class Constants
             public static readonly bool ApiServer = false;
             public static readonly bool BackendClient = false;
             public static readonly bool BackendServer = true;
+            public static readonly RandomTimeSpan? AnyServerInboundDelay = null; // new(0.5, 0.1);
         }
 
         // Core components
