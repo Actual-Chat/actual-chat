@@ -4,6 +4,7 @@ src/dotnet/App.Maui/wwwroot/dist/
 build/Build.sln
 ActualChat.CI.slnf
 Nerdbank.GitVersioning.*
+*.snk
 
 # IDE folders & files
 .vs/
