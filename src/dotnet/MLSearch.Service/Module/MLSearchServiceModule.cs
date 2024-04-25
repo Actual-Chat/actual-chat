@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat;
-using ActualChat.Chat.Events;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
@@ -15,8 +14,8 @@ using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.Redis.Module;
-using ActualLab.Fusion.EntityFramework.Operations;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using OpenSearch.Client;
 using OpenSearch.Net;
 
@@ -53,19 +52,33 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
 
+        // Module configuration
+
+        services.AddOptionsWithValidateOnStart<OpenSearchSettings>()
+            .Bind(Cfg.GetSection($"{nameof(MLSearchSettings)}:{MLSearchSettings.OpenSearch}"))
+            .ValidateDataAnnotations()
+            .Validate(options => Uri.IsWellFormedUriString(options.ClusterUri, UriKind.Absolute),
+                $"Value for {nameof(OpenSearchSettings.ClusterUri)} must be valid URI.")
+            .PostConfigure(options => {
+                if (options.DefaultNumberOfReplicas is null && HostInfo.IsDevelopmentInstance) {
+                    options.DefaultNumberOfReplicas = 0;
+                }
+            });
+
         // Module's own services
 
-        var openSearchClusterUri = Settings.OpenSearchClusterUri
-            ?? throw new InvalidOperationException("OpenSearchClusterUri is not set");
-        var modelGroupName = Settings.OpenSearchModelGroup
-            ?? throw new InvalidOperationException("OpenSearchModelGroup is not set");
+        services.AddSingleton<IndexNames>();
 
-        var connectionSettings = new ConnectionSettings(
-            new SingleNodeConnectionPool(new Uri(openSearchClusterUri)),
-            sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
+        services.AddSingleton<IOpenSearchClient>(s => {
+            var openSearchSettings = s.GetRequiredService<IOptions<OpenSearchSettings>>().Value;
+            var connectionSettings = new ConnectionSettings(
+                new SingleNodeConnectionPool(new Uri(openSearchSettings.ClusterUri)),
+                sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
+            return new OpenSearchClient(connectionSettings);
+        });
 
-        services.AddSingleton<IOpenSearchClient>(_ => new OpenSearchClient(connectionSettings));
-        services.AddSingleton(e => ActivatorUtilities.CreateInstance<ClusterSetup>(e, modelGroupName))
+        services
+            .AddSingleton<ClusterSetup>()
             .AddAlias<IModuleInitializer, ClusterSetup>();
 
         services.AddSingleton<IIndexSettingsSource, IndexSettingsSource>();

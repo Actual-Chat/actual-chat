@@ -24,7 +24,7 @@ class API:
         print(result.json())
         return result
 
-    def register_model_group(self, model_group_name, *, cluster_url, description=""):
+    def register_model_group(self, model_group_name, *, description=""):
         # Notes:
         # For some reason current opensearch_py_ml client
         # does not have methods to register a model group
@@ -53,20 +53,7 @@ class API:
             }
         ).json()['model_group_id']
 
-    def set_ml_commons_config(self, config):
-        return self.call_opensearch(
-            "/_cluster/settings",
-            method = requests.put,
-            data = {
-                "persistent": {
-                    "plugins": {
-                        "ml_commons": config
-                    }
-                }
-            }
-        ).json()
-
-    def get_model_group_model_id(self, model_group_id, *, cluster_url):
+    def get_model_group_model_id(self, model_group_id):
         # Notes:
         # For some reason current opensearch_py_ml client
         # does not have methods to register a model group
@@ -100,21 +87,12 @@ def main():
     cluster_url = os.getenv('OPENSEARCH_CLUSTER_URL')
     model_group_name = os.getenv('OPENSEARCH_ML_MODEL_GROUP')
     api = API(cluster_url)
-    api.set_ml_commons_config({
-        "only_run_on_ml_node": "false",
-        "model_access_control_enabled": "true",
-        "native_memory_threshold": "99",
-        # This is a requirement to upload ML model from a local storage
-        "allow_registering_model_via_local_file": "true",
-    })
     model_group_id = api.register_model_group(
         model_group_name,
-        description = "A model group for NLP models",
-        cluster_url = cluster_url
+        description = "A model group for NLP models"
     )
     current_model_id = api.get_model_group_model_id(
-        model_group_id,
-        cluster_url = cluster_url
+        model_group_id
     )
     client = OpenSearch(
         hosts=[cluster_url],

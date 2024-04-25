@@ -3,17 +3,18 @@ using OpenSearch.Client;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Documents;
-using OpenSearchModelGroupName = string;
 using OpenSearchModelGroupId = string;
 using OpenSearchModelId = string;
 using ActualChat.MLSearch.Indexing;
+using Microsoft.Extensions.Options;
+using ActualChat.MLSearch.Module;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
 internal sealed class ClusterSetup(
-    OpenSearchModelGroupName modelGroupName,
+    IOptions<OpenSearchSettings> openSearchSettings,
     IOpenSearchClient openSearch,
-    ILogger<ClusterSetup> log,
+    IndexNames indexNames,
     ITracerSource? tracing
     ) : IModuleInitializer
 {
@@ -22,7 +23,12 @@ internal sealed class ClusterSetup(
         "Initialization script was not called."
     );
 
-    public Task Initialize(CancellationToken cancellationToken) => EnsureChatSliceIndex(cancellationToken);
+    public async Task Initialize(CancellationToken cancellationToken)
+    {
+        var clusterSettings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
+        await EnsureTemplatesAsync(cancellationToken).ConfigureAwait(false);
+        await EnsureIndexesAsync(clusterSettings, cancellationToken).ConfigureAwait(false);
+    }
 
     private async Task<ClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)
     {
@@ -38,7 +44,7 @@ internal sealed class ClusterSetup(
                   {
                       "query": {
                           "match": {
-                              "name": "{{modelGroupName}}"
+                              "name": "{{openSearchSettings.Value.ModelGroup}}"
                           }
                       },
                       "sort": [{
@@ -115,7 +121,26 @@ internal sealed class ClusterSetup(
         }
         return _result = new ClusterSettings(modelAllConfig, modelId, modelEmbeddingDimension);
     }
-    private async Task EnsureChatSliceIndex(CancellationToken cancellationToken)
+    private async Task EnsureTemplatesAsync(CancellationToken cancellationToken)
+    {
+        using var _ = tracing.TraceRegion();
+
+        var numReplicas = openSearchSettings.Value.DefaultNumberOfReplicas;
+        await openSearch.Indices
+            .PutTemplateAsync(IndexNames.MLTemplateName,
+                index => ConfigureMLIndexTemplate(index, numReplicas, IndexNames.MLIndexPattern), cancellationToken)
+            .ConfigureAwait(false);
+
+        return;
+
+        IPutIndexTemplateRequest ConfigureMLIndexTemplate(PutIndexTemplateDescriptor index, int? numReplicas, string indexPattern)
+            => index
+                .Settings(s => s.NumberOfReplicas(numReplicas))
+                .IndexPatterns(indexPattern);
+    }
+
+
+    private async Task EnsureIndexesAsync(ClusterSettings settings, CancellationToken cancellationToken)
     {
         // Notes:
         // Assumption: This is a script.
@@ -124,12 +149,12 @@ internal sealed class ClusterSetup(
         // It has to succeed once and only once to setup an OpenSearch cluster.
         // After the initial setup this would never be called again.
         using var _1 = tracing.TraceRegion();
-        var settings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
-        var searchIndexId = settings.IntoFullIndexName(IndexNames.ChatSlice);
-        var ingestCursorIndexId = settings.IntoFullIndexName(IndexNames.ChatSliceCursor);
-        var chatsCursorIndexId = settings.IntoFullIndexName(IndexNames.ChatCursor);
+        var searchIndexId = indexNames.GetFullName(IndexNames.ChatSlice, settings);
+        var ingestCursorIndexId = indexNames.GetFullName(IndexNames.ChatSliceCursor, settings);
+        var chatsCursorIndexId = indexNames.GetFullName(IndexNames.ChatCursor, settings);
 
-        var ingestPipelineId = settings.IntoFullIngestPipelineName(IndexNames.ChatSlice);
+        var ingestPipelineId = indexNames.GetFullIngestPipelineName(IndexNames.ChatSlice, settings);
+
         var modelId = settings.ModelId;
         var modelDimension = settings.ModelEmbeddingDimension.ToString("D", CultureInfo.InvariantCulture);
 

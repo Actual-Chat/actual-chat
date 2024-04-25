@@ -77,16 +77,18 @@ jobs:
       opensearch:
         image: opensearchproject/opensearch:2.12.0
         env:
-          cluster.name: opensearch-cluster
           node.name: opensearch-node
           discovery.type: single-node
+          cluster.name: opensearch-cluster
+          cluster.routing.allocation.disk.threshold_enabled: false
           bootstrap.memory_lock: true # along with the memlock settings below, disables swapping
           OPENSEARCH_JAVA_OPTS: -Xms4096m -Xmx4096m # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
           DISABLE_SECURITY_PLUGIN: true
-          cluster.routing.allocation.disk.threshold_enabled: false
           plugins.ml_commons.only_run_on_ml_node: false # allow running ml tasks on data nodes
           plugins.ml_commons.allow_registering_model_via_url: true
           plugins.ml_commons.allow_registering_model_via_local_file: true
+          plugins.ml_commons.model_access_control_enabled: true
+          plugins.ml_commons.native_memory_threshold: 99
         options: >-
           --ulimit memlock=-1:-1
           --ulimit nofile=65536:65536

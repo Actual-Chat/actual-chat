@@ -8,7 +8,7 @@ internal interface IIndexSettingsSource
     IndexSettings GetSettings(string indexName);
 }
 
-internal sealed class IndexSettingsSource(ClusterSetup clusterSetup): IIndexSettingsSource
+internal sealed class IndexSettingsSource(IndexNames indexNames, ClusterSetup clusterSetup): IIndexSettingsSource
 {
-    public IndexSettings GetSettings(string indexName) => new (indexName, clusterSetup.Result);
+    public IndexSettings GetSettings(string indexId) => new (indexId, indexNames, clusterSetup.Result);
 }
