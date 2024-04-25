@@ -26,7 +26,7 @@ internal sealed class ClusterSetup(
     public async Task Initialize(CancellationToken cancellationToken)
     {
         var clusterSettings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
-        await EnsureTemplatesAsync(clusterSettings, cancellationToken).ConfigureAwait(false);
+        await EnsureTemplatesAsync(cancellationToken).ConfigureAwait(false);
         await EnsureIndexesAsync(clusterSettings, cancellationToken).ConfigureAwait(false);
     }
 
@@ -121,22 +121,14 @@ internal sealed class ClusterSetup(
         }
         return _result = new ClusterSettings(modelAllConfig, modelId, modelEmbeddingDimension);
     }
-    private async Task EnsureTemplatesAsync(ClusterSettings settings, CancellationToken cancellationToken)
+    private async Task EnsureTemplatesAsync(CancellationToken cancellationToken)
     {
         using var _ = tracing.TraceRegion();
 
-        var mlIndexTemplateName = IndexNames.MLTemplateName;
-        var existsIndexTemplateResponse = await openSearch.Indices
-            .TemplateExistsAsync(mlIndexTemplateName, ct: cancellationToken)
-            .ConfigureAwait(false);
-
-        if (existsIndexTemplateResponse.Exists) {
-            return;
-        }
-
         var numReplicas = openSearchSettings.Value.DefaultNumberOfReplicas;
         await openSearch.Indices
-            .PutTemplateAsync(mlIndexTemplateName, index => ConfigureMLIndexTemplate(index, numReplicas, IndexNames.MLIndexPattern), cancellationToken)
+            .PutTemplateAsync(IndexNames.MLTemplateName,
+                index => ConfigureMLIndexTemplate(index, numReplicas, IndexNames.MLIndexPattern), cancellationToken)
             .ConfigureAwait(false);
 
         return;
