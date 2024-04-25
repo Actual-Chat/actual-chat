@@ -7,20 +7,20 @@
   <ItemGroup>
     <PackageReference Include="Pidgin" />
   </ItemGroup>
-  
+
   <ItemGroup>
-    <InternalsVisibleTo Include="$(RootNamespace).Audio.UnitTests" />
-    <InternalsVisibleTo Include="$(RootNamespace).Audio.IntegrationTests" />
-    <InternalsVisibleTo Include="$(RootNamespace).Chat.UnitTests" />
-    <InternalsVisibleTo Include="$(RootNamespace).Chat.IntegrationTests" />
-    <InternalsVisibleTo Include="$(RootNamespace).Contacts.UnitTests" />
-    <InternalsVisibleTo Include="$(RootNamespace).Contacts.IntegrationTests" />
-    <InternalsVisibleTo Include="$(RootNamespace).Search.UnitTests" />
-    <InternalsVisibleTo Include="$(RootNamespace).Search.IntegrationTests" />
-    <InternalsVisibleTo Include="$(RootNamespace).Transcription.UnitTests" />
-    <InternalsVisibleTo Include="$(RootNamespace).Transcription.IntegrationTests" />
-    <InternalsVisibleTo Include="$(RootNamespace).Users.UnitTests" />
-    <InternalsVisibleTo Include="$(RootNamespace).Users.IntegrationTests" />
+    <InternalsVisibleTo Include="$(RootNamespace).Audio.UnitTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(RootNamespace).Audio.IntegrationTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(RootNamespace).Chat.UnitTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(RootNamespace).Chat.IntegrationTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(RootNamespace).Contacts.UnitTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(RootNamespace).Contacts.IntegrationTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(RootNamespace).Search.UnitTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(RootNamespace).Search.IntegrationTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(RootNamespace).Transcription.UnitTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(RootNamespace).Transcription.IntegrationTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(RootNamespace).Users.UnitTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(RootNamespace).Users.IntegrationTests$(AssemblyPublicKey)" />
   </ItemGroup>
 
   <ItemGroup>

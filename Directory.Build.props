@@ -8,6 +8,8 @@
     <IsMauiProject>false</IsMauiProject>
   </PropertyGroup>
   <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'Api'">Contracts</ProjectKind>
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'SignalR.Client'">Contracts</ProjectKind>
     <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.Contracts'))">Contracts</ProjectKind>
     <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.Service'))">Service</ProjectKind>
     <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.Migration'))">Migration</ProjectKind>
@@ -39,9 +41,9 @@
     <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
     <SolutionDir Condition="$(SolutionDir) == ''">$(RepoRoot)</SolutionDir>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Authors>ActualChat, Inc.</Authors>
-    <Company>ActualChat, Inc.</Company>
-    <Copyright>Copyright ActualChat, Inc.</Copyright>
+    <Authors>Actual Chat, Inc.</Authors>
+    <Company>Actual Chat, Inc.</Company>
+    <Copyright>Copyright Actual Chat, Inc.</Copyright>
     <RepositoryUrl>https://github.com/Actual-Chat/actual-chat</RepositoryUrl>
 
     <!-- Assembly name & root namespace -->
@@ -56,7 +58,6 @@
     <RootNamespace Condition="$(AssemblyName.EndsWith('.Client'))">$(AssemblyName.Replace('.Client',''))</RootNamespace>
     <RootNamespace Condition="$(AssemblyName.EndsWith('.Api.Contracts'))">$(AssemblyName.Replace('.Api.Contracts',''))</RootNamespace>
     <RootNamespace Condition="$(AssemblyName.EndsWith('.Api'))">$(AssemblyName.Replace('.Api',''))</RootNamespace>
-    <PackageLicenseExpression>UNLICENSED</PackageLicenseExpression>
 
     <!-- C# / language settings -->
     <LangVersion>preview</LangVersion>
@@ -105,6 +106,7 @@
     <PrivateRepositoryUrl>$(RepositoryUrl)</PrivateRepositoryUrl>
     <ScmRepositoryUrl>$(RepositoryUrl)</ScmRepositoryUrl>
     <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
+    <PackageTags>actual_chat ActualChat</PackageTags>
     <RevisionId>$(GitCommitId)</RevisionId>
     <SourceRevisionId>$(GitCommitId)</SourceRevisionId>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -117,11 +119,16 @@
     <NoLogo>true</NoLogo>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(ProjectKind)' == 'Contracts' OR '$(ProjectKind)' == 'Core'">
+    <IsPackable>true</IsPackable>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(EnableSourceLink)' == 'true'">
     <Deterministic>true</Deterministic>
     <Features>strict;pdb-path-determinism</Features>
     <DeterministicSourcePaths>true</DeterministicSourcePaths>
-    <ContinuousIntegrationBuild>false</ContinuousIntegrationBuild>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     <PathMap>'$(RepoRoot)'=/_/</PathMap>
   </PropertyGroup>
 
