@@ -721,6 +721,7 @@ public partial class ChatsBackend
         var maxLocalId = range.End - 1;
         var minLocalId = range.Start;
         var newChatSid = newChatId.Value;
+        var chatId = new ChatId(chatSid);
 
         var mentions = await dbContext.Mentions
             .Where(c => c.ChatId == chatSid)
@@ -739,14 +740,21 @@ public partial class ChatsBackend
             MentionId mentionId;
             if (mentionSid.StartsWith(mentionIdAuthorPrefix, StringComparison.Ordinal)) {
                 var authorSid = mentionSid.Substring(mentionIdAuthorPrefix.Length);
-                if (!AuthorId.TryParse(authorSid, out _)) {
+                if (!AuthorId.TryParse(authorSid, out var tempAuthorId)) {
                     Log.LogWarning("OnCopyChat({CorrelationId}) skips mention with id '{ID}'. Reason: invalid author id",
                         correlationId, mention.Id);
                     continue;
                 }
                 authorSid = FixMentionAuthorSid(mention, authorSid);
-                var newAuthorId = migratedAuthors.GetNewAuthorId(authorSid);
-                mentionId = new MentionId(newAuthorId, AssumeValid.Option);
+                if (tempAuthorId.ChatId == chatId) {
+                    var newAuthorId = migratedAuthors.GetNewAuthorId(authorSid);
+                    mentionId = new MentionId(newAuthorId, AssumeValid.Option);
+                }
+                else {
+                    mentionId = new MentionId(new AuthorId(authorSid), AssumeValid.Option);
+                    Log.LogWarning("OnCopyChat({CorrelationId}) another chat author mention detected with id '{ID}'",
+                        correlationId, mention.Id);
+                }
             }
             else {
                 mentionId = new MentionId(mentionSid);
