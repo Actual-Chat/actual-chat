@@ -102,12 +102,6 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Install dotnet 8.0 SDK
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '8.0'
-          dotnet-quality: 'ga'
-
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v2
@@ -117,14 +111,17 @@ jobs:
       - name: Replace git+ssh://git@ to https://
         run: sed -i 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
 
+      - name: Setup dotnet
+        uses: ./.github/actions/setup-dotnet
+        with:
+         restore: false
+         restore-workloads: false
+
       - name: Generate version variables
         id: nbgv
         uses: dotnet/nbgv@master
         with:
           setAllVars: true
-
-      - name: Restore tools for nbgv
-        run: dotnet tool restore
 
       - name: Generate Nerdbank.GitVersioning files
         run: ./run-build.cmd generate-version
@@ -166,26 +163,14 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Install dotnet 8.0 SDK
-        uses: actions/setup-dotnet@v3
+      - name: Setup dotnet
+        uses: ./.github/actions/setup-dotnet
         with:
-          dotnet-version: '8.0'
-          dotnet-quality: 'ga'
-
-      - name: Use cached dependencies
-        uses: actions/cache@v3
-        with:
-          path: ${{ github.workspace }}/.nuget/packages
-          key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-
-      - name: Restore dependencies
-        run: |-
-          ./run-build.cmd restore
+          restore-tools: false
+          restore-workloads: false
 
       - name: Debug build of tests
-        run: |-
+        run: |
           dotnet build ActualChat.CI.slnf --nologo --no-restore --configuration Debug
 
       - name: Run unit tests
@@ -300,26 +285,14 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Install dotnet 8.0 SDK
-        uses: actions/setup-dotnet@v3
+      - name: Setup dotnet
+        uses: ./.github/actions/setup-dotnet
         with:
-          dotnet-version: '8.0'
-          dotnet-quality: 'ga'
-
-      - name: Use cached dependencies
-        uses: actions/cache@v3
-        with:
-          path: ${{ github.workspace }}/.nuget/packages
-          key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-
-      - name: Restore dependencies
-        run: |-
-          ./run-build.cmd restore
+          restore-tools: false
+          restore-workloads: false
 
       - name: Debug Build for tests
-        run: |-
+        run: |
           dotnet build ActualChat.CI.slnf --nologo --no-restore --configuration Debug
 
       - name: Run integration tests
@@ -373,31 +346,17 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Install dotnet 8.0 SDK
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '8.0'
-          dotnet-quality: 'ga'
-
-      - name: Use cached dependencies
-        uses: actions/cache@v3
-        with:
-          path: ${{ github.workspace }}/.nuget/packages
-          key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
-          restore-keys: |
-            ${{ runner.os }}-nuget-
+      - name: Setup dotnet
+        uses: ./.github/actions/setup-dotnet
 
       - name: Prepare snk file
         run: echo -n "${{secrets.SNK_BASE64}}" | base64 -d | tee ActualChat.snk >/dev/null
-
-      - name: Install tools
-        run: dotnet tool install nbgv
 
       - name: Generate Nerdbank.GitVersioning files
         run: ./run-build.cmd generate-version
 
       - name: Create nuget packages
-        run: dotnet pack -c Release
+        run: dotnet pack -c Release -p:PUBLIC_BUILD=true
 
       - uses: actions/upload-artifact@v4
         with:
@@ -578,26 +537,11 @@ jobs:
           echo :: list-keychain
           security list-keychain -d user -s $KEYCHAIN_PATH
 
-      - name: Install dotnet 8.0 SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0'
-          dotnet-quality: 'ga'
-
-      - name: Use cached dependencies
-        uses: actions/cache@v3
-        with:
-          path: ${{ github.workspace }}/.nuget/packages
-          key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
-          restore-keys: |
-            ${{ runner.os }}-nuget-
+      - name: Setup dotnet
+        uses: ./.github/actions/setup-dotnet
 
       - name: Replace git+ssh://git@ to https://
         run: sed -i -E 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
-
-      - name: Install workloads
-        run: |-
-          dotnet workload restore
 
       - name: Generate version variables
         id: nbgv
@@ -721,36 +665,17 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Install dotnet 8.0 SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0'
-          dotnet-quality: 'ga'
-
-      - name: Use cached dependencies
-        uses: actions/cache@v3
-        with:
-          path: ${{ github.workspace }}/.nuget/packages
-          key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
-          restore-keys: |
-            ${{ runner.os }}-nuget-
+      - name: Setup dotnet
+        uses: ./.github/actions/setup-dotnet
 
       - name: Replace git+ssh://git@ to https://
         run: sed -i -E 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
-
-      - name: Install workloads
-        run: |-
-          dotnet workload restore
 
       - name: Generate version variables
         id: nbgv
         uses: dotnet/nbgv@master
         with:
           setAllVars: true
-
-      - name: Restore nuget packages
-        run: |-
-          ./run-build.cmd restore
 
       - name: Prepare GoogleServices file for dev
         if: ${{env.IS_DEV_MAUI == 'true'}}
@@ -891,27 +816,8 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Install dotnet 8.0 SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0'
-          dotnet-quality: 'ga'
-
-      - name: Use cached dependencies
-        uses: actions/cache@v3
-        with:
-          path: ${{ github.workspace }}/.nuget/packages
-          key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-
-      - name: Install tools
-        run: |-
-          dotnet tool install nbgv
-
-      - name: Restore nuget packages
-        run: |-
-          ./run-build.cmd restore
+      - name: Setup dotnet
+        uses: ./.github/actions/setup-dotnet
 
       - name: Build app package
         id: build-app-pkg
