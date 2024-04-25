@@ -434,7 +434,7 @@ public partial class ChatsBackend
 
             if (dbChatEntry.Kind == ChatEntryKind.Text
                 && chatEntryWithMentionIds.Contains(dbChatEntry.LocalId)) {
-                var content = UpdateMentionsInContent(dbChatEntry.Content, migratedAuthors, mentionExtractor);
+                var content = UpdateMentionsInContent(context.ChatId, dbChatEntry.Content, migratedAuthors, mentionExtractor);
                 if (!OrdinalEquals(content, dbChatEntry.Content)) {
                     dbChatEntry.Content = content;
                     mentionUpdatesInsideContent++;
@@ -557,13 +557,16 @@ public partial class ChatsBackend
         return entry;
     }
 
-    private string UpdateMentionsInContent(string content, MigratedAuthors migratedAuthors,
+    private string UpdateMentionsInContent(ChatId chatId, string content, MigratedAuthors migratedAuthors,
         MentionExtractor mentionExtractor)
     {
         var markup = MarkupParser.Parse(content);
         var mentionIds = mentionExtractor.GetMentionIds(markup);
         foreach (var mentionId in mentionIds) {
             if (!mentionId.IsAuthor(out var authorId))
+                continue;
+
+            if (authorId.ChatId != chatId)
                 continue;
 
             var newAuthorId = migratedAuthors.GetNewAuthorId(authorId);
