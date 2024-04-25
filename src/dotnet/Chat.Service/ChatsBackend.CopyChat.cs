@@ -763,7 +763,11 @@ public partial class ChatsBackend
                 }
             }
             else {
-                mentionId = new MentionId(mentionSid);
+                if (!MentionId.TryParse(mentionSid, out mentionId)) {
+                    Log.LogWarning("OnCopyChat({CorrelationId}) skips mention with id '{ID}'. Reason: invalid mention id",
+                        correlationId, mention.Id);
+                    continue;
+                }
             }
             mention.MentionId = mentionId;
             mention.Id = DbMention.ComposeId(new ChatEntryId(newChatId, ChatEntryKind.Text, mention.EntryId, AssumeValid.Option), mentionId);
