@@ -397,7 +397,7 @@ jobs:
         run: ./run-build.cmd generate-version
 
       - name: Create nuget packages
-        run: dotnet pack -c Release
+        run: dotnet pack -c Release -p:PUBLIC_BUILD=true
 
       - uses: actions/upload-artifact@v4
         with:
