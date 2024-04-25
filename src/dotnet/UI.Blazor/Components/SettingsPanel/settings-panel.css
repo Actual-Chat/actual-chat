@@ -123,7 +123,8 @@ body.hoverable .tile:hover {
 .tile-item.unselected:not(.tile-item.first-tile-item) {
     @apply pr-0;
 }
-.tile-item.clickable {
+.tile-item.clickable,
+.tile-item.clickable span {
     @apply cursor-pointer;
 }
 .settings-tab .tile-item label {

@@ -179,7 +179,7 @@
 }
 
 .form-block .form-block-title {
-    @apply text-caption-1;
+    @apply text-caption-1 text-01;
 }
 
 /* separator between form blocks */

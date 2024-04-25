@@ -64,14 +64,25 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply bg-hover;
 }
 
+.edit-settings-modal .form-block.with-input-radio .field-chat-public-url.tile-item {
+    @apply pr-2;
+}
 .field-chat-public-url .tile-item-body-content {
     @apply relative;
+}
+.field-chat-public-url .tile-item-right {
+    @apply hidden;
 }
 .field-chat-public-url section {
     @apply mt-0;
 }
 .field-chat-public-url .copy-to-clipboard {
     @apply absolute top-0 right-0;
+}
+.form .field-chat-public-url .form-section-content.label-inside-input input:not([type='checkbox']):not(.dialog-unstyled) {
+    @apply pr-8;
+    @apply truncate;
+    @apply text-caption-4;
 }
 
 .form.form-y .field-chat-public-url section .form-section-content {
@@ -223,7 +234,8 @@ body.hoverable .copy-chat-to-place-modal .c-chat-list .c-chat:hover {
 .chat-settings-header > .c-center > .c-buttons {
     @apply flex-1 flex-x items-center justify-end gap-x-3;
 }
-.chat-settings-header > .c-center > .c-buttons .btn.btn-round {
+.chat-settings-header > .c-center > .c-buttons > div,
+.chat-settings-header > .c-center > .c-buttons > .btn-round {
     @apply bg-[var(--round-right-panel)];
     @apply text-primary;
     @apply shadow;
