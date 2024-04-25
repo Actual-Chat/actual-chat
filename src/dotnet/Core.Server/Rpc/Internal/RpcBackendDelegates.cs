@@ -64,24 +64,24 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
 
 #pragma warning disable CA1822 // Can be static
     public Task<RpcConnection> GetConnection(
-        RpcServerPeer peer, Channel<RpcMessage> channel, ImmutableOptionSet options,
+        RpcServerPeer peer, Channel<RpcMessage> channel, PropertyBag properties,
         CancellationToken cancellationToken)
 #pragma warning restore CA1822
     {
-        if (!options.TryGet<HttpContext>(out var httpContext))
-            return RpcConnectionTask(channel, options);
+        if (!properties.TryGet<HttpContext>(out var httpContext))
+            return RpcConnectionTask(channel, properties);
 
         var session = httpContext.TryGetSessionFromHeader() ?? httpContext.TryGetSessionFromCookie();
         return session.IsValid()
-            ? RpcBackendConnectionTask(channel, options, session)
-            : RpcConnectionTask(channel, options);
+            ? RpcBackendConnectionTask(channel, properties, session)
+            : RpcConnectionTask(channel, properties);
     }
 
     private static Task<RpcConnection> RpcBackendConnectionTask(
-        Channel<RpcMessage> channel, ImmutableOptionSet options, Session session)
-        => Task.FromResult<RpcConnection>(new RpcBackendConnection(channel, options, session));
+        Channel<RpcMessage> channel, PropertyBag properties, Session session)
+        => Task.FromResult<RpcConnection>(new RpcBackendConnection(channel, properties, session));
 
     private static Task<RpcConnection> RpcConnectionTask(
-        Channel<RpcMessage> channel, ImmutableOptionSet options)
+        Channel<RpcMessage> channel, PropertyBag options)
         => Task.FromResult(new RpcConnection(channel, options));
 }

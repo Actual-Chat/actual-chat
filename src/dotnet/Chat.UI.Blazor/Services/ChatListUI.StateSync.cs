@@ -91,7 +91,7 @@ public partial class ChatListUI
         if (changedIndexes.Count == 0 && !isCountChanged)
             return;
 
-        using (Computed.Invalidate()) {
+        using (ComputeContext.BeginInvalidation()) {
             if (isCountChanged) {
                 DebugLog?.LogDebug("PushItems({ListKind}, {OldCount}->{NewCount}): invalidating GetCount",
                     listKind, oldCount, newCount);
@@ -131,7 +131,7 @@ public partial class ChatListUI
                 // And it's still None after delay
                 Log.LogWarning($"{nameof(ResetPushIfStuck)}: chat list stuck in the loading state, invalidating...");
                 tryIndex++;
-                using (Computed.Invalidate())
+                using (ComputeContext.BeginInvalidation())
                     _ = PseudoListAllUnorderedRawDependency();
             }
         }

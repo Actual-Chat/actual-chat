@@ -114,7 +114,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var (chatId, roleId, expectedVersion, change) = command;
         var context = CommandContext.GetCurrent();
 
-        if (Computed.IsInvalidating()) {
+        if (Computed.IsInvalidating) {
             var invRole = context.Operation.Items.Get<Role>();
             if (invRole != null) {
                 _ = Get(chatId, invRole.Id, default);

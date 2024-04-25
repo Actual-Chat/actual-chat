@@ -186,7 +186,7 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
             };
             _players = _players.Add((chatId, playerKind), newPlayer);
         }
-        using (Computed.Invalidate())
+        using (ComputeContext.BeginInvalidation())
             _ = Get(chatId, playerKind, default);
         return newPlayer;
     }
@@ -204,7 +204,7 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
             _players = _players.Remove((chatId, playerKind));
         }
         await player.DisposeAsync().ConfigureAwait(false);
-        using (Computed.Invalidate())
+        using (ComputeContext.BeginInvalidation())
             _ = Get(chatId, playerKind, default);
     }
 

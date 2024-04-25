@@ -164,7 +164,7 @@ public class ServerKvas : IServerKvas
 
         Dictionary<string, byte[]> movedKeys;
         HashSet<string> skippedKeys;
-        using (Computed.SuspendDependencyCapture()) {
+        using (ComputeContext.BeginIsolation()) {
             movedKeys = new Dictionary<string, byte[]>(StringComparer.Ordinal) {
                 { Kvas.KvasExt.MigratedKey, KvasSerializer.SerializedTrue },
             };

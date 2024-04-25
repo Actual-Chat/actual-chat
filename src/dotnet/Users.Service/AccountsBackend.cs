@@ -144,7 +144,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         CancellationToken cancellationToken)
     {
         var (account, expectedVersion) = command;
-        if (Computed.IsInvalidating()) {
+        if (Computed.IsInvalidating) {
             _ = Get(account.Id, default);
             return;
         }
@@ -178,7 +178,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         CancellationToken cancellationToken)
     {
         var userId = command.UserId;
-        if (Computed.IsInvalidating()) {
+        if (Computed.IsInvalidating) {
             _ = Get(userId, default);
             return;
         }
@@ -236,7 +236,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var newChatId = (ChatId)placeChatId;
         var chatSid = chatId.Value;
 
-        if (Computed.IsInvalidating()) {
+        if (Computed.IsInvalidating) {
             // Skip invalidation. Value for old chat should no longer be requested.
             return default;
         }
@@ -260,7 +260,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     [EventHandler]
     public virtual Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
+        if (Computed.IsInvalidating)
             return Task.CompletedTask; // It just notifies GreetingDispatcher
 
         ContactGreeter.Activate();

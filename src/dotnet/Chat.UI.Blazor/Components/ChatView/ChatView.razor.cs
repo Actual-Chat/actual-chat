@@ -258,7 +258,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var isChatViewVisible = RegionVisibility.IsVisible;
         if (!isChatViewVisible.Value) {
             // Chat is invisible now, let's suspend & await for it to become visible
-            using (Computed.SuspendDependencyCapture())
+            using (ComputeContext.BeginIsolation())
                 await isChatViewVisible.When(x => x, cancellationToken);
             _shownReadEntryLid.Value = _readPosition.Value.EntryLid;
         }
@@ -295,7 +295,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var itemVisibility = ItemVisibility.Value;
         var mustScrollToEntry = nav != null && !itemVisibility.IsFullyVisible(nav.EntryLid);
         Computed<Range<long>> cChatIdRange;
-        using (Computed.SuspendDependencyCapture()) {
+        using (ComputeContext.BeginIsolation()) {
             cChatIdRange = await Computed.Capture(
                 () => Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken),
                 cancellationToken);

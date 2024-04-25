@@ -14,7 +14,7 @@ public class MobileSessions(IServiceProvider services) : IMobileSessions
     // Not a [ComputeMethod]!
     public async Task<Session> CreateSession(CancellationToken cancellationToken)
     {
-        var httpContext = RpcInboundContext.Current!.Peer.ConnectionState.Value.Connection!.Options.Get<HttpContext>()!;
+        var httpContext = RpcInboundContext.Current!.Peer.ConnectionState.Value.Connection!.Properties.Get<HttpContext>()!;
         var ipAddress = httpContext.GetRemoteIPAddress()?.ToString() ?? "";
         var userAgent = httpContext.Request.Headers.TryGetValue("User-Agent", out var userAgentValues)
             ? userAgentValues.FirstOrDefault() ?? ""

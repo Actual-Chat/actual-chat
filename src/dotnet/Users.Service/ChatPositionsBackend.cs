@@ -28,7 +28,7 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
         var (userId, chatId, kind, position, force) = command;
         var context = CommandContext.GetCurrent();
 
-        if (Computed.IsInvalidating()) {
+        if (Computed.IsInvalidating) {
             if (context.Operation.Items.GetOrDefault<bool>())
                 _ = Get(userId, chatId, kind, default);
             return;

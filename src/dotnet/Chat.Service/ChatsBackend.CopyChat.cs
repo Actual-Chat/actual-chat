@@ -16,7 +16,7 @@ public partial class ChatsBackend
         var newChatId = (ChatId)placeChatId;
         var context = CommandContext.GetCurrent();
 
-        if (Computed.IsInvalidating()) {
+        if (Computed.IsInvalidating) {
             _ = GetPublicChatIdsFor(placeId, default);
             if (context.Operation.Items[typeof(ChatEntryId)] is string invLastEntrySid)
                 InvalidateTiles(newChatId, ChatEntryKind.Text, new ChatEntryId(invLastEntrySid).LocalId, ChangeKind.Create);

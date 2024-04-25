@@ -37,7 +37,7 @@ public partial class ChatUI
                 continue;
 
             DebugLog?.LogDebug("InvalidateSelectedChatDependencies: *");
-            using (Computed.Invalidate()) {
+            using (ComputeContext.BeginInvalidation()) {
                 _ = IsSelected(oldChatId);
                 _ = IsSelected(newChatId);
             }

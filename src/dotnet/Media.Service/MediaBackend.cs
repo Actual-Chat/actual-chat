@@ -42,7 +42,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
     public virtual async Task<Media?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken)
     {
         var (mediaId, change) = command;
-        if (Computed.IsInvalidating()) {
+        if (Computed.IsInvalidating) {
             if (!mediaId.IsNone)
                 _ = Get(mediaId, default);
             return default!;
@@ -85,7 +85,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             return;
 
         var oldChatSid = mediaIds[0].Scope;
-        if (Computed.IsInvalidating())
+        if (Computed.IsInvalidating)
             return;
 
         Log.LogInformation("-> OnCopyChat({CorrelationId})", correlationId);

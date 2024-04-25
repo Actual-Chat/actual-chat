@@ -76,7 +76,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         // NOTE(AY): Add backend, implement IApiCommand
 
         var context = CommandContext.GetCurrent();
-        if (Computed.IsInvalidating()) {
+        if (Computed.IsInvalidating) {
             // TODO(AY): support UserId (any non-string/non-int) type for multi-instance deployment
             var userId = context.Operation.Items.GetId<UserId>();
             if (!userId.IsNone)

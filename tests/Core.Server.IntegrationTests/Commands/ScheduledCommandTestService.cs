@@ -36,7 +36,7 @@ public class ScheduledCommandTestService(IServiceProvider services)
     [CommandHandler]
     public virtual async Task ProcessTestCommand(TestCommand command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
+        if (Computed.IsInvalidating)
             return;
 
         var context = CommandContext.GetCurrent();
@@ -48,7 +48,7 @@ public class ScheduledCommandTestService(IServiceProvider services)
     [CommandHandler]
     public virtual async Task ProcessTestCommand2(TestCommand2 command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
+        if (Computed.IsInvalidating)
             return;
 
         var context = CommandContext.GetCurrent();
@@ -61,7 +61,7 @@ public class ScheduledCommandTestService(IServiceProvider services)
     [CommandHandler]
     public virtual async Task ProcessTestCommand3(TestCommand3 command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
+        if (Computed.IsInvalidating)
             return;
 
         var context = CommandContext.GetCurrent();
@@ -74,7 +74,7 @@ public class ScheduledCommandTestService(IServiceProvider services)
     [EventHandler]
     public virtual Task ProcessTestEvent(TestEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating()) {
+        if (Computed.IsInvalidating) {
             _ = GetProcessedEventCount(default);
             return Task.CompletedTask;
         }
@@ -89,7 +89,7 @@ public class ScheduledCommandTestService(IServiceProvider services)
     [EventHandler]
     public virtual Task ProcessTestEvent2(TestEvent2 eventCommand, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating()) {
+        if (Computed.IsInvalidating) {
             _ = GetProcessedEventCount(default);
             return Task.CompletedTask;
         }

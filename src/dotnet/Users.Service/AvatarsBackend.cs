@@ -35,7 +35,7 @@ public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbCo
     public virtual async Task<AvatarFull> OnChange(AvatarsBackend_Change command, CancellationToken cancellationToken)
     {
         var (avatarId, expectedVersion, change) = command;
-        if (Computed.IsInvalidating()) {
+        if (Computed.IsInvalidating) {
             if (!avatarId.IsEmpty)
                 _ = Get(avatarId, default);
             return default!;
