@@ -434,7 +434,7 @@ public partial class ChatsBackend
 
             if (dbChatEntry.Kind == ChatEntryKind.Text
                 && chatEntryWithMentionIds.Contains(dbChatEntry.LocalId)) {
-                var content = UpdateMentionsInContent(dbChatEntry.Content, migratedAuthors, mentionExtractor);
+                var content = UpdateMentionsInContent(context.ChatId, dbChatEntry.Content, migratedAuthors, mentionExtractor);
                 if (!OrdinalEquals(content, dbChatEntry.Content)) {
                     dbChatEntry.Content = content;
                     mentionUpdatesInsideContent++;
@@ -557,13 +557,16 @@ public partial class ChatsBackend
         return entry;
     }
 
-    private string UpdateMentionsInContent(string content, MigratedAuthors migratedAuthors,
+    private string UpdateMentionsInContent(ChatId chatId, string content, MigratedAuthors migratedAuthors,
         MentionExtractor mentionExtractor)
     {
         var markup = MarkupParser.Parse(content);
         var mentionIds = mentionExtractor.GetMentionIds(markup);
         foreach (var mentionId in mentionIds) {
             if (!mentionId.IsAuthor(out var authorId))
+                continue;
+
+            if (authorId.ChatId != chatId)
                 continue;
 
             var newAuthorId = migratedAuthors.GetNewAuthorId(authorId);
@@ -721,6 +724,7 @@ public partial class ChatsBackend
         var maxLocalId = range.End - 1;
         var minLocalId = range.Start;
         var newChatSid = newChatId.Value;
+        var chatId = new ChatId(chatSid);
 
         var mentions = await dbContext.Mentions
             .Where(c => c.ChatId == chatSid)
@@ -739,18 +743,26 @@ public partial class ChatsBackend
             MentionId mentionId;
             if (mentionSid.StartsWith(mentionIdAuthorPrefix, StringComparison.Ordinal)) {
                 var authorSid = mentionSid.Substring(mentionIdAuthorPrefix.Length);
-                if (!AuthorId.TryParse(authorSid, out _)) {
-                    Log.LogWarning("OnCopyChat({CorrelationId}) ignores mention with id '{ID}'. Reason: invalid author id",
+                if (!AuthorId.TryParse(authorSid, out var tempAuthorId)) {
+                    Log.LogWarning("OnCopyChat({CorrelationId}) skips mention with id '{ID}'. Reason: invalid author id",
                         correlationId, mention.Id);
                     continue;
                 }
-                var newAuthorId = migratedAuthors.GetNewAuthorId(authorSid);
-                mentionId = new MentionId(newAuthorId, AssumeValid.Option);
-                mention.MentionId = mentionId;
+                authorSid = FixMentionAuthorSid(mention, authorSid);
+                if (tempAuthorId.ChatId == chatId) {
+                    var newAuthorId = migratedAuthors.GetNewAuthorId(authorSid);
+                    mentionId = new MentionId(newAuthorId, AssumeValid.Option);
+                }
+                else {
+                    mentionId = new MentionId(new AuthorId(authorSid), AssumeValid.Option);
+                    Log.LogWarning("OnCopyChat({CorrelationId}) another chat author mention detected with id '{ID}'",
+                        correlationId, mention.Id);
+                }
             }
             else {
                 mentionId = new MentionId(mentionSid);
             }
+            mention.MentionId = mentionId;
             mention.Id = DbMention.ComposeId(new ChatEntryId(newChatId, ChatEntryKind.Text, mention.EntryId, AssumeValid.Option), mentionId);
             dbContext.Mentions.Add(mention);
             entryIdsCollector.Add(mention.EntryId);
@@ -759,6 +771,34 @@ public partial class ChatsBackend
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("OnCopyChat({CorrelationId}) updated ChatId and Id for {Count} mention records",
             correlationId, mentions.Count);
+
+        string FixMentionAuthorSid(DbMention mention, string authorSid)
+        {
+            if (mention.Id.EndsWith(authorSid, StringComparison.Ordinal))
+                return authorSid;
+
+            // At some point DbMention.AuthorId field (later renamed to MentionId) mistakenly hold value of author of text entry instead of mentioned author.
+            // Fixed in https://github.com/Actual-Chat/actual-chat/commit/de35ccfe1f756546bdb68c7ada016791773637a1
+            // Extract mention_id from id.
+            var parts = mention.Id.Split(':');
+            var hasFixedMentionId = false;
+            if ((parts.Length == 5 || parts.Length == 6) && OrdinalEquals(parts[^3], "a")) {
+                var authorChatSid = parts[^2];
+                var authorLocalSid = parts[^1];
+                if (ChatId.TryParse(authorChatSid, out var authorChatId)
+                    && long.TryParse(authorLocalSid, CultureInfo.InvariantCulture, out var authorLocalId)) {
+                    var authorId = new AuthorId(authorChatId, authorLocalId, AssumeValid.Option);
+                    authorSid = authorId.Value;
+                    hasFixedMentionId = true;
+                }
+            }
+            if (!hasFixedMentionId)
+                throw StandardError.Constraint(
+                    $"OnCopyChat({correlationId}) failed to process mention with Id '{mention.Id}' and MentionId '{mention.MentionId}'."
+                    + " Reason: MentionId mismatch.");
+
+            return authorSid;
+        }
     }
 
     private record MigratedRole(Role OriginalRole, Role NewRole)
