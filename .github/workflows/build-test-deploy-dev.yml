@@ -54,7 +54,7 @@ jobs:
         run: |
           buildFor="${{ github.event.inputs.buildAppFor }}"
           isDevBranch="${{ github.ref == 'refs/heads/dev' }}"
-          isProdBranch="${{ startsWith(github.ref, 'refs/heads/release/') && github.ref == 'refs/heads/master' }}"
+          isProdBranch="${{ startsWith(github.ref, 'refs/heads/release/') || github.ref == 'refs/heads/master' }}"
           if [[ $buildFor == prod && $isProdBranch != true ]]; then
             >&2 echo Production build is allowed only from master and release branches
             exit /b 1
@@ -481,13 +481,13 @@ jobs:
         uses: ./.github/actions/install-provisioning-profile
         if: ${{env.IS_DEV_MAUI == 'true'}}
         with:
-         base64: ${{ secrets.PROVISIONING_PROFILE_DEV_BASE64 }}
+          base64: ${{ secrets.PROVISIONING_PROFILE_DEV_BASE64 }}
 
       - name: Install Provisioning Profile for PROD
         uses: ./.github/actions/install-provisioning-profile
         if: ${{env.IS_DEV_MAUI == 'false'}}
         with:
-         base64: ${{ secrets.PROVISIONING_PROFILE_PROD_BASE64 }}
+          base64: ${{ secrets.PROVISIONING_PROFILE_PROD_BASE64 }}
 
       - name: Install the Apple certificate and provisioning profile
         env:
