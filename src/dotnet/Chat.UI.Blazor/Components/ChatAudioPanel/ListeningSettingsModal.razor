@@ -38,7 +38,6 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private ChatUI ChatUI => Hub.ChatUI;
     private AccountSettings AccountSettings => Hub.AccountSettings();
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
@@ -50,15 +49,17 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ModalModel.ChatId;
+
         var userChatSettings = await AccountSettings
             .GetUserChatSettings(chatId, cancellationToken)
             .ConfigureAwait(false);
+
         return new (userChatSettings.ListeningMode);
     }
 
     private async Task SetListeningMode(ListeningMode listeningMode) {
-
         var chatId = ModalModel.ChatId;
+
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, default);
         userChatSettings = userChatSettings with { ListeningMode = listeningMode };
 
