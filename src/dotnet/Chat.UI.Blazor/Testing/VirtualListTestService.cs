@@ -75,7 +75,7 @@ public class VirtualListTestService : IComputeService
     [ComputeMethod]
     public virtual Task<int> GetSeed(int offset, double changePeriod, CancellationToken cancellationToken)
     {
-        Computed.GetCurrent()!.Invalidate(TimeSpan.FromSeconds(changePeriod + 0.01));
+        Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(changePeriod + 0.01));
         return Task.FromResult((int)((offset + (Clock.Now - Start).TotalSeconds) / changePeriod));
     }
 

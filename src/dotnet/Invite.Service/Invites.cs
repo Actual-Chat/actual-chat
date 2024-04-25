@@ -82,7 +82,7 @@ public class Invites(IServiceProvider services) : IInvites
             var delay = invite1.ExpiresOn - Clocks.SystemClock.Now - minInviteLifespan + TimeSpan.FromSeconds(1);
             // We don't want to reference Computed<T> for too long
             delay = delay.Clamp(TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(10));
-            Computed.GetCurrent()!.Invalidate(delay);
+            Computed.GetCurrent().Invalidate(delay);
         }
     }
 

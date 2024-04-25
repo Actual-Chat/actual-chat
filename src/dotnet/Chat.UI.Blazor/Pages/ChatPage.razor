@@ -172,7 +172,7 @@
             return new(chatContext, footerModel, isInaccessiblePlace, enableIncompleteUI);
         }
         catch (TimeoutException) {
-            Computed.GetCurrent()?.Invalidate(LoadTimeoutToReloadDelay);
+            Computed.Current?.Invalidate(LoadTimeoutToReloadDelay);
             this.NotifyStateHasChanged();
             return lastState != null && chatId == lastChatId
                 ? lastState

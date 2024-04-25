@@ -48,7 +48,7 @@ public class AppPresenceReporter : ScopedWorkerBase<ChatUIHub>, IComputeService
             : WithAutoInvalidation(lastCheckInAt + Constants.Presence.CheckInPeriod, false);
 
         bool WithAutoInvalidation(Moment invalidateAt, bool result) {
-            Computed.GetCurrent()!.Invalidate(invalidateAt - now);
+            Computed.GetCurrent().Invalidate(invalidateAt - now);
             return result;
         }
     }
@@ -71,7 +71,7 @@ public class AppPresenceReporter : ScopedWorkerBase<ChatUIHub>, IComputeService
         return activeUntil;
 
         Moment WithAutoInvalidation(Moment result) {
-            Computed.GetCurrent()!.Invalidate(result - now);
+            Computed.GetCurrent().Invalidate(result - now);
             return result;
         }
     }
