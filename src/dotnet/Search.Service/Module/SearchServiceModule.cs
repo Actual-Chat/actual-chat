@@ -1,10 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
-using ActualChat.Chat.Events;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Search.Db;
 using ActualChat.Redis.Module;
-using ActualLab.Fusion.EntityFramework.Operations;
 using OpenSearch.Client;
 using OpenSearch.Net;
 
@@ -60,7 +58,7 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices)
             new SingleNodeConnectionPool(new Uri(openSearchClusterUri)),
             sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
         services.AddSingleton<IOpenSearchClient>(_ => new OpenSearchClient(connectionSettings));
-        services.AddSingleton(s => ActivatorUtilities.CreateInstance<OpenSearchConfigurator>(s, HostInfo.IsDevelopmentInstance))
+        services.AddSingleton<OpenSearchConfigurator>()
             .AddHostedService(c => c.GetRequiredService<OpenSearchConfigurator>());
         services.AddSingleton<IndexNames>();
     }

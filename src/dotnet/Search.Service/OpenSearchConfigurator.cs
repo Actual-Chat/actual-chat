@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.Mesh;
 using ActualChat.Search.Db;
 using ActualChat.Search.Module;
@@ -5,7 +6,7 @@ using OpenSearch.Client;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 namespace ActualChat.Search;
 
-public sealed class OpenSearchConfigurator(IServiceProvider services, bool isDevelopmentInstance) : WorkerBase
+public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBase
 {
     private readonly TaskCompletionSource _whenCompleted = new ();
     private SearchSettings? _settings;
@@ -20,7 +21,7 @@ public sealed class OpenSearchConfigurator(IServiceProvider services, bool isDev
         = services.GetRequiredService<IMeshLocks<SearchDbContext>>().WithKeyPrefix(nameof(OpenSearchConfigurator));
     private ILogger Log => _log ??= services.LogFor(GetType());
 
-    private readonly int _numberOfReplicas = isDevelopmentInstance ? 0 : 1;
+    private readonly int _numberOfReplicas = services.GetRequiredService<HostInfo>().IsDevelopmentInstance ? 0 : 1;
 
     public Task WhenCompleted => _whenCompleted.Task;
 
