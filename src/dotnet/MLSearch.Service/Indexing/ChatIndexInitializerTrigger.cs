@@ -1,4 +1,6 @@
 
+using ActualChat.MLSearch.Indexing.Initializer;
+
 namespace ActualChat.MLSearch.Indexing;
 
 internal class ChatIndexInitializerTrigger(IChatIndexInitializer indexInitializer)

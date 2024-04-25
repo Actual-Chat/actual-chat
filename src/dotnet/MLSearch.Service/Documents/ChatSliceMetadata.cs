@@ -4,8 +4,8 @@ namespace ActualChat.MLSearch.Documents;
 [StructLayout(LayoutKind.Auto)]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor]
 internal readonly record struct ChatSliceMetadata(
-    // An id of the author of the document.
-    PrincipalId AuthorId,
+    // A list of users who authored messages included into document content.
+    ImmutableArray<PrincipalId> Authors,
     // Ordered list of all involved chat entry ids.
     ImmutableArray<ChatSliceEntry> ChatEntries,
     // Offset from the beginning of the text of 1st entry in the chat entry list.
@@ -20,9 +20,6 @@ internal readonly record struct ChatSliceMetadata(
     ImmutableArray<PrincipalId> Mentions,
     // A list of users who reacted to at least one of the source messages.
     ImmutableArray<PrincipalId> Reactions,
-    // A list of users who are identified as a participants of a conversation
-    // happening at the document creation time.
-    ImmutableArray<PrincipalId> ConversationParticipants,
     // Attachments to document's source messages
     ImmutableArray<ChatSliceAttachment> Attachments,
     bool IsPublic,

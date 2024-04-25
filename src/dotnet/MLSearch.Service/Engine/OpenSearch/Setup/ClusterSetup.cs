@@ -5,7 +5,8 @@ using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Documents;
 using OpenSearchModelGroupId = string;
 using OpenSearchModelId = string;
-using ActualChat.MLSearch.Indexing;
+using ActualChat.MLSearch.Indexing.ChatContent;
+using ActualChat.MLSearch.Indexing.Initializer;
 using Microsoft.Extensions.Options;
 using ActualChat.MLSearch.Module;
 
@@ -146,14 +147,14 @@ internal sealed class ClusterSetup(
         // Assumption: This is a script.
         // There's no reason make this script efficient.
         // It must fail and retried on any error.
-        // It has to succeed once and only once to setup an OpenSearch cluster.
+        // It has to succeed once and only once to set up an OpenSearch cluster.
         // After the initial setup this would never be called again.
         using var _1 = tracing.TraceRegion();
-        var searchIndexId = indexNames.GetFullName(IndexNames.ChatSlice, settings);
-        var ingestCursorIndexId = indexNames.GetFullName(IndexNames.ChatSliceCursor, settings);
+        var searchIndexId = indexNames.GetFullName(IndexNames.ChatContent, settings);
+        var ingestCursorIndexId = indexNames.GetFullName(IndexNames.ChatContentCursor, settings);
         var chatsCursorIndexId = indexNames.GetFullName(IndexNames.ChatCursor, settings);
 
-        var ingestPipelineId = indexNames.GetFullIngestPipelineName(IndexNames.ChatSlice, settings);
+        var ingestPipelineId = indexNames.GetFullIngestPipelineName(IndexNames.ChatContent, settings);
 
         var modelId = settings.ModelId;
         var modelDimension = settings.ModelEmbeddingDimension.ToString("D", CultureInfo.InvariantCulture);
@@ -165,14 +166,13 @@ internal sealed class ClusterSetup(
         var metadataField = namingPolicy.ConvertName(nameof(ChatSlice.Metadata));
         var textField = namingPolicy.ConvertName(nameof(ChatSlice.Text));
         // ChatSliceMetadata fields
-        var authorIdField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.AuthorId));
+        var authorsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Authors));
         var chatEntriesField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ChatEntries));
         var startOffsetField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.StartOffset));
         var endOffsetField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.EndOffset));
         var replyToEntriesField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ReplyToEntries));
         var mentionsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Mentions));
         var reactionsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Reactions));
-        var participantsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ConversationParticipants));
         var attachmentsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Attachments));
         var isPublicField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.IsPublic));
         var languageField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Language));
@@ -181,13 +181,14 @@ internal sealed class ClusterSetup(
         var placeIdField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.PlaceId));
         // ChatSliceEntry fields
         var chatSliceEntryIdField = namingPolicy.ConvertName(nameof(ChatSliceEntry.Id));
+        var chatSliceEntryLocalIdField = namingPolicy.ConvertName(nameof(ChatSliceEntry.LocalId));
         var chatSliceEntryVersionField = namingPolicy.ConvertName(nameof(ChatSliceEntry.Version));
         // ChatSliceAttachment fields
         var attachmentIdField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Id));
         var attachmentSummaryField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Summary));
         // Cursor fields
-        var lastEntryVersionField = namingPolicy.ConvertName(nameof(ChatHistoryExtractor.Cursor.LastEntryVersion));
-        var lastEntryLocalIdField = namingPolicy.ConvertName(nameof(ChatHistoryExtractor.Cursor.LastEntryLocalId));
+        var lastEntryVersionField = namingPolicy.ConvertName(nameof(ChatContentCursor.LastEntryVersion));
+        var lastEntryLocalIdField = namingPolicy.ConvertName(nameof(ChatContentCursor.LastEntryLocalId));
         // Chats cursor fields
         var lastVersionField = namingPolicy.ConvertName(nameof(ChatIndexInitializerShard.Cursor.LastVersion));
 
@@ -219,7 +220,7 @@ internal sealed class ClusterSetup(
             ).ConfigureAwait(false);
             if (!ingestResult.Success) {
                 throw new InvalidOperationException(
-                    $"Failed to update '{IndexNames.ChatSlice}' ingest pipeline",
+                    $"Failed to update '{IndexNames.ChatContent}' ingest pipeline",
                     ingestResult.OriginalException
                 );
             }
@@ -323,13 +324,14 @@ internal sealed class ClusterSetup(
                             "{{metadataField}}": {
                                 "type": "object",
                                 "properties": {
-                                    "{{authorIdField}}": { "type": "keyword" },
+                                    "{{authorsField}}": { "type": "keyword" },
                                     "{{chatIdField}}": { "type": "keyword" },
                                     "{{placeIdField}}": { "type": "keyword" },
                                     "{{chatEntriesField}}": {
                                         "type": "object",
                                         "properties": {
                                             "{{chatSliceEntryIdField}}":  { "type": "keyword" },
+                                            "{{chatSliceEntryLocalIdField}}": { "type": "long" },
                                             "{{chatSliceEntryVersionField}}": { "type": "long" }
                                         }
                                     },
@@ -338,7 +340,6 @@ internal sealed class ClusterSetup(
                                     "{{replyToEntriesField}}": { "type": "keyword" },
                                     "{{mentionsField}}": { "type": "keyword" },
                                     "{{reactionsField}}": { "type": "keyword" },
-                                    "{{participantsField}}": { "type": "keyword" },
                                     "{{attachmentsField}}": {
                                         "type": "nested",
                                         "properties": {
@@ -372,7 +373,7 @@ internal sealed class ClusterSetup(
             ).ConfigureAwait(false);
             if (!searchIndexResult.Success) {
                 throw new InvalidOperationException(
-                    $"Failed to update '{IndexNames.ChatSlice}'search index",
+                    $"Failed to update '{IndexNames.ChatContent}'search index",
                     searchIndexResult.OriginalException
                 );
             }

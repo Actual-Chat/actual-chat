@@ -165,9 +165,9 @@ public sealed class TextEntryIndexer(IServiceProvider services) : WorkerBase, IH
         while (!cancellationToken.IsCancellationRequested) {
             var changedEntries = await ChatsBackend
                 .ListChangedEntries(indexedChat.Id,
-                    EntryBatchSize,
                     indexedChat.LastEntryLocalId,
                     indexedChat.LastEntryVersion,
+                    EntryBatchSize,
                     cancellationToken)
                 .ConfigureAwait(false);
             var updated = changedEntries.Where(x => !x.IsRemoved && !x.Content.IsNullOrEmpty())

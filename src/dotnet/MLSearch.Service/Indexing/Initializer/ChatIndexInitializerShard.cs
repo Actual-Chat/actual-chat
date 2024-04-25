@@ -1,7 +1,6 @@
 using ActualChat.Chat;
-using ActualChat.MLSearch.Engine.Indexing;
 
-namespace ActualChat.MLSearch.Indexing;
+namespace ActualChat.MLSearch.Indexing.Initializer;
 
 internal interface IChatIndexInitializerShard
 {
@@ -40,7 +39,7 @@ internal sealed class ChatIndexInitializerShard(
 
     public async Task UseAsync(CancellationToken cancellationToken)
     {
-        var cursor = await cursorStates.Load(CursorKey, cancellationToken).ConfigureAwait(false) ?? new(0);
+        var cursor = await cursorStates.LoadAsync(CursorKey, cancellationToken).ConfigureAwait(false) ?? new(0);
         _maxVersion = cursor.LastVersion;
         await Task.WhenAll([
             ScheduleJobsAsync(cursor.LastVersion, cancellationToken),
@@ -103,7 +102,7 @@ internal sealed class ChatIndexInitializerShard(
                         _semaphore.Release();
                     }
                 }
-                await cursorStates.Save(CursorKey, new Cursor(nextVersion), cancellationToken).ConfigureAwait(false);
+                await cursorStates.SaveAsync(CursorKey, new Cursor(nextVersion), cancellationToken).ConfigureAwait(false);
                 log.LogInformation("Indexing cursor is advanced to the chat version #{Version}", nextVersion);
             }
             catch (Exception e) when (e is not OperationCanceledException) {

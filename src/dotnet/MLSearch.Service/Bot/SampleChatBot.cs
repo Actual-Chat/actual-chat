@@ -1,7 +1,5 @@
 
-using System.Net.NetworkInformation;
 using ActualChat.Chat;
-using ActualChat.Chat.Events;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 
@@ -14,9 +12,11 @@ internal class SampleChatBot(ICommander commander, IChatsBackend chats, ISearchE
     protected virtual string NotFoundMessage()
         => "Was not able to find anything";
 
-    public async Task ExecuteAsync(IEnumerable<ChatEntry>? updatedDocuments, IEnumerable<ChatEntry>? deletedDocuments, CancellationToken cancellationToken) {
-        if (updatedDocuments == null)
+    public async Task ExecuteAsync(IEnumerable<ChatEntry>? updatedDocuments, IEnumerable<ChatEntryId>? deletedDocuments, CancellationToken cancellationToken)
+    {
+        if (updatedDocuments == null) {
             return;
+        }
 
         var lastUpdatedDocument = updatedDocuments.LastOrDefault();
         if (lastUpdatedDocument == null)

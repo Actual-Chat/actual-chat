@@ -7,7 +7,21 @@ internal sealed class OpenSearchQueryBuilder(IndexSettings settings) : IQueryBui
 {
     private const string EmbeddingFieldName = "event_dense_embedding";
 
-    private readonly List<QueryContainer> _metadataFilters = [];
+    private List<QueryContainer> _metadataFilters = [];
+
+    void IQueryBuilder.ApplyOrFilter(OrFilter orFilter)
+    {
+        var oldMetadataFilters = _metadataFilters;
+        _metadataFilters = [];
+
+        foreach (var filter in orFilter.Filters) {
+            filter.Apply(this);
+        }
+
+        oldMetadataFilters.Add(new QueryContainerDescriptor<ChatSlice>()
+            .Bool(boolQuery => boolQuery.Should(_metadataFilters.ToArray())));
+        _metadataFilters = oldMetadataFilters;
+    }
 
     void IQueryBuilder.ApplyEqualityFilter<TValue>(EqualityFilter<TValue> equalityFilter)
         => _metadataFilters.Add(new QueryContainerDescriptor<ChatSlice>()
@@ -87,11 +101,23 @@ internal sealed class OpenSearchQueryBuilder(IndexSettings settings) : IQueryBui
 
     internal ISearchRequest Build(SearchQuery searchQuery)
     {
+        var queryRoot = new SearchDescriptor<ChatSlice>()
+            .Index(settings.IndexName)
+            .Source(src => src.Excludes(excl => excl.Field(EmbeddingFieldName)));
+
+        if (searchQuery.IsUnfiltered()) {
+            return queryRoot
+                .Sort(SortSelector)
+                .Size(searchQuery.Limit);
+        }
+
         _metadataFilters.Clear();
         foreach (var metadataFiler in searchQuery.MetadataFilters ?? Enumerable.Empty<IMetadataFilter>()) {
             metadataFiler.Apply(this);
         }
-        var queries = new List<QueryContainer> { new QueryContainerDescriptor<ChatSlice>()
+        var queries = searchQuery.FreeTextFilter is null
+            ? new List<QueryContainer>()
+            : [ new QueryContainerDescriptor<ChatSlice>()
                 .ScriptScore(scoredQuery => scoredQuery
                     .Query(q => q.Raw(
                         $$"""
@@ -106,7 +132,7 @@ internal sealed class OpenSearchQueryBuilder(IndexSettings settings) : IQueryBui
                           }
                           """))
                     .Script(script => script.Source("_score * 1.5"))),
-        };
+            ];
 
         foreach (var keyword in searchQuery.Keywords ?? Enumerable.Empty<string>()) {
             queries.Add(new QueryContainerDescriptor<ChatSlice>()
@@ -116,12 +142,26 @@ internal sealed class OpenSearchQueryBuilder(IndexSettings settings) : IQueryBui
             );
         }
 
-        return new SearchDescriptor<ChatSlice>()
-            .Index(settings.IndexName)
-            .Source(src => src.Excludes(excl => excl.Field(EmbeddingFieldName)))
-            .Query(query => query
-                .Bool(boolQuery => boolQuery
-                    .Filter(_metadataFilters.ToArray())
-                    .Should(queries.ToArray())));
+        return queryRoot.Query(query => query
+            .Bool(boolQuery => boolQuery
+                .Filter(_metadataFilters.ToArray())
+                .Should(queries.ToArray())))
+            .Sort(SortSelector)
+            .Size(searchQuery.Limit);
+
+        IPromise<IList<ISort>>? SortSelector(SortDescriptor<ChatSlice> ss)
+        {
+            if (searchQuery.SortStatements is null || searchQuery.SortStatements.Length == 0) {
+                return null;
+            }
+            foreach (var sortStatement in searchQuery.SortStatements) {
+                ss.Field(_ => new FieldSort {
+                    Field = sortStatement.Field,
+                    Order = sortStatement.SortOrder == QuerySortOrder.Ascending ? SortOrder.Ascending : SortOrder.Descending,
+                    Mode = sortStatement.Mode == MultivalueFieldMode.Min ? SortMode.Min : SortMode.Max,
+                });
+            }
+            return ss;
+        }
     }
 }

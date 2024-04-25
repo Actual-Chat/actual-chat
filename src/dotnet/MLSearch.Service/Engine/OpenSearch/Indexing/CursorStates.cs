@@ -1,6 +1,6 @@
 using OpenSearch.Client;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
-using ActualChat.MLSearch.Engine.Indexing;
+using ActualChat.MLSearch.Indexing;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 
@@ -18,7 +18,7 @@ internal sealed class CursorStates<TState>(
     private IndexSettings? _indexSettings;
     private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings(cursorIndexName);
 
-    public async Task<TState?> Load(string key, CancellationToken cancellationToken)
+    public async Task<TState?> LoadAsync(string key, CancellationToken cancellationToken)
     {
         var request = new GetRequest(IndexSettings.IndexName, key);
         var result = await client.GetAsync<TState>(
@@ -30,7 +30,7 @@ internal sealed class CursorStates<TState>(
         return result.Found ? result.Source : null;
     }
 
-    public async Task Save(string key, TState state, CancellationToken cancellationToken)
+    public async Task SaveAsync(string key, TState state, CancellationToken cancellationToken)
     {
         var response = await client.IndexAsync(
                 state,

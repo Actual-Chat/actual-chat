@@ -71,6 +71,53 @@ public static class ChatsBackendExt
         return tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
     }
 
+    public static async ValueTask<IReadOnlyList<ChatEntry>> GetEntries(
+        this IChatsBackend chatsBackend,
+        IEnumerable<ChatEntryId> entryIds,
+        bool includeRemoved = false,
+        CancellationToken cancellationToken = default)
+    {
+        var (chatId, entryKind) = (ChatId.None, default(ChatEntryKind?));
+        var (minId, maxId) = (long.MaxValue, long.MinValue);
+        var localIds = new HashSet<long>();
+        foreach (var entryId in entryIds) {
+            if (chatId == ChatId.None || entryKind is null) {
+                chatId = entryId.ChatId;
+                entryKind = entryId.Kind;
+            }
+            else {
+                if (chatId != entryId.ChatId) {
+                    throw new InvalidOperationException("All entries must belong to the same chat.");
+                }
+                if (entryKind != entryId.Kind) {
+                    throw new InvalidOperationException("All entries must be of the same kind.");
+                }
+            }
+
+            var localId = entryId.LocalId;
+            localIds.Add(localId);
+
+            minId = Math.Min(minId, localId);
+            maxId = Math.Max(maxId, localId);
+        }
+        if (maxId < minId || entryKind is null) {
+            return Array.Empty<ChatEntry>();
+        }
+
+        var idTiles = Constants.Chat.ServerIdTileStack.FirstLayer.GetCoveringTiles(new Range<long>(minId, maxId));
+        var entries = new List<ChatEntry>(localIds.Count);
+        foreach (var idTile in idTiles) {
+            var tile = await chatsBackend.GetTile(chatId,
+                    entryKind.Value,
+                    idTile.Range,
+                    includeRemoved,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            entries.AddRange(tile.Entries.Where(e => localIds.Contains(e.LocalId)));
+        }
+        return entries;
+    }
+
     public static async IAsyncEnumerable<ApiArray<Chat>> Batch(
         this IChatsBackend chatsBackend,
         Moment minCreatedAt,

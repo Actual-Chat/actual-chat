@@ -10,8 +10,8 @@ internal sealed class IndexNames
     private const string TemplateNameSuffix = "template";
 
     public const string TestPrefix = "test";
-    public const string ChatSlice = "chat-slice";
-    public const string ChatSliceCursor = "chat-slice-ingest-cursor";
+    public const string ChatContent = "chat-content";
+    public const string ChatContentCursor = "chat-content-cursor";
     public const string ChatCursor = "chat-cursor";
     public string IndexPrefix { get; init; } = ""; // for testing purpose only
     public static string MLIndexPattern => $"{NamePrefix}-*";

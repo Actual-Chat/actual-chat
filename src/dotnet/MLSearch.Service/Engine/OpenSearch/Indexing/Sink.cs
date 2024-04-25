@@ -1,7 +1,6 @@
 using OpenSearch.Client;
-using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
-using ActualChat.MLSearch.Engine.Indexing;
+using ActualChat.MLSearch.Indexing;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 
@@ -20,13 +19,13 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 // - All deletes MUST NOT fail if document was already
 //   deleted.
 
-internal sealed class Sink<TSource, TDocument>(
+internal sealed class Sink<TDocument>(
     string docIndexName,
     IOpenSearchClient client,
     IIndexSettingsSource indexSettingsSource,
-    IDocumentMapper<TSource, TDocument> mapper,
-    ILogger<Sink<TSource, TDocument>> log
-) : ISink<TSource, TSource> where TDocument: class, IHasDocId
+    ILogger<Sink<TDocument>> log
+) : ISink<TDocument, string>
+    where TDocument: class, IHasId<string>
 {
     private IndexSettings? _indexSettings;
     private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings(docIndexName);
@@ -34,24 +33,21 @@ internal sealed class Sink<TSource, TDocument>(
     private IOpenSearchClient OpenSearch => client;
 
     public async Task ExecuteAsync(
-        IEnumerable<TSource>? updatedDocuments,
-        IEnumerable<TSource>? deletedDocuments,
+        IEnumerable<TDocument>? updatedDocuments,
+        IEnumerable<string>? deletedDocuments,
         CancellationToken cancellationToken)
     {
-        var updates = updatedDocuments?.Select(mapper.Map) ?? Enumerable.Empty<TDocument>();
-        var deletes = deletedDocuments?.Select(mapper.MapId) ?? Enumerable.Empty<Id>();
-
         var result = await OpenSearch
             .BulkAsync(r => r
                     .IndexMany(
-                        updates,
+                        updatedDocuments,
                         (op, document) =>
                             op
                                 .Pipeline(IndexSettings.IngestPipelineId)
                                 .Index(IndexSettings.IndexName)
                                 .Id(document.Id)
                     )
-                    .DeleteMany(deletes, (op, _) => op.Index(IndexSettings.IndexName)),
+                    .DeleteMany(deletedDocuments, (op, _) => op.Index(IndexSettings.IndexName)),
                 cancellationToken
             ).ConfigureAwait(false);
         log.LogErrors(result);

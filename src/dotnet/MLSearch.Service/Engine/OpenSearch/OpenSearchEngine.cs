@@ -10,7 +10,7 @@ internal sealed class OpenSearchEngine<TDocument>(
     IIndexSettingsSource indexSettingsSource,
     ILogger<OpenSearchEngine<TDocument>> log)
     : ISearchEngine<TDocument>
-    where TDocument : class, IHasDocId
+    where TDocument : class, IHasId<string>
 {
     private IndexSettings? _indexSettings;
     private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings(docIndexName);

@@ -1,10 +1,8 @@
-using ActualChat.Chat;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
-using ActualChat.MLSearch.Engine.Indexing;
 using ActualChat.MLSearch.Engine.OpenSearch;
-using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Indexing;
+using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.Performance;
 using ActualChat.Testing.Host;
 using OpenSearch.Client;
@@ -24,7 +22,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
     protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
-        var settings = AppHost.Services.GetRequiredService<IIndexSettingsSource>().GetSettings(IndexNames.ChatSlice);
+        var settings = AppHost.Services.GetRequiredService<IIndexSettingsSource>().GetSettings(IndexNames.ChatContent);
         var pipelineId = settings.IngestPipelineId;
 
         var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
@@ -65,9 +63,9 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
             .Select((args, i) => {
                 var (id, text) = args;
                 var metadata = new ChatSliceMetadata(
-                    authorId,
-                    [new (id, 1)], null, null,
-                    [], [], [], [], [],
+                    [authorId],
+                    [new (id, 1, 1)], null, null,
+                    [], [], [], [],
                     false,
                     "en-US",
                     DateTime.Now.AddDays(-(i/2))
@@ -81,7 +79,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
             await searchEngine.Ingest(document, CancellationToken.None);
         }
 
-        await Task.Delay(200);
+        await Task.Delay(300);
 
         var query1 = new SearchQuery() {
             Keywords = ["command"],
@@ -121,11 +119,16 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
     [Fact]
     public void ResolvesOfIndexingServicesWorkCorrectly()
     {
-        Assert.NotNull(AppHost.Services.GetService<ICursorStates<ChatHistoryExtractor.Cursor>>());
-        Assert.NotNull(AppHost.Services.GetService<ISink<ChatEntry, ChatEntry>>());
-        Assert.NotNull(AppHost.Services.GetService<IDocumentMapper<ChatEntry, ChatSlice>>());
+        Assert.NotNull(AppHost.Services.GetService<IChatContentUpdateLoader>());
+        Assert.NotNull(AppHost.Services.GetService<ICursorStates<ChatContentCursor>>());
 
-        var chatEntriesIndexing = AppHost.Services.GetService<IChatIndexerWorker>();
-        Assert.NotNull(chatEntriesIndexing);
+        Assert.NotNull(AppHost.Services.GetService<IChatIndexTrigger>());
+        Assert.NotNull(AppHost.Services.GetService<IChatContentDocumentLoader>());
+        Assert.NotNull(AppHost.Services.GetService<IChatContentMapper>());
+
+        Assert.NotNull(AppHost.Services.GetService<ISink<ChatSlice, string>>());
+        Assert.NotNull(AppHost.Services.GetService<IChatContentIndexerFactory>());
+
+        Assert.NotNull(AppHost.Services.GetService<IChatContentIndexWorker>());
     }
 }

@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using ActualChat.Chat;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
@@ -8,11 +7,12 @@ using ActualChat.MLSearch.Bot;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
-using ActualChat.MLSearch.Engine.Indexing;
 using ActualChat.MLSearch.Engine.OpenSearch;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.MLSearch.Indexing;
+using ActualChat.MLSearch.Indexing.ChatContent;
+using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.Redis.Module;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -84,28 +84,36 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IIndexSettingsSource, IndexSettingsSource>();
         // ChatSlice engine registrations
         services.AddSingleton<ISearchEngine<ChatSlice>>(static services
-            => services.CreateInstanceWith<OpenSearchEngine<ChatSlice>>(IndexNames.ChatSlice));
+            => services.CreateInstanceWith<OpenSearchEngine<ChatSlice>>(IndexNames.ChatContent));
 
         services.AddWorkerPoolDependencies();
 
-        // -- Register chat indexer --
-        const string IndexServiceGroup = "OpenSearch Chat Index";
-        rpcHost.AddBackend<IChatIndexTrigger, ChatIndexTrigger>();
-
-        services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
-        services.AddSingleton<ICursorStates<ChatHistoryExtractor.Cursor>>(static services
-            => services.CreateInstanceWith<CursorStates<ChatHistoryExtractor.Cursor>>(IndexNames.ChatSliceCursor));
-        services.AddSingleton<ISink<ChatEntry, ChatEntry>>(static services
-            => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
-
-        services.AddKeyedSingleton<IDataIndexer<ChatId>, ChatHistoryExtractor>(IndexServiceGroup);
-        services.AddSingleton<IChatIndexerWorker>(static services
-            => services.CreateInstanceWith<ChatIndexerWorker>(
-                15, // max iteration count before rescheduling
-                services.GetRequiredKeyedService<IDataIndexer<ChatId>>(IndexServiceGroup)
+        // -- Register indexing common components --
+        services.AddSingleton<IChatContentUpdateLoader>(static services
+            => services.CreateInstanceWith<ChatContentUpdateLoader>(
+                100 // the size of a single batch of updates to load from db
             )
         );
-        services.AddWorkerPool<IChatIndexerWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>(
+        services.AddSingleton<ICursorStates<ChatContentCursor>>(static services
+            => services.CreateInstanceWith<CursorStates<ChatContentCursor>>(IndexNames.ChatContentCursor));
+
+        // -- Register chat indexer --
+        rpcHost.AddBackend<IChatIndexTrigger, ChatIndexTrigger>();
+
+        services.AddSingleton<IChatContentDocumentLoader, ChatContentDocumentLoader>();
+        services.AddSingleton<IChatContentMapper, ChatContentMapper>();
+
+        services.AddSingleton<ISink<ChatSlice, string>>(static services
+            => services.CreateInstanceWith<Sink<ChatSlice>>(IndexNames.ChatContent));
+
+        services.AddSingleton<IChatContentIndexerFactory, ChatContentIndexerFactory>();
+        services.AddSingleton<IChatContentIndexWorker>(static services
+            => services.CreateInstanceWith<ChatContentIndexWorker>(
+                75,  // a number of updates between flushes
+                5000 // max number of updates to process in a single run
+            )
+        );
+        services.AddWorkerPool<IChatContentIndexWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>(
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
 
@@ -130,15 +138,8 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         rpcHost.AddBackend<IChatBotConversationTrigger, ChatBotConversationTrigger>();
 
         services.AddKeyedSingleton<IBotConversationHandler, SampleChatBot>(ConversationBotServiceGroup);
-        services.AddKeyedSingleton<IDataIndexer<ChatId>>(
-            ConversationBotServiceGroup,
-            static (services, serviceKey) => services.CreateInstanceWith<ChatHistoryExtractor>(
-                services.GetRequiredKeyedService<IBotConversationHandler>(serviceKey)
-            )
-        );
         services.AddSingleton<IChatBotWorker>(static services
             => services.CreateInstanceWith<ChatBotWorker>(
-                services.GetRequiredKeyedService<IDataIndexer<ChatId>>(ConversationBotServiceGroup)
             )
         );
         services.AddWorkerPool<IChatBotWorker, MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId>(
