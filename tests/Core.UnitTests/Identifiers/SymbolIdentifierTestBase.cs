@@ -57,4 +57,36 @@ public abstract class SymbolIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
             s2.Write(id).Should().Be($"\"{id.Value}\"");
         }
     }
+
+    [Fact]
+    public void PropertyBagSerializationTest()
+    {
+        var identifiers = ValidIdentifiers.Select(s => TIdentifier.Parse(s)).Concat(new[] { None }).ToArray();
+        foreach (var id in identifiers) {
+            var bag = new PropertyBag()
+                .Set("s")
+                .Set("x", id)
+                .Set(id);
+            bag = bag.PassThroughAllSerializers(Out);
+            bag.GetOrDefault<string>().Should().Be("s");
+            bag.GetOrDefault<TIdentifier>("x").Should().Be(id);
+            bag.GetOrDefault<TIdentifier>().Should().Be(id);
+        }
+    }
+
+    [Fact]
+    public void MutablePropertyBagSerializationTest()
+    {
+        var identifiers = ValidIdentifiers.Select(s => TIdentifier.Parse(s)).Concat(new[] { None }).ToArray();
+        foreach (var id in identifiers) {
+            var bag = new MutablePropertyBag();
+            bag.Set("s");
+            bag.Set("x", id);
+            bag.Set(id);
+            bag = bag.PassThroughAllSerializers(Out);
+            bag.GetOrDefault<string>().Should().Be("s");
+            bag.GetOrDefault<TIdentifier>("x").Should().Be(id);
+            bag.GetOrDefault<TIdentifier>().Should().Be(id);
+        }
+    }
 }
