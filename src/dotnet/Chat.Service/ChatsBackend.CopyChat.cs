@@ -313,7 +313,9 @@ public partial class ChatsBackend
 
         var dbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
         dbContext.Database.SetCommandTimeout(TimeSpan.FromSeconds(30));
-        await using var __ = dbContext.ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+        var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        await using var __ = transaction.ConfigureAwait(false);
 
         var textEntriesResult = await CopyChatEntries(dbContext,
                 context,
@@ -333,6 +335,7 @@ public partial class ChatsBackend
                 .ConfigureAwait(false);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         Log.LogInformation("<- CopyChatEntries({CorrelationId}). EntryId range is [{Start},{End})",
             context.CorrelationId, entryIdRange.Start, entryIdRange.End);
