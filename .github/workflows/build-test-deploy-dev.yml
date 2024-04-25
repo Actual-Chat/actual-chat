@@ -357,6 +357,69 @@ jobs:
           list-suites: 'all'
           only-summary: 'true'
 
+
+  nuget-pack:
+    name: Create nuget packages for ${{ github.ref_name }}
+    if: |
+      github.ref == 'refs/heads/master' ||
+      github.ref == 'refs/heads/dev' ||
+      startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: true
+
+      - name: Install dotnet 8.0 SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0'
+          dotnet-quality: 'ga'
+
+      - name: Use cached dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/.nuget/packages
+          key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Prepare snk file
+        run: echo -n "${{secrets.SNK_BASE64}}" | base64 -d | tee ActualChat.snk >/dev/null
+
+      - name: Install tools
+        run: dotnet tool install nbgv
+
+      - name: Generate Nerdbank.GitVersioning files
+        run: ./run-build.cmd generate-version
+
+      - name: Create nuget packages
+        run: dotnet pack -c Release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nuget_packages
+          path: artifacts/nupkg/*.nupkg
+
+  nuget-push:
+    name: Push nuget packages for ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    needs:
+      - nuget-pack
+      - unit-tests
+      - integration-tests
+    environment: ${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/')) && 'prod' || '' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: nuget_packages
+
+      - name: push packages
+        run: dotnet nuget push *.nupkg -k "${{ secrets.NUGET_API_KEY }}" -s https://api.nuget.org/v3/index.json
+
   deploy-dev:
     name: Deploy dev
     if: |

@@ -3,6 +3,13 @@
 
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../../'))" />
 
+  <!-- for nuget publish -->
+  <PropertyGroup Condition="'$(PUBLIC_BUILD)' != ''">
+    <AssemblyOriginatorKeyFile >$(SolutionDir)/ActualChat.snk</AssemblyOriginatorKeyFile>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyPublicKey>, PublicKey=002400000480000094000000060200000024000052534131000400000100010065a6975e4ad991ec5d84aa50d01a5894de251170fceca3c771bf827e9d29d36893702987774e66155fe3dd74880291bbc40b61998e5fa3f88fac5e4ba877b69e040e866078f276dba9f5d068b2c3334f5708612f4bafcd90f4c25ab0b8fc893de0385eab67a3f0c280c66773f2939e9daefe70175d694b92aa1675e445c262bf</AssemblyPublicKey>
+  </PropertyGroup>
+
   <!-- Analyzers & warnings -->
   <PropertyGroup Condition="$(IsServerSideProject)">
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer> <!-- Disable it for server-side logic -->
@@ -24,14 +31,14 @@
   </ItemGroup>
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
     <!-- <InternalsVisibleTo Include="DynamicProxyGenAssembly2" /> -->
-    <InternalsVisibleTo Include="$(AssemblyName).UnitTests" />
-    <InternalsVisibleTo Include="$(AssemblyName).IntegrationTests" />
+    <InternalsVisibleTo Include="$(AssemblyName).UnitTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(AssemblyName).IntegrationTests$(AssemblyPublicKey)" />
 
-    <PackageReference Include="Nerdbank.GitVersioning" />
-    <PackageReference Include="Microsoft.SourceLink.GitHub" />
-    <PackageReference Include="Roslynator.Analyzers" />
-    <PackageReference Include="Meziantou.Analyzer" />
-    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" />
+    <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
+    <PackageReference Include="Roslynator.Analyzers" PrivateAssets="all" />
+    <PackageReference Include="Meziantou.Analyzer" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" PrivateAssets="all" />
 
     <!-- Global usings -->
     <Using Include="ActualChat" />
@@ -131,7 +138,7 @@
 
   <!-- We disable SetEmbeddedFilesFromSourceControlManagerUntrackedFiles, that's why we embed this file in pdb manually -->
   <ItemGroup Condition="'$(EnableSourceLink)' =='true'">
-    <EmbeddedFiles Include="$(BaseIntermediateOutputPath)$(Configuration)\**\*.cs" />
+    <EmbeddedFiles Include="$(BaseIntermediateOutputPath)$(Configuration.ToLower())\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup Label="dotnet watch">
