@@ -8,7 +8,8 @@ public sealed class AudioController(IBlobStorages blobStorages) : ControllerBase
     private IBlobStorages BlobStorages { get; } = blobStorages;
 
     [HttpGet("download/{**blobId}")]
-    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client, VaryByQueryKeys = [ "blobId" ])]
+    // Will be cached in memory by response cache middleware
+    [ResponseCache(Duration = 600, Location = ResponseCacheLocation.Client, VaryByQueryKeys = [ "blobId" ])]
     public async Task<ActionResult > Download(string blobId, CancellationToken cancellationToken)
     {
         var blobStorage = BlobStorages[BlobScope.AudioRecord];

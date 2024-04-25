@@ -1,5 +1,5 @@
 using System.Net.Mime;
-using ActualChat.Media;
+using ActualChat.AspNetCore;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,7 +9,8 @@ namespace ActualChat.Media.Controllers;
 public sealed class ContentController(IBlobStorages blobStorages, IMediaBackend mediaBackend) : ControllerBase
 {
     [HttpGet("{**blobId}")]
-    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Any, VaryByQueryKeys = ["blobId"])]
+    // Will NOT be cached in memory by response cache middleware
+    [CacheControlImmutable(Duration = 2592000 /*30 days*/)]
     [EnableCors("CDN")]
     public async Task<ActionResult> Download(string blobId, CancellationToken cancellationToken)
     {
