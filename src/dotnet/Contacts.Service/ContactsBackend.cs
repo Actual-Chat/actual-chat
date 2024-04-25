@@ -197,7 +197,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var placeId = chatId.PlaceId;
         var context = CommandContext.GetCurrent();
 
-        if (Computed.IsInvalidating) {
+        if (InvalidationMode.IsOn) {
             var invIndex = context.Operation.Items.GetOrDefault(long.MinValue);
             if (invIndex != long.MinValue) {
                 _ = Get(ownerId, id, default);
@@ -275,7 +275,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var placeId = chatId.PlaceId;
         var context = CommandContext.GetCurrent();
 
-        if (Computed.IsInvalidating) {
+        if (InvalidationMode.IsOn) {
             var invIndex = context.Operation.Items.GetOrDefault(long.MinValue);
             if (invIndex != long.MinValue) {
                 _ = Get(ownerId, id, default);
@@ -313,7 +313,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     public virtual async Task OnRemoveAccount(ContactsBackend_RemoveAccount command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
-        if (Computed.IsInvalidating)
+        if (InvalidationMode.IsOn)
             return; // spawns commands to remove contacts for other owners, we can skip invalidation for own contacts
 
         // var contactIds = await ListIds(userId, cancellationToken).ConfigureAwait(false);
@@ -347,11 +347,11 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var chatId = command.ChatId;
         var context = CommandContext.GetCurrent();
 
-        if (Computed.IsInvalidating) {
-            var invPlaceId = context.Operation.Items.GetId<PlaceId>();
+        if (InvalidationMode.IsOn) {
+            var invPlaceId = context.Operation.Items.GetOrDefault<PlaceId>();
             if (!invPlaceId.IsNone)
                 _ = PseudoPlaceContact(invPlaceId);
-            var invChatId = context.Operation.Items.GetId<ChatId>();
+            var invChatId = context.Operation.Items.GetOrDefault<ChatId>();
             if (!invChatId.IsNone)
                 _ = PseudoChatContact(invChatId);
             return;
@@ -369,7 +369,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 .ConfigureAwait(false);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation.Items.SetId(placeId);
+            context.Operation.Items.Set(placeId);
         }
         else {
             var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
@@ -381,14 +381,14 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 .ConfigureAwait(false);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation.Items.SetId(chatId);
+            context.Operation.Items.Set(chatId);
         }
     }
 
     // [CommandHandler]
     public virtual async Task OnGreet(ContactsBackend_Greet command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating)
+        if (InvalidationMode.IsOn)
             return; // It just spawns other commands, so nothing to do here
 
         var account = await AccountsBackend.Get(command.UserId, cancellationToken).ConfigureAwait(false);
@@ -443,8 +443,8 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var (placeId, ownerId, hasLeft) = command;
         var context = CommandContext.GetCurrent();
 
-        if (Computed.IsInvalidating) {
-            var invOwnerId = context.Operation.Items.GetId<UserId>();
+        if (InvalidationMode.IsOn) {
+            var invOwnerId = context.Operation.Items.GetOrDefault<UserId>();
             if (!invOwnerId.IsNone)
                 _ = ListPlaceIds(invOwnerId, default);
             return;
@@ -475,7 +475,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.SetId(ownerId);
+        context.Operation.Items.Set(ownerId);
     }
 
     // [CommandHandler]
@@ -485,7 +485,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     {
         var newChatId = command.NewChatId;
 
-        if (Computed.IsInvalidating) {
+        if (InvalidationMode.IsOn) {
             _ = PseudoChatContact(newChatId);
             _ = PseudoPlaceContact(newChatId.PlaceId);
             return;
@@ -526,7 +526,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     [EventHandler]
     public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating)
+        if (InvalidationMode.IsOn)
             return; // It just spawns other commands, so nothing to do here
 
         var (chat, oldChat, changeKind) = eventCommand;
@@ -540,7 +540,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     [EventHandler]
     public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating)
+        if (InvalidationMode.IsOn)
             return; // It just spawns other commands, so nothing to do here
 
         var (author, oldAuthor) = eventCommand;
@@ -577,7 +577,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating)
+        if (InvalidationMode.IsOn)
             return; // It just spawns other commands, so nothing to do here
 
         var (_, author, changeKind) = eventCommand;

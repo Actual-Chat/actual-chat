@@ -59,7 +59,7 @@ public class InvitesBackend(IServiceProvider services)
     {
         var context = CommandContext.GetCurrent();
 
-        if (Computed.IsInvalidating) {
+        if (InvalidationMode.IsOn) {
             var invInvite = context.Operation.Items.Get<Invite>();
             if (invInvite != null) {
                 _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
@@ -94,7 +94,7 @@ public class InvitesBackend(IServiceProvider services)
     {
         var context = CommandContext.GetCurrent();
 
-        if (Computed.IsInvalidating) {
+        if (InvalidationMode.IsOn) {
             var invInvite = context.Operation.Items.Get<Invite>();
             if (invInvite != null) {
                 _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
@@ -182,7 +182,7 @@ public class InvitesBackend(IServiceProvider services)
     {
         var context = CommandContext.GetCurrent();
 
-        if (Computed.IsInvalidating) {
+        if (InvalidationMode.IsOn) {
             var invInvite = context.Operation.Items.Get<Invite>();
             if (invInvite != null) {
                 _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");

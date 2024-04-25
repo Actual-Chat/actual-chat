@@ -31,7 +31,7 @@ public class ActivePlaybackInfo : SafeAsyncDisposableBase, IComputeService
             _trackInfos[trackId] = trackInfo;
         }
 
-        using (ComputeContext.BeginInvalidation()) {
+        using (InvalidationMode.Begin()) {
             _ = GetTrackPlaybackState(trackId, default);
             _ = GetTrackInfo(trackId, default);
         }

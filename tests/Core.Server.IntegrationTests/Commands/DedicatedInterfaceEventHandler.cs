@@ -6,7 +6,7 @@ public class DedicatedInterfaceEventHandler(ScheduledCommandTestService testServ
 
     public Task OnCommand(TestEvent2 eventCommand, CommandContext context, CancellationToken cancellationToken)
     {
-        // if (Computed.IsInvalidating)
+        // if (InvalidationMode.IsOn)
         return Task.CompletedTask;
 
 #pragma warning disable CS0162

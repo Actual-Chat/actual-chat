@@ -70,7 +70,7 @@ public class IndexedChatsBackend(IServiceProvider services) : DbServiceBase<Sear
         CancellationToken cancellationToken)
     {
         var changes = command.Changes;
-        if (Computed.IsInvalidating) {
+        if (InvalidationMode.IsOn) {
             foreach (var chatId in changes.Select(x => x.Id).Distinct())
                 _ = Get(chatId, default);
             if (changes.Any(x => x.Change.Kind == ChangeKind.Create))

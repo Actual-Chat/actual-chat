@@ -38,7 +38,7 @@ public class UserPresencesBackend : DbServiceBase<UsersDbContext>, IUserPresence
     // [CommandHandler]
     public virtual async Task OnCheckIn(UserPresencesBackend_CheckIn command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating) {
+        if (InvalidationMode.IsOn) {
             _userPresences.CheckIn(command.UserId, command.At, command.IsActive);
             return;
         }
@@ -67,13 +67,13 @@ public class UserPresencesBackend : DbServiceBase<UsersDbContext>, IUserPresence
 
     private void PresenceChanged(UserId userId)
     {
-        if (Computed.IsInvalidating) {
+        if (InvalidationMode.IsOn) {
             _ = Get(userId, default);
             _ = GetLastCheckIn(userId, default);
             return;
         }
 
-        using (ComputeContext.BeginInvalidation()) {
+        using (InvalidationMode.Begin()) {
             _ = Get(userId, default);
             _ = GetLastCheckIn(userId, default);
         }

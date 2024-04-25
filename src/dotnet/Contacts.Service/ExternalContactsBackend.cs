@@ -94,7 +94,7 @@ public class ExternalContactsBackend(
         ExternalContactsBackend_BulkChange command,
         CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating) {
+        if (InvalidationMode.IsOn) {
             var invIds = command.Changes.Select(x => x.Id.UserDeviceId).Distinct();
             foreach (var invId in invIds) {
  #pragma warning disable CS0618 // Type or member is obsolete
@@ -183,7 +183,7 @@ public class ExternalContactsBackend(
     public virtual async Task OnRemoveAccount(ExternalContactsBackend_RemoveAccount command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
-        if (Computed.IsInvalidating)
+        if (InvalidationMode.IsOn)
             return; // we can skip invalidation for own contacts
 
         var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);

@@ -63,7 +63,7 @@ public partial class ChatAudioUI
             var oldAudioOn = oldRecordingChat != default || oldListeningChats.Count != 0;
             var newAudioOn = newRecordingChat != default || newListeningChats.Count != 0;
 
-            using (ComputeContext.BeginInvalidation()) {
+            using (InvalidationMode.Begin()) {
                 if (newRecordingChat != oldRecordingChat) {
                     _ = GetRecordingChatId();
                     _ = GetState(oldRecordingChat.ChatId);
@@ -95,7 +95,7 @@ public partial class ChatAudioUI
                 continue;
 
             DebugLog?.LogDebug("InvalidateHistoricalPlaybackDependencies: *");
-            using (ComputeContext.BeginInvalidation()) {
+            using (InvalidationMode.Begin()) {
                 _ = GetState(oldChatId);
                 _ = GetState(newChatId);
             }

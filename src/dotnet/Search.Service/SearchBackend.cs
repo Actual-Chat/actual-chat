@@ -202,7 +202,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     public virtual async Task OnEntryBulkIndex(SearchBackend_EntryBulkIndex command, CancellationToken cancellationToken)
     {
         var chatId = command.ChatId.Require();
-        if (Computed.IsInvalidating)
+        if (InvalidationMode.IsOn)
             return;
 
         if (!Settings.IsSearchEnabled) {
@@ -232,7 +232,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     // [CommandHandler]
     public virtual async Task OnUserContactBulkIndex(SearchBackend_UserContactBulkIndex command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating)
+        if (InvalidationMode.IsOn)
             return;
 
         if (!Settings.IsSearchEnabled) {
@@ -252,7 +252,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     // [CommandHandler]
     public virtual async Task OnChatContactBulkIndex(SearchBackend_ChatContactBulkIndex command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating)
+        if (InvalidationMode.IsOn)
             return;
 
         if (!Settings.IsSearchEnabled) {
@@ -273,7 +273,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (chatIds.Count > MaxRefreshChatCount)
             throw StandardError.Internal("Max chat count to index is " + MaxRefreshChatCount);
 
-        if (Computed.IsInvalidating)
+        if (InvalidationMode.IsOn)
             return;
 
         if (!Settings.IsSearchEnabled) {
@@ -301,7 +301,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         SearchBackend_StartUserContactIndexing command,
         CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating)
+        if (InvalidationMode.IsOn)
             return Task.CompletedTask; // it only notifies indexing job
 
         if (!Settings.IsSearchEnabled) {
@@ -318,7 +318,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         SearchBackend_StartChatContactIndexing command,
         CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating)
+        if (InvalidationMode.IsOn)
             return Task.CompletedTask; // it only notifies indexing job
 
         if (!Settings.IsSearchEnabled) {
@@ -333,7 +333,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     [EventHandler]
     public virtual async Task OnAccountChangedEvent(AccountChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating)
+        if (InvalidationMode.IsOn)
             return; // It just spawns other commands, so nothing to do here
 
         if (!Settings.IsSearchEnabled) {
@@ -355,7 +355,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     [EventHandler]
     public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating)
+        if (InvalidationMode.IsOn)
             return; // It just spawns other commands, so nothing to do here
 
         if (!Settings.IsSearchEnabled) {

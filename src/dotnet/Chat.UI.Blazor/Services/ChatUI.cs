@@ -193,7 +193,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             .GetOwn(Session, chatId, ChatPositionKind.Read, cancellationToken)
             .ConfigureAwait(false);
 
-        using var _ = ComputeContext.BeginIsolation();
+        using var _ = Computed.BeginIsolation();
         using var readPositionState = await LeaseReadPositionState(chatId, cancellationToken).ConfigureAwait(false);
         var readPosition = readPositionState.Value;
         return MathExt.Max(readPosition.EntryLid, serverReadPosition.EntryLid);
@@ -211,7 +211,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     {
         var old = _searchEnabledChatId;
         _searchEnabledChatId = chatId;
-        using (ComputeContext.BeginInvalidation()) {
+        using (InvalidationMode.Begin()) {
             if (!old.IsNone)
                 _ = IsSearchEnabled(old);
             if (!chatId.IsNone)
@@ -230,7 +230,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     public virtual async Task<bool> IsEmpty(ChatId chatId, CancellationToken cancellationToken)
     {
         Computed<Range<long>> cIdRange;
-        using (ComputeContext.BeginIsolation()) {
+        using (Computed.BeginIsolation()) {
             cIdRange = await Computed
                 .Capture(() => Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken), cancellationToken)
                 .ConfigureAwait(false);

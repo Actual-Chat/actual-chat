@@ -36,7 +36,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
         var (entry, _, changeKind) = eventCommand;
         var context = CommandContext.GetCurrent();
 
-        if (Computed.IsInvalidating) {
+        if (InvalidationMode.IsOn) {
             var invChangedMentionIds = context.Operation.Items.Get<HashSet<MentionId>>();
             if (invChangedMentionIds != null) {
                 foreach (var mentionId in invChangedMentionIds)
