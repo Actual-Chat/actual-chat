@@ -146,7 +146,6 @@ namespace ActualChat.Invite.Migrations
                         .HasColumnName("host_id");
 
                     b.Property<string>("ItemsJson")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("items_json");
 
@@ -155,7 +154,6 @@ namespace ActualChat.Invite.Migrations
                         .HasColumnName("logged_at");
 
                     b.Property<string>("NestedOperations")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("nested_operations");
 
