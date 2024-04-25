@@ -83,7 +83,7 @@ public static class ApplicationBuilderExt
                 }
 
                 var cacheControlHeader = hasVersion
-                    ? "public, max-age=518400, stale-while-revalidate=86400" // 6 days + up to 1 for revalidation
+                    ? "public, max-age=518400, immutable, stale-while-revalidate=86400" // 6 days + up to 1 for revalidation
                     : "public, max-age=3600, stale-while-revalidate=86400"; // 1h + up to 1 day for revalidation
                 ctx.Context.Response.Headers.Append("Cache-Control", cacheControlHeader);
 
