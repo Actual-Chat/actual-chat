@@ -1,0 +1,43 @@
+name: 'Setup dotnet environment for ActualChat build'
+description: 'Install apple provisioning profile on Mac'
+inputs:
+  restore:
+    default: "true"
+    description: Whether restore packages or not required by build
+  restore-tools:
+    default: "true"
+    description: Whether restore tools or not required by build
+  restore-workloads:
+    default: "true"
+    description: Whether restore workloads or not required by build
+runs:
+  using: "composite"
+  steps:
+    - name: Install dotnet 8.0 SDK
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0'
+        dotnet-quality: 'ga'
+
+    - name: Use cached dependencies
+      uses: actions/cache@v3
+      with:
+        path: ${{ github.workspace }}/.nuget/packages
+        key: "${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}"
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Restore nuget packages
+      shell: bash
+      if: ${{ inputs.restore == 'true' }}
+      run: ./run-build.cmd restore
+
+    - name: Restore tools
+      shell: bash
+      if: ${{ inputs.restore-tools == 'true' }}
+      run: ./run-build.cmd restore-tools
+
+    - name: Install workloads
+      shell: bash
+      if: ${{ inputs.restore-workloads == 'true' }}
+      run: dotnet workload restore
