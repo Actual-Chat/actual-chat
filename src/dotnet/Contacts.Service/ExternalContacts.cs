@@ -10,8 +10,8 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
     private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
-    [Obsolete("2024.04: Replaced with List2")]
-    public virtual async Task<ApiArray<ExternalContactFull>> List(
+    [Obsolete("2024.04: Replaced with new List implementation.")]
+    public virtual async Task<ApiArray<ExternalContactFull>> LegacyList1(
         Session session, Symbol deviceId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -22,7 +22,7 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ExternalContact>> List2(
+    public virtual async Task<ApiArray<ExternalContact>> List(
         Session session,
         Symbol deviceId,
         CancellationToken cancellationToken)

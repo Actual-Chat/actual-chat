@@ -9,12 +9,15 @@ public sealed class IndexNames
     public const string ChatIndexVersion = "v2";
 
     public string IndexPrefix { get; init; } = ""; // for testing purpose only
-    private string EntryIndexNamePrefix => $"{IndexPrefix}entries-{EntryIndexVersion}";
-    public string EntryIndexTemplateName => EntryIndexNamePrefix;
-    public string EntryIndexPattern => $"{EntryIndexNamePrefix}-*";
-    public string PublicUserIndexName => $"{IndexPrefix}users-{UserIndexVersion}";
-    private string PublicChatIndexName => $"{IndexPrefix}public-chats-{ChatIndexVersion}";
-    private string PrivateChatIndexName => $"{IndexPrefix}private-chats-{ChatIndexVersion}";
+    private string CommonIndexNamePrefix => string.IsNullOrEmpty(IndexPrefix) ? "sm-" : $"sm-{IndexPrefix}-"; // sm == "Search Module"
+    public string CommonIndexTemplateName => $"{CommonIndexNamePrefix}common";
+    public string CommonIndexPattern => $"{CommonIndexNamePrefix}*";
+    private string EntryIndexNamePrefix => $"{CommonIndexNamePrefix}entries-{EntryIndexVersion}";
+    public string EntryIndexTemplateName => EntryIndexNamePrefix.Trim('-');
+    public string EntryIndexPattern => $"{EntryIndexNamePrefix}*";
+    public string PublicUserIndexName => $"{CommonIndexNamePrefix}users-{UserIndexVersion}";
+    private string PublicChatIndexName => $"{CommonIndexNamePrefix}public-chats-{ChatIndexVersion}";
+    private string PrivateChatIndexName => $"{CommonIndexNamePrefix}private-chats-{ChatIndexVersion}";
 
     public IndexName GetIndexName(Chat.Chat chat)
         => GetIndexName(chat.Id, chat.IsPublicPlaceChat());

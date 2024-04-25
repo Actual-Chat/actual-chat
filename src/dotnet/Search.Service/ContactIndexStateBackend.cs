@@ -24,7 +24,7 @@ public class ContactIndexStateBackend(IServiceProvider services) : DbServiceBase
         CancellationToken cancellationToken)
     {
         var (id, expectedVersion, change) = command;
-        if (Computed.IsInvalidating()) {
+        if (InvalidationMode.IsOn) {
             _ = Get(id, default);
             return default!;
         }

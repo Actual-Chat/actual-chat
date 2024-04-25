@@ -1,10 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
-using ActualChat.Chat.Events;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Search.Db;
 using ActualChat.Redis.Module;
-using ActualLab.Fusion.EntityFramework.Operations;
 using OpenSearch.Client;
 using OpenSearch.Net;
 

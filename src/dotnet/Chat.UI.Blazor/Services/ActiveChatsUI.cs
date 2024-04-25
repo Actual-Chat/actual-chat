@@ -7,7 +7,6 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
 {
     public const int MaxActiveChatCount = 3;
-    public static readonly TimeSpan MaxContinueListeningRecency = TimeSpan.FromMinutes(5);
 
     private readonly AsyncLock _updateLock = new(LockReentryMode.CheckedFail);
     private readonly IStoredState<ApiArray<ActiveChat>> _activeChats;
@@ -62,19 +61,11 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
                     .GetUserChatSettings(chat.ChatId, cancellationToken)
                     .ConfigureAwait(false);
                 var listeningMode = userChatSettings.ListeningMode;
-                var continueListeningRecency = listeningMode switch {
-                    ListeningMode.Default => MaxContinueListeningRecency,
-                    ListeningMode.TurnOffAfter15Minutes => TimeSpan.FromMinutes(15),
-                    ListeningMode.TurnOffAfter2Hours => TimeSpan.FromHours(2),
-                    ListeningMode.KeepListening => TimeSpan.MaxValue,
- #pragma warning disable CA2208
-                    _ => throw new ArgumentOutOfRangeException(nameof(listeningMode)),
- #pragma warning restore CA2208
-                };
+                var listeningDuration = listeningMode.GetInfo().Duration;
                 var listeningRecency = Moment.Max(chat.Recency, chat.ListeningRecency);
-                if (chat.IsListening && CpuNow - listeningRecency > continueListeningRecency)
+                if (chat.IsListening && CpuNow - listeningRecency > listeningDuration)
                     chat = chat with { IsListening = false };
-                else if (listeningMode == ListeningMode.KeepListening)
+                else if (listeningMode == ListeningMode.Forever)
                     chat = chat with { IsListening = true };
 
                 return chat;

@@ -100,5 +100,5 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
         }, TimeSpan.FromSeconds(10));
 
     private Task<ApiArray<ExternalContact>> ListExternalContacts(CancellationToken cancellationToken = default)
-        => _externalContacts.List2(_tester.Session, DeviceId, cancellationToken);
+        => _externalContacts.List(_tester.Session, DeviceId, cancellationToken);
 }

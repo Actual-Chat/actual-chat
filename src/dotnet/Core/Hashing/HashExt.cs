@@ -30,4 +30,21 @@ public static class HashExt
     // Stream
 
     public static StreamHashInput Hash(this Stream input) => new(input);
+
+    // Xor
+    public static THash BitwiseXor<THash>(this IEnumerable<THash> hashes)
+        where THash : IHashOutput, IEquatable<THash>, new()
+    {
+        var result = new THash();
+        var resultSpan = result.AsSpan<byte>();
+        foreach (var input in hashes)
+            BitwiseXorInPlace(input.Bytes, resultSpan);
+        return result;
+    }
+
+    private static void BitwiseXorInPlace(ReadOnlySpan<byte> input, Span<byte> result)
+    {
+        for (int j = 0; j < input.Length; j++)
+            result[j] ^= input[j];
+    }
 }

@@ -36,16 +36,16 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var minSentAt = Clocks.SystemClock.Now - TimeSpan.FromDays(1);
-        var notificationIds = await Notifications.ListRecentNotificationIds(Session, minSentAt, cancellationToken);
+        var notificationIds = await Notifications.ListRecentNotificationIds(Session, minSentAt, cancellationToken).ConfigureAwait(false);
         var notifications = new List<ActualChat.Notification.Notification>();
         foreach (var notificationId in notificationIds) {
-            var notification = await Notifications.Get(Session, notificationId, cancellationToken);
+            var notification = await Notifications.Get(Session, notificationId, cancellationToken).ConfigureAwait(false);
             if (notification != null)
                 notifications.Add(notification);
         }
 
         return new () {
-            Notifications = notifications.ToApiArray(),
+            Notifications = notifications.ToList(),
         };
     }
 
@@ -67,6 +67,6 @@
     public sealed record Model {
         public static readonly Model None = new();
 
-        public ApiArray<ActualChat.Notification.Notification> Notifications { get; init; }
+        public List<ActualChat.Notification.Notification> Notifications { get; init; } = [];
     }
 }

@@ -30,7 +30,7 @@ public class LiveTime : SafeAsyncDisposableBase, IComputeService
         if (delay < TimeSpan.MaxValue) {
             // Invalidate the result when it's supposed to change
             delay = TrimInvalidationDelay(delay + TimeSpan.FromMilliseconds(100));
-            Computed.GetCurrent()!.Invalidate(delay, false);
+            Computed.GetCurrent().Invalidate(delay, false);
         }
         return Task.FromResult(text);
     }

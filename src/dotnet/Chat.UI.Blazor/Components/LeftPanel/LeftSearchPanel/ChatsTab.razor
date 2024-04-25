@@ -51,10 +51,9 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var ownChatCount = await ChatListUI.GetCount(_kind);
-
+        var ownChatCount = await ChatListUI.GetCount(_kind).ConfigureAwait(false);
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
-        return new Model(ownChatCount, !searchPhrase.IsEmpty);
+        return new(ownChatCount, !searchPhrase.IsEmpty);
     }
 
     protected override bool ShouldRender()

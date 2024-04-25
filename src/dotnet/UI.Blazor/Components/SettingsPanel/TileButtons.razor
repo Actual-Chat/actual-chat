@@ -53,7 +53,7 @@
         };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        var accountSettings = await AccountSettings.GetUserAvatarSettings(cancellationToken);
+        var accountSettings = await AccountSettings.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
         var defaultAvatarId = accountSettings.DefaultAvatarId;
         if (defaultAvatarId.IsEmpty)
             defaultAvatarId = accountSettings.AvatarIds.FirstOrDefault();

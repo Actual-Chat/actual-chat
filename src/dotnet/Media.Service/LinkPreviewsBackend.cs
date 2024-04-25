@@ -42,7 +42,7 @@ public class LinkPreviewsBackend(MediaSettings settings, IChatsBackend chatsBack
         var id = LinkPreview.ComposeId(url);
         var context = CommandContext.GetCurrent();
 
-        if (Computed.IsInvalidating()) {
+        if (InvalidationMode.IsOn) {
             var wasChanged = context.Operation.Items.GetOrDefault(false);
             if (wasChanged)
                 _ = GetFromDb(id, default);
@@ -68,7 +68,7 @@ public class LinkPreviewsBackend(MediaSettings settings, IChatsBackend chatsBack
     public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         var (entry, _, changeKind) = eventCommand;
-        if (Computed.IsInvalidating())
+        if (InvalidationMode.IsOn)
             return Task.CompletedTask; // It just spawns other commands, so nothing to do here
 
         if (changeKind is ChangeKind.Remove)

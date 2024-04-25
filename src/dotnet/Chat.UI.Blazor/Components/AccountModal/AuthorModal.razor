@@ -83,32 +83,33 @@
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        if (AuthorId.IsNone)
+        var authorId = AuthorId;
+        var currentChatId = ChatId;
+        if (authorId.IsNone)
             return ComputedModel.None;
 
-        var chatId = AuthorId.ChatId;
+        var chatId = authorId.ChatId;
         var session = Hub.Session();
-        var author = await Hub.Authors.Get(session, chatId, AuthorId, cancellationToken);
+        var author = await Hub.Authors.Get(session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return ComputedModel.None;
 
-        var chat = await Hub.Chats.Get(session, chatId, cancellationToken);
-
-        var ownAccount = await Hub.Accounts.GetOwn(session, cancellationToken);
-        var account = await Hub.Authors.GetAccount(session, ChatId, AuthorId, cancellationToken);
-        var canStartPeerChat = await Hub.AuthorUI.CanStartPeerChat(AuthorId, cancellationToken);
-        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        var chat = await Hub.Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownAccount = await Hub.Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var account = await Hub.Authors.GetAccount(session, currentChatId, authorId, cancellationToken).ConfigureAwait(false);
+        var canStartPeerChat = await Hub.AuthorUI.CanStartPeerChat(authorId, cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
 
         EditChatMemberModel? editMemberModel = null;
-        bool usePlaceSettingsToEditMember = false;
+        var usePlaceSettingsToEditMember = false;
         if (chat != null && chat.Rules.CanEditMembers()) {
             if (chat.IsPublicPlaceChat())
                 usePlaceSettingsToEditMember = true;
             else
-                editMemberModel = await EditChatMemberCommands.ComputeState(Hub, AuthorId, cancellationToken);
+                editMemberModel = await EditChatMemberCommands.ComputeState(Hub, authorId, cancellationToken).ConfigureAwait(false);
         }
 
-        return new ComputedModel() {
+        return new() {
             Author = author,
             Account = account,
             OwnAccount = ownAccount,

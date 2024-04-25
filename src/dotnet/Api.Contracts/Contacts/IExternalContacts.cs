@@ -1,19 +1,20 @@
-﻿using MemoryPack;
+﻿using ActualLab.Rpc;
+using MemoryPack;
 
 namespace ActualChat.Contacts;
 
 public interface IExternalContacts : IComputeService
 {
-    [ComputeMethod, Obsolete("2024.04: Not available for clients anymore")]
-    // TODO(FC): Change to ListV1 when API backward compatibility attributes are supported
-    Task<ApiArray<ExternalContactFull>> List(Session session, Symbol deviceId, CancellationToken cancellationToken);
     [ComputeMethod]
-    // TODO: Change to List when API backward compatibility attributes are supported
-    Task<ApiArray<ExternalContact>> List2(Session session, Symbol deviceId, CancellationToken cancellationToken);
+    Task<ApiArray<ExternalContact>> List(Session session, Symbol deviceId, CancellationToken cancellationToken);
     [CommandHandler, Obsolete("2023.10: Replaced with OnBulkChange.")]
     Task<ExternalContactFull?> OnChange(ExternalContacts_Change command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ApiArray<Result<ExternalContactFull?>>> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken);
+
+    // Legacy methods
+    [ComputeMethod, LegacyName("List", "v1.10.999.0"), Obsolete("2024.04: Replaced with new List implementation.")]
+    Task<ApiArray<ExternalContactFull>> LegacyList1(Session session, Symbol deviceId, CancellationToken cancellationToken);
 }
 
 [Obsolete("2023.10: Replaced with ExternalContacts_BulkChange.")]

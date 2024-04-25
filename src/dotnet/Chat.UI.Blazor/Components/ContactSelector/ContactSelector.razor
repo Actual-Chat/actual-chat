@@ -71,15 +71,20 @@
         };
 
     protected override async Task<IReadOnlyList<ChatInfo>> ComputeState(CancellationToken cancellationToken) {
-        var allChats = await ChatListUI.ListAllUnordered(_placeId, Filter, cancellationToken);
-        _allChats.Value = allChats;
+        var chatListOrder = Order;
+        var chatListPreOrder = ChatListPreOrder;
+        var searchPhrase = SearchPhrase;
+        var excludedChats = ExcludeChatIds;
 
+        var allChats = await ChatListUI.ListAllUnordered(_placeId, Filter, cancellationToken).ConfigureAwait(false);
+        _allChats.Value = allChats;
         var chats = allChats.Values;
-        if (ExcludeChatIds is { } excludeChatIds && excludeChatIds.Count != 0)
-            chats = chats.Where(x => !excludeChatIds.Contains(x.Id));
-        chats = chats.OrderBy(Order, ChatListPreOrder);
-        if (!SearchPhrase.IsEmpty)
-            chats = chats.FilterAndOrderBySearchPhrase(SearchPhrase);
+        if (excludedChats != null && excludedChats.Count != 0)
+            chats = chats.Where(x => !excludedChats.Contains(x.Id));
+
+        chats = chats.OrderBy(chatListOrder, chatListPreOrder);
+        if (!searchPhrase.IsEmpty)
+            chats = chats.FilterAndOrderBySearchPhrase(searchPhrase);
         return chats.ToList();
     }
 

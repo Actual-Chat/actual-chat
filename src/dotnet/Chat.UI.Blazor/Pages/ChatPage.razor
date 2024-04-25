@@ -118,22 +118,24 @@
         // and moreover, we want to make sure ComputeState gets invalidated
         // specifically when SelectedChatId changes (vs when ChatSid changes).
 
-        await ChatUI.WhenLoaded.WaitAsync(cancellationToken);
-        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+        var hostInfo = Services.HostInfo();
+        var chatSid = ChatSid;
+
+        await ChatUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         var lastState = State.ValueOrDefault;
         var lastContext = lastState?.ChatContext;
         var lastChatId = lastContext?.Chat.Id ?? ChatId.None;
 
         var isInaccessiblePlace = !chatId.PlaceChatId.PlaceId.IsNone;
-        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
         if (_isVeryFirstLoad) {
             _isVeryFirstLoad = false;
-            var hostInfo = Services.HostInfo();
             var mustDelayVeryFirstLoad =
                 hostInfo.HostKind.IsApp()
-                && ChatSid.IsNullOrEmpty()
+                && chatSid.IsNullOrEmpty()
                 && BrowserInfo.ScreenSize.Value.IsNarrow();
             if (mustDelayVeryFirstLoad) {
                 // Postpone chat loading when it's invisible
@@ -146,8 +148,8 @@
         var account = AccountFull.Loading;
         try {
             if (!AccountUI.WhenLoaded.IsCompleted)
-                await AccountUI.WhenLoaded.WaitAsync(LoadTimeout, cancellationToken);
-            account = await AccountUI.OwnAccount.Use(cancellationToken);
+                await AccountUI.WhenLoaded.WaitAsync(LoadTimeout, cancellationToken).ConfigureAwait(false);
+            account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
             var chat = SpecialChat.NoChatSelected;
             if (!chatId.IsNone) {
 #if false // NOTE(AY): Let's try to disable this for now, maybe it works better after rendering changes
@@ -161,15 +163,16 @@
 
                 chat = await Chats
                     .Get(Session, chatId, cancellationToken)
-                    .WaitAsync(LoadTimeout, cancellationToken);
+                    .WaitAsync(LoadTimeout, cancellationToken)
+                    .ConfigureAwait(false);
                 chat ??= SpecialChat.Unavailable;
             }
-            var footerModel = await GetFooterModel(chat, account, cancellationToken);
+            var footerModel = await GetFooterModel(chat, account, cancellationToken).ConfigureAwait(false);
             var chatContext = new ChatContext(Hub, chat, account);
-            return new Model(chatContext, footerModel, isInaccessiblePlace, enableIncompleteUI);
+            return new(chatContext, footerModel, isInaccessiblePlace, enableIncompleteUI);
         }
         catch (TimeoutException) {
-            Computed.GetCurrent()?.Invalidate(LoadTimeoutToReloadDelay);
+            Computed.Current?.Invalidate(LoadTimeoutToReloadDelay);
             this.NotifyStateHasChanged();
             return lastState != null && chatId == lastChatId
                 ? lastState
@@ -183,21 +186,23 @@
     }
 
     protected async ValueTask<FooterModel> GetFooterModel(Chat chat, Account account, CancellationToken cancellationToken) {
-        if (chat.Id.IsNone)
+        var chatId = chat.Id;
+        var session = Session;
+        if (chatId.IsNone)
             return FooterModel.None;
 
-        var otherUserId = chat.Id.IsPeerChat(out var peerChatId)
+        var otherUserId = chatId.IsPeerChat(out var peerChatId)
             ? peerChatId.UserIds.OtherThan(account.Id)
             : default;
         var canPost = chat.Rules.CanWrite();
         var canJoin = !canPost && chat.Rules.CanJoin();
         var shouldJoinPlaceFirst = false;
         Place? place = null;
-        if (!canPost && chat.Id.IsPlaceChat) {
+        if (!canPost && chatId.IsPlaceChat) {
             shouldJoinPlaceFirst = chat.IsPublic;
-            place = await Hub.Places.Get(Session, chat.Id.PlaceId, cancellationToken).ConfigureAwait(false);
+            place = await Hub.Places.Get(session, chatId.PlaceId, cancellationToken).ConfigureAwait(false);
             if (place == null) {
-                Log.LogWarning("Can't read Place #Id='{PlaceId}' while it should be possible to join to it", chat.Id.PlaceId);
+                Log.LogWarning("Can't read Place #Id='{PlaceId}' while it should be possible to join to it", chatId.PlaceId);
                 canJoin = false;
             }
         }
@@ -210,8 +215,9 @@
             } else {
                 canJoinAnonymously = chat.AllowAnonymousAuthors;
                 var avatars = await Avatars
-                    .ListOwnAvatarIds(Session, cancellationToken)
-                    .WaitAsync(LoadTimeout, cancellationToken);
+                    .ListOwnAvatarIds(session, cancellationToken)
+                    .WaitAsync(LoadTimeout, cancellationToken)
+                    .ConfigureAwait(false);
                 hasMultipleAvatars = avatars.Count > 1 || canJoinAnonymously;
             }
         }

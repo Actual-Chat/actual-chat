@@ -105,6 +105,8 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
             File.Delete(fullPath);
         else if (Directory.Exists(fullPath))
             Directory.Delete(fullPath, true);
+        else
+            return Task.FromException(StandardError.Constraint($"Cannot delete. No such object: '{path}'."));
 
         return Task.CompletedTask;
     }

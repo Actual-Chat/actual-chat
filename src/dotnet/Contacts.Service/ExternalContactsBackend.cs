@@ -1,4 +1,5 @@
 using ActualChat.Contacts.Db;
+using ActualChat.Hashing;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -48,12 +49,12 @@ public class ExternalContactsBackend(
         var idPrefix = ExternalContactId.Prefix(userDeviceId);
         var dbExternalContacts = await dbContext.ExternalContacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
-            .Select(x => new { x.Id, x.Version, x.Sha256Hash })
+            .Select(x => new { x.Id, x.Version, x.Hash })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
         return dbExternalContacts.Select(x =>
-                new ExternalContact(new ExternalContactId(x.Id), x.Version) { Sha256Hash = x.Sha256Hash })
+                new ExternalContact(new ExternalContactId(x.Id), x.Version) { Hash = new HashString(x.Hash) })
             .ToApiArray();
     }
 
@@ -93,7 +94,7 @@ public class ExternalContactsBackend(
         ExternalContactsBackend_BulkChange command,
         CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating()) {
+        if (InvalidationMode.IsOn) {
             var invIds = command.Changes.Select(x => x.Id.UserDeviceId).Distinct();
             foreach (var invId in invIds) {
  #pragma warning disable CS0618 // Type or member is obsolete
@@ -182,7 +183,7 @@ public class ExternalContactsBackend(
     public virtual async Task OnRemoveAccount(ExternalContactsBackend_RemoveAccount command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
-        if (Computed.IsInvalidating())
+        if (InvalidationMode.IsOn)
             return; // we can skip invalidation for own contacts
 
         var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);

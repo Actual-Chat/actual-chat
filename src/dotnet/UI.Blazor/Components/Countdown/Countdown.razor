@@ -30,7 +30,7 @@
         var remaining = (EndsAt - Clock.Now).Positive();
         var result = ZString.Format(Format, remaining);
         if (remaining > TimeSpan.Zero)
-            Computed.GetCurrent()?.Invalidate(TimeSpan.FromSeconds(UpdatePeriod), true);
+            Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(UpdatePeriod), true);
 
         return Task.FromResult(result);
     }

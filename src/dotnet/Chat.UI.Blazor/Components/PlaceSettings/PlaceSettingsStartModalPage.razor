@@ -98,7 +98,7 @@
          <FormBlock Title="Private join links">
              @if (m.Invites.Count > 0) {
                  <InviteList
-                     Invites="m.Invites"
+                     Invites="@m.Invites"
                      LinkFormat="@InviteLinkFormat.PrivateChat"
                      NewInviteId="@_newInviteId"
                      AllowRevoke="true"/>
@@ -110,11 +110,11 @@
          </FormBlock>
     }
 
-    @if (isOwner && m.EnableChatCopying) {
+    @if (isOwner && m is { EnableChatCopying: true }) {
         <FormBlock Title="Copy chats">
-            <Button Click="OnCopyChatClick" Class="btn-modal h-10 btn-w-full">
-                <i class="icon-plus text-xl"></i>
-                Copy chat into the place
+            <Button Click="OnCopyChatClick" Class="btn-modal btn-w-full">
+                <Icon><i class="icon-plus text-xl"></i></Icon>
+                <Title>Copy chat into the place</Title>
             </Button>
         </FormBlock>
     }
@@ -199,23 +199,26 @@
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var place = await Places.Get(Session, PlaceId, cancellationToken);
+        var placeId = PlaceId;
+        var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
         if (place == null || !place.Rules.CanEditProperties())
-            return new ComputedModel { Place = place };
+            return new() { Place = place };
 
-        var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken);
-        var invites = await Invites.ListPlaceInvites(Session, place.Id, cancellationToken);
+        var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
+        var invites = await Invites.ListPlaceInvites(Session, place.Id, cancellationToken).ConfigureAwait(false);
         var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
-        invites = invites
+        var activeInvites = invites
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
-            .ToApiArray();
-        var welcomeChatId = await Places.GetWelcomeChatId(Session, PlaceId, cancellationToken);
-        var link = !welcomeChatId.IsNone ? Links.Chat(welcomeChatId).ToDisplayUrl(Hub.UrlMapper()) : (DisplayUrl?)null;
+            .ToList();
+        var welcomeChatId = await Places.GetWelcomeChatId(Session, placeId, cancellationToken).ConfigureAwait(false);
+        var link = !welcomeChatId.IsNone
+            ? Links.Chat(welcomeChatId).ToDisplayUrl(Hub.UrlMapper())
+            : (DisplayUrl?)null;
         return new() {
             Place = place,
             Link = link,
-            Invites = invites,
+            Invites = activeInvites,
             MembersCount = allAuthorIds.Count,
             IsOwner = place.Rules.IsOwner(),
             EnableChatCopying = Hub.AccountUI.OwnAccount.Value.IsAdmin,
@@ -306,6 +309,6 @@
         public DisplayUrl? Link { get; init; }
         public bool IsOwner { get; init; }
         public bool EnableChatCopying { get; init; }
-        public ApiArray<Invite> Invites { get; init; } = ApiArray.New<Invite>();
+        public List<Invite> Invites { get; init; } = [];
     }
 }

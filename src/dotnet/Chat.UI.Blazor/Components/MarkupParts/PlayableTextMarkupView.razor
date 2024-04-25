@@ -46,21 +46,77 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var hasSelection = await SelectionUI.HasSelection.Use(cancellationToken);
-        var model = await InnerComputeState(cancellationToken);
-        if (_rendered is not { Map: not null })
+        // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
+        var chatId = Entry.ChatId;
+        var audioEntryId = Entry.AudioEntryId;
+        var markup = Markup;
+        var rendered = _rendered;
+
+        var hasSelection = await SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
+        var model = await InnerComputeState(cancellationToken).ConfigureAwait(false);
+        if (rendered is not { Map: not null })
             return model with { // Never rendered
                 HasSelection = hasSelection,
             };
 
-        var colorLease = ActualizeColorLease(model, _rendered);
-        var map = EnrichMapWithPlayedStatus(model.Map, _rendered.Map);
-        return new Model {
+        var colorLease = ActualizeColorLease(model, rendered);
+        var map = EnrichMapWithPlayedStatus(model.Map, rendered.Map);
+        return new() {
             Map = map,
             ColorLease = colorLease,
-            Color = colorLease?.Color ?? _rendered.Color,
+            Color = colorLease?.Color ?? rendered.Color,
             HasSelection = hasSelection,
         };
+
+        async Task<Model> InnerComputeState(CancellationToken cancellationToken1)
+        {
+            if (audioEntryId == null)
+                return Model.None;
+
+            if (markup.TimeRange.IsEmptyOrNegative)
+                return Model.None;
+
+            var trackId = ChatAudioTrackInfo.ComposeTrackId(chatId, audioEntryId.GetValueOrDefault());
+            if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken1) is not ChatAudioTrackInfo trackInfo)
+                return Model.None;
+
+            var playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken1);
+            if (playbackState == null || playbackState.IsEnded)
+                return Model.None;
+
+            var playingAt = (float) (trackInfo.RecordedAt + playbackState.PlayingAt - trackInfo.AudioEntry.BeginsAt)
+                .TotalSeconds;
+            var playingAtNearbyRange = new Range<float>(playingAt - 2f, playingAt + 2f);
+            if (!playingAtNearbyRange.Overlaps(markup.TimeRange))
+                return Model.None;
+
+            var map1 = new WordPlayback[markup.Words.Count];
+            for (var i = 0; i < markup.Words.Count; i++) {
+                var word = markup.Words[i];
+                var isWordPlaying = word.TimeRange.Move(-0.5f, 0.3f).Contains(playingAt);
+                map1[i] = isWordPlaying ? WordPlayback.Playing : WordPlayback.None;
+            }
+
+            var isEmpty = map1.All(c => c == WordPlayback.None);
+            if (isEmpty)
+                return Model.None;
+
+            for (var i = 0; i < markup.Words.Count; i++) {
+                var prev = i > 0 ? map1[i - 1] : WordPlayback.None;
+                var current = map1[i];
+                var next = i < map1.Length - 1 ? map1[i + 1] : WordPlayback.None;
+                var actual = current;
+                if (current == WordPlayback.Playing) {
+                    if (prev == WordPlayback.None)
+                        actual |= WordPlayback.PlayingStart;
+                    if (next == WordPlayback.None)
+                        actual |= WordPlayback.PlayingEnd;
+                }
+                map1[i] = actual;
+            }
+
+            return new() { Map = map1 };
+        }
     }
 
     private async Task OnClick(int startIndex) {
@@ -134,59 +190,6 @@
             }
         }
         return colorLease;
-    }
-
-    private async Task<Model> InnerComputeState(CancellationToken cancellationToken)
-    {
-        // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
-        var audioEntryId = Entry.AudioEntryId;
-        if (audioEntryId == null)
-            return Model.None;
-
-        var timeRange = Markup.TimeRange;
-        if (timeRange.IsEmptyOrNegative)
-            return Model.None;
-
-        var trackId = ChatAudioTrackInfo.ComposeTrackId(Entry.ChatId, audioEntryId.GetValueOrDefault());
-        if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken) is not ChatAudioTrackInfo trackInfo)
-            return Model.None;
-
-        var playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken);
-        if (playbackState == null || playbackState.IsEnded)
-            return Model.None;
-
-        var playingAt = (float) (trackInfo.RecordedAt + playbackState.PlayingAt - trackInfo.AudioEntry.BeginsAt)
-            .TotalSeconds;
-        var playingAtNearbyRange = new Range<float>(playingAt - 2f, playingAt + 2f);
-        if (!playingAtNearbyRange.Overlaps(timeRange))
-            return Model.None;
-
-        var map = new WordPlayback[Markup.Words.Count];
-        for (var i = 0; i < Markup.Words.Count; i++) {
-            var word = Markup.Words[i];
-            var isWordPlaying = word.TimeRange.Move(-0.5f, 0.3f).Contains(playingAt);
-            map[i] = isWordPlaying ? WordPlayback.Playing : WordPlayback.None;
-        }
-
-        var isEmpty = map.All(c => c == WordPlayback.None);
-        if (isEmpty)
-            return Model.None;
-
-        for (var i = 0; i < Markup.Words.Count; i++) {
-            var prev = i > 0 ? map[i - 1] : WordPlayback.None;
-            var current = map[i];
-            var next = i < map.Length - 1 ? map[i + 1] : WordPlayback.None;
-            var actual = current;
-            if (current == WordPlayback.Playing) {
-                if (prev == WordPlayback.None)
-                    actual |= WordPlayback.PlayingStart;
-                if (next == WordPlayback.None)
-                    actual |= WordPlayback.PlayingEnd;
-            }
-            map[i] = actual;
-        }
-
-        return new Model { Map = map };
     }
 
     private string GetPlayingClass(WordPlayback status) {

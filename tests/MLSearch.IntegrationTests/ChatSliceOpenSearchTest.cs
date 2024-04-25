@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch;
@@ -23,15 +22,14 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
     protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
-        var cursorIndexName = AppHost.Services.GetRequiredService<IIndexSettingsSource>()
-            .GetSettings(IndexNames.ChatContentCursor).IndexName;
         var settings = AppHost.Services.GetRequiredService<IIndexSettingsSource>().GetSettings(IndexNames.ChatContent);
-        var searchIndexName = settings.IndexName;
         var pipelineId = settings.IngestPipelineId;
 
         var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
-        await client.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/{searchIndexName}", CancellationToken.None);
-        await client.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/{cursorIndexName}", CancellationToken.None);
+        var catResponse = await client.Cat.IndicesAsync(cat => cat.Index(IndexNames.MLTestIndexPattern));
+        foreach (var catRecord in catResponse.Records) {
+            await client.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/{catRecord.Index}", CancellationToken.None);
+        }
         await client.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/_ingest/pipeline/{pipelineId}", CancellationToken.None);
 
         await base.DisposeAsync();

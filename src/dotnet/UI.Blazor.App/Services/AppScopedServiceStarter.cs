@@ -40,7 +40,7 @@ public class AppScopedServiceStarter
             var browserInit = Services.GetRequiredService<BrowserInit>();
             _ = browserInit.Initialize(
                 HostInfo.HostKind,
-                Constants.Api.Version,
+                Constants.Api.StringVersion,
                 baseUri,
                 sessionHash,
                 browserInfo.BlazorRef);
@@ -116,7 +116,7 @@ public class AppScopedServiceStarter
             if (hostKind.IsApp())
                 await StartHostedServices().ConfigureAwait(false);
 
-            await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(15), cancellationToken).ConfigureAwait(false);
             Services.GetRequiredService<ContactSync>().Start();
         }
         catch (Exception e) when (e is not OperationCanceledException) {

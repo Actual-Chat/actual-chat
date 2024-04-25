@@ -298,8 +298,10 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         contacts.Should().BeEmpty("no matching phones or emails");
     }
 
+    // Private methods
+
     private Task<ApiArray<ExternalContact>> List(Symbol deviceId)
-        => _externalContacts.List2(_tester.Session, deviceId, CancellationToken.None);
+        => _externalContacts.List(_tester.Session, deviceId, CancellationToken.None);
 
     private async Task Add(params ExternalContactFull[] externalContacts)
     {
@@ -328,10 +330,9 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
     private async Task<List<ContactId>> ListContactIds(CancellationToken cancellationToken = default)
     {
-        var ids = await _contacts.ListIds(_tester.Session, cancellationToken);
+        var ids = await _contacts.ListIds(_tester.Session, PlaceId.None, cancellationToken);
         return ids.Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
     }
-
 
     private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
         => new (new ExternalContactId(new UserDeviceId(owner.Id, ownerDeviceId), NewDeviceContactId()));
@@ -346,5 +347,5 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         => ContactId.Peer(owner.Id, friendAccount.Id);
 
     private static EquivalencyAssertionOptions<ExternalContactFull> Including(EquivalencyAssertionOptions<ExternalContactFull> o)
-        => o.Including(x => x.Id).Including(x => x.Sha256Hash);
+        => o.Including(x => x.Id).Including(x => x.Hash);
 }

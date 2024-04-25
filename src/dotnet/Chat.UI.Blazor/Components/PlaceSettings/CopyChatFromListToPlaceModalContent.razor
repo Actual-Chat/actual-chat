@@ -1,0 +1,54 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Contacts
+@inherits ComputedStateComponent<List<Contact?>>
+@{
+    var m = State.Value;
+}
+
+<div class="c-chat-list">
+    @foreach (var contact in m) {
+        @if (contact != null) {
+            <div class="c-chat"
+                 @onclick="@(() => OnChatClick.InvokeAsync(contact.Chat.Id))">
+                <div class="c-chat-avatar">
+                    <ChatIcon Chat="@contact.Chat"/>
+                </div>
+                <div class="c-chat-title">
+                    @contact.Chat.Title
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private IContacts Contacts => Hub.Contacts;
+    private Session Session => Hub.Session();
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public EventCallback<ChatId> OnChatClick { get; set; }
+
+    protected override ComputedState<List<Contact?>>.Options GetStateOptions()
+        => new() {
+            InitialValue = [],
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<List<Contact?>> ComputeState(CancellationToken cancellationToken) {
+        var contactIds = await Contacts.ListIds(Session, PlaceId.None, cancellationToken).ConfigureAwait(false);
+        var allContacts = await contactIds
+            .Select(x => Contacts.Get(Session, x, cancellationToken))
+            .Collect(256)
+            .ConfigureAwait(false);
+        var allowedContacts = allContacts
+            .SkipNullItems()
+            .Where(c => c.Kind == ContactKind.Chat
+                        && c.PlaceId == PlaceId.None
+                        && c.Chat is { IsPublic: true, HasSingleAuthor: false }
+                        && (c.Chat.Rules.Permissions & ChatPermissions.Write) != 0
+                        && (c.Chat.Rules.Permissions & ChatPermissions.Owner) != 0)
+            .ToList<Contact?>();
+        return allowedContacts;
+    }
+}

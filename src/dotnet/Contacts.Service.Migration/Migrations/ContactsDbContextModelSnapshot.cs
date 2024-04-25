@@ -92,6 +92,11 @@ namespace ActualChat.Contacts.Migrations
                         .HasColumnType("text")
                         .HasColumnName("given_name");
 
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("hash");
+
                     b.Property<string>("MiddleName")
                         .IsRequired()
                         .HasColumnType("text")
@@ -110,11 +115,6 @@ namespace ActualChat.Contacts.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("name_suffix");
-
-                    b.Property<string>("Sha256Hash")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("sha256_hash");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
@@ -163,14 +163,14 @@ namespace ActualChat.Contacts.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("hash");
+
                     b.Property<DateTime>("ModifiedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_at");
-
-                    b.Property<string>("Sha256Hash")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("sha256_hash");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
@@ -278,7 +278,6 @@ namespace ActualChat.Contacts.Migrations
                         .HasColumnName("host_id");
 
                     b.Property<string>("ItemsJson")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("items_json");
 
@@ -287,7 +286,6 @@ namespace ActualChat.Contacts.Migrations
                         .HasColumnName("logged_at");
 
                     b.Property<string>("NestedOperations")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("nested_operations");
 

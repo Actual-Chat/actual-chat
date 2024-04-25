@@ -52,7 +52,7 @@ public class Notifications(IServiceProvider services) : DbServiceBase<Notificati
         // NOTE(AY): Add backend, implement IApiCommand
         var context = CommandContext.GetCurrent();
 
-        if (Computed.IsInvalidating()) {
+        if (InvalidationMode.IsOn) {
             var device = context.Operation.Items.Get<DbDevice>();
             var isNew = context.Operation.Items.GetOrDefault(false);
             if (isNew && device != null)

@@ -24,7 +24,7 @@ public class TestComputedKvas : IKvas, IComputeService
             else
                 Storage[key] = value;
         }
-        using (Computed.Invalidate())
+        using (InvalidationMode.Begin())
             _ = Get(key, default);
         return Task.CompletedTask;
     }

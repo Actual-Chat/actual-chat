@@ -16,6 +16,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
     private readonly TaskCompletionSource _whenEnabledSource = TaskCompletionSourceExt.New();
 
     private IChats Chats => Hub.Chats;
+    private IContacts Contacts => Hub.Contacts;
     private ChatActivity ChatActivity => Hub.ChatActivity;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private AudioInitializer AudioInitializer => Hub.AudioInitializer;
@@ -74,18 +75,13 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
     [ComputeMethod(MinCacheDuration = 300)] // Synced
     public virtual async Task<List<ChatId>> GetChatsYouNeedToKeepListeningTo(CancellationToken cancellationToken)
     {
-        var result = new List<ChatId>();
         await Hub.ChatUI.WhenLoaded.ConfigureAwait(false);
-        var contacts = await Hub.Contacts.ListContacts(Session, cancellationToken).ConfigureAwait(false);
-        foreach (var chatId in contacts.Select(contact => contact.ChatId)) {
-            var userChatSettings = await AccountSettings
-                .GetUserChatSettings(chatId, cancellationToken)
-                .ConfigureAwait(false);
-            var listeningMode = userChatSettings.ListeningMode;
-            if (listeningMode == ListeningMode.KeepListening)
-                result.Add(chatId);
-        }
-        return result;
+
+        var listeningSettings = await AccountSettings
+            .GetUserListeningSettings(cancellationToken)
+            .ConfigureAwait(false);
+
+        return listeningSettings.AlwaysListenedChatIds.ToList();
     }
 
     [ComputeMethod] // Synced

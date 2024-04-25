@@ -121,7 +121,7 @@
     <meta name="twitter:image" content="@image">
 
     @* The version of icon.woff2 must match the version in icons.css! *@
-    <link rel="preload" href="/dist/fonts/icon.woff2?t=1711017425404" as="font" crossorigin />
+    <link rel="preload" href="/dist/fonts/icon.woff2?t=1713354723932" as="font" crossorigin />
     <link rel="preload" href="/dist/fonts/TT-Commons-Pro-Regular.woff2" as="font" crossorigin />
     <link rel="preload" href="/dist/fonts/TT-Commons-Pro-Medium.woff2" as="font" crossorigin />
     <link rel="preload" href="/dist/fonts/TT-Commons-Pro-DemiBold.woff2" as="font" crossorigin />
@@ -273,13 +273,14 @@
         <script src="_framework/blazor.webassembly@(blazorScriptSuffix).js" autostart="false"></script>
         <script nonce="@blazorReloadNonce">
             Blazor.start({
-                @* // WASM Profiling & Mono logging
-                configureRuntime: dotnet => {
-                    dotnet.withConfig({ browserProfilerOptions: {} });
-                    dotnet.withEnvironmentVariable("MONO_LOG_LEVEL", "debug");
-                    dotnet.withEnvironmentVariable("MONO_LOG_MASK", "gc");
-                },
-                *@
+                /*
+               // WASM Profiling & Mono logging
+               configureRuntime: dotnet => {
+                   dotnet.withConfig({ browserProfilerOptions: {} });
+                   dotnet.withEnvironmentVariable("MONO_LOG_LEVEL", "debug");
+                   dotnet.withEnvironmentVariable("MONO_LOG_MASK", "gc");
+               },
+               */
                 loadBootResource: function (type, name, defaultUri, integrity) {
                     if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration') {
                         return (async function () {

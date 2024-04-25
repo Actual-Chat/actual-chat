@@ -124,6 +124,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = Chat.Id; // Capture to locals to make sure we can use .ConfigureAwait(false) below
+
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
         var language = await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
         var recorderState = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
@@ -132,7 +133,7 @@
         var isTransitioning =
             recordingChatId == chatId // The recorder records in this chat
             && recorderState.IsRecording != isRecordingHere; // AND it's state is not in sync with the expected one here
-        return new Model(
+        return new (
             Chat,
             language,
             isRecordingHere,

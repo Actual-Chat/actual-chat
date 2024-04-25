@@ -79,22 +79,18 @@
         var index = Index;
 
         var (indexIsValid, chatId) = await ChatListUI.GetItem(listKind, index).ConfigureAwait(false);
-        if (chatId.IsNone) {
-            if (indexIsValid) {
-                return Model.Loading;
-            }
-            return Model.None;
-        }
+        if (chatId.IsNone)
+            return indexIsValid
+                ? Model.Loading
+                : Model.None;
 
         var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chatInfo == null) {
+        if (chatInfo == null)
             return Model.None;
-        }
 
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
-        if (chatState == null) {
+        if (chatState == null)
             return Model.None;
-        }
 
         var isLastItemInBlock = false;
         if (chatState.Contact.IsPinned && listKind == ChatListKind.All) {
@@ -105,7 +101,7 @@
                 isLastItemInBlock = !nextChatInfo.Contact.IsPinned;
         }
 
-        return new Model {
+        return new() {
             ChatState = chatState,
             IsLastItemInBlock = isLastItemInBlock,
         };

@@ -36,6 +36,18 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
         m = Parse<UrlMarkup>("https://console.cloud.google.com/logs/query;query=resource.labels.container_name%3D%22actual-chat-app%22;timeRange=PT1H;summaryFields=:false:32:beginning:false;cursorTimestamp=2022-05-23T10:19:37.057723681Z?referrer=search&project=actual-chat-app-prod", out text);
         m.Url.Should().Be(text);
         m.Kind.Should().Be(UrlMarkupKind.Www);
+
+        m = Parse<UrlMarkup>("https://www.booking.com/hotel/gr/peninsula-agia-pelagia.html?label=gr-9DH6*qo6Fm", out text);
+        m.Url.Should().Be(text);
+        m.Kind.Should().Be(UrlMarkupKind.Www);
+
+        m = Parse<UrlMarkup>("https://www.roveconcepts.com/round-chair?aid[12]=173&aid[79]=724", out text);
+        m.Url.Should().Be(text);
+        m.Kind.Should().Be(UrlMarkupKind.Www);
+
+        m = Parse<UrlMarkup>("https://actual.chat/?ws=!1m4!1m3", out text);
+        m.Url.Should().Be(text);
+        m.Kind.Should().Be(UrlMarkupKind.Www);
     }
 
     [Theory]

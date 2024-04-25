@@ -15,7 +15,7 @@
 
 <div class="c-content">
     @if (IsLeftNavigateButtonVisible) {
-        <HeaderButton Click="@OnOpenLeftPanelClick" Class="md:hidden">
+        <HeaderButton Click="@OnOpenLeftPanelClick" Class="chat-header-back">
             <i class="icon-arrow-left"></i>
         </HeaderButton>
     }
@@ -64,9 +64,9 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var hasSelection = await ChatContext.Hub.SelectionUI.HasSelection.Use(cancellationToken);
-        var isSearchMode = await ChatContext.Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken);
-        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        var hasSelection = await ChatContext.Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
+        var isSearchMode = await ChatContext.Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
         return new() {
             HasSelection = hasSelection,
             IsSearchMode = isSearchMode,

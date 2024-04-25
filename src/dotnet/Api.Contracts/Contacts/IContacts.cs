@@ -4,15 +4,16 @@ namespace ActualChat.Contacts;
 
 public interface IContacts : IComputeService
 {
-    [ComputeMethod]
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
     Task<Contact?> Get(Session session, ContactId contactId, CancellationToken cancellationToken);
-    [ComputeMethod]
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
     Task<Contact?> GetForChat(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 300)]
+    [Obsolete("2024.04: Use overload that takes placeId parameter instead.")]
     Task<ApiArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
-    [ComputeMethod(MinCacheDuration = 300)]
+    [ComputeMethod(MinCacheDuration = 300), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
     Task<ApiArray<PlaceId>> ListPlaceIds(Session session, CancellationToken cancellationToken);
-    [ComputeMethod(MinCacheDuration = 300)]
+    [ComputeMethod(MinCacheDuration = 300), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
     Task<ApiArray<ContactId>> ListIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
     [CommandHandler]

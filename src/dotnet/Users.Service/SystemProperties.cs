@@ -7,7 +7,7 @@ namespace ActualChat.Users;
 public class SystemProperties(IServiceProvider services)
     : DbServiceBase<UsersDbContext>(services), ISystemProperties
 {
-    private static readonly Task<string> ApiVersionTask = Task.FromResult(Constants.Api.Version);
+    private static readonly Task<string> ApiVersionTask = Task.FromResult(Constants.Api.StringVersion);
 
     // Not a [ComputeMethod]!
     public Task<double> GetTime(CancellationToken cancellationToken)
@@ -27,7 +27,7 @@ public class SystemProperties(IServiceProvider services)
         var (session, everywhere) = command;
         var context = CommandContext.GetCurrent();
 
-        if (Computed.IsInvalidating()) {
+        if (InvalidationMode.IsOn) {
             // It should happen inside this block to make sure it runs on every node
             var hostId = Services.GetRequiredService<HostId>();
             var operation = context.Operation;
@@ -56,7 +56,7 @@ public class SystemProperties(IServiceProvider services)
         var context = CommandContext.GetCurrent();
         var computedGraphPruner = Services.GetRequiredService<ComputedGraphPruner>();
 
-        if (Computed.IsInvalidating()) {
+        if (InvalidationMode.IsOn) {
             // It should happen inside this block to make sure it runs on every node
             var hostId = Services.GetRequiredService<HostId>();
             var operation = context.Operation;

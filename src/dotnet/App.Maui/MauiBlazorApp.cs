@@ -22,6 +22,11 @@ public sealed class MauiBlazorApp : AppBase, IDisposable
         TrueSessionResolver = Services.GetRequiredService<TrueSessionResolver>();
         var session = await TrueSessionResolver.SessionTask.ConfigureAwait(true);
         _mauiWebView?.SetScopedServices(Services, session);
+
+        // Uncomment to gather Fusion stats for profiling
+        // var debugUI = Services.GetRequiredService<DebugUI>();
+        // debugUI.StartFusionMonitor();
+        // debugUI.StartTaskMonitor();
         try {
             await base.OnInitializedAsync().ConfigureAwait(false);
         }

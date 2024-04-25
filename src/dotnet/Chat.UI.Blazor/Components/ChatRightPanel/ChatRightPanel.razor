@@ -71,12 +71,14 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var isVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
-        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
-        var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken);
+        var chatId = Chat.Id;
+
+        var isVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
         var showMemberTab = rules.CanSeeMembers();
-        var shareModel = await ShareUI.GetModel(Chat.Id, cancellationToken);
-        var showSearchPanel = await ChatContext.Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken);
+        var shareModel = await ShareUI.GetModel(chatId, cancellationToken).ConfigureAwait(false);
+        var showSearchPanel = await ChatContext.Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
         if (showSearchPanel && !isVisible) {
             ChatContext.Hub.PanelsUI.Right.SetIsVisible(true);
         }

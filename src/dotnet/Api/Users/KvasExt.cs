@@ -37,6 +37,29 @@ public static class KvasExt
     public static Task SetUserLanguageSettings(this IKvas<User> kvas, UserLanguageSettings value, CancellationToken cancellationToken)
         => kvas.Set(UserLanguageSettings.KvasKey, value, cancellationToken);
 
+    // UserListeningSettings
+
+    public static async ValueTask<UserListeningSettings> GetUserListeningSettings(this IKvas<User> kvas, CancellationToken cancellationToken)
+    {
+        var valueOpt = await kvas.TryGet<UserListeningSettings>(UserListeningSettings.KvasKey, cancellationToken).ConfigureAwait(false);
+        return valueOpt.IsSome(out var value) ? value : new();
+    }
+
+    public static Task SetUserListeningSettings(this IKvas<User> kvas, UserListeningSettings value, CancellationToken cancellationToken)
+        => kvas.Set(UserListeningSettings.KvasKey, value, cancellationToken);
+
+    public static async Task AddAlwaysListenedChat(this IKvas<User> kvas, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var settings = await GetUserListeningSettings(kvas, cancellationToken).ConfigureAwait(false);
+        await kvas.Set(UserListeningSettings.KvasKey, settings.Add(chatId), cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task RemoveAlwaysListenedChat(this IKvas<User> kvas, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var settings = await GetUserListeningSettings(kvas, cancellationToken).ConfigureAwait(false);
+        await kvas.Set(UserListeningSettings.KvasKey, settings.Remove(chatId), cancellationToken).ConfigureAwait(false);
+    }
+
     // TranscriptionEngineSettings
 
     public static async ValueTask<UserTranscriptionEngineSettings> GetUserTranscriptionEngineSettings(this IKvas<User> kvas, CancellationToken cancellationToken)

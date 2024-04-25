@@ -136,7 +136,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
             _activeEntries = _activeEntries.Add(entry);
             thisAuthorEntryCount = _activeEntries.Count(e => e.AuthorId == entry.AuthorId);
         }
-        using (Computed.Invalidate()) {
+        using (InvalidationMode.Begin()) {
             _ = GetStreamingEntries(default);
             if (thisAuthorEntryCount == 1) {
                 _ = GetStreamingAuthorIds(default);
@@ -154,7 +154,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
                 _lastTranscribedAt.Value = ServerClock.Now;
             thisAuthorEntryCount = _activeEntries.Count(e => e.AuthorId == entry.AuthorId);
         }
-        using (Computed.Invalidate()) {
+        using (InvalidationMode.Begin()) {
             _ = GetStreamingEntries(default);
             if (thisAuthorEntryCount == 0) {
                 _ = GetStreamingAuthorIds(default);

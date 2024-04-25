@@ -23,14 +23,17 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new (),
+            InitialValue = new(),
             UpdateDelayer = FixedDelayer.Get(0.1),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var count = await ChatListUI.GetUnreadChatCount(ChatListView.PlaceId, ChatListFilter, cancellationToken).ConfigureAwait(false);
+        var placeId = ChatListView.PlaceId;
+        var chatListFilter = ChatListFilter;
 
-        return new Model {
+        var count = await ChatListUI.GetUnreadChatCount(placeId, chatListFilter, cancellationToken).ConfigureAwait(false);
+
+        return new() {
             Count = count,
         };
     }

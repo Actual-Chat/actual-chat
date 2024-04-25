@@ -47,7 +47,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
         var chatId = command.ChatId.Require();
         var context = CommandContext.GetCurrent();
 
-        if (Computed.IsInvalidating()) {
+        if (InvalidationMode.IsOn) {
             var invChat = context.Operation.Items.Get<Chat>()!;
             _ = ChatsBackend.Get(invChat.Id, default);
             return;
@@ -122,7 +122,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
         ChatsUpgradeBackend_FixCorruptedReadPositions command,
         CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
+        if (InvalidationMode.IsOn)
             return; // It just spawns other commands, so nothing to do here
 
         var chatPositionsBackend = Services.GetRequiredService<IChatPositionsBackend>();

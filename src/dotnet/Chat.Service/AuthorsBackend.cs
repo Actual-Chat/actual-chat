@@ -156,7 +156,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             throw new ArgumentOutOfRangeException(nameof(command), "Either AuthorId or UserId must be provided.");
 
         var context = CommandContext.GetCurrent();
-        if (Computed.IsInvalidating()) {
+        if (InvalidationMode.IsOn) {
             var (invAuthor, invOldAuthor) = context.Operation.Items.GetOrDefault<(AuthorFull, AuthorFull?)>();
             if (!invAuthor.Id.IsNone) {
                 _ = GetInternal(chatId, invAuthor.Id, default);
@@ -322,7 +322,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         }
 
         var context = CommandContext.GetCurrent();
-        if (Computed.IsInvalidating()) {
+        if (InvalidationMode.IsOn) {
             var invAuthors = context.Operation.Items.GetOrDefault<AuthorFull[]>();
             foreach (var invAuthor in invAuthors) {
                 _ = GetInternal(chatId, invAuthor.Id, default);
@@ -383,7 +383,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     {
         var (chatId, newChatId, rolesMap, correlationId) = command;
         var context = CommandContext.GetCurrent();
-        if (Computed.IsInvalidating()) {
+        if (InvalidationMode.IsOn) {
             if (context.Operation.Items[typeof(List<UserId>)] is List<string> invAuthorUserSids)
                 foreach (var invAuthorUserSid in invAuthorUserSids)
                     _ = GetByUserIdInternal(newChatId, new UserId(invAuthorUserSid), default);
@@ -499,7 +499,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     [EventHandler]
     public virtual async Task OnAvatarChangedEvent(AvatarChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
+        if (InvalidationMode.IsOn)
             return; // It just spawns other commands, so nothing to do here
 
         var (_, oldAvatar, changeKind) = eventCommand;

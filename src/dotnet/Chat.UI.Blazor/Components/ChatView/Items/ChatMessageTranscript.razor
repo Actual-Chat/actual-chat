@@ -53,7 +53,9 @@
         try {
             var entry = message.Entry;
             var diffs = StreamClient.GetTranscript(entry.StreamId, cancellationToken);
-            var transcripts = diffs.ToTranscripts();
+            var transcripts = diffs
+                .ToTranscripts()
+                .Throttle(TimeSpan.FromMilliseconds(320), cancellationToken);
             var lastText = "";
             await foreach (var transcript in transcripts.ConfigureAwait(false)) {
                 var text = transcript.Text;

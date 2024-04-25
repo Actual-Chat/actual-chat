@@ -9,7 +9,7 @@ public class DedicatedEventHandler(ScheduledCommandTestService testService) : IC
     [EventHandler]
     public virtual async Task OnTestEvent2(TestEvent2 event2, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
+        if (InvalidationMode.IsOn)
             return;
 
         using var testClock = new TestClock();

@@ -4,22 +4,22 @@ namespace ActualChat.Chat;
 
 public interface IChats : IComputeService
 {
-    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
+    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
     Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
+    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
     Task<AuthorRules> GetRules(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(MinCacheDuration = 60, InvalidationDelay = 0.8)]
+    [ComputeMethod(MinCacheDuration = 60, InvalidationDelay = 0.8), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
     Task<ChatNews> GetNews(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
+    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
     Task<long> GetEntryCount(
         Session session,
         ChatId chatId,
@@ -29,7 +29,7 @@ public interface IChats : IComputeService
 
     // Note that it returns (firstId, lastId + 1) range!
     // Client-side methods always skips entries with IsRemoved flag
-    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
+    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
     Task<Range<long>> GetIdRange(
         Session session,
         ChatId chatId,
@@ -37,7 +37,7 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     // Client-side methods always skips entries with IsRemoved flag
-    [ComputeMethod(MinCacheDuration = 10), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
+    [ComputeMethod(MinCacheDuration = 10), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 300)]
     Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,

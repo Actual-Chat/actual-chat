@@ -12,10 +12,10 @@ internal sealed class TracerSource : ITracerSource
 internal static class TracerSourceExtensions
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static TraceRegion? TraceRegion(this ITracerSource? tracing)
+    public static TraceRegion? TraceRegion(this ITracerSource? tracing, [CallerMemberName] string label="")
     {
         // This method is made as an extension to handle nulls
         var tracer = tracing?.GetTracer();
-        return tracer?.Region();
+        return tracer?.Region(label);
     }
 }

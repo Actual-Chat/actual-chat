@@ -41,6 +41,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasChat = ChatContext.HasChat;
         var chat = ChatContext.Chat;
+        
         if (!hasChat || !chat.Id.IsPlaceChat || !chat.Rules.IsOwner())
             return Model.Hidden;
 
@@ -51,7 +52,7 @@
         if (copiedChat.IsPublished)
             return Model.Hidden;
 
-        return new Model(true, copiedChat);
+        return new (true, copiedChat);
     }
 
     private Task OnPublishClick(ChatCopyState copiedChat)

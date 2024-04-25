@@ -148,12 +148,10 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply flex-auto flex-x justify-between items-center grow gap-x-2;
     @apply truncate;
 }
-.chat-header-center:not(:has(.pic)) {
-    @apply pl-3;
-}
 .chat-header-center > .chat-header-title {
     @apply flex-1 flex-y items-start justify-center;
-    @apply select-none truncate;
+    @apply select-none;
+    @apply line-clamp-1;
     @apply no-highlight;
 }
 .chat-header-center > .chat-header-title > .c-title {
