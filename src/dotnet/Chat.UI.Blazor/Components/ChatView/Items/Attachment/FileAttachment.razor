@@ -1,19 +1,26 @@
+@using MimeKit
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
     var fileSize = Attachment.Media.Length / (1024 * 1024d);
     var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
+    MimeTypes.TryGetExtension(Attachment.Media.ContentType, out var extension);
+    var fileExtension = extension.ToUpper().Replace(".", "");
+    var fileCls = _fileColors.GetValueOrDefault(fileExtension, "file-default");
 }
 
 <a class="file-attachment unfocusable" href="@url" target="_blank" role="button">
-    <div class="c-icon">
+    <div class="c-icon @fileCls">
         <i class="icon-download text-xl"></i>
     </div>
     <div class="c-info">
-        <div class="c-title">
-            <span>@Attachment.Media.FileName</span>
-        </div>
-        <div class="c-size">
-            <span>@fileSize.ToString("N2") MB</span>
+        <FileAttachmentTitle Title="@Attachment.Media.FileName"/>
+        <div class="c-bottom">
+            <div class="c-size">
+                <span>@fileSize.ToString("N2") MB</span>
+            </div>
+            <div class="c-extension">
+                <span>@fileExtension</span>
+            </div>
         </div>
     </div>
 </a>
@@ -23,4 +30,37 @@
 
     [Parameter, EditorRequired]
     public TextEntryAttachment Attachment { get; set; } = null!;
+
+    private static Dictionary<string, string> _fileColors = new() {
+        { "PNG", "file-image" },
+        { "JPG", "file-image" },
+        { "JPEG", "file-image" },
+        { "BMP", "file-image" },
+        { "GIF", "file-image" },
+        { "WEBP", "file-image" },
+        { "MP3", "file-multimedia" },
+        { "3GP", "file-multimedia" },
+        { "AVI", "file-multimedia" },
+        { "MOV", "file-multimedia" },
+        { "M4V", "file-multimedia" },
+        { "M4A", "file-multimedia" },
+        { "MKV", "file-multimedia" },
+        { "OGM", "file-multimedia" },
+        { "OGG", "file-multimedia" },
+        { "OGA", "file-multimedia" },
+        { "WEBM", "file-multimedia" },
+        { "WAV", "file-multimedia" },
+        { "PDF", "file-pdf" },
+        { "PPT", "file-pdf" },
+        { "PPTX", "file-pdf" },
+        { "XLS", "file-table" },
+        { "XLSX", "file-table" },
+        { "CSS", "file-table" },
+        { "HTML", "file-table" },
+        { "TORRENT", "file-table" },
+        { "DOC", "file-text" },
+        { "TXT", "file-text" },
+        { "ZIP", "file-archive" },
+        { "RAR", "file-archive" },
+    };
 }

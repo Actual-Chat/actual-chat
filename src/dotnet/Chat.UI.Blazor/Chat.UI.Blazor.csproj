@@ -18,4 +18,8 @@
     <Using Include="ActualChat.Chat.UI.Blazor.Components" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="MimeKit" />
+  </ItemGroup>
+
 </Project>
