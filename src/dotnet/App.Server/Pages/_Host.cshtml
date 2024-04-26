@@ -33,10 +33,9 @@
     var blazorReloadNonce = nonceGenerator.Next(12);
     var showOverlayNonce = nonceGenerator.Next(12);
     var closeLoginNonce = nonceGenerator.Next(12);
-    // TODO(AK): remove unsafe-eval at .NET 8
     // unsafe-eval is required for 'eval-source-map' to debug during local development
-    var unsafeEval = isBlazorServer && !isLocal ? "" : "'unsafe-eval'";
-    var connectLocalhost = Env.IsDevelopment() ? "wss://localhost:*" : "";
+    var unsafeEval = isLocal ? "'unsafe-eval'" : "";
+    var connectLocalhost = Env.IsDevelopment() ? "ws://localhost:*" : "";
 }
 
 <!DOCTYPE html>
@@ -256,9 +255,10 @@
                      retryIntervalMilliseconds: 2000,
                 },
                 loadBootResource: function (type, name, defaultUri, integrity) {
-                    if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration') {
+                    if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration' && integrity) {
                         return (async function () {
-                            const response = await fetch(defaultUri+'?hash='+integrity, { integrity: integrity });
+                            const hash = encodeURIComponent(integrity);
+                            const response = await fetch(defaultUri+'?hash='+hash, { integrity: integrity });
                             if (!response.ok) {
                                 throw new Error(response.statusText);
                             }
@@ -282,7 +282,7 @@
                },
                */
                 loadBootResource: function (type, name, defaultUri, integrity) {
-                    if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration') {
+                    if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration' && integrity) {
                         return (async function () {
                             const hash = encodeURIComponent(integrity);
                             const response = await fetch(defaultUri+'?hash='+hash, { integrity: integrity });
