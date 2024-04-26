@@ -1,0 +1,27 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<div class="c-normal-title">
+    <div class="c-start">
+        @_start
+    </div>
+    <div class="c-end">
+        @_end
+    </div>
+</div>
+
+@code {
+    private string _start = "";
+    private string _end = "";
+
+    [Parameter] public string Title { get; set; } = "";
+
+    protected override void OnInitialized() {
+        if (Title.Length > 12) {
+            _end = Title.Substring(Title.Length - 12);
+            _start = Title.Substring(0, Title.Length - 12);
+        } else {
+            _start = Title;
+        }
+        base.OnInitialized();
+    }
+}

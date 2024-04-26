@@ -49,17 +49,58 @@
     @apply w-10 h-10;
     @apply rounded-full;
     @apply overflow-hidden;
-    @apply bg-cancel;
-    @apply text-primary;
+    @apply text-white;
 }
 .file-attachment .c-info {
     @apply flex-y justify-between;
+    @apply w-full;
+    @apply overflow-hidden;
 }
 .file-attachment .c-title {
     @apply line-clamp-1;
     @apply text-headline-1 text-02;
 }
+.file-attachment .c-normal-title {
+    @apply flex-x;
+    @apply text-headline-1 text-02;
+}
+.file-attachment .c-normal-title .c-start {
+    @apply line-clamp-1;
+}
+.file-attachment .c-normal-title .c-end {
+    @apply flex-none;
+}
+
+.file-attachment .c-bottom {
+    @apply flex-x justify-between;
+}
 .file-attachment .c-size {
     @apply flex-x gap-x-2;
     @apply text-text-1 text-03;
+}
+.file-attachment .c-extension {
+    @apply text-text-1 text-03;
+}
+
+.file-image {
+    @apply bg-[var(--violet-60)];
+}
+.file-multimedia {
+    @apply bg-[var(--magenta-70)];
+}
+.file-pdf {
+    @apply bg-[var(--red-70)];
+}
+.file-table {
+    @apply bg-[var(--emerald-40)];
+}
+.file-text {
+    @apply bg-[var(--blue-70)];
+}
+.file-archive {
+    @apply bg-[var(--sienna-70)];
+}
+.file-attachment .c-icon.file-default {
+    @apply bg-cancel;
+    @apply text-primary;
 }
