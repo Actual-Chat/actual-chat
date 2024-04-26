@@ -638,11 +638,11 @@ public class Chats(IServiceProvider services) : IChats
         var hasErrors = false;
         Log.LogInformation("-> OnCopyChat({CorrelationId}): copy chat '{ChatId}' to place '{PlaceId}'",
             correlationId, sourceChatId.Value, placeId);
-        var chat = await Get(session, sourceChatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(session, sourceChatId, cancellationToken).Require().ConfigureAwait(false);
         Log.LogInformation("Chat for chat id '{ChatId}' is {Chat} ({CorrelationId})",
             sourceChatId, chat, correlationId);
-        var maxEntryId = 0L;
-        if (chat != null) {
+        long maxEntryId;
+        {
             if (chat.Id.Kind != ChatKind.Group && chat.Id.Kind != ChatKind.Place)
                 throw StandardError.Constraint("Only group chats can be moved to a Place.");
             if (chat.Id.Kind == ChatKind.Place && chat.Id.PlaceId == placeId)
