@@ -26,6 +26,12 @@ public partial class ChatsBackend
         Log.LogInformation("-> OnCopyChat({CorrelationId}): copy chat '{ChatId}' to place '{PlaceId}'",
             correlationId, chatId.Value, placeId);
 
+        var ctRegistration = cancellationToken.Register(() => {
+            Log.LogWarning("OnCopyChat({CorrelationId}) canceled from `{StackTrace}`",
+                correlationId, Environment.StackTrace);
+        });
+        await using var ___ = ctRegistration.ConfigureAwait(false);
+
         var hasChanges = false;
         var chatSid = chatId.Value;
         var commandTimeout = TimeSpan.FromSeconds(30);
