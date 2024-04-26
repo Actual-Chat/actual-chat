@@ -134,10 +134,10 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         }
 
         // -- Register ML bot --
-        const string ConversationBotServiceGroup = "ML Chat Bot";
+//        const string ConversationBotServiceGroup = "ML Chat Bot";
         rpcHost.AddBackend<IChatBotConversationTrigger, ChatBotConversationTrigger>();
 
-        services.AddKeyedSingleton<IBotConversationHandler, SampleChatBot>(ConversationBotServiceGroup);
+        services.AddSingleton<IBotConversationHandler, SampleChatBot>();
         services.AddSingleton<IChatBotWorker>(static services
             => services.CreateInstanceWith<ChatBotWorker>(
             )
