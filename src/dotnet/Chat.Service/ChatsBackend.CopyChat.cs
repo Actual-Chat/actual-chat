@@ -18,8 +18,17 @@ public partial class ChatsBackend
 
         if (Computed.IsInvalidating()) {
             _ = GetPublicChatIdsFor(placeId, default);
-            if (context.Operation.Items[typeof(ChatEntryId)] is string invLastEntrySid)
-                InvalidateTiles(newChatId, ChatEntryKind.Text, new ChatEntryId(invLastEntrySid).LocalId, ChangeKind.Create);
+            if (context.Operation.Items[typeof(ChatEntryId)] is string invLastEntrySid) {
+                Log.LogInformation("OnCopyChat({CorrelationId}): InvLastEntrySid is {EntrySid}", correlationId, invLastEntrySid);
+                InvalidateTiles(newChatId,
+                    ChatEntryKind.Text,
+                    new ChatEntryId(invLastEntrySid).LocalId,
+                    ChangeKind.Create);
+                _ = GetIdRange(chatId, ChatEntryKind.Text, true, default);
+                _ = GetIdRange(chatId, ChatEntryKind.Text, false, default);
+                _ = GetIdRange(chatId, ChatEntryKind.Audio, true, default);
+                _ = GetIdRange(chatId, ChatEntryKind.Audio, false, default);
+            }
             return default!;
         }
 
@@ -158,6 +167,7 @@ public partial class ChatsBackend
             var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             dbContext.Database.SetCommandTimeout(commandTimeout);
             await using var __ = dbContext.ConfigureAwait(false);
+            Log.LogInformation("OnCopyChat({CorrelationId}): LastProcessedEntryId is {EntryId}", correlationId, lastProcessedEntryId);
             context.Operation.Items[typeof(ChatEntryId)] = lastProcessedEntryId.Value;
         }
 
