@@ -41,7 +41,6 @@ body.narrow .link-preview.compact {
 }
 body.narrow .link-preview.compact .c-info {
     @apply p-0;
-    overflow-wrap: anywhere;
 }
 
 /* thumbnail */
@@ -146,9 +145,6 @@ body.hoverable .message-link-preview .link-buttons .btn.btn-round:hover i {
     @apply text-primary;
 }
 
-.incut {
-    @apply hidden;
-}
 body.narrow .link-preview.compact .incut {
     @apply flex-none;
     @apply w-15 h-12;
