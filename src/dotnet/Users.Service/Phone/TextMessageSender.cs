@@ -26,6 +26,7 @@ public sealed class TwilioTextMessageSender(IServiceProvider services) : ITextMe
                 .ConfigureAwait(false);
         }
         // we intentionally don't send any errors to avoid malicious api usage
+        // https://www.twilio.com/docs/api/errors/21211
         catch (Twilio.Exceptions.ApiException e) when (e.Code == 21211) {
             Log.LogDebug(e, "Failed to send text message. Invalid phone number.");
         }
