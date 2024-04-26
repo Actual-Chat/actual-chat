@@ -34,8 +34,8 @@
     var showOverlayNonce = nonceGenerator.Next(12);
     var closeLoginNonce = nonceGenerator.Next(12);
     // unsafe-eval is required for 'eval-source-map' to debug during local development
-    var unsafeEval = isLocal ? "'unsafe-eval'" : "";
-    var connectLocalhost = Env.IsDevelopment() ? "ws://localhost:*" : "";
+    var unsafeEval = isLocal ? "'unsafe-eval'" : "'wasm-unsafe-eval'";
+    var connectLocalhost = Env.IsDevelopment() ? "ws://localhost:* wss://localhost:*" : "";
 }
 
 <!DOCTYPE html>
