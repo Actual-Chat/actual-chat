@@ -2,7 +2,12 @@
 @inherits FusionComponentBase
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
+    var isPlaceChat = !PlaceId.IsNone;
     var canChangeChatType = PlaceId.IsNone || _place != null && _place.Rules.CanApplyPublicChatType();
+    var publicChatLabel = !isPlaceChat ? "Public chat" : "Place chat";
+    var publicChatHint = !isPlaceChat ?
+        "Anyone can join this chat by navigating to its URL" :
+        "All members of this Place will see it in Place's chat list and will be able to talk there";
 }
 
 <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
@@ -39,10 +44,10 @@
                     <FormRadio Id="@_form.IsPublicTrueFormId" IsDisabled="@(!canChangeChatType)" Value="@true"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.IsPublicTrueFormId" Text="Public chat"></Label>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="@publicChatLabel"></Label>
                 </Content>
                 <Caption>
-                    <Label InputId="@_form.IsPublicTrueFormId" Text="Anyone can join this chat by navigating to its URL"></Label>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="@publicChatHint"></Label>
                 </Caption>
             </TileItem>
             <TileItem>

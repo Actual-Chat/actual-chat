@@ -31,7 +31,11 @@
         var textColor = "text-[var(--status)]";
         var badgeColor = "bg-transparent";
         if (Chat.Kind is ChatKind.Group or ChatKind.Place) {
-            status = Chat.IsPublic ? "Public" : "Private";
+            status = Chat.IsPublic
+                ? Chat.Kind == ChatKind.Place
+                    ? "Place\u00A0chat"
+                    : "Public"
+                : "Private";
             if (Colorful) {
                 badgeColor = "bg-[var(--status-badge)]";
             }
