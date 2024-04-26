@@ -25,6 +25,10 @@ public sealed class TwilioTextMessageSender(IServiceProvider services) : ITextMe
                     client: Client)
                 .ConfigureAwait(false);
         }
+        // we intentionally don't send any errors to avoid malicious api usage
+        catch (Twilio.Exceptions.ApiException e) when (e.Message.OrdinalIgnoreCaseContains("Invalid 'To' Phone Number")) {
+            Log.LogDebug(e, "Failed to send text message. Invalid phone number.");
+        }
         catch (Exception e) {
             Log.LogError(e, "Failed to send text message");
             throw StandardError.External("We couldn't deliver the message to the specified phone number.");
