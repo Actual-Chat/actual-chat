@@ -119,11 +119,6 @@
     <NoLogo>true</NoLogo>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(ProjectKind)' == 'Contracts' OR '$(ProjectKind)' == 'Core'">
-    <IsPackable>true</IsPackable>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-  </PropertyGroup>
-
   <PropertyGroup Condition="'$(EnableSourceLink)' == 'true'">
     <Deterministic>true</Deterministic>
     <Features>strict;pdb-path-determinism</Features>
