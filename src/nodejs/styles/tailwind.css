@@ -111,6 +111,7 @@
 
     .content-empty {
         content: "";
+        pointer-events: none;
     }
 
     /* Flex shortcuts */
