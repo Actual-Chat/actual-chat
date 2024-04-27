@@ -115,6 +115,12 @@ class DataHrefGesture extends Gesture {
         if (href === null)
             return;
 
+        const target = event.target as HTMLElement;
+        if (target && target.closest('div.pulling')) {
+            // Do not trigger navigation during side-nav pulling
+            return;
+        }
+
         // Check if we can process it as part of pointerDown event
         const [triggerElement, menuRef] = getOrInheritData(event.target, 'menu');
         let menuTrigger = 0;
