@@ -117,9 +117,11 @@ export class SideNav extends DisposableBag {
         const closeDirectionSign = isLeft ? -1 : 1;
         const closeRatio = 1 - openRatio;
         const translateRatio = closeDirectionSign * closeRatio;
-        const opacity = Math.min(1, (DeviceInfo.isWebKit ? 0.2 : 0.05) + Math.pow(openRatio, 0.35));
+        const opacity = Math.min(1, 0.05 + Math.pow(openRatio, 0.35));
         this.element.style.transform = `translate3d(${100 * translateRatio}%, 0, 0)`;
-        this.element.style.backdropFilter = `blur(3px)`;
+        if (!DeviceInfo.isWebKit) {
+            this.element.style.backdropFilter = `blur(3px)`;
+        }
         this.element.style.backgroundColor = `rgba(1, 1, 1, 0)`;
         this.contentDiv.style.opacity = opacity.toString();
     }
