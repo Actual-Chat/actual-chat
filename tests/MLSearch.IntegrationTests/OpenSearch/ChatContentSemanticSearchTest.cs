@@ -1,13 +1,13 @@
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch;
+using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Indexing.ChatContent;
-using ActualChat.Performance;
+using ActualChat.MLSearch.IntegrationTests.Collections;
 using ActualChat.Testing.Host;
 using OpenSearch.Client;
-using OpenSearch.Net;
-using HttpMethod = OpenSearch.Net.HttpMethod;
+using AppHostFixture = ActualChat.MLSearch.IntegrationTests.Collections.AppHostFixture;
 
 namespace ActualChat.MLSearch.IntegrationTests.OpenSearch;
 
@@ -17,25 +17,20 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     protected override async Task InitializeAsync()
-        => await base.InitializeAsync();
-
-    protected override async Task DisposeAsync()
     {
-        Tracer.Default = Tracer.None;
-        var settings = AppHost.Services.GetRequiredService<IIndexSettingsSource>()
-            .GetSettings(IndexNames.ChatContent);
-        var pipelineId = settings.IngestPipelineId;
+        await base.InitializeAsync();
 
+        // Cleanup all test indexes before each test method start
         var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
-        var catResponse = await client.Cat.IndicesAsync(cat => cat.Index(IndexNames.MLTestIndexPattern));
-        foreach (var catRecord in catResponse.Records) {
-            await client.LowLevel.DoRequestAsync<StringResponse>(
-                HttpMethod.DELETE, $"/{catRecord.Index}", CancellationToken.None);
-        }
-        await client.LowLevel.DoRequestAsync<StringResponse>(
-            HttpMethod.DELETE, $"/_ingest/pipeline/{pipelineId}", CancellationToken.None);
-
-        await base.DisposeAsync();
+        var deleteByQueryResponse = await client.DeleteByQueryAsync<object>(d => d
+            .Index(IndexNames.MLTestIndexPattern)
+            .Query(query => query.Script(
+                scriptQuery => scriptQuery.Script(
+                    script => script.Source("true")
+                ))
+            )
+        );
+        deleteByQueryResponse.AssertSuccess();
     }
 
     [Fact]
