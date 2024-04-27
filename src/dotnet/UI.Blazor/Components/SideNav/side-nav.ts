@@ -343,13 +343,17 @@ class SideNavPullGesture extends Gesture {
                 // "Pre-apply" visibility change
                 sideNav.setTransform(mustBeOpen ? 1 : 0);
 
-                // Trigger server-side visibility change
-                await sideNav.setVisibility(mustBeOpen);
+                sideNav.element.addEventListener('transitionend', async () => {
+                    // Trigger server-side visibility change
+                    await sideNav.setVisibility(mustBeOpen);
+                }, { once: true });
 
                 // Wait when the changes are applied to DOM
                 const endTime = Date.now() + MaxSetVisibilityWaitDurationMs;
-                while (sideNav.isOpen != mustBeOpen && Date.now() < endTime)
+                while (sideNav.isOpen != mustBeOpen && Date.now() < endTime) {
                     await delayAsync(50);
+                    await fastReadRaf();
+                }
             } finally {
                 await fastWriteRaf();
                 sideNav.resetTransform();
