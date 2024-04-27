@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" />
+    <PackageReference Include="TurnerSoftware.RobotsExclusionTools" />
   </ItemGroup>
 
 </Project>
