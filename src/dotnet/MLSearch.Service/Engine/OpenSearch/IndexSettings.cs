@@ -7,6 +7,6 @@ internal sealed class IndexSettings(string indexId, IndexNames indexNames, Clust
 {
     public string ModelId => settings.ModelId;
 
-    public string IngestPipelineId { get; } = indexNames.GetFullIngestPipelineName(indexId, settings);
+    public string? IngestPipelineId { get; } = indexNames.GetFullIngestPipelineName(indexId, settings);
     public IndexName IndexName { get; } = indexNames.GetFullName(indexId, settings);
 }
