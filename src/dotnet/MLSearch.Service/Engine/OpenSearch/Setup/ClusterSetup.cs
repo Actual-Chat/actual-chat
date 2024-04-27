@@ -15,6 +15,7 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 internal sealed class ClusterSetup(
     IOptions<OpenSearchSettings> openSearchSettings,
     IOpenSearchClient openSearch,
+    OpenSearchNamingPolicy namingPolicy,
     IndexNames indexNames,
     ITracerSource? tracing
     ) : IModuleInitializer
@@ -126,10 +127,10 @@ internal sealed class ClusterSetup(
     {
         using var _ = tracing.TraceRegion();
 
-        var numReplicas = openSearchSettings.Value.DefaultNumberOfReplicas;
+        var numberOfReplicas = openSearchSettings.Value.DefaultNumberOfReplicas;
         await openSearch.Indices
             .PutTemplateAsync(IndexNames.MLTemplateName,
-                index => ConfigureMLIndexTemplate(index, numReplicas, IndexNames.MLIndexPattern), cancellationToken)
+                index => ConfigureMLIndexTemplate(index, numberOfReplicas, IndexNames.MLIndexPattern), cancellationToken)
             .ConfigureAwait(false);
 
         return;
@@ -160,7 +161,6 @@ internal sealed class ClusterSetup(
         var modelDimension = settings.ModelEmbeddingDimension.ToString("D", CultureInfo.InvariantCulture);
 
         // Calculate field names
-        var namingPolicy = JsonNamingPolicy.CamelCase;
         // ChatSlice fields
         var idField = namingPolicy.ConvertName(nameof(ChatSlice.Id));
         var metadataField = namingPolicy.ConvertName(nameof(ChatSlice.Metadata));

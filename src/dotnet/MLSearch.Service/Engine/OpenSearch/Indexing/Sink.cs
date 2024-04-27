@@ -15,7 +15,7 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 // What does it mean:
 // - All document updated/created MUST have _id field
 //   set in the request or calculated in the ingest
-//   pipeline.
+//   pipeline;
 // - All deletes MUST NOT fail if document was already
 //   deleted.
 
@@ -35,7 +35,7 @@ internal sealed class Sink<TDocument>(
     public async Task ExecuteAsync(
         IEnumerable<TDocument>? updatedDocuments,
         IEnumerable<string>? deletedDocuments,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var result = await OpenSearch
             .BulkAsync(r => r

@@ -68,6 +68,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // Module's own services
 
         services.AddSingleton<IndexNames>();
+        services.AddSingleton(_ => new OpenSearchNamingPolicy(JsonNamingPolicy.CamelCase));
 
         services.AddSingleton<IOpenSearchClient>(s => {
             var openSearchSettings = s.GetRequiredService<IOptions<OpenSearchSettings>>().Value;
