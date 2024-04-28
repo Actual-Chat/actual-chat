@@ -31,10 +31,10 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         var id2 = LinkPreview.ComposeId(url2);
         var img1Url = $"https://domain2.some/images/{RandomStringGenerator.Next()}.jpg";
         var img2Url = $"https://domain2.some/images/{RandomStringGenerator.Next()}.jpg";
-        Http.SetupImageResponse(img1Url)
-            .SetupHtmlResponse(url1, h => h.Title("Title 1").Description("Description 1").Image(img1Url))
-            .SetupImageResponse(img2Url)
-            .SetupHtmlResponse(url2, h => h.Title("Title 2").Description("Description 2").Image(img2Url));
+        Http.SetupImage(img1Url)
+            .SetupHtml(url1, h => h.Title("Title 1").Description("Description 1").Image(img1Url))
+            .SetupImage(img2Url)
+            .SetupHtml(url2, h => h.Title("Title 2").Description("Description 2").Image(img2Url));
 
         // act
         await Tester.SignInAsAlice();

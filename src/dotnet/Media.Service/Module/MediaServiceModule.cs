@@ -1,10 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
-using ActualChat.Chat.Events;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Media.Db;
 using ActualChat.Redis.Module;
-using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Media.Module;
 
@@ -33,11 +31,12 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         // The services below are used only when this module operates in non-client mode
 
         // Internal services
-        services.AddHttpClient(nameof(LinkPreviewsBackend))
-            .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.Add(new ("ActualChat-Bot", "0.1")));
-        services.AddHttpClient(nameof(LinkPreviewsBackend) + ".fallback")
-            .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.Add(new ("googlebot", null)));
+        services.AddHttpClient(Crawler.HttpClientName)
+            .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.ParseAdd(Crawler.DefaultUserAgent));
         services.AddSingleton<Crawler>();
+        services.AddSingleton<ICrawlingHandler, WebSiteHandler>();
+        services.AddSingleton<ICrawlingHandler, ImageLinkHandler>();
+        services.AddSingleton<ImageGrabber>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
