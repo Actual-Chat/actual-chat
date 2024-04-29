@@ -26,10 +26,12 @@ internal sealed class IndexNames
             IndexNameSuffix,
             settings.UniqueKey);
 
-    internal string GetFullIngestPipelineName(string id, ClusterSettings settings)
-        => string.Join('-',
-            FullPrefix,
-            id,
-            IngestPipelineNameSuffix,
-            settings.UniqueKey);
+    internal string? GetFullIngestPipelineName(string id, ClusterSettings settings)
+        => ChatContent.Equals(id, StringComparison.Ordinal)
+            ? string.Join('-',
+                FullPrefix,
+                id,
+                IngestPipelineNameSuffix,
+                settings.UniqueKey)
+            : null;
 }

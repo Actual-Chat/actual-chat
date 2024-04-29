@@ -1,30 +1,47 @@
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
+using ActualChat.MLSearch.Engine.OpenSearch;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;
 
 internal interface IChatContentDocumentLoader
 {
-    Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(ChatContentCursor cursor, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(
+        ChatContentCursor cursor, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyCollection<ChatSlice>> LoadByEntryIdsAsync(
         IEnumerable<ChatEntryId> entryIds,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken = default);
 }
 
-internal class ChatContentDocumentLoader(ISearchEngine<ChatSlice> searchEngine): IChatContentDocumentLoader
+internal class ChatContentDocumentLoader(
+    ISearchEngine<ChatSlice> searchEngine,
+    OpenSearchNamingPolicy namingPolicy
+    ): IChatContentDocumentLoader
 {
-    public async Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(ChatContentCursor cursor, CancellationToken cancellationToken)
-    {
-        const string chatEntryLocalIdField =
-            $"{nameof(ChatSlice.Metadata)}.{nameof(ChatSliceMetadata.ChatEntries)}.{nameof(ChatSliceEntry.LocalId)}";
+    private readonly string _chatEntryLocalIdField = string.Join('.',
+        new[] {
+            nameof(ChatSlice.Metadata),
+            nameof(ChatSliceMetadata.ChatEntries),
+            nameof(ChatSliceEntry.LocalId),
+        }.Select(namingPolicy.ConvertName));
 
+    private readonly string _chatEntryIdField = string.Join('.',
+        new[] {
+            nameof(ChatSlice.Metadata),
+            nameof(ChatSliceMetadata.ChatEntries),
+            nameof(ChatSliceEntry.Id),
+        }.Select(namingPolicy.ConvertName));
+
+    public async Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(
+        ChatContentCursor cursor, CancellationToken cancellationToken = default)
+    {
         var query = new SearchQuery {
             MetadataFilters = [
-                new Int64RangeFilter(chatEntryLocalIdField, null, new RangeBound<long>(cursor.LastEntryLocalId, true)),
+                new Int64RangeFilter(_chatEntryLocalIdField, null, new RangeBound<long>(cursor.LastEntryLocalId, true)),
             ],
             SortStatements = [
-                new SortStatement(chatEntryLocalIdField, QuerySortOrder.Descenging, MultivalueFieldMode.Max),
+                new SortStatement(_chatEntryLocalIdField, QuerySortOrder.Descenging, MultivalueFieldMode.Max),
             ],
             Limit = 10,
         };
@@ -35,14 +52,11 @@ internal class ChatContentDocumentLoader(ISearchEngine<ChatSlice> searchEngine):
 
     public async Task<IReadOnlyCollection<ChatSlice>> LoadByEntryIdsAsync(
         IEnumerable<ChatEntryId> entryIds,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
-        const string chatEntryIdField =
-            $"{nameof(ChatSlice.Metadata)}.{nameof(ChatSliceMetadata.ChatEntries)}.{nameof(ChatSliceEntry.Id)}";
-
         var filters =
             from id in entryIds
-            select new EqualityFilter<ChatEntryId>(chatEntryIdField, id);
+            select new EqualityFilter<ChatEntryId>(_chatEntryIdField, id);
 
         var query = new SearchQuery {
             MetadataFilters = [new OrFilter(filters)],

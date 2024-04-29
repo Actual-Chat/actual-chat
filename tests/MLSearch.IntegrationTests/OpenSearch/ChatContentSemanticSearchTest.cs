@@ -1,38 +1,36 @@
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch;
+using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Indexing.ChatContent;
-using ActualChat.Performance;
+using ActualChat.MLSearch.IntegrationTests.Collections;
 using ActualChat.Testing.Host;
 using OpenSearch.Client;
-using OpenSearch.Net;
-using HttpMethod = OpenSearch.Net.HttpMethod;
+using AppHostFixture = ActualChat.MLSearch.IntegrationTests.Collections.AppHostFixture;
 
-namespace ActualChat.MLSearch.IntegrationTests;
+namespace ActualChat.MLSearch.IntegrationTests.OpenSearch;
 
 [Trait("Category", "Slow")]
 [Collection(nameof(MLSearchCollection))]
-public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     protected override async Task InitializeAsync()
-        => await base.InitializeAsync();
-
-    protected override async Task DisposeAsync()
     {
-        Tracer.Default = Tracer.None;
-        var settings = AppHost.Services.GetRequiredService<IIndexSettingsSource>().GetSettings(IndexNames.ChatContent);
-        var pipelineId = settings.IngestPipelineId;
+        await base.InitializeAsync();
 
+        // Cleanup all test indexes before each test method start
         var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
-        var catResponse = await client.Cat.IndicesAsync(cat => cat.Index(IndexNames.MLTestIndexPattern));
-        foreach (var catRecord in catResponse.Records) {
-            await client.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/{catRecord.Index}", CancellationToken.None);
-        }
-        await client.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/_ingest/pipeline/{pipelineId}", CancellationToken.None);
-
-        await base.DisposeAsync();
+        var deleteByQueryResponse = await client.DeleteByQueryAsync<object>(d => d
+            .Index(IndexNames.MLTestIndexPattern)
+            .Query(query => query.Script(
+                scriptQuery => scriptQuery.Script(
+                    script => script.Source("true")
+                ))
+            )
+        );
+        deleteByQueryResponse.AssertSuccess();
     }
 
     [Fact]
@@ -40,7 +38,9 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
     {
         var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
         var chatId1 = new ChatId(Generate.Option);
-        var entryIds1 = Enumerable.Range(1, 5).Select(id => new ChatEntryId(chatId1, ChatEntryKind.Text, id, AssumeValid.Option));
+        var entryIds1 = Enumerable.Range(1, 5)
+            .Select(id => new ChatEntryId(chatId1, ChatEntryKind.Text, id, AssumeValid.Option))
+            .ToArray();
         var textItems1 = new [] {
             "OpenSearch supports the following models, categorized by type.",
             "Quite often, our methods are async, and we can't make constructors async. This is where XUnit's IAsyncLifetime comes in.",
@@ -49,7 +49,9 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
             "In Barcelona, a migrant squatter was asked to leave by the property owner. He refused and threatened the home owner with a hammer.",
         };
         var chatId2 = new ChatId(Generate.Option);
-        var entryIds2 = Enumerable.Range(1, 5).Select(id => new ChatEntryId(chatId2, ChatEntryKind.Text, id, AssumeValid.Option));
+        var entryIds2 = Enumerable.Range(1, 5)
+            .Select(id => new ChatEntryId(chatId2, ChatEntryKind.Text, id, AssumeValid.Option))
+            .ToArray();
         var textItems2 = new [] {
             "Language clients are forward compatible; meaning that clients support communicating with greater or equal minor versions of Elasticsearch.",
             "When it comes to your electricity plan, there’s always room for improvement. Switch to Cirro and make your life easier.",
@@ -64,7 +66,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
                 var (id, text) = args;
                 var metadata = new ChatSliceMetadata(
                     [authorId],
-                    [new (id, 1, 1)], null, null,
+                    [new ChatSliceEntry(id, 1, 1)], null, null,
                     [], [], [], [],
                     false,
                     "en-US",
@@ -73,13 +75,25 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
                 return new ChatSlice(metadata, text);
             });
 
-        var searchEngine = AppHost.Services.GetRequiredService<ISearchEngine<ChatSlice>>();
+        // Ingest documents to the index
+        var documentSink = AppHost.Services.GetRequiredService<ISink<ChatSlice, string>>();
+        await documentSink.ExecuteAsync(documents, null);
 
-        foreach (var document in documents) {
-            await searchEngine.Ingest(document, CancellationToken.None);
+        // Ensure all documents processed by the ingestion pipeline
+        var documentLoader = AppHost.Services.GetRequiredService<IChatContentDocumentLoader>();
+        const int maxAttempt = 20;
+        foreach (var attempt in Enumerable.Range(0, maxAttempt + 1)) {
+            if (attempt==maxAttempt) {
+                Assert.Fail("Failure to confirm documents are in the OpenSearch index.");
+            }
+            var indexDocs = await documentLoader.LoadByEntryIdsAsync(entryIds1.Concat(entryIds2));
+            if (indexDocs.Count == entryIds1.Length + entryIds2.Length) {
+                break;
+            }
+            await Task.Delay(50);
         }
 
-        await Task.Delay(300);
+        var searchEngine = AppHost.Services.GetRequiredService<ISearchEngine<ChatSlice>>();
 
         var query1 = new SearchQuery() {
             Keywords = ["command"],
@@ -88,9 +102,10 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
         var queryResult1 = await searchEngine.Find(query1, CancellationToken.None);
         Assert.True(queryResult1.Documents.Count > 0);
 
-        var metadataField = JsonNamingPolicy.CamelCase.ConvertName(nameof(ChatSlice.Metadata));
-        var timestampField = JsonNamingPolicy.CamelCase.ConvertName(nameof(ChatSliceMetadata.Timestamp));
-        var chatIdField = JsonNamingPolicy.CamelCase.ConvertName(nameof(ChatSliceMetadata.ChatId));
+        var namingPolicy = AppHost.Services.GetRequiredService<OpenSearchNamingPolicy>();
+        var metadataField = namingPolicy.ConvertName(nameof(ChatSlice.Metadata));
+        var timestampField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Timestamp));
+        var chatIdField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ChatId));
         var dateBound = DateTime.Now.AddDays(-3);
         var query2 = new SearchQuery() {
             MetadataFilters = [
