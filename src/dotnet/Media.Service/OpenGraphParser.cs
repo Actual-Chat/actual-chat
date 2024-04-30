@@ -34,8 +34,8 @@ public static class OpenGraphParser
     }
 
     private static string GetUrl(Dictionary<string, string> metaMap, string key)
-        => Uri.TryCreate(metaMap.GetValueOrDefault(key), UriKind.Absolute, out var uri) ? uri.AbsoluteUri : "";
+        => Uri.TryCreate(metaMap.GetValueOrDefault(key)?.HtmlDecode(), UriKind.Absolute, out var uri) ? uri.AbsoluteUri : "";
 
     private static int? GetInt(Dictionary<string, string> metaMap, string key)
-        => int.TryParse(metaMap.GetValueOrDefault(key), CultureInfo.InvariantCulture, out var i) ? i : null;
+        => int.TryParse(metaMap.GetValueOrDefault(key)?.HtmlDecode(), CultureInfo.InvariantCulture, out var i) ? i : null;
 }

@@ -54,6 +54,23 @@ public class OpenGraphParserTest
         });
     }
 
+    [Fact]
+    public async Task ShouldDecodeImageUrl()
+    {
+        // arrange
+        var html = await GetHtml("reuters-image-decode");
+
+        // act
+        var graph = OpenGraphParser.Parse(html);
+
+        // assert
+        graph.Should().Be(new OpenGraph("US probes Tesla recall of 2 million vehicles over Autopilot") {
+            Description = "U.S. auto safety regulators said on Friday they have opened an investigation into whether Tesla's recall of more than 2 million vehicles announced in December to install new Autopilot safeguards is adequate following a series of crashes.",
+            ImageUrl = "https://www.reuters.com/resizer/v2/WSUHVXIY5NNDXBWKP4ZFQQM3LM.jpg?auth=d6851bae48fc48e6b42940e7d665e8a9feec4f426815a52a9cbd92fd7d025336&height=1005&width=1920&quality=80&smart=true",
+            SiteName = "Reuters",
+        });;
+    }
+
     private async Task<string> GetHtml(string testCase)
     {
         var type = GetType();
