@@ -24,10 +24,10 @@ public partial class ChatsBackend
                     ChatEntryKind.Text,
                     new ChatEntryId(invLastEntrySid).LocalId,
                     ChangeKind.Create);
-                _ = GetIdRange(chatId, ChatEntryKind.Text, true, default);
-                _ = GetIdRange(chatId, ChatEntryKind.Text, false, default);
-                _ = GetIdRange(chatId, ChatEntryKind.Audio, true, default);
-                _ = GetIdRange(chatId, ChatEntryKind.Audio, false, default);
+                _ = GetIdRange(newChatId, ChatEntryKind.Text, true, default);
+                _ = GetIdRange(newChatId, ChatEntryKind.Text, false, default);
+                _ = GetIdRange(newChatId, ChatEntryKind.Audio, true, default);
+                _ = GetIdRange(newChatId, ChatEntryKind.Audio, false, default);
             }
             return default!;
         }
@@ -72,13 +72,11 @@ public partial class ChatsBackend
                         cancellationToken)
                     .ConfigureAwait(false);
 
-            var lastTextEntry = await GetLastEntry(dbContext, chatId, ChatEntryKind.Text, cancellationToken)
-                .ConfigureAwait(false);
-            if (lastTextEntry != null) {
-                var lastNewTextEntry = await GetLastEntry(dbContext, newChatId, ChatEntryKind.Text, cancellationToken)
-                    .ConfigureAwait(false);
-                var startEntryId = lastNewTextEntry != null ? lastNewTextEntry.LocalId + 1 : 1;
-                var endEntryId = lastTextEntry.LocalId + 1;
+            var sourceChatRange = await GetIdRange(chatId, ChatEntryKind.Text, true, cancellationToken).ConfigureAwait(false);
+            if (!sourceChatRange.IsEmpty) {
+                var newChatRange = await GetIdRange(newChatId, ChatEntryKind.Text, true, cancellationToken).ConfigureAwait(false);
+                var startEntryId = !newChatRange.IsEmpty ? newChatRange.End : 1;
+                var endEntryId = sourceChatRange.End;
                 if (endEntryId > startEntryId)
                     textEntryRange = new Range<long>(startEntryId, endEntryId);
             }
@@ -561,20 +559,6 @@ public partial class ChatsBackend
 
         // Log.LogInformation("Updated ForwardedAuthorId and ForwardedChatEntryId for {Count} chat entry records",
         //     updateCount);
-
-    private static async Task<DbChatEntry?> GetLastEntry(
-        ChatDbContext dbContext,
-        ChatId chatId,
-        ChatEntryKind entryKind,
-        CancellationToken cancellationToken)
-    {
-        var entry = await dbContext.ChatEntries
-            .Where(c => c.ChatId == chatId.Value && c.Kind == entryKind)
-            .OrderByDescending(c => c.LocalId)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return entry;
-    }
 
     private string UpdateMentionsInContent(ChatId chatId, string content, MigratedAuthors migratedAuthors,
         MentionExtractor mentionExtractor)

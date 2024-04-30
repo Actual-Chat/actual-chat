@@ -5,19 +5,19 @@ namespace ActualChat.Chat;
 
 public class Chats(IServiceProvider services) : IChats
 {
-    private IContacts? _contacts;
     private IPlaces? _places;
 
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();
-    private IContacts Contacts => _contacts ??= services.GetRequiredService<IContacts>();
     private IPlaces Places => _places ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
 
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
+    private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
     private IChatsBackend Backend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
 
     private ICommander Commander { get; } = services.Commander();
     private ILogger Log { get; } = services.LogFor<Chats>();
@@ -641,30 +641,27 @@ public class Chats(IServiceProvider services) : IChats
         var chat = await Get(session, sourceChatId, cancellationToken).Require().ConfigureAwait(false);
         Log.LogInformation("Chat for chat id '{ChatId}' is {Chat} ({CorrelationId})",
             sourceChatId, chat, correlationId);
-        long maxEntryId;
+        if (chat.Id.Kind != ChatKind.Group && chat.Id.Kind != ChatKind.Place)
+            throw StandardError.Constraint("Only group or place chats can be copied to a Place.");
+        if (chat.Id.Kind == ChatKind.Place && chat.Id.PlaceId == placeId)
+            throw StandardError.Constraint("Can't copy place chat to the same Place.");
+        if (!chat.Rules.IsOwner())
+            throw StandardError.Constraint("You must be the Owner of this chat to perform the migration.");
+        var place = await Places.Get(session, placeId, cancellationToken).Require().ConfigureAwait(false);
+        if (!place.Rules.IsOwner())
+            throw StandardError.Constraint("You should be place owner to perform 'copy chat to place' operation.");
+
+        var localChatId = sourceChatId.IsPlaceChat ? sourceChatId.PlaceChatId.LocalChatId : sourceChatId.Id;
+        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, localChatId));
+        var newChatId = (ChatId)placeChatId;
         {
-            if (chat.Id.Kind != ChatKind.Group && chat.Id.Kind != ChatKind.Place)
-                throw StandardError.Constraint("Only group chats can be moved to a Place.");
-            if (chat.Id.Kind == ChatKind.Place && chat.Id.PlaceId == placeId)
-                throw StandardError.Constraint("Can't copy place chat to the same Place.");
-            if (!chat.Rules.IsOwner())
-                throw StandardError.Constraint("You must be the Owner of this chat to perform the migration.");
-
-            var place = await Places.Get(session, placeId, cancellationToken).Require().ConfigureAwait(false);
-            if (!place.Rules.IsOwner())
-                throw StandardError.Constraint("You should be a place owner to perform 'copy chat to place' operation.");
-
             var backendCmd = new ChatBackend_CopyChat(sourceChatId, placeId, correlationId);
             var result = await Commander.Call(backendCmd, true, cancellationToken).ConfigureAwait(false);
             hasChanges |= result.HasChanges;
             hasErrors |= result.HasErrors;
-            maxEntryId = result.LastEntryId;
         }
         {
             // Ensure chat is listed in place chat list for the user who is performing chat copying.
-            var localChatId = sourceChatId.IsPlaceChat ? sourceChatId.PlaceChatId.LocalChatId : sourceChatId.Id;
-            var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, localChatId));
-            var newChatId = (ChatId)placeChatId;
             var author = await Authors.GetOwn(session, newChatId, cancellationToken).ConfigureAwait(false);
             if (author != null) {
                 var userId = author.UserId;
@@ -678,13 +675,67 @@ public class Chats(IServiceProvider services) : IChats
             }
         }
         {
-            var backendCmd3 = new AccountsBackend_CopyChat(sourceChatId, placeId, maxEntryId, correlationId);
-            var hasChanges3 = await Commander.Call(backendCmd3, true, cancellationToken).ConfigureAwait(false);
-            hasChanges |= hasChanges3;
+            var textEntryRange = await Backend.GetIdRange(newChatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
+            var maxEntryId = textEntryRange.End > 0 ? textEntryRange.End - 1 : 0;
+            var userIds = await AuthorsBackend.ListUserIds(newChatId, cancellationToken).ConfigureAwait(false);
+            var updateUserChatSettingsCount = 0;
+            var updateChatPositionCount = 0;
+            foreach (var userId in userIds) {
+                var updateUserChatSettingsTask = UpdateUserChatSettings(userId);
+                var updateChatPositionsTask = UpdateChatPosition(userId, maxEntryId);
+                await Task.WhenAll(updateUserChatSettingsTask, updateUserChatSettingsTask).ConfigureAwait(false);
+                if (await updateUserChatSettingsTask.ConfigureAwait(false))
+                    updateUserChatSettingsCount++;
+                if (await updateChatPositionsTask.ConfigureAwait(false))
+                    updateChatPositionCount++;
+            }
+
+            Log.LogInformation("OnCopyChat({CorrelationId}): Updated {Count} UserChatSettings kvas records",
+                correlationId, updateUserChatSettingsCount);
+            Log.LogInformation("OnCopyChat({CorrelationId}): Updated {Count} ChatPositions records",
+                correlationId, updateChatPositionCount);
+
+            hasChanges |= updateUserChatSettingsCount > 0;
+            hasChanges |= updateChatPositionCount > 0;
         }
 
         Log.LogInformation("<- OnCopyChat({CorrelationId})", correlationId);
         return new Chat_CopyChatResult(hasChanges, hasErrors);
+
+        async Task<bool> UpdateUserChatSettings(UserId userId)
+        {
+            var userKvas = ServerKvasBackend.GetUserClient(userId);
+            var userChatSettings = await userKvas.GetUserChatSettings(sourceChatId, cancellationToken).ConfigureAwait(false);
+            if (userChatSettings == UserChatSettings.Default)
+                return false;
+
+            await userKvas.SetUserChatSettings(newChatId, userChatSettings, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+
+        async Task<bool> UpdateChatPosition(UserId userId, long maxEntryId)
+        {
+            if (maxEntryId <= 0)
+                return false;
+
+            var oldChatPosition = await ChatPositionsBackend
+                .Get(userId, sourceChatId, ChatPositionKind.Read, cancellationToken)
+                .ConfigureAwait(false);
+            if (oldChatPosition.EntryLid <= 0)
+                return false;
+
+            var newChatPosition = await ChatPositionsBackend
+                .Get(userId, newChatId, ChatPositionKind.Read, cancellationToken)
+                .ConfigureAwait(false);
+            var newPosition = Math.Min(oldChatPosition.EntryLid, maxEntryId);
+            if (newPosition <= newChatPosition.EntryLid)
+                return false;
+
+            var chatPosition = new ChatPosition(newPosition, oldChatPosition.Origin);
+            var backendCommand = new ChatPositionsBackend_Set(userId, newChatId, ChatPositionKind.Read, chatPosition);
+            await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
     }
 
     public virtual async Task OnPublishCopiedChat(Chat_PublishCopiedChat command, CancellationToken cancellationToken)
