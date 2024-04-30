@@ -31,7 +31,7 @@ public class ComputeStateTestService : SafeAsyncDisposableBase, IHasServices, IC
     public virtual async Task MutateAndInvalidate(string finalValue, CancellationToken cancellationToken)
     {
         _state.Value = "start";
-        using (InvalidationMode.Begin())
+        using (Invalidation.Begin())
             _ = GetValue(default);
 
         for (int i = 0; i < 100; i++) {
@@ -41,7 +41,7 @@ public class ComputeStateTestService : SafeAsyncDisposableBase, IHasServices, IC
             _state.Value = i.ToString(CultureInfo.InvariantCulture);
         }
         _state.Value = finalValue;
-        using (InvalidationMode.Begin())
+        using (Invalidation.Begin())
             _ = GetValue(default);
     }
 }

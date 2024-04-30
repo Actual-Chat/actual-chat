@@ -104,7 +104,7 @@ public class NotificationsBackend(IServiceProvider services)
     // [CommandHandler]
     public virtual async Task OnNotify(NotificationsBackend_Notify command, CancellationToken cancellationToken)
     {
-        if (InvalidationMode.IsOn)
+        if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
         var notification = command.Notification;
@@ -146,7 +146,7 @@ public class NotificationsBackend(IServiceProvider services)
         var userId = notification.UserId.Require();
         var context = CommandContext.GetCurrent();
 
-        if (InvalidationMode.IsOn) {
+        if (Invalidation.IsActive) {
             var invIsCreate = context.Operation.Items.GetOrDefault(false);
             if (invIsCreate) // Created
                 _ = PseudoListRecentNotificationIds(userId);
@@ -205,7 +205,7 @@ public class NotificationsBackend(IServiceProvider services)
     {
         var context = CommandContext.GetCurrent();
 
-        if (InvalidationMode.IsOn) {
+        if (Invalidation.IsActive) {
             var invUserIds = context.Operation.Items.Get<HashSet<UserId>>();
             if (invUserIds is { Count: > 0 })
                 foreach (var invUserId in invUserIds)
@@ -236,7 +236,7 @@ public class NotificationsBackend(IServiceProvider services)
     // [CommandHandler]
     public virtual async Task OnRemoveAccount(NotificationsBackend_RemoveAccount command, CancellationToken cancellationToken)
     {
-        if (InvalidationMode.IsOn)
+        if (Invalidation.IsActive)
             return;
 
         var userId = command.UserId;
@@ -262,7 +262,7 @@ public class NotificationsBackend(IServiceProvider services)
     [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (InvalidationMode.IsOn)
+        if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
         var (entry, author, changeKind) = eventCommand;
@@ -309,7 +309,7 @@ public class NotificationsBackend(IServiceProvider services)
     [EventHandler]
     public virtual async Task OnReactionChangedEvent(ReactionChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (InvalidationMode.IsOn)
+        if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
         var (reaction, entry, author, reactionAuthor, changeKind) = eventCommand;

@@ -44,7 +44,7 @@ public class ServerKvasBackend(IServiceProvider services) : DbServiceBase<UsersD
         if (prefix.IsNullOrEmpty())
             return;
 
-        if (InvalidationMode.IsOn) {
+        if (Invalidation.IsActive) {
             foreach (var (key, _) in command.Items)
                 _ = Get(prefix, key, default);
             _ = List(prefix, default);

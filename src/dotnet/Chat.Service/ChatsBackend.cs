@@ -551,7 +551,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var (chatId, expectedVersion, change, ownerId) = command;
         var context = CommandContext.GetCurrent();
 
-        if (InvalidationMode.IsOn) {
+        if (Invalidation.IsActive) {
             var invChat = context.Operation.Items.Get<Chat>();
             if (invChat != null) {
                 _ = Get(invChat.Id, default);
@@ -817,7 +817,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             ? ChangeKind.Create
             : entry.IsRemoved ? ChangeKind.Remove : ChangeKind.Update;
 
-        if (InvalidationMode.IsOn)
+        if (Invalidation.IsActive)
             return null!; // we are calling other command there
 
         if (HostInfo.IsDevelopmentInstance && entry.Kind == ChatEntryKind.Text && OrdinalEquals(entry.Content, "<error>"))
@@ -844,7 +844,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var expectedVersion = command.ExpectedVersion;
         var context = CommandContext.GetCurrent();
 
-        if (InvalidationMode.IsOn) {
+        if (Invalidation.IsActive) {
             var invChatEntry = context.Operation.Items.Get<ChatEntry>();
             if (invChatEntry != null)
                 InvalidateTiles(chatId, entryKind, invChatEntry.LocalId, changeKind);
@@ -1031,7 +1031,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var entryId = entryIds[0];
 
-        if (InvalidationMode.IsOn) {
+        if (Invalidation.IsActive) {
             _ = GetEntryAttachments(entryId, default);
             InvalidateTiles(entryId.ChatId, ChatEntryKind.Text, entryId.LocalId, ChangeKind.Update);
             return default!;
@@ -1065,7 +1065,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         ChatsBackend_RemoveOwnChats command,
         CancellationToken cancellationToken)
     {
-        if (InvalidationMode.IsOn)
+        if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
         var userId = command.UserId;
@@ -1111,7 +1111,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         var context = CommandContext.GetCurrent();
 
-        if (InvalidationMode.IsOn) {
+        if (Invalidation.IsActive) {
             var invChats = context.Operation.Items.Get<Dictionary<string,long>>();
             if (invChats == null)
                 return;
@@ -1202,7 +1202,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     public virtual async Task OnCreateNotesChat(ChatsBackend_CreateNotesChat command, CancellationToken cancellationToken)
     {
-        if (InvalidationMode.IsOn)
+        if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
         var userId = command.UserId;
@@ -1243,7 +1243,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var chatId = command.ChatId;
         var expectedVersion = command.ExpectedVersion;
 
-        if (InvalidationMode.IsOn) {
+        if (Invalidation.IsActive) {
             _ = GetChatCopyState(chatId, default);
             return null!;
         }
@@ -1314,7 +1314,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     [EventHandler]
     public virtual async Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (InvalidationMode.IsOn)
+        if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
         var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
@@ -1349,7 +1349,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     [EventHandler]
     public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (InvalidationMode.IsOn)
+        if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
         var (author, oldAuthor) = eventCommand;

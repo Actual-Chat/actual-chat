@@ -28,7 +28,7 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
             throw StandardError.Internal("No SessionInfo in operation's items.");
 
         var userId = new UserId(sessionInfo.UserId);
-        if (InvalidationMode.IsOn) {
+        if (Invalidation.IsActive) {
             if (context.Operation.Items.Get<UserNameChangedTag>() != null)
                 _ = AuthBackend.GetUser(default, userId, default);
             return;

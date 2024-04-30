@@ -16,7 +16,7 @@ public partial class ChatsBackend
         var newChatId = (ChatId)placeChatId;
         var context = CommandContext.GetCurrent();
 
-        if (InvalidationMode.IsOn) {
+        if (Invalidation.IsActive) {
             _ = GetPublicChatIdsFor(placeId, default);
             if (context.Operation.Items[typeof(ChatEntryId)] is string invLastEntrySid) {
                 Log.LogInformation("OnCopyChat({CorrelationId}): InvLastEntrySid is {EntrySid}", correlationId, invLastEntrySid);

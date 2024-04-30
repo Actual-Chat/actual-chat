@@ -306,7 +306,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
         _loadLimit.Value = int.MaxValue;
         _ = UICommander.RunNothing(); // No UI update delays in near term
-        using (InvalidationMode.Begin())
+        using (Invalidation.Begin())
             _ = ListAllUnorderedRaw(placeId, default);
     }
 

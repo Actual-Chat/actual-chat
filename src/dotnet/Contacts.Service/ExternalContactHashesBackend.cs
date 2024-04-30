@@ -26,7 +26,7 @@ public class ExternalContactHashesBackend(
         CancellationToken cancellationToken)
     {
         var (userDeviceId, expectedVersion, change) = command;
-        if (InvalidationMode.IsOn) {
+        if (Invalidation.IsActive) {
             _ = Get(userDeviceId, default);
             return default!;
         }
@@ -79,7 +79,7 @@ public class ExternalContactHashesBackend(
         ExternalContactHashesBackend_RemoveAccount command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
-        if (InvalidationMode.IsOn)
+        if (Invalidation.IsActive)
             return; // we can skip invalidation for own contacts
 
         var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);

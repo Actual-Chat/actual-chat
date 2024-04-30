@@ -211,7 +211,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     {
         var old = _searchEnabledChatId;
         _searchEnabledChatId = chatId;
-        using (InvalidationMode.Begin()) {
+        using (Invalidation.Begin()) {
             if (!old.IsNone)
                 _ = IsSearchEnabled(old);
             if (!chatId.IsNone)

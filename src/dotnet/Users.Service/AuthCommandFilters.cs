@@ -15,7 +15,7 @@ public class AuthCommandFilters(IServiceProvider services) : DbServiceBase<Users
 
         var context = CommandContext.GetCurrent();
 
-        if (InvalidationMode.IsOn) {
+        if (Invalidation.IsActive) {
             await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
             return;
         }

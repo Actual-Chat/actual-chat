@@ -47,7 +47,7 @@ public class ReactionsBackend(IServiceProvider services)
         var chatId = entryId.ChatId;
         var authorId = reaction.AuthorId;
 
-        if (InvalidationMode.IsOn) {
+        if (Invalidation.IsActive) {
             _ = List(entryId, default);
             _ = Get(entryId, authorId, default);
             return;
