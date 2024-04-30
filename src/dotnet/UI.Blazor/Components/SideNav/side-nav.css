@@ -10,10 +10,10 @@
 }
 
 .side-nav.animated {
-    @apply transition-transform duration-300 ease-out;
+    @apply transition-transform duration-200 ease-out;
 }
 .side-nav.animated > *:first-child {
-    @apply transition-opacity duration-300 ease-out;
+    @apply transition-opacity duration-200 ease-out;
 }
 .side-nav.animated.pulling {
     @apply transition-none;

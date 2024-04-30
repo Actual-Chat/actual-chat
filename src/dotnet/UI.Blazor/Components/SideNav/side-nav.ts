@@ -1,5 +1,5 @@
 import { clamp, Vector2D } from 'math';
-import { delayAsync, serialize } from 'promises';
+import { delayAsync, PromiseSourceWithTimeout, serialize } from 'promises';
 import { DeviceInfo } from 'device-info';
 import { Disposable, DisposableBag, fromSubscription } from 'disposable';
 import { DocumentEvents, tryPreventDefaultForEvent } from 'event-handling';
@@ -19,7 +19,7 @@ const PrePullDistance2 = 20; // Pre-pull distance over control
 const PrePullDurationMs = 20;
 const MinPullDurationMs = 20;
 const MaxChatViewScroll = 40;
-const MaxSetVisibilityWaitDurationMs = 1000;
+const MaxSetVisibilityWaitDurationMs = 500;
 
 enum SideNavSide {
     Left,
@@ -99,6 +99,7 @@ export class SideNav extends DisposableBag {
 
     /** Call during RAF */
     public resetTransform(): void {
+        debugLog?.log('resetTransform()');
         this.setTransform(this.isOpen ? 1 : 0);
     }
 
@@ -178,12 +179,10 @@ class SideNavPullDetectGesture extends Gesture {
                     return; // And this is the right SideNav - while the left one is always on top
             }
 
-            /*
             for (const activeGesture of Gestures.activeGestures) {
                 if (activeGesture instanceof SideNavPullGesture)
                     return;
             }
-            */
 
             const coords = getCoords(event);
             if (!coords)
@@ -265,6 +264,8 @@ class SideNavPullDetectGesture extends Gesture {
                     return;
                 }
             }
+            if (sideNav.isPulling)
+                return;
 
             Gestures.addActive(new SideNavPullGesture(sideNav, origin, initialState, touchStartEvent, event));
             this.dispose();
@@ -343,12 +344,16 @@ class SideNavPullGesture extends Gesture {
                 // "Pre-apply" visibility change
                 sideNav.setTransform(mustBeOpen ? 1 : 0);
 
+                const transitionEnded = new PromiseSourceWithTimeout<void>();
+                transitionEnded.setTimeout(MaxSetVisibilityWaitDurationMs);
                 sideNav.element.addEventListener('transitionend', async () => {
-                    // Trigger server-side visibility change
-                    await sideNav.setVisibility(mustBeOpen);
+                    transitionEnded.resolve(undefined);
                 }, { once: true });
 
                 // Wait when the changes are applied to DOM
+                await transitionEnded;
+                await sideNav.setVisibility(mustBeOpen);
+
                 const endTime = Date.now() + MaxSetVisibilityWaitDurationMs;
                 while (sideNav.isOpen != mustBeOpen && Date.now() < endTime) {
                     await delayAsync(50);
@@ -356,7 +361,7 @@ class SideNavPullGesture extends Gesture {
                 }
             } finally {
                 await fastWriteRaf();
-                sideNav.resetTransform();
+                sideNav.setTransform(mustBeOpen ? 1 : 0);
                 this.dispose();
             }
         };
@@ -381,6 +386,9 @@ class SideNavPullGesture extends Gesture {
 
             fastRaf({
                 read: () => {
+                    if (this.state === null)
+                        return;
+
                     const dx = isOpen ? offset.x : coords.x - (isLeft ? 0 : ScreenSize.width);
                     const pdx = dx * allowedDirectionSign; // Must be positive
                     const pullRatio = clamp(pdx / (sideNav.element.clientWidth + 0.01), 0, 1);
@@ -388,7 +396,11 @@ class SideNavPullGesture extends Gesture {
                     this.state = new MoveState(pullRatio, openRatio, this.state);
                 },
                 write: () => {
+                    if (this.state === null)
+                        return;
+
                     sideNav.setTransform(this.state.openRatio);
+                    // console.warn(this.state);
                 },
             });
         };
@@ -427,6 +439,16 @@ class SideNavPullGesture extends Gesture {
                 sideNav.setTransform(isOpen ? 1 : 0);
             },
         });
+    }
+
+
+    public dispose() {
+        if (this.isDisposed)
+            return;
+
+        debugLog?.log('dispose()');
+        this.state = null;
+        super.dispose();
     }
 }
 
