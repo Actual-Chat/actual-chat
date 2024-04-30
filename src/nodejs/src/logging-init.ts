@@ -204,6 +204,7 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     minLevels.set('VirtualList', LogLevel.Debug);
     // minLevels.set('Landing', LogLevel.Debug);
     // minLevels.set('LandingLeftMenu', LogLevel.Debug);
+    // minLevels.set('SideNav', LogLevel.Debug);
 
     // XxxUI
     // minLevels.set('FocusUI', LogLevel.Debug);
