@@ -88,12 +88,13 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         if (Computed.IsInvalidating())
             return;
 
-        Log.LogInformation("-> OnCopyChat({CorrelationId})", correlationId);
+        Log.LogInformation("-> OnCopyChat({CorrelationId}): MediaIds.Length={Count}",
+            correlationId, mediaIds.Length);
 
         var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var sids = mediaIds.Select(c => c.Id.Value).ToList();
+        var sids = mediaIds.Select(c => c.Value).ToList();
         var medias = await dbContext.Media
             .Where(c => c.Id.StartsWith(oldChatSid))
  #pragma warning disable CA1310
@@ -103,7 +104,22 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var newSids = mediaIds.Select(c => new MediaId(newChatId, c.LocalId).Id.Value).ToList();
+        Log.LogInformation("OnCopyChat({CorrelationId}): {Count} medias found",
+            correlationId, medias.Count);
+
+        var foundMediaIds = new HashSet<string>(medias.Select(c => c.Id), StringComparer.Ordinal);
+        var missingMediaIds = sids.Except(foundMediaIds, StringComparer.Ordinal)
+            .OrderBy(c => c, StringComparer.Ordinal).ToList();
+        var mistakenlyFoundMediaIds = foundMediaIds.Except(sids, StringComparer.Ordinal)
+            .OrderBy(c => c, StringComparer.Ordinal).ToList();
+        if (missingMediaIds.Count > 0)
+            Log.LogWarning("OnCopyChat({CorrelationId}) detected missing media ids ({Count}): {MediaIds}",
+                correlationId, missingMediaIds.Count, missingMediaIds.ToCommaPhrase());
+        if (mistakenlyFoundMediaIds.Count > 0)
+            Log.LogWarning("OnCopyChat({CorrelationId}) detected mistakenly found media ids ({Count}): {MediaIds}",
+                correlationId, mistakenlyFoundMediaIds.Count, mistakenlyFoundMediaIds.ToCommaPhrase());
+
+        var newSids = mediaIds.Select(c => new MediaId(newChatId, c.LocalId).Value).ToList();
         var newChatSid = newChatId.Value;
         var existentMediaSids = await dbContext.Media
             .Where(c => c.Id.StartsWith(newChatSid))
@@ -116,6 +132,9 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             .ConfigureAwait(false);
 
         var existentMediaSidSet = new HashSet<string>(existentMediaSids, StringComparer.Ordinal);
+        if (existentMediaSidSet.Count > 0)
+            Log.LogWarning("OnCopyChat({CorrelationId}) detected existent media ids ({Count}): {MediaIds}",
+            correlationId, existentMediaSidSet.Count, existentMediaSidSet.OrderBy(c => c, StringComparer.Ordinal) .ToCommaPhrase());
 
         var updateCount = 0;
 
