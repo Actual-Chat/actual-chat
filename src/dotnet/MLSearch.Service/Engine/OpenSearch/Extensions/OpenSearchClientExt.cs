@@ -101,7 +101,7 @@ internal static class OpenSearchClientExt
 
         if (response.OriginalException is { } exc) {
             // request sending failed
-            throw StandardError.External($"OpenSearch request failed: {exc.Message}");
+            throw StandardError.External($"OpenSearch request failed: {exc.Message}", exc);
         }
         if (response.ServerError is { } err) {
             // request sending failed
