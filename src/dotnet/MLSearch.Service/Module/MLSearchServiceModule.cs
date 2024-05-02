@@ -4,6 +4,7 @@ using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.MLSearch.Bot;
+using ActualChat.MLSearch.Bot.Tools;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
@@ -17,8 +18,10 @@ using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.Redis.Module;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.OpenApi.Models;
 using OpenSearch.Client;
 using OpenSearch.Net;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace ActualChat.MLSearch.Module;
 
@@ -126,6 +129,16 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                     $"{Assembly.GetExecutingAssembly().GetName().Name}.xml"
                 )
             );
+            c.DocInclusionPredicate((docName, apiDesc) => {
+                if (!apiDesc.TryGetMethodInfo(out MethodInfo methodInfo)) return false;
+
+                var isBotTool = methodInfo.DeclaringType
+                    .GetCustomAttributes(true)
+                    .OfType<BotToolsAttribute>()
+                    .Any();
+                return isBotTool;
+            });
+            c.SwaggerDoc("bot-tools-v1", new OpenApiInfo { Title = "Bot Tools API - V1", Version = "v1"});
         });
     }
 }

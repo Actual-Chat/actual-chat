@@ -13,7 +13,7 @@ public static class AuthSchemes {
 }
 
 
-
+[BotTools]
 [ApiController, Route("api/bot/sample-tool")]
 //[Authorize(AuthenticationSchemes = AuthSchemes.BotAuthenticationScheme)]
 public sealed class SampleToolController : ControllerBase
