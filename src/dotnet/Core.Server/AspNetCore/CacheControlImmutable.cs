@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 
 namespace ActualChat.AspNetCore;
 
-public class CacheControlImmutableAttribute : ResultFilterAttribute
+public sealed class CacheControlImmutableAttribute : ResultFilterAttribute
 {
     public int Duration { get; set; } = 3600;
 
@@ -14,14 +15,15 @@ public class CacheControlImmutableAttribute : ResultFilterAttribute
         var headers = context.HttpContext.Response.Headers;
 
         // Clear all headers
-        headers.Remove(HeaderNames.Vary);
         headers.Remove(HeaderNames.CacheControl);
         headers.Remove(HeaderNames.Pragma);
+        headers.Remove(HeaderNames.Vary);
 
         var location = IsPrivate
             ? "private"
             : "public";
-        headers.Add(HeaderNames.CacheControl, $"{location}, max-age={Duration}, immutable, stale-while-revalidate={Duration}");
+        var cacheControlHeader = $"{location}, max-age={Duration}, immutable, stale-while-revalidate={Duration}";
+        headers.TryAdd(HeaderNames.CacheControl, cacheControlHeader);
         base.OnResultExecuting(context);
     }
 }
