@@ -1,9 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Db\Db.csproj" />
     <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
