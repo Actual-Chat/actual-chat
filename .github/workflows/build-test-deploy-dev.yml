@@ -160,7 +160,7 @@ jobs:
           target: migrations-app
           tags: |
             ghcr.io/actual-chat/actual-chat-migration:${{ steps.nbgv.outputs.SemVer2 }}
-          push: ${{github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/feat/optimize-like-queries-with-c-collation')}}
+          push: ${{github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/release/')}}
 
   unit-tests:
     name: Run Unit tests
@@ -396,7 +396,6 @@ jobs:
     if: |
       github.ref == 'refs/heads/master' ||
       github.ref == 'refs/heads/dev'    ||
-      github.ref == 'refs/heads/feat/optimize-like-queries-with-c-collation' ||
       startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     needs:
@@ -446,7 +445,6 @@ jobs:
       - name: Deploy dev migrations
         if: |
           github.ref == 'refs/heads/dev' ||
-          github.ref == 'refs/heads/feat/optimize-like-queries-with-c-collation' ||
           startsWith(github.ref, 'refs/heads/release/')
         uses: akhilerm/tag-push-action@v2.0.0
         with:
