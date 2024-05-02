@@ -93,6 +93,49 @@ RUN dotnet msbuild /t:GenerateAssemblyNBGVVersionInfo ActualChat.CI.slnf
 FROM base as dotnet-build
 RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./src/dotnet/App.Server/App.Server.csproj
 
+FROM dotnet-build as migrations-build
+COPY ./ef-migrations.cmd ./ef-migrations.cmd
+RUN dotnet tool restore
+RUN dotnet build --runtime linux-x64 src/dotnet/Chat.Service.Migration/Chat.Service.Migration.csproj \
+    && dotnet build --runtime linux-x64 src/dotnet/Contacts.Service.Migration/Contacts.Service.Migration.csproj \
+    && dotnet build --runtime linux-x64 src/dotnet/Invite.Service.Migration/Invite.Service.Migration.csproj \
+    && dotnet build --runtime linux-x64 src/dotnet/Media.Service.Migration/Media.Service.Migration.csproj \
+    && dotnet build --runtime linux-x64 src/dotnet/MLSearch.Service.Migration/MLSearch.Service.Migration.csproj \
+    && dotnet build --runtime linux-x64 src/dotnet/Notification.Service.Migration/Notification.Service.Migration.csproj \
+    && dotnet build --runtime linux-x64 src/dotnet/Search.Service.Migration/Search.Service.Migration.csproj \
+    && dotnet build --runtime linux-x64 src/dotnet/Users.Service.Migration/Users.Service.Migration.csproj
+RUN ./ef-migrations.cmd Chat.Service bundle --runtime linux-x64 --output ./artifacts/Chat.Service.Migration.exe \
+    && ./ef-migrations.cmd Contacts.Service bundle --runtime linux-x64 --output ./artifacts/Contacts.Service.Migration.exe \
+    && ./ef-migrations.cmd Invite.Service bundle --runtime linux-x64 --output ./artifacts/Invite.Service.Migration.exe \
+    && ./ef-migrations.cmd Media.Service bundle --runtime linux-x64 --output ./artifacts/Media.Service.Migration.exe \
+    && ./ef-migrations.cmd MLSearch.Service bundle --runtime linux-x64 --output ./artifacts/MLSearch.Service.Migration.exe \
+    && ./ef-migrations.cmd Notification.Service bundle --runtime linux-x64 --output ./artifacts/Notification.Service.Migration.exe \
+    && ./ef-migrations.cmd Search.Service bundle --runtime linux-x64 --output ./artifacts/Search.Service.Migration.exe \
+    && ./ef-migrations.cmd Users.Service bundle --runtime linux-x64 --output ./artifacts/Users.Service.Migration.exe \
+    && ls -lha /src/artifacts
+
+FROM runtime as migrations-app
+COPY --from=migrations-build /src/artifacts/*.Migration.exe /migrations/
+COPY <<EOF /migrations/entrypoint.sh
+#!/bin/bash
+./Chat.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}chat;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
+./Contacts.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}contacts;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
+./Invite.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}invite;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
+./Media.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}media;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
+./MLSearch.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}mlsearch;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
+./Notification.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}notification;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
+./Search.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}search;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
+./Users.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}users;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
+EOF
+RUN chmod -R 755 /migrations/
+WORKDIR /migrations
+ENV HOST=localhost
+ENV PORT=5432
+ENV INSTANCE=dev_
+ENV USER=postgres
+ENV PASSWORD=postgres
+ENTRYPOINT ["./entrypoint.sh"]
+
 FROM runtime as app
 COPY --from=dotnet-build /app .
 COPY --from=nodejs-build /src/src/dotnet/App.Wasm/wwwroot/ /app/wwwroot/
