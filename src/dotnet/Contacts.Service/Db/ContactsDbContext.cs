@@ -18,5 +18,35 @@ public class ContactsDbContext(DbContextOptions<ContactsDbContext> options) : Db
     public DbSet<DbEvent> Events { get; protected set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder model)
-        => model.ApplyConfigurationsFromAssembly(typeof(ContactsDbContext).Assembly).UseSnakeCaseNaming();
+    {
+        model.ApplyConfigurationsFromAssembly(typeof(ContactsDbContext).Assembly).UseSnakeCaseNaming();
+
+        var contact = model.Entity<DbContact>();
+        contact.Property(e => e.Id).UseCollation("C");
+        contact.Property(e => e.OwnerId).UseCollation("C");
+        contact.Property(e => e.UserId).UseCollation("C");
+        contact.Property(c => c.ChatId).UseCollation("C");
+        contact.Property(c => c.PlaceId).UseCollation("C");
+
+        var externalContact = model.Entity<DbExternalContact>();
+        externalContact.Property(e => e.Id).UseCollation("C");
+
+        var externalContactHash = model.Entity<DbExternalContactsHash>();
+        externalContactHash.Property(e => e.Id).UseCollation("C");
+
+        var externalContactLink = model.Entity<DbExternalContactLink>();
+        externalContactLink.Property(e => e.DbExternalContactId).UseCollation("C");
+
+        var placeContact = model.Entity<DbPlaceContact>();
+        placeContact.Property(e => e.Id).UseCollation("C");
+        placeContact.Property(e => e.PlaceId).UseCollation("C");
+        placeContact.Property(e => e.OwnerId).UseCollation("C");
+
+        var operation = model.Entity<DbOperation>();
+        operation.Property(e => e.Uuid).UseCollation("C");
+        operation.Property(e => e.HostId).UseCollation("C");
+
+        var events = model.Entity<DbEvent>();
+        events.Property(e => e.Uuid).UseCollation("C");
+    }
 }
