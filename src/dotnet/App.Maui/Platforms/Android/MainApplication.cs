@@ -37,7 +37,8 @@ public class MainApplication : MauiApplication, ILifecycleObserver
         SetBackgroundState(true);
     }
 
-    protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
+    protected override MauiApp CreateMauiApp()
+        => MauiProgram.CreateMauiApp();
 
     private static void SetBackgroundState(bool isBackground)
         => _ = WhenAppServicesReady().ContinueWith(_ => {
