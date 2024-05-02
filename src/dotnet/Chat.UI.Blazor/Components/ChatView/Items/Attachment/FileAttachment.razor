@@ -3,14 +3,19 @@
 @{
     var fileSize = Attachment.Media.Length / (1024 * 1024d);
     var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
+    MimeTypes.Register("application/x-zip-compressed", ".zip");
     MimeTypes.TryGetExtension(Attachment.Media.ContentType, out var extension);
-    var fileExtension = extension.ToUpper().Replace(".", "");
+    var fileExtension = extension != null ? extension.Replace(".", "") : "";
     var fileCls = _fileColors.GetValueOrDefault(fileExtension, "file-default");
 }
 
 <a class="file-attachment unfocusable" href="@url" target="_blank" role="button">
     <div class="c-icon @fileCls">
-        <i class="icon-download text-xl"></i>
+        @if (fileCls == _fileClasses[FileType.Multimedia]) {
+            <i class="icon-play-fill text-2xl"></i>
+        } else {
+            <i class="icon-file text-xl"></i>
+        }
     </div>
     <div class="c-info">
         <FileAttachmentTitle Title="@Attachment.Media.FileName"/>
@@ -18,49 +23,62 @@
             <div class="c-size">
                 <span>@fileSize.ToString("N2") MB</span>
             </div>
-            <div class="c-extension">
-                <span>@fileExtension</span>
-            </div>
+            @if (_isLoaded) {
+                <a class="c-open" href="@url" role="button">
+                    <span>Open in Folder</span>
+                </a>
+            }
         </div>
     </div>
 </a>
 
 @code {
+    private bool _isLoaded;
+
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     [Parameter, EditorRequired]
     public TextEntryAttachment Attachment { get; set; } = null!;
 
+    private static Dictionary<FileType, string> _fileClasses = new() {
+        { FileType.Image, "file-image" },
+        { FileType.Multimedia, "file-multimedia" },
+        { FileType.Pdf, "file-pdf" },
+        { FileType.Table, "file-table" },
+        { FileType.Text, "file-text" },
+        { FileType.Archive, "file-archive" },
+    };
+
     private static Dictionary<string, string> _fileColors = new() {
-        { "PNG", "file-image" },
-        { "JPG", "file-image" },
-        { "JPEG", "file-image" },
-        { "BMP", "file-image" },
-        { "GIF", "file-image" },
-        { "WEBP", "file-image" },
-        { "MP3", "file-multimedia" },
-        { "3GP", "file-multimedia" },
-        { "AVI", "file-multimedia" },
-        { "MOV", "file-multimedia" },
-        { "M4V", "file-multimedia" },
-        { "M4A", "file-multimedia" },
-        { "MKV", "file-multimedia" },
-        { "OGM", "file-multimedia" },
-        { "OGG", "file-multimedia" },
-        { "OGA", "file-multimedia" },
-        { "WEBM", "file-multimedia" },
-        { "WAV", "file-multimedia" },
-        { "PDF", "file-pdf" },
-        { "PPT", "file-pdf" },
-        { "PPTX", "file-pdf" },
-        { "XLS", "file-table" },
-        { "XLSX", "file-table" },
-        { "CSS", "file-table" },
-        { "HTML", "file-table" },
-        { "TORRENT", "file-table" },
-        { "DOC", "file-text" },
-        { "TXT", "file-text" },
-        { "ZIP", "file-archive" },
-        { "RAR", "file-archive" },
+        { "png", _fileClasses[FileType.Image] },
+        { "jpg", _fileClasses[FileType.Image] },
+        { "jpeg", _fileClasses[FileType.Image] },
+        { "bmp", _fileClasses[FileType.Image] },
+        { "gif", _fileClasses[FileType.Image] },
+        { "webp", _fileClasses[FileType.Image] },
+        { "mp3", _fileClasses[FileType.Multimedia] },
+        { "3gp", _fileClasses[FileType.Multimedia] },
+        { "avi", _fileClasses[FileType.Multimedia] },
+        { "mov", _fileClasses[FileType.Multimedia] },
+        { "m4v", _fileClasses[FileType.Multimedia] },
+        { "m4a", _fileClasses[FileType.Multimedia] },
+        { "mkv", _fileClasses[FileType.Multimedia] },
+        { "ogm", _fileClasses[FileType.Multimedia] },
+        { "ogg", _fileClasses[FileType.Multimedia] },
+        { "oga", _fileClasses[FileType.Multimedia] },
+        { "webm", _fileClasses[FileType.Multimedia] },
+        { "wav", _fileClasses[FileType.Multimedia] },
+        { "pdf", _fileClasses[FileType.Pdf] },
+        { "ppt", _fileClasses[FileType.Pdf] },
+        { "pptx", _fileClasses[FileType.Pdf] },
+        { "xls", _fileClasses[FileType.Table] },
+        { "xlsx", _fileClasses[FileType.Table] },
+        { "css", _fileClasses[FileType.Table] },
+        { "html", _fileClasses[FileType.Table] },
+        { "torrent", _fileClasses[FileType.Table] },
+        { "doc", _fileClasses[FileType.Text] },
+        { "txt", _fileClasses[FileType.Text] },
+        { "zip", _fileClasses[FileType.Archive] },
+        { "rar", _fileClasses[FileType.Archive] },
     };
 }

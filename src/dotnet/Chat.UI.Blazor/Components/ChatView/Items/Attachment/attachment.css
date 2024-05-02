@@ -65,7 +65,7 @@
     @apply text-headline-1 text-02;
 }
 .file-attachment .c-normal-title .c-start {
-    @apply line-clamp-1;
+    @apply truncate;
 }
 .file-attachment .c-normal-title .c-end {
     @apply flex-none;
@@ -76,10 +76,10 @@
 }
 .file-attachment .c-size {
     @apply flex-x gap-x-2;
-    @apply text-text-1 text-03;
+    @apply text-caption-4 text-03;
 }
-.file-attachment .c-extension {
-    @apply text-text-1 text-03;
+.file-attachment .c-open {
+    @apply text-caption-4 text-primary;
 }
 
 .file-image {
