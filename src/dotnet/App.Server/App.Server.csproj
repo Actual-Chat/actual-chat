@@ -34,6 +34,7 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
     <PackageReference Include="Npgsql.OpenTelemetry" />
     <PackageReference Include="Google.Cloud.AspNetCore.DataProtection.Storage" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>
@@ -72,7 +73,7 @@
   <!-- Copy ActualLab* pdb to the output folder -->
   <Target Name="_CopyNuGetPackagesPdbs" AfterTargets="ResolveReferences">
     <ItemGroup>
-      <ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths-&gt;'%(RootDir)%(Directory)%(Filename).pdb')" Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' and $([System.String]::new('%(Filename)').StartsWith('ActualLab')) and Exists('%(RootDir)%(Directory)%(Filename).pdb')" />
+      <ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths->'%(RootDir)%(Directory)%(Filename).pdb')" Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' and $([System.String]::new('%(Filename)').StartsWith('ActualLab')) and Exists('%(RootDir)%(Directory)%(Filename).pdb')" />
     </ItemGroup>
   </Target>
 </Project>
