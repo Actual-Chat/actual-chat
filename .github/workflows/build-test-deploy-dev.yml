@@ -152,6 +152,16 @@ jobs:
             ghcr.io/actual-chat/actual-chat-app:${{ steps.nbgv.outputs.SemVer2 }}
           push: ${{github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/release/')}}
 
+      - name: Build image 'actual-chat-migration:${{ steps.nbgv.outputs.SemVer2 }}'
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          build-args: "NPM_READ_TOKEN=${{secrets.NPM_READ_TOKEN}}"
+          target: migrations-app
+          tags: |
+            ghcr.io/actual-chat/actual-chat-migration:${{ steps.nbgv.outputs.SemVer2 }}
+          push: ${{github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/feat/optimize-like-queries-with-c-collation')}}
+
   unit-tests:
     name: Run Unit tests
     runs-on: ubuntu-latest
@@ -386,6 +396,7 @@ jobs:
     if: |
       github.ref == 'refs/heads/master' ||
       github.ref == 'refs/heads/dev'    ||
+      github.ref == 'refs/heads/feat/optimize-like-queries-with-c-collation' ||
       startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     needs:
@@ -431,6 +442,17 @@ jobs:
           src: ghcr.io/actual-chat/actual-chat-app:${{needs.build.outputs.semver2}}
           dst: |
             us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/actual-chat-app:${{needs.build.outputs.semver2}}
+
+      - name: Deploy dev migrations
+        if: |
+          github.ref == 'refs/heads/dev' ||
+          github.ref == 'refs/heads/feat/optimize-like-queries-with-c-collation' ||
+          startsWith(github.ref, 'refs/heads/release/')
+        uses: akhilerm/tag-push-action@v2.0.0
+        with:
+          src: ghcr.io/actual-chat/actual-chat-migration:${{needs.build.outputs.semver2}}
+          dst: |
+            us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/actual-chat-migration:${{needs.build.outputs.semver2}}
 
   deploy-prod:
     name: Deploy prod
