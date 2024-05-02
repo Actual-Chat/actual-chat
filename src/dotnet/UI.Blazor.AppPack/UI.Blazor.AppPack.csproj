@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  
+  <PropertyGroup>
+    <RootNamespace>ActualChat.UI.Blazor.App</RootNamespace>
+    <!-- ILRepack fails without this: -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  
+  <ItemGroup Condition="!$(UseAppPack)">
+    <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(UseAppPack)">
+    <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" PrivateAssets="all" />
+    <PackageReference Include="ILRepack.Lib.MSBuild.Task" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

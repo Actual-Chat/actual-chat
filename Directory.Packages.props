@@ -118,6 +118,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="Microsoft.IO.RecyclableMemoryStream" Version="3.0.0" />
     <PackageVersion Include="Microsoft.JSInterop" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.JSInterop.WebAssembly" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.Toolkit.HighPerformance" Version="7.1.2" />
     <PackageVersion Include="NATS.Net" Version="2.2.0" />
     <PackageVersion Include="Npgsql" Version="$(NpgsqlVersion)" />
@@ -159,7 +160,7 @@
     <PackageVersion Include="System.Net.Http.Json" Version="$(SystemNetHttpJsonVersion)" />
     <PackageVersion Include="System.Threading.Channels" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Ulid" Version="1.3.3" />
-    <PackageVersion Include="ZString" Version="2.5.0" />
+    <PackageVersion Include="ZString" Version="2.5.1" />
     <PackageVersion Include="TimeZoneNames" Version="6.0.0" />
     <!-- MAUI  -->
     <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
@@ -182,7 +183,8 @@
     <!-- TODO: Remove or migrate from these -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Cookies" Version="2.2.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Routing" Version="2.2.2" />
-    <PackageVersion Include="System.Reactive" Version="5.0.0" />
+    <PackageVersion Include="System.Reactive" Version="6.0.0" />
+    <PackageVersion Include="System.Linq.Async" Version="6.0.1" />
     <!-- OpenSearch client -->
     <PackageVersion Include="OpenSearch.Net" Version="1.7.0" />
     <PackageVersion Include="OpenSearch.Net.VirtualizedCluster" Version="1.7.0" />
@@ -210,6 +212,7 @@
     <PackageVersion Include="bunit" Version="1.27.17" />
     <PackageVersion Include="FluentAssertions" Version="6.12.0" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.3.3" />
+    <PackageVersion Include="ILRepack.Lib.MSBuild.Task" Version="2.0.31" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" PrivateAssets="all" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />

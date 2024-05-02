@@ -1,6 +1,13 @@
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Condition="Exists('$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props')" Project="$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props"/>
 
+  <PropertyGroup>
+    <Authors>Actual Chat, Inc.</Authors>
+    <Company>Actual Chat, Inc.</Company>
+    <Copyright>Copyright Actual Chat, Inc.</Copyright>
+    <RepositoryUrl>https://github.com/Actual-Chat/actual-chat</RepositoryUrl>
+  </PropertyGroup>
+
   <!-- Handy helper properties -->
   <PropertyGroup>
     <ProjectKind>Other</ProjectKind>
@@ -37,14 +44,13 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <TargetFramework Condition="!$(IsMauiProject)">net8.0</TargetFramework>
+    <!-- Key folders -->
     <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
     <SolutionDir Condition="$(SolutionDir) == ''">$(RepoRoot)</SolutionDir>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Authors>Actual Chat, Inc.</Authors>
-    <Company>Actual Chat, Inc.</Company>
-    <Copyright>Copyright Actual Chat, Inc.</Copyright>
-    <RepositoryUrl>https://github.com/Actual-Chat/actual-chat</RepositoryUrl>
+
+    <!-- UseAppPack -->
+    <UseAppPack Condition="'$(UseAppPack)' == ''">false</UseAppPack>
+    <AppPackDir>$(RepoRoot)artifacts/repacked/$(Configuration)/</AppPackDir>
 
     <!-- Assembly name & root namespace -->
     <BaseName>ActualChat</BaseName>
@@ -60,8 +66,10 @@
     <RootNamespace Condition="$(AssemblyName.EndsWith('.Api'))">$(AssemblyName.Replace('.Api',''))</RootNamespace>
 
     <!-- C# / language settings -->
+    <TargetFramework Condition="!$(IsMauiProject)">net8.0</TargetFramework>
     <LangVersion>preview</LangVersion>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
     <Features>strict</Features>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 

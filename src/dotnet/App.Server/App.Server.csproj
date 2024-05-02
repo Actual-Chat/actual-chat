@@ -51,7 +51,9 @@
     <!-- And service projects for stateless / other services -->
     <ProjectReference Include="..\Streaming.Service\Streaming.Service.csproj" />
     <!-- But don't reference their clients! -->
-    <ProjectReference Include="..\App.Wasm\App.Wasm.csproj" />
+    <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
+    <ProjectReference Include="..\UI.Blazor.AppPack\UI.Blazor.AppPack.csproj" />
+    <ProjectReference Include="..\App.Wasm\App.Wasm.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -72,7 +74,9 @@
   <!-- Copy ActualLab* pdb to the output folder -->
   <Target Name="_CopyNuGetPackagesPdbs" AfterTargets="ResolveReferences">
     <ItemGroup>
-      <ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths-&gt;'%(RootDir)%(Directory)%(Filename).pdb')" Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' and $([System.String]::new('%(Filename)').StartsWith('ActualLab')) and Exists('%(RootDir)%(Directory)%(Filename).pdb')" />
+      <ReferenceCopyLocalPaths
+        Include="@(ReferenceCopyLocalPaths-&gt;'%(RootDir)%(Directory)%(Filename).pdb')"
+        Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' and $([System.String]::new('%(Filename)').StartsWith('ActualLab')) and Exists('%(RootDir)%(Directory)%(Filename).pdb')" />
     </ItemGroup>
   </Target>
 </Project>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="$(UseAppPack)">
+    <BuildDependsOn>$(BuildDependsOn);BuildAppPack;CopyAppPack</BuildDependsOn>
+  </PropertyGroup>
+
+  <Target Name="BuildAppPack">
+    <ItemGroup>
+      <InputAssemblies Include="$(OutputPath)$(TargetName)$(TargetExt)"/>
+      <!--      <InputAssemblies Include="$(OutputPath)*.dll" Exclude="$(OutputPath)System*.dll;$(OutputPath)Microsoft*.dll;$(OutputPath)ZString.dll;$(OutputPath)Sentry*.dll"/>-->
+      <!--      <InputAssemblies Include="$(OutputPath)*.dll" Exclude="$(OutputPath)System*.dll;$(OutputPath)Microsoft*.dll;$(OutputPath)Sentry*.dll;$(OutputPath)Sentry*.dll"/>-->
+      <InputAssemblies Include="$(OutputPath)ActualChat*.dll" />
+      <InputAssemblies Include="$(OutputPath)ActualLab*.dll" />
+      <InputAssemblies Include="$(OutputPath)MemoryPack.Core.dll" />
+      <InputAssemblies Include="$(OutputPath)Newtonsoft.Json.dll" />
+      <InputAssemblies Include="$(OutputPath)Pidgin.dll" />
+      <InputAssemblies Include="$(OutputPath)Ulid.dll" />
+    </ItemGroup>
+
+    <ILRepack
+      Parallel="true"
+      Verbose="false"
+      DebugInfo="true"
+      Internalize="false"
+      XmlDocumentation="false"
+      AllowDuplicateResources="false"
+      InputAssemblies="@(InputAssemblies)"
+      LibraryPath="$(OutputPath)"
+      TargetKind="SameAsPrimaryAssembly"
+      OutputFile="$(OutputPath)$(AssemblyName).dll"
+    />
+    <!-- Might be useful:
+      TargetPlatformDirectory="C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App\8.0.4"
+    -->
+  </Target>
+
+  <Target Name="CopyAppPack">
+    <ItemGroup>
+      <SourceFiles Include="$(OutputPath)/$(AssemblyName).*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(SourceFiles)" DestinationFolder="$(AppPackDir)" />
+    <Message Importance="High" Text="ILRepack outputs are copied to $(AppPackDir)" />
+  </Target>
+</Project>

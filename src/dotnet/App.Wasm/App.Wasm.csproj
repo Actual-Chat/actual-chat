@@ -16,6 +16,9 @@ Use:
     -->
     <InvariantGlobalization>true</InvariantGlobalization>
     <WasmEnableWebcil>true</WasmEnableWebcil>
+    <!--
+    <WasmEnableSIMD>true</WasmEnableSIMD>
+    -->
     <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
   </PropertyGroup>
 
@@ -44,6 +47,7 @@ Use:
     <TrimmerRootAssembly Include="ActualChat.App.Wasm" RootMode="EntryPoint" />
   </ItemGroup>
 
+  <!-- References -->
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
@@ -54,8 +58,34 @@ Use:
     <!-- </workaround of https://github.com/dotnet/aspnetcore/issues/37141> -->
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
+  <!-- UseAppPack == false -->
+  <ItemGroup Condition="!$(UseAppPack)">
+    <ProjectReference Include="..\UI.Blazor.AppPack\UI.Blazor.AppPack.csproj" />
+  </ItemGroup>
+  <!-- UseAppPack == true -->
+  <ItemGroup Condition="$(UseAppPack)">
+    <ProjectReference Include="..\UI.Blazor.AppPack\UI.Blazor.AppPack.csproj" ReferenceOutputAssembly="false" />
+    <Reference Include="ActualChat.UI.Blazor.AppPack">
+      <HintPath>$(AppPackDir)ActualChat.UI.Blazor.AppPack.dll</HintPath>
+    </Reference>
+    <!-- A few more packages should be referenced transitively in this case -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+    <PackageReference Include="Microsoft.JSInterop.WebAssembly" />
+    <PackageReference Include="Microsoft.Toolkit.HighPerformance" />
+    <PackageReference Include="OpenTelemetry" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    <PackageReference Include="SauceControl.Blake2Fast" />
+    <PackageReference Include="Sentry.OpenTelemetry" />
+    <PackageReference Include="System.Linq.Async" />
+    <PackageReference Include="System.Reactive" />
+    <PackageReference Include="RestEase" />
+    <PackageReference Include="ZString" />
+    <PackageReference Include="Ulid" />
   </ItemGroup>
 
   <ItemGroup>

@@ -3,13 +3,6 @@
 
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../../'))" />
 
-  <!-- for nuget publish -->
-  <PropertyGroup Condition="'$(PUBLIC_BUILD)' != ''">
-    <AssemblyOriginatorKeyFile >$(SolutionDir)/ActualChat.snk</AssemblyOriginatorKeyFile>
-    <SignAssembly>true</SignAssembly>
-    <AssemblyPublicKey>, PublicKey=002400000480000094000000060200000024000052534131000400000100010065a6975e4ad991ec5d84aa50d01a5894de251170fceca3c771bf827e9d29d36893702987774e66155fe3dd74880291bbc40b61998e5fa3f88fac5e4ba877b69e040e866078f276dba9f5d068b2c3334f5708612f4bafcd90f4c25ab0b8fc893de0385eab67a3f0c280c66773f2939e9daefe70175d694b92aa1675e445c262bf</AssemblyPublicKey>
-  </PropertyGroup>
-
   <!-- Analyzers & warnings -->
   <PropertyGroup Condition="$(IsServerSideProject)">
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer> <!-- Disable it for server-side logic -->
@@ -17,6 +10,13 @@
   <PropertyGroup Condition="'$(ProjectKind)' == 'Migration'">
     <!-- CA1861: Prefer 'static readonly' fields over constant array arguments ... -->
     <NoWarn>$(NoWarn);CA1861</NoWarn>
+  </PropertyGroup>
+
+  <!-- NuGet publish -->
+  <PropertyGroup Condition="'$(PUBLIC_BUILD)' != ''">
+    <AssemblyOriginatorKeyFile>$(SolutionDir)/ActualChat.snk</AssemblyOriginatorKeyFile>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyPublicKey>, PublicKey=002400000480000094000000060200000024000052534131000400000100010065a6975e4ad991ec5d84aa50d01a5894de251170fceca3c771bf827e9d29d36893702987774e66155fe3dd74880291bbc40b61998e5fa3f88fac5e4ba877b69e040e866078f276dba9f5d068b2c3334f5708612f4bafcd90f4c25ab0b8fc893de0385eab67a3f0c280c66773f2939e9daefe70175d694b92aa1675e445c262bf</AssemblyPublicKey>
   </PropertyGroup>
 
   <!-- tsconfig -->

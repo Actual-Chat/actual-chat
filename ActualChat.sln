@@ -333,6 +333,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "install-provisioning-profil
 		.github\actions\install-provisioning-profile\action.yml = .github\actions\install-provisioning-profile\action.yml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor.AppPack", "src\dotnet\UI.Blazor.AppPack\UI.Blazor.AppPack.csproj", "{86368143-52B3-4A00-99C0-EB41E880A3DD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -651,6 +653,10 @@ Global
 		{DA26CF4E-9B27-490B-98EF-DCAEB1709000}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DA26CF4E-9B27-490B-98EF-DCAEB1709000}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DA26CF4E-9B27-490B-98EF-DCAEB1709000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{86368143-52B3-4A00-99C0-EB41E880A3DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{86368143-52B3-4A00-99C0-EB41E880A3DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{86368143-52B3-4A00-99C0-EB41E880A3DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{86368143-52B3-4A00-99C0-EB41E880A3DD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -759,6 +765,7 @@ Global
 		{0C33EE35-ED23-4B6F-A7EC-C1760DCFE938} = {16126688-A04E-44A8-9EA3-A6A45A1D2CE8}
 		{2DE91069-221D-477A-AAA6-B0A9E34EB3D7} = {0C33EE35-ED23-4B6F-A7EC-C1760DCFE938}
 		{1C05141A-B402-416A-86C0-6574EA631DEF} = {0C33EE35-ED23-4B6F-A7EC-C1760DCFE938}
+		{86368143-52B3-4A00-99C0-EB41E880A3DD} = {8F17CFD4-76C1-4CD5-B1D6-DAC6F9BEE9EA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}
