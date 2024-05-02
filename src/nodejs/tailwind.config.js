@@ -405,41 +405,17 @@ module.exports = {
       'decrease': 'decrease 500ms ease-in-out',
       'increase': 'increase 500ms ease-in-out',
       bounce: 'bounce 1s infinite',
-      'instant-display': 'display-element-from-left 0s',
-      'display-from-left': 'display-element-from-left 150ms ease-in-out',
-      'display-from-right': 'display-element-from-right 150ms ease-in-out',
       'display-from-top': 'display-element-from-top 150ms ease-in-out',
-      'display-from-bottom': 'display-element-from-bottom 150ms ease-in-out',
-      'display-from-left-slow': 'display-element-from-left 300ms ease-in-out',
-      'display-from-right-slow': 'display-element-from-right 300ms ease-in-out',
-      'display-from-top-slow': 'display-element-from-top 300ms ease-in-out',
-      'display-from-bottom-slow': 'display-element-from-bottom 300ms ease-in-out',
       'opacity-from-0': 'opacity-from-0 150ms ease-in-out',
-      'scale-from-left': 'scale-from-left 150ms ease-in-out',
-      'scale-from-right': 'scale-from-right 150ms ease-in-out',
-      'from-left': 'from-left 150ms ease-in-out',
-      'from-right': 'from-right 150ms ease-in-out',
-      'width-to-zero': 'width-to-zero 150ms ease-in-out',
-      'width-to-full': 'width-to-full 150ms ease-in-out',
-      'hide-to-left': 'hide-to-left 150ms ease-in-out',
       'tooltip-vertical': 'tooltip-vertical 300ms ease-in-out forwards',
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
-      'scale-icon': 'scale-icon 150ms ease-in-out forwards',
-      'scaling-5': 'scaling-5 2s ease-in-out infinite',
       'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
       'highlight': 'highlight 1s ease-in-out forwards',
-      'width-half-to-full': 'width-half-to-full 150ms ease-in-out',
-      'width-5-to-7': 'width-5-to-7 150ms ease-in-out',
-      'width-full-to-half': 'width-full-to-half 150ms ease-in-out',
-      'width-7-to-5': 'width-7-to-5 150ms ease-in-out',
       'loud-show': 'loud-show 150ms ease-in-out',
       'loud-show-text-mode': 'loud-show-text-mode 150ms ease-in-out',
       'loud-hide': 'loud-hide 150ms ease-in-out',
       'loud-hide-text-mode': 'loud-hide-text-mode 150ms ease-in-out',
-      'scale-to-full': 'scale-to-full 300ms ease-in-out',
-      'scale-cycle': 'scale-cycle 600ms cubic-bezier(0.4, 0, 0.6, 1) infinite',
-      'scale-to-5': 'scale-to-5 150ms ease-in-out',
       'notify-panel-opening': 'notify-panel-opening 150ms ease-in-out',
       'notify-panel-closing': 'notify-panel-closing 150ms ease-in-out',
       'notify-toggle-hide': 'notify-toggle-hide 150ms ease-in-out',
@@ -1014,56 +990,6 @@ module.exports = {
           transform: 'translateX(0rem) scale(1)',
         },
       },
-      'width-to-zero': {
-        from: {
-          width: '100%',
-        },
-        to: {
-          width: '16%',
-        },
-      },
-      'width-to-full': {
-        from: {
-          width: '0%',
-          opacity: '0',
-        },
-        to: {
-          width: '84%',
-          opacity: '1'
-        },
-      },
-      'width-full-to-half': {
-        from: {
-          width: '100%',
-        },
-        to: {
-          width: '50%',
-        },
-      },
-      'width-7-to-5': {
-        from: {
-          width: '7rem',
-        },
-        to: {
-          width: '5rem',
-        },
-      },
-      'width-half-to-full': {
-        from: {
-          width: '50%',
-        },
-        to: {
-          width: '100%',
-        },
-      },
-      'width-5-to-7': {
-        from: {
-          width: '5rem',
-        },
-        to: {
-          width: '7rem',
-        },
-      },
       'loud-show': {
         from: {
           transform: 'translateX(1.5rem) scale(.05)',
@@ -1094,36 +1020,6 @@ module.exports = {
         },
         to: {
           transform: 'translateX(1.5rem) scale(.05)',
-        },
-      },
-      'scale-to-full': {
-        '0%': {
-          transform: 'scale(0)',
-        },
-        '50%': {
-          transform: 'scale(0.05)'
-        },
-        '99%': {
-          transform: 'scale(1)',
-        },
-      },
-      'scale-cycle': {
-        '0%': {
-            transform: 'scale(0)',
-        },
-        '50%': {
-            transform: 'scale(1)'
-        },
-        '100%': {
-            transform: 'scale(0)',
-        },
-      },
-      'scale-to-5': {
-        from: {
-          transform: 'scale(1)',
-        },
-        to: {
-          transform: 'scale(0.05)',
         },
       },
       'notify-panel-opening': {
@@ -1173,27 +1069,6 @@ module.exports = {
           transform: 'scale(1)',
         },
       },
-      'hide-to-left': {
-        to: {
-          transform: '-translateX(300%)',
-        },
-      },
-      'scale-from-right': {
-        from: {
-          transform: 'translateX(1rem) scale(.05)',
-        },
-        to: {
-          transform: 'translateX(0rem) scale(1)',
-        },
-      },
-      'from-right': {
-        from: {
-          transform: 'translate(8rem, 0rem) scale(1)',
-        },
-        to: {
-          transform: 'translate(0rem, 0rem) scale(1)',
-        },
-      },
       'display-element-from-top': {
         from: {
           height: 0,
@@ -1220,22 +1095,6 @@ module.exports = {
         },
         to: {
           opacity: 1,
-        },
-      },
-      'scale-icon': {
-        from: {
-          transform: 'scale(1)',
-        },
-        to: {
-          transform: 'scale(1.05)',
-        },
-      },
-      'scaling-5': {
-        '0%, 100%': {
-          transform: 'scale(1)',
-        },
-        '50%': {
-          transform: 'scale(1.05)',
         },
       },
       'tooltip-vertical': {

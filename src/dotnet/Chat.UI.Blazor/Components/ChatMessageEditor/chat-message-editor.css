@@ -81,13 +81,9 @@
     @apply bg-transparent;
     @apply text-round-title;
 }
-body.narrow .post-panel-btn {
-    @apply text-04;
-}
 body.hoverable .post-panel-btn:hover {
     @apply text-02;
 }
-
 
 [contenteditable=true]:empty:before {
     @apply truncate;
@@ -198,17 +194,21 @@ body.hoverable .post-panel-btn:hover {
     @apply hidden flex-none;
     @apply self-end;
     @apply outline-none;
-    @apply text-03;
+    @apply text-primary;
+    @apply duration-300;
+    @apply opacity-0;
+    transition-behavior: allow-discrete;
 }
 
 .text-mode .post-panel-btn.post-message {
     @apply flex;
-    @apply animate-display-from-left;
+    @apply opacity-100;
+    @starting-style {
+        opacity: 0;
+    }
 }
 body.wide .attachment-mode .post-panel-btn.post-message {
     @apply flex;
-    @apply animate-display-from-left;
-    @apply text-primary;
 }
 
 .text-mode .recorder-buttons .btn {

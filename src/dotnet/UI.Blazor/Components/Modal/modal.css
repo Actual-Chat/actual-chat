@@ -93,12 +93,22 @@ body.narrow .modal-frame.modal-xs .c-text {
     @apply md:shadow-modal-wide;
 }
 .modal-frame {
-    @apply flex-y items-stretch gap-y-2 overflow-hidden;
+    @apply hidden flex-y items-stretch gap-y-2 overflow-hidden;
     @apply max-h-screen h-full w-full md:h-auto md:w-modal;
     @apply pb-4;
     @apply rounded-lg;
     @apply font-medium;
     @apply md:shadow-modal-wide;
+    @apply opacity-0;
+    @apply duration-300;
+    transition-behavior: allow-discrete;
+}
+.modal .modal-frame {
+    @apply flex;
+    @apply opacity-10;
+    @starting-style {
+        opacity: 0;
+    }
 }
 
 .modal-frame .dialog-body {

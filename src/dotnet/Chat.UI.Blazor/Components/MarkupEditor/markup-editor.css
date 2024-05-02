@@ -31,7 +31,8 @@
 /* Placeholder */
 .markup-editor .editor-content:empty:before {
     content: attr(data-placeholder);
-    @apply text-04 truncate;
+    @apply truncate;
+    @apply text-04;
 }
 body.narrow .markup-editor .editor-content:empty:before {
     @apply text-caption-1;
