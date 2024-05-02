@@ -698,9 +698,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .Distinct()
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
-            foreach (var mediaId in attachmentMediaIds) {
+            foreach (var mediaSid in attachmentMediaIds) {
+                var mediaId = new MediaId(mediaSid);
+                if (!OrdinalEquals(mediaId.Scope, chatId.Value))
+                    continue; // NOTE(DF): Do not remove media from current chat scope. Forwarded messages can contain media from another chat.
                 var removeMediaCommand = new MediaBackend_Change(
-                    new MediaId(mediaId),
+                    mediaId,
                     new Change<Media.Media> { Remove = true });
                 await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
             }
