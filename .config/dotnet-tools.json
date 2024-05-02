@@ -25,6 +25,12 @@
       "commands": [
         "maui-check"
       ]
+    },
+    "dotnet-trace": {
+      "version": "8.0.510501",
+      "commands": [
+        "dotnet-trace"
+      ]
     }
   }
 }

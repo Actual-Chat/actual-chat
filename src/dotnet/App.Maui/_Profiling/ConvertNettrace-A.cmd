@@ -1,0 +1,1 @@
+dotnet-trace convert --format Speedscope android.nettrace
