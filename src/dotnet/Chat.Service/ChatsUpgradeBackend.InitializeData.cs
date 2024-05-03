@@ -1,6 +1,5 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Module;
-using ActualChat.Hosting;
 using ActualChat.Mathematics.Internal;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
