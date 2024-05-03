@@ -1,5 +1,4 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
-@using System.ComponentModel.DataAnnotations
 @using ActualChat.Invite
 @inherits ComputedStateComponent<EditChatTypeModalPage.ComputedModel>
 @{
@@ -17,8 +16,11 @@
     Context.SetTitle("Chat Type");
     Context.ModalDataBag.Set(nameof(ChatSettingsStartModalPage.ComputedModel.IsPublic), m.IsPublic);
     var isPlaceChat = !_placeId.IsNone;
-
     var canChangeChatType = _placeId.IsNone || _place != null && (_place.Rules.CanApplyPublicChatType() && !_isPlaceWelcomeChat);
+    var publicChatLabel = !isPlaceChat ? "Public chat" : "Place chat";
+    var publicChatHint = !isPlaceChat ?
+        "Anyone can join this chat by navigating to its URL" :
+        "All members of this Place will see it in Place's chat list and will be able to talk there";
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -32,10 +34,10 @@
                     <FormRadio Id="@_form.IsPublicTrueFormId" IsDisabled="@(!canChangeChatType)" Value="@true" />
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.IsPublicTrueFormId" Text="Public chat"></Label>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="@publicChatLabel"></Label>
                 </Content>
                 <Caption>
-                    <Label InputId="@_form.IsPublicTrueFormId" Text="Anyone can join this chat by navigating to its URL"></Label>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="@publicChatHint"></Label>
                 </Caption>
             </TileItem>
             <TileItem Click="@(() => OnPublicChatClick(false))">
@@ -162,9 +164,19 @@
 
     private ChatId ChatId { get; set; }
 
+    protected override void OnInitialized() {
+        ChatId = Context.GetTypedModel<ChatId>();
+        Context.SetTitle("Edit chat settings");
+        if (ChatId.IsPeerChat(out _)) {
+            throw StandardError.NotSupported("Peer chat is not supported.");
+        }
+        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
+        Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
+        base.OnInitialized();
+    }
+
     protected override async Task OnInitializedAsync() {
         _isAdmin = Hub.AccountUI.OwnAccount.Value.IsAdmin;
-        ChatId = Context.GetTypedModel<ChatId>();
         var chat = await Hub.Chats.Get(Session, ChatId, default).Require();
         _form = new FormModel(ComponentIdGenerator) {
             IsPublic = chat.IsPublic,
@@ -172,8 +184,6 @@
             AllowGuestAuthors = chat.AllowGuestAuthors,
             AllowAnonymousAuthors = chat.AllowAnonymousAuthors,
         };
-        if (ChatId.IsPeerChat(out _))
-            throw StandardError.NotSupported("Peer chat id should not be provided.");
         _placeId = chat.Id.PlaceChatId.PlaceId;
         if (!_placeId.IsNone) {
             _isPlaceWelcomeChat = OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag);
@@ -181,10 +191,7 @@
             if (!_place.Rules.CanApplyPublicChatType())
                 _form.IsPublic = false;
         }
-
         Context.SetClass("edit-chat-type");
-        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
-        Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
         await base.OnInitializedAsync();
     }
 

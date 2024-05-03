@@ -17,6 +17,9 @@
         return;
 
     Context.ModalDataBag.Set(nameof(ComputedModel.MembersCount), m.MembersCount);
+    Context.ModalDataBag.Set(nameof(ComputedModel.IsPublic), m.IsPublic);
+    var isPlaceChat = m.IsPlace;
+    var publicChatLabel = !isPlaceChat ? "Public" : "Place";
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -80,7 +83,7 @@
                 Chat type
             </Content>
             <Right>
-                @(m.IsPublic ? "Public" : "Private")
+                @(m.IsPublic ? $"{publicChatLabel}" : "Private")
             </Right>
         </TileItem>
 
@@ -129,7 +132,6 @@
     private AvatarKind _avatarKind;
     private string? _avatarKey;
     private PlaceId _placeId;
-    private Place? _place;
     private bool _isPlaceWelcomeChat;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -165,16 +167,11 @@
         _form = new FormModel(ComponentIdGenerator) {
             Title = chat.Title,
             Picture = chat.Picture?.ToPicture(),
-            IsPublic = chat.IsPublic,
             ImageUploadUrl = $"/api/chat-media/{chat.Id}/upload",
         };
         _placeId = chat.Id.PlaceChatId.PlaceId;
-        if (!_placeId.IsNone) {
+        if (!_placeId.IsNone)
             _isPlaceWelcomeChat = OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag);
-            _place = await Hub.Places.Get(Hub.Session(), _placeId, default).Require().ConfigureAwait(false);
-            if (!_place.Rules.CanApplyPublicChatType())
-                _form.IsPublic = false;
-        }
         Context.PageDataBag.Set(formBagKey, _form);
     }
 
@@ -194,12 +191,15 @@
 
         var allAuthorIds = await Hub.Authors.ListAuthorIds(Session, chatId, cancellationToken);
         var isPublic = chat.IsPublic;
+        _placeId = chat.Id.PlaceChatId.PlaceId;
+        var isPlace = !_placeId.IsNone;
         var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
         return new() {
             Chat = chat,
             IsOwner = chat.Rules.IsOwner(),
             MembersCount = allAuthorIds.Count,
             IsPublic = isPublic,
+            IsPlace = isPlace,
             EnableIncompleteUI = enableIncompleteUI,
         };
     }
@@ -238,7 +238,6 @@
         var chat = await Hub.Chats.Get(Session, ChatId, default).Require();
         var newChat = chat with {
             Title = _form!.Title,
-            IsPublic = _form.IsPublic,
             MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
         };
         var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
@@ -252,7 +251,6 @@
         public string Title { get; set; } = "";
 
         public Picture? Picture { get; set; }
-        public bool IsPublic { get; set; }
         public string ImageUploadUrl { get; init; } = "";
 
         public string FormId { get; }
@@ -271,6 +269,7 @@
         public bool IsOwner { get; init; }
         public int MembersCount { get; init; }
         public bool IsPublic { get; init; }
+        public bool IsPlace { get; init; }
         public bool EnableIncompleteUI { get; init; }
     }
 }
