@@ -33,7 +33,10 @@ public class AppHostFixture(IMessageSink messageSink)
     }
 }
 
-internal class OpenSearchCleanup(IOpenSearchClient openSearch) : IAsyncDisposable
+#pragma warning disable CA1812
+// An instance of OpenSearchCleanup class is created via DI container of the app host of MLSearchCollection above
+
+internal sealed class OpenSearchCleanup(IOpenSearchClient openSearch) : IAsyncDisposable
 {
     public async ValueTask DisposeAsync()
     {
@@ -43,3 +46,5 @@ internal class OpenSearchCleanup(IOpenSearchClient openSearch) : IAsyncDisposabl
             HttpMethod.DELETE, $"/_ingest/pipeline/{IndexNames.MLTestIndexPattern}", CancellationToken.None);
     }
 }
+
+#pragma warning restore CA1812
