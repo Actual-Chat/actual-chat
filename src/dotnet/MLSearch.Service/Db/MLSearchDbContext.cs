@@ -12,5 +12,14 @@ public class MLSearchDbContext(DbContextOptions<MLSearchDbContext> options) : Db
     public DbSet<DbEvent> Events { get; protected set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder model)
-        => model.ApplyConfigurationsFromAssembly(typeof(MLSearchDbContext).Assembly).UseSnakeCaseNaming();
+    {
+        model.ApplyConfigurationsFromAssembly(typeof(MLSearchDbContext).Assembly).UseSnakeCaseNaming();
+
+        var operation = model.Entity<DbOperation>();
+        operation.Property(e => e.Uuid).UseCollation("C");
+        operation.Property(e => e.HostId).UseCollation("C");
+
+        var events = model.Entity<DbEvent>();
+        events.Property(e => e.Uuid).UseCollation("C");
+    }
 }
