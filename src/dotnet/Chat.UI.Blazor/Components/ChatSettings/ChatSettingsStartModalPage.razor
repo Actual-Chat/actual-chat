@@ -46,12 +46,8 @@
                 Picked="@OnImagePicked"/>
 
             <div class="c-buttons">
-                <PicUpload
+                <PicUploadButton
                     UploadUrl="@_form.ImageUploadUrl"
-                    Title="@_form.Title"
-                    AvatarKind="@_avatarKind"
-                    AvatarKey="@_avatarKey"
-                    IsButton="@true"
                     Picked="@OnImagePicked"/>
 
                 @if (m.EnableIncompleteUI) {
