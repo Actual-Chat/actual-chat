@@ -15,5 +15,21 @@ public class SearchDbContext(DbContextOptions<SearchDbContext> options) : DbCont
     public DbSet<DbEvent> Events { get; protected set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder model)
-        => model.ApplyConfigurationsFromAssembly(typeof(SearchDbContext).Assembly).UseSnakeCaseNaming();
+    {
+        model.ApplyConfigurationsFromAssembly(typeof(SearchDbContext).Assembly).UseSnakeCaseNaming();
+
+        var indexedChat = model.Entity<DbIndexedChat>();
+        indexedChat.Property(e => e.Id).UseCollation("C");
+
+        var indexedState = model.Entity<DbContactIndexState>();
+        indexedState.Property(e => e.Id).UseCollation("C");
+        indexedState.Property(e => e.LastUpdatedId).UseCollation("C");
+
+        var operation = model.Entity<DbOperation>();
+        operation.Property(e => e.Uuid).UseCollation("C");
+        operation.Property(e => e.HostId).UseCollation("C");
+
+        var events = model.Entity<DbEvent>();
+        events.Property(e => e.Uuid).UseCollation("C");
+    }
 }
