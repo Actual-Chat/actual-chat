@@ -105,7 +105,7 @@ body.narrow .modal-frame.modal-xs .c-text {
 }
 .modal .modal-frame {
     @apply flex;
-    @apply opacity-10;
+    @apply opacity-100;
     @starting-style {
         opacity: 0;
     }
