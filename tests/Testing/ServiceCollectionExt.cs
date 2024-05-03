@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using ActualChat.Performance;
 using ActualChat.Testing.Internal;
 using ActualLab.Testing.Output;
 using MartinCostello.Logging.XUnit;
@@ -26,7 +27,9 @@ public static class ServiceCollectionExt
     public static IServiceCollection AddTestLogging(this IServiceCollection services, ITestOutputHelper output)
         => AddTestLogging(services, new TestOutputHelperAccessor(output.ToSafe()));
     public static IServiceCollection AddTestLogging(this IServiceCollection services, TestOutputHelperAccessor outputAccessor)
-        => services.AddLogging(logging => {
+    {
+        services.AddTracers(outputAccessor.Output.NewTracer(), useScopedTracers: true);
+        services.AddLogging(logging => {
             // Overriding default logging to more test-friendly one
             logging.ClearProviders();
             logging.SetMinimumLevel(LogLevel.Debug);
@@ -57,4 +60,6 @@ public static class ServiceCollectionExt
                     }));
 #pragma warning restore CS0618
         });
+        return services;
+    }
 }

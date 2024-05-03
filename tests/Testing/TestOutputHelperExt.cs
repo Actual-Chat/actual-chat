@@ -5,10 +5,8 @@ namespace ActualChat.Testing;
 
 public static class TestOutputHelperExt
 {
-    public static Tracer NewTracer(this ITestOutputHelper output, [CallerMemberName] string name = "")
-        => new (name, x => {
-            output.WriteLine(x.Format());
-        });
+    public static Tracer NewTracer(this ITestOutputHelper output, string name = "Test")
+        => new(name, x => output.WriteLine(x.Format()));
 
     public static ITestOutputHelper ToSafe(this ITestOutputHelper output)
     {

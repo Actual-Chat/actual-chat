@@ -70,7 +70,19 @@ public static partial class MauiProgram
             // NOTE: It's enabled in Debug mode only hence there is no performance penalties in Release mode.
             EnableContainerValidation(appBuilder);
 #endif
-            Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
+            var environment =
+#if IS_PRODUCTION_ENV || !DEBUG
+                Environments.Production;
+#else
+                Environments.Development;
+#endif
+            Constants.HostInfo = ClientAppStartup.CreateHostInfo(
+                appBuilder.Configuration,
+                environment,
+                DeviceInfo.Current.Model,
+                HostKind.MauiApp,
+                MauiSettings.AppKind,
+                MauiSettings.BaseUrl);
             AppNonScopedServiceStarter.WarmupStaticServices(HostInfo);
 #if true
             // Normal start
@@ -101,7 +113,7 @@ public static partial class MauiProgram
         }
     }
 
-    private static MauiAppBuilder ConfigureApp(MauiAppBuilder builder, bool isEarlyApp)
+    private static void ConfigureApp(MauiAppBuilder builder, bool isEarlyApp)
     {
         using var _ = Tracer.Region();
 
@@ -131,8 +143,6 @@ public static partial class MauiProgram
         services.AddTransient(_ => new MainPage());
         if (!isEarlyApp)
             ConfigureAppServices(services, null);
-
-        return builder;
     }
 
     private static void AddSafeJSRuntime(IServiceCollection services)
@@ -197,11 +207,6 @@ public static partial class MauiProgram
     {
         using var _ = Tracer.Region();
 
-        // Singleton services visible from lazy services
-        services.AddSingleton(HostInfo);
-        services.AddSingleton(HostInfo.Configuration);
-        services.AddMauiDiagnostics(false);
-
 #if IOS
         // HTTP client
         services.RemoveAll<IHttpClientFactory>();
@@ -223,6 +228,10 @@ public static partial class MauiProgram
 
     private static void ConfigureNonLazyServicesVisibleFromLazyServices(IServiceCollection services)
     {
+        services.AddSingleton(HostInfo);
+        services.AddSingleton(HostInfo.Configuration);
+        services.AddMauiDiagnostics(false);
+
         // The services listed below are resolved by other services from lazy service provider,
         // and since it doesn't have them registered (inside the actual service provider
         // backing the lazy one), they won't be resolved unless we re-register them somehow.
@@ -248,28 +257,6 @@ public static partial class MauiProgram
                 return result;
             }
         }
-    }
-
-    // CreateXxx
-
-    public static HostInfo CreateHostInfo(IConfiguration configuration)
-    {
-        // Add HostInfo
-#if IS_PRODUCTION_ENV || !DEBUG
-        var environment = Environments.Production;
-#else
-        var environment = Environments.Development;
-#endif
-        var hostInfo = new HostInfo {
-            HostKind = HostKind.MauiApp,
-            AppKind = MauiSettings.AppKind,
-            Environment = environment,
-            Configuration = configuration,
-            Roles = HostRoles.App,
-            BaseUrl = MauiSettings.BaseUrl,
-            DeviceModel = DeviceInfo.Current.Model,
-        };
-        return hostInfo;
     }
 
     private static Func<Type, bool> CreateLazyServiceFilter()

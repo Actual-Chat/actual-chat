@@ -32,12 +32,9 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             return; // Server-side only module
         }
         if (!Settings.IsEnabled) {
-            _log.LogInformation("MLSearch functionality is disabled, skipping service registrations.");
+            _log.LogInformation("MLSearch functionality is disabled, skipping service registrations");
             return;
         }
-
-        // Api Adapters
-        services.AddSingleton<ITracerSource, TracerSource>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

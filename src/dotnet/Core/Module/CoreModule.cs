@@ -71,7 +71,6 @@ public sealed class CoreModule(IServiceProvider moduleServices)
         var isServer = hostKind.IsServer();
 
         // Common services
-        services.AddTracer();
         services.AddSingleton(c => new StaticImportsInitializer(c));
         services.AddHostedService(c => c.GetRequiredService<StaticImportsInitializer>());
         services.AddSingleton(c => new UrlMapper(c.HostInfo()));

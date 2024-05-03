@@ -1,12 +1,14 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App;
+using ActualLab.Internal;
 using Microsoft.AspNetCore.Components.WebView;
 
 namespace ActualChat.App.Maui;
 
 public static class MauiAppStartup
 {
+    [RequiresUnreferencedCode(UnreferencedCode.Reflection)]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WebViewManager))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All,
         "Microsoft.AspNetCore.Components.WebView.Maui.AndroidWebKitWebViewManager", "Microsoft.AspNetCore.Components.WebView.Maui")]
@@ -21,7 +23,5 @@ public static class MauiAppStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All,
         "Microsoft.AspNetCore.Components.WebView.IpcReceiver", "Microsoft.AspNetCore.Components.WebView")]
     public static void ConfigureServices(IServiceCollection services)
-        => AppStartup.ConfigureServices(services, HostKind.MauiApp, c => new HostModule[] {
-            new Module.MauiAppModule(c),
-        });
+        => AppStartup.ConfigureServices(services, HostKind.MauiApp, c => [new Module.MauiAppModule(c)]);
 }

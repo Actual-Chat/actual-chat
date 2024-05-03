@@ -7,6 +7,7 @@ using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services; // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using ActualLab.CommandR.Rpc;
+using ActualLab.Internal;
 using ActualLab.Rpc;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 // ReSharper disable once RedundantUsingDirective
@@ -20,23 +21,20 @@ namespace ActualChat.App.Wasm;
 
 public static class Program
 {
-    private static Tracer Tracer { get; set; } = Tracer.None;
-
+    [RequiresUnreferencedCode(UnreferencedCode.Reflection)]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WasmApp))]
     public static async Task Main(string[] args)
     {
-#if DEBUG
-        Tracer = Tracer.Default = new Tracer("WasmApp", x => Console.WriteLine("@ " + x.Format()));
-#endif
-        Tracer.Point($"{nameof(Main)} started");
-        OtelDiagnostics.SetupConditionalPropagator();
+        Tracer.Default.Point();
 
+        // Rpc & Fusion defaults
         RpcDefaults.Mode = RpcMode.Client;
         FusionDefaults.Mode = FusionMode.Client;
         RpcOutboundCommandCallMiddleware.Default.CallTimeout = TimeSpan.FromSeconds(20);
 
+        OtelDiagnostics.SetupConditionalPropagator();
         // NOTE(AY): This thing takes 1 second on Windows!
-        var isSentryEnabled = Constants.Sentry.EnabledFor.Contains(HostKind.MauiApp);
+        var isSentryEnabled = Constants.Sentry.EnabledFor.Contains(HostKind.WasmApp);
         var sentrySdkDisposable = isSentryEnabled
             ? SentrySdk.Init(options => options.ConfigureForApp(true))
             : null;
@@ -45,14 +43,18 @@ public static class Program
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
             builder.RootComponents.Add<Microsoft.AspNetCore.Components.Web.HeadOutlet>("head::after");
             var baseUrl = builder.HostEnvironment.BaseAddress;
-            builder.Services.AddTracer(Tracer);
-            ConfigureServices(builder.Services, builder.Configuration, baseUrl);
-
-            var region = Tracer.Region($"{nameof(WebAssemblyHostBuilder)}.Build");
+            var services = builder.Services;
+            services.AddTracers(Tracer.Default, useScopedTracers: false);
+            var hostInfo = Constants.HostInfo = ClientAppStartup.CreateHostInfo(
+                builder.Configuration,
+                builder.HostEnvironment.Environment,
+                "Browser",
+                HostKind.WasmApp,
+                AppKind.Wasm,
+                baseUrl);
+            ClientAppStartup.ConfigureServices(services, hostInfo);
             var host = builder.Build();
-            region.Close();
 
-            Constants.HostInfo = host.Services.HostInfo();
             if (Constants.DebugMode.WebMReader)
                 WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
             if (sentrySdkDisposable != null)
@@ -72,33 +74,6 @@ public static class Program
             traceProvider.DisposeSilently();
             sentrySdkDisposable.DisposeSilently();
         }
-    }
-
-    public static void ConfigureServices(
-        IServiceCollection services,
-        IConfiguration configuration,
-        string baseUrl,
-        bool isTested = false)
-    {
-        using var _ = Tracer.Region();
-        services.AddSingleton(new ScopedTracerProvider(Tracer)); // We don't want to have scoped tracers in WASM app
-
-        // Logging
-        services.AddLogging(logging => logging.ConfigureClientFilters(AppKind.Wasm));
-
-        // Other services shared with plugins
-        services.TryAddSingleton(configuration);
-        services.AddSingleton(c => new HostInfo() {
-            HostKind = HostKind.WasmApp,
-            AppKind = AppKind.Wasm,
-            Environment = c.GetService<IWebAssemblyHostEnvironment>()?.Environment ?? "Development",
-            Configuration = c.Configuration(),
-            Roles = HostRoles.App,
-            IsTested = isTested,
-            BaseUrl = baseUrl,
-        });
-
-        AppStartup.ConfigureServices(services, HostKind.WasmApp);
     }
 
     private static void CreateClientSentryTraceProvider(IServiceProvider services, Action<TracerProvider?> saveTracerProvider)

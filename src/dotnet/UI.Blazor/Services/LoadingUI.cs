@@ -9,6 +9,7 @@ namespace ActualChat.UI.Blazor.Services;
 public class LoadingUI
 {
     private static readonly Tracer StaticTracer = Tracer.Default[nameof(LoadingUI)];
+    // ReSharper disable once InconsistentNaming
     private static readonly TaskCompletionSource _whenAppRenderedSource = new();
 
     public static TimeSpan AppCreationTime { get; private set; }

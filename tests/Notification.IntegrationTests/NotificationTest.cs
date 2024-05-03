@@ -10,7 +10,7 @@ public class NotificationTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task ParallelInsertsWithSameIdAreSafe()
     {
         var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester();
+        await using var tester = appHost.NewBlazorTester(Out);
         var account = await tester.SignInAsBob();
 
         var notificationId = new NotificationId(account.Id, NotificationKind.Message, Constants.Chat.DefaultChatId);
@@ -37,7 +37,7 @@ public class NotificationTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task ParallelNotificationsAreSafe()
     {
         var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester();
+        await using var tester = appHost.NewBlazorTester(Out);
         var account = await tester.SignInAsBob();
 
         var notificationId = new NotificationId(account.Id, NotificationKind.Message, Constants.Chat.DefaultChatId);

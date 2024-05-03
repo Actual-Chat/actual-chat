@@ -18,10 +18,12 @@ public class BlazorTester : TestContext, IWebTester
     public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
     public Session Session { get; }
     public UrlMapper UrlMapper => AppServices.UrlMapper();
+    public ITestOutputHelper Out { get; }
 
-    public BlazorTester(AppHost appHost)
+    public BlazorTester(AppHost appHost, ITestOutputHelper @out)
     {
         AppHost = appHost;
+        Out = @out;
         _serviceScope = AppServices.CreateScope();
         Services.AddFallbackServiceProvider(ScopedAppServices);
 

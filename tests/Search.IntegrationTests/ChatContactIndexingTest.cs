@@ -25,7 +25,6 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
     protected override async Task InitializeAsync()
     {
         await base.InitializeAsync();
-        Tracer.Default = Out.NewTracer();
         _tester = AppHost.NewWebClientTester(Out);
         _searchBackend = AppHost.Services.GetRequiredService<ISearchBackend>();
         _chatContactIndexer = AppHost.Services.GetRequiredService<ChatContactIndexer>();
@@ -33,7 +32,6 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
 
     protected override async Task DisposeAsync()
     {
-        Tracer.Default = Tracer.None;
         await _tester.DisposeAsync().AsTask();
         await base.DisposeAsync();
     }

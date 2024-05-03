@@ -11,7 +11,7 @@ public class ChatJoinAnonymouslyTest(ChatCollection.AppHostFixture fixture, ITes
     public async Task JoinWithGuestUser()
     {
         var appHost = AppHost;
-        var tester = appHost.NewBlazorTester();
+        var tester = appHost.NewBlazorTester(Out);
 
         // Guest user can not join to a chat with invite code, should we change this?
         await tester.SignInAsAlice();
@@ -44,7 +44,7 @@ public class ChatJoinAnonymouslyTest(ChatCollection.AppHostFixture fixture, ITes
     public async Task JoinAnonymouslyWithSignedInUser(bool isPublicChat)
     {
         var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester();
+        await using var tester = appHost.NewBlazorTester(Out);
 
         await tester.SignInAsAlice();
         var (chatId, inviteId) = await tester.CreateChat(c => c with {
@@ -81,7 +81,7 @@ public class ChatJoinAnonymouslyTest(ChatCollection.AppHostFixture fixture, ITes
     public async Task JoinAsGuestShouldBeForbidden()
     {
         var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester();
+        await using var tester = appHost.NewBlazorTester(Out);
 
         await tester.SignInAsAlice();
         var (chatId, _) = await tester.CreateChat(true);
@@ -106,7 +106,7 @@ public class ChatJoinAnonymouslyTest(ChatCollection.AppHostFixture fixture, ITes
     public async Task JoinAnonymouslyShouldBeForbidden(bool isPublicChat)
     {
         var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester();
+        await using var tester = appHost.NewBlazorTester(Out);
 
         await tester.SignInAsAlice();
         var (chatId, inviteId) = await tester.CreateChat(isPublicChat);

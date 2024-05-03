@@ -11,18 +11,6 @@ namespace ActualChat.Search.IntegrationTests;
 public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    protected override Task InitializeAsync()
-    {
-        Tracer.Default = Out.NewTracer();
-        return base.InitializeAsync();
-    }
-
-    protected override Task DisposeAsync()
-    {
-        Tracer.Default = Tracer.None;
-        return base.DisposeAsync();
-    }
-
     [Fact]
     public async Task ShouldFindAddedChats()
     {

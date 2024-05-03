@@ -1,6 +1,5 @@
 using ActualChat.App.Server;
 using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Testing.Host;
 
@@ -12,11 +11,11 @@ public static class AppHostExt
         Action<IServiceCollection>? configureClientServices = null)
         => new(appHost, output, configureClientServices);
 
-    public static PlaywrightTester NewPlaywrightTester(this AppHost appHost, ITestOutputHelper output)
-        => new(appHost, output);
+    public static PlaywrightTester NewPlaywrightTester(this AppHost appHost, ITestOutputHelper @out)
+        => new(appHost, @out);
 
-    public static BlazorTester NewBlazorTester(this AppHost appHost)
-        => new(appHost);
+    public static BlazorTester NewBlazorTester(this AppHost appHost, ITestOutputHelper @out)
+        => new(appHost, @out);
 
     public static HttpClient NewHttpClient(this AppHost appHost)
     {

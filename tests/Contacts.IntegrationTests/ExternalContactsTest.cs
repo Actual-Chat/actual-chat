@@ -34,7 +34,6 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
     protected override Task InitializeAsync()
     {
-        Tracer.Default = Out.NewTracer();
         _tester = AppHost.NewWebClientTester(Out);
         var services = AppHost.Services;
         _externalContacts = services.GetRequiredService<IExternalContacts>();
@@ -48,7 +47,6 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
     protected override async Task DisposeAsync()
     {
-        Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
             FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
         await _tester.DisposeAsync().AsTask();

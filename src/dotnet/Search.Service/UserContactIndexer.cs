@@ -16,7 +16,7 @@ public sealed class UserContactIndexer(IServiceProvider services) : ContactIndex
 
     private async Task<bool> SyncChanges(CancellationToken cancellationToken)
     {
-        using var _1 = Tracer.Default.Region($"{nameof(UserContactIndexer)}.{nameof(SyncChanges)}()");
+        using var _1 = Tracer.Region();
         var state = await ContactIndexStatesBackend.GetForUsers(cancellationToken).ConfigureAwait(false);
         var batches = AccountsBackend
             .BatchChanged(state.LastUpdatedVersion,
@@ -26,7 +26,7 @@ public sealed class UserContactIndexer(IServiceProvider services) : ContactIndex
                 cancellationToken);
         var hasChanges = false;
         await foreach (var accounts in batches.ConfigureAwait(false)) {
-            using var _2 = Tracer.Default.Region($"{nameof(UserContactIndexer)}.{nameof(SyncChanges)}(): {accounts.Count} accounts");
+            using var _2 = Tracer.Region($"{nameof(SyncChanges)} batch: {accounts.Count} accounts");
             var first = accounts[0];
             var last = accounts[^1];
             Log.LogDebug(

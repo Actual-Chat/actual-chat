@@ -17,10 +17,12 @@ internal sealed class ClusterSetup(
     IOpenSearchClient openSearch,
     OpenSearchNamingPolicy namingPolicy,
     IndexNames indexNames,
-    ITracerSource? tracing
+    Tracer baseTracer
     ) : IModuleInitializer
 {
+    private readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
     private ClusterSettings? _result;
+
     public ClusterSettings Result => _result ?? throw new InvalidOperationException(
         "Initialization script was not called."
     );
@@ -34,11 +36,10 @@ internal sealed class ClusterSetup(
 
     private async Task<ClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)
     {
-        if (_result != null) {
+        if (_result != null)
             return _result;
-        }
 
-        using var _1 = tracing.TraceRegion();
+        using var _1 = _tracer.Region();
         // Read model group latest state
         var modelGroupResponse = await openSearch.RunAsync(
                 $$"""
@@ -123,9 +124,10 @@ internal sealed class ClusterSetup(
         }
         return _result = new ClusterSettings(modelAllConfig, modelId, modelEmbeddingDimension);
     }
+
     private async Task EnsureTemplatesAsync(CancellationToken cancellationToken)
     {
-        using var _ = tracing.TraceRegion();
+        using var _ = _tracer.Region();
 
         var numberOfReplicas = openSearchSettings.Value.DefaultNumberOfReplicas;
         await openSearch.Indices
@@ -141,7 +143,6 @@ internal sealed class ClusterSetup(
                 .IndexPatterns(indexPattern);
     }
 
-
     private async Task EnsureIndexesAsync(ClusterSettings settings, CancellationToken cancellationToken)
     {
         // Notes:
@@ -150,7 +151,7 @@ internal sealed class ClusterSetup(
         // It must fail and retried on any error.
         // It has to succeed once and only once to set up an OpenSearch cluster.
         // After the initial setup this would never be called again.
-        using var _1 = tracing.TraceRegion();
+        using var _1 = _tracer.Region();
         var searchIndexId = indexNames.GetFullName(IndexNames.ChatContent, settings);
         var ingestCursorIndexId = indexNames.GetFullName(IndexNames.ChatContentCursor, settings);
         var chatsCursorIndexId = indexNames.GetFullName(IndexNames.ChatCursor, settings);

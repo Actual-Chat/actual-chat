@@ -2,19 +2,18 @@ namespace ActualChat.Performance;
 
 public static class ServiceCollectionExt
 {
-    public static IServiceCollection AddTracer(this IServiceCollection services)
+    public static IServiceCollection AddTracers(
+        this IServiceCollection services, Tracer rootTracer, bool useScopedTracers)
     {
-        if (services.Any(c => c.ServiceType == typeof(Tracer)))
+        if (!useScopedTracers || !rootTracer.IsEnabled) {
+            services.AddSingleton(rootTracer);
             return services;
+        }
 
-        services.AddScoped(_ => new ScopedTracerProvider());
-        services.AddTransient(c => c.GetService<ScopedTracerProvider>()?.Tracer ?? Tracer.Default);
-        return services;
-    }
-
-    public static IServiceCollection AddTracer(this IServiceCollection services, Tracer tracer)
-    {
-        services.AddSingleton(tracer);
+        services.AddScoped(_ => new ScopedTracerProvider(rootTracer));
+        services.AddTransient(c => c.IsScoped()
+            ? c.GetService<ScopedTracerProvider>()?.Tracer ?? rootTracer
+            : rootTracer);
         return services;
     }
 }

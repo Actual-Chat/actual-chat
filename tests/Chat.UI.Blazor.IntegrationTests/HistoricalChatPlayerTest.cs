@@ -13,7 +13,7 @@ public class HistoricalChatPlayerTest(AppHostFixture fixture, ITestOutputHelper 
     public async Task RewindBackTest()
     {
         var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester();
+        await using var tester = appHost.NewBlazorTester(Out);
         var services = tester.ScopedAppServices;
         var account = await tester.SignIn(new User(Constants.User.Admin.Name));
         var clocks = services.Clocks();

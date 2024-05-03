@@ -1,4 +1,3 @@
-using ActualChat.Performance;
 using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 
@@ -13,14 +12,12 @@ public class ChatListingTest(ChatCollection.AppHostFixture fixture, ITestOutputH
 
     protected override Task InitializeAsync()
     {
-        Tracer.Default = Out.NewTracer();
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
         return Task.CompletedTask;
     }
 
     protected override async Task DisposeAsync()
     {
-        Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
             FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
         await Tester.DisposeAsync();

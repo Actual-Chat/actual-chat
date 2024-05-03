@@ -1,32 +1,36 @@
 ﻿
 namespace ActualChat.App.Server;
 
-internal class AppHostLifecycleMonitor : IHostedLifecycleService
+internal sealed class AppHostLifecycleMonitor(IServiceProvider services) : IHostedLifecycleService
 {
+    private Tracer? _tracer;
+
+    private Tracer Tracer => _tracer ??= services.Tracer(typeof(AppHostLifecycleMonitor));
+
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     public Task StartingAsync(CancellationToken cancellationToken)
     {
         // ReSharper disable once ExplicitCallerInfoArgument
-        Tracer.Default.Point("[!] App.Server is starting...");
+        Tracer.Point("[!] App.Server is starting...");
         return Task.CompletedTask;
     }
     public Task StartedAsync(CancellationToken cancellationToken)
     {
         // ReSharper disable once ExplicitCallerInfoArgument
-        Tracer.Default.Point("[!] App.Server is started.");
+        Tracer.Point("[!] App.Server is started.");
         return Task.CompletedTask;
     }
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     public Task StoppingAsync(CancellationToken cancellationToken)
     {
         // ReSharper disable once ExplicitCallerInfoArgument
-        Tracer.Default.Point("[!] App.Server is stopping...");
+        Tracer.Point("[!] App.Server is stopping...");
         return Task.CompletedTask;
     }
     public Task StoppedAsync(CancellationToken cancellationToken)
     {
         // ReSharper disable once ExplicitCallerInfoArgument
-        Tracer.Default.Point("[!] App.Server is stopped.");
+        Tracer.Point("[!] App.Server is stopped.");
         return Task.CompletedTask;
     }
 }

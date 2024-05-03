@@ -5,9 +5,9 @@ namespace ActualChat.Testing.Host;
 
 public sealed class PlaywrightTester(
     AppHost appHost,
-    ITestOutputHelper output,
+    ITestOutputHelper @out,
     Action<IServiceCollection>? configureClientServices = null)
-    : WebClientTester(appHost, output, configureClientServices)
+    : WebClientTester(appHost, @out, configureClientServices)
 {
     private IPlaywright? _playwright;
     private IBrowser? _browser;

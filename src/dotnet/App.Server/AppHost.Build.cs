@@ -77,6 +77,9 @@ public partial class AppHost
         var serverRole = HostRoles.Server.Parse(hostSettings.ServerRole);
         var roles = HostRoles.Server.GetAllRoles(serverRole, isTested);
 
+        // Tracers
+        services.AddTracers(Tracer.Default, useScopedTracers: true);
+
         // Logging
         services.AddLogging(logging => {
             logging.ClearProviders();

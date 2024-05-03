@@ -21,7 +21,6 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
 
     protected override Task InitializeAsync()
     {
-        Tracer.Default = Out.NewTracer(nameof(ExternalContactStressTest));
         _tester = AppHost.NewWebClientTester(Out);
         var services = AppHost.Services;
         _accounts = services.GetRequiredService<IAccounts>();
@@ -34,7 +33,6 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
 
     protected override async Task DisposeAsync()
     {
-        Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
             FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
         await _tester.DisposeAsync().AsTask();
@@ -47,7 +45,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     {
         // arrange
         var prefix = UniqueNames.Prefix();
-        var tracer = Tracer.Default;
+        var tracer = AppHost.Services.Tracer(GetType());
         using var __ = tracer.Region();
         var deviceIds = Enumerable.Repeat(0, count).Select(_ => NewDeviceId()).ToList();
         var accounts = new AccountFull[count];

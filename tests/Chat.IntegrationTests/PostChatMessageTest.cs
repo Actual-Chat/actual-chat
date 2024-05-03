@@ -10,7 +10,7 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
     public async Task PostMessage()
     {
         var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester();
+        await using var tester = appHost.NewBlazorTester(Out);
         _ = await tester.SignInAsBob();
         var session = tester.Session;
         var commander = tester.Commander;
@@ -28,7 +28,7 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
     public async Task EditMessage()
     {
         var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester();
+        await using var tester = appHost.NewBlazorTester(Out);
         _ = await tester.SignInAsBob();
         var session = tester.Session;
         var commander = tester.Commander;
@@ -50,7 +50,7 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
     public async Task ReplyMessage()
     {
         var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester();
+        await using var tester = appHost.NewBlazorTester(Out);
         _ = await tester.SignInAsBob();
         var session = tester.Session;
         var commander = tester.Commander;
@@ -74,7 +74,7 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
     public async Task EditReplyMessage()
     {
         var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester();
+        await using var tester = appHost.NewBlazorTester(Out);
         _ = await tester.SignInAsBob();
         var session = tester.Session;
         var commander = tester.Commander;

@@ -14,17 +14,10 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     protected override Task InitializeAsync()
     {
-        Tracer.Default = Out.NewTracer();
         _tester = AppHost.NewWebClientTester(Out);
         _sut = AppHost.Services.GetRequiredService<ISearchBackend>();
         _commander = AppHost.Services.Commander();
         return Task.CompletedTask;
-    }
-
-    protected override async Task DisposeAsync()
-    {
-        Tracer.Default = Tracer.None;
-        await _tester.DisposeAsync().AsTask();
     }
 
     [Fact]

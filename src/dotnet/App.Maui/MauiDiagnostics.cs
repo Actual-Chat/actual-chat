@@ -57,8 +57,8 @@ public static class MauiDiagnostics
 
     public static IServiceCollection AddMauiDiagnostics(this IServiceCollection services, bool dispose)
     {
+        services.AddTracers(Tracer, useScopedTracers: false);
         services.AddSingleton<Disposer>();
-        services.AddTracer(Tracer); // We don't want to have scoped tracers in MAUI app
         services.AddLogging(logging => {
             logging.ClearProviders();
             logging.ConfigureClientFilters(MauiSettings.AppKind);

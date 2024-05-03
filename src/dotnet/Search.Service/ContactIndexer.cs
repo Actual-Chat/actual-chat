@@ -11,18 +11,26 @@ public abstract class ContactIndexer(IServiceProvider services)
     private readonly TaskCompletionSource _whenInitialized = new ();
     private SearchSettings? _settings;
     private IContactIndexStatesBackend? _indexedChatsBackend;
-    private OpenSearchConfigurator? _elasticConfigurator;
+    private OpenSearchConfigurator? _openSearchConfigurator;
     private ICommander? _commander;
+    private ILogger? _log;
+    private Tracer? _tracer;
+
+
+    protected ContactIndexingSignal NeedsSync { get; } = new (services);
+    protected long MaxVersion => (Clocks.CoarseSystemClock.Now - Settings.ContactIndexingDelay).EpochOffset.Ticks;
+
+    protected SearchSettings Settings => _settings ??= Services.GetRequiredService<SearchSettings>();
+    protected OpenSearchConfigurator OpenSearchConfigurator
+        => _openSearchConfigurator ??= Services.GetRequiredService<OpenSearchConfigurator>();
+    protected IContactIndexStatesBackend ContactIndexStatesBackend
+        => _indexedChatsBackend ??= Services.GetRequiredService<IContactIndexStatesBackend>();
+    protected ICommander Commander => _commander ??= Services.Commander();
+    protected MomentClockSet Clocks { get; } = services.Clocks();
+    protected ILogger Log => _log ??= services.LogFor(GetType());
+    protected Tracer Tracer => _tracer ??= services.Tracer(GetType());
 
     public Task WhenInitialized => _whenInitialized.Task;
-    protected ContactIndexingSignal NeedsSync { get; } = new (services);
-    private MomentClockSet Clocks { get; } = services.Clocks();
-    // we assume that ClockBasedVersionGenerator.DefaultCoarse is used
-    protected long MaxVersion => (Clocks.CoarseSystemClock.Now - Settings.ContactIndexingDelay).EpochOffset.Ticks;
-    protected IContactIndexStatesBackend ContactIndexStatesBackend => _indexedChatsBackend ??= Services.GetRequiredService<IContactIndexStatesBackend>();
-    protected ICommander Commander => _commander ??= Services.Commander();
-    private OpenSearchConfigurator OpenSearchConfigurator => _elasticConfigurator ??= Services.GetRequiredService<OpenSearchConfigurator>();
-    private SearchSettings Settings => _settings ??= Services.GetRequiredService<SearchSettings>();
 
     void INotifyInitialized.Initialized()
         => this.Start();

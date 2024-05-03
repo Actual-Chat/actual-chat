@@ -17,7 +17,6 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     protected override Task InitializeAsync()
     {
-        Tracer.Default = Out.NewTracer();
         _tester = AppHost.NewWebClientTester(Out);
         _contacts = AppHost.Services.GetRequiredService<IContacts>();
         _contactsBackend = AppHost.Services.GetRequiredService<IContactsBackend>();
@@ -29,7 +28,6 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     protected override async Task DisposeAsync()
     {
-        Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
             FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
         await _tester.DisposeAsync().AsTask();

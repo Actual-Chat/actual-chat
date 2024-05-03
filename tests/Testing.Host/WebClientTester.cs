@@ -1,10 +1,11 @@
-using ActualChat.App.Wasm;
 using ActualChat.App.Server;
 using ActualChat.Chat;
+using ActualChat.Hosting;
 using ActualChat.UI;
+using ActualChat.UI.Blazor.App;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Components;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Testing.Host;
 
@@ -19,6 +20,7 @@ public interface IWebTester : IDisposable, IAsyncDisposable
     IAuthBackend AuthBackend { get; }
     Session Session { get; }
     UrlMapper UrlMapper { get; }
+    ITestOutputHelper Out { get; }
 }
 
 public interface IWebClientTester : IWebTester
@@ -41,18 +43,23 @@ public class WebClientTester : IWebClientTester
     public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
     public Session Session { get; }
     public UrlMapper UrlMapper => AppServices.UrlMapper();
+    public ITestOutputHelper Out { get; }
 
     public IServiceProvider ClientServices => _clientServicesLazy.Value;
     public ICommander ClientCommander => ClientServices.Commander();
     public IAuth ClientAuth => ClientServices.GetRequiredService<IAuth>();
 
-    public WebClientTester(AppHost appHost, ITestOutputHelper output, Action<IServiceCollection>? configureClientServices = null)
+    public WebClientTester(
+        AppHost appHost,
+        ITestOutputHelper @out,
+        Action<IServiceCollection>? configureClientServices = null)
     {
         AppHost = appHost;
+        Out = @out;
         Session = Session.New();
         var sessionInfo = Commander.Call(new AuthBackend_SetupSession(Session)).Result;
         sessionInfo.GetGuestId().IsGuest.Should().BeTrue();
-        _clientServicesLazy = new Lazy<IServiceProvider>(() => CreateClientServices(output, configureClientServices));
+        _clientServicesLazy = new Lazy<IServiceProvider>(() => CreateClientServices(@out, configureClientServices));
     }
 
     public virtual void Dispose()
@@ -77,11 +84,16 @@ public class WebClientTester : IWebClientTester
     {
         var services = new ServiceCollection();
         var configuration = AppServices.Configuration();
-        Program.ConfigureServices(services, configuration, UrlMapper.BaseUrl, true);
+        var hostInfo = ClientAppStartup.CreateHostInfo(configuration,
+            Environments.Development,
+            "Browser",
+            HostKind.WasmApp,
+            AppKind.Wasm,
+            UrlMapper.BaseUrl,
+            true);
+        ClientAppStartup.ConfigureServices(services, hostInfo, Out.NewTracer());
         services.AddTestLogging(output); // Override logging
-
         services.AddSingleton<IDispatcherResolver>(c => new TestDispatcherResolver(c));
-
         configureClientServices?.Invoke(services);
 
         var serviceProvider = services.BuildServiceProvider();

@@ -5,15 +5,20 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Contacts;
 
-public class ContactLinker(IAccountsBackend accountsBackend, IContactsBackend contactsBackend, ICommander commander, IServiceProvider services) : ActivatedWorkerBase(services)
+public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(services)
 {
     private const int BatchSize = 100;
+    private Tracer? _tracer;
 
     private DbHub<ContactsDbContext> DbHub { get; } = services.DbHub<ContactsDbContext>();
+    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
+    private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
+    private ICommander Commander { get; } = services.Commander();
+    private Tracer Tracer => _tracer ??= services.Tracer(GetType());
 
     protected override async Task<bool> OnActivate(CancellationToken cancellationToken)
     {
-        using var _1 = Tracer.Default.Region();
+        using var _1 = Tracer.Region();
         var dbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var dbExternalContactLinks = await dbContext.ExternalContactLinks.ForUpdate()
@@ -25,7 +30,7 @@ public class ContactLinker(IAccountsBackend accountsBackend, IContactsBackend co
         if (dbExternalContactLinks.Count == 0)
             return true;
 
-        using var _2 = Tracer.Default.Region($"Checking {dbExternalContactLinks.Count} external contact link(s)");
+        using var _2 = Tracer.Region($"Checking {dbExternalContactLinks.Count} external contact link(s)");
         await dbExternalContactLinks.Select(EnsureCreated).Collect(HardwareInfo.ProcessorCount).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return false;
@@ -51,11 +56,11 @@ public class ContactLinker(IAccountsBackend accountsBackend, IContactsBackend co
     {
         var phoneHash = link.ToPhoneHash();
         if (!phoneHash.IsNullOrEmpty())
-            return accountsBackend.GetIdByPhoneHash(phoneHash, cancellationToken);
+            return AccountsBackend.GetIdByPhoneHash(phoneHash, cancellationToken);
 
         var emailHash = link.ToEmailHash();
         if (!emailHash.IsNullOrEmpty())
-            return accountsBackend.GetIdByEmailHash(emailHash, cancellationToken);
+            return AccountsBackend.GetIdByEmailHash(emailHash, cancellationToken);
 
         Log.LogError("Unknown external contact link type: {ExternalContactLink}", link.Value);
         return Task.FromResult(UserId.None);
@@ -69,13 +74,13 @@ public class ContactLinker(IAccountsBackend accountsBackend, IContactsBackend co
         var peerChatId = new PeerChatId(ownerId, userId);
         var contactId = new ContactId(ownerId, peerChatId);
         // check existing contact since command always performs db request
-        var contact = await contactsBackend.Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
+        var contact = await ContactsBackend.Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
         if (contact.IsStored())
             return;
 
         contact = new Contact(contactId);
         // This command doesn't throw an exception in case contact already exists
         var createCmd = new ContactsBackend_Change(contactId, null, Change.Create(contact));
-        await commander.Call(createCmd, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(createCmd, cancellationToken).ConfigureAwait(false);
     }
 }

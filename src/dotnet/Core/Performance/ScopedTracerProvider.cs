@@ -1,27 +1,23 @@
 namespace ActualChat.Performance;
 
-public class ScopedTracerProvider(Tracer tracer)
+public sealed class ScopedTracerProvider
 {
     private static long _lastId;
 
-    public Tracer Tracer { get; } = tracer;
+    public Tracer Tracer { get; }
 
-    public ScopedTracerProvider()
-        : this(CreateScopeTracer()) { }
-
-    public void Dispose()
-        => Tracer.Point(nameof(Dispose));
-
-    // Private methods
-
-    private static Tracer CreateScopeTracer()
+    public ScopedTracerProvider(Tracer rootTracer)
     {
-        var defaultTracer = Tracer.Default;
-        if (!defaultTracer.IsEnabled)
-            return Tracer.None;
+        if (!rootTracer.IsEnabled) {
+            Tracer = Tracer.None;
+            return;
+        }
 
         var processId = RuntimeInfo.Process.MachinePrefixedId.Value;
         var id = Interlocked.Increment(ref _lastId);
-        return new Tracer($"{defaultTracer.Name}.Scope-{processId}-{id.Format()}", defaultTracer.Writer);
+        Tracer = new Tracer($"{rootTracer.Name}.Scope-{processId}-{id.Format()}", rootTracer.Writer);
     }
+
+    public void Dispose()
+        => Tracer.Point();
 }

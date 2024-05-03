@@ -1,6 +1,5 @@
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Testing.Host;
-using ActualLab.Time.Testing;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -14,7 +13,7 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
     public async Task BasicTest()
     {
         var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester();
+        await using var tester = appHost.NewBlazorTester(Out);
         var services = tester.AppServices;
         var clientServices = tester.ScopedAppServices;
         var authors = services.GetRequiredService<IAuthors>();

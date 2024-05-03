@@ -19,6 +19,7 @@ public sealed class TextEntryIndexer(IServiceProvider services) : WorkerBase, IH
     private IMeshLocks<SearchDbContext>? _meshLocks;
     private ICommander? _commander;
     private ILogger? _log;
+    private Tracer? _tracer;
 
     public IServiceProvider Services { get; } = services;
 
@@ -34,6 +35,7 @@ public sealed class TextEntryIndexer(IServiceProvider services) : WorkerBase, IH
 
     private ICommander Commander => _commander ??= Services.Commander();
     private ILogger Log => _log ??= Services.LogFor(GetType());
+    private Tracer Tracer => _tracer ??= Services.Tracer(GetType());
 
     void INotifyInitialized.Initialized()
         => this.Start();
@@ -53,7 +55,7 @@ public sealed class TextEntryIndexer(IServiceProvider services) : WorkerBase, IH
     private async Task SyncHistory(CancellationToken cancellationToken)
     {
         try {
-            using var _1 = Tracer.Default.Region();
+            using var _1 = Tracer.Region();
             if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
                 await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
             var runOptions = RunLockedOptions.NoRelock with { Log = Log };
@@ -69,7 +71,7 @@ public sealed class TextEntryIndexer(IServiceProvider services) : WorkerBase, IH
 
     private async Task IndexAllChats(CancellationToken cancellationToken)
     {
-        using var _2 = Tracer.Default.Region();
+        using var _2 = Tracer.Region();
         var batches = IndexedChatsBackend
             .Batches(Moment.MinValue, ChatId.None, ChatDispatchBatchSize, cancellationToken)
             .ConfigureAwait(false);
@@ -85,7 +87,7 @@ public sealed class TextEntryIndexer(IServiceProvider services) : WorkerBase, IH
 
     private async Task EnsureIndexedChatsCreated(CancellationToken cancellationToken)
     {
-        using var _1 = Tracer.Default.Region();
+        using var _1 = Tracer.Region();
         var last = await IndexedChatsBackend.GetLast(cancellationToken).ConfigureAwait(false);
         var batches = ChatsBackend.Batch(
                 last?.ChatCreatedAt ?? Moment.MinValue,

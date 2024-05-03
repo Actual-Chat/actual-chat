@@ -13,6 +13,7 @@ using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.UI.Blazor.Module;
 using ActualLab.Interception.Interceptors;
+using ActualLab.Internal;
 using ActualLab.RestEase;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
@@ -20,13 +21,12 @@ using ActualLab.Rpc.WebSockets;
 
 namespace ActualChat.UI.Blazor.App;
 
-#pragma warning disable IL2026 // Fine for module-like code
-
 public static class AppStartup
 {
     // ActualLab.Interception, ActualLab.Rpc, ActualLab.CommandR, ActualLab.Fusion dependencies are referenced
     // by [DynamicDependency] on FusionBuilder from v6.7.2.
     // Libraries
+    [RequiresUnreferencedCode(UnreferencedCode.Reflection)]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PriorityQueue<,>))] // MemoryPack uses it
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Range<>))] // JS dependency
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ImmutableOptionSet))] // Media.MetadataJson
@@ -49,15 +49,16 @@ public static class AppStartup
     public static void ConfigureServices(
         IServiceCollection services,
         HostKind hostKind,
-        Func<IServiceProvider, HostModule[]>? platformModuleFactory = null)
+        Func<IServiceProvider, HostModule[]>? platformModuleFactory,
+        Tracer? rootTracer = null)
     {
+        var tracer = (rootTracer ?? Tracer.Default)[typeof(AppStartup)];
 #if !DEBUG
         InterceptorBase.Options.Defaults.IsValidationEnabled = false;
 #else
         if (hostKind.IsMauiApp())
             InterceptorBase.Options.Defaults.IsValidationEnabled = false;
 #endif
-        var tracer = Tracer.Default;
 
         // Fusion services
         var fusion = services.AddFusion();
