@@ -50,18 +50,20 @@ body:not(.hoverable) .pic-upload .pic-upload-picker {
 
 .pic-upload-btn {
     @apply relative;
+    @apply flex items-center justify-center;
+    @apply w-10 h-10;
     @apply rounded-full;
     @apply overflow-hidden;
     @apply bg-[var(--round-right-panel)];
+    @apply cursor-pointer;
 }
-.pic-upload-btn > .pic {
-    @apply flex items-center justify-center;
-    @apply bg-[var(--round-right-panel)];
-    @apply text-primary;
-    @apply shadow;
+body.hoverable .pic-upload-btn:hover::after {
+    @apply hover-after;
+    @apply bg-hover-after-primary;
 }
-body.hoverable .pic-upload-btn:hover > .pic {
-    @apply bg-[var(--hover-after-primary)];
+.pic-upload-btn > .pic-upload {
+    @apply absolute inset-0;
+    @apply opacity-0;
 }
 
 .pic-size-4 {

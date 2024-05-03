@@ -1,0 +1,19 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="pic-upload-btn @Class">
+    @if (Icon == null) {
+        <i class="icon-person-add-2 text-2xl"></i>
+    } else {
+        @Icon
+    }
+    <PicUpload
+        UploadUrl="@UploadUrl"
+        Picked="@Picked"/>
+</div>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string UploadUrl { get; set; } = "";
+    [Parameter] public EventCallback<MediaContent> Picked { get; set; }
+    [Parameter] public RenderFragment? Icon { get; set; }
+}

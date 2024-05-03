@@ -20,9 +20,7 @@
 }
 
 <div class="pic @Class @picClass">
-    @if (IsButton) {
-        <i class="icon-person-add-2 text-2xl"></i>
-    } else if (hasPicture) {
+    @if (hasPicture) {
         <image-skeleton
             class="pic-image"
             src="@_pictureUrl"
@@ -64,7 +62,6 @@
     [Parameter] public bool IsSquare { get; set; }
     [Parameter] public bool HideTitle { get; set; }
     [Parameter] public bool IsBlurred { get; set; }
-    [Parameter] public bool IsButton { get; set; }
     [Parameter] public AvatarKind AvatarKind { get; set; } = AvatarKind.Beam;
     [Parameter] public string? AvatarKey { get; set; }
     [Parameter] public RenderFragment? NoPicture { get; set; }
