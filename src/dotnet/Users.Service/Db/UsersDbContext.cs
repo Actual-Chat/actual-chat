@@ -24,5 +24,42 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
     public DbSet<DbEvent> Events { get; protected set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder model)
-        => model.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly).UseSnakeCaseNaming();
+    {
+        model.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly).UseSnakeCaseNaming();
+
+        var kvasEntry = model.Entity<DbKvasEntry>();
+        kvasEntry.Property(e => e.Key).UseCollation("C");
+
+        var account = model.Entity<DbAccount>();
+        account.Property(e => e.Id).UseCollation("C");
+
+        var avatar = model.Entity<DbAvatar>();
+        avatar.Property(e => e.Id).UseCollation("C");
+        avatar.Property(e => e.UserId).UseCollation("C");
+        avatar.Property(e => e.AvatarKey).UseCollation("C");
+
+        var userPresence = model.Entity<DbUserPresence>();
+        userPresence.Property(e => e.UserId).UseCollation("C");
+
+        var chatPosition = model.Entity<DbChatPosition>();
+        chatPosition.Property(e => e.Id).UseCollation("C");
+
+        var user = model.Entity<DbUser>();
+        user.Property(e => e.Id).UseCollation("C");
+
+        var userIdentity = model.Entity<DbUserIdentity<string>>();
+        userIdentity.Property(e => e.Id).UseCollation("C");
+        userIdentity.Property(e => e.DbUserId).UseCollation("C");
+
+        var sessionInfo = model.Entity<DbSessionInfo>();
+        sessionInfo.Property(e => e.Id).UseCollation("C");
+        sessionInfo.Property(e => e.UserId).UseCollation("C");
+
+        var operation = model.Entity<DbOperation>();
+        operation.Property(e => e.Uuid).UseCollation("C");
+        operation.Property(e => e.HostId).UseCollation("C");
+
+        var events = model.Entity<DbEvent>();
+        events.Property(e => e.Uuid).UseCollation("C");
+    }
 }
