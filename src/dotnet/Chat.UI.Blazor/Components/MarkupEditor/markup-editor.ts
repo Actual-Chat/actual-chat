@@ -320,7 +320,8 @@ export class MarkupEditor {
 
         // Post + fix the new line insertion when cursor is in the end of the document
         if (e.code === 'Enter' || e.code === 'NumpadEnter') {
-            const isPost = e.ctrlKey || e.metaKey || e.altKey || !e.shiftKey;
+            let isShiftKey = DeviceInfo.isMobile ? true : e.shiftKey;
+            const isPost = e.ctrlKey || e.metaKey || e.altKey || !isShiftKey;
             if (isPost) {
                 void this.onPost()
                 return ok();
