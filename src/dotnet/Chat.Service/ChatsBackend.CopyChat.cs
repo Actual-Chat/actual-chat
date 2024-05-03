@@ -606,11 +606,18 @@ public partial class ChatsBackend
         var mediaIds = attachments
             .Select(c => c.MediaId)
             .Where(c => !string.IsNullOrEmpty(c))
-            .Distinct(StringComparer.Ordinal)
             .Select(c => new MediaId(c))
             .ToArray();
 
-        await Commander.Call(new MediaBackend_CopyChat(newChatId, correlationId, mediaIds), true, cancellationToken)
+        var thumbnailMediaIds = attachments
+            .Select(c => c.ThumbnailMediaId)
+            .Where(c => !string.IsNullOrEmpty(c))
+            .Select(c => new MediaId(c))
+            .ToArray();
+
+        var allMediaIdToCopy = mediaIds.Concat(thumbnailMediaIds).Where(CanRemapMedia).Distinct().ToArray();
+
+        await Commander.Call(new MediaBackend_CopyChat(newChatId, correlationId, allMediaIdToCopy), true, cancellationToken)
             .ConfigureAwait(false);
 
         foreach (var dbAttachment in attachments) {
@@ -618,8 +625,8 @@ public partial class ChatsBackend
             var newEntryId = new TextEntryId(newChatId, entryId.LocalId, AssumeValid.Option);
             dbAttachment.Id = DbTextEntryAttachment.ComposeId(newEntryId, dbAttachment.Index);
             dbAttachment.EntryId = newEntryId;
-            var oldMediaId = new MediaId(dbAttachment.MediaId);
-            dbAttachment.MediaId = new MediaId(newChatId, oldMediaId.LocalId);
+            dbAttachment.MediaId = RemapMedia(dbAttachment.MediaId);
+            dbAttachment.ThumbnailMediaId = RemapMedia(dbAttachment.ThumbnailMediaId);
             dbContext.TextEntryAttachments.Add(dbAttachment);
         }
 
@@ -627,6 +634,19 @@ public partial class ChatsBackend
 
         Log.LogInformation("OnCopyChat({CorrelationId}) inserted {Count} text entry attachment records for entries from range [{From},{To})",
             correlationId, attachments.Count, firstId, lastId + 1);
+        return;
+
+        bool CanRemapMedia(MediaId mediaId)
+             => OrdinalEquals(mediaId.Scope, chatSid);
+
+        MediaId RemapMedia(string mediaSid)
+        {
+            var mediaId = new MediaId(mediaSid);
+            if (mediaId.IsNone || !CanRemapMedia(mediaId))
+                return mediaId;
+
+            return new MediaId(newChatId, mediaId.LocalId);
+        }
     }
 
     private async Task InsertReactions(

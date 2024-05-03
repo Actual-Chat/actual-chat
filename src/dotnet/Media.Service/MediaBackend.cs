@@ -84,7 +84,6 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         if (mediaIds.Length == 0)
             return;
 
-        var oldChatSid = mediaIds[0].Scope;
         if (Invalidation.IsActive)
             return;
 
@@ -96,7 +95,6 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
 
         var sids = mediaIds.Select(c => c.Value).ToList();
         var medias = await dbContext.Media
-            .Where(c => c.Id.StartsWith(oldChatSid))
  #pragma warning disable CA1310
             .Where(c => sids.Any(x => c.Id == x))
  #pragma warning restore CA1310
