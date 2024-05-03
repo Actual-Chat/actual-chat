@@ -15,5 +15,24 @@ public class MediaDbContext(DbContextOptions<MediaDbContext> options) : DbContex
     public DbSet<DbEvent> Events { get; protected set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder model)
-        => model.ApplyConfigurationsFromAssembly(typeof(MediaDbContext).Assembly).UseSnakeCaseNaming();
+    {
+        model.ApplyConfigurationsFromAssembly(typeof(MediaDbContext).Assembly).UseSnakeCaseNaming();
+
+        var media = model.Entity<DbMedia>();
+        media.Property(e => e.Id).UseCollation("C");
+        media.Property(e => e.Scope).UseCollation("C");
+        media.Property(e => e.LocalId).UseCollation("C");
+        media.Property(e => e.ContentId).UseCollation("C");
+
+        var linkPreview = model.Entity<DbLinkPreview>();
+        linkPreview.Property(e => e.Id).UseCollation("C");
+        linkPreview.Property(e => e.ThumbnailMediaId).UseCollation("C");
+
+        var operation = model.Entity<DbOperation>();
+        operation.Property(e => e.Uuid).UseCollation("C");
+        operation.Property(e => e.HostId).UseCollation("C");
+
+        var events = model.Entity<DbEvent>();
+        events.Property(e => e.Uuid).UseCollation("C");
+    }
 }
