@@ -106,6 +106,8 @@
     private async Task OnSelectedChatChangedEvent(SelectedChatChangedEvent @event, CancellationToken cancellationToken) {
         if (_searchBoxRef != null)
             await _searchBoxRef.Cancel();
+        if (!string.IsNullOrEmpty(SearchUI.Text.Value))
+            SearchUI.Text.Value = string.Empty;
         await UpdatePlace();
     }
 
