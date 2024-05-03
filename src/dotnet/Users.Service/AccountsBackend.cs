@@ -16,7 +16,11 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private ContactGreeter? _contactGreeter;
     private IDbEntityResolver<string, DbAccount>? _dbAccountResolver;
     private const string AdminEmailDomain = "actual.chat";
-    private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) { "alex.yakunin@gmail.com" };
+    private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) {
+        "alex.yakunin@gmail.com",
+        "andrew.kurochkin@outlook.com",
+        "ustinovas@gmail.com",
+    };
 
     private IAuthBackend AuthBackend => _authBackend ??= Services.GetRequiredService<IAuthBackend>();
     private IAvatarsBackend AvatarsBackend => _avatarsBackend ??= Services.GetRequiredService<IAvatarsBackend>();
