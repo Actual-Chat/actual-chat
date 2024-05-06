@@ -116,7 +116,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     [ComputeMethod(InvalidationDelay = 0.6)]
     public virtual async Task<Trimmed<int>> GetUnmutedUnreadChatCount(PlaceId placeId, CancellationToken cancellationToken = default)
     {
-        var chatById = await ListAllUnordered(placeId, ChatListFilter.None, cancellationToken).ConfigureAwait(false);
+        var chatById = await ListAllUnordered(placeId, ChatListFilter.Groups, cancellationToken).ConfigureAwait(false);
         return chatById.Select(c => c.Value).UnmutedUnreadChatCount();
     }
 
