@@ -1,7 +1,7 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Events;
+using ActualChat.Contacts;
 using ActualChat.Db;
-using ActualChat.Queues;
 using ActualChat.Users;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
@@ -12,13 +12,16 @@ namespace ActualChat.Chat;
 public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 {
     private IChatsBackend? _chatsBackend;
+    private IContactsBackend? _contactsBackend;
 
     private IAccountsBackend AccountsBackend { get; }
     private IAvatarsBackend AvatarsBackend { get; }
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
+    private IContactsBackend ContactsBackend => _contactsBackend ??= Services.GetRequiredService<IContactsBackend>();
     private IDbEntityResolver<string, DbAuthor> DbAuthorResolver { get; }
     private IDbShardLocalIdGenerator<DbAuthor, string> DbAuthorLocalIdGenerator { get; }
     private DiffEngine DiffEngine { get; }
+    private IRolesBackend RolesBackend { get; }
 
     public AuthorsBackend(IServiceProvider services) : base(services)
     {
@@ -27,6 +30,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         DbAuthorLocalIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbAuthor, string>>();
         AvatarsBackend = services.GetRequiredService<IAvatarsBackend>();
         DiffEngine = services.GetRequiredService<DiffEngine>();
+        RolesBackend = services.GetRequiredService<RolesBackend>();
     }
 
     // [ComputeMethod]
@@ -184,6 +188,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             : dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.Id == authorId, cancellationToken)
             ).ConfigureAwait(false);
         var existingAuthor = dbAuthor?.ToModel() ?? defaultAuthor;
+        var authorHasLeft = false;
 
         if (existingAuthor != null) {
             // Update existing author, incl. one of the default ones in peer chat
@@ -203,6 +208,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 throw StandardError.Constraint("Unauthenticated authors must be anonymous.");
             if (author.HasLeft && !peerChatId.IsNone)
                 throw StandardError.Constraint("Peer chat authors can't leave.");
+
+            authorHasLeft = dbAuthor is { HasLeft: false } && author.HasLeft;
 
             if (dbAuthor == null) {
                 // First author update in peer chat = create it
@@ -281,6 +288,9 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 ).ConfigureAwait(false);
             dbAuthor.Require();
         }
+
+        if (authorHasLeft)
+            await RemovePrivilegedRoles(authorId, cancellationToken).ConfigureAwait(false);
 
         { // Nested to get a new var scope
             var author = dbAuthor.ToModel();
@@ -520,6 +530,23 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         }
     }
 
+    [EventHandler]
+    public virtual async Task OnAuthorLeftPlaceEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var (author, oldAuthor) = eventCommand;
+        if (!author.ChatId.IsPlaceRootChat)
+            return;
+
+        var authorHasLeft = author.HasLeft && oldAuthor is { HasLeft: false };
+        if (!authorHasLeft)
+            return;
+
+        await ExcludeUserFromPlaceChats(author.UserId, author.ChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+    }
+
     // Protected methods
 
     [ComputeMethod]
@@ -684,6 +711,57 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             Avatar = rootAuthor.Avatar, // Always use avatar for the Place.
             // RoleIds = TODO(DF): should we alter roles?
         };
+    }
+
+    private async Task ExcludeUserFromPlaceChats(UserId userId, PlaceId placeId, CancellationToken cancellationToken)
+    {
+        var contacts = await ContactsBackend.ListIds(userId, placeId, cancellationToken).ConfigureAwait(false);
+        await Task.WhenAll(contacts.Select(async contactId => {
+                var chatId = contactId.ChatId;
+                var author = await GetByUserId(chatId, userId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
+                    .ConfigureAwait(false);
+                if (author == null || author.HasLeft)
+                    return;
+
+                var upsertCommand = new AuthorsBackend_Upsert(
+                    chatId,
+                    author.Id,
+                    default,
+                    author.Version,
+                    new AuthorDiff() { HasLeft = true });
+                await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+            }))
+            .ConfigureAwait(false);
+    }
+
+    private async Task RemovePrivilegedRoles(AuthorId authorId, CancellationToken cancellationToken)
+    {
+        var chatId = authorId.ChatId;
+        var ownerRole = await RolesBackend
+            .GetSystem(chatId, SystemRole.Owner, cancellationToken)
+            .ConfigureAwait(false);
+        if (ownerRole == null)
+            return;
+
+        var authorIds = await RolesBackend.ListAuthorIds(chatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
+        var isOwner = authorIds.Contains(authorId);
+        if (!isOwner)
+            return;
+
+        // Exclude from chat owners.
+        var changeRoleCommand = new RolesBackend_Change(
+            chatId,
+            ownerRole.Id,
+            ownerRole.Version,
+            new Change<RoleDiff> {
+                Update = new RoleDiff {
+                    AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
+                        RemovedItems = ApiArray.New(authorId),
+                    },
+                },
+            });
+
+        await Commander.Call(changeRoleCommand, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<ImmutableList<AuthorFull>> ListAuthorsByAvatarId(UserId userId, Symbol avatarId, CancellationToken cancellationToken)
