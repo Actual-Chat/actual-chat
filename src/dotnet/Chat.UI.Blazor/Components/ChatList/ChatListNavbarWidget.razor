@@ -17,9 +17,7 @@
                 <span>@title</span>
             </TitleContent>
             <TitleExtras>
-               @if (PlaceId.IsNone) {
-                   <ChatListTabUnreadCount ChatListView="@_chatListView" ChatListFilter="filter" />
-               }
+                <ChatListTabUnreadCount ChatListView="@_chatListView" ChatListFilter="@filter" />
             </TitleExtras>
         </Tab>;
     }
