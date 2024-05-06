@@ -634,6 +634,68 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     }
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task UserShouldNotBeListedInThePlaceChatAfterRemovingFromPlace(bool isPublicChat)
+    {
+        var appHost = AppHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var session1 = tester.Session;
+        await tester.SignInAsBob();
+
+        var commander1 = tester.Commander;
+        var authors = tester.ScopedAppServices.GetRequiredService<IAuthors>();
+
+        var place = await CreatePlace(commander1, session1, false);
+        var chat = await CreateChat(commander1, session1, place.Id, isPublicChat);
+
+        await using var tester2 = appHost.NewBlazorTester(Out);
+        var session2 = tester2.Session;
+        await tester2.SignInAsAlice();
+        var commander2 = tester2.Commander;
+        var accounts2 = tester2.ScopedAppServices.GetRequiredService<IAccounts>();
+        var user2 = await accounts2.GetOwn(session2, default);
+
+        await commander1.Call(new Places_Invite(session1, place.Id, [user2.Id]));
+        var placeFromUser2Perspective = await tester2.Places.Get(session2, place.Id, default).Require();
+        var user2PlaceMember = placeFromUser2Perspective.Rules.Author.Require();
+
+        var placeMembers = await tester.Places.ListAuthorIds(session1, place.Id, default);
+        placeMembers.Should().HaveCount(2).And.Contain(user2PlaceMember.Id);
+        var placeUsers = await tester.Places.ListUserIds(session1, place.Id, default);
+        placeUsers.Should().HaveCount(2).And.Contain(user2.Id);
+
+        if (!chat.IsPublic)
+            await commander1.Call(new Authors_Invite(session1, chat.Id, [user2.Id]));
+
+        var chatFromUser2Perspective = await tester2.Chats.Get(session2, chat.Id, default).Require();
+        var user2ChatAuthor = chatFromUser2Perspective.Rules.Author.Require();
+        var chatMembers = await authors.ListAuthorIds(session1, chat.Id, default);
+        chatMembers.Should().HaveCount(2).And.Contain(user2ChatAuthor.Id);
+        var chatUsers = await authors.ListUserIds(session1, chat.Id, default);
+        chatUsers.Should().HaveCount(2).And.Contain(user2.Id);
+
+        // NOTE: user2 should write a message to ensure explicit author exists for the chat.
+        await commander2.Call(new Chats_UpsertTextEntry(session2, chat.Id, null, "Hello!"));
+
+        await commander1.Call(new Places_Exclude(session1, user2PlaceMember.Id));
+
+        placeMembers = await tester.Places.ListAuthorIds(session1, place.Id, default);
+        placeMembers.Should().HaveCount(1).And.NotContain(user2PlaceMember.Id);
+
+        placeUsers = await tester.Places.ListUserIds(session1, place.Id, default);
+        placeUsers.Should().HaveCount(1).And.NotContain(user2.Id);
+
+        await TestExt.When(async () => {
+            chatMembers = await authors.ListAuthorIds(session1, chat.Id, default);
+            chatMembers.Should().HaveCount(1).And.NotContain(user2ChatAuthor.Id);
+        }, TimeSpan.FromSeconds(10));
+
+        chatUsers = await authors.ListUserIds(session1, chat.Id, default);
+        chatUsers.Should().HaveCount(1).And.NotContain(user2.Id);
+    }
+
+    [Theory]
     [InlineData(true, true)]
     [InlineData(false, false)]
     public async Task OnlyPlaceOwnerShouldBeAbleToSwitchChatFromPrivateToPublic(bool isOwner, bool shouldSucceed)

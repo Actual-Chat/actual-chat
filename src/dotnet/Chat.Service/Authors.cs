@@ -228,26 +228,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
             var hasAnotherOwner = ownerIds.Any(c => c.Id != author.Id);
             if (!hasAnotherOwner)
                 throw StandardError.Constraint("You can't leave this chat because you are its only owner. Please add another chat owner first.");
-
-            var ownerRole = await RolesBackend
-                .GetSystem(chatId, SystemRole.Owner, cancellationToken)
-                .Require()
-                .ConfigureAwait(false);
-
-            // Exclude from chat owners.
-            var changeRoleCommand = new RolesBackend_Change(
-                chatId,
-                ownerRole.Id,
-                ownerRole.Version,
-                new Change<RoleDiff> {
-                    Update = new RoleDiff {
-                        AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
-                            RemovedItems = ApiArray.New(author.Id),
-                        },
-                    },
-                });
-
-            await Commander.Call(changeRoleCommand, true, cancellationToken).ConfigureAwait(false);
         }
 
         var upsertCommand = new AuthorsBackend_Upsert(

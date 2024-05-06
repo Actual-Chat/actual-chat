@@ -78,9 +78,6 @@
         base.OnInitialized();
     }
 
-    private void OnAuthorBadgeClick(AuthorId authorId)
-        => _ = AuthorUI.Show(authorId);
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.None,
@@ -101,20 +98,26 @@
         var offlineAuthors = new List<AuthorInfo>();
         var unreportedAuthors = new List<AuthorInfo>();
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var presences = await allAuthorIds
+        var authorInfos = await allAuthorIds
             .Select(async authorId => {
                 var presenceTask = Authors.GetPresence(Session, chatId, authorId, cancellationToken);
                 var authorTask = Authors.Get(Session, chatId, authorId, cancellationToken);
                 await Task.WhenAll(presenceTask, authorTask).ConfigureAwait(false);
                 var presence = await presenceTask.ConfigureAwait(false);
                 var author = await authorTask.ConfigureAwait(false);
-                var isAnonymous = author?.IsAnonymous ?? false;
-                var authorName = author?.Avatar.Name ?? "";
+                if (author == null || author.HasLeft)
+                    return (authorId: AuthorId.None, isAnonymous: false, presence: Presence.Unknown, authorName: "");
+
+                var isAnonymous = author.IsAnonymous;
+                var authorName = author.Avatar.Name ?? "";
                 return (authorId, isAnonymous, presence, authorName);
             })
             .Collect(256)
             .ConfigureAwait(false);
-        foreach (var (authorId, isAnonymous, presence, authorName) in presences) {
+        foreach (var (authorId, isAnonymous, presence, authorName) in authorInfos) {
+            if (authorId.IsNone)
+                continue;
+
             var collection = ownerIds.Contains(authorId)
                 ? ownerAuthors
                 : isAnonymous
@@ -137,7 +140,7 @@
         offlineAuthors.Sort(comparison);
         unreportedAuthors.Sort(comparison);
 
-        var allAreAnonymous = presences.Length > 0 && presences.All(c => c.isAnonymous);
+        var allAreAnonymous = authorInfos.Length > 0 && authorInfos.All(c => c.isAnonymous);
         return new() {
             AllAuthorIds = allAuthorIds,
             OwnAuthorId = ownAuthor?.Id ?? AuthorId.None,
@@ -148,6 +151,9 @@
             AllAreAnonymous = allAreAnonymous,
         };
     }
+
+    private void OnAuthorBadgeClick(AuthorId authorId)
+        => _ = AuthorUI.Show(authorId);
 
     public sealed class Model {
         public static readonly Model None = new();
