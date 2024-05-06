@@ -516,3 +516,21 @@ body.narrow .btn-h.inverted {
 .btn-submit:disabled {
     @apply text-04;
 }
+
+/* Timer Button */
+.btn-timer {
+    @apply relative;
+    @apply flex-none flex items-center justify-center;
+    @apply w-10 h-10;
+    @apply rounded-full;
+    @apply bg-transparent;
+    @apply overflow-hidden;
+}
+.btn-timer.btn-sm {
+    @apply w-8 h-8;
+}
+.btn-timer i {
+    @apply absolute top-1/2 left-1/2;
+    @apply -translate-x-1/2 -translate-y-1/2;
+    @apply text-02 text-xl;
+}

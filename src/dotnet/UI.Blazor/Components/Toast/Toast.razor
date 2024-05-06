@@ -11,11 +11,14 @@
         @if (ActionClick != null) {
             <div class="c-action">
                 <Button
-                    Class="btn-transparent btn-sm"
+                    Class="btn-transparent btn-sm unhovered"
                     Click="@(_ => Act())">
                     @ActionText
                 </Button>
             </div>
+        }
+        @if (HasCloseButton) {
+            <TimerCloseButton Class="btn-sm" CircleClass="btn-sm" Click="@(_ => Dismiss())" Delay="@(AutoDismissDelay ?? 0)"/>
         }
     </div>
 }
@@ -28,6 +31,7 @@
     [Parameter] public string ActionText { get; set; } = "";
     [Parameter] public string Text { get; set; } = "";
     [Parameter] public double? AutoDismissDelay { get; set; }
+    [Parameter] public bool HasCloseButton { get; set; } = true;
     [Parameter] public Action? Dismissed { get; set; }
     [Parameter] public Action? ActionClick { get; set; }
 

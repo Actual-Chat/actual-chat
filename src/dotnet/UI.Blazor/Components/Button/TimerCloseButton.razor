@@ -1,0 +1,46 @@
+@using ActualChat.UI.Blazor.Module
+@namespace ActualChat.UI.Blazor.Components
+
+<button @ref="ButtonRef"
+        class="@Class btn-timer"
+        type="@GetButtonType()"
+        disabled="@IsDisabled"
+        autofocus="@IsAutofocused"
+        data-tooltip="@Tooltip"
+        data-tooltip-position="@(TooltipPosition.ToPositionString())"
+        data-must-keep-awake="@MustKeepAwake.ToString()"
+        @attributes="@AdditionalAttributes"
+        @onclick="@Click">
+    <timer-button-svg timing="@_delay" sizeClass="@CircleClass"/>
+    <i class="icon-close"></i>
+</button>
+
+@code {
+    private int _delay;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ContentClass { get; set; } = "";
+    [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool IsAutofocused { get; set; }
+    [Parameter] public string Tooltip { get; set; } = "";
+    [Parameter] public bool MustKeepAwake { get; set; }
+    [Parameter] public FloatingPosition TooltipPosition { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+    [Parameter] public double Delay { get; set; }
+    [Parameter] public string CircleClass { get; set; } = "";
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    public ElementReference ButtonRef { get; private set; }
+
+    protected override void OnInitialized() {
+        _delay = (int)Delay;
+        base.OnInitialized();
+    }
+
+    private string GetButtonType()
+        => Type.ToString().ToLower();
+}
