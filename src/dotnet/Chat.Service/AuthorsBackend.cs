@@ -520,18 +520,6 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         }
     }
 
-    private async Task<ImmutableList<AuthorFull>> ListAuthorsByAvatarId(UserId userId, Symbol avatarId, CancellationToken cancellationToken)
-    {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var dbAuthors = await dbContext.Authors
-            .Where(a => a.UserId == userId && a.AvatarId == avatarId.Value)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return dbAuthors.Select(x => x.ToModel()).ToImmutableList();
-    }
-
     // Protected methods
 
     [ComputeMethod]
@@ -696,5 +684,17 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             Avatar = rootAuthor.Avatar, // Always use avatar for the Place.
             // RoleIds = TODO(DF): should we alter roles?
         };
+    }
+
+    private async Task<ImmutableList<AuthorFull>> ListAuthorsByAvatarId(UserId userId, Symbol avatarId, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbAuthors = await dbContext.Authors
+            .Where(a => a.UserId == userId && a.AvatarId == avatarId.Value)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbAuthors.Select(x => x.ToModel()).ToImmutableList();
     }
 }
