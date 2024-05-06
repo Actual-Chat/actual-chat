@@ -18,7 +18,7 @@ public static class AuthorExt
         };
     }
 
-    public static AuthorFull RequireValid(this AuthorFull? author)
+    public static AuthorFull RequireValid(this AuthorFull? author, UserId userId)
     {
         author.Require();
         if (!author.ChatId.IsPeerChat(out var peerChatId))
@@ -30,6 +30,9 @@ public static class AuthorExt
         var peerIndex = peerChatId.IndexOf(author.UserId);
         if (author.LocalId != peerIndex + 1)
             throw StandardError.Constraint($"Peer chat authors' LocalId should indicate position at peer chat id, but found '{author}'.");
+
+        if (!userId.IsNone && author.UserId != userId)
+            throw StandardError.Constraint($"Author should have userId = '{userId}' but found '{author}'.");
 
         return author;
     }

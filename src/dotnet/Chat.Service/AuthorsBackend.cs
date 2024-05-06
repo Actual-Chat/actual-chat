@@ -175,7 +175,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         }
 
         var defaultAuthor = chatId.IsPeerChat(out var peerChatId)
-            ? GetDefaultPeerChatAuthor(peerChatId, authorId, userId).RequireValid()
+            ? GetDefaultPeerChatAuthor(peerChatId, authorId, userId).RequireValid(userId)
             : null;
 
         var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
@@ -192,7 +192,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
         if (existingAuthor != null) {
             // Update existing author, incl. one of the default ones in peer chat
-            existingAuthor.RequireVersion(expectedVersion).RequireValid();
+            existingAuthor.RequireVersion(expectedVersion).RequireValid(userId);
             var account = await AccountsBackend.Get(existingAuthor.UserId, cancellationToken).Require().ConfigureAwait(false);
 
             var author = DiffEngine.Patch(existingAuthor, diff) with {
@@ -286,7 +286,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                     ? dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
                     : dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.Id == authorId, cancellationToken)
                 ).ConfigureAwait(false);
-            dbAuthor.Require();
+            existingAuthor = dbAuthor.Require().ToModel().RequireValid(userId);
         }
 
         if (authorHasLeft)
