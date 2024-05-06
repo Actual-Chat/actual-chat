@@ -25,6 +25,7 @@ export * from './Services/UserActivityUI/user-activity-ui';
 export * from './Components/Avatar/beam-avatar.lit';
 export * from './Components/Avatar/marble-avatar.lit';
 export * from './Components/Bubble/bubble-host';
+export * from './Components/Button/timer-button-svg.lit';
 export * from './Components/Clipboard/copy-trigger';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/VisualMediaViewerModal/visual-media-viewer';
