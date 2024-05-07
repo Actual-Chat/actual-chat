@@ -1,3 +1,17 @@
+/* Touch target */
+.button-touch-target {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: calc(100% + 1rem);
+    height: calc(100% + 1rem);
+    transform: translate(-50%, -50%);
+    display: none;
+}
+.touch-capable .button-touch-target {
+    display: block;
+}
+
 /* Sizes */
 .btn, .btn.btn-md {
     @apply relative;
