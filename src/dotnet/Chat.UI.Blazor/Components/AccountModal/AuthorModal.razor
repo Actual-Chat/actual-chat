@@ -49,17 +49,34 @@
             <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>
         } else {
             @if (m.CanStartPeerChat) {
-                <Button
-                    Class="btn-modal btn-primary start-chat-btn"
-                    ContentClass="truncate"
-                    Click="OnStartPeerChat">
-                    <Icon><i class="icon-message-ellipse text-xl"></i></Icon>
-                    <Title>Chat with @m.Author.Avatar.Name</Title>
-                </Button>
-                <Button Class="btn-modal" Click="OnStartAnonymousPeerChat">
-                    <Icon><i class="icon-question-mark-bubble text-xl"></i></Icon>
-                    <Title>Start anonymous chat</Title>
-                </Button>
+                if (_anonymousChat) {
+                    <Button Class="btn-modal btn-primary" Click="OnStartAnonymousPeerChat">
+                        <Icon><i class="icon-question-mark-bubble text-xl"></i></Icon>
+                        <Title>Start anonymous chat</Title>
+                    </Button>
+                } else {
+                    <Button
+                        Class="btn-modal btn-primary start-chat-btn"
+                        ContentClass="truncate"
+                        Click="OnStartPeerChat">
+                        <Icon><i class="icon-message-ellipse text-xl"></i></Icon>
+                        <Title>Start direct chat</Title>
+                    </Button>
+                }
+
+                <TileItem Click="@OnChatTypeChanged">
+                    <Content>
+                        Anonymous chat
+                    </Content>
+                    <Caption>
+                        Chat can be direct or anonymous
+                    </Caption>
+                    <Right>
+                        <Toggle Class="mr-2"
+                                IsChecked="@_anonymousChat"
+                                IsCheckedChanged="@OnChatTypeChanged"/>
+                    </Right>
+                </TileItem>
             } else {
                 <Button Class="btn-modal" Click="OnCancel">Close</Button>
             }
@@ -68,6 +85,8 @@
 </DialogFrame>
 
 @code {
+    private bool _anonymousChat;
+
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     private AuthorId AuthorId => ModalModel.AuthorId;  // Shortcut
@@ -141,6 +160,11 @@
     private async Task OnChangeAvatarClicked() {
         Modal.Close();
         await Hub.ModalUI.Show(new AvatarSelectModal.Model(AuthorId.ChatId, false, OnAvatarSelected));
+    }
+
+    private void OnChatTypeChanged() {
+        _anonymousChat = !_anonymousChat;
+        StateHasChanged();
     }
 
     private Task OnStartPeerChat()
