@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace ActualChat.Db;
 
+// Do not add connection configurator - it's not needed anymore after adding COLLATION "C" for all key columns
 public class DbConnectionConfigurator(DbKind dbKind) : IDbConnectionInterceptor
 {
     public void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)

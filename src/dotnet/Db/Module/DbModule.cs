@@ -104,7 +104,6 @@ public sealed class DbModule(IServiceProvider moduleServices)
             }
             if (HostInfo.IsDevelopmentInstance)
                 db.EnableSensitiveDataLogging();
-            db.AddInterceptors(new DbConnectionConfigurator(dbKind));
         }, 32);
 
         services.AddDbContextServices<TDbContext>(db => {
