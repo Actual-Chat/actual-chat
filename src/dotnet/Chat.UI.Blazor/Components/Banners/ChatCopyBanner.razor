@@ -32,16 +32,17 @@
     private ToastUI ToastUI => Hub.ToastUI;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.Hidden,
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Hidden,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasChat = ChatContext.HasChat;
         var chat = ChatContext.Chat;
-        
+
         if (!hasChat || !chat.Id.IsPlaceChat || !chat.Rules.IsOwner())
             return Model.Hidden;
 
@@ -70,6 +71,8 @@
                 _isCopying = false;
                 StateHasChanged();
             });
+
+    // Nested types
 
     public sealed record Model(bool IsVisible, ChatCopyState? CopiedChat) {
         public static readonly Model Hidden = new (false, null);

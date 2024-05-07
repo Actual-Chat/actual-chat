@@ -19,16 +19,17 @@
 
     protected override ComputedState<Presence>.Options GetStateOptions() {
         if (UserId.IsNone)
-            return new ComputedState<Presence>.Options {
-                InitialValue = Presence.Unknown,
-                Category = GetStateCategory(),
-            };
+            return ComputedStateComponent.GetStateOptions(GetType(),
+                static t => new ComputedState<Presence>.Options() {
+                    InitialValue = Presence.Unknown,
+                    Category = ComputedStateComponent.GetStateCategory(t),
+                });
+
         var presenceComputed = Computed.GetExisting(() => UserPresences.Get(UserId, default));
         var presence = presenceComputed?.IsConsistent() == true &&  presenceComputed.HasValue ? presenceComputed.Value : Presence.Unknown;
-
         return new() {
             InitialValue = presence,
-            Category = GetStateCategory(),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
     }
 

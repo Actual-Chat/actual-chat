@@ -22,10 +22,11 @@
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Language>.Options GetStateOptions()
-        => new() {
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Language>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override Task<Language> ComputeState(CancellationToken cancellationToken)
         => LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).AsTask();

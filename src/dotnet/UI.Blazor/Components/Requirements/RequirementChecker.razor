@@ -50,17 +50,18 @@
     }
 
     protected override ComputedState<FailedRequirementSet>.Options GetStateOptions()
-        => new() {
-            InitialValue = FailedRequirementSet.Empty,
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<FailedRequirementSet>.Options() {
+                InitialValue = FailedRequirementSet.Empty,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<FailedRequirementSet> ComputeState(CancellationToken cancellationToken) {
         var failures = ImmutableDictionary<RequirementComponent, Exception>.Empty;
         var recoveredRequirements = ImmutableList<RequirementComponent>.Empty;
         var mutableDictionary = _requirements;
-        
+
         foreach (var requirement in mutableDictionary.Keys) {
             try {
                 await requirement.Require(cancellationToken).ConfigureAwait(false);

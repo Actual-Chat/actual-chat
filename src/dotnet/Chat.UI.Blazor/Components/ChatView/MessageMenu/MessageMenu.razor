@@ -37,11 +37,11 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.None,
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatEntry = await Chats.GetEntry(Session, _entryId, CancellationToken.None).ConfigureAwait(false);
@@ -61,6 +61,8 @@
             IsOwnEntry = requestAuthor != null && requestAuthor.Id == chatEntry.AuthorId,
         };
     }
+
+    // Nested types
 
     public sealed record Model {
         public static readonly Model None = new();

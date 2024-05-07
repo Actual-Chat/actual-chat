@@ -16,13 +16,12 @@
 
     [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        return new() {
-            InitialValue = new(),
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
-    }
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var count = await ChatListUI.GetUnmutedUnreadChatCount(PlaceId, cancellationToken).ConfigureAwait(false);
@@ -32,5 +31,7 @@
     protected override bool ShouldRender()
         => State.HasError || State.Value != _rendered;
 
-    public record struct Model(Trimmed<int> Count = default);
+    // Nested types
+
+    public record struct Model(Trimmed<int> Count);
 }

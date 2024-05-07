@@ -47,10 +47,11 @@
     [Parameter] public EventCallback CloseClick { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() {
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<bool>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var accountSettings = await AccountSettings.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
@@ -59,5 +60,4 @@
             defaultAvatarId = accountSettings.AvatarIds.FirstOrDefault();
         return Avatar.Id == defaultAvatarId;
     }
-
 }

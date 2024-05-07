@@ -115,7 +115,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = new (AccountUI.OwnAccount.Value, false),
-            Category = GetStateCategory(),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
@@ -136,6 +136,8 @@
         if (NavbarUI.IsPinnedChatSelected(out _))
             PanelsUI.HidePanels();
     }
+
+    // Nested types
 
     public record Model(AccountFull OwnAccount, bool EnablePlacesUI);
 }

@@ -14,15 +14,14 @@
 </div>
 
 @code {
-
     [Inject] ComputeStateTestService TestService { get; init; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        return new() {
-            InitialValue = Model.None,
-            Category = GetStateCategory(),
-        };
-    }
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         await Task.Delay(200, cancellationToken).ConfigureAwait(false);
@@ -34,7 +33,9 @@
         await TestService.MutateAndInvalidate("Final", CancellationToken.None);
     }
 
+    // Nested types
+
     public record struct Model(string Value) {
-        public static Model None = new Model("None");
+        public static Model None = new("None");
     }
 }

@@ -47,7 +47,7 @@
                 ChatListUI.GetCountWhenLoading(_kind),
                 false,
                 true),
-            Category = GetStateCategory(),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
@@ -58,6 +58,8 @@
 
     protected override bool ShouldRender()
         => State.HasError || State.Value != _rendered;
+
+    // Nested types
 
     public record struct Model(
         int OwnChatsCount,

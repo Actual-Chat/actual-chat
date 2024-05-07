@@ -47,17 +47,16 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-    {
-        return new () {
-            InitialValue = Model.None,
-            Category = GetStateCategory(),
-        };
-    }
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var authorId = AuthorId;
         var chatId = authorId.ChatId;
-        
+
         if (authorId.IsNone)
             return Model.None;
 
@@ -79,6 +78,8 @@
             LastCheckIn = lastCheckIn,
         };
     }
+
+    // Nested types
 
     public sealed record Model {
         public static readonly Model None = new() {

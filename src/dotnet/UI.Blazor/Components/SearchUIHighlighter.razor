@@ -15,7 +15,7 @@
         => new() {
             InitialValue = SearchMatch.New(Text),
             UpdateDelayer = UpdateDelayer, // De-bounces the re-renders
-            Category = GetStateCategory(),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
     protected override async Task<SearchMatch> ComputeState(CancellationToken cancellationToken) {

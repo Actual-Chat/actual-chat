@@ -25,16 +25,17 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
 
     protected override ComputedState<Model>.Options GetStateOptions()
     {
-        var model = Model.Loading;
         if (AuthorId.IsNone)
-            return new () {
-                InitialValue = model,
-                Category = GetStateCategory(),
-            };
+            return ComputedStateComponent.GetStateOptions(GetType(),
+                static t => new ComputedState<Model>.Options() {
+                    InitialValue = Model.Loading,
+                    Category = ComputedStateComponent.GetStateCategory(t),
+                });
 
         var authorComputed = Computed.GetExisting(() => Authors.Get(Session, AuthorId.ChatId, AuthorId, default));
         var author = authorComputed?.IsConsistent() == true &&  authorComputed.HasValue ? authorComputed.Value : null;
 
+        var model = Model.Loading;
         if (author != null) {
             model = new Model(author);
 
@@ -47,7 +48,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
 
         return new () {
             InitialValue = model,
-            Category = GetStateCategory(),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
     }
 
@@ -65,6 +66,8 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
         var isOwn = ownAuthor != null && author.Id == ownAuthor.Id;
         return new Model(author, isOwn);
     }
+
+    // Nested types
 
     public sealed record Model(
         Author Author,

@@ -57,11 +57,12 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.NotRecording,
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.NotRecording,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var recordingChat = await GetRecordingElsewhereChat(cancellationToken).ConfigureAwait(false);

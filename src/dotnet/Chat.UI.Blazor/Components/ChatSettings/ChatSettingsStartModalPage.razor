@@ -176,11 +176,12 @@
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
-        => new() {
-            InitialValue = ComputedModel.Loading,
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options() {
+                InitialValue = ComputedModel.Loading,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
@@ -245,6 +246,8 @@
         });
         await Hub.UICommander().Run(command);
     }
+
+    // Nested types
 
     public sealed class FormModel {
         [Required, MinLength(1)]

@@ -7,9 +7,9 @@ namespace ActualChat;
 public interface IComputedStateLease<T> : IComputedState<T>;
 
 public class ComputedStateLease<T, TKey, TState, TResource>(
-        SharedResourcePool<TKey, TResource>.Lease lease,
-        Func<TResource, TState> stateGetter)
-    : IComputedStateLease<T>
+    SharedResourcePool<TKey, TResource>.Lease lease,
+    Func<TResource, TState> stateGetter
+    ) : IComputedStateLease<T>
     where TState : class, IComputedState<T>
     where TResource : class
     where TKey : notnull
@@ -50,6 +50,7 @@ public class ComputedStateLease<T, TKey, TState, TResource>(
 
     public Task UpdateCycleTask => State.UpdateCycleTask;
     public CancellationToken DisposeToken => State.DisposeToken;
+    public CancellationToken GracefulDisposeToken => State.GracefulDisposeToken;
 
     public virtual void Dispose()
         => Lease.Dispose();

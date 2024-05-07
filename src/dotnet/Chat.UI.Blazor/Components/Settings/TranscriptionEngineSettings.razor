@@ -59,10 +59,11 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.Loading,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await AccountSettings.GetUserTranscriptionEngineSettings(cancellationToken).ConfigureAwait(false);
@@ -107,6 +108,8 @@
             _engine = model.Engine;
         }
     }
+
+    // Nested types
 
     public sealed record Model(TranscriptionEngine Engine) {
         public static readonly Model Loading = new(TranscriptionEngine.Google);

@@ -16,11 +16,12 @@
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
 
     protected override ComputedState<ChatAudioState>.Options GetStateOptions()
-        => new() {
-            InitialValue = ChatAudioState.None,
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ChatAudioState>.Options() {
+                InitialValue = ChatAudioState.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override Task<ChatAudioState> ComputeState(CancellationToken cancellationToken)
         => ChatAudioUI.GetState(ChatId);

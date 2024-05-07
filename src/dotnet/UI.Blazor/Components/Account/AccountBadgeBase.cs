@@ -5,6 +5,7 @@ namespace ActualChat.UI.Blazor.Components;
 public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase.Model>
 {
     [Inject] private UIHub Hub { get; init; } = null!;
+
     private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
 
@@ -16,10 +17,11 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
         => UserId = new UserId(UserSid);
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.Loading,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var userId = UserId;
@@ -31,6 +33,8 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
             ? Model.None
             : new(account);
     }
+
+    // Nested types
 
     public record struct Model(Account Account) {
         public static readonly Model None = new(Account.None);

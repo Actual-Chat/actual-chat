@@ -66,10 +66,11 @@
     [Parameter, EditorRequired] public int Index { get; init; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.Loading,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
@@ -106,6 +107,8 @@
             IsLastItemInBlock = isLastItemInBlock,
         };
     }
+
+    // Nested types
 
     public sealed record Model {
         public static readonly Model Loading = new() { ChatState = ChatState.Loading };

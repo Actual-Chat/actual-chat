@@ -28,11 +28,12 @@
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new () {
-            InitialValue = Model.None,
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var minSentAt = Clocks.SystemClock.Now - TimeSpan.FromDays(1);
@@ -63,6 +64,8 @@
         _isHovered = false;
         StateHasChanged();
     }
+
+    // Nested types
 
     public sealed record Model {
         public static readonly Model None = new();

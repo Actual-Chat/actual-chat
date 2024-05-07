@@ -21,16 +21,19 @@
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
-        => new() {
-            InitialValue = ComputedModel.None,
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options() {
+                InitialValue = ComputedModel.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var bannerRefs = await BannerUI.Banners.Use(cancellationToken).ConfigureAwait(false);
         return new(bannerRefs);
     }
+
+    // Nested types
 
     public sealed record ComputedModel(ImmutableList<BannerDef> Banners) {
         public static readonly ComputedModel None = new(ImmutableList<BannerDef>.Empty);

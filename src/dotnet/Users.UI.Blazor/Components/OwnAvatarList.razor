@@ -53,10 +53,11 @@
     [Parameter] public Chat? Chat { get; set; } = null;
 
     protected override ComputedState<List<AvatarFull>>.Options GetStateOptions()
-        => new () {
-            InitialValue = [],
-            Category = GetStateCategory()
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<List<AvatarFull>>.Options() {
+                InitialValue = [],
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<List<AvatarFull>> ComputeState(CancellationToken cancellationToken) {
         var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken).ConfigureAwait(false);

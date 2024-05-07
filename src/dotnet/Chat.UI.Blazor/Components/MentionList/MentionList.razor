@@ -77,11 +77,12 @@
     }
 
     protected override ComputedState<MentionSearchResult[]>.Options GetStateOptions()
-        => new() {
-            InitialValue = Array.Empty<MentionSearchResult>(),
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<MentionSearchResult[]>.Options() {
+                InitialValue = [],
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<MentionSearchResult[]> ComputeState(CancellationToken cancellationToken) {
         var managerLimit = Manager.Limit;

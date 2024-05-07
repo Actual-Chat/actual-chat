@@ -15,10 +15,11 @@
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 
     protected override ComputedState<ScreenSize>.Options GetStateOptions()
-        => new() {
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ScreenSize>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override Task<ScreenSize> ComputeState(CancellationToken cancellationToken)
         => BrowserInfo.ScreenSize.Use(cancellationToken).AsTask();

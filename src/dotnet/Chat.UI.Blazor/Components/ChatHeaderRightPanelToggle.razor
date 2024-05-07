@@ -22,10 +22,11 @@
     [Parameter] public EventCallback Click { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() {
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<bool>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override Task<bool> ComputeState(CancellationToken cancellationToken)
         => PanelsUI.Right.IsVisible.Use(cancellationToken).AsTask();
