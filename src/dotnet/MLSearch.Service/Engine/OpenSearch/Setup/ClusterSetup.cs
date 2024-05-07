@@ -1,31 +1,30 @@
-using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
-using OpenSearch.Client;
-using ActualChat.Hosting;
-using ActualChat.MLSearch.ApiAdapters;
+using ActualChat.Mesh;
 using ActualChat.MLSearch.Documents;
-using OpenSearchModelGroupId = string;
-using OpenSearchModelId = string;
+using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
+using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.Indexing.Initializer;
-using Microsoft.Extensions.Options;
 using ActualChat.MLSearch.Module;
-using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
+using Microsoft.Extensions.Options;
+using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
 internal interface IClusterSetup
 {
     ClusterSettings Result { get; }
+    Task InitializeAsync(CancellationToken cancellationToken);
 }
 
 internal sealed class ClusterSetup(
-    IOptions<OpenSearchSettings> openSearchSettings,
     IOpenSearchClient openSearch,
+    IMeshLocks meshLocks,
     IEnumerable<ISettingsChangeTokenSource> changeSources,
+    IOptions<OpenSearchSettings> openSearchSettings,
     OpenSearchNamingPolicy namingPolicy,
     IndexNames indexNames,
     Tracer baseTracer
-    ) : IClusterSetup, IModuleInitializer
+) : IClusterSetup
 {
     private readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
     private ClusterSettings? _result;
@@ -34,7 +33,7 @@ internal sealed class ClusterSetup(
         "Initialization script was not called."
     );
 
-    public async Task Initialize(CancellationToken cancellationToken)
+    public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         var clusterSettings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
         await EnsureTemplatesAsync(cancellationToken).ConfigureAwait(false);
@@ -74,7 +73,7 @@ internal sealed class ClusterSetup(
                 cancellationToken
             )
             .ConfigureAwait(false);
-        var modelGroupId = modelGroupResponse.FirstHit().Get<OpenSearchModelGroupId>("_id");
+        var modelGroupId = modelGroupResponse.FirstHit().Get<string>("_id");
         if (modelGroupId.IsNullOrEmpty()) {
             throw new InvalidOperationException(
                 "Failed to retrieve model group id."
@@ -100,7 +99,7 @@ internal sealed class ClusterSetup(
             )
             .ConfigureAwait(false);
         var model = modelResponse.FirstHit();
-        var modelId = model.Get<OpenSearchModelId>("_id");
+        var modelId = model.Get<string>("_id");
         if (modelId.IsNullOrEmpty()) {
             throw new InvalidOperationException(
                 "Failed to retrieve model id."
@@ -145,17 +144,31 @@ internal sealed class ClusterSetup(
         using var _ = _tracer.Region();
 
         var numberOfReplicas = openSearchSettings.Value.DefaultNumberOfReplicas;
-        await openSearch.Indices
-            .PutTemplateAsync(IndexNames.MLTemplateName,
-                index => ConfigureMLIndexTemplate(index, numberOfReplicas, IndexNames.MLIndexPattern), cancellationToken)
+
+        var (templateName, pattern) = (IndexNames.MLTemplateName, IndexNames.MLIndexPattern);
+        var isValidTemplate = await IsTemplateValidAsync(templateName, numberOfReplicas, pattern, cancellationToken)
             .ConfigureAwait(false);
+        if (!isValidTemplate) {
+            var result = await openSearch.Indices
+                .PutTemplateAsync(
+                    templateName,
+                    index => index
+                        .Settings(s => s.NumberOfReplicas(numberOfReplicas))
+                        .IndexPatterns(pattern),
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+            result.AssertSuccess();
+        }
+    }
 
-        return;
-
-        IPutIndexTemplateRequest ConfigureMLIndexTemplate(PutIndexTemplateDescriptor index, int? numReplicas, string indexPattern)
-            => index
-                .Settings(s => s.NumberOfReplicas(numReplicas))
-                .IndexPatterns(indexPattern);
+    private async Task<bool> IsTemplateValidAsync(string templateName, int? numberOfReplicas, string pattern, CancellationToken cancellationToken)
+    {
+        var result = await openSearch.Indices.GetTemplateAsync(templateName, ct: cancellationToken).ConfigureAwait(false);
+        result.AssertSuccess(allowNotFound: true);
+        return result.TemplateMappings.TryGetValue(templateName, out var mapping)
+            && mapping.IndexPatterns.Contains(pattern, StringComparer.Ordinal)
+            && mapping.Settings.NumberOfReplicas == numberOfReplicas;
     }
 
     private async Task EnsureIndexesAsync(ClusterSettings settings, CancellationToken cancellationToken)
@@ -208,15 +221,8 @@ internal sealed class ClusterSetup(
         // Chats cursor fields
         var lastVersionField = namingPolicy.ConvertName(nameof(ChatIndexInitializerShard.Cursor.LastVersion));
 
-        var isIngestPipelineExistsResult = await openSearch
-            .Ingest
-            .GetPipelineAsync(
-                r => r.Id(ingestPipelineId),
-                ct: cancellationToken
-            )
-            .ConfigureAwait(false);
-        isIngestPipelineExistsResult.AssertSuccess(allowNotFound: true);
-        if (!isIngestPipelineExistsResult.Pipelines.Any()) {
+        var isIngestPipelineExists = await IsPipelineExistsAsync(ingestPipelineId, cancellationToken).ConfigureAwait(false);
+        if (!isIngestPipelineExists) {
             var ingestResult = await openSearch.RunAsync(
                 $$"""
                 PUT /_ingest/pipeline/{{ingestPipelineId}}
@@ -242,12 +248,8 @@ internal sealed class ClusterSetup(
             }
         }
 
-        var isIngestCursorIndexExistsResult = await openSearch
-            .Indices
-            .ExistsAsync(ingestCursorIndexId, ct: cancellationToken)
-            .ConfigureAwait(false);
-        isIngestCursorIndexExistsResult.AssertSuccess(allowNotFound:true);
-        if (!isIngestCursorIndexExistsResult.Exists) {
+        var isIngestCursorIndexExists = await IsIndexExistsAsync(ingestCursorIndexId, cancellationToken).ConfigureAwait(false);
+        if (!isIngestCursorIndexExists) {
             // Note: https://opensearch.org/docs/latest/api-reference/index-apis/put-mapping/
             /*
             If you want to create or add mappings and fields to an index, you can use the put mapping
@@ -284,12 +286,8 @@ internal sealed class ClusterSetup(
             }
         }
 
-        var isChatsCursorIndexExistsResult = await openSearch
-            .Indices
-            .ExistsAsync(chatsCursorIndexId, ct: cancellationToken)
-            .ConfigureAwait(false);
-        isChatsCursorIndexExistsResult.AssertSuccess(allowNotFound:true);
-        if (!isChatsCursorIndexExistsResult.Exists) {
+        var isChatsCursorIndexExists = await IsIndexExistsAsync(chatsCursorIndexId, cancellationToken).ConfigureAwait(false);
+        if (!isChatsCursorIndexExists) {
             var chatsCursorIndexResult = await openSearch.RunAsync(
                 $$"""
                 PUT /{{chatsCursorIndexId}}
@@ -313,12 +311,8 @@ internal sealed class ClusterSetup(
             }
         }
 
-        var isSearchIndexExistsResult = await openSearch
-            .Indices
-            .ExistsAsync(searchIndexId, ct: cancellationToken)
-            .ConfigureAwait(false);
-        isSearchIndexExistsResult.AssertSuccess(allowNotFound:true);
-        if (!isSearchIndexExistsResult.Exists) {
+        var isSearchIndexExists = await IsIndexExistsAsync(searchIndexId, cancellationToken).ConfigureAwait(false);
+        if (!isSearchIndexExists) {
             var searchIndexResult = await openSearch.RunAsync(
                 $$"""
                 PUT /{{searchIndexId}}
@@ -394,5 +388,28 @@ internal sealed class ClusterSetup(
                 );
             }
         }
+    }
+
+    private async Task<bool> IsPipelineExistsAsync(string pipelineId, CancellationToken cancellationToken)
+    {
+        var isIngestPipelineExistsResult = await openSearch
+            .Ingest
+            .GetPipelineAsync(
+                r => r.Id(pipelineId),
+                ct: cancellationToken
+            )
+            .ConfigureAwait(false);
+        isIngestPipelineExistsResult.AssertSuccess(allowNotFound: true);
+        return isIngestPipelineExistsResult.Pipelines.Any();
+    }
+
+    private async Task<bool> IsIndexExistsAsync(string indexId, CancellationToken cancellationToken)
+    {
+        var isSearchIndexExistsResult = await openSearch
+            .Indices
+            .ExistsAsync(indexId, ct: cancellationToken)
+            .ConfigureAwait(false);
+        isSearchIndexExistsResult.AssertSuccess(allowNotFound: true);
+        return isSearchIndexExistsResult.Exists;
     }
 }

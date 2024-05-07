@@ -1,4 +1,5 @@
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
+using ActualChat.MLSearch.Module;
 
 namespace ActualChat.MLSearch.Indexing.Initializer;
 
@@ -12,6 +13,7 @@ internal sealed class ChatIndexInitializer(
     ShardScheme shardScheme,
     IShardIndexResolver<string> shardIndexResolver,
     IChatIndexInitializerShard chatIndexInitializerShard,
+    IServiceCoordinator serviceCoordinator,
     ILogger<ChatIndexInitializer> log
 ) : ShardWorker(services, shardScheme, nameof(ChatIndexInitializer)), IChatIndexInitializer
 {
@@ -39,14 +41,15 @@ internal sealed class ChatIndexInitializer(
         _isHostingActiveShard |= isActiveShard;
         if (isActiveShard) {
             log.LogInformation("Activating {IndexInitializer} at shard #{ShardIndex}", typeof(ChatIndexInitializer), shardIndex);
-            await chatIndexInitializerShard.UseAsync(cancellationToken).ConfigureAwait(false);
+            await serviceCoordinator.ExecuteWhenReadyAsync(chatIndexInitializerShard.UseAsync, cancellationToken).ConfigureAwait(false);
         }
         else {
             // Lets wait for never ending task till cancellation
             // TODO: instead of this use a dedicated shard scheme with just a single shard
             // to process MLSearch_TriggerChatIndexingCompletion events
-            var tcs = new TaskCompletionSource();
-            await tcs.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced()
+                .WaitAsync(cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 }
