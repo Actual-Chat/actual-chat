@@ -1,3 +1,8 @@
+/* event delegation for iOS is broken */
+body.device-ios * {
+    cursor: pointer;
+}
+
 /* Sizes */
 .btn, .btn.btn-md {
     @apply relative;
