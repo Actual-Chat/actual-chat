@@ -15,6 +15,7 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 internal sealed class ClusterSetup(
     IOptions<OpenSearchSettings> openSearchSettings,
     IOpenSearchClient openSearch,
+    IEnumerable<IIndexSettingsChangeTokenSource> changeSources,
     OpenSearchNamingPolicy namingPolicy,
     IndexNames indexNames,
     Tracer baseTracer
@@ -32,6 +33,14 @@ internal sealed class ClusterSetup(
         var clusterSettings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
         await EnsureTemplatesAsync(cancellationToken).ConfigureAwait(false);
         await EnsureIndexesAsync(clusterSettings, cancellationToken).ConfigureAwait(false);
+        NotifyClusterSettingsChanges();
+    }
+
+    private void NotifyClusterSettingsChanges()
+    {
+        foreach (var changeSource in changeSources) {
+            changeSource.RaiseChanged();
+        }
     }
 
     private async Task<ClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)

@@ -1,6 +1,7 @@
 using OpenSearch.Client;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Indexing;
+using Microsoft.Extensions.Options;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 
@@ -19,25 +20,44 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 // - All deletes MUST NOT fail if document was already
 //   deleted.
 
-internal sealed class Sink<TDocument>(
-    string docIndexName,
-    IOpenSearchClient client,
-    IIndexSettingsSource indexSettingsSource,
-    ILogger<Sink<TDocument>> log
-) : ISink<TDocument, string>
+internal sealed class Sink<TDocument> : ISink<TDocument, string>, IDisposable
     where TDocument: class, IHasId<string>
 {
+    private readonly string _docIndexName;
+    private readonly IOpenSearchClient _openSearch;
+    private readonly IOptionsMonitor<IndexSettings> _indexSettingsMonitor;
+    private readonly ILogger<Sink<TDocument>> _log;
+    private readonly IDisposable? _indexSettingsChangeSubscription;
     private IndexSettings? _indexSettings;
-    private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings(docIndexName);
 
-    private IOpenSearchClient OpenSearch => client;
+    public Sink(
+        string docIndexName,
+        IOpenSearchClient openSearch,
+        IOptionsMonitor<IndexSettings> indexSettingsMonitor,
+        ILogger<Sink<TDocument>> log
+    )
+    {
+        _docIndexName = docIndexName;
+        _openSearch = openSearch;
+        _indexSettingsMonitor = indexSettingsMonitor;
+        _log = log;
+        _indexSettingsChangeSubscription = _indexSettingsMonitor.OnChange((_, indexName) => {
+            if (string.Equals(indexName, _docIndexName, StringComparison.Ordinal)) {
+                _indexSettings = null;
+            }
+        });
+    }
+
+    private IndexSettings IndexSettings => _indexSettings ??= _indexSettingsMonitor.Get(_docIndexName);
+
+    void IDisposable.Dispose() => _indexSettingsChangeSubscription?.Dispose();
 
     public async Task ExecuteAsync(
         IEnumerable<TDocument>? updatedDocuments,
         IEnumerable<string>? deletedDocuments,
         CancellationToken cancellationToken = default)
     {
-        var result = await OpenSearch
+        var result = await _openSearch
             .BulkAsync(r => r
                     .IndexMany(
                         updatedDocuments,
@@ -50,7 +70,7 @@ internal sealed class Sink<TDocument>(
                     .DeleteMany(deletedDocuments, (op, _) => op.Index(IndexSettings.IndexName)),
                 cancellationToken
             ).ConfigureAwait(false);
-        log.LogErrors(result);
+        _log.LogErrors(result);
         result.AssertSuccess();
     }
 }

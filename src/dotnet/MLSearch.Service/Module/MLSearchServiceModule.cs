@@ -8,6 +8,7 @@ using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch;
+using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.MLSearch.Indexing;
@@ -51,40 +52,9 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         // Module configuration
 
-        services.AddOptionsWithValidateOnStart<OpenSearchSettings>()
-            .Bind(Cfg.GetSection($"{nameof(MLSearchSettings)}:{MLSearchSettings.OpenSearch}"))
-            .ValidateDataAnnotations()
-            .Validate(options => Uri.IsWellFormedUriString(options.ClusterUri, UriKind.Absolute),
-                $"Value for {nameof(OpenSearchSettings.ClusterUri)} must be valid URI.")
-            .PostConfigure(options => {
-                if (options.DefaultNumberOfReplicas is null && HostInfo.IsDevelopmentInstance) {
-                    options.DefaultNumberOfReplicas = 0;
-                }
-            });
-
-        // Module's own services
-
-        services.AddSingleton<IndexNames>();
-        services.AddSingleton(_ => new OpenSearchNamingPolicy(JsonNamingPolicy.CamelCase));
-
-        services.AddSingleton<IOpenSearchClient>(s => {
-            var openSearchSettings = s.GetRequiredService<IOptions<OpenSearchSettings>>().Value;
-            var connectionSettings = new ConnectionSettings(
-                new SingleNodeConnectionPool(new Uri(openSearchSettings.ClusterUri)),
-                sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
-            return new OpenSearchClient(connectionSettings);
-        });
-
         services
-            .AddSingleton<ClusterSetup>()
-            .AddAlias<IModuleInitializer, ClusterSetup>();
-
-        services.AddSingleton<IIndexSettingsSource, IndexSettingsSource>();
-        // ChatSlice engine registrations
-        services.AddSingleton<ISearchEngine<ChatSlice>>(static services
-            => services.CreateInstanceWith<OpenSearchEngine<ChatSlice>>(IndexNames.ChatContent));
-
-        services.AddWorkerPoolDependencies();
+            .ConfigureOpenSearch(Cfg, HostInfo)
+            .AddWorkerPoolDependencies();
 
         // -- Register indexing common components --
         services.AddSingleton<IChatContentUpdateLoader>(static services
