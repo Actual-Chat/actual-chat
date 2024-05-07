@@ -1334,8 +1334,8 @@ export class VirtualList {
                 break;
         }
 
-        const firstItem = items[startIndex];
-        const lastItem = items[endIndex];
+        const firstItem = items[startIndex] ?? items[0];
+        const lastItem = items[endIndex] ?? items[items.length - 1];
         const startGap = Math.max(0, firstItem.range.start - loadZone.start);
         const endGap = Math.max(0, loadZone.end - lastItem.range.end);
         // skip queries that load few more items - we prefer to load more
