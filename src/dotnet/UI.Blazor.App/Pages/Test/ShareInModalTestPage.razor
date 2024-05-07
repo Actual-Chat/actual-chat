@@ -1,0 +1,16 @@
+﻿@page "/test/incoming-share-modal-test"
+@using ActualChat.Chat.UI.Blazor.Services
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Incoming Share Test Page</MainHeader>
+
+<Button Class="btn-primary" Click="ShowIncomingShareTextModal">
+    Show Incoming Share Modal
+</Button>
+
+@code {
+    [Inject] private IncomingShareUI IncomingShareUI { get; init; } = null!;
+
+    private void ShowIncomingShareTextModal()
+        => IncomingShareUI.ShareText("Hello, world!");
+}
