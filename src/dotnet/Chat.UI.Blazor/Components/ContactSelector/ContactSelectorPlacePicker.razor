@@ -1,3 +1,4 @@
+@using ActualChat.Contacts
 @using ActualChat.Media;
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ContactSelectorPlacePicker.Model>
@@ -41,6 +42,8 @@
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
     private Features Features => Hub.Features();
+    private IContacts Contacts => Hub.Contacts;
+    private ChatUI ChatUI => Hub.ChatUI;
 
     [CascadingParameter] public ContactSelector Selector { get; set; } = null!;
 
@@ -53,13 +56,14 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var enablePlacesUI = await Features.Get<Features_EnablePlacesUI, bool>(cancellationToken).ConfigureAwait(false);
-        var placeIds = await Hub.Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
+        var navbarSettings = await ChatUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
+        var placeIds = await Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
         var places = (await placeIds
+                .OrderBy(x => navbarSettings.PlacesOrder.IndexOf(x))
                 .Select(id => Hub.Places.Get(Session, id, cancellationToken))
                 .Collect()
                 .ConfigureAwait(false))
             .SkipNullItems()
-            .OrderBy(c => c.CreatedAt)
             .ToList();
 
         return new(enablePlacesUI) {
