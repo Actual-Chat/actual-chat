@@ -150,7 +150,9 @@ internal sealed class ChatContentIndexer(
             }
         }
 
-        yield return new SourceEntries(0, null, tailEntries);
+        if (tailEntries.Count > 0) {
+            yield return new SourceEntries(0, null, tailEntries);
+        }
     }
 
     private async Task<IReadOnlyList<ChatEntry>> LoadByIdsAsync(
