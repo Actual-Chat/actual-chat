@@ -9,6 +9,7 @@ using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.Indexing.Initializer;
 using Microsoft.Extensions.Options;
 using ActualChat.MLSearch.Module;
+using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 

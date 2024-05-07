@@ -4,21 +4,21 @@ using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch;
 
-internal sealed class OpenSearchEngine<TDocument> : ISearchEngine<TDocument>, IDisposable
+internal sealed class SemanticSearchEngine<TDocument> : ISearchEngine<TDocument>, IDisposable
     where TDocument : class, IHasId<string>
 {
     private readonly string _docIndexName;
     private readonly IOpenSearchClient _openSearch;
     private readonly IOptionsMonitor<SemanticIndexSettings> _indexSettingsMonitor;
-    private readonly ILogger<OpenSearchEngine<TDocument>> _log;
+    private readonly ILogger<SemanticSearchEngine<TDocument>> _log;
     private readonly IDisposable? _indexSettingsChangeSubscription;
     private SemanticIndexSettings? _indexSettings;
 
-    public OpenSearchEngine(
+    public SemanticSearchEngine(
         string docIndexName,
         IOpenSearchClient openSearch,
         IOptionsMonitor<SemanticIndexSettings> indexSettingsMonitor,
-        ILogger<OpenSearchEngine<TDocument>> log)
+        ILogger<SemanticSearchEngine<TDocument>> log)
     {
         _docIndexName = docIndexName;
         _openSearch = openSearch;
@@ -37,7 +37,7 @@ internal sealed class OpenSearchEngine<TDocument> : ISearchEngine<TDocument>, ID
 
     public async Task<SearchResult<TDocument>> Find(SearchQuery query, CancellationToken cancellationToken)
     {
-        var queryBuilder = new OpenSearchQueryBuilder(IndexSettings);
+        var queryBuilder = new SemanticSearchQueryBuilder(IndexSettings);
         var searchRequest = queryBuilder.Build(query);
 
         // TODO: Make this serialization optional

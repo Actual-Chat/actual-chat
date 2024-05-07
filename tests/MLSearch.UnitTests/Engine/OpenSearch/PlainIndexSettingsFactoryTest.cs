@@ -1,5 +1,5 @@
 using ActualChat.MLSearch.Engine;
-using ActualChat.MLSearch.Engine.OpenSearch;
+using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
 namespace ActualChat.MLSearch.UnitTests.Engine.OpenSearch;

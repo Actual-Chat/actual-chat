@@ -1,5 +1,5 @@
 
-using ActualChat.MLSearch.Engine.OpenSearch;
+using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using OpenSearch.Client;
 using OpenSearch.Net;

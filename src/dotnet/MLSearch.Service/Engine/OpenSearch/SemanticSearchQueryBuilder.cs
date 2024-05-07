@@ -3,7 +3,7 @@ using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch;
 
-internal sealed class OpenSearchQueryBuilder(SemanticIndexSettings settings) : IQueryBuilder
+internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings) : IQueryBuilder
 {
     private const string EmbeddingFieldName = "event_dense_embedding";
 
