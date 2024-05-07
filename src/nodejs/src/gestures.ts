@@ -83,30 +83,16 @@ class DataHrefGesture extends Gesture {
     public static use(): void {
         debugLog?.log(`DataHrefGesture.use`);
 
-        DocumentEvents.active.pointerDown$.subscribe((event: PointerEvent) => {
-            if (event.button !== 0) // Only primary button on wide screen
-                return;
-
-            debugLog?.log(`DataHrefGesture.use: pointerDown:`, event);
-            this.tryHandle(event, false);
-        });
-
-        // We attach this event to pointerUp instead of click solely because
-        // click somehow doesn't trigger on iOS for such divs, and none of
-        // suggested workarounds helped.
-        //
-        // For issue w/ click & workarounds, see "Safari Mobile" section here:
-        // - https://developer.mozilla.org/en-US/docs/Web/API/Element/click_event
-        DocumentEvents.active.pointerUp$.subscribe((event: PointerEvent) => {
+        DocumentEvents.active.click$.subscribe((event: PointerEvent) => {
             if (event.button !== 0) // Only primary button
                 return;
 
-            debugLog?.log(`DataHrefGesture.use: pointerUp:`, event);
-            this.tryHandle(event, true);
+            debugLog?.log(`DataHrefGesture.use: click:`, event);
+            this.tryHandle(event);
         });
     }
 
-    public static tryHandle(event: Event, isPointerUp: boolean) {
+    private static tryHandle(event: Event): void {
         // ContextMenuGesture's capturing handler may cancel this event
         if (event.defaultPrevented)
             return;
@@ -120,15 +106,6 @@ class DataHrefGesture extends Gesture {
             // Do not trigger navigation during side-nav pulling
             return;
         }
-
-        // Check if we can process it as part of pointerDown event
-        const [triggerElement, menuRef] = getOrInheritData(event.target, 'menu');
-        let menuTrigger = 0;
-        if (triggerElement && menuRef)
-            menuTrigger = parseInt(triggerElement.dataset['menuTrigger'] ?? '2');
-        const requiresPointerUp = !ScreenSize.isWide() || menuTrigger !== 2;
-        if (isPointerUp !== requiresPointerUp)
-            return;
 
         debugLog?.log(`DataHrefGesture: navigating on data href:`, href);
         const tune = Tune[element?.dataset['hrefTune'] as TuneName];
