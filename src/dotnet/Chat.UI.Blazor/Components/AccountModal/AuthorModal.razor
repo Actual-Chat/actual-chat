@@ -49,34 +49,43 @@
             <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>
         } else {
             @if (m.CanStartPeerChat) {
-                if (_anonymousChat) {
+                if (m.OnlyAnonymousChatAllowed) {
                     <Button Class="btn-modal btn-primary" Click="OnStartAnonymousPeerChat">
                         <Icon><i class="icon-question-mark-bubble text-xl"></i></Icon>
                         <Title>Start anonymous chat</Title>
                     </Button>
                 } else {
-                    <Button
-                        Class="btn-modal btn-primary start-chat-btn"
-                        ContentClass="truncate"
-                        Click="OnStartPeerChat">
-                        <Icon><i class="icon-message-ellipse text-xl"></i></Icon>
-                        <Title>Start direct chat</Title>
-                    </Button>
+                    if (_anonymousChat) {
+                        <Button Class="btn-modal btn-primary" Click="OnStartAnonymousPeerChat">
+                            <Icon><i class="icon-question-mark-bubble text-xl"></i></Icon>
+                            <Title>Start anonymous chat</Title>
+                        </Button>
+                    } else {
+                        <Button
+                            Class="btn-modal btn-primary start-chat-btn"
+                            ContentClass="truncate"
+                            Click="OnStartPeerChat">
+                            <Icon><i class="icon-message-ellipse text-xl"></i></Icon>
+                            <Title>Start direct chat</Title>
+                        </Button>
+                    }
                 }
 
-                <TileItem Click="@OnChatTypeChanged">
-                    <Content>
-                        Anonymous chat
-                    </Content>
-                    <Caption>
-                        Chat can be direct or anonymous
-                    </Caption>
-                    <Right>
-                        <Toggle Class="mr-2"
-                                IsChecked="@_anonymousChat"
-                                IsCheckedChanged="@OnChatTypeChanged"/>
-                    </Right>
-                </TileItem>
+                @if (!m.OnlyAnonymousChatAllowed) {
+                    <TileItem Click="@OnChatTypeChanged">
+                        <Content>
+                            Anonymous chat
+                        </Content>
+                        <Caption>
+                            Chat can be direct or anonymous
+                        </Caption>
+                        <Right>
+                            <Toggle Class="mr-2"
+                                    IsChecked="@_anonymousChat"
+                                    IsCheckedChanged="@OnChatTypeChanged"/>
+                        </Right>
+                    </TileItem>
+                }
             } else {
                 <Button Class="btn-modal" Click="OnCancel">Close</Button>
             }
@@ -120,6 +129,8 @@
         var canStartPeerChat = await Hub.AuthorUI.CanStartPeerChat(authorId, cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
 
+        var onlyAnonymousChatAllowed = chat is { Kind: ChatKind.Peer };
+
         EditChatMemberModel? editMemberModel = null;
         var usePlaceSettingsToEditMember = false;
         if (chat != null && chat.Rules.CanEditMembers()) {
@@ -134,6 +145,7 @@
             Account = account,
             OwnAccount = ownAccount,
             CanStartPeerChat = canStartPeerChat,
+            OnlyAnonymousChatAllowed = onlyAnonymousChatAllowed,
             UsePlaceSettingsToEditMember = usePlaceSettingsToEditMember,
             EditMemberModel = editMemberModel,
             EnableIncompleteUI = enableIncompleteUI,
@@ -199,6 +211,7 @@
         public Account OwnAccount { get; init; } = null!;
         public bool IsOwn => Account?.Id == OwnAccount.Id;
         public bool CanStartPeerChat { get; init; }
+        public bool OnlyAnonymousChatAllowed { get; init; }
         public EditChatMemberModel? EditMemberModel { get; init; }
         public bool UsePlaceSettingsToEditMember { get; init; }
         public bool EnableIncompleteUI { get; init; }
