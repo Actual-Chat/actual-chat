@@ -4,6 +4,13 @@
 @{
     var activeClass = IsSelected ? "active" : "inactive";
     _isCurrent = CalculateIsCurrent();
+    var dataAttributes = _isCurrent
+        ? new Dictionary<string, object>()
+        : new() {
+            ["data-href"] = Url,
+            ["data-replace-on-prefix"] = ReplaceOnPrefix,
+            ["data-href-tune"] = Tune.SelectNavbarItem.ToString(),
+        };
 }
 
 <div class="@Class @activeClass navbar-item group" @attributes="@Attributes">
@@ -11,12 +18,8 @@
         <div class="navbar-item-content">
             @ChildContent
         </div>
-    } else if (_isCurrent) {
-        <div class="navbar-item-content" @onclick="@OnCurrentClick">
-            @ChildContent
-        </div>
     } else {
-        <div class="navbar-item-content" data-href="@Url" data-replace-on-prefix="@ReplaceOnPrefix" data-href-tune="@Tune.SelectNavbarItem.ToString()">
+        <div class="navbar-item-content" @attributes="@dataAttributes" @onclick=@(_isCurrent ? OnCurrentClick : null! )>
             @ChildContent
         </div>
     }
@@ -26,6 +29,7 @@
 </div>
 
 @code {
+    private static string _key = "content";
     private bool _isCurrent;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
