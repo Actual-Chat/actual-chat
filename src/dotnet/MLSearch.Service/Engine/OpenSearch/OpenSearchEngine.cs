@@ -9,15 +9,15 @@ internal sealed class OpenSearchEngine<TDocument> : ISearchEngine<TDocument>, ID
 {
     private readonly string _docIndexName;
     private readonly IOpenSearchClient _openSearch;
-    private readonly IOptionsMonitor<IndexSettings> _indexSettingsMonitor;
+    private readonly IOptionsMonitor<SemanticIndexSettings> _indexSettingsMonitor;
     private readonly ILogger<OpenSearchEngine<TDocument>> _log;
     private readonly IDisposable? _indexSettingsChangeSubscription;
-    private IndexSettings? _indexSettings;
+    private SemanticIndexSettings? _indexSettings;
 
     public OpenSearchEngine(
         string docIndexName,
         IOpenSearchClient openSearch,
-        IOptionsMonitor<IndexSettings> indexSettingsMonitor,
+        IOptionsMonitor<SemanticIndexSettings> indexSettingsMonitor,
         ILogger<OpenSearchEngine<TDocument>> log)
     {
         _docIndexName = docIndexName;
@@ -31,7 +31,7 @@ internal sealed class OpenSearchEngine<TDocument> : ISearchEngine<TDocument>, ID
         });
     }
 
-    private IndexSettings IndexSettings => _indexSettings ??= _indexSettingsMonitor.Get(_docIndexName);
+    private SemanticIndexSettings IndexSettings => _indexSettings ??= _indexSettingsMonitor.Get(_docIndexName);
 
     void IDisposable.Dispose() => _indexSettingsChangeSubscription?.Dispose();
 

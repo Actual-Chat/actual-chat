@@ -4,13 +4,29 @@ using Microsoft.Extensions.Options;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch;
 
-internal sealed class IndexSettingsFactory(IndexNames indexNames, ClusterSetup clusterSetup) : IOptionsFactory<IndexSettings>
+internal sealed class PlainIndexSettingsFactory(IndexNames indexNames, IClusterSetup clusterSetup)
+    : IOptionsFactory<PlainIndexSettings>
 {
-    public IndexSettings Create(string name)
+    public PlainIndexSettings Create(string name)
     {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+
+        var clusterSettings = clusterSetup.Result;
+        var indexName = indexNames.GetFullName(name, clusterSettings);
+        return new PlainIndexSettings(indexName);
+    }
+}
+
+internal sealed class SemanticIndexSettingsFactory(IndexNames indexNames, IClusterSetup clusterSetup)
+    : IOptionsFactory<SemanticIndexSettings>
+{
+    public SemanticIndexSettings Create(string name)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+
         var clusterSettings = clusterSetup.Result;
         var indexName = indexNames.GetFullName(name, clusterSettings);
         var ingestPipelineName = indexNames.GetFullIngestPipelineName(name, clusterSettings);
-        return new IndexSettings(indexName, clusterSettings.ModelId, ingestPipelineName);
+        return new SemanticIndexSettings(indexName, clusterSettings.ModelId, ingestPipelineName);
     }
 }

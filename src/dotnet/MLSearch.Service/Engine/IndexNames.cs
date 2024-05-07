@@ -4,10 +4,10 @@ namespace ActualChat.MLSearch.Engine;
 
 internal sealed class IndexNames
 {
-    private const string NamePrefix = "ml";
-    private const string IngestPipelineNameSuffix = "ingest-pipeline";
-    private const string IndexNameSuffix = "index";
-    private const string TemplateNameSuffix = "template";
+    public const string NamePrefix = "ml";
+    public const string IngestPipelineNameSuffix = "ingest-pipeline";
+    public const string IndexNameSuffix = "index";
+    public const string TemplateNameSuffix = "template";
 
     public const string TestPrefix = "test";
     public const string ChatContent = "chat-content";
@@ -26,12 +26,10 @@ internal sealed class IndexNames
             IndexNameSuffix,
             settings.UniqueKey);
 
-    internal string? GetFullIngestPipelineName(string id, ClusterSettings settings)
-        => ChatContent.Equals(id, StringComparison.Ordinal)
-            ? string.Join('-',
-                FullPrefix,
-                id,
-                IngestPipelineNameSuffix,
-                settings.UniqueKey)
-            : null;
+    internal string GetFullIngestPipelineName(string id, ClusterSettings settings)
+        => string.Join('-',
+            FullPrefix,
+            id,
+            IngestPipelineNameSuffix,
+            settings.UniqueKey);
 }

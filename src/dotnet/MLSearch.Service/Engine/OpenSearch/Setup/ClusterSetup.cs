@@ -12,6 +12,11 @@ using ActualChat.MLSearch.Module;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
+internal interface IClusterSetup
+{
+    ClusterSettings Result { get; }
+}
+
 internal sealed class ClusterSetup(
     IOptions<OpenSearchSettings> openSearchSettings,
     IOpenSearchClient openSearch,
@@ -19,7 +24,7 @@ internal sealed class ClusterSetup(
     OpenSearchNamingPolicy namingPolicy,
     IndexNames indexNames,
     Tracer baseTracer
-    ) : IModuleInitializer
+    ) : IClusterSetup, IModuleInitializer
 {
     private readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
     private ClusterSettings? _result;

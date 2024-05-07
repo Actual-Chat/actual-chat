@@ -1,4 +1,5 @@
 
 namespace ActualChat.MLSearch.Engine.OpenSearch;
 
-internal sealed record IndexSettings(string IndexName, string? ModelId, string? IngestPipelineId);
+internal sealed record PlainIndexSettings(string IndexName);
+internal sealed record SemanticIndexSettings(string IndexName, string ModelId, string IngestPipelineId);

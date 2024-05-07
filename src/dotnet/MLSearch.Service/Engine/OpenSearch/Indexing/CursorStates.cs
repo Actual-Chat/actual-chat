@@ -15,14 +15,14 @@ internal sealed class CursorStates<TState> : ICursorStates<TState>, IDisposable
 {
     private readonly string _cursorIndexName;
     private readonly IOpenSearchClient _openSearch;
-    private readonly IOptionsMonitor<IndexSettings> _indexSettingsMonitor;
+    private readonly IOptionsMonitor<PlainIndexSettings> _indexSettingsMonitor;
     private readonly IDisposable? _indexSettingsChangeSubscription;
-    private IndexSettings? _indexSettings;
+    private PlainIndexSettings? _indexSettings;
 
     public CursorStates(
         string cursorIndexName,
         IOpenSearchClient openSearch,
-        IOptionsMonitor<IndexSettings> indexSettingsMonitor
+        IOptionsMonitor<PlainIndexSettings> indexSettingsMonitor
     )
     {
         _cursorIndexName = cursorIndexName;
@@ -35,7 +35,7 @@ internal sealed class CursorStates<TState> : ICursorStates<TState>, IDisposable
         });
     }
 
-    private IndexSettings IndexSettings => _indexSettings ??= _indexSettingsMonitor.Get(_cursorIndexName);
+    private PlainIndexSettings IndexSettings => _indexSettings ??= _indexSettingsMonitor.Get(_cursorIndexName);
 
     void IDisposable.Dispose() => _indexSettingsChangeSubscription?.Dispose();
 

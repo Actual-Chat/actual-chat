@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\dotnet\App.Server\App.Server.csproj" />
+    <ProjectReference Include="..\..\src\dotnet\App.Wasm\App.Wasm.csproj" />
     <ProjectReference Include="..\Testing\Testing.csproj" />
   </ItemGroup>
 

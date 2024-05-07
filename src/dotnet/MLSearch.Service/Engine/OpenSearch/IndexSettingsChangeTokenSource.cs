@@ -4,12 +4,12 @@ using Microsoft.Extensions.Primitives;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch;
 
-internal interface IIndexSettingsChangeTokenSource : IOptionsChangeTokenSource<IndexSettings>
+internal interface IIndexSettingsChangeTokenSource
 {
     void RaiseChanged();
 }
 
-internal class IndexSettingsChangeTokenSource(string name) : IIndexSettingsChangeTokenSource
+internal class IndexSettingsChangeTokenSource<TSettings>(string name) : IIndexSettingsChangeTokenSource, IOptionsChangeTokenSource<TSettings>
 {
     private ConfigurationReloadToken _changeToken = new();
     public string Name => name;

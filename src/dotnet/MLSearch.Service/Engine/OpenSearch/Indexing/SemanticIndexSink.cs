@@ -20,21 +20,21 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 // - All deletes MUST NOT fail if document was already
 //   deleted.
 
-internal sealed class Sink<TDocument> : ISink<TDocument, string>, IDisposable
+internal sealed class SemanticIndexSink<TDocument> : ISink<TDocument, string>, IDisposable
     where TDocument: class, IHasId<string>
 {
     private readonly string _docIndexName;
     private readonly IOpenSearchClient _openSearch;
-    private readonly IOptionsMonitor<IndexSettings> _indexSettingsMonitor;
-    private readonly ILogger<Sink<TDocument>> _log;
+    private readonly IOptionsMonitor<SemanticIndexSettings> _indexSettingsMonitor;
+    private readonly ILogger<SemanticIndexSink<TDocument>> _log;
     private readonly IDisposable? _indexSettingsChangeSubscription;
-    private IndexSettings? _indexSettings;
+    private SemanticIndexSettings? _indexSettings;
 
-    public Sink(
+    public SemanticIndexSink(
         string docIndexName,
         IOpenSearchClient openSearch,
-        IOptionsMonitor<IndexSettings> indexSettingsMonitor,
-        ILogger<Sink<TDocument>> log
+        IOptionsMonitor<SemanticIndexSettings> indexSettingsMonitor,
+        ILogger<SemanticIndexSink<TDocument>> log
     )
     {
         _docIndexName = docIndexName;
@@ -48,7 +48,7 @@ internal sealed class Sink<TDocument> : ISink<TDocument, string>, IDisposable
         });
     }
 
-    private IndexSettings IndexSettings => _indexSettings ??= _indexSettingsMonitor.Get(_docIndexName);
+    private SemanticIndexSettings IndexSettings => _indexSettings ??= _indexSettingsMonitor.Get(_docIndexName);
 
     void IDisposable.Dispose() => _indexSettingsChangeSubscription?.Dispose();
 

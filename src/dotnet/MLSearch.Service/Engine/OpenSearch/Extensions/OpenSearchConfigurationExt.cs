@@ -44,12 +44,21 @@ internal static class OpenSearchConfigurationExt
             .AddAlias<IModuleInitializer, ClusterSetup>();
 
         services
-            .AddSingleton<IOptionsFactory<IndexSettings>, IndexSettingsFactory>();
+            .AddSingleton<IOptionsFactory<PlainIndexSettings>, PlainIndexSettingsFactory>()
+            .AddSingleton<IOptionsFactory<SemanticIndexSettings>, SemanticIndexSettingsFactory>();
 
         services
-            .AddSingleton<IIndexSettingsChangeTokenSource>(static services
-                => services.CreateInstanceWith<IndexSettingsChangeTokenSource>(IndexNames.ChatContent))
-            .AddAlias<IOptionsChangeTokenSource<IndexSettings>, IIndexSettingsChangeTokenSource>();
+            .AddSingleton(static services
+                => services.CreateInstanceWith<IndexSettingsChangeTokenSource<SemanticIndexSettings>>(IndexNames.ChatContent))
+            .AddAlias<IIndexSettingsChangeTokenSource, IndexSettingsChangeTokenSource<SemanticIndexSettings>>()
+            .AddAlias<IOptionsChangeTokenSource<SemanticIndexSettings>, IndexSettingsChangeTokenSource<SemanticIndexSettings>>();
+
+        foreach (var indexName in new[] { IndexNames.ChatCursor, IndexNames.ChatContentCursor }) {
+            services
+                .AddSingleton(s => s.CreateInstanceWith<IndexSettingsChangeTokenSource<PlainIndexSettings>>(indexName))
+                .AddAlias<IIndexSettingsChangeTokenSource, IndexSettingsChangeTokenSource<PlainIndexSettings>>()
+                .AddAlias<IOptionsChangeTokenSource<PlainIndexSettings>, IndexSettingsChangeTokenSource<PlainIndexSettings>>();
+        }
 
         // ChatSlice engine registrations
         services.AddSingleton<ISearchEngine<ChatSlice>>(static services

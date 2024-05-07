@@ -72,7 +72,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IChatContentMapper, ChatContentMapper>();
 
         services.AddSingleton<ISink<ChatSlice, string>>(static services
-            => services.CreateInstanceWith<Sink<ChatSlice>>(IndexNames.ChatContent));
+            => services.CreateInstanceWith<SemanticIndexSink<ChatSlice>>(IndexNames.ChatContent));
 
         services.AddSingleton<IChatContentIndexerFactory, ChatContentIndexerFactory>();
         services.AddSingleton<IChatContentIndexWorker>(static services
