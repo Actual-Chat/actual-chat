@@ -25,10 +25,11 @@
     [Parameter] public string Label { get; set; } = "Mute notifications";
 
     protected override ComputedState<ChatNotificationMode>.Options GetStateOptions()
-        => new() {
-            InitialValue = ChatNotificationMode.Default,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ChatNotificationMode>.Options() {
+                InitialValue = ChatNotificationMode.Default,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<ChatNotificationMode> ComputeState(CancellationToken cancellationToken) {
         var chatId = Chat.Id;

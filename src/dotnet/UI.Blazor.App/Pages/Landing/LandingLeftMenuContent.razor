@@ -76,8 +76,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = new Model(AccountUI.OwnAccount.Value, false),
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
@@ -93,6 +92,8 @@
 
     private Task SignIn()
         => ModalUI.Show(new SignInModal.Model());
+
+    // Nested types
 
     public sealed record Model(AccountFull Account, bool EnableIncompleteUI);
 }

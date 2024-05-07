@@ -10,17 +10,16 @@
 <h3>@m.Value</h3>
 
 @code {
-
     [Inject] ComputeStateTestService TestService { get; init; } = null!;
 
     [CascadingParameter] ComputeStateTestComponent.Model ParentModel { get; init; }
 
-    protected override ComputedState<ComputeStateTestComponent.Model>.Options GetStateOptions() {
-        return new() {
-            InitialValue = ComputeStateTestComponent.Model.None,
-            Category = GetStateCategory(),
-        };
-    }
+    protected override ComputedState<ComputeStateTestComponent.Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputeStateTestComponent.Model>.Options() {
+                InitialValue = ComputeStateTestComponent.Model.None,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<ComputeStateTestComponent.Model> ComputeState(CancellationToken cancellationToken) {
 

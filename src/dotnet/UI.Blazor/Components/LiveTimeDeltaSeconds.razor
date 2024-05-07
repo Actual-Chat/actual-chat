@@ -16,7 +16,7 @@
     protected override ComputedState<string>.Options GetStateOptions() {
         return new () {
             InitialValue = GetText(Hub.Clocks().SystemClock.Now),
-            Category = GetStateCategory(),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
     }
 

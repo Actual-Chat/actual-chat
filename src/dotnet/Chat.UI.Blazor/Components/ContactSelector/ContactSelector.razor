@@ -64,11 +64,12 @@
     }
 
     protected override ComputedState<IReadOnlyList<ChatInfo>>.Options GetStateOptions()
-        => new() {
-            InitialValue = ImmutableList<ChatInfo>.Empty,
-            UpdateDelayer = FixedDelayer.Get(0.25),
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<IReadOnlyList<ChatInfo>>.Options() {
+                InitialValue = ImmutableList<ChatInfo>.Empty,
+                UpdateDelayer = FixedDelayer.Get(0.25),
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<IReadOnlyList<ChatInfo>> ComputeState(CancellationToken cancellationToken) {
         var chatListOrder = Order;

@@ -21,10 +21,11 @@
     [Parameter] public bool ShowLockIcon { get; set; } = true;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.Loading,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var status = "";
@@ -93,6 +94,8 @@
             BadgeColor = badgeColor,
         };
     }
+
+    // Nested types
 
     public sealed record Model {
         public static readonly Model Loading = new();

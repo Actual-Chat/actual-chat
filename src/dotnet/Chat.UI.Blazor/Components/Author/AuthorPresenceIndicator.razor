@@ -45,12 +45,11 @@
     }
 
     protected override ComputedState<Presence>.Options GetStateOptions()
-    {
-        return new () {
-            InitialValue = Presence.Unknown,
-            Category = GetStateCategory(),
-        };
-    }
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Presence>.Options() {
+                InitialValue = Presence.Unknown,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Presence> ComputeState(CancellationToken cancellationToken) {
         var authorId = AuthorId;

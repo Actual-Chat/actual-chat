@@ -40,10 +40,11 @@
     [Parameter] public EventCallback Click { get; set; }
 
     protected override ComputedState<(List<Language>?, Language)>.Options GetStateOptions()
-        => new() {
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<(List<Language>?, Language)>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<(List<Language>?, Language)> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;

@@ -22,7 +22,7 @@
         var initialValue = Moment.HasValue ? Hub.LiveTime.GetDeltaText(Moment.Value) : NullText;
         return new () {
             InitialValue = initialValue,
-            Category = GetStateCategory(),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
     }
 

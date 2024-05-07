@@ -83,10 +83,12 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override ComputedState<ViewModel>.Options GetStateOptions() => new() {
-        InitialValue = ViewModel.None,
-        Category = GetStateCategory(),
-    };
+    protected override ComputedState<ViewModel>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ViewModel>.Options() {
+                InitialValue = ViewModel.None,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<ViewModel> ComputeState(CancellationToken cancellationToken) {
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);

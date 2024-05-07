@@ -28,10 +28,11 @@ Content: @DateTime.Now.ToString("F")
     [Inject] private IFusionTime FusionTime { get; init; } = null!;
 
     protected override ComputedState<Moment>.Options GetStateOptions()
-        => new() {
-            InitialValue = MomentClockSet.Default.SystemClock.Now,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Moment>.Options() {
+                InitialValue = MomentClockSet.Default.SystemClock.Now,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Moment> ComputeState(CancellationToken cancellationToken)
         => await FusionTime.Now(TimeSpan.FromSeconds(1)).ConfigureAwait(false);

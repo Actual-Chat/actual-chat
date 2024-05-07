@@ -13,10 +13,11 @@
     [Parameter] public TestListItemRef ItemRef { get; set; } = null!;
 
     protected override ComputedState<TestListItem>.Options GetStateOptions()
-        => new() {
-            InitialValue = new(0, "Loading..."),
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<TestListItem>.Options() {
+                InitialValue = new(0, "Loading..."),
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override Task<TestListItem> ComputeState(CancellationToken cancellationToken)
         => Service.GetItem(ItemRef, cancellationToken);

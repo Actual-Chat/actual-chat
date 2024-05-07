@@ -19,11 +19,11 @@
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.None,
-            Category = GetStateCategory(),
-        };
-
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hostInfo = HostInfo;

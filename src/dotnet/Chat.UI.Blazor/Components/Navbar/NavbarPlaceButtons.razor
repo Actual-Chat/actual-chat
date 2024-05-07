@@ -86,10 +86,11 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = new Model(),
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = new Model(),
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var navbarSettings = await Hub.ChatUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
@@ -127,7 +128,9 @@
     public void OnOrderChanged(PlaceId[] places)
         => Hub.ChatUI.SetNavbarPlacesOrder(places);
 
-    public record Model {
+    // Nested types
+
+    public sealed record Model {
         public List<Place> Places { get; init; } = [];
         public Place? PreviewPlace { get; init; }
     }

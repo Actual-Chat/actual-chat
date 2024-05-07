@@ -14,10 +14,12 @@
     [Inject] private LanguageUI LanguageUI { get; init; } = null!;
 
     protected override ComputedState<UserLanguageSettings>.Options GetStateOptions()
-        => new() {
-            InitialValue = new(),
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<UserLanguageSettings>.Options() {
+                InitialValue = new(),
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override Task<UserLanguageSettings> ComputeState(CancellationToken cancellationToken)
         => LanguageUI.Settings.Use(cancellationToken).AsTask();

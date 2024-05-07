@@ -101,11 +101,12 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     }
 
     protected override ComputedState<VirtualListData<TItem>>.Options GetStateOptions()
-        => new () {
-            InitialValue = VirtualListData<TItem>.None,
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<VirtualListData<TItem>>.Options() {
+                InitialValue = VirtualListData<TItem>.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {

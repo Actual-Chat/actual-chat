@@ -9,10 +9,11 @@ public abstract class RequirementComponent : ComputedStateComponent<Unit>
     public abstract Task<Unit> Require(CancellationToken cancellationToken);
 
     protected override ComputedState<Unit>.Options GetStateOptions()
-        => new() {
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Unit>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected sealed override Task<Unit> ComputeState(CancellationToken cancellationToken)
         => Require(cancellationToken);

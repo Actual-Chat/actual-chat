@@ -77,10 +77,11 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
-        => new() {
-            InitialValue = ComputedModel.Loading,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options() {
+                InitialValue = ComputedModel.Loading,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var authorId = AuthorId;
@@ -162,6 +163,8 @@
         Modal.Close();
         _ = Hub.ModalUI.Show(new OwnAvatarEditorModal.Model(author.Avatar.Id, author.ChatId, "Edit avatar"));
     }
+
+    // Nested types
 
     public sealed record ComputedModel {
         public static readonly ComputedModel None = new() { Author = Author.None, OwnAccount = AccountFull.None };

@@ -30,10 +30,11 @@
     [Parameter] public EventCallback<ChatId> OnChatClick { get; set; }
 
     protected override ComputedState<List<Contact?>>.Options GetStateOptions()
-        => new() {
-            InitialValue = [],
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<List<Contact?>>.Options() {
+                InitialValue = [],
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<List<Contact?>> ComputeState(CancellationToken cancellationToken) {
         var contactIds = await Contacts.ListIds(Session, PlaceId.None, cancellationToken).ConfigureAwait(false);

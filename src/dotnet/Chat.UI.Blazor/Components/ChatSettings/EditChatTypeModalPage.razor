@@ -196,10 +196,11 @@
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
-        => new() {
-            InitialValue = ComputedModel.Loading,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options() {
+                InitialValue = ComputedModel.Loading,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
@@ -261,6 +262,8 @@
         _form!.IsPublic = isPublic;
         StateHasChanged();
     }
+
+    // Nested types
 
     public sealed class FormModel {
         public string PublicUrl { get; set; } = "";

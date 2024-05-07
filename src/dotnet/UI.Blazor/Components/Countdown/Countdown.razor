@@ -21,10 +21,11 @@
     [Parameter] public double UpdatePeriod { get; set; } = 1;
 
     protected override ComputedState<string>.Options GetStateOptions()
-        => new() {
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<string>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken) {
         var remaining = (EndsAt - Clock.Now).Positive();

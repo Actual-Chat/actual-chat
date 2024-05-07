@@ -19,10 +19,11 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     protected override ComputedState<List<Invite>>.Options GetStateOptions()
-        => new() {
-            InitialValue = [],
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<List<Invite>>.Options() {
+                InitialValue = [],
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<List<Invite>> ComputeState(CancellationToken cancellationToken)
         => (await Invites.ListUserInvites(Session, cancellationToken).ConfigureAwait(false)).ToList();

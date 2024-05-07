@@ -22,10 +22,11 @@
     [Parameter, EditorRequired] public ChatListFilter ChatListFilter { get; init; } = ChatListFilter.None;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = new(),
-            UpdateDelayer = FixedDelayer.Get(0.1),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var placeId = ChatListView.PlaceId;
@@ -55,5 +56,7 @@
     protected override bool ShouldRender()
         => State.HasError || State.Value != _rendered;
 
-    public record struct Model(Trimmed<int> Count = default);
+    // Nested types
+
+    public record struct Model(Trimmed<int> Count);
 }

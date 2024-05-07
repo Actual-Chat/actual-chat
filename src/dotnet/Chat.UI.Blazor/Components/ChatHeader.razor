@@ -57,11 +57,12 @@
     [Parameter] public bool IsRightNavigateButtonVisible { get; set; } = true;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-            InitialValue = Model.None,
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasSelection = await ChatContext.Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
@@ -82,6 +83,8 @@
 
     private void OnSearchClick()
         => ChatContext.Hub.PanelsUI.Right.SearchToggle();
+
+    // Nested types
 
     public sealed record Model {
         public static readonly Model None = new ();

@@ -46,11 +46,12 @@
     }
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() {
-            InitialValue = false,
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<bool>.Options() {
+                InitialValue = false,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;

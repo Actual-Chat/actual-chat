@@ -12,7 +12,7 @@ public abstract class OwnAccountComponentBase : ComputedStateComponent<AccountFu
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
             InitialValue = AccountUI.OwnAccount.Value,
-            Category = GetStateCategory(),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)

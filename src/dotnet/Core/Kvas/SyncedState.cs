@@ -5,15 +5,6 @@ namespace ActualChat.Kvas;
 
 public interface ISyncedState : IMutableState, IDisposable
 {
-    public static class DefaultOptions
-    {
-        public static RandomTimeSpan ReadFailureDelay { get; set; } = TimeSpan.FromSeconds(1);
-        public static RandomTimeSpan WriteFailureDelay { get; set; } = TimeSpan.FromSeconds(1);
-        public static bool ExposeReadErrors { get; set; } = false;
-        public static bool TryComputeSynchronously { get; set; } = IComputedState.DefaultOptions.TryComputeSynchronously;
-        public static bool FlowExecutionContext { get; set; } = IComputedState.DefaultOptions.FlowExecutionContext;
-    }
-
     CancellationToken DisposeToken { get; }
     Task WhenFirstTimeRead { get; }
     Task WhenDisposed { get; }
@@ -32,6 +23,16 @@ public interface ISyncedState<
 
 public static class SyncedState
 {
+    public static class DefaultOptions
+    {
+        public static RandomTimeSpan ReadFailureDelay { get; set; } = TimeSpan.FromSeconds(1);
+        public static RandomTimeSpan WriteFailureDelay { get; set; } = TimeSpan.FromSeconds(1);
+        public static bool ExposeReadErrors { get; set; } = false;
+        public static bool TryComputeSynchronously { get; set; } = ComputedState.DefaultOptions.TryComputeSynchronously;
+        public static bool FlowExecutionContext { get; set; } = ComputedState.DefaultOptions.FlowExecutionContext;
+        public static TimeSpan GracefulDisposeDelay { get; set; } = ComputedState.DefaultOptions.GracefulDisposeDelay;
+    }
+
     private static readonly string OriginPrefix = Alphabet.AlphaNumeric.Generator8.Next() + "-";
     private static long _lastId;
 
@@ -77,6 +78,7 @@ public sealed class SyncedState<
                 UpdateDelayer = options.UpdateDelayer,
                 TryComputeSynchronously = options.TryComputeSynchronously,
                 FlowExecutionContext = options.FlowExecutionContext,
+                GracefulDisposeDelay = options.GracefulDisposeDelay,
                 Category = StateCategories.Get(Category, nameof(ReadState)),
             },
             async (_, ct) => {
@@ -253,11 +255,12 @@ public sealed class SyncedState<
     public new abstract record Options : MutableState<T>.Options
     {
         public IUpdateDelayer? UpdateDelayer { get; init; }
-        public RandomTimeSpan ReadFailureDelay { get; init; } = ISyncedState.DefaultOptions.ReadFailureDelay;
-        public RandomTimeSpan WriteFailureDelay { get; init; } = ISyncedState.DefaultOptions.WriteFailureDelay;
-        public bool ExposeReadErrors { get; init; } = ISyncedState.DefaultOptions.ExposeReadErrors;
-        public bool TryComputeSynchronously { get; init; } = ISyncedState.DefaultOptions.TryComputeSynchronously;
-        public bool FlowExecutionContext { get; init; } = ISyncedState.DefaultOptions.FlowExecutionContext;
+        public RandomTimeSpan ReadFailureDelay { get; init; } = SyncedState.DefaultOptions.ReadFailureDelay;
+        public RandomTimeSpan WriteFailureDelay { get; init; } = SyncedState.DefaultOptions.WriteFailureDelay;
+        public bool ExposeReadErrors { get; init; } = SyncedState.DefaultOptions.ExposeReadErrors;
+        public bool TryComputeSynchronously { get; init; } = SyncedState.DefaultOptions.TryComputeSynchronously;
+        public bool FlowExecutionContext { get; init; } = SyncedState.DefaultOptions.FlowExecutionContext;
+        public TimeSpan GracefulDisposeDelay { get; init; } = SyncedState.DefaultOptions.GracefulDisposeDelay;
 
         internal abstract Task<T> Read(CancellationToken cancellationToken);
         internal abstract Task Write(T value, CancellationToken cancellationToken);
@@ -298,9 +301,10 @@ public sealed class SyncedState<
 }
 
 public class SyncedStateLease<
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
-    : MutableStateLease<T, ISyncedState<T>>, ISyncedState<T>
-    where T: IHasOrigin
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(
+    SharedResourcePool<Symbol, ISyncedState<T>>.Lease lease
+    ) : MutableStateLease<T, ISyncedState<T>>(lease), ISyncedState<T>
+    where T : IHasOrigin
 {
     public CancellationToken DisposeToken => State.DisposeToken;
     public Task WhenFirstTimeRead => State.WhenFirstTimeRead;
@@ -308,8 +312,6 @@ public class SyncedStateLease<
     IComputedState ISyncedState.ReadState => ReadState;
     public IComputedState<T> ReadState => State.ReadState;
     public string? OwnOrigin => State.OwnOrigin;
-
-    public SyncedStateLease(SharedResourcePool<Symbol, ISyncedState<T>>.Lease lease) : base(lease) { }
 
     public Task WhenWritten(CancellationToken cancellationToken = default)
         => State.WhenWritten(cancellationToken);

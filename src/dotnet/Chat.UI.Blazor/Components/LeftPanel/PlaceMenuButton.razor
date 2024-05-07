@@ -26,10 +26,11 @@
     [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = new Model(false),
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = default,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var placeId = PlaceId;
@@ -38,5 +39,7 @@
         return new(isMember);
     }
 
-    public record Model(bool IsPlaceMember);
+    // Nested types
+
+    public record struct Model(bool IsPlaceMember);
 }

@@ -54,15 +54,16 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
-        => new() {
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-            InitialValue = new (false, false, ListeningMode.Default),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options() {
+                InitialValue = new(false, false, ListeningMode.Default),
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
-        
+
         var settings = await ChatVoiceSettings.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
 
@@ -84,7 +85,12 @@
     private Task OnListeningModeClick()
         => Hub.ModalUI.Show(new ListeningSettingsModal.Model(ChatId));
 
-    public sealed record ComputedModel(bool MustStreamVoice, bool CanChangeMustStreamVoice, ListeningMode ListeningMode);
+    // Nested types
+
+    public sealed record ComputedModel(
+        bool MustStreamVoice,
+        bool CanChangeMustStreamVoice,
+        ListeningMode ListeningMode);
 
     public sealed record Model(ChatId ChatId);
 }

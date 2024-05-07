@@ -79,11 +79,12 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.None,
-            Category = GetStateCategory(),
-            UpdateDelayer = FixedDelayer.Get(0.1),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = Chat.Id;
@@ -155,6 +156,8 @@
     private void OnAuthorBadgeClick(AuthorId authorId)
         => _ = AuthorUI.Show(authorId);
 
+    // Nested types
+
     public sealed class Model {
         public static readonly Model None = new();
 
@@ -169,5 +172,4 @@
     }
 
     public record struct AuthorInfo(AuthorId Id, string Name);
-
 }

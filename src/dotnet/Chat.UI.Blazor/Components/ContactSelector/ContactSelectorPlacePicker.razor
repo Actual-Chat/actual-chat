@@ -45,10 +45,11 @@
     [CascadingParameter] public ContactSelector Selector { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = new Model(false),
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = new Model(false),
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var enablePlacesUI = await Features.Get<Features_EnablePlacesUI, bool>(cancellationToken).ConfigureAwait(false);
@@ -75,6 +76,8 @@
 
     private void SelectPlace(PlaceId placeId)
         => Selector.SelectPlace(placeId);
+
+    // Nested types
 
     public record Model(bool EnablePlacesUI) {
         public List<Place> Places { get; init; } = [];

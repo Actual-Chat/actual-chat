@@ -77,9 +77,9 @@
         => new() {
             InitialValue = new ComputedModel {
                 // Try to use stored members count to avoid header title blinking.
-                MembersCount = Context.ModalDataBag.Get(nameof(PlaceSettingsStartModalPage.ComputedModel.MembersCount), 1)
+                MembersCount = Context.ModalDataBag.Get(nameof(PlaceSettingsStartModalPage.ComputedModel.MembersCount), 1),
             },
-            Category = GetStateCategory(),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
@@ -132,6 +132,8 @@
         }
         return statusText;
     }
+
+    // Nested types
 
     public sealed record ComputedModel {
         public int MembersCount { get; init; }

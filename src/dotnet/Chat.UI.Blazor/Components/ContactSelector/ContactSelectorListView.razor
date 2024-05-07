@@ -23,10 +23,11 @@
     [CascadingParameter] public ContactSelector Selector { get; set; } = null!;
 
     protected override ComputedState<Unit>.Options GetStateOptions()
-        => new() {
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Unit>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Unit> ComputeState(CancellationToken cancellationToken) {
         await Selector.Chats.Use(cancellationToken).ConfigureAwait(false);

@@ -41,11 +41,12 @@
     private AccountSettings AccountSettings => Hub.AccountSettings();
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
-        => new() {
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-            InitialValue = new (ListeningMode.Default),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options() {
+                InitialValue = new(ListeningMode.Default),
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ModalModel.ChatId;
@@ -73,6 +74,8 @@
         }
         Modal.Close();
     }
+
+    // Nested types
 
     public sealed record ComputedModel(ListeningMode ListeningMode);
 

@@ -26,15 +26,16 @@
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.Loading,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var ownAccount = AccountUI.OwnAccount.Value;
         var chatId = Chat.Id;
-        
+
         var contact = await Contacts.GetForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
         return new(!ownAccount.IsGuestOrNone, contact);
     }
@@ -46,6 +47,8 @@
         });
         await UICommander.Run(command);
     }
+
+    // Nested types
 
     public sealed record Model(bool IsSignedIn, Contact? Contact = null) {
         public  static readonly Model Loading = new(false);

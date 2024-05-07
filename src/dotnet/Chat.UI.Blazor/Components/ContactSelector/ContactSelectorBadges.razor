@@ -27,15 +27,15 @@
     [CascadingParameter] public ContactSelector Selector { get; set; } = null!;
 
     protected override ComputedState<Unit>.Options GetStateOptions()
-        => new() {
-            UpdateDelayer = FixedDelayer.NextTick,
-            Category = GetStateCategory(),
-        };
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Unit>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Unit> ComputeState(CancellationToken cancellationToken) {
         await Selector.AllChats.Use(cancellationToken).ConfigureAwait(false);
         await Selector.SelectedChatIds.Use(cancellationToken).ConfigureAwait(false);
         return default;
     }
-
 }
