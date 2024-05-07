@@ -203,7 +203,8 @@
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
     <RunAOTCompilation>true</RunAOTCompilation>
-    <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
+    <!-- Disabled for now, see https://github.com/dotnet/runtime/issues/101135 -->
+    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
     <AndroidStripILAfterAOT>true</AndroidStripILAfterAOT>
     <EnableLLVM>false</EnableLLVM> <!-- Almost works, but no WebSocket connection! -->
 
@@ -254,15 +255,13 @@
   </PropertyGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release' and !$(IsProfilingEnabled)">
     <!--
-    // .mibc profile (recorded with IsTracingEnabled & converted to .mibc) - that's what we use now:
-    <AndroidMibcProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android.mibc" />
-    <AndroidMibcProfile Include="$(MSBuildThisFileDirectory)/_Profiling/merged.mibc" />
     // .aprof profile (recorded with IsProfilingEnabled) - doesn't work well:
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android.aprof" />
     // And this causes crash on startup:
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)/_Profiling/maui-blazor.aotprofile" />
-    -->
+    // And .mibc profiles (recorded with IsTracingEnabled & converted to .mibc) don't work anyway:
     <AndroidMibcProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android.mibc" />
+    -->
   </ItemGroup>
 
   <!-- Android: AOT profiling mode -->
