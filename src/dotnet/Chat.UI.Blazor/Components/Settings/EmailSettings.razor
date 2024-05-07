@@ -1,6 +1,8 @@
 @using System.ComponentModel.DataAnnotations
 @implements IDisposable
 @{
+    if (ReferenceEquals(_timeZoneFormModel, null))
+        return;
     var timeZoneChanged = !OrdinalEquals(_timeZoneFormModel.BrowserTimeZone, _timeZoneFormModel.SelectedTimeZone);
     var isEmailVerified = _account.HasVerifiedEmail();
     var isEmailEmpty = _emailFormModel.Email.IsNullOrEmpty();
