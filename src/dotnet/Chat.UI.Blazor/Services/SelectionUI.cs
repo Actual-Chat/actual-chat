@@ -1,5 +1,7 @@
+using System.Text;
 using ActualChat.UI.Blazor.Services;
 using Cysharp.Text;
+using Microsoft.Extensions.Primitives;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -13,6 +15,7 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
     private ModalUI ModalUI => Hub.ModalUI;
+    private History History => Hub.History;
     private ToastUI ToastUI => Hub.ToastUI;
     private ClipboardUI ClipboardUI => Hub.ClipboardUI;
     private UICommander UICommander => Hub.UICommander();
@@ -129,6 +132,37 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
             selection.ToApiArray(),
             selectedChatIds.ToApiArray());
         await UICommander.Run(cmd, CancellationToken.None).ConfigureAwait(true);
+        var firstChatId = selectedChatIds.First();
+        var info = await BuildInfoMessage().ConfigureAwait(true);
+        ToastUI.Show(info, NavigateAction, "Navigate", ToastDismissDelay.Long);
         Clear();
+        return;
+
+        void NavigateAction()
+            => _ = History.NavigateTo(Links.Chat(firstChatId));
+
+        async Task<string> BuildInfoMessage()
+        {
+            var sb = new StringBuilder();
+            sb.Append("Forwarded ");
+            sb.Append(selection.Count);
+            sb.Append(' ');
+            sb.Append("message".Pluralize(selection.Count));
+            sb.Append(" to ");
+            Chat? chat = null;
+
+            if (selectedChatIds.Count == 1)
+                chat = await Chats.Get(Session, firstChatId, default).ConfigureAwait(true);
+            if (chat != null) {
+                sb.Append('\'');
+                sb.Append(chat.Title);
+                sb.Append("\' chat");
+            }
+            else {
+                sb.Append(selectedChatIds.Count);
+                sb.Append(" chats");
+            }
+            return sb.ToString();
+        }
     }
 }
