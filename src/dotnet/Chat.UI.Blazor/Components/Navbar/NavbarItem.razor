@@ -1,4 +1,3 @@
-@using ActualChat.Notification.UI.Blazor
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IDisposable
 @{
@@ -29,7 +28,6 @@
 </div>
 
 @code {
-    private static string _key = "content";
     private bool _isCurrent;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
