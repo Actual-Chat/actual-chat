@@ -1,6 +1,7 @@
 /* event delegation for iOS is broken */
 body.device-ios * {
     cursor: pointer;
+}
 
 /* Touch target */
 .button-touch-target {
