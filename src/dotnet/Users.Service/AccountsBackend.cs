@@ -18,7 +18,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private const string AdminEmailDomain = "actual.chat";
     private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) {
         "alex.yakunin@gmail.com",
-        "andrew.kurochkin@outlook.com",
+        "andrew.imp@gmail.com",
         "ustinovas@gmail.com",
     };
 
