@@ -21,7 +21,7 @@ internal interface IClusterSetup
 internal sealed class ClusterSetup(
     IOptions<OpenSearchSettings> openSearchSettings,
     IOpenSearchClient openSearch,
-    IEnumerable<IIndexSettingsChangeTokenSource> changeSources,
+    IEnumerable<ISettingsChangeTokenSource> changeSources,
     OpenSearchNamingPolicy namingPolicy,
     IndexNames indexNames,
     Tracer baseTracer
