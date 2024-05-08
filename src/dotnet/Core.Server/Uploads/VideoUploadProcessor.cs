@@ -31,7 +31,7 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
 
         try {
             var tempDir = FilePath.GetApplicationTempDirectory();
-            var convertedFileName = Guid.NewGuid().ToString("N") + "_" + Path.ChangeExtension(upload.FileName, ".mp4");
+            var convertedFileName = Guid.NewGuid().ToString("N") + "_" + FileExt.ShortenFileName(Path.ChangeExtension(upload.FileName, ".mp4"));
             var convertedFilePath = tempDir | convertedFileName;
             await FFMpegArguments.FromFileInput(upload.TempFilePath)
                 .OutputToFile(convertedFilePath,

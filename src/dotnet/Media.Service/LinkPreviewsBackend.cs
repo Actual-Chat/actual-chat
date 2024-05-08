@@ -81,8 +81,6 @@ public class LinkPreviewsBackend(MediaSettings settings, IChatsBackend chatsBack
 
     private async Task<LinkPreview> RefreshUnsafe(Symbol id, string url, CancellationToken cancellationToken)
     {
-        var linkMeta = await crawler.Crawl(url, cancellationToken).ConfigureAwait(false);
-
         var context = CommandContext.GetCurrent();
         var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -94,6 +92,7 @@ public class LinkPreviewsBackend(MediaSettings settings, IChatsBackend chatsBack
         if (dbLinkPreview != null && SystemNow - dbLinkPreview.ModifiedAt.ToMoment() < TimeSpan.FromDays(1))
             return dbLinkPreview.ToModel();
 
+        var linkMeta = await crawler.Crawl(url, cancellationToken).ConfigureAwait(false);
         var videoMeta = linkMeta.OpenGraph.Video;
         if (dbLinkPreview == null) {
             var linkPreview = new LinkPreview {

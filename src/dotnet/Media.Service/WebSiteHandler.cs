@@ -2,7 +2,7 @@ using ActualChat.Media.Module;
 
 namespace ActualChat.Media;
 
-public sealed class WebSiteHandler(MediaSettings settings, ImageGrabber imageGrabber) : ICrawlingHandler
+public sealed class WebSiteHandler(MediaSettings settings, ImageGrabber imageGrabber, ILogger<WebSiteHandler> Log) : ICrawlingHandler
 {
     public bool Supports(HttpResponseMessage response)
     {
@@ -12,11 +12,19 @@ public sealed class WebSiteHandler(MediaSettings settings, ImageGrabber imageGra
 
     public async Task<CrawledLink> Handle(HttpResponseMessage response, CancellationToken cancellationToken)
     {
-        var graph = await ParseOpenGraph(response.Content, response.RequestMessage?.RequestUri, cancellationToken).ConfigureAwait(false);
+        var requestUri = response.RequestMessage?.RequestUri;
+        var graph = await ParseOpenGraph(response.Content, requestUri, cancellationToken).ConfigureAwait(false);
         if (graph is null)
             return CrawledLink.None;
 
-        var mediaId = await imageGrabber.GrabImage(graph.ImageUrl, cancellationToken).ConfigureAwait(false);
+        var mediaId = MediaId.None;
+        try {
+            mediaId = await imageGrabber.GrabImage(graph.ImageUrl, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to grab image with url '{ImageUrl}' for page with url '{PageUrl}'",
+                graph.ImageUrl, requestUri);
+        }
         return new (mediaId, graph);
     }
 
