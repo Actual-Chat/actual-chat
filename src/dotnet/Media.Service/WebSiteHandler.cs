@@ -12,7 +12,7 @@ public sealed class WebSiteHandler(MediaSettings settings, ImageGrabber imageGra
 
     public async Task<CrawledLink> Handle(HttpResponseMessage response, CancellationToken cancellationToken)
     {
-        var graph = await ParseOpenGraph(response.Content, cancellationToken).ConfigureAwait(false);
+        var graph = await ParseOpenGraph(response.Content, response.RequestMessage?.RequestUri, cancellationToken).ConfigureAwait(false);
         if (graph is null)
             return CrawledLink.None;
 
@@ -20,11 +20,14 @@ public sealed class WebSiteHandler(MediaSettings settings, ImageGrabber imageGra
         return new (mediaId, graph);
     }
 
-    private async Task<OpenGraph?> ParseOpenGraph(HttpContent content, CancellationToken cancellationToken)
+    private async Task<OpenGraph?> ParseOpenGraph(
+        HttpContent content,
+        Uri? requestUri,
+        CancellationToken cancellationToken)
     {
         using var cts = cancellationToken.CreateLinkedTokenSource();
         cts.CancelAfter(settings.GraphParseTimeout);
         var html = await content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
-        return OpenGraphParser.Parse(html);
+        return OpenGraphParser.Parse(html, requestUri);
     }
 }
