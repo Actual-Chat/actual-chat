@@ -281,12 +281,26 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (DbUpdateConcurrencyException e) when(e.Entries.All(en => en.State == EntityState.Added)) {
+            Log.LogWarning(e, "Upserting author failed with DbUpdateConcurrencyException. Command: {Command}", command);
             // Author for same ChatId\UserId has already been created, let's get it
             dbAuthor = await (authorId.IsNone
                     ? dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
                     : dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.Id == authorId, cancellationToken)
                 ).ConfigureAwait(false);
             existingAuthor = dbAuthor.Require().ToModel().RequireValid(userId);
+        }
+
+        if (chatId is { IsPlaceChat: true, IsPlaceRootChat: false }) {
+            // NOTE(DF): Place chat author local_id must match to the root place chat author local_id for the same user.
+            var rootChatId = chatId.PlaceChatId.PlaceId.ToRootChatId();
+            var rootAuthor = await GetByUserId(rootChatId,
+                    new UserId(dbAuthor.UserId),
+                    AuthorsBackend_GetAuthorOption.Raw,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (rootAuthor is null || rootAuthor.LocalId != dbAuthor.LocalId)
+                throw StandardError.Constraint(
+                    $"Place chat author local_id constraint is violated for author with id '{dbAuthor.Id}'. Root chat author local_id is '{(rootAuthor is null ? "?" : rootAuthor.LocalId)}'");
         }
 
         if (authorHasLeft)
