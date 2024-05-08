@@ -14,7 +14,7 @@ body.wide .toast-container {
 }
 .toast-container > .c-content {
     @apply relative;
-    @apply -flex-y md:flex-y gap-y-4;
+    @apply -flex-y md:flex-y items-end gap-y-4;
     @apply h-full;
     @apply p-4;
     @apply overflow-y-auto custom-scrollbar;
@@ -25,8 +25,8 @@ body.wide .toast-container {
 .toast {
     @apply flex-x items-center z-50;
     @apply px-4 gap-x-2 overflow-hidden;
-    @apply min-h-10 md:w-110;
-    @apply rounded-lg;
+    @apply min-h-10 md:w-fit md:max-w-110;
+    @apply rounded-full;
     @apply text-toast-text;
     @apply bg-toast-body;
 }
@@ -38,6 +38,7 @@ body.wide .toast-container {
 }
 .toast > .c-content {
     @apply flex grow;
+    @apply mr-4;
     @apply text-base font-normal;
     @apply break-words;
 }
