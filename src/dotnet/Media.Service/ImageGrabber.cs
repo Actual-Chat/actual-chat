@@ -12,6 +12,7 @@ public class ImageGrabber(
     IMediaBackend mediaBackend,
     IContentSaver contentSaver,
     ICommander commander,
+    ILogger<ImageGrabber> log,
     IEnumerable<IUploadProcessor> uploadProcessors)
 {
     private HttpClient HttpClient { get; } = httpClientFactory.CreateClient(Crawler.HttpClientName);
@@ -84,9 +85,16 @@ public class ImageGrabber(
 
         async Task<ProcessedFile?> Download(CancellationToken cancellationToken1)
         {
-            var response = await HttpClient.GetAsync(imageUrl, cancellationToken1).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode)
+            HttpResponseMessage response;
+            try {
+                response = await HttpClient.GetAsync(imageUrl, cancellationToken1).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
+                    return null;
+            }
+            catch (Exception e) {
+                log.LogWarning(e, "Failed to get an image with url='{ImageUrl}'", imageUrl);
                 return null;
+            }
 
             return await SaveImageToFile(response, cancellationToken1).ConfigureAwait(false);
         }
