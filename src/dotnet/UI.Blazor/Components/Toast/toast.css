@@ -30,6 +30,9 @@ body.wide .toast-container {
     @apply text-toast-text;
     @apply bg-toast-body;
 }
+.toast:has(.btn-timer) {
+    @apply pr-1;
+}
 .toast i {
     @apply text-toast-text;
 }
