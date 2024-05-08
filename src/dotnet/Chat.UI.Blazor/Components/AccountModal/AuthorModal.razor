@@ -12,6 +12,11 @@
         title = "Anonymous profile";
     else
         cls += " wide-dialog-buttons";
+
+    var tileCls = "anonymous-chat-toggle";
+    if (m.OnlyAnonymousChatAllowed)
+        tileCls += " unhovered tile-selected";
+    var toggleValue = m.OnlyAnonymousChatAllowed || _anonymousChat;
 }
 
 <DialogFrame Title="@title" Class="@cls" HasCloseButton="true">
@@ -49,16 +54,11 @@
             <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>
         } else {
             @if (m.CanStartPeerChat) {
-                if (m.OnlyAnonymousChatAllowed) {
-                    <Button Class="btn-modal btn-primary" Click="OnStartAnonymousPeerChat">
-                        <Icon><i class="icon-question-mark-bubble text-xl"></i></Icon>
-                        <Title>Start anonymous chat</Title>
-                    </Button>
-                } else {
+                if (!m.OnlyAnonymousChatAllowed) {
                     if (_anonymousChat) {
                         <Button Class="btn-modal btn-primary" Click="OnStartAnonymousPeerChat">
                             <Icon><i class="icon-question-mark-bubble text-xl"></i></Icon>
-                            <Title>Start anonymous chat</Title>
+                            <Title>New Anonymous chat with @m.Author.Avatar.Name</Title>
                         </Button>
                     } else {
                         <Button
@@ -66,25 +66,47 @@
                             ContentClass="truncate"
                             Click="OnStartPeerChat">
                             <Icon><i class="icon-message-ellipse text-xl"></i></Icon>
-                            <Title>Start direct chat</Title>
+                            <Title>Chat with @m.Author.Avatar.Name</Title>
+                        </Button>
+                    }
+                } else {
+                    if (m.EnableIncompleteUI) {
+                        <Button Class="btn-modal btn-primary" Click="OnStartAnonymousPeerChat">
+                            <Icon><i class="icon-question-mark-bubble text-xl"></i></Icon>
+                            <Title>New Anonymous chat with @m.Author.Avatar.Name</Title>
                         </Button>
                     }
                 }
 
-                @if (!m.OnlyAnonymousChatAllowed) {
-                    <TileItem Click="@OnChatTypeChanged">
-                        <Content>
-                            Anonymous chat
-                        </Content>
-                        <Caption>
-                            Chat can be direct or anonymous
-                        </Caption>
-                        <Right>
-                            <Toggle Class="mr-2"
-                                    IsChecked="@_anonymousChat"
-                                    IsCheckedChanged="@OnChatTypeChanged"/>
-                        </Right>
-                    </TileItem>
+                @if (m.EnableIncompleteUI) {
+                    <div class="tile-wrapper flex-y gap-y-2">
+                        <div class="c-incut flex-1 min-h-16">
+                            @if (toggleValue) {
+                                <div class="c-info flex-x items-start gap-x-2 bg-[var(--sienna-50-20)] rounded-xl text-caption-6 font-normal text-03 leading-3 px-4 py-2">
+                                    <i class="icon-alert-triangle text-lg text-warning"></i>
+                                    <span>
+                                        Anonymous chats hide user identities and don't transmit or record your voice, though still
+                                        show real - time transcription. And you can reveal you real identity there at any moment.
+                                    </span>
+                                </div>
+                            }
+                        </div>
+
+                        <TileItem Click="@OnChatTypeChanged" Class="@tileCls">
+                            <Content>
+                                Anonymous chat
+                            </Content>
+                            <Caption>
+                                Chat can be direct or anonymous.
+                            </Caption>
+                            <Right>
+                                <Toggle Class="mr-2"
+                                        IsChecked="@toggleValue"
+                                        IsCheckedChanged="@OnChatTypeChanged"
+                                        IsDisabled="@m.OnlyAnonymousChatAllowed"/>
+                            </Right>
+                        </TileItem>
+                    </div>
                 }
             } else {
                 <Button Class="btn-modal" Click="OnCancel">Close</Button>

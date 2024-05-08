@@ -141,3 +141,14 @@ body.hoverable .author-modal .tile:hover {
 .start-chat-btn p {
     @apply truncate;
 }
+
+.tile-item.anonymous-chat-toggle {
+    @apply min-h-10 h-auto;
+}
+.tile-item.anonymous-chat-toggle .tile-item-body {
+    @apply max-h-none;
+}
+.tile-item.anonymous-chat-toggle.tile-selected,
+.tile-item.anonymous-chat-toggle.tile-selected:hover {
+    @apply bg-selected;
+}

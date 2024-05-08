@@ -116,6 +116,10 @@ body.hoverable .tile:hover {
 }
 .tile-item.unhovered:hover {
     @apply bg-transparent;
+    @apply cursor-default;
+}
+.tile-item.unhovered:hover * {
+    @apply cursor-default;
 }
 .tile-item.unselected {
     @apply hover:bg-transparent;
