@@ -12,11 +12,13 @@ public static class OpenGraphParser
         if (head is null)
             return null;
 
-        var metaMap = head.ChildNodes.Where(x => OrdinalIgnoreCaseEquals(x.Name, "meta"))
+        var props = head.ChildNodes.Where(x => OrdinalIgnoreCaseEquals(x.Name, "meta"))
             .Select(x => KeyValuePair.Create(x.GetAttributeValue("property", ""), x.GetAttributeValue("content", "")))
-            .Where(x => !x.Key.IsNullOrEmpty() && !x.Value.IsNullOrEmpty())
-            .Distinct()
-            .ToDictionary(StringComparer.OrdinalIgnoreCase);
+            .Where(x => !x.Key.IsNullOrEmpty() && !x.Value.IsNullOrEmpty());
+        var metaMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var prop in props)
+            if (!metaMap.ContainsKey(prop.Key))
+                metaMap.Add(prop.Key, prop.Value);
         var title = metaMap.GetValueOrDefault("og:title").NullIfEmpty() ?? head.ChildNodes["title"]?.InnerText;
         if (title.IsNullOrEmpty())
             return null;
