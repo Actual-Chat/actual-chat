@@ -4,7 +4,7 @@ namespace ActualChat.Media;
 
 public static class OpenGraphParser
 {
-    public static OpenGraph? Parse(string html, Uri? requestUri)
+    public static OpenGraph? Parse(string html, Uri? requestUri = null)
     {
         var doc = new HtmlDocument();
         doc.LoadHtml(html);
