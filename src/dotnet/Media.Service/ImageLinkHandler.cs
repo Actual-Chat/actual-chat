@@ -1,6 +1,6 @@
 namespace ActualChat.Media;
 
-public sealed class ImageLinkHandler(ImageGrabber imageGrabber) : ICrawlingHandler
+public sealed class ImageLinkHandler(ImageGrabber imageGrabber, ILogger<ImageLinkHandler> Log) : ICrawlingHandler
 {
     public bool Supports(HttpResponseMessage response)
     {
@@ -10,7 +10,14 @@ public sealed class ImageLinkHandler(ImageGrabber imageGrabber) : ICrawlingHandl
 
     public async Task<CrawledLink> Handle(HttpResponseMessage response, CancellationToken cancellationToken)
     {
-        var mediaId = await imageGrabber.GrabImage(response, cancellationToken).ConfigureAwait(false);
+        var mediaId = MediaId.None;
+        try {
+            mediaId = await imageGrabber.GrabImage(response, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to grab image with url '{ImageUrl}'",
+                response.RequestMessage?.RequestUri);
+        }
         return new CrawledLink(mediaId, OpenGraph.None);
     }
 }

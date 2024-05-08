@@ -33,7 +33,7 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
             return new ProcessedFile(upload, imageInfo.Size);
 
         Size imageSize;
-        var outPath = FilePath.GetApplicationTempDirectory() & (Guid.NewGuid().ToString("N") + "_" + upload.FileName);
+        var outPath = FilePath.GetApplicationTempDirectory() & (Guid.NewGuid().ToString("N") + "_" + FileExt.ShortenFileName(upload.FileName));
         var outStream = File.OpenWrite(outPath);
         await using (var _ = outStream.ConfigureAwait(false)) {
             var inputStream = await upload.Open().ConfigureAwait(false);

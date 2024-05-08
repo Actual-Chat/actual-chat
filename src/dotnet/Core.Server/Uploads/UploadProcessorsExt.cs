@@ -22,7 +22,7 @@ public static class UploadProcessorsExt
     private static async Task<UploadedTempFile> DumpToTempFile(UploadedFile file, CancellationToken cancellationToken)
     {
         var tempFileName = Guid.NewGuid() + "_" + file.FileName;
-        var tempFilePath = FilePath.GetApplicationTempDirectory() & tempFileName;
+        var tempFilePath = FilePath.GetApplicationTempDirectory() & FileExt.ShortenFileName(tempFileName);
         var target = File.OpenWrite(tempFilePath);
         await using var _1 = target.ConfigureAwait(false);
         var source = await file.Open().ConfigureAwait(false);
