@@ -1,4 +1,4 @@
-namespace ActualChat.MLSearch.Engine.OpenSearch;
+namespace ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 
 internal class OpenSearchNamingPolicy(JsonNamingPolicy policy)
 {

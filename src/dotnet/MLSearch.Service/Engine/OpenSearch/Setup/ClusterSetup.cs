@@ -9,16 +9,23 @@ using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.Indexing.Initializer;
 using Microsoft.Extensions.Options;
 using ActualChat.MLSearch.Module;
+using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
+
+internal interface IClusterSetup
+{
+    ClusterSettings Result { get; }
+}
 
 internal sealed class ClusterSetup(
     IOptions<OpenSearchSettings> openSearchSettings,
     IOpenSearchClient openSearch,
+    IEnumerable<ISettingsChangeTokenSource> changeSources,
     OpenSearchNamingPolicy namingPolicy,
     IndexNames indexNames,
     Tracer baseTracer
-    ) : IModuleInitializer
+    ) : IClusterSetup, IModuleInitializer
 {
     private readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
     private ClusterSettings? _result;
@@ -32,6 +39,14 @@ internal sealed class ClusterSetup(
         var clusterSettings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
         await EnsureTemplatesAsync(cancellationToken).ConfigureAwait(false);
         await EnsureIndexesAsync(clusterSettings, cancellationToken).ConfigureAwait(false);
+        NotifyClusterSettingsChanges();
+    }
+
+    private void NotifyClusterSettingsChanges()
+    {
+        foreach (var changeSource in changeSources) {
+            changeSource.RaiseChanged();
+        }
     }
 
     private async Task<ClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)
