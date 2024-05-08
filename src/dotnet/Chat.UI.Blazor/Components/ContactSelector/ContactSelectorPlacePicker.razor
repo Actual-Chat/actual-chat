@@ -4,8 +4,6 @@
 @inherits ComputedStateComponent<ContactSelectorPlacePicker.Model>
 @{
     var m = State.Value;
-    @if (!m.EnablePlacesUI)
-        return;
     var places = m.Places;
     if (places.Count == 0)
         return;
@@ -49,13 +47,12 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = new Model(false),
+            static t => new ComputedState<Model>.Options {
+                InitialValue = new (),
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var enablePlacesUI = await Features.Get<Features_EnablePlacesUI, bool>(cancellationToken).ConfigureAwait(false);
         var navbarSettings = await ChatUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
         var placeIds = await Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
         var places = (await placeIds
@@ -66,7 +63,7 @@
             .SkipNullItems()
             .ToList();
 
-        return new(enablePlacesUI) {
+        return new() {
             Places = places
         };
     }
@@ -83,7 +80,7 @@
 
     // Nested types
 
-    public record Model(bool EnablePlacesUI) {
+    public record Model {
         public List<Place> Places { get; init; } = [];
     }
 }
