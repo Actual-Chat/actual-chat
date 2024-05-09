@@ -2,6 +2,7 @@ using ActualChat.Hosting;
 using ActualChat.Mesh;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.MLSearch.Indexing.Initializer;
+using ActualChat.MLSearch.Module;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -14,11 +15,19 @@ internal static class ChatIndexInitializerTestsExt
     public static extern Task OnRun(this ChatIndexInitializer instance, int shardIndex, CancellationToken cancellationToken);
 }
 
+internal class TrivialServiceCoordinator : IServiceCoordinator
+{
+    public Task ExecuteWhenReadyAsync(Func<CancellationToken, Task> asyncAction, CancellationToken actionCancellationToken)
+        => asyncAction(actionCancellationToken);
+}
+
 public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
 {
     private const int InactiveShardIndex1 = 1;
     private const int ActiveShardIndex = 2;
     private const int InactiveShardIndex2 = 3;
+
+    private readonly IServiceCoordinator coordinator = new TrivialServiceCoordinator();
 
     [Fact]
     public async Task ShardIndexResolverReceivesExpectedValues()
@@ -32,7 +41,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             .Verifiable();
         var shard = Mock.Of<IChatIndexInitializerShard>();
         var logger = Mock.Of<ILogger<ChatIndexInitializer>>();
-        await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard, logger);
+        await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard, coordinator, logger);
 
         // Trigger shard index evaluation
         _ = initializer.OnRun(InactiveShardIndex1, CancellationToken.None);
@@ -52,7 +61,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         var shardIndexResolver = Mock.Of<IShardIndexResolver<string>>();
         var shard = Mock.Of<IChatIndexInitializerShard>();
         var logger = Mock.Of<ILogger<ChatIndexInitializer>>();
-        await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver, shard, logger);
+        await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver, shard, coordinator, logger);
         await Assert.ThrowsAsync<NotFoundException<ChatIndexInitializerShard>>(
             async () => await initializer.PostAsync(
                 new MLSearch_TriggerChatIndexingCompletion(ChatId.None), CancellationToken.None));
@@ -69,7 +78,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             .Returns(ActiveShardIndex);
         var shard = Mock.Of<IChatIndexInitializerShard>();
         var logger = Mock.Of<ILogger<ChatIndexInitializer>>();
-        await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard, logger);
+        await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard, coordinator, logger);
         // Emulate staring of some inactive shards
         _ = initializer.OnRun(InactiveShardIndex1, CancellationToken.None);
         _ = initializer.OnRun(InactiveShardIndex2, CancellationToken.None);
@@ -100,7 +109,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             .Verifiable();
         var logger = Mock.Of<ILogger<ChatIndexInitializer>>();
         await using var initializer =
-            new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard.Object, logger);
+            new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard.Object, coordinator, logger);
         // Emulate staring of inactive & active shards
         foreach (var shardId in shardIds) {
             _ = initializer.OnRun(shardId, CancellationToken.None);
@@ -141,7 +150,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
             .Verifiable();
         await using var initializer =
-            new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard.Object, logger.Object);
+            new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard.Object, coordinator, logger.Object);
 
         var cancellationToken = new CancellationTokenSource().Token;
         _ = initializer.OnRun(ActiveShardIndex, cancellationToken);
@@ -168,7 +177,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             .Returns(ActiveShardIndex);
         var shard = Mock.Of<IChatIndexInitializerShard>();
         var logger = Mock.Of<ILogger<ChatIndexInitializer>>();
-        await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard, logger);
+        await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard, coordinator, logger);
 
         var cancellationTokenSource = new CancellationTokenSource();
         // Emulate staring of an inactive shard

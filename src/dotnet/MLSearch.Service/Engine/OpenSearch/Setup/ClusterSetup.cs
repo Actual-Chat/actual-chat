@@ -23,6 +23,7 @@ internal sealed class ClusterSetup(
     IOptions<OpenSearchSettings> openSearchSettings,
     OpenSearchNamingPolicy namingPolicy,
     IndexNames indexNames,
+    ILogger<ClusterSetup> log,
     Tracer baseTracer
 ) : IClusterSetup
 {
@@ -36,9 +37,48 @@ internal sealed class ClusterSetup(
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         var clusterSettings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
+
+        var isClusterStateValid = await CheckClusterStateValidAsync(clusterSettings, cancellationToken)
+            .ConfigureAwait(false);
+        if (isClusterStateValid) {
+            return;
+        }
+
+        var runOptions = RunLockedOptions.Default with { Log = log };
+        await meshLocks.RunLocked(
+                nameof(InitializeAsync),
+                runOptions,
+                ct => InitialiseUnsafeAsync(clusterSettings, ct),
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    private async Task InitialiseUnsafeAsync(ClusterSettings clusterSettings, CancellationToken cancellationToken)
+    {
         await EnsureTemplatesAsync(cancellationToken).ConfigureAwait(false);
         await EnsureIndexesAsync(clusterSettings, cancellationToken).ConfigureAwait(false);
         NotifyClusterSettingsChanges();
+    }
+
+    private async Task<bool> CheckClusterStateValidAsync(ClusterSettings clusterSettings, CancellationToken cancellationToken)
+    {
+        var numberOfReplicas = openSearchSettings.Value.DefaultNumberOfReplicas;
+
+        var (templateName, pattern) = (IndexNames.MLTemplateName, IndexNames.MLIndexPattern);
+        var ingestPipelineName = indexNames.GetFullIngestPipelineName(IndexNames.ChatContent, clusterSettings);
+        var indexShortNames = new[] { IndexNames.ChatContent, IndexNames.ChatContentCursor, IndexNames.ChatCursor };
+
+        var isTemplateValid = await IsTemplateValidAsync(templateName, numberOfReplicas, pattern, cancellationToken)
+            .ConfigureAwait(false);
+        var isIngestPipelineExists = await IsPipelineExistsAsync(ingestPipelineName, cancellationToken)
+            .ConfigureAwait(false);
+        var isAllIndexesExist = true;
+        foreach (var name in indexShortNames) {
+            var fullIndexName = indexNames.GetFullName(name, clusterSettings);
+            isAllIndexesExist &= await IsIndexExistsAsync(fullIndexName, cancellationToken).ConfigureAwait(false);
+        }
+        return isTemplateValid && isIngestPipelineExists && isAllIndexesExist;
     }
 
     private void NotifyClusterSettingsChanges()

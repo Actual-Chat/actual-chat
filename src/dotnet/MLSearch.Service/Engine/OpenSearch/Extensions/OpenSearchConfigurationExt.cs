@@ -40,10 +40,11 @@ internal static class OpenSearchConfigurationExt
             return new OpenSearchClient(connectionSettings);
         });
 
+        services.AddSingleton<ServiceCoordinator>()
+            .AddHostedService(c => c.GetRequiredService<ServiceCoordinator>());
+
         services
-            .AddSingleton<ClusterSetup>()
-            .AddAlias<IClusterSetup, ClusterSetup>()
-            .AddAlias<IModuleInitializer, ClusterSetup>();
+            .AddSingleton<IClusterSetup, ClusterSetup>();
 
         services
             .AddSingleton<IOptionsFactory<PlainIndexSettings>, PlainIndexSettingsFactory>()
