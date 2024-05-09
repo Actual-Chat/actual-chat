@@ -498,6 +498,13 @@ jobs:
           dst: |
             us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-app:${{needs.build.outputs.simple-version}}
 
+      - name: Deploy prod migrations
+        uses: akhilerm/tag-push-action@v2.0.0
+        with:
+          src: ghcr.io/actual-chat/actual-chat-migration:${{needs.build.outputs.semver2}}
+          dst: |
+            us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-migration:${{needs.build.outputs.semver2}}
+
   build-ios-pkg:
     name: Build ios app package for ${{ github.ref_name }}
     needs:
