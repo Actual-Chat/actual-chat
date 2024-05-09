@@ -13,15 +13,11 @@ internal class ServiceCoordinator(
     ILogger<ServiceCoordinator> log
 ) : WorkerBase, IServiceCoordinator
 {
-    private TaskCompletionSource _entranceGate = new TaskCompletionSource();
-    private TaskCompletionSource _exitGate = new TaskCompletionSource();
-    private Task _initTask;
-    private CancellationTokenSource _restartTrigger;
+    private TaskCompletionSource _entranceGate = new();
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        _restartTrigger = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _initTask = InitializeAsync(cancellationToken);
+        await InitializeAsync(cancellationToken).ConfigureAwait(false);
         await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced()
             .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -39,27 +35,19 @@ internal class ServiceCoordinator(
                 .Run(cancellationToken)
                 .ConfigureAwait(false);
 
-            // Open entrance gate
+            // Open Search cluster is initialized so open entrance gate
             _entranceGate.SetResult();
         }
         catch (Exception e) {
-            _entranceGate.SetException(e);
+            var oldGate = Interlocked.Exchange(ref _entranceGate, new TaskCompletionSource());
+            oldGate.SetException(e);
+            throw;
         }
     }
 
-    public async Task ExecuteWhenReadyAsync(Func<CancellationToken, Task> asyncAction, CancellationToken actionCancellationToken)
+    public async Task ExecuteWhenReadyAsync(Func<CancellationToken, Task> asyncAction, CancellationToken cancellationToken)
     {
-        using var cancellationSource =
-            CancellationTokenSource.CreateLinkedTokenSource(_restartTrigger.Token, actionCancellationToken);
-        var cancellationToken = cancellationSource.Token;
-
         await Volatile.Read(ref _entranceGate).Task.WaitAsync(cancellationToken).ConfigureAwait(false);
         await asyncAction(cancellationToken).ConfigureAwait(false);
-        // TODO: handle critical errors
-        // TODO: trigger completion for all
-        // Wait all cancelled / completed
-        // Open exit gate
-
-        await Volatile.Read(ref _exitGate).Task.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 }
