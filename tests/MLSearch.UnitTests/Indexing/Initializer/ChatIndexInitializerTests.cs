@@ -15,7 +15,7 @@ internal static class ChatIndexInitializerTestsExt
     public static extern Task OnRun(this ChatIndexInitializer instance, int shardIndex, CancellationToken cancellationToken);
 }
 
-internal class TrivialServiceCoordinator : IServiceCoordinator
+internal sealed class TrivialServiceCoordinator : IServiceCoordinator
 {
     public Task ExecuteWhenReadyAsync(Func<CancellationToken, Task> asyncAction, CancellationToken actionCancellationToken)
         => asyncAction(actionCancellationToken);
