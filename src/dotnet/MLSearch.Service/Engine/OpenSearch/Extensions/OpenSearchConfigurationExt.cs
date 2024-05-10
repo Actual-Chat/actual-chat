@@ -1,5 +1,7 @@
 using ActualChat.Hosting;
+using ActualChat.Mesh;
 using ActualChat.MLSearch.ApiAdapters;
+using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 using ActualChat.MLSearch.Engine.OpenSearch.Setup;
@@ -41,10 +43,14 @@ internal static class OpenSearchConfigurationExt
         });
 
         services.AddSingleton<ServiceCoordinator>()
+            .AddAlias<IServiceCoordinator, ServiceCoordinator>()
             .AddHostedService(c => c.GetRequiredService<ServiceCoordinator>());
 
         services
-            .AddSingleton<IClusterSetup, ClusterSetup>();
+            .AddSingleton<IClusterSetup>(static services => services.CreateInstanceWith<ClusterSetup>(
+                services.GetRequiredService<IMeshLocks<MLSearchDbContext>>().WithKeyPrefix(nameof(ClusterSetup))
+            ))
+            .AddSingleton<IClusterSetupActions, ClusterSetupActions>();
 
         services
             .AddSingleton<IOptionsFactory<PlainIndexSettings>, PlainIndexSettingsFactory>()
