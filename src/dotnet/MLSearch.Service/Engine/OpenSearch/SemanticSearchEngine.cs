@@ -1,4 +1,5 @@
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
+using ActualChat.MLSearch.Module;
 using Microsoft.Extensions.Options;
 using OpenSearch.Client;
 
@@ -10,6 +11,7 @@ internal sealed class SemanticSearchEngine<TDocument> : ISearchEngine<TDocument>
     private readonly string _docIndexName;
     private readonly IOpenSearchClient _openSearch;
     private readonly IOptionsMonitor<SemanticIndexSettings> _indexSettingsMonitor;
+    private readonly IServiceCoordinator _serviceCoordinator;
     private readonly ILogger<SemanticSearchEngine<TDocument>> _log;
     private readonly IDisposable? _indexSettingsChangeSubscription;
     private SemanticIndexSettings? _indexSettings;
@@ -18,11 +20,13 @@ internal sealed class SemanticSearchEngine<TDocument> : ISearchEngine<TDocument>
         string docIndexName,
         IOpenSearchClient openSearch,
         IOptionsMonitor<SemanticIndexSettings> indexSettingsMonitor,
+        IServiceCoordinator serviceCoordinator,
         ILogger<SemanticSearchEngine<TDocument>> log)
     {
         _docIndexName = docIndexName;
         _openSearch = openSearch;
         _indexSettingsMonitor = indexSettingsMonitor;
+        _serviceCoordinator = serviceCoordinator;
         _log = log;
         _indexSettingsChangeSubscription = _indexSettingsMonitor.OnChange((_, indexName) => {
             if (string.Equals(indexName, _docIndexName, StringComparison.Ordinal)) {
@@ -36,6 +40,10 @@ internal sealed class SemanticSearchEngine<TDocument> : ISearchEngine<TDocument>
     void IDisposable.Dispose() => _indexSettingsChangeSubscription?.Dispose();
 
     public async Task<SearchResult<TDocument>> Find(SearchQuery query, CancellationToken cancellationToken)
+        => await _serviceCoordinator.ExecuteWhenReadyAsync(ct => FindUnsafe(query, ct), cancellationToken)
+            .ConfigureAwait(false);
+
+    private async Task<SearchResult<TDocument>> FindUnsafe(SearchQuery query, CancellationToken cancellationToken)
     {
         var queryBuilder = new SemanticSearchQueryBuilder(IndexSettings);
         var searchRequest = queryBuilder.Build(query);

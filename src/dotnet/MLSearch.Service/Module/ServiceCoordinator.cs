@@ -6,6 +6,7 @@ namespace ActualChat.MLSearch.Module;
 internal interface IServiceCoordinator
 {
     Task ExecuteWhenReadyAsync(Func<CancellationToken, Task> asyncAction, CancellationToken actionCancellationToken);
+    Task<TResult> ExecuteWhenReadyAsync<TResult>(Func<CancellationToken, Task<TResult>> asyncFunc, CancellationToken funcCancellationToken);
 }
 
 internal class ServiceCoordinator(
@@ -49,5 +50,11 @@ internal class ServiceCoordinator(
     {
         await Volatile.Read(ref _entranceGate).Task.WaitAsync(cancellationToken).ConfigureAwait(false);
         await asyncAction(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<TResult> ExecuteWhenReadyAsync<TResult>(Func<CancellationToken, Task<TResult>> asyncFunc, CancellationToken cancellationToken)
+    {
+        await Volatile.Read(ref _entranceGate).Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return await asyncFunc(cancellationToken).ConfigureAwait(false);
     }
 }

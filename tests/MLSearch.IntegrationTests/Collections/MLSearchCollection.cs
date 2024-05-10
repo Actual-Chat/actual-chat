@@ -1,4 +1,6 @@
+using ActualChat.Hosting;
 using ActualChat.MLSearch.Engine;
+using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.MLSearch.Module;
 using ActualChat.Testing.Host;
 using OpenSearch.Client;
@@ -20,6 +22,9 @@ public class AppHostFixture(IMessageSink messageSink)
             cfg.AddSingleton(_ => new IndexNames {
                 IndexPrefix = UniqueNames.Elastic(IndexNames.TestPrefix),
             });
+            cfg
+                .AddSingleton<OpenSearchInit>()
+                .AddAlias<IModuleInitializer, OpenSearchInit>();
             cfg.AddSingleton<OpenSearchCleanup>();
         }
     })
@@ -34,6 +39,12 @@ public class AppHostFixture(IMessageSink messageSink)
 }
 
 #pragma warning disable CA1812
+// An instance of OpenSearchInit class is created via DI container on app start
+internal sealed class OpenSearchInit(IClusterSetup clusterSetup) : IModuleInitializer
+{
+    public Task Initialize(CancellationToken cancellationToken) => clusterSetup.InitializeAsync(cancellationToken);
+}
+
 // An instance of OpenSearchCleanup class is created via DI container of the app host of MLSearchCollection above
 
 internal sealed class OpenSearchCleanup(IOpenSearchClient openSearch) : IAsyncDisposable

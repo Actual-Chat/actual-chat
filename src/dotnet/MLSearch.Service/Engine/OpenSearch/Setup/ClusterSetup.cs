@@ -50,6 +50,8 @@ internal sealed class ClusterSetup(
             .ConfigureAwait(false);
 
         _result = clusterSettings;
+
+        NotifyClusterSettingsChanges();
     }
 
     public async Task<bool> CheckClusterStateValidAsync(ClusterSettings clusterSettings, CancellationToken cancellationToken)
@@ -76,7 +78,6 @@ internal sealed class ClusterSetup(
     {
         await EnsureTemplatesAsync(cancellationToken).ConfigureAwait(false);
         await EnsureIndexesAsync(clusterSettings, cancellationToken).ConfigureAwait(false);
-        NotifyClusterSettingsChanges();
     }
 
     public async Task EnsureTemplatesAsync(CancellationToken cancellationToken)

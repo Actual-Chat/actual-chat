@@ -57,8 +57,8 @@ internal sealed class SemanticIndexSink<TDocument> : ISink<TDocument, string>, I
         IReadOnlyCollection<string>? deletedDocuments,
         CancellationToken cancellationToken = default)
     {
-        var changeCount = updatedDocuments?.Count + deletedDocuments?.Count;
-        if (changeCount is null || changeCount == 0) {
+        var changeCount = (updatedDocuments?.Count ?? 0) + (deletedDocuments?.Count ?? 0);
+        if (changeCount == 0) {
             return;
         }
         var result = await _openSearch

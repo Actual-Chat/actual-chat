@@ -19,6 +19,9 @@ internal sealed class TrivialServiceCoordinator : IServiceCoordinator
 {
     public Task ExecuteWhenReadyAsync(Func<CancellationToken, Task> asyncAction, CancellationToken actionCancellationToken)
         => asyncAction(actionCancellationToken);
+
+    public Task<TResult> ExecuteWhenReadyAsync<TResult>(Func<CancellationToken, Task<TResult>> asyncFunc, CancellationToken funcCancellationToken)
+        => asyncFunc(funcCancellationToken);
 }
 
 public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
