@@ -77,7 +77,7 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
 
         // Ingest documents to the index
         var documentSink = AppHost.Services.GetRequiredService<ISink<ChatSlice, string>>();
-        await documentSink.ExecuteAsync(documents, null);
+        await documentSink.ExecuteAsync(documents.ToArray(), null);
 
         // Ensure all documents processed by the ingestion pipeline
         var documentLoader = AppHost.Services.GetRequiredService<IChatContentDocumentLoader>();
