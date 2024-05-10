@@ -19,7 +19,7 @@ public readonly partial struct UserId : ISymbolIdentifier<UserId>,
     IComparisonOperators<UserId, UserId, bool>
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= DefaultLogFor<UserId>();
+    private static ILogger Log => _log ??= StaticLog.For<UserId>();
     private static readonly RandomStringGenerator IdGenerator = new(6, Alphabet.AlphaNumeric);
     private static readonly RandomStringGenerator GuestIdGenerator = new(8, Alphabet.AlphaNumeric);
 

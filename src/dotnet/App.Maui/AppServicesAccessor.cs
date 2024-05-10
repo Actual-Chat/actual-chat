@@ -17,6 +17,7 @@ public class AppServicesAccessor
     private static ILogger? _appServicesAccessorLog; // Otherwise Rider assumes we're referencing it from elsewhere
     private static volatile IServiceProvider? _appServices;
     private static volatile IServiceProvider? _scopedServices;
+    // ReSharper disable once InconsistentNaming
     private static readonly TaskCompletionSource<IServiceProvider> _appServicesSource =
         TaskCompletionSourceExt.New<IServiceProvider>();
     private static volatile TaskCompletionSource<IServiceProvider> _scopedServicesSource =
@@ -25,7 +26,7 @@ public class AppServicesAccessor
         TaskCompletionSourceExt.New<IServiceProvider>();
 
     private static ILogger AppServicesAccessorLog // Otherwise Rider assumes we're referencing it from elsewhere
-        => _appServicesAccessorLog ??= DefaultLoggerFactory.CreateLogger<AppServicesAccessor>();
+        => _appServicesAccessorLog ??= StaticLog.Factory.CreateLogger<AppServicesAccessor>();
 
     public static IServiceProvider AppServices {
         get => _appServices ?? throw Errors.NotInitialized(nameof(AppServices));

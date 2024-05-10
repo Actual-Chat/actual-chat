@@ -40,11 +40,11 @@ public static class MauiDiagnostics
     static MauiDiagnostics()
     {
         Log.Logger = CreateAppLogger();
-        DefaultLoggerFactory = new SerilogLoggerFactory(Log.Logger);
+        StaticLog.Factory = new SerilogLoggerFactory(Log.Logger);
         Tracer.Default = Tracer = CreateAppTracer();
 
         if (Constants.DebugMode.WebMReader)
-            WebMReader.DebugLog = DefaultLoggerFactory.CreateLogger(typeof(WebMReader));
+            WebMReader.DebugLog = StaticLog.Factory.CreateLogger(typeof(WebMReader));
 
         if (_sentryOptions != null)
             _ = LoadingUI.WhenAppRendered

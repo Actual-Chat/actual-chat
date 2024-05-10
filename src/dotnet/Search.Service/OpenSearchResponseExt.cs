@@ -17,7 +17,7 @@ public static class OpenSearchResponseExt
             throw StandardError.External($"OpenSearch request failed: {error.Error.Reason}.".TrimSuffix(":", ".")
                 .EnsureSuffix("."));
 
-        log ??= DefaultLogFor(typeof(OpenSearchResponseExt));
+        log ??= StaticLog.For(typeof(OpenSearchResponseExt));
         if (response is BulkResponse bulkResponse) {
             var failureCount = bulkResponse.ItemsWithErrors.Count();
             var firstFailed = bulkResponse.ItemsWithErrors.FirstOrDefault();

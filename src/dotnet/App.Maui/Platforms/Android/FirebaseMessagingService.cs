@@ -34,7 +34,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     private static readonly AtomicInteger RequestCodeProvider =
         new((int)Android.OS.SystemClock.ElapsedRealtime());
 
-    private static ILogger Log => _log ??= DefaultLoggerFactory.CreateLogger<FirebaseMessagingService>();
+    private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<FirebaseMessagingService>();
 
 #if IS_DEV_MAUI
  #pragma warning disable CS0169 // Field is never used

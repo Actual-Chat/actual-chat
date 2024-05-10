@@ -14,7 +14,7 @@ namespace ActualChat;
 public readonly partial struct Phone : ISymbolIdentifier<Phone>
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= DefaultLogFor<Phone>();
+    private static ILogger Log => _log ??= StaticLog.For<Phone>();
 
     private const char Delimiter = '-';
     public static Phone None => default;

@@ -14,7 +14,7 @@ namespace ActualChat;
 public readonly partial struct ExternalContactId : ISymbolIdentifier<ExternalContactId>
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= DefaultLogFor<ExternalContactId>();
+    private static ILogger Log => _log ??= StaticLog.For<ExternalContactId>();
     private const char Delimiter = ':';
 
     public static ExternalContactId None => default;

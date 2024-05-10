@@ -22,7 +22,7 @@ public abstract class MessageProcessorBase<TMessage>(CancellationTokenSource? st
     private ILogger? _log;
 
     protected static bool DebugMode => Constants.DebugMode.MessageProcessor;
-    protected ILogger Log => _log ??= DefaultLogFor(GetType());
+    protected ILogger Log => _log ??= StaticLog.For(GetType());
     protected ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     public int QueueSize { get; init; } = Constants.MessageProcessing.QueueSize;

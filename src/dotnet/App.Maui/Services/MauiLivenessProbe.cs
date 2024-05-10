@@ -18,7 +18,7 @@ public class MauiLivenessProbe : WorkerBase
     private static volatile bool _isVeryFirstCheck = true;
 
     private static ILogger? _log;
-    private static ILogger Log => _log ??= DefaultLoggerFactory.CreateLogger(typeof(MauiLivenessProbe));
+    private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger(typeof(MauiLivenessProbe));
     private static ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
     public static MauiLivenessProbe? Current => _current;

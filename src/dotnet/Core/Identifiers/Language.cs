@@ -15,7 +15,7 @@ namespace ActualChat;
 public readonly partial struct Language : ISymbolIdentifier<Language>
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= DefaultLogFor<Language>();
+    private static ILogger Log => _log ??= StaticLog.For<Language>();
 
     public static Language None => default;
 

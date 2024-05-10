@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
+using ActualChat.Module;
 using ActualChat.UI.Blazor;
 // ReSharper disable once RedundantUsingDirective
 using ActualChat.UI.Blazor.App;
@@ -55,6 +56,7 @@ public static class Program
             ClientAppStartup.ConfigureServices(services, hostInfo);
             var host = builder.Build();
 
+            StaticLog.Factory = host.Services.LoggerFactory();
             if (Constants.DebugMode.WebMReader)
                 WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
             if (sentrySdkDisposable != null)
