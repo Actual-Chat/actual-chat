@@ -14,7 +14,7 @@ namespace ActualChat;
 public readonly partial struct StreamId : ISymbolIdentifier<StreamId>, IHasNodeRef
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= DefaultLogFor<StreamId>();
+    private static ILogger Log => _log ??= StaticLog.For<StreamId>();
     private const char Delimiter = '-';
 
     private static Func<Symbol> LocalIdGenerator { get; } = () => Ulid.NewUlid().ToString();

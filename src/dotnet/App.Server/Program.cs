@@ -39,9 +39,9 @@ internal static class Program
         }
 
         Constants.HostInfo = appHost.Services.HostInfo();
+        StaticLog.Factory = appHost.Services.LoggerFactory();
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = appHost.Services.LogFor(typeof(WebMReader));
-
         if (Constants.DebugMode.Npgsql)
             Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(),true);
 

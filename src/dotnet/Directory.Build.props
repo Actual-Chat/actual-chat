@@ -42,7 +42,6 @@
 
     <!-- Global usings -->
     <Using Include="ActualChat" />
-    <Using Include="ActualChat.StaticImports" Static="true" />
     <Using Include="ActualChat.Blobs" Condition="$(IsServerSideProject)"/>
     <Using Include="ActualChat.Collections" />
     <Using Include="ActualChat.DependencyInjection" />

@@ -14,7 +14,7 @@ namespace ActualChat;
 public readonly partial struct ContactId : ISymbolIdentifier<ContactId>
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= DefaultLogFor<ContactId>();
+    private static ILogger Log => _log ??= StaticLog.For<ContactId>();
 
     public static ContactId None => default;
 

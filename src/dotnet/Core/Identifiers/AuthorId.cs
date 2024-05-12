@@ -14,7 +14,7 @@ namespace ActualChat;
 public readonly partial struct AuthorId : ISymbolIdentifier<AuthorId>
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= DefaultLogFor<AuthorId>();
+    private static ILogger Log => _log ??= StaticLog.For<AuthorId>();
 
     public static AuthorId None => default;
 

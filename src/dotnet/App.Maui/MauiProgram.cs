@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Extensions.Configuration;
 using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
+using ActualChat.Module;
 using ActualChat.Security;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
@@ -26,7 +27,7 @@ using Foundation;
 
 namespace ActualChat.App.Maui;
 
-#pragma warning disable VSTHRD002
+#pragma warning disable VSTHRD002, IL2026
 
 public static partial class MauiProgram
 {
@@ -34,7 +35,7 @@ public static partial class MauiProgram
 
     private static HostInfo HostInfo => Constants.HostInfo;
     private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiProgram)];
-    private static ILogger Log => _log ??= DefaultLogFor(typeof(MauiProgram));
+    private static ILogger Log => _log ??= StaticLog.For(typeof(MauiProgram));
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiDiagnostics))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiProgram))]
@@ -189,6 +190,7 @@ public static partial class MauiProgram
 
     private static void AppServicesReady(MauiApp app)
     {
+        StaticLog.Factory = app.Services.LoggerFactory();
         AppServices = app.Services;
         LoadingUI.MarkAppBuilt();
         _ = Task.Run(async () => {

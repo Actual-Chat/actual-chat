@@ -15,7 +15,7 @@ namespace ActualChat;
 public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= DefaultLogFor<ChatId>();
+    private static ILogger Log => _log ??= StaticLog.For<ChatId>();
     internal static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
 
     public static ChatId None => default;

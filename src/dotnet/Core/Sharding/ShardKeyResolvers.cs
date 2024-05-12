@@ -14,7 +14,7 @@ public static class ShardKeyResolverExt
 public static class ShardKeyResolvers
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= DefaultLogFor(typeof(ShardKeyResolvers));
+    private static ILogger Log => _log ??= StaticLog.For(typeof(ShardKeyResolvers));
 
     private static readonly ConcurrentDictionary<Type, Delegate> Registered = new();
     private static readonly ConcurrentDictionary<Type, Delegate> ResolvedCache = new();

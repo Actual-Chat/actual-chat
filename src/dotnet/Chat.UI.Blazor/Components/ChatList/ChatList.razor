@@ -1,4 +1,5 @@
 @using ActualChat.Users
+@using Microsoft.AspNetCore.Components.Web.Virtualization
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatList.Model>
 @{
@@ -10,32 +11,40 @@
     DebugLog?.LogDebug("Rendered: {List}, ChatCount={ChatCount}", Kind, m.ChatCount);
     if (m is { ChatCount: 0, IsSearchModeOn: false })
         return;
+
+    var chatIndexes = Enumerable.Range(0, m.ChatCount).ToList();
 }
 
-@if (Kind == ChatListKind.Active) {
-    if (m.ChatCount == 0)
-        return;
-
-    <div class="c-delimiter"></div>
-    <div class="active-chats"
-         data-bubble="@(BubbleRef.New<ActiveChatsBubble>())"
-         data-bubble-priority="202"
-         data-bubble-placement="@(FloatingPosition.BottomStart.ToPositionString())">
-        <div class="c-title" data-tooltip="Chats where you are listening or recording right now">Active Chats</div>
-
-        <div class="chat-list chat-list-active">
-            @for (var i = 0; i < m.ChatCount; i++) {
-                <ChatListItem ListKind="@Kind" Index="@i" />
-            }
-        </div>
+@if (m.IsLoading) {
+    <div class="p-2">
+        <chat-list-skeleton count="12" rootCls="wide-left-skeleton-panel"></chat-list-skeleton>
     </div>
 } else {
-    @* ChatListKind.All *@
-    <div @ref="AllChatListRef" class="chat-list chat-list-all">
-        @for (var i = 0; i < m.ChatCount; i++) {
-            <ChatListItem ListKind="@Kind" Index="@i"/>
-        }
-    </div>
+    @if (Kind == ChatListKind.Active) {
+        if (m.ChatCount == 0)
+            return;
+
+        <div class="c-delimiter"></div>
+        <div class="active-chats"
+             data-bubble="@(BubbleRef.New<ActiveChatsBubble>())"
+             data-bubble-priority="202"
+             data-bubble-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+            <div class="c-title" data-tooltip="Chats where you are listening or recording right now">Active Chats</div>
+
+            <div class="chat-list chat-list-active">
+                @for (var i = 0; i < m.ChatCount; i++) {
+                    <ChatListItem ListKind="@Kind" Index="@i"/>
+                }
+            </div>
+        </div>
+    } else {
+        @* ChatListKind.All *@
+        <div @ref="AllChatListRef" class="chat-list chat-list-all">
+            <Virtualize Items="@chatIndexes" Context="i">
+                <ChatListItem ListKind="@Kind" Index="@i"/>
+            </Virtualize>
+        </div>
+    }
 }
 
 @code {
@@ -67,7 +76,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new Model(ChatListUI.GetCountWhenLoading(Kind), false, true),
+            InitialValue = new (ChatListUI.GetCountWhenLoading(Kind), false, true),
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 

@@ -88,6 +88,6 @@ public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
         await Host.HistoryStepper.Dispatcher.InvokeSafeAsync(() => {
             _modalStepRef = modalStepRef.ParentStepRef;
             modalStepRef.MarkClosed(modalStepRef.IsModalClosing.GetValueOrDefault(false));
-        }, DefaultLogFor<ModalRef>());
+        }, StaticLog.For<ModalRef>());
     }
 }

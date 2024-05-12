@@ -62,10 +62,6 @@
         => LoadingUI.MarkAppCreated();
 
     protected override void OnInitialized() {
-        // Hit StaticImportsInitializer to make sure DefaultLog is set
-        Services.GetRequiredService<StaticImportsInitializer>();
-
-        // Configure CircuitContext
         CircuitContext.RootComponent = this;
         _isPrerendering = RenderModeSelector.IsPrerendering;
     }

@@ -14,7 +14,7 @@ namespace ActualChat;
 public readonly partial struct PeerChatId : ISymbolIdentifier<PeerChatId>
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= DefaultLogFor<PeerChatId>();
+    private static ILogger Log => _log ??= StaticLog.For<PeerChatId>();
 
     public static readonly string IdPrefix = "p-";
     public static PeerChatId None => default;

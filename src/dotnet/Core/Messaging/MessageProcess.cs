@@ -29,7 +29,7 @@ public abstract class MessageProcess : IMessageProcess
     private static ILogger? _log;
 
     protected static bool DebugMode => Constants.DebugMode.MessageProcessor;
-    protected static ILogger Log => _log ??= DefaultLogFor<MessageProcess>();
+    protected static ILogger Log => _log ??= StaticLog.For<MessageProcess>();
     protected static ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     protected TaskCompletionSource WhenStartedSource { get; init; } = null!;

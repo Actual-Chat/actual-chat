@@ -14,7 +14,7 @@ namespace ActualChat;
 public readonly partial struct UserDeviceId : ISymbolIdentifier<UserDeviceId>
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= DefaultLogFor<UserDeviceId>();
+    private static ILogger Log => _log ??= StaticLog.For<UserDeviceId>();
     private const char Delimiter = ':';
 
     public static UserDeviceId None => default;

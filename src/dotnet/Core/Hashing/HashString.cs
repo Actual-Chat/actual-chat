@@ -14,7 +14,7 @@ namespace ActualChat.Hashing;
 public readonly partial struct HashString : ISymbolIdentifier<HashString>
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= DefaultLogFor<HashString>();
+    private static ILogger Log => _log ??= StaticLog.For<HashString>();
     private const char Delimiter = ' ';
 
     public static HashString None => default;

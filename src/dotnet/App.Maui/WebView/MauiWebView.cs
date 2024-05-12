@@ -15,7 +15,7 @@ public sealed partial class MauiWebView
     private static long _lastResumeAt = CpuTimestamp.Now.Value;
     private static ILogger? _log;
 
-    private static ILogger Log => _log ??= DefaultLoggerFactory.CreateLogger<MainPage>();
+    private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<MainPage>();
 
     public static MauiWebView? Current => _current;
     public static CpuTimestamp LastResumeAt => new(Interlocked.Read(ref _lastResumeAt));

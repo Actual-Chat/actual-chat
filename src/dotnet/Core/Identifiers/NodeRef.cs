@@ -15,7 +15,7 @@ namespace ActualChat;
 public readonly partial struct NodeRef : ISymbolIdentifier<NodeRef>
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= DefaultLogFor<NodeRef>();
+    private static ILogger Log => _log ??= StaticLog.For<NodeRef>();
     private static RandomStringGenerator IdGenerator => Alphabet.AlphaNumeric.Generator8;
 
     public static NodeRef None => default;
