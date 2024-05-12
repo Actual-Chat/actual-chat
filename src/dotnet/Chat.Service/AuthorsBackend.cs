@@ -443,20 +443,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 throw StandardError.Internal(
                     $"Can't proceed with the migration: found an author with no associated user. AuthorId is '{dbAuthor.Id}'.");
 
-            if (originalAuthor.IsAnonymous) {
-                var authorSid = originalAuthor.Id.Value;
-                var hasChatEntries = await dbContext.ChatEntries
-                    .Where(c => c.ChatId == chatSid && c.AuthorId == authorSid)
-                    .AnyAsync(cancellationToken)
-                    .ConfigureAwait(false);
-                if (!hasChatEntries)
-                    continue; // Skip anonymous author if there were no messages from them.
-
-                // TODO(DF): To think what we can do with anonymous authors migration.
-                // Places are not supposed to have anonymous authors at the moment.
-                throw StandardError.Internal(
-                    $"Can't proceed with the migration: anonymous author migration isn't supported yet. AuthorId is '{dbAuthor.Id}'.");
-            }
+            if (originalAuthor.IsAnonymous)
+                continue;
 
             // Ensure there is matching place member
             // TODO(DF): Can we use AuthorsBackend_GetAuthorOption.Full? In fact, they are equivalents in this case.
