@@ -106,7 +106,8 @@ public partial class ChatsBackend
         {
             var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
             dbContext.Database.SetCommandTimeout(commandTimeout);
-            migratedAuthors = await GetAuthorsMap(dbContext,
+            migratedAuthors = await GetAuthorsMap(Log,
+                    dbContext,
                     chatSid,
                     newChatId,
                     maxAuthorLocalId,
@@ -254,6 +255,7 @@ public partial class ChatsBackend
     }
 
     private static async Task<MigratedAuthors> GetAuthorsMap(
+        ILogger log,
         ChatDbContext dbContext,
         string chatSid,
         ChatId newChatId,
@@ -292,15 +294,10 @@ public partial class ChatsBackend
                     .Where(c => c.ChatId == chatSid && c.AuthorId == authorSid)
                     .AnyAsync(cancellationToken)
                     .ConfigureAwait(false);
-                if (!hasChatEntries) {
-                    migratedAuthors.RegisterRemoved(originalAuthor);
-                    continue; // Skip anonymous author if there were no messages from them.
-                }
-
-                // TODO(DF): To think what we can do with anonymous authors migration.
-                // Places are not supposed to have anonymous authors at the moment.
-                throw StandardError.Internal(
-                    $"Can't proceed with the migration: anonymous author migration isn't supported yet. AuthorId is '{dbAuthor.Id}'.");
+                if (!hasChatEntries)
+                    log.LogWarning("Anonymous author will be registered as removed. Author is '{Author}'", originalAuthor);
+                migratedAuthors.RegisterRemoved(originalAuthor);
+                continue; // Skip anonymous author if there were no messages from them.
             }
 
             if (!newDbAuthorPerUserId.TryGetValue(userId, out var newDbAuthor))
@@ -439,10 +436,17 @@ public partial class ChatsBackend
             var authorSid = dbChatEntry.AuthorId;
             var authorId = new AuthorId(authorSid);
             AuthorId newAuthorId;
-            if (authorId.LocalId > 0)
-                newAuthorId = migratedAuthors.GetNewAuthorId(authorSid);
+            if (authorId.LocalId > 0) {
+                var migratedAuthor = migratedAuthors.DemandMigratedAuthor(authorSid);
+                if (migratedAuthor.IsRemoved) {
+                    skip = true;
+                    Log.LogWarning("OnCopyChat({CorrelationId}) skips chat entry '{ChatEntryId}' because author '{AuthorSid}' is registered as removed",
+                        correlationId, dbChatEntry.Id, authorId);
+                }
+                newAuthorId = migratedAuthor.NewId;
+            }
             else if (authorId.LocalId == Constants.User.Walle.AuthorLocalId
-                    || authorId.LocalId == Constants.User.MLSearchBot.AuthorLocalId)
+                     || authorId.LocalId == Constants.User.MLSearchBot.AuthorLocalId)
                 newAuthorId = new AuthorId(newChatId, authorId.LocalId, AssumeValid.Option);
             else
                 throw StandardError.Internal($"Unexpected author local id. Local id is '{authorId.LocalId}'.");
@@ -673,7 +677,13 @@ public partial class ChatsBackend
 
         foreach (var dbReaction in reactions) {
             var authorSid = dbReaction.AuthorId;
-            var newAuthorId = migratedAuthors.GetNewAuthorId(authorSid);
+            var migratedAuthor = migratedAuthors.DemandMigratedAuthor(authorSid);
+            if (migratedAuthor.IsRemoved) {
+                Log.LogWarning("OnCopyChat({CorrelationId}) skips reaction '{ReactionId}' because author '{AuthorSid}' is registered as removed",
+                     correlationId, dbReaction.Id, authorSid);
+                continue;
+            }
+            var newAuthorId = migratedAuthor.NewId;
             dbReaction.AuthorId = newAuthorId.Value;
 
             var entryId = new TextEntryId(dbReaction.EntryId);
@@ -717,11 +727,23 @@ public partial class ChatsBackend
                         correlationId, entryId, authorId);
                     continue;
                 }
-                var newAuthorId = migratedAuthors.GetNewAuthorId(authorId);
+                var migratedAuthor = migratedAuthors.DemandMigratedAuthor(authorId);
+                if (migratedAuthor.IsRemoved) {
+                    Log.LogWarning("OnCopyChat({CorrelationId}) excludes author on reaction summary '{ReactionSummaryId}' because author '{AuthorSid}' is registered as removed",
+                        correlationId, dbSummary.Id, authorId);
+                    continue;
+                }
+                var newAuthorId = migratedAuthor.NewId;
                 newAuthorIds = newAuthorIds.Add(newAuthorId);
             }
             if (isCorrupted)
                 continue;
+
+            if (newAuthorIds.Count == 0) {
+                Log.LogWarning("OnCopyChat({CorrelationId}) skips reaction summary '{ReactionSummaryId}' because author list is empty",
+                    correlationId, dbSummary.Id);
+                continue;
+            }
             summary = summary with { FirstAuthorIds = newAuthorIds };
             dbSummary.UpdateFrom(summary);
 
@@ -773,7 +795,18 @@ public partial class ChatsBackend
                 }
                 authorSid = FixMentionAuthorSid(mention, authorSid);
                 if (tempAuthorId.ChatId == chatId) {
-                    var newAuthorId = migratedAuthors.GetNewAuthorId(authorSid);
+                    var migratedAuthor = migratedAuthors.FindMigratedAuthor(authorSid);
+                    if (migratedAuthor == null) {
+                        Log.LogWarning("OnCopyChat({CorrelationId}) skips mention with id '{ID}'. Reason: migrated author not found",
+                            correlationId, mention.Id);
+                        continue;
+                    }
+                    if (migratedAuthor.IsRemoved) {
+                        Log.LogWarning("OnCopyChat({CorrelationId}) skips mention with id '{ID}'. Reason: migrated author is registered as removed",
+                            correlationId, mention.Id);
+                        continue;
+                    }
+                    var newAuthorId = migratedAuthor.NewId;
                     mentionId = new MentionId(newAuthorId, AssumeValid.Option);
                 }
                 else {
@@ -833,7 +866,7 @@ public partial class ChatsBackend
         public RoleId NewId => NewRole.Id;
     }
 
-    public class MigratedAuthors
+    internal class MigratedAuthors
     {
         private readonly List<MigratedAuthor> _migratedAuthors = new ();
 
@@ -857,7 +890,7 @@ public partial class ChatsBackend
         public bool IsRemoved(string authorSid)
             => DemandMigratedAuthor(authorSid).IsRemoved;
 
-        private MigratedAuthor DemandMigratedAuthor(string authorSid)
+        public MigratedAuthor DemandMigratedAuthor(string authorSid)
         {
             var migratedAuthor = FindMigratedAuthor(authorSid);
             if (migratedAuthor == null)
@@ -865,10 +898,10 @@ public partial class ChatsBackend
             return migratedAuthor;
         }
 
-        private MigratedAuthor? FindMigratedAuthor(string authorSid)
+        public MigratedAuthor? FindMigratedAuthor(string authorSid)
             => _migratedAuthors.FirstOrDefault(c => OrdinalEquals(c.OriginalAuthor.Id.Value, authorSid));
 
-        private record MigratedAuthor(AuthorId OriginalAuthor, AuthorId? NewAuthorId)
+        public record MigratedAuthor(AuthorId OriginalAuthor, AuthorId? NewAuthorId)
         {
             public AuthorId NewId => NewAuthorId ?? AuthorId.None;
             public bool IsRemoved => NewAuthorId == null;
