@@ -1,4 +1,6 @@
 
+using ActualChat.MLSearch.Module;
+
 namespace ActualChat.MLSearch.ApiAdapters.ShardWorker;
 
 // Note:
@@ -32,7 +34,8 @@ internal sealed class WorkerPool<TWorker, TJob, TJobId, TShardKey>(
     DuplicateJobPolicy duplicateJobPolicy,
     int shardConcurrencyLevel,
     IShardIndexResolver<TShardKey> shardIndexResolver,
-    IWorkerPoolShardFactory<TWorker, TJob, TJobId, TShardKey> workerPoolFactory
+    IWorkerPoolShardFactory<TWorker, TJob, TJobId, TShardKey> workerPoolFactory,
+    IServiceCoordinator serviceCoordinator
 ) : ActualChat.ShardWorker(services, ShardScheme.MLSearchBackend, typeof(TWorker).Name), IWorkerPool<TJob, TJobId, TShardKey>
     where TWorker : class, IWorker<TJob>
     where TJob : IHasId<TJobId>, IHasShardKey<TShardKey>
@@ -61,7 +64,7 @@ internal sealed class WorkerPool<TWorker, TJob, TJobId, TShardKey>(
             static (key, _, arg) => arg.Factory.Create(key, arg.DuplicateJobPolicy, arg.ConcurrencyLevel),
             (Factory: workerPoolFactory, DuplicateJobPolicy: duplicateJobPolicy, ConcurrencyLevel: shardConcurrencyLevel));
         try {
-            await poolShard.UseAsync(cancellationToken).ConfigureAwait(false);
+            await serviceCoordinator.ExecuteWhenReadyAsync(poolShard.UseAsync, cancellationToken).ConfigureAwait(false);
         }
         finally {
             // Clean up dictionary of worker pools if it still contains the pool being stopped

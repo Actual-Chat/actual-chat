@@ -4,7 +4,7 @@ internal interface ISink<in TDocument, in TDocumentId>
     where TDocument: IHasId<TDocumentId>
 {
     Task ExecuteAsync(
-        IEnumerable<TDocument>? updatedDocuments,
-        IEnumerable<TDocumentId>? deletedDocuments,
+        IReadOnlyCollection<TDocument>? updatedDocuments,
+        IReadOnlyCollection<TDocumentId>? deletedDocuments,
         CancellationToken cancellationToken = default);
 }
