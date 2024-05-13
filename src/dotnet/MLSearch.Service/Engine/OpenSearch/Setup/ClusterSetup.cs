@@ -58,12 +58,12 @@ internal sealed class ClusterSetup(
         NotifyClusterSettingsChanges();
     }
 
-    public async Task<bool> CheckClusterStateValidAsync(EmbeddingModelProps clusterSettings, CancellationToken cancellationToken)
+    public async Task<bool> CheckClusterStateValidAsync(EmbeddingModelProps embeddingModelProps, CancellationToken cancellationToken)
     {
         var numberOfReplicas = openSearchSettings.Value.DefaultNumberOfReplicas;
 
         var (templateName, pattern) = (IndexNames.MLTemplateName, IndexNames.MLIndexPattern);
-        var ingestPipelineName = indexNames.GetFullIngestPipelineName(IndexNames.ChatContent, clusterSettings);
+        var ingestPipelineName = indexNames.GetFullIngestPipelineName(IndexNames.ChatContent, embeddingModelProps);
         var indexShortNames = new[] { IndexNames.ChatContent, IndexNames.ChatContentCursor, IndexNames.ChatCursor };
 
         var isTemplateValid = await actions.IsTemplateValidAsync(templateName, pattern, numberOfReplicas, cancellationToken)
@@ -72,16 +72,16 @@ internal sealed class ClusterSetup(
             .ConfigureAwait(false);
         var isAllIndexesExist = true;
         foreach (var name in indexShortNames) {
-            var fullIndexName = indexNames.GetFullName(name, clusterSettings);
+            var fullIndexName = indexNames.GetFullName(name, embeddingModelProps);
             isAllIndexesExist &= await actions.IsIndexExistsAsync(fullIndexName, cancellationToken).ConfigureAwait(false);
         }
         return isTemplateValid && isIngestPipelineExists && isAllIndexesExist;
     }
 
-    private async Task InitialiseUnsafeAsync(EmbeddingModelProps clusterSettings, CancellationToken cancellationToken)
+    private async Task InitialiseUnsafeAsync(EmbeddingModelProps embeddingModelProps, CancellationToken cancellationToken)
     {
         await EnsureTemplatesAsync(cancellationToken).ConfigureAwait(false);
-        await EnsureIndexesAsync(clusterSettings, cancellationToken).ConfigureAwait(false);
+        await EnsureIndexesAsync(embeddingModelProps, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task EnsureTemplatesAsync(CancellationToken cancellationToken)
@@ -97,7 +97,7 @@ internal sealed class ClusterSetup(
             .ConfigureAwait(false);
     }
 
-    public async Task EnsureIndexesAsync(EmbeddingModelProps settings, CancellationToken cancellationToken)
+    public async Task EnsureIndexesAsync(EmbeddingModelProps embeddingModelProps, CancellationToken cancellationToken)
     {
         // Notes:
         // Assumption: This is a script.
@@ -106,13 +106,13 @@ internal sealed class ClusterSetup(
         // It has to succeed once and only once to set up an OpenSearch cluster.
         // After the initial setup this would never be called again.
         using var _1 = _tracer.Region();
-        var contentIndexName = indexNames.GetFullName(IndexNames.ChatContent, settings);
-        var contentCursorIndexName = indexNames.GetFullName(IndexNames.ChatContentCursor, settings);
-        var chatsCursorIndexName = indexNames.GetFullName(IndexNames.ChatCursor, settings);
+        var contentIndexName = indexNames.GetFullName(IndexNames.ChatContent, embeddingModelProps);
+        var contentCursorIndexName = indexNames.GetFullName(IndexNames.ChatContentCursor, embeddingModelProps);
+        var chatsCursorIndexName = indexNames.GetFullName(IndexNames.ChatCursor, embeddingModelProps);
 
-        var ingestPipelineName = indexNames.GetFullIngestPipelineName(IndexNames.ChatContent, settings);
+        var ingestPipelineName = indexNames.GetFullIngestPipelineName(IndexNames.ChatContent, embeddingModelProps);
 
-        var modelId = settings.Id;
+        var modelId = embeddingModelProps.Id;
 
         await actions.EnsureChatsCursorIndexAsync(chatsCursorIndexName, cancellationToken).ConfigureAwait(false);
 
@@ -122,7 +122,7 @@ internal sealed class ClusterSetup(
         await actions.EnsureContentIndexAsync(
                 contentIndexName,
                 ingestPipelineName,
-                settings.EmbeddingDimension,
+                embeddingModelProps.EmbeddingDimension,
                 cancellationToken
             )
             .ConfigureAwait(false);
