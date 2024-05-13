@@ -14,6 +14,6 @@ internal sealed class SemanticIndexSettingsFactory(IndexNames indexNames, IClust
         var clusterSettings = clusterSetup.Result;
         var indexName = indexNames.GetFullName(name, clusterSettings);
         var ingestPipelineName = indexNames.GetFullIngestPipelineName(name, clusterSettings);
-        return new SemanticIndexSettings(indexName, clusterSettings.ModelId, ingestPipelineName);
+        return new SemanticIndexSettings(indexName, clusterSettings.Id, ingestPipelineName);
     }
 }

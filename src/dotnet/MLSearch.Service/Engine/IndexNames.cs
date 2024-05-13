@@ -19,14 +19,14 @@ internal sealed class IndexNames
     public static string MLTemplateName => $"{NamePrefix}-{TemplateNameSuffix}";
     private string FullPrefix => string.IsNullOrEmpty(IndexPrefix) ? NamePrefix : $"{NamePrefix}-{IndexPrefix}";
 
-    internal string GetFullName(string id, ClusterSettings settings)
+    internal string GetFullName(string id, EmbeddingModelProps settings)
         => string.Join('-',
             FullPrefix,
             id,
             IndexNameSuffix,
             settings.UniqueKey);
 
-    internal string GetFullIngestPipelineName(string id, ClusterSettings settings)
+    internal string GetFullIngestPipelineName(string id, EmbeddingModelProps settings)
         => string.Join('-',
             FullPrefix,
             id,

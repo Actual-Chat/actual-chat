@@ -8,10 +8,10 @@ public class SemanticIndexSettingsFactoryTest(ITestOutputHelper @out) : TestBase
 {
     private const string ModelAllConfig = "__SOME_CONTENT__";
     private const string ModelId = "id_model_qwerty";
-    private const int ModelDimension = 1024;
+    private const int EmbeddingDimension = 1024;
 
     private readonly IndexNames _indexNames = new();
-    private readonly ClusterSettings _clusterSettings = new(ModelAllConfig, ModelId, ModelDimension);
+    private readonly EmbeddingModelProps _clusterSettings = new(ModelId, EmbeddingDimension, ModelAllConfig);
 
     [Fact]
     public void SettingsPropertiesSetAsExpected()

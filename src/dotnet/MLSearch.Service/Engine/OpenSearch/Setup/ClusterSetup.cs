@@ -7,7 +7,7 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
 internal interface IClusterSetup
 {
-    ClusterSettings Result { get; }
+    EmbeddingModelProps Result { get; }
     Task InitializeAsync(CancellationToken cancellationToken);
 }
 
@@ -22,9 +22,9 @@ internal sealed class ClusterSetup(
 ) : IClusterSetup
 {
     private readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
-    private ClusterSettings? _result;
+    private EmbeddingModelProps? _result;
 
-    public ClusterSettings Result => _result ?? throw new InvalidOperationException(
+    public EmbeddingModelProps Result => _result ?? throw new InvalidOperationException(
         "Initialization script was not called."
     );
 
@@ -54,7 +54,7 @@ internal sealed class ClusterSetup(
         NotifyClusterSettingsChanges();
     }
 
-    public async Task<bool> CheckClusterStateValidAsync(ClusterSettings clusterSettings, CancellationToken cancellationToken)
+    public async Task<bool> CheckClusterStateValidAsync(EmbeddingModelProps clusterSettings, CancellationToken cancellationToken)
     {
         var numberOfReplicas = openSearchSettings.Value.DefaultNumberOfReplicas;
 
@@ -74,7 +74,7 @@ internal sealed class ClusterSetup(
         return isTemplateValid && isIngestPipelineExists && isAllIndexesExist;
     }
 
-    private async Task InitialiseUnsafeAsync(ClusterSettings clusterSettings, CancellationToken cancellationToken)
+    private async Task InitialiseUnsafeAsync(EmbeddingModelProps clusterSettings, CancellationToken cancellationToken)
     {
         await EnsureTemplatesAsync(cancellationToken).ConfigureAwait(false);
         await EnsureIndexesAsync(clusterSettings, cancellationToken).ConfigureAwait(false);
@@ -93,7 +93,7 @@ internal sealed class ClusterSetup(
             .ConfigureAwait(false);
     }
 
-    public async Task EnsureIndexesAsync(ClusterSettings settings, CancellationToken cancellationToken)
+    public async Task EnsureIndexesAsync(EmbeddingModelProps settings, CancellationToken cancellationToken)
     {
         // Notes:
         // Assumption: This is a script.
@@ -108,7 +108,7 @@ internal sealed class ClusterSetup(
 
         var ingestPipelineName = indexNames.GetFullIngestPipelineName(IndexNames.ChatContent, settings);
 
-        var modelId = settings.ModelId;
+        var modelId = settings.Id;
 
         await actions.EnsureChatsCursorIndexAsync(chatsCursorIndexName, cancellationToken).ConfigureAwait(false);
 
@@ -118,7 +118,7 @@ internal sealed class ClusterSetup(
         await actions.EnsureContentIndexAsync(
                 contentIndexName,
                 ingestPipelineName,
-                settings.ModelEmbeddingDimension,
+                settings.EmbeddingDimension,
                 cancellationToken
             )
             .ConfigureAwait(false);

@@ -3,10 +3,10 @@ using System.Text;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
-internal sealed class ClusterSettings(string modelAllConfig, string modelId, int modelEmbeddingDimension)
+internal sealed class EmbeddingModelProps(string id, int embeddingDimension, string allConfig)
 {
-    public string ModelId => modelId;
-    public int ModelEmbeddingDimension => modelEmbeddingDimension;
+    public string Id => id;
+    public int EmbeddingDimension => embeddingDimension;
 
 #pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
     // This property generates and returns a unique key per configuration.
@@ -14,7 +14,7 @@ internal sealed class ClusterSettings(string modelAllConfig, string modelId, int
     // on the backend cluster.
     private string? _uniqueKey;
     public string UniqueKey
-        => _uniqueKey ??= Convert.ToHexString(SHA1.HashData(Encoding.ASCII.GetBytes(modelAllConfig)))
+        => _uniqueKey ??= Convert.ToHexString(SHA1.HashData(Encoding.ASCII.GetBytes(allConfig)))
             .ToLower(CultureInfo.InvariantCulture);
 #pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
 }
