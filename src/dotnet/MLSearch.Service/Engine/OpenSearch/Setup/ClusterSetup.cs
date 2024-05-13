@@ -5,9 +5,11 @@ using Microsoft.Extensions.Options;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
+internal sealed record ClusterSetupResult(EmbeddingModelProps EmbeddingModelProps);
+
 internal interface IClusterSetup
 {
-    EmbeddingModelProps Result { get; }
+    ClusterSetupResult Result { get; }
     Task InitializeAsync(CancellationToken cancellationToken);
 }
 
@@ -22,21 +24,23 @@ internal sealed class ClusterSetup(
 ) : IClusterSetup
 {
     private readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
-    private EmbeddingModelProps? _result;
+    private ClusterSetupResult? _result;
 
-    public EmbeddingModelProps Result => _result ?? throw new InvalidOperationException(
+    public ClusterSetupResult Result => _result ?? throw new InvalidOperationException(
         "Initialization script was not called."
     );
 
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         var modelGroup = openSearchSettings.Value.ModelGroup;
-        var clusterSettings = await actions.RetrieveClusterSettingsAsync(modelGroup, cancellationToken).ConfigureAwait(false);
+        var embeddingModelProps = await actions
+            .RetrieveEmbeddingModelPropsAsync(modelGroup, cancellationToken)
+            .ConfigureAwait(false);
 
-        var isClusterStateValid = await CheckClusterStateValidAsync(clusterSettings, cancellationToken)
+        var isClusterStateValid = await CheckClusterStateValidAsync(embeddingModelProps, cancellationToken)
             .ConfigureAwait(false);
         if (isClusterStateValid) {
-            _result = clusterSettings;
+            _result = new ClusterSetupResult(embeddingModelProps);
             return;
         }
 
@@ -44,12 +48,12 @@ internal sealed class ClusterSetup(
         await meshLocks.RunLocked(
                 nameof(InitializeAsync),
                 runOptions,
-                ct => InitialiseUnsafeAsync(clusterSettings, ct),
+                ct => InitialiseUnsafeAsync(embeddingModelProps, ct),
                 cancellationToken
             )
             .ConfigureAwait(false);
 
-        _result = clusterSettings;
+        _result = new ClusterSetupResult(embeddingModelProps);
 
         NotifyClusterSettingsChanges();
     }

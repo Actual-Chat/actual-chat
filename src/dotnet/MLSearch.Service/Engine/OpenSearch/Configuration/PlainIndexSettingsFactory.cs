@@ -11,8 +11,8 @@ internal sealed class PlainIndexSettingsFactory(IndexNames indexNames, IClusterS
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
 
-        var clusterSettings = clusterSetup.Result;
-        var indexName = indexNames.GetFullName(name, clusterSettings);
+        var setupResult = clusterSetup.Result;
+        var indexName = indexNames.GetFullName(name, setupResult.EmbeddingModelProps);
         return new PlainIndexSettings(indexName);
     }
 }

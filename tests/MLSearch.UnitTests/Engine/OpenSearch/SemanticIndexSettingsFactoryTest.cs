@@ -11,7 +11,8 @@ public class SemanticIndexSettingsFactoryTest(ITestOutputHelper @out) : TestBase
     private const int EmbeddingDimension = 1024;
 
     private readonly IndexNames _indexNames = new();
-    private readonly EmbeddingModelProps _clusterSettings = new(ModelId, EmbeddingDimension, ModelAllConfig);
+    private readonly ClusterSetupResult _setupResult =
+        new(new EmbeddingModelProps(ModelId, EmbeddingDimension, ModelAllConfig));
 
     [Fact]
     public void SettingsPropertiesSetAsExpected()
@@ -38,7 +39,7 @@ public class SemanticIndexSettingsFactoryTest(ITestOutputHelper @out) : TestBase
     private IClusterSetup MockClusterSetup()
     {
         var clusterSetupMock = new Mock<IClusterSetup>();
-        clusterSetupMock.SetupGet(clusterSetup => clusterSetup.Result).Returns(_clusterSettings);
+        clusterSetupMock.SetupGet(clusterSetup => clusterSetup.Result).Returns(_setupResult);
         var clasterSetup = clusterSetupMock.Object;
         return clasterSetup;
     }

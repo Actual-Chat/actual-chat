@@ -11,9 +11,9 @@ internal sealed class SemanticIndexSettingsFactory(IndexNames indexNames, IClust
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
 
-        var clusterSettings = clusterSetup.Result;
-        var indexName = indexNames.GetFullName(name, clusterSettings);
-        var ingestPipelineName = indexNames.GetFullIngestPipelineName(name, clusterSettings);
-        return new SemanticIndexSettings(indexName, clusterSettings.Id, ingestPipelineName);
+        var embeddingModelProps = clusterSetup.Result.EmbeddingModelProps;
+        var indexName = indexNames.GetFullName(name, embeddingModelProps);
+        var ingestPipelineName = indexNames.GetFullIngestPipelineName(name, embeddingModelProps);
+        return new SemanticIndexSettings(indexName, embeddingModelProps.Id, ingestPipelineName);
     }
 }
