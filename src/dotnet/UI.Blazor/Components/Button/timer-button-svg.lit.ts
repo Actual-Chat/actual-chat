@@ -5,6 +5,8 @@ import {css, html, LitElement} from "lit";
 class TimerButtonSvg extends LitElement {
     @property({ type: String })
     sizeClass = "";
+    @property({ type: String })
+    iconColor = "";
     @property({ type: Number })
     timing = 0;
 
@@ -12,15 +14,10 @@ class TimerButtonSvg extends LitElement {
         :host {
         }
         .timer-content {
+            position: relative;
+            z-index: 10;
             width: 2.5rem;
             height: 2.5rem;
-        }
-        .timer-content.btn-sm {
-            width: 2rem;
-            height: 2rem;
-        }
-        .timer-content {
-            position: relative;
 
             .c-border {
                 width: 100%;
@@ -35,6 +32,11 @@ class TimerButtonSvg extends LitElement {
                     stroke-width: 1.2;
                 }
             }
+        }
+
+        .timer-content.btn-sm {
+            width: 2rem;
+            height: 2rem;
         }
 
         @keyframes dash {
@@ -53,7 +55,7 @@ class TimerButtonSvg extends LitElement {
             <div class="timer-content ${this.sizeClass}">
                 <div class="c-border">
                     <svg viewBox="0 0 32 32">
-                        <circle class="circle" r="15" cx="16" cy="16" transform='rotate(-90 16 16)' fill="transparent" stroke="var(--toast-text)" style="${animateFunc}"></circle>
+                        <circle class="circle" r="15" cx="16" cy="16" transform='rotate(-90 16 16)' fill="transparent" stroke="${this.iconColor}" style="${animateFunc}"></circle>
                     </svg>
                 </div>
             </div>

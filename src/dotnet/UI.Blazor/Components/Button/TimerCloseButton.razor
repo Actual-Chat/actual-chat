@@ -11,7 +11,7 @@
         data-must-keep-awake="@MustKeepAwake.ToString()"
         @attributes="@AdditionalAttributes"
         @onclick="@Click">
-    <timer-button-svg timing="@_delay" sizeClass="@CircleClass"/>
+    <timer-button-svg timing="@_delay" sizeClass="@CircleClass" iconColor="@TimerButtonColor"/>
     <i class="icon-close"></i>
 </button>
 
@@ -20,6 +20,7 @@
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ContentClass { get; set; } = "";
+    [Parameter] public string TimerButtonColor { get; set; } = "var(--toast-text)";
     [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public bool IsAutofocused { get; set; }

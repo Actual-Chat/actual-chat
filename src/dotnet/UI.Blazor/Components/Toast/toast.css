@@ -24,29 +24,40 @@ body.wide .toast-container {
 
 .toast {
     @apply flex-x items-center z-50;
-    @apply px-4 gap-x-2 overflow-hidden;
+    @apply px-3 py-2 gap-x-2 overflow-hidden;
     @apply min-h-10 md:w-fit md:max-w-110;
-    @apply rounded-full;
+    @apply rounded-3xl;
     @apply text-toast-text;
     @apply bg-toast-body;
 }
-.toast:has(.btn-timer) {
+.toast:has(.c-action) {
     @apply pr-1;
+}
+.toast:has(.btn-timer) {
+    @apply pr-3 md:pr-2;
 }
 .toast i {
     @apply text-toast-text;
 }
 .toast > .c-content {
     @apply flex grow;
-    @apply mr-4;
     @apply text-base font-normal;
     @apply break-words;
 }
-.toast > .c-content > .c-action .btn {
-    @apply min-w-20;
+.toast:has(.c-action) .c-content,
+.toast:has(.btn-timer) .c-content {
+    @apply mr-4;
+}
+.toast > .c-action .btn {
     @apply text-toast-action;
 }
-
+.toast .c-action,
+.toast .btn-timer {
+    @apply self-end;
+}
+body.narrow .toast .btn-timer {
+    @apply h-10;
+}
 /* Error toast */
 
 .error-toast {
@@ -55,7 +66,7 @@ body.wide .toast-container {
     @apply w-full md:w-110;
     @apply p-2 pl-4;
     @apply overflow-hidden;
-    @apply rounded-3.5xl;
+    @apply rounded-xl;
     @apply drop-shadow-md shadow-shadow-main;
     @apply bg-banner-error;
     @apply text-banner-error;
