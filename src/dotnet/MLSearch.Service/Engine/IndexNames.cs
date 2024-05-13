@@ -19,17 +19,17 @@ internal sealed class IndexNames
     public static string MLTemplateName => $"{NamePrefix}-{TemplateNameSuffix}";
     private string FullPrefix => string.IsNullOrEmpty(IndexPrefix) ? NamePrefix : $"{NamePrefix}-{IndexPrefix}";
 
-    internal string GetFullName(string id, EmbeddingModelProps settings)
+    internal string GetFullName(string id, EmbeddingModelProps modelProps)
         => string.Join('-',
             FullPrefix,
             id,
             IndexNameSuffix,
-            settings.UniqueKey);
+            modelProps.UniqueKey);
 
-    internal string GetFullIngestPipelineName(string id, EmbeddingModelProps settings)
+    internal string GetFullIngestPipelineName(string id, EmbeddingModelProps modelProps)
         => string.Join('-',
             FullPrefix,
             id,
             IngestPipelineNameSuffix,
-            settings.UniqueKey);
+            modelProps.UniqueKey);
 }
