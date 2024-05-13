@@ -336,10 +336,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        if (!Settings.IsSearchEnabled) {
-            Log.LogWarning($"{nameof(OnAccountChangedEvent)}: search is disabled");
+        if (!Settings.IsSearchEnabled)
             return;
-        }
 
         var (account, _, changeKind) = eventCommand;
         // NOTE: we don't have any other chance to process removed items
@@ -358,10 +356,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        if (!Settings.IsSearchEnabled) {
-            Log.LogWarning($"{nameof(OnChatChangedEvent)}: search is disabled");
+        if (!Settings.IsSearchEnabled)
             return;
-        }
 
         var (chat, _, changeKind) = eventCommand;
         // NOTE: we don't have any other chance to process removed items
