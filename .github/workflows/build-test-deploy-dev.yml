@@ -818,7 +818,6 @@ jobs:
           packageName: ${{env.APP_ID}}
           releaseFiles: ${{env.PACKAGE_FILE_NAME}}
           track: internal
-          status: ${{env.IS_DEV_MAUI == 'true' && 'draft' || 'completed'}}
 
   build-win-pkg:
     name: Build win app package for ${{ github.ref_name }}
