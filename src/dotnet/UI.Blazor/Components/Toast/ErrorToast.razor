@@ -25,10 +25,13 @@
         </div>
         <div class="c-message">@ChildContent</div>
     </div>
-    <ButtonX
-        Class="btn-transparent btn-xs"
-        Click="@(_ => Dismiss())">
-    </ButtonX>
+    <TimerCloseButton
+        Class="btn-sm"
+        CircleClass="btn-sm"
+        TimerButtonColor="var(--text-banner-error)"
+        Click="@(_ => Dismiss())"
+        Delay="@(AutoDismissDelay ?? 0)"/>
+
 </div>
 
 @code {

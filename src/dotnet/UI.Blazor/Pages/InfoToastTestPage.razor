@@ -1,8 +1,9 @@
-﻿@page "/test/toast"
+﻿@page "/test/toasts"
 @using ActualChat.UI.Blazor.Services
+@using System.Text
 
 <RequireAccount MustBeAdmin="true"/>
-<MainHeader>InfoToast Test Page</MainHeader>
+<MainHeader>Toasts Test Page</MainHeader>
 
 <div class="test-page-text">
     <div>
@@ -43,14 +44,56 @@
     <Button Click="@(_ => ToastUI.Show("Toast", "icon-checkmark-circle", ToastDismissDelay.Short))">
         Toast with icon
     </Button>
-    <Button Click="@(_ => ToastUI.Show("Middle toast", ToastDismissDelay.Long))">
+    <Button Click="@(_ => ToastUI.Show("Middle size 2 line toast. Middle size 2 line toast. Middle size 2 line toast.", ToastDismissDelay.Long))">
         Toast with auto dismiss
     </Button>
-    <Button Click="@(_ => ToastUI.Show("Big toast, very big toast", () => {}, "Undo", ToastDismissDelay.Short))">
+    <Button Click="@(_ => ToastUI.Show("We used to speak, laugh, and cry\n        But now we text, \"like\", and send emojis.\n\n        It's slower, inconvenient, and less expressive.\n\n        With all the progress in technology and AI,\n        how it happened that we can't just talk in chats?", () => {}, "Undo", ToastDismissDelay.Short))">
         Toast with action
+    </Button>
+</div>
+
+<div class="test-page-btn-group">
+    <Button Class="btn-primary" Click="@(_ => OnClick(1))">
+        Small Error toast
+    </Button>
+    <Button Class="btn-primary" Click="@(_ => OnClick(3))">
+        Middle Error toast
+    </Button>
+    <Button Class="btn-primary" Click="@(_ => OnClick(5))">
+        Big Error toast
+    </Button>
+</div>
+<div class="test-page-btn-group">
+    <Button Class="btn-danger" Click="@(_ => OnLogErrorClick())">
+        Log error
+    </Button>
+    <Button Class="btn-danger" Click="@(_ => OnCrashClick())">
+        Throw error
+    </Button>
+    <Button Class="btn-danger" Click="@(_ => OnAppCrashClick())">
+        App crash error
     </Button>
 </div>
 
 @code {
     [Inject] private ToastUI ToastUI { get; init; } = null!;
+    [Inject] protected AppBlazorCircuitContext CircuitContext { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private ILogger<InfoToastTestPage> Log { get; init; } = null!;
+
+    private void OnClick(int count) {
+        var result = new StringBuilder().Insert(0, "There's something wrong here! ", count).ToString();
+        UICommander.ShowError(StandardError.Constraint(result));
+    }
+
+    private void OnLogErrorClick()
+        => Log.LogError("!!!An error log entry is generated on ErrorToastTestPage");
+
+    private void OnCrashClick()
+        => throw StandardError.Internal("Simulated crash!");
+
+    private void OnAppCrashClick() {
+        var rootComponent = (IRootComponent)CircuitContext.RootComponent;
+        rootComponent.SimulateCrash(StandardError.Internal("Simulated application crash!"));
+    }
 }
