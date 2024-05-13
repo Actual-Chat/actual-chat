@@ -36,6 +36,10 @@ body.wide .toast-container {
 .toast:has(.btn-timer) {
     @apply pr-3 md:pr-2;
 }
+.toast:not(:has(.c-icon)) .c-content {
+    @apply ml-1;
+}
+
 .toast i {
     @apply text-toast-text;
 }
