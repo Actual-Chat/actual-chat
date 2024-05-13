@@ -2,9 +2,9 @@ using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
-namespace ActualChat.MLSearch.UnitTests.Engine.OpenSearch;
+namespace ActualChat.MLSearch.UnitTests.Engine.OpenSearch.Configuration;
 
-public class PlainIndexSettingsFactoryTest(ITestOutputHelper @out) : TestBase(@out)
+public class SemanticIndexSettingsFactoryTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private const string ModelAllConfig = "__SOME_CONTENT__";
     private const string ModelId = "id_model_qwerty";
@@ -18,15 +18,18 @@ public class PlainIndexSettingsFactoryTest(ITestOutputHelper @out) : TestBase(@o
     public void SettingsPropertiesSetAsExpected()
     {
         const string indexName = "test-index";
-        var factory = new PlainIndexSettingsFactory(_indexNames, MockClusterSetup());
+        var factory = new SemanticIndexSettingsFactory(_indexNames, MockClusterSetup());
         var settings = factory.Create(indexName);
+        Assert.Equal(ModelId, settings.ModelId);
+        Assert.NotEqual(settings.IndexName, settings.IngestPipelineId);
         Assert.Contains(indexName, settings.IndexName, StringComparison.Ordinal);
+        Assert.Contains(indexName, settings.IngestPipelineId, StringComparison.Ordinal);
     }
 
     [Fact]
     public void NullOrEmptyIndexNameIsNotAllowed()
     {
-        var factory = new PlainIndexSettingsFactory(_indexNames, MockClusterSetup());
+        var factory = new SemanticIndexSettingsFactory(_indexNames, MockClusterSetup());
 #pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         Assert.Throws<ArgumentNullException>(() => factory.Create(null));
 #pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
