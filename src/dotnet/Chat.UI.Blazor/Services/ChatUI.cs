@@ -478,7 +478,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
                 // Peer chat can be included in the chat list only within People and None filters.
                 if (settings.Filter == ChatListFilter.People || settings.Filter == ChatListFilter.None) {
                     // Check if peer chat was shown for place chat list view
-                    var chats = await ChatListUI.ListAllUnordered(SelectedPlaceId.Value).ConfigureAwait(false);
+                    var chats = await ChatListUI.ListPlaceMembers(SelectedPlaceId.Value, default).ConfigureAwait(false);
                     if (chats.ContainsKey(chatId))
                         return; // Keep selected group
                 }

@@ -23,6 +23,8 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     private IContacts Contacts => Hub.Contacts;
     private IAuthors Authors => Hub.Authors;
+    private IPlaces Places => Hub.Places;
+    private AccountUI AccountUI => Hub.AccountUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatUI ChatUI => Hub.ChatUI;
     private SearchUI SearchUI => Hub.SearchUI;
@@ -208,10 +210,43 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         ChatListFilter filter,
         CancellationToken cancellationToken = default)
     {
-        var chatById = await ListAllUnordered(placeId, cancellationToken).ConfigureAwait(false);
+        IReadOnlyDictionary<ChatId, ChatInfo> chatById;
+        if (!placeId.IsNone && filter == ChatListFilter.People)
+            chatById = await ListPlaceMembers(placeId, cancellationToken).ConfigureAwait(false);
+        else
+            chatById = await ListAllUnordered(placeId, cancellationToken).ConfigureAwait(false);
         return chatById.Values
             .Where(filter.Filter ?? (_ => true))
             .ToDictionary(c => c.Id, c => c);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListPlaceMembers(PlaceId placeId, CancellationToken cancellationToken)
+    {
+        if (placeId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(placeId));
+
+        DebugLog?.LogDebug("-> ListPlaceMembers (PlaceId={PlaceId})", placeId);
+        var startedAt = CpuTimestamp.Now;
+
+        var placeUsers = await Places.ListUserIds(Session, placeId, cancellationToken).ConfigureAwait(false);
+        var owner = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        var chatIds = placeUsers
+            .Where(userId => userId != owner.Id)
+            .Select(userId => (ChatId)new PeerChatId(owner.Id, userId));
+
+        var chatInfos = (await chatIds
+                .Select(chatId => ChatUI.Get(chatId, cancellationToken))
+                .CollectResults(256)
+                .ConfigureAwait(false)
+            ).Select(x => x.ValueOrDefault)
+            .SkipNullItems()
+            .ToDictionary(c => c.Id);
+
+        DebugLog?.LogDebug("<- ListPlaceMembers (PlaceId={PlaceId}, {Count} contacts, {Duration})",
+            placeId, chatInfos.Count, startedAt.Elapsed.ToShortString());
+
+        return chatInfos;
     }
 
     // Protected methods
