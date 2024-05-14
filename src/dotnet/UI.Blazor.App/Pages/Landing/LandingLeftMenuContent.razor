@@ -70,8 +70,8 @@
 
     // use explicit namespace - otherwise it doesn't compile on 7.0.302 SDK
     // ReSharper disable once RedundantNameQualifier
-    [Parameter] public  ActualChat.UI.Blazor.App.Pages.Landing.LandingLeftMenu Owner { get; init; } = null!;
-    [Parameter] public bool ShowHome { get; init; }
+    [Parameter] public  ActualChat.UI.Blazor.App.Pages.Landing.LandingLeftMenu Owner { get; set; } = null!;
+    [Parameter] public bool ShowHome { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {

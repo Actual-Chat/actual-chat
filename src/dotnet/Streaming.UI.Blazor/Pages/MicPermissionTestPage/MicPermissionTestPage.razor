@@ -69,7 +69,7 @@
     [Inject] private ILogger<MicPermissionTestPage> Log { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    [CascadingParameter] public ScreenSize ScreenSize { get; init; }
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     private void OnClick(GuideType guideType)
         => ModalUI.Show(new RecordingTroubleshooterModal.Model(guideType));

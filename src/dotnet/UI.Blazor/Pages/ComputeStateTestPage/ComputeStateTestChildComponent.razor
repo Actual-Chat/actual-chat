@@ -12,7 +12,7 @@
 @code {
     [Inject] ComputeStateTestService TestService { get; init; } = null!;
 
-    [CascadingParameter] ComputeStateTestComponent.Model ParentModel { get; init; }
+    [CascadingParameter] ComputeStateTestComponent.Model ParentModel { get; set; }
 
     protected override ComputedState<ComputeStateTestComponent.Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

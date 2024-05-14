@@ -101,7 +101,7 @@
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     [Inject] private NotificationUI NotificationUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public Mutable<ElementReference> NextButtonRef { get; init; } = null!;
+    [Parameter, EditorRequired] public Mutable<ElementReference> NextButtonRef { get; set; } = null!;
 
     public override bool IsCompleted => OnboardingUI.LocalSettings.Value.IsPermissionsStepCompleted;
 

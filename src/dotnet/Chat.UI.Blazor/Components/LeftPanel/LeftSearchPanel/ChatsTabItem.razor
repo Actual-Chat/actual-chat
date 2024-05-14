@@ -62,8 +62,8 @@
     private SearchUI SearchUI => Hub.SearchUI;
     private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
 
-    [Parameter, EditorRequired] public ChatListKind ListKind { get; init; } = ChatListKind.All;
-    [Parameter, EditorRequired] public int Index { get; init; }
+    [Parameter, EditorRequired] public ChatListKind ListKind { get; set; } = ChatListKind.All;
+    [Parameter, EditorRequired] public int Index { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
