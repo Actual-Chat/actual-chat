@@ -21,7 +21,7 @@ body.device-ios * {
 .btn, .btn.btn-md {
     @apply relative;
     @apply flex-initial inline-flex-x items-center justify-center;
-    @apply px-3;
+    @apply px-4;
     @apply rounded-lg border-0 border-transparent;
     @apply text-headline-1;
     @apply fill-current;
