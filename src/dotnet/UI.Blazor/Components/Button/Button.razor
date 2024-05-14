@@ -1,5 +1,3 @@
-@using System.Text
-@using Sentry
 @namespace ActualChat.UI.Blazor.Components
 @{
     var hasIcon = Icon != null;
@@ -19,7 +17,7 @@
         } else {
             @Icon
             if (Title != null) {
-                <span>@Title</span>
+                <span class="btn-title">@Title</span>
             }
         }
     </div>
