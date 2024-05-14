@@ -29,6 +29,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     private samplesSinceLastReporting = 0;
     private frameCount: number = 0;
     private lastFrameProcessedAt: number = 0;
+    private promiseQueue: Promise<void> = Promise.resolve();
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
@@ -89,8 +90,8 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
 
                 if (this.buffer.pull(audioBuffer)) {
                     if (this.worker != null)
-                        // TODO(AK): make promise chain to insure frame sequence is not broken
-                        void this.worker.onEncoderWorkletSamples(audioArrayBuffer, rpcNoWait);
+                        this.promiseQueue = this.promiseQueue.then(() =>
+                            this.worker.onEncoderWorkletSamples(audioArrayBuffer));
                     else
                         warnLog?.log('process: worklet port is still undefined!');
                 } else {
