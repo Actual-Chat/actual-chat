@@ -5,7 +5,7 @@
 }
 
 @code {
-    [Parameter, EditorRequired] public object RenderKey { get; init; } = null!;
-    [Parameter, EditorRequired] public int Depth { get; init; }
-    [Parameter] public RenderFragment<object>? ChildContent { get; init; }
+    [Parameter, EditorRequired] public object RenderKey { get; set; } = null!;
+    [Parameter, EditorRequired] public int Depth { get; set; }
+    [Parameter] public RenderFragment<object>? ChildContent { get; set; }
 }

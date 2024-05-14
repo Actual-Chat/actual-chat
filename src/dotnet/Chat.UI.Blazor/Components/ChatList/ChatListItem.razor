@@ -118,8 +118,8 @@ else {
     private ILogger Log => _log ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
 
-    [Parameter, EditorRequired] public ChatListKind ListKind { get; init; } = ChatListKind.All;
-    [Parameter, EditorRequired] public int Index { get; init; }
+    [Parameter, EditorRequired] public ChatListKind ListKind { get; set; } = ChatListKind.All;
+    [Parameter, EditorRequired] public int Index { get; set; }
 
     // public ChatListItem() {
     //     Options = ComputedStateComponentOptions.RecomputeOnParametersSet;

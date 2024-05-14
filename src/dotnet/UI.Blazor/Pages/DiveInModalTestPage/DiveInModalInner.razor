@@ -3,7 +3,7 @@
 </div>
 
 @code {
-    [CascadingParameter] public DiveInModalPageContext Context { get; init; } = null!;
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     protected override void OnInitialized() {
         Context.SetTitle("Dive-in modal (Inner)");

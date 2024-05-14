@@ -19,7 +19,7 @@
     [Inject] private History History { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatListView ChatListView { get; set; } = null!;
-    [Parameter, EditorRequired] public ChatListFilter ChatListFilter { get; init; } = ChatListFilter.None;
+    [Parameter, EditorRequired] public ChatListFilter ChatListFilter { get; set; } = ChatListFilter.None;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
