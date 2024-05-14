@@ -5,6 +5,7 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
 internal sealed class EmbeddingModelProps(string id, int embeddingDimension, string allConfig)
 {
+    private static readonly Encoding _utf8Encoding = new UTF8Encoding(false);
     public string Id => id;
     public int EmbeddingDimension => embeddingDimension;
 
@@ -14,7 +15,7 @@ internal sealed class EmbeddingModelProps(string id, int embeddingDimension, str
     // on the backend cluster.
     private string? _uniqueKey;
     public string UniqueKey
-        => _uniqueKey ??= Convert.ToHexString(SHA1.HashData(Encoding.ASCII.GetBytes(allConfig)))
+        => _uniqueKey ??= Convert.ToHexString(SHA1.HashData(_utf8Encoding.GetBytes(allConfig)))
             .ToLower(CultureInfo.InvariantCulture);
 #pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
 }
