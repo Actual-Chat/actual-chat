@@ -38,5 +38,5 @@ public class MauiContactsPermissionHandler : ContactsPermissionHandler
     }
 
     protected override Task Troubleshoot(CancellationToken cancellationToken)
-        => Task.CompletedTask;
+        => OpenSystemSettings();
 }
