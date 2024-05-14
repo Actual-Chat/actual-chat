@@ -17,7 +17,8 @@
     scrollbar-width: none;
 }
 
-.edit-chat-settings-modal .chat-settings-container {
+.edit-chat-settings-modal .chat-settings-container,
+.edit-place-settings-modal .chat-settings-container {
     @apply px-2;
 }
 

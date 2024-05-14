@@ -7,10 +7,10 @@
     @apply items-center justify-center;
     @apply min-h-5 min-w-5 max-h-5 max-w-5;
     @apply rounded-full;
-    @apply bg-05;
+    @apply bg-after-darker;
 }
 .text-box-btn i {
-    @apply text-xs text-06;
+    @apply text-xs text-02;
 }
 .text-box:focus-within .text-box-btn {
     @apply flex;

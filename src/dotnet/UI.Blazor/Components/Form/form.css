@@ -75,13 +75,15 @@
     @apply flex-x w-full items-center gap-x-4;
 }
 
+/* Form section validation */
 .form-section-validation {
-    @apply flex-y;
+    @apply flex-y gap-x-4;
+    @apply h-4;
+    @apply pl-4;
+    @apply bg-modal;
+    @apply text-caption-6 font-normal text-danger;
 }
 
-.form-section-validation-message {
-    @apply text-caption-2 text-danger;
-}
 
 /*Label inside input*/
 .form-section-content.label-inside-input {

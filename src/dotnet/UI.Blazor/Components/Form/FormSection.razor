@@ -38,10 +38,10 @@
             @Right
         </div>
     }
-    @if (isInvalid && ShowErrors) {
+    @if (!HideValidationMessage) {
         <div class="form-section-validation">
-            @foreach (var message in messages) {
-                <div class="form-section-validation-message">@message</div>
+            @if (isInvalid) {
+                @messages.FirstOrDefault()
             }
         </div>
     }
@@ -67,6 +67,7 @@
     [Parameter] public bool IsRequired { get; set; }
     [Parameter] public bool IsLabelInsideInput { get; set; }
     [Parameter] public bool ShowErrors { get; set; }
+    [Parameter] public bool HideValidationMessage { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Right { get; set; }
     [Parameter] public Expression<Func<TValue>>? For { get; set; }

@@ -20,7 +20,6 @@
         <Body>
         <FormBlock>
             <AsyncDataAnnotationsValidator @ref="_validator"/>
-            <ValidationSummary/>
 
             <FormSection
                 For="() => _form.Name"
@@ -50,14 +49,15 @@
             <FormSection
                 For="() => _form.Phone"
                 InputId="@_form.PhoneFieldId"
-                Label="Phone "
+                Label="Phone"
                 Class="grow"
-                IsLabelInsideInput="true"
-                IsRequired="true">
+                IsLabelInsideInput="true">
                 <ChildContent>
                     <InputText
                         id="@_form.PhoneFieldId"
-                        @bind-Value="_form.Phone"
+                        Value="@(!_form.Phone.IsNullOrEmpty() ? _form.Phone : _defaultPhoneValue)"
+                        ValueExpression="@(() => _form.Phone)"
+                        ValueChanged="@OnPhoneChanged"
                         autocomplete="tel"
                         type="tel"
                         inputmode="tel"
@@ -136,6 +136,7 @@
     private FormModel _form = null!;
     private AccountFull _account = AccountFull.Loading;
     private AsyncDataAnnotationsValidator _validator = null!;
+    private readonly string _defaultPhoneValue = PhoneCodes.Default.DisplayCode;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
@@ -151,7 +152,7 @@
         _form.Name = _account.Name;
         _form.LastName = _account.LastName;
         _form.Email = _account.Email.NullIfEmpty();
-        _form.Phone = !_account.Phone.IsNone ? _account.Phone.ToReadable() : PhoneCodes.Default.DisplayCode;
+        _form.Phone = !_account.Phone.IsNone ? _account.Phone.ToReadable() : "";
         _form.ParsedPhone = _account.Phone;
 
         _form.CopyToBase();
@@ -161,11 +162,13 @@
         if (!await _validator.Validate())
             return;
 
-        var phone = _form.ParsedPhone = await Phones.Parse(_form.Phone, default);
-        if (!phone.IsValid)
-            return;
-
         var account = await UIHub.Accounts.GetOwn(Session, default);
+        var phone = _form.ParsedPhone = await Phones.Parse(_form.Phone, default);
+        if (phone != account.Phone) {
+            if (!phone.IsValid)
+                return;
+        }
+
         var updateAccountCommand = new Accounts_Update(
             Session,
             account with {
@@ -185,6 +188,13 @@
     private void OnCancel()
         => Modal.Close();
 
+    private void OnPhoneChanged(string? value) {
+        var newValue = value ?? "";
+        if (newValue == _defaultPhoneValue)
+            newValue = "";
+        _form.Phone = newValue;
+    }
+
     private async Task OnPhoneVerified()
         => _account = await UIHub.Accounts.GetOwn(Session, default);
 
@@ -198,14 +208,14 @@
 
     public sealed class FormModel(ComponentIdGenerator? componentIdGenerator)
         : FormModel<FormModel>("own-account-editor", componentIdGenerator) {
-        [Required, MinLength(4, ErrorMessage = "Name must be at least 4 characters.")]
+        [Required]
         public string Name { get; set; } = "";
         public string NameFieldId { get; set; } = "";
         public string LastName { get; set; } = "";
         public string LastNameFieldId { get; set; } = "";
         [EmailAddress] public string? Email { get; set; }
         public string EmailFieldId { get; set; } = "";
-        [PhoneNumber] public string Phone { get; set; } = "";
+        [PhoneNumber(IsOptional = true)] public string Phone { get; set; } = "";
         public Phone ParsedPhone { get; set; }
         public string PhoneFieldId { get; set; } = "";
     }

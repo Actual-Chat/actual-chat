@@ -7,7 +7,7 @@
 .is-default-avatar {
     @apply h-12 my-2;
 }
-.is-default-avatar .form-section-content {
+.form.form-y section.is-default-avatar .form-section-content {
     @apply px-0;
 }
 .is-default-avatar label.checkbox {

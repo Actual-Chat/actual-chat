@@ -24,7 +24,7 @@
     @{
         _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
     }
-    <FormBlock>
+    <FormBlock Class="last">
         <DataAnnotationsValidator/>
 
         <PicUpload
@@ -46,7 +46,7 @@
         </FormSection>
     </FormBlock>
 
-    <FormBlock Title="Place type">
+    <FormBlock Class="with-input-radio first last">
         <InputRadioGroup Name="chat_type" DisplayName="Place type" @bind-Value="_form.IsPublic">
             <TileItem>
                 <Icon>
@@ -77,16 +77,17 @@
     @if (_form.IsPublic) {
         @if (m.Link is { } publicUrl) {
             _form.PublicUrl = publicUrl.ShortLocalUrl;
-            <FormBlock>
-                <TileItem Class="field-chat-public-url">
+            <FormBlock Class="with-input-radio">
+                <TileItem Class="field-chat-public-url unhovered">
                     <Icon>
                         <i class="icon-link-2"></i>
                     </Icon>
                     <Content>
                         <FormSection For="() => _form.PublicUrl" InputId="@_form.PublicUrlFormId"
-                                     Label="Public link" IsLabelInsideInput="true">
+                                     Label="Public link" IsLabelInsideInput="true" HideValidationMessage="true">
                             <TextBox @bind-Value="@_form.PublicUrl" Id="@_form.PublicUrlFormId" readonly/>
                         </FormSection>
+                        <CopyToClipboard ButtonClass="btn-transparent" Text="@publicUrl.AbsoluteUrl"/>
                     </Content>
                     <Right>
                         <CopyToClipboard Text="@publicUrl.AbsoluteUrl"/>
@@ -120,7 +121,7 @@
     }
 
     @if (canEditMembers || isOwner) {
-        <FormBlock>
+        <div class="chat-settings-container">
             @if(canEditMembers) {
                 <TileItem Class="item-manage-members" Click="OnManageMembersClick">
                     <Icon>
@@ -140,7 +141,7 @@
                     <Content>Leave place & delete</Content>
                 </TileItem>
             }
-        </FormBlock>
+        </div>
     }
 </Form>
 

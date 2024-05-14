@@ -17,7 +17,7 @@
            placeholder="@Placeholder"
            @attributes="@AdditionalAttributes"
            @onchange="EventCallback.Factory.CreateBinder<string>(this, v => CurrentValueAsString = v, CurrentValueAsString!)" />
-    @if (ClearButton) {
+    @if (ClearButton && !string.IsNullOrEmpty(CurrentValue)) {
         <button type="button" class="text-box-btn" @onclick="@OnClearClick">
             <i class="icon-close"></i>
         </button>

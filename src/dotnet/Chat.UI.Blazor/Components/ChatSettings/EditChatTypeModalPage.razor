@@ -64,7 +64,7 @@
                     </Icon>
                     <Content>
                         <FormSection For="() => _form.PublicUrl" InputId="@_form.PublicUrlFormId"
-                                     Label="Public link" IsLabelInsideInput="true">
+                                     Label="Public link" IsLabelInsideInput="true" HideValidationMessage="true">
                             <TextBox @bind-Value="@_form.PublicUrl" Id="@_form.PublicUrlFormId" readonly/>
                         </FormSection>
                         <CopyToClipboard ButtonClass="btn-transparent" Text="@publicUrl.AbsoluteUrl"/>
