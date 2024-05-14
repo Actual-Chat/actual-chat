@@ -16,6 +16,11 @@ body {
     width: 100%;
 }
 
+body.device-ios * {
+    /* disable pinch zoom gestures and double-tap to zoom in iOS Safari */
+    touch-action: pan-x pan-y;
+}
+
 /* prevent pull-to-refresh for Safari 16+ */
 @media screen and (pointer: coarse) {
     @supports (-webkit-backdrop-filter: blur(1px)) and (overscroll-behavior-y: none)  {
