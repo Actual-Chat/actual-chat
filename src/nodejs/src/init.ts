@@ -14,3 +14,10 @@ if (window.visualViewport) {
         document.documentElement.style.setProperty('--vh', `${vh}px`);
     });
 }
+
+if (DeviceInfo.isIos) {
+    window.addEventListener('scroll', e => {
+        e.preventDefault();
+        window.scrollTo(0, 0);
+    });
+}
