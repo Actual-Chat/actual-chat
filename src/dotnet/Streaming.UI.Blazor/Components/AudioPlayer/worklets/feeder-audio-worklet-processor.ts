@@ -95,8 +95,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
         debugLog?.log(`#${this.id}.resume`);
         this.playbackState = this.playbackState === 'ended'
-                             ? 'paused'
-                             : 'playing';
+            ? 'paused'
+            : 'playing';
         this.stateHasChanged();
         return ResolvedPromise.Void;
     }
