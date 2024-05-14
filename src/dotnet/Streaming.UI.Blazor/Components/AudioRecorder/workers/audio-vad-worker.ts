@@ -142,6 +142,11 @@ async function processQueue(): Promise<void> {
                 const monoPcm = new Float32Array(buffer, 0, SAMPLES_PER_WINDOW_30);
                 vadEvent = await webrtcVoiceDetector.appendChunk(monoPcm);
             }
+            else {
+                warnLog?.log(`processQueue: unexpected buffer length:`, buffer.byteLength);
+                // wrong sample buffer - let's skip it
+                vadEvent = 0;
+            }
             lastVadEventProcessedAt = Date.now();
 
             void vadWorklet.releaseBuffer(buffer, rpcNoWait);
