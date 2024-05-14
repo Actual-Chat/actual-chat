@@ -1,6 +1,5 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Events;
-using ActualChat.Contacts;
 using ActualChat.Db;
 using ActualChat.Users;
 using ActualChat.Users.Events;
@@ -12,12 +11,10 @@ namespace ActualChat.Chat;
 public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 {
     private IChatsBackend? _chatsBackend;
-    private IContactsBackend? _contactsBackend;
 
     private IAccountsBackend AccountsBackend { get; }
     private IAvatarsBackend AvatarsBackend { get; }
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-    private IContactsBackend ContactsBackend => _contactsBackend ??= Services.GetRequiredService<IContactsBackend>();
     private IDbEntityResolver<string, DbAuthor> DbAuthorResolver { get; }
     private IDbShardLocalIdGenerator<DbAuthor, string> DbAuthorLocalIdGenerator { get; }
     private DiffEngine DiffEngine { get; }
@@ -717,16 +714,15 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
     private async Task ExcludeUserFromPlaceChats(UserId userId, PlaceId placeId, CancellationToken cancellationToken)
     {
-        var contacts = await ContactsBackend.ListIds(userId, placeId, cancellationToken).ConfigureAwait(false);
-        await Task.WhenAll(contacts.Select(async contactId => {
-                var chatId = contactId.ChatId;
-                var author = await GetByUserId(chatId, userId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
+        var authorIds = await ListPlaceAuthorIdsByUserId(placeId, userId, cancellationToken).ConfigureAwait(false);
+        await Task.WhenAll(authorIds.Select(async authorId => {
+                var author = await Get(authorId.ChatId, authorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
                     .ConfigureAwait(false);
                 if (author == null || author.HasLeft)
                     return;
 
                 var upsertCommand = new AuthorsBackend_Upsert(
-                    chatId,
+                    authorId.ChatId,
                     author.Id,
                     default,
                     author.Version,
@@ -776,5 +772,19 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbAuthors.Select(x => x.ToModel()).ToImmutableList();
+    }
+
+    private async Task<ImmutableList<AuthorId>> ListPlaceAuthorIdsByUserId(PlaceId placeId, UserId userId, CancellationToken cancellationToken)
+    {
+        var authorIdPrefix = PlaceChatId.Format(placeId, Symbol.Empty);
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+        var dbAuthorSids = await dbContext.Authors
+            .Where(a => a.Id.StartsWith(authorIdPrefix))
+            .Where(a => a.UserId == userId)
+            .Select(a => a.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbAuthorSids.Select(AuthorId.Parse).ToImmutableList();
     }
 }
