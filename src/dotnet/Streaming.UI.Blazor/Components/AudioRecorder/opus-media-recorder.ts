@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
-import { audioContextSource } from '../../Services/audio-context-source';
+import { recordingAudioContextSource } from '../../Services/audio-context-source';
 import { AudioVadWorker } from './workers/audio-vad-worker-contract';
 import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
 import { Disposable } from 'disposable';
@@ -24,6 +24,7 @@ import { AudioInitializer } from "../../Services/audio-initializer";
 import { BrowserInit } from "../../../UI.Blazor/Services/BrowserInit/browser-init";
 import { AudioDiagnosticsState } from "./audio-recorder";
 import { BrowserInfo } from "../../../UI.Blazor/Services/BrowserInfo/browser-info";
+import { SAMPLE_RATE } from './constants';
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -113,12 +114,12 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
                 return {
                     audio: {
                         channelCount: 1,
-                        sampleRate: 48000,
+                        sampleRate: SAMPLE_RATE,
                         sampleSize: 32,
                         echoCancellation: true,
                         autoGainControl: true,
                         noiseSuppression: true,
-                        latency: 0,
+                        latency: 20,
                         advanced: [
                             // The constraint sets going earlier have higher priority!
                             // 1. Echo cancellation
@@ -140,7 +141,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
                             { googTypingNoiseDetection: { exact: true } },
                             { googHighpassFilter: { exact: true } },
                             { googAudioMirroring: { exact: false } },
-                            { latency: { exact: 0 } },
+                            { latency: { exact: 20 } },
                         ],
                     },
                     video: false,
@@ -385,7 +386,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
             attach: attach,
             detach: _ => retry(2, () => detach()),
         }
-        const contextRef = audioContextSource.getRef('recording', options);
+        const contextRef = recordingAudioContextSource.getRef('recording', options);
         this.pauseContextRef = contextRef.use();
         try {
             debugLog?.log(`start(): awaiting whenFirstTimeReady...`);
@@ -473,9 +474,9 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         diagnosticsState = (await Promise.race([this.encoderWorklet?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
 
         if (diagnosticsState.lastFrameProcessedAt == 0 || diagnosticsState.lastEncoderWorkletFrameProcessedAt) {
-            await audioContextSource.context.suspend();
+            await recordingAudioContextSource.context.suspend();
             if (BrowserInfo.appKind === 'MauiApp')
-                await audioContextSource.context.resume(); // we don't need user interaction to resume
+                await recordingAudioContextSource.context.resume(); // we don't need user interaction to resume
         }
 
         return diagnosticsState;

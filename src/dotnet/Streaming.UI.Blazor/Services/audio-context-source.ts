@@ -14,6 +14,8 @@ import { Versioning } from 'versioning';
 import { AudioContextRef, AudioContextRefOptions } from './audio-context-ref';
 import { Subject, Observable, firstValueFrom } from 'rxjs';
 import { AudioContextDestinationFallback } from "./audio-context-destination-fallback";
+import * as playerConstants from '../Components/AudioPlayer/constants';
+import * as recorderConstants from '../Components/AudioRecorder/constants';
 const { logScope, infoLog, debugLog, warnLog } = Log.get('AudioContextSource');
 
 const MaintainCyclePeriodMs = 2000;
@@ -33,6 +35,8 @@ const SuspendDebounceTimeMs: number = 2000;
 const Debug = {
     brokenKey: 'debugging_isBroken',
 }
+
+export type AudioContextPurpose = 'recording' | 'playback';
 
 export interface AudioContextSource {
     get context(): AudioContext;
@@ -84,7 +88,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
     public get refCount(): number { return this._refCount }
     public abstract get isActive(): boolean;
 
-    protected constructor() {
+    protected constructor(public readonly purpose: AudioContextPurpose) {
         this.onDeviceAwakeHandler = OnDeviceAwake.events.add(() => this.onDeviceAwake());
         if (AudioContextDestinationFallback.isRequired) {
             this.fallbackDestination = new AudioContextDestinationFallback();
@@ -222,8 +226,8 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
     // Key properties
     public get isActive(): boolean { return this._isActive }
 
-    public constructor() {
-        super();
+    public constructor(purpose: AudioContextPurpose) {
+        super(purpose);
         void this.maintain();
     }
 
@@ -454,8 +458,8 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         // Try to create audio context early w/o waiting for user interaction.
         // It might be in suspended state in this case.
         const context = new AudioContext({
-            latencyHint: 'interactive',
-            sampleRate: 48000,
+            latencyHint: 'balanced',
+            sampleRate: this.purpose === 'playback' ? playerConstants.SAMPLE_RATE : recorderConstants.SAMPLE_RATE,
         });
         this._contextCreated$.next(context);
         try {
@@ -704,7 +708,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
     }
 
     private createSilenceBuffer(context: AudioContext): AudioBuffer {
-        return context.createBuffer(1, 1, 48000);
+        return context.createBuffer(1, 1, this.purpose === 'playback' ? playerConstants.SAMPLE_RATE : recorderConstants.SAMPLE_RATE);
     }
 
     private throwIfUnused(): void {
@@ -743,8 +747,8 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
 class MauiAudioContextSource extends AudioContextSourceBase implements AudioContextSource {
     get isActive(): boolean { return true; }
 
-    public constructor() {
-        super();
+    public constructor(purpose: AudioContextPurpose) {
+        super(purpose);
     }
 
     public async whenReady(cancel?: Promise<symbol>): Promise<AudioContext> {
@@ -812,8 +816,8 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
         debugLog?.log(`create`);
 
         const context = new AudioContext({
-            latencyHint: 'interactive',
-            sampleRate: 48000,
+            latencyHint: 'balanced',
+            sampleRate: this.purpose === 'playback' ? playerConstants.SAMPLE_RATE : recorderConstants.SAMPLE_RATE,
         });
         Interactive.isInteractive = true;
         await context.resume();
@@ -834,7 +838,12 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
 // Init
 
 export const audioContextSource: AudioContextSource = BrowserInfo.appKind === "MauiApp"
-    ? new MauiAudioContextSource()
-    : new WebAudioContextSource();
+    ? new MauiAudioContextSource('playback')
+    : new WebAudioContextSource('playback');
 globalThis['audioContextSource'] = audioContextSource;
+
+export const recordingAudioContextSource: AudioContextSource = BrowserInfo.appKind === "MauiApp"
+    ? new MauiAudioContextSource('recording')
+    : new WebAudioContextSource('recording');
+globalThis['recordingAudioContextSource'] = recordingAudioContextSource;
 

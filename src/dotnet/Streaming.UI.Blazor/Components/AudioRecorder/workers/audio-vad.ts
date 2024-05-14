@@ -8,6 +8,7 @@ import { Versioning } from 'versioning';
 import { VoiceActivityChange, VoiceActivityDetector } from './audio-vad-contract';
 import { clamp } from 'math';
 import { Log } from 'logging';
+import { SAMPLE_RATE, SAMPLES_PER_WINDOW_32 } from '../constants';
 const { logScope, debugLog } = Log.get('AudioVadWorker');
 
 const MAX_SILENCE = 1.35; // 1.35 s - max silence period duration during active voice before break
@@ -207,7 +208,6 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     }
 }
 
-const SAMPLES_PER_WINDOW_16K = 512;
 export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
     private readonly modelUri: URL;
 
@@ -216,7 +216,7 @@ export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
     private c0: ort.Tensor;
 
     constructor(modelUri: URL, lastActivityEvent: VoiceActivityChange) {
-        super(16000, true, lastActivityEvent);
+        super(SAMPLE_RATE, true, lastActivityEvent);
 
         this.modelUri = modelUri;
         this.h0 = new ort.Tensor(new Float32Array(2 * 64), [2, 1, 64]);
@@ -257,11 +257,11 @@ export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
             return null;
         }
 
-        if (monoPcm.length !== SAMPLES_PER_WINDOW_16K) {
-            throw new Error(`appendChunk() accepts ${SAMPLES_PER_WINDOW_16K} sample audio windows only.`);
+        if (monoPcm.length !== SAMPLES_PER_WINDOW_32) {
+            throw new Error(`appendChunk() accepts ${SAMPLES_PER_WINDOW_32} sample audio windows only.`);
         }
 
-        const tensor = new ort.Tensor(monoPcm, [1, SAMPLES_PER_WINDOW_16K]);
+        const tensor = new ort.Tensor(monoPcm, [1, SAMPLES_PER_WINDOW_32]);
         const srArray = new BigInt64Array(1).fill(BigInt(16000));
         const sr = new ort.Tensor(srArray);
         const feeds = { input: tensor, h: h0, c: c0, sr: sr };

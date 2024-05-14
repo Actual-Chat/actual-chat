@@ -1,4 +1,4 @@
-﻿import { audioContextSource } from "../../../Streaming.UI.Blazor/Services/audio-context-source";
+﻿import { audioContextSource, recordingAudioContextSource } from "../../../Streaming.UI.Blazor/Services/audio-context-source";
 
 export class RecorderToggle {
     private static isInitialized = false;
@@ -10,6 +10,7 @@ export class RecorderToggle {
         const buttons = [...document.querySelectorAll<HTMLButtonElement>('div.recorder-wrapper > button')];
         buttons.forEach(btn =>
             btn.addEventListener('click', () => {
+                void recordingAudioContextSource.initContextInteractively();
                 void audioContextSource.initContextInteractively();
             }));
         this.isInitialized = true;

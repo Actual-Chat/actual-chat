@@ -24,6 +24,7 @@ import { RecorderStateEventHandler } from '../opus-media-recorder-contracts';
 import { Log } from 'logging';
 import { AudioDiagnosticsState } from '../audio-recorder';
 import { ObjectPool } from 'object-pool';
+import { BIT_RATE, SAMPLE_RATE, SAMPLES_PER_MS } from '../constants';
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
@@ -41,10 +42,8 @@ const CHUNKS_WILL_BE_SENT_ON_RESUME = 6; // 20ms * 6 = 120ms
 const CHUNKS_WILL_BE_SENT_ON_RECONNECT = 500; // 20ms * 500 = 10s
 const FADE_CHUNKS = 3;
 const BUFFER_CHUNKS = 4; // 80ms
-const CHUNK_SIZE = 960; // 20ms @ 48000KHz
+const CHUNK_SIZE = SAMPLES_PER_MS * 20; // 20ms at SAMPLE_RATE
 const DEFAULT_PRE_SKIP = 312;
-const SAMPLE_RATE = 48000;
-const BITRATE = 32000;
 
 /** buffer or callbackId: number of `end` message */
 const queue = new Denque<ArrayBuffer>();
@@ -55,7 +54,7 @@ const systemCodecConfig: AudioEncoderConfig = {
     codec: 'opus',
     numberOfChannels: 1,
     sampleRate: SAMPLE_RATE,
-    bitrate: BITRATE,
+    bitrate: BIT_RATE,
 };
 
 let hubConnection: signalR.HubConnection = null;
@@ -150,7 +149,7 @@ const serverImpl: OpusEncoderWorker = {
             debugLog?.log(`create: codec loaded`);
 
             // Warming up codec
-            encoder = new codecModule.Encoder();
+            encoder = new codecModule.Encoder(SAMPLE_RATE, BIT_RATE);
             for (let i = 0; i < 2; i++)
                 encoder.encode(pinkNoiseChunk.buffer);
             encoder.reset();

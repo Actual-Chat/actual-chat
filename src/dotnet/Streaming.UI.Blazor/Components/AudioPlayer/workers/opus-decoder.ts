@@ -10,6 +10,7 @@ import { FeederAudioWorklet } from '../worklets/feeder-audio-worklet-contract';
 import { ObjectPool } from 'object-pool';
 import { Log } from 'logging';
 import { BufferHandler } from "./opus-decoder-worker-contract";
+import { SAMPLE_RATE, SAMPLES_PER_WINDOW } from '../constants';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusDecoder');
 const enableFrequentDebugLog = false;
@@ -17,11 +18,6 @@ const enableFrequentDebugLog = false;
 /// #if MEM_LEAK_DETECTION
 debugLog?.log(`MEM_LEAK_DETECTION == true`);
 /// #endif
-
-// Raw audio chunk consists of SAMPLES_PER_WINDOW floats
-// 20ms * 48000Khz
-const SAMPLES_PER_WINDOW = 960;
-const SAMPLE_RATE = 48000;
 
 const systemCodecConfig: AudioDecoderConfig = {
     codec: 'opus',

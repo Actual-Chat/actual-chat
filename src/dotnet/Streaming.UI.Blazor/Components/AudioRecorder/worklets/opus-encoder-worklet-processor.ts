@@ -8,11 +8,11 @@ import { timerQueue } from 'timerQueue';
 import { Log } from 'logging';
 import { RecorderStateEventHandler } from "../opus-media-recorder-contracts";
 import {AudioDiagnosticsState} from "../audio-recorder";
+import { SAMPLES_PER_MS } from '../constants';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorkletProcessor');
 
-const SAMPLES_PER_MS = 48;
-const SAMPLES_PER_RECORDING_REPORT_CALL = 9600; // 200ms
+const SAMPLES_PER_RECORDING_REPORT_CALL = SAMPLES_PER_MS * 200; // 200ms
 
 export interface ProcessorOptions {
     timeSlice: number;
@@ -89,6 +89,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
 
                 if (this.buffer.pull(audioBuffer)) {
                     if (this.worker != null)
+                        // TODO(AK): make promise chain to insure frame sequence is not broken
                         void this.worker.onEncoderWorkletSamples(audioArrayBuffer, rpcNoWait);
                     else
                         warnLog?.log('process: worklet port is still undefined!');

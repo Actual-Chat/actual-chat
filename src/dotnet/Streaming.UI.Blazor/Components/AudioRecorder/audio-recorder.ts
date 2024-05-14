@@ -5,7 +5,7 @@ import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-inf
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { EventHandler } from 'event-handling';
 import { AudioPlayer } from '../AudioPlayer/audio-player';
-import { audioContextSource } from '../../Services/audio-context-source';
+import { recordingAudioContextSource } from '../../Services/audio-context-source';
 import { VoiceActivityChange } from './workers/audio-vad-contract';
 
 
@@ -205,8 +205,8 @@ export class AudioRecorder {
         if (!isMaui)
             diagnosticsState.hasMicrophonePermission = hasMicrophone && hasPermission;
 
-        diagnosticsState.isAudioContextSourceActive = audioContextSource.isActive;
-        diagnosticsState.isAudioContextActive = audioContextSource.context && audioContextSource.context.state === 'running';
+        diagnosticsState.isAudioContextSourceActive = recordingAudioContextSource.isActive;
+        diagnosticsState.isAudioContextActive = recordingAudioContextSource.context && recordingAudioContextSource.context.state === 'running';
         warnLog?.log('runDiagnostics: ', diagnosticsState);
         return await opusMediaRecorder.runDiagnostics(diagnosticsState);
     }

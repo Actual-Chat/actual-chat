@@ -45,7 +45,7 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
-    "@actual-chat/codec": "0.3.0",
+    "@actual-chat/codec": "0.4.1",
     "@actual-chat/webrtc-vad": "^0.1.20",
     "@floating-ui/dom": "^1.6.3",
     "@microsoft/signalr": "^8.0.0",
