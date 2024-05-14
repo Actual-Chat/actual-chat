@@ -1,9 +1,8 @@
 import { Log } from 'logging';
 import { AudioPlayer } from '../Components/AudioPlayer/audio-player';
 import { opusMediaRecorder } from '../Components/AudioRecorder/opus-media-recorder';
-import {AudioRecorder} from "../Components/AudioRecorder/audio-recorder";
-import {audioContextSource} from "./audio-context-source";
-import {PromiseSource, ResolvedPromise} from "promises";
+import { audioContextSource, recordingAudioContextSource } from './audio-context-source';
+import { ResolvedPromise } from 'promises';
 
 const { infoLog, warnLog } = Log.get('AudioInfo');
 
@@ -25,23 +24,21 @@ export class AudioInitializer {
             try {
                 await AudioPlayer.init();
                 this.isPlayerInitialized = true;
-            }
-            catch (e) {
+            } catch (e) {
                 warnLog?.log(`init: AudioPlayer.init failed:`, e);
                 throw e;
             }
-        }
+        };
 
         const initRecorder = async () => {
             try {
                 await opusMediaRecorder.init(baseUri, canUseNNVad);
                 this.isRecorderInitialized = true;
-            }
-            catch (e) {
+            } catch (e) {
                 warnLog?.log(`init: opusMediaRecorder.init failed:`, e);
                 throw e;
             }
-        }
+        };
 
         const promises: Promise<void>[] = [
             this.isPlayerInitialized ? ResolvedPromise.Void : initPlayer(),
@@ -57,10 +54,11 @@ export class AudioInitializer {
         this.backgroundState = backgroundState;
         if (backgroundState === 'Foreground' || backgroundState === 'BackgroundActive') {
             await audioContextSource.resumeAudio();
+            await recordingAudioContextSource.resumeAudio();
             await opusMediaRecorder.reconnect();
-        }
-        else {
+        } else {
             await audioContextSource.suspendAudio();
+            await recordingAudioContextSource.suspendAudio();
             await opusMediaRecorder.disconnect();
         }
     }

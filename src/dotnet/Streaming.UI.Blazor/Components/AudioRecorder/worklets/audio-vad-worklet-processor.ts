@@ -7,11 +7,9 @@ import { timerQueue } from 'timerQueue';
 import { ObjectPool } from 'object-pool';
 import { Log } from 'logging';
 import {AudioDiagnosticsState} from "../audio-recorder";
+import { SAMPLES_PER_WINDOW_30, SAMPLES_PER_WINDOW_32 } from '../constants';
 
 const { logScope, debugLog, warnLog } = Log.get('AudioVadWorkletProcessor');
-
-const SAMPLES_PER_WINDOW_32 = 1536;
-const SAMPLES_PER_WINDOW_30 = 1440;
 
 export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements AudioVadWorklet {
     private readonly buffer: AudioRingBuffer;
@@ -84,6 +82,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
 
             if (this.buffer.pull(vadBuffer)) {
                 if (this.worker)
+                    // TODO(AK): make promise chain to insure frame sequence is not broken
                     void this.worker.onFrame(vadArrayBuffer, rpcNoWait);
                 else
                     warnLog?.log('process: worklet port is still undefined!');

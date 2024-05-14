@@ -11,12 +11,12 @@ import { rpcClientServer, rpcNoWait, RpcNoWait } from 'rpc';
 import { Disposable } from 'disposable';
 import { ResolvedPromise } from 'promises';
 import { Log } from 'logging';
-import { BufferHandler } from "../workers/opus-decoder-worker-contract";
+import { BufferHandler } from '../workers/opus-decoder-worker-contract';
+import { SAMPLE_RATE } from '../constants';
 
 const { logScope, debugLog, warnLog } = Log.get('FeederProcessor');
 
-const SampleFrequency = 48000;
-const SampleDuration = 1.0 / SampleFrequency;
+const SampleDuration = 1.0 / SAMPLE_RATE;
 const PlayableBufferSize = 0.15; // In seconds, 1s = 5 * 20ms OPUS frames
 const OkBufferSize = 10.0; // In seconds
 const StateUpdatePeriod = 0.2;
@@ -95,8 +95,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
         debugLog?.log(`#${this.id}.resume`);
         this.playbackState = this.playbackState === 'ended'
-            ? 'paused'
-            : 'playing';
+                             ? 'paused'
+                             : 'playing';
         this.stateHasChanged();
         return ResolvedPromise.Void;
     }
@@ -122,7 +122,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     public process(
         _inputs: Float32Array[][],
         outputs: Float32Array[][],
-        _parameters: { [name: string]: Float32Array; }
+        _parameters: { [name: string]: Float32Array; },
     ): boolean {
         timerQueue?.triggerExpired();
         if (outputs == null || outputs.length === 0 || outputs[0].length === 0)
@@ -142,7 +142,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
         // We're in 'playing' state anywhere below this point
         // @ts-ignore - accessible from the AudioWorkletGlobalScope
-        const time =  currentTime;
+        const time = currentTime;
         for (let channelOffset = 0; channelOffset < channel.length;) {
             let chunk = this.chunks.peekFront();
             if (chunk === undefined) {
@@ -159,7 +159,9 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
             // decrease buffer size when there were no starving events during last 5s
             if (time - this.lastStarvingEventAt > 5000)
-                this.bufferSizeToStartPlayback = Math.max(this.bufferSizeToStartPlayback - PlayableBufferSize, PlayableBufferSize);
+                this.bufferSizeToStartPlayback = Math.max(
+                    this.bufferSizeToStartPlayback - PlayableBufferSize,
+                    PlayableBufferSize);
 
             if (chunk === 'end') {
                 channel.fill(0, channelOffset);
@@ -212,7 +214,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             bufferState: this.bufferState,
             playingAt: this.playingAt,
             bufferedDuration: bufferedDuration,
-        }
+        };
         const mustSkip =
             this.lastReportedState
             && state.playbackState === this.lastReportedState.playbackState

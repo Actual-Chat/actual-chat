@@ -1,7 +1,6 @@
 import { WebRtcVad } from '@actual-chat/webrtc-vad';
 import { VoiceActivityDetectorBase } from './audio-vad';
-
-const SAMPLES_PER_WINDOW_48K = 1440; // 30ms at 48000 Hz
+import { SAMPLE_RATE, SAMPLES_PER_WINDOW_30 } from '../constants';
 
 enum VadActivity {
     Silence = 0,
@@ -11,7 +10,7 @@ enum VadActivity {
 
 export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
     constructor(private vad: WebRtcVad) {
-        super(48000, false);
+        super(SAMPLE_RATE, false);
     }
 
     public override init(): Promise<void> {
@@ -20,8 +19,8 @@ export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
     }
 
     protected override appendChunkInternal(monoPcm: Float32Array): Promise<number | null> {
-        if (monoPcm.length !== SAMPLES_PER_WINDOW_48K)
-            throw new Error(`appendChunk() accepts ${SAMPLES_PER_WINDOW_48K} sample audio windows only.`);
+        if (monoPcm.length !== SAMPLES_PER_WINDOW_30)
+            throw new Error(`appendChunk() accepts ${SAMPLES_PER_WINDOW_30} sample audio windows only.`);
 
         const activity = this.vad.detect(monoPcm.buffer);
         if (activity == VadActivity.Error)

@@ -5,11 +5,8 @@ import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { Log } from 'logging';
 import { Versioning } from 'versioning';
-import SoxrResampler, { SoxrDatatype, SoxrQuality } from 'wasm-audio-resampler';
 import OnnxModel from './vad.onnx';
-import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
-import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
-import { rpcClientServer, RpcNoWait, rpcNoWait, rpcServer, RpcTimeout } from 'rpc';
+import { rpcClientServer, RpcNoWait, rpcNoWait, RpcTimeout } from 'rpc';
 import { AudioVadWorklet } from '../worklets/audio-vad-worklet-contract';
 import { NNVoiceActivityDetector } from './audio-vad';
 import { AudioVadWorker } from './audio-vad-worker-contract';
@@ -20,24 +17,16 @@ import { WebRtcVoiceActivityDetector } from './audio-vad-webrtc';
 import { RecorderStateEventHandler } from "../opus-media-recorder-contracts";
 import { ExponentialMovingAverage } from "./streamed-moving-average";
 import { AudioDiagnosticsState } from "../audio-recorder";
+import { SAMPLE_RATE, SAMPLES_PER_WINDOW_30, SAMPLES_PER_WINDOW_32 } from '../constants';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('AudioVadWorker');
 
-const CHANNELS = 1;
-const IN_RATE = 48000;
-const SAMPLES_PER_WINDOW_32 = 1536;
-const SAMPLES_PER_WINDOW_30 = 1440;
-
 const worker = globalThis as unknown as Worker;
 const queue = new Denque<ArrayBuffer>();
-const inputDatatype = SoxrDatatype.SOXR_FLOAT32;
-const outputDatatype = SoxrDatatype.SOXR_FLOAT32;
-const resampleBuffer = new Uint8Array(512 * 4 * 2);
 
 let vadModule: WebRtcVadModule = null;
 let vadWorklet: AudioVadWorklet & Disposable = null;
 let encoderWorker: OpusEncoderWorker & Disposable = null;
-let resampler: SoxrResampler = null;
 let nnVoiceDetector: VoiceActivityDetector = null;
 let webrtcVoiceDetector: VoiceActivityDetector = null;
 let isVadRunning = false;
@@ -51,7 +40,7 @@ let lastVadEventProcessedAt = 0;
 const serverImpl: AudioVadWorker = {
     create: async (artifactVersions: Map<string, string>, canUseNNVad_: boolean, _timeout?: RpcTimeout): Promise<void> => {
         canUseNNVad = canUseNNVad_;
-        if (resampler != null && nnVoiceDetector != null) {
+        if (nnVoiceDetector != null) {
             await nnVoiceDetector.init();
             return;
         }
@@ -67,7 +56,7 @@ const serverImpl: AudioVadWorker = {
 
         // Loading WebRtc VAD module
         vadModule = await retry(3, () => webRtcVadModule(getEmscriptenLoaderOptions()));
-        webrtcVoiceDetector = new WebRtcVoiceActivityDetector(new vadModule.WebRtcVad(48000, 0));
+        webrtcVoiceDetector = new WebRtcVoiceActivityDetector(new vadModule.WebRtcVad(SAMPLE_RATE, 0));
 
         debugLog?.log(`<- onCreate`);
 
@@ -92,11 +81,6 @@ const serverImpl: AudioVadWorker = {
         if (!isActive)
             return;
 
-        // resample silence to clean up internal isActive
-        if (resampler) {
-            const silence = new Uint8Array(768 * 4);
-            resampler.processChunk(silence, resampleBuffer);
-        }
         nnVoiceDetector?.reset();
         webrtcVoiceDetector?.reset();
     },
@@ -147,19 +131,15 @@ async function processQueue(): Promise<void> {
 
             const buffer = queue.shift();
             let vadEvent: VoiceActivityChange | number;
-            const hasNNVad = nnVoiceDetector != null && resampler != null;
+            const hasNNVad = nnVoiceDetector != null;
 
             // might be switched to NN Vad, but still has queue with wrong buffers
             if (hasNNVad && buffer.byteLength == SAMPLES_PER_WINDOW_32 * 4) {
-                const dataToResample = new Uint8Array(buffer);
-                const resampled = resampler.processChunk(dataToResample, resampleBuffer);
-                // 32 ms at 16000 Hz
-                const monoPcm = new Float32Array(resampled.buffer, 0, 512);
+                const monoPcm = new Float32Array(buffer, 0, SAMPLES_PER_WINDOW_32);
                 vadEvent = await nnVoiceDetector!.appendChunk(monoPcm);
             }
             else if (buffer.byteLength == SAMPLES_PER_WINDOW_30 * 4) {
-                // 30 ms at 48000 Hz
-                const monoPcm = new Float32Array(buffer, 0, 1440);
+                const monoPcm = new Float32Array(buffer, 0, SAMPLES_PER_WINDOW_30);
                 vadEvent = await webrtcVoiceDetector.appendChunk(monoPcm);
             }
             lastVadEventProcessedAt = Date.now();
@@ -251,22 +231,10 @@ async function initNNVad(): Promise<void> {
     if (isNNVadInitialized)
         return;
 
-    const OUT_RATE = 16000;
-    const soxrResampler = new SoxrResampler(
-        CHANNELS,
-        IN_RATE,
-        OUT_RATE,
-        inputDatatype,
-        outputDatatype,
-        SoxrQuality.SOXR_MQ,
-    );
-    const soxrWasmPath = Versioning.mapPath(SoxrWasm);
-    await soxrResampler.init(SoxrModule, { 'locateFile': () => soxrWasmPath });
     const currentActivityEvent: VoiceActivityChange = webrtcVoiceDetector.lastActivityEvent ?? NNVoiceActivityDetector.DefaultVoiceActivity;
     const vad = new NNVoiceActivityDetector(OnnxModel as unknown as URL, currentActivityEvent);
     await vad.init();
 
-    resampler = soxrResampler;
     nnVoiceDetector = vad;
     isNNVadInitialized = true;
     startWorklet();
@@ -276,7 +244,7 @@ function startWorklet(): void {
     if (!vadWorklet)
         return; // when NN VAD is already initialized, but there are no vadWorklet yet
 
-    const hasNNVad = nnVoiceDetector != null && resampler != null;
+    const hasNNVad = nnVoiceDetector != null;
     const vadWindowSizeMs = hasNNVad ? 32 : 30;
     void vadWorklet.start(vadWindowSizeMs, rpcNoWait);
 }
