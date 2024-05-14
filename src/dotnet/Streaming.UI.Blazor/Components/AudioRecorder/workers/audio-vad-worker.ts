@@ -103,13 +103,13 @@ const serverImpl: AudioVadWorker = {
         return diagnosticsState;
     },
 
-    onFrame: async (buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> => {
+    onFrame: async (buffer: ArrayBuffer): Promise<void> => {
         if (!isActive)
             return;
 
         if (buffer && buffer.byteLength !== 0) {
             queue.push(buffer);
-            await processQueue();
+            void processQueue();
         }
     }
 };

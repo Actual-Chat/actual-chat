@@ -21,6 +21,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
     private worker: AudioVadWorker & Disposable;
     private frameCount: number = 0;
     private lastFrameProcessedAt: number = 0;
+    private promiseQueue: Promise<void> = Promise.resolve();
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
@@ -82,8 +83,8 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
 
             if (this.buffer.pull(vadBuffer)) {
                 if (this.worker)
-                    // TODO(AK): make promise chain to insure frame sequence is not broken
-                    void this.worker.onFrame(vadArrayBuffer, rpcNoWait);
+                    this.promiseQueue = this.promiseQueue.then(() =>
+                        this.worker.onFrame(vadArrayBuffer));
                 else
                     warnLog?.log('process: worklet port is still undefined!');
             } else {
