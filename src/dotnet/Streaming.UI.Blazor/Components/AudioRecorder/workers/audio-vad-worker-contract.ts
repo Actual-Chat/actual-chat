@@ -8,5 +8,5 @@ export interface AudioVadWorker {
     conversationSignal(noWait?: RpcNoWait): Promise<void>;
     runDiagnostics(diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState>;
 
-    onFrame(buffer: ArrayBuffer): Promise<void>;
+    onFrame(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
 }

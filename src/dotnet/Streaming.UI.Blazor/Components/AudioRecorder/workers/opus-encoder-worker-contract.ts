@@ -12,6 +12,6 @@ export interface OpusEncoderWorker {
     disconnect(noWait?: RpcNoWait): Promise<void>;
     runDiagnostics(diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState>;
 
-    onEncoderWorkletSamples(buffer: ArrayBuffer): Promise<void>;
+    onEncoderWorkletSamples(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
     onVoiceActivityChange(change: VoiceActivityChange, noWait?: RpcNoWait): Promise<void>;
 }

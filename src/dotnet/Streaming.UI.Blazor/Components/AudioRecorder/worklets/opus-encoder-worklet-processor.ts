@@ -91,7 +91,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
                 if (this.buffer.pull(audioBuffer)) {
                     if (this.worker != null)
                         this.promiseQueue = this.promiseQueue.then(() =>
-                            this.worker.onEncoderWorkletSamples(audioArrayBuffer));
+                            this.worker.onEncoderWorkletSamples(audioArrayBuffer, rpcNoWait));
                     else
                         warnLog?.log('process: worklet port is still undefined!');
                 } else {

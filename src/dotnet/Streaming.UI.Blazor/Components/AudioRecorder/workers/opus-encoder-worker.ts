@@ -236,7 +236,7 @@ const serverImpl: OpusEncoderWorker = {
         return diagnosticsState;
     },
 
-    onEncoderWorkletSamples: async (buffer: ArrayBuffer): Promise<void> => {
+    onEncoderWorkletSamples: async (buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void> => {
         if (buffer.byteLength === 0)
             return;
 

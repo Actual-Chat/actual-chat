@@ -103,7 +103,7 @@ const serverImpl: AudioVadWorker = {
         return diagnosticsState;
     },
 
-    onFrame: async (buffer: ArrayBuffer): Promise<void> => {
+    onFrame: async (buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void> => {
         if (!isActive)
             return;
 

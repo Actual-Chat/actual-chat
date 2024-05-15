@@ -84,7 +84,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
             if (this.buffer.pull(vadBuffer)) {
                 if (this.worker)
                     this.promiseQueue = this.promiseQueue.then(() =>
-                        this.worker.onFrame(vadArrayBuffer));
+                        this.worker.onFrame(vadArrayBuffer, rpcNoWait));
                 else
                     warnLog?.log('process: worklet port is still undefined!');
             } else {
