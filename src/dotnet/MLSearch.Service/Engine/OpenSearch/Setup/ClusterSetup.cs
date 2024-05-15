@@ -24,8 +24,8 @@ internal sealed class ClusterSetup(
 ) : IClusterSetup
 {
     private readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
-    private ClusterSetupResult? _result;
 
+    private ClusterSetupResult? _result;
     public ClusterSetupResult Result => _result ?? throw new InvalidOperationException(
         "Initialization script was not called."
     );
@@ -39,26 +39,22 @@ internal sealed class ClusterSetup(
 
         var isClusterStateValid = await CheckClusterStateValidAsync(embeddingModelProps, cancellationToken)
             .ConfigureAwait(false);
-        if (isClusterStateValid) {
-            _result = new ClusterSetupResult(embeddingModelProps);
-            return;
+        if (!isClusterStateValid) {
+            var runOptions = RunLockedOptions.Default with { Log = log };
+            await meshLocks.RunLocked(
+                    nameof(InitializeAsync),
+                    runOptions,
+                    ct => InitialiseUnsafeAsync(embeddingModelProps, ct),
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
         }
 
-        var runOptions = RunLockedOptions.Default with { Log = log };
-        await meshLocks.RunLocked(
-                nameof(InitializeAsync),
-                runOptions,
-                ct => InitialiseUnsafeAsync(embeddingModelProps, ct),
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-
         _result = new ClusterSetupResult(embeddingModelProps);
-
         NotifyClusterSettingsChanges();
     }
 
-    public async Task<bool> CheckClusterStateValidAsync(EmbeddingModelProps embeddingModelProps, CancellationToken cancellationToken)
+    private async Task<bool> CheckClusterStateValidAsync(EmbeddingModelProps embeddingModelProps, CancellationToken cancellationToken)
     {
         var numberOfReplicas = openSearchSettings.Value.DefaultNumberOfReplicas;
 
@@ -84,7 +80,7 @@ internal sealed class ClusterSetup(
         await EnsureIndexesAsync(embeddingModelProps, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task EnsureTemplatesAsync(CancellationToken cancellationToken)
+    private async Task EnsureTemplatesAsync(CancellationToken cancellationToken)
     {
         using var _ = _tracer.Region();
 
@@ -97,7 +93,7 @@ internal sealed class ClusterSetup(
             .ConfigureAwait(false);
     }
 
-    public async Task EnsureIndexesAsync(EmbeddingModelProps embeddingModelProps, CancellationToken cancellationToken)
+    private async Task EnsureIndexesAsync(EmbeddingModelProps embeddingModelProps, CancellationToken cancellationToken)
     {
         // Notes:
         // Assumption: This is a script.
@@ -127,7 +123,6 @@ internal sealed class ClusterSetup(
             )
             .ConfigureAwait(false);
     }
-
 
     private void NotifyClusterSettingsChanges()
     {
