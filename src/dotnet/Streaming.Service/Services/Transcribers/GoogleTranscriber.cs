@@ -244,6 +244,18 @@ public partial class GoogleTranscriber : ITranscriber
         var results = response.Results;
         DebugLog?.LogDebug("Got response with {ResultCount} results", results.Count);
 
+        var lastStability = state.Stability;
+        var stability = results
+            .Select(r => r.Stability)
+            .ToArray();
+        var isFinal = results.Any(r => r.IsFinal);
+
+        // Google Transcribe issue: sometimes it omits the final transcript,
+        // so we use a heuristic to automatically identify it
+        if (!isFinal && stability.Length == 1 && stability[0] < 0.5 && lastStability.Length > 1 && lastStability.Max() > 0.5)
+            // not marked final, but previous results contain at least one result with high stability, and now we get single result with low stability
+            state.MakeStable();
+
         var mustAppendToUnstable = false;
         for (var i = 0; i < results.Count; i++) {
             var result = results[i];
@@ -253,6 +265,7 @@ public partial class GoogleTranscriber : ITranscriber
             DebugLog?.LogDebug("Transcript {Index}: {Transcript}", i, state.Unstable);
         }
 
+        state.SetMetadata(stability);
         return state.Unstable;
     }
 

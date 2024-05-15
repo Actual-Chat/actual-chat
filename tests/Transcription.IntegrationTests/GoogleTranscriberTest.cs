@@ -22,11 +22,12 @@ public class GoogleTranscriberTest(
         = configuration.Settings<CoreServerSettings>(nameof(CoreSettings));
 
     [Theory(Skip = "For manual runs only")]
-    [InlineData("file.webm", false)]
-    [InlineData("file.webm", true)]
-    [InlineData("0002-AK.opuss", true)]
-    // [InlineData("0003-AK.opuss", true)] - fails as too short???
-    [InlineData("tail-cut.opuss", true)]
+    // [InlineData("file.webm", false)]
+    // [InlineData("file.webm", true)]
+    // [InlineData("0002-AK.opuss", true)]
+    // // [InlineData("0003-AK.opuss", true)] - fails as too short???
+    // [InlineData("tail-cut.opuss", true)]
+    [InlineData("truncated.opuss", true)]
     public async Task TranscribeWorks(string fileName, bool withDelay)
     {
         // Global - Google Speech v2 doesnt work with Http/3!
@@ -42,10 +43,10 @@ public class GoogleTranscriberTest(
 
         // helper to save webm format
         // await using (var outputStream = new FileStream(
-        //     Path.Combine(Environment.CurrentDirectory, "data", file-name),
+        //     Path.Combine(Environment.CurrentDirectory, "data", "fileName.webm"),
         //     FileMode.OpenOrCreate,
         //     FileAccess.ReadWrite)) {
-        //     var converter = new WebMStreamConverter(Log);
+        //     var converter = new WebMStreamConverter(MomentClockSet.Default, Log);
         //     var byteStream = converter.ToByteStream(audio, CancellationToken.None);
         //     await foreach (var data in byteStream) {
         //         await outputStream.WriteAsync(data, CancellationToken.None);

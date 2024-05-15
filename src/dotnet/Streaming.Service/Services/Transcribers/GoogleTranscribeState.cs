@@ -29,6 +29,8 @@ public class GoogleTranscribeState(
         set => Interlocked.Exchange(ref _processedAudioDuration, value);
     }
 
+    public float[] Stability { get; private set; } = [];
+
     public GoogleTranscribeState MakeStable(bool isStable = true)
     {
         if (isStable)
@@ -45,6 +47,12 @@ public class GoogleTranscribeState(
     public GoogleTranscribeState Append(string suffix, LinearMap suffixTextToTimeMap, bool appendToUnstable = false)
     {
         Unstable = this[appendToUnstable].WithSuffix(suffix, suffixTextToTimeMap);
+        return this;
+    }
+
+    public GoogleTranscribeState SetMetadata(float[] stability)
+    {
+        Stability = stability;
         return this;
     }
 }
