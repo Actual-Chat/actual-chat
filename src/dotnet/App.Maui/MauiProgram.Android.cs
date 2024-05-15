@@ -14,11 +14,11 @@ public static partial class MauiProgram
 {
     private static partial void AddPlatformServices(this IServiceCollection services)
     {
-#if IS_DEV_MAUI
-        // Enable delivery data export per instance.
-        // https://firebase.google.com/docs/cloud-messaging/understand-delivery?platform=android#enable-message-delivery-data-export
-        FirebaseMessaging.Instance.SetDeliveryMetricsExportToBigQuery(true);
-#endif
+        if (MauiSettings.IsDevApp)
+            // Enable delivery data export per instance.
+            // https://firebase.google.com/docs/cloud-messaging/understand-delivery?platform=android#enable-message-delivery-data-export
+            FirebaseMessaging.Instance.SetDeliveryMetricsExportToBigQuery(true);
+
         services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>
             Java.Util.Concurrent.Executors.NewWorkStealingPool()!);
 
@@ -28,7 +28,7 @@ public static partial class MauiProgram
         services.AddScoped<IMediaSaver, AndroidMediaSaver>();
 
         services.AddTransient<IDeviceTokenRetriever>(c => new AndroidDeviceTokenRetriever(c));
-        // Temporarily disabled switch between loud speaker and earpiece
+        // Temporarily disabled switch between loudspeaker and earpiece
         // to have single audio channel controlled with volume buttons
         //services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
         services.AddScoped<INotificationsPermission>(c => new AndroidNotificationsPermission(c));
