@@ -6,10 +6,11 @@ public static class MauiSettings
 {
     public const string LocalHost = "0.0.0.0";
 #if IS_DEV_MAUI
-    public const string Host = "dev.actual.chat";
+    public const bool IsDevApp = true;
 #else
-    public const string Host = "actual.chat";
+    public const bool IsDevApp = false;
 #endif
+    public const string Host = IsDevApp ? "dev.actual.chat" : "actual.chat";
     public static readonly Uri BaseUri;
     public static readonly string BaseUrl;
     public static readonly AppKind AppKind;

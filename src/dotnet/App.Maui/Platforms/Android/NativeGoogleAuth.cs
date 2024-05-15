@@ -13,14 +13,6 @@ namespace ActualChat.App.Maui;
 public sealed class NativeGoogleAuth
 {
     private const int GoogleSignInRequestCode = 800;
-    // GoogleClientIds below are taken for Web application since session authentication performed on the web server.
-#if IS_DEV_MAUI
-    private const string ServerGoogleClientId =
-        "367046672456-75p2d55jama2mtivjbcgp0hkaa6jsihq.apps.googleusercontent.com";
-#else
-    private const string ServerGoogleClientId =
-        "936885469539-89riml3ri3rsu35tdh9gtdvrtj4c08fs.apps.googleusercontent.com";
-#endif
 
     private readonly GoogleSignInClient _googleSignInClient;
 
@@ -31,13 +23,17 @@ public sealed class NativeGoogleAuth
     {
         Services = services;
         Log = services.LogFor(GetType());
+        // GoogleClientIds below are taken for Web application since session authentication performed on the web server.
+        const string serverGoogleClientId = MauiSettings.IsDevApp
+            ? "367046672456-75p2d55jama2mtivjbcgp0hkaa6jsihq.apps.googleusercontent.com"
+            : "936885469539-89riml3ri3rsu35tdh9gtdvrtj4c08fs.apps.googleusercontent.com";
 
         // Configure sign-in to request the user's ID, email address, and basic
         // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
         var googleSignInOptions = new GoogleSignInOptions.Builder(GoogleSignInOptions.DefaultSignIn)
             .RequestEmail()
-            .RequestIdToken(ServerGoogleClientId)
-            .RequestServerAuthCode(ServerGoogleClientId)
+            .RequestIdToken(serverGoogleClientId)
+            .RequestServerAuthCode(serverGoogleClientId)
             .Build();
         // Build a GoogleSignInClient with the options specified by gso.
         _googleSignInClient = GoogleSignIn.GetClient(MainActivity.Current, googleSignInOptions);

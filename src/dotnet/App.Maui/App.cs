@@ -32,11 +32,7 @@ public class App : Application
     {
         var window = base.CreateWindow(activationState);
         window.Destroying += (_, _) => FlushSentryData();
-#if IS_DEV_MAUI
-        window.Title = "Actual Chat (Dev)";
-#else
-        window.Title = "Actual Chat";
-#endif
+        window.Title = MauiSettings.IsDevApp ? "Actual Chat (Dev)" : "Actual Chat";
         return window;
     }
 
