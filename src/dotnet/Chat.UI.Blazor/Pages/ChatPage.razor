@@ -14,11 +14,11 @@
     // Log.LogDebug("Rendered for #{ChatId}", chat.Id);
 }
 
-@if (ReferenceEquals(chat, SpecialChat.Unavailable) && m is { IsInaccessiblePlace: true, EnableIncompleteUI: true }) {
+@if (ReferenceEquals(chat, SpecialChat.Unavailable) && m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
      <RenderIntoSlot Name="MainLeftDrawer">
          <LeftPanel IsSkeletonWidePanel="@true">
              <WidePanelBottomContent>
-                 <InaccessiblePlaceLeftPanelBottom/>
+                 <SendJoinPlaceRequestWidget/>
              </WidePanelBottomContent>
          </LeftPanel>
      </RenderIntoSlot>
@@ -45,7 +45,7 @@
 </RenderIntoStack>
 
 <RenderIntoSlot Name="MainRightDrawer">
-    @if (ReferenceEquals(chat, SpecialChat.Unavailable) && m is { IsInaccessiblePlace: true, EnableIncompleteUI: true }) {
+    @if (ReferenceEquals(chat, SpecialChat.Unavailable) && m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
         <SkeletonRightPanel/>
     } else if (chatContext.HasChat) {
         <ChatRightPanel @key="@chatKey" ChatContext="@chatContext"/>
@@ -59,7 +59,7 @@
 @if (ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
     <NoChatSelected/>
 } else if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
-    if (m is { IsInaccessiblePlace: true, EnableIncompleteUI: true }) {
+    if (m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
         <InaccessiblePlace ShowSignIn="@(!chatContext.OwnAccount.IsActive())"/>
     } else {
         <ChatNotFound ShowSignIn="@(!chatContext.OwnAccount.IsActive())"/>
@@ -82,6 +82,7 @@
     private Features Features => Hub.Features();
     protected Session Session => Hub.Session();
     protected IChats Chats => Hub.Chats;
+    protected IPlaces Places => Hub.Places;
     protected IAccounts Accounts => Hub.Accounts;
     protected IAvatars Avatars => Hub.Avatars;
     protected ChatUI ChatUI => Hub.ChatUI;
@@ -127,7 +128,7 @@
         var lastContext = lastState?.ChatContext;
         var lastChatId = lastContext?.Chat.Id ?? ChatId.None;
 
-        var isInaccessiblePlace = !chatId.PlaceChatId.PlaceId.IsNone;
+        var canSendJoinPlaceRequest = false;
         var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
@@ -165,11 +166,23 @@
                     .Get(Session, chatId, cancellationToken)
                     .WaitAsync(LoadTimeout, cancellationToken)
                     .ConfigureAwait(false);
+                if (chat is null && chatId.IsPlaceChat) {
+                    var place = await Places.Get(Session, chatId.PlaceId, cancellationToken).ConfigureAwait(false);
+                    if (place is null) {
+                        // Place does not exist or user is not member of the place.
+                        // TODO: Check if user can request place invitation.
+                        // Result should contain the following details:
+                        //  - if it's possible to send request,
+                        //  - if there is a pending request,
+                        //  - last request was declined.
+                        canSendJoinPlaceRequest = false;
+                    }
+                }
                 chat ??= SpecialChat.Unavailable;
             }
             var footerModel = await GetFooterModel(chat, account, cancellationToken).ConfigureAwait(false);
             var chatContext = new ChatContext(Hub, chat, account);
-            return new(chatContext, footerModel, isInaccessiblePlace, enableIncompleteUI);
+            return new(chatContext, footerModel, canSendJoinPlaceRequest, enableIncompleteUI);
         }
         catch (TimeoutException) {
             Computed.Current?.Invalidate(LoadTimeoutToReloadDelay);
@@ -181,7 +194,7 @@
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
             this.NotifyStateHasChanged();
-            return Model.Unavailable(Hub, account, isInaccessiblePlace, enableIncompleteUI);
+            return Model.Unavailable(Hub, account, false, enableIncompleteUI);
         }
     }
 
@@ -200,7 +213,7 @@
         Place? place = null;
         if (!canPost && chatId.IsPlaceChat) {
             shouldJoinPlaceFirst = chat.IsPublic;
-            place = await Hub.Places.Get(session, chatId.PlaceId, cancellationToken).ConfigureAwait(false);
+            place = await Places.Get(session, chatId.PlaceId, cancellationToken).ConfigureAwait(false);
             if (place == null) {
                 Log.LogWarning("Can't read Place #Id='{PlaceId}' while it should be possible to join to it", chatId.PlaceId);
                 canJoin = false;
@@ -258,7 +271,7 @@
     public sealed record Model(
         ChatContext ChatContext,
         FooterModel FooterModel,
-        bool IsInaccessiblePlace,
+        bool CanSendJoinPlaceRequest,
         bool EnableIncompleteUI
     ) {
         public static Model Loading(ChatUIHub hub) {
@@ -266,9 +279,9 @@
             return new(chatContext, FooterModel.None, false, false);
         }
 
-        public static Model Unavailable(ChatUIHub hub, AccountFull account, bool isInaccessiblePlace, bool enableIncompleteUI) {
+        public static Model Unavailable(ChatUIHub hub, AccountFull account, bool canSendJoinPlaceRequest, bool enableIncompleteUI) {
             var chatContext = new ChatContext(hub, SpecialChat.Unavailable, account);
-            return new(chatContext, new FooterModel(), isInaccessiblePlace, enableIncompleteUI);
+            return new(chatContext, new FooterModel(), canSendJoinPlaceRequest, enableIncompleteUI);
         }
     }
 

@@ -296,62 +296,19 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
     public void LeaveChat(Chat chat)
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, "chat",
-            m => _ = LeaveChatInternal(chat, false, m)));
+            m => _ = DeleteOrLeaveChatInternal(chat, false, m)));
 
     public void DeleteChat(Chat chat)
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, "chat",
-            m => _ = LeaveChatInternal(chat, true, m)));
+            m => _ = DeleteOrLeaveChatInternal(chat, true, m)));
 
     public void DeletePlace(PlaceId placeId, Func<Task> onBeforeExecuteCommand)
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, "place",
-            m => _ = LeavePlaceInternal(placeId, true, onBeforeExecuteCommand, m)));
+            m => _ = DeleteOrLeavePlaceInternal(placeId, true, onBeforeExecuteCommand, m)));
 
     public void LeavePlace(PlaceId placeId)
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, "place",
-            m => _ = LeavePlaceInternal(placeId, false, () => Task.CompletedTask, m)));
-
-    private async Task LeaveChatInternal(Chat chat, bool isDelete, Modal modal)
-    {
-        if (!isDelete) {
-            var isOwner = chat.Rules.IsOwner();
-            if (isOwner) {
-                var authorId = chat.Rules.Author?.Id ?? AuthorId.None;
-                var ownerIds = await Hub.Roles.ListOwnerIds(Session, chat.Id, default).ConfigureAwait(true); // Continue on Blazor context.
-                var hasAnotherOwner = ownerIds.Any(c => c != authorId);
-                if (!hasAnotherOwner) {
-                    const string message =
-                        "You can't leave this chat because you are its only owner. Please add another chat owner first.";
-                    UICommander.ShowError(StandardError.Constraint(message));
-                }
-            }
-        }
-        var isSelectedChat = chat.Id.Equals(SelectedChatId.Value);
-        var command = isDelete
-            ? (ICommand)new Chats_Change(Session, chat.Id, null, Change.Remove<ChatDiff>())
-            : new Authors_Leave(Session, chat.Id);
-        var result = await UICommander.Run(command).ConfigureAwait(true); // Continue on Blazor context
-        if (result.HasError)
-            return;
-        modal.Close();
-        if (isSelectedChat && (isDelete || !chat.IsPublic))
-            _ = History.NavigateTo(Links.Chats);
-    }
-
-    private async Task LeavePlaceInternal(PlaceId placeId, bool isDelete, Func<Task> onBeforeExecuteCommand, Modal modal)
-    {
-        var isSelectedPlace = placeId.Equals(SelectedPlaceId.Value)
-            || (NavbarUI.IsPlaceSelected(out var selectedPlaceId) && placeId == selectedPlaceId);
-        modal.Close();
-        await onBeforeExecuteCommand().ConfigureAwait(true);
-        var command = isDelete
-            ? (ICommand)new Places_Delete(Session, placeId)
-            : new Places_Leave(Session, placeId);
-        var result = await UICommander.Run(command).ConfigureAwait(true);
-        if (result.HasError)
-            return;
-        if (isSelectedPlace)
-            NavbarUI.SelectGroup(NavbarGroupIds.Chats, true);
-    }
+            m => _ = DeleteOrLeavePlaceInternal(placeId, false, () => Task.CompletedTask, m)));
 
     // Helpers
 
@@ -640,6 +597,67 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             if (readChat == null)
                 lastSelectedChatId = !placeId.IsNone ? ChatId.None : Constants.Chat.AnnouncementsChatId;
             return lastSelectedChatId;
+        }
+    }
+
+    private async Task DeleteOrLeaveChatInternal(Chat chat, bool isDelete, Modal modal)
+    {
+        if (!isDelete) {
+            var isOwner = chat.Rules.IsOwner();
+            if (isOwner) {
+                var authorId = chat.Rules.Author?.Id ?? AuthorId.None;
+                var ownerIds = await Hub.Roles.ListOwnerIds(Session, chat.Id, default).ConfigureAwait(true); // Continue on Blazor context.
+                var hasAnotherOwner = ownerIds.Any(c => c != authorId);
+                if (!hasAnotherOwner) {
+                    const string message =
+                        "You can't leave this chat because you are its only owner. Please add another chat owner first.";
+                    UICommander.ShowError(StandardError.Constraint(message));
+                }
+            }
+        }
+        var isSelectedChat = chat.Id.Equals(SelectedChatId.Value);
+        var command = isDelete
+            ? (ICommand)new Chats_Change(Session, chat.Id, null, Change.Remove<ChatDiff>())
+            : new Authors_Leave(Session, chat.Id);
+        var result = await UICommander.Run(command).ConfigureAwait(true); // Continue on Blazor context
+        if (result.HasError)
+            return;
+        modal.Close();
+        // If chat was selected and we no longer can see the chat then navigate to another visible chat.
+        if (isSelectedChat && !(chat.IsPublic && !isDelete))
+            _ = NavigateToVisibleChat(chat.Id.PlaceId).SuppressExceptions();
+    }
+
+    private async Task DeleteOrLeavePlaceInternal(PlaceId placeId, bool isDelete, Func<Task> onBeforeExecuteCommand, Modal modal)
+    {
+        var isSelectedPlace = placeId.Equals(SelectedPlaceId.Value)
+            || (NavbarUI.IsPlaceSelected(out var selectedPlaceId) && placeId == selectedPlaceId);
+        modal.Close();
+        await onBeforeExecuteCommand().ConfigureAwait(true);
+        var command = isDelete
+            ? (ICommand)new Places_Delete(Session, placeId)
+            : new Places_Leave(Session, placeId);
+        var result = await UICommander.Run(command).ConfigureAwait(true);
+        if (result.HasError)
+            return;
+        if (isSelectedPlace)
+            NavbarUI.SelectGroup(NavbarGroupIds.Chats, true);
+    }
+
+    private async Task NavigateToVisibleChat(PlaceId preferredPlaceId)
+    {
+        var chatIdToNavigate = ChatId.None;
+        if (!preferredPlaceId.IsNone)
+            chatIdToNavigate = await GetFirstChatId(preferredPlaceId).ConfigureAwait(true);
+        if (chatIdToNavigate.IsNone)
+            chatIdToNavigate = await GetFirstChatId(PlaceId.None).ConfigureAwait(true);
+        await History.NavigateTo(Links.Chat(chatIdToNavigate.Or(Constants.Chat.AnnouncementsChatId))).ConfigureAwait(true);
+
+        async Task<ChatId> GetFirstChatId(PlaceId placeId)
+        {
+            var chatListSettings = new ChatListSettings { FilterId = ChatListFilter.None.Id }; // TODO(DF): better use stored sorting settings for the place.
+            var chats = await ChatListUI.ListAll(placeId, chatListSettings, default).ConfigureAwait(false);
+            return chats.Count > 0 ? chats[0].Id : ChatId.None;
         }
     }
 }
