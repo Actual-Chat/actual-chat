@@ -211,7 +211,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             .Returns(moqMeshLocks.Object);
         moqServices
             .Setup(x => x.GetService(typeof(StateFactory)))
-            .Returns(Mock.Of<StateFactory>());
+            .Returns(() => new StateFactory(moqServices.Object));
         moqServices
             .Setup(x => x.GetService(typeof(HostInfo)))
             .Returns(() => new HostInfo());
