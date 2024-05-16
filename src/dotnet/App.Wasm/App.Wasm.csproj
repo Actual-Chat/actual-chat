@@ -16,7 +16,7 @@ Use:
     -->
     <InvariantGlobalization>true</InvariantGlobalization>
     <WasmEnableWebcil>true</WasmEnableWebcil>
-    <WasmEnableSIMD>true</WasmEnableSIMD>
+    <WasmEnableSIMD>false</WasmEnableSIMD>
     <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
   </PropertyGroup>
 
