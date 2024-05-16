@@ -116,8 +116,8 @@ jobs:
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
         with:
-         restore: false
-         restore-workloads: false
+          restore: false
+          restore-workloads: false
 
       - name: Generate version variables
         id: nbgv
@@ -179,6 +179,7 @@ jobs:
         uses: ./.github/actions/setup-dotnet
         with:
           restore-tools: false
+          restore-workloads: false
 
       - name: Debug build of tests
         run: |
@@ -300,6 +301,7 @@ jobs:
         uses: ./.github/actions/setup-dotnet
         with:
           restore-tools: false
+          restore-workloads: false
 
       - name: Debug Build for tests
         run: |
