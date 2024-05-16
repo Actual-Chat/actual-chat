@@ -84,31 +84,39 @@ internal static class OpenSearchClientExt
         return log;
     }
 
-    // Note: Shamelessly copied and modified from Search.Service/ElasticExt.cs
+    public static DynamicResponse AssertSuccess(this DynamicResponse response, bool allowNotFound = false)
+        => response.Success && (!response.TryGetServerError(out var error) || error is null)
+            ? response
+            : response.InnerAssertSuccess(allowNotFound);
+
     public static T AssertSuccess<T>(this T response, bool allowNotFound = false)
-    where T: ResponseBase
+        where T : ResponseBase
+        => response.IsValid ? response : response.InnerAssertSuccess(allowNotFound);
+
+    // Note: Shamelessly copied and modified from Search.Service/ElasticExt.cs
+    private static T InnerAssertSuccess<T>(this T response, bool allowNotFound = false)
+        where T: IOpenSearchResponse
     {
-        if (response.IsValid)
-            return response;
+        var apiCall = response.ApiCall;
 
-        if (response.ApiCall.Success
-            && response.ApiCall.HttpStatusCode == 404
-            && allowNotFound
-        )
-        {
+        if (allowNotFound
+            && apiCall?.Success == true
+            && apiCall.HttpStatusCode == 404) {
             return response;
         }
 
-        if (response.OriginalException is { } exc) {
-            // request sending failed
-            throw StandardError.External($"OpenSearch request failed: {exc.Message}", exc);
+        if (apiCall?.OriginalException is { } originalException) {
+            throw StandardError.External($"OpenSearch request failed: {originalException.Message}", originalException);
         }
-        if (response.ServerError is { } err) {
-            // request sending failed
+        if (response.TryGetServerErrorReason(out var err)) {
             throw StandardError.External($"OpenSearch request failed: {err}");
         }
+        var debugInformation = response is ResponseBase { } responseBase
+            ? responseBase.DebugInformation
+            : apiCall?.DebugInformation ?? "Unknown reason";
+
         throw StandardError.External(
-            $"OpenSearch request failed: {response.DebugInformation}."
+            $"OpenSearch request failed: {debugInformation}."
                 .TrimSuffix(":", ".")
                 .EnsureSuffix(".")
         );
