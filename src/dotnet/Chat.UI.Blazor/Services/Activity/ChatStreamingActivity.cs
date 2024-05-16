@@ -21,7 +21,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
 {
     public static readonly TimeSpan ExtraActivityDuration = TimeSpan.FromMilliseconds(250);
 
-    private readonly IMutableState<Moment?> _lastTranscribedAt;
+    private readonly MutableState<Moment?> _lastTranscribedAt;
     private ChatEntryReader? _textEntryReader;
     private ChatEntryReader? _audioEntryReader;
     private volatile ImmutableList<ChatEntry> _activeEntries = ImmutableList<ChatEntry>.Empty;

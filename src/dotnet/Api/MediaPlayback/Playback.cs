@@ -17,15 +17,15 @@ public sealed class Playback : ProcessorBase
     private readonly object _stateUpdateLock = new();
     private (CpuTimestamp CpuTimestamp, TimeSpan TotalSleepDuration) _pausedAt = default;
 
-    public IMutableState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> PlayingTracks { get; }
-    public IMutableState<bool> IsPlaying { get; }
-    public IMutableState<bool> IsPaused { get; }
-    public IMutableState<TimeSpan> TotalPauseDuration { get; }
+    public MutableState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> PlayingTracks { get; }
+    public MutableState<bool> IsPlaying { get; }
+    public MutableState<bool> IsPaused { get; }
+    public MutableState<TimeSpan> TotalPauseDuration { get; }
 
     public event Action<TrackInfo, PlayerState>? OnTrackPlayingChanged;
 
     internal Playback(
-        IStateFactory stateFactory,
+        StateFactory stateFactory,
         ITrackPlayerFactory trackPlayerFactory,
         ISleepDurationProvider sleepDurationProvider,
         ILogger<Playback> log)

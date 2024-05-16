@@ -8,8 +8,8 @@
 </CascadingValue>
 
 @code {
-    private IMutableState<IReadOnlyDictionary<ChatId, ChatInfo>> _allChats = null!;
-    private IMutableState<ImmutableHashSet<ChatId>> _selectedChatIds = null!;
+    private MutableState<IReadOnlyDictionary<ChatId, ChatInfo>> _allChats = null!;
+    private MutableState<ImmutableHashSet<ChatId>> _selectedChatIds = null!;
     private PlaceId _placeId = PlaceId.None;
 
     [Inject] private IContacts Contacts { get; init; } = null!;
@@ -25,7 +25,7 @@
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 
     public IState<IReadOnlyDictionary<ChatId, ChatInfo>> AllChats => _allChats;
-    public IComputedState<IReadOnlyList<ChatInfo>> Chats => State;
+    public ComputedState<IReadOnlyList<ChatInfo>> Chats => State;
     public IState<ImmutableHashSet<ChatId>> SelectedChatIds => _selectedChatIds;
 
     public void Toggle(ChatId chatId)

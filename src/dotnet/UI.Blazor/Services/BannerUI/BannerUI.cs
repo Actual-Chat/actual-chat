@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.Services;
 public class BannerUI : ScopedServiceBase<UIHub>
 {
     private readonly object _lock = new();
-    private readonly IMutableState<ImmutableList<BannerDef>> _banners;
+    private readonly MutableState<ImmutableList<BannerDef>> _banners;
 
     private TypeMapper<IBannerView> ViewResolver { get; }
 

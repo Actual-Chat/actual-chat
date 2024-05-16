@@ -16,12 +16,12 @@ public class ComputedStateLease<T, TKey, TState, TResource>(
 {
     protected SharedResourcePool<TKey, TResource>.Lease Lease { get; } = lease;
 
-    public TState State { get; } = stateGetter(lease.Resource);
+    public TState State { get; } = stateGetter.Invoke(lease.Resource);
     public IServiceProvider Services => State.Services;
 
     public T Value => State.Value;
 
-    public object? UntypedValue => State.UntypedValue;
+    public object? UntypedValue => ((IComputedState)State).UntypedValue;
 
     public T? ValueOrDefault => State.ValueOrDefault;
 
@@ -116,8 +116,8 @@ public class ComputedStateLease<T, TState>(SharedResourcePool<Symbol, TState>.Le
     // ReSharper disable once MemberCanBeProtected.Global
 }
 
-public class ComputedStateLease<T>(SharedResourcePool<Symbol, IComputedState<T>>.Lease lease)
-    : ComputedStateLease<T, IComputedState<T>>(lease)
+public class ComputedStateLease<T>(SharedResourcePool<Symbol, ComputedState<T>>.Lease lease)
+    : ComputedStateLease<T, ComputedState<T>>(lease)
 {
     // ReSharper disable once MemberCanBeProtected.Global
 }

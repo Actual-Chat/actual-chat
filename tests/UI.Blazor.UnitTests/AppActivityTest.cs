@@ -93,7 +93,7 @@ public class AppActivityTest: TestBase
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Local
 public class TestAppActivity(UIHub hub) : AppActivity(hub)
 {
-    private readonly IMutableState<bool> _mustBeBackgroundActive
+    private readonly MutableState<bool> _mustBeBackgroundActive
         = hub.StateFactory().NewMutable<bool>();
 
     [ComputeMethod]

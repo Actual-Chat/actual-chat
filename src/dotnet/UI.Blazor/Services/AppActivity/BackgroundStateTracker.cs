@@ -24,7 +24,7 @@ public class WebBackgroundStateTracker : BackgroundStateTracker
 // Must be singleton!
 public class MauiBackgroundStateTracker : BackgroundStateTracker
 {
-    public new IMutableState<bool> IsBackground { get; }
+    public new MutableState<bool> IsBackground { get; }
 
     public MauiBackgroundStateTracker(IServiceProvider services)
         => base.IsBackground = IsBackground = services.StateFactory().NewMutable(

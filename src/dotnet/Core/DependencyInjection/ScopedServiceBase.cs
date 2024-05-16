@@ -27,7 +27,7 @@ public abstract class ScopedServiceBase<THub>(THub hub) : IHasIsDisposed
         get => Hub.Session();
     }
 
-    protected IStateFactory StateFactory {
+    protected StateFactory StateFactory {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => Hub.StateFactory();
     }

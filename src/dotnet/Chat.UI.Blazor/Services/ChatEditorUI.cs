@@ -8,7 +8,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public partial class ChatEditorUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
 {
     private readonly object _lock = new();
-    private readonly IMutableState<RelatedChatEntry?> _relatedChatEntry;
+    private readonly MutableState<RelatedChatEntry?> _relatedChatEntry;
 
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;

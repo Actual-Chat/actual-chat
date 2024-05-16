@@ -3,7 +3,7 @@
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public abstract partial class AppActivity : ScopedWorkerBase<UIHub>, IComputeService
 {
-    private readonly IMutableState<ActivityState> _state;
+    private readonly MutableState<ActivityState> _state;
     private BackgroundStateTracker? _backgroundStateTracker;
 
     protected BackgroundStateTracker BackgroundStateTracker

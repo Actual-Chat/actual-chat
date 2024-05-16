@@ -7,7 +7,7 @@ namespace ActualChat.DependencyInjection;
 public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IHasIsDisposed
 {
     private readonly HostInfo _hostInfo;
-    private readonly IStateFactory _stateFactory;
+    private readonly StateFactory _stateFactory;
     private readonly ILoggerFactory _logs;
     private readonly MomentClockSet _clocks;
     private readonly List<Task> _tasks = new();
@@ -42,7 +42,7 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
     {
         Services = services;
         _hostInfo = services.HostInfo();
-        _stateFactory = services.GetRequiredService<IStateFactory>();
+        _stateFactory = services.GetRequiredService<StateFactory>();
         _logs = services.GetRequiredService<ILoggerFactory>();
         _clocks = services.GetRequiredService<MomentClockSet>();
 
@@ -51,7 +51,7 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public IStateFactory StateFactory() => _stateFactory;
+    public StateFactory StateFactory() => _stateFactory;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ILoggerFactory LoggerFactory() => _logs;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

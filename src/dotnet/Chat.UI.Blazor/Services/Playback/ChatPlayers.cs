@@ -11,7 +11,7 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
     private volatile ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer> _players =
         ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
 
-    private readonly IMutableState<PlaybackState?> _playbackState;
+    private readonly MutableState<PlaybackState?> _playbackState;
 
     private AudioInitializer AudioInitializer => Hub.AudioInitializer;
     private IAudioOutputController AudioOutputController => Hub.AudioOutputController;

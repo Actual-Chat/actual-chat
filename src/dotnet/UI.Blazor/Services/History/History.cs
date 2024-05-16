@@ -15,7 +15,7 @@ public partial class History : ScopedServiceBase<UIHub>, IDisposable
 
     private DotNetObjectReference<History>? _blazorRef;
     private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
-    private readonly IMutableState<HistoryItem> _state;
+    private readonly MutableState<HistoryItem> _state;
 
     private new ILogger? DebugLog { get; }
 

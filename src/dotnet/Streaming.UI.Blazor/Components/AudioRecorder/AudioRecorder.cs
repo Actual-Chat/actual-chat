@@ -16,7 +16,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private static bool DebugMode => Constants.DebugMode.AudioRecording;
 
     private readonly AsyncLock _stateLock = new(LockReentryMode.CheckedPass);
-    private readonly IMutableState<AudioRecorderState> _state;
+    private readonly MutableState<AudioRecorderState> _state;
     private HostInfo? _hostInfo;
     private SessionTokens? _sessionTokens;
     private MicrophonePermissionHandler? _microphonePermission;

@@ -53,7 +53,7 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
             return new MutableStateLease<
                 KubeServiceEndpoints,
                 KubeService,
-                IMutableState<KubeServiceEndpoints>,
+                MutableState<KubeServiceEndpoints>,
                 EndpointDiscoveryWorker>(lease, lease.Resource._state);
         }
         catch {
@@ -81,7 +81,7 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
     private sealed class EndpointDiscoveryWorker : WorkerBase
     {
         // ReSharper disable once InconsistentNaming
-        internal readonly IMutableState<KubeServiceEndpoints> _state;
+        internal readonly MutableState<KubeServiceEndpoints> _state;
 
         public IState<KubeServiceEndpoints> State => _state;
 

@@ -5,7 +5,7 @@ namespace ActualChat.Permissions;
 
 public abstract class PermissionHandler : ScopedWorkerBase<Hub>
 {
-    private readonly IMutableState<bool?> _cached;
+    private readonly MutableState<bool?> _cached;
     private SystemSettingsUI? _systemSettingsUI;
     private IDispatcherResolver? _dispatcherResolver;
     private IMomentClock? _clock;

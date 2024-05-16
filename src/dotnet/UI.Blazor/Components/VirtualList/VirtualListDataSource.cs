@@ -10,7 +10,7 @@ public static class VirtualListDataSource<TItem>
     private class EmptyDataSource : IVirtualListDataSource<TItem>
     {
         public Task<VirtualListData<TItem>> GetData(
-            IComputedState<VirtualListData<TItem>> state,
+            ComputedState<VirtualListData<TItem>> state,
             VirtualListDataQuery query,
             VirtualListData<TItem> renderedData,
             CancellationToken cancellationToken)

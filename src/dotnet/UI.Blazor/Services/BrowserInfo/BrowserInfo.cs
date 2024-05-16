@@ -4,10 +4,10 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class BrowserInfo : ScopedServiceBase<UIHub>, IBrowserInfoBackend
 {
-    private readonly IMutableState<ScreenSize> _screenSize;
-    private readonly IMutableState<bool> _isHoverable;
-    private readonly IMutableState<bool> _isVisible;
-    private readonly IMutableState<ThemeInfo> _themeInfo;
+    private readonly MutableState<ScreenSize> _screenSize;
+    private readonly MutableState<bool> _isHoverable;
+    private readonly MutableState<bool> _isVisible;
+    private readonly MutableState<ThemeInfo> _themeInfo;
 
     protected readonly TaskCompletionSource WhenReadySource = TaskCompletionSourceExt.New();
     protected readonly object Lock = new();

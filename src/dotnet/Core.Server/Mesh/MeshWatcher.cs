@@ -13,7 +13,7 @@ public sealed class MeshWatcher : WorkerBase
 
     private readonly ConcurrentDictionary<NodeRef, RpcBackendNodePeerRef> _nodePeerRefs = new();
     private readonly ConcurrentDictionary<ShardRef, RpcBackendShardPeerRef> _shardPeerRefs = new();
-    private readonly IMutableState<MeshState> _state;
+    private readonly MutableState<MeshState> _state;
 
     private IHostApplicationLifetime? HostApplicationLifetime { get; }
     private IMeshLocks NodeLocks { get; }

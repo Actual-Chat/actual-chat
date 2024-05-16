@@ -2,8 +2,8 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class LeftPanel : IDisposable
 {
-    private readonly IMutableState<bool> _isVisible;
-    private readonly IComputedState<bool> _canBeHidden;
+    private readonly MutableState<bool> _isVisible;
+    private readonly ComputedState<bool> _canBeHidden;
     private ILogger? _log;
 
     private UIHub Hub { get; }
@@ -72,7 +72,7 @@ public class LeftPanel : IDisposable
         return null;
     }
 
-    private async Task<bool> ComputeCanBeHidden(IComputedState<bool> state, CancellationToken cancellationToken)
+    private async Task<bool> ComputeCanBeHidden(CancellationToken cancellationToken)
     {
         var screenSize = await Owner.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
         if (screenSize.IsWide())

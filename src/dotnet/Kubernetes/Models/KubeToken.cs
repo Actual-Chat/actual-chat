@@ -9,7 +9,7 @@ public sealed class KubeToken : WorkerBase
     private ILogger Log { get; }
 
     public bool IsEmulated => Path.IsEmpty;
-    public IMutableState<string> State { get; }
+    public MutableState<string> State { get; }
     public string Value => State.Value;
 
     public KubeToken(IServiceProvider services, FilePath path)

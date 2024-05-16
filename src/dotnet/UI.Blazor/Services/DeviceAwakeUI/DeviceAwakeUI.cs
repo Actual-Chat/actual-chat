@@ -10,7 +10,7 @@ public class DeviceAwakeUI : ScopedServiceBase<UIHub>, ISleepDurationProvider, I
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.DeviceAwakeUI.init";
 
     private readonly DotNetObjectReference<IDeviceAwakeUIBackend> _backendRef;
-    private readonly IMutableState<TimeSpan> _totalSleepDuration;
+    private readonly MutableState<TimeSpan> _totalSleepDuration;
 
     private IJSRuntime JS => Hub.JSRuntime();
 

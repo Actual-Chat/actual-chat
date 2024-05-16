@@ -10,7 +10,7 @@
 
 
 @code {
-    [Inject] protected IStateFactory StateFactory { get; init; } = null!;
+    [Inject] protected StateFactory StateFactory { get; init; } = null!;
 
     [Parameter, EditorRequired] public ISearchProvider<MentionSearchResult> SearchProvider { get; set; } = null!;
     [Parameter] public int Limit { get; set; } = 100;

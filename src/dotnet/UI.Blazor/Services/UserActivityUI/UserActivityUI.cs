@@ -7,7 +7,7 @@ public class UserActivityUI : ScopedServiceBase<UIHub>, IUserActivityUIBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.UserActivityUI.init";
 
-    private readonly IMutableState<Moment> _activeUntil;
+    private readonly MutableState<Moment> _activeUntil;
 
     private IJSRuntime JS => Hub.JSRuntime();
     private IMomentClock CpuClock { get; }

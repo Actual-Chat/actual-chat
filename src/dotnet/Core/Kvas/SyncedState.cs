@@ -18,7 +18,7 @@ public interface ISyncedState<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
     : IMutableState<T>, ISyncedState
 {
-    new IComputedState<T> ReadState { get; }
+    new ComputedState<T> ReadState { get; }
 }
 
 public static class SyncedState
@@ -59,7 +59,7 @@ public sealed class SyncedState<
     public Task WhenFirstTimeRead => _whenFirstTimeReadSource.Task;
     public Task WhenDisposed { get; private set; } = null!;
     IComputedState ISyncedState.ReadState => ReadState;
-    public IComputedState<T> ReadState { get; }
+    public ComputedState<T> ReadState { get; }
     public string? OwnOrigin { get; }
 
     public SyncedState(Options options, IServiceProvider services, bool initialize = true)
@@ -310,7 +310,7 @@ public class SyncedStateLease<
     public Task WhenFirstTimeRead => State.WhenFirstTimeRead;
     public Task WhenDisposed => State.WhenDisposed;
     IComputedState ISyncedState.ReadState => ReadState;
-    public IComputedState<T> ReadState => State.ReadState;
+    public ComputedState<T> ReadState => State.ReadState;
     public string? OwnOrigin => State.OwnOrigin;
 
     public Task WhenWritten(CancellationToken cancellationToken = default)

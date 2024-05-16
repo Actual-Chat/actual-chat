@@ -4,8 +4,7 @@ using ActualLab.Conversion;
 
 namespace ActualChat;
 
-public interface IMutableStateLease<T> : IMutableState<T>, IDisposable
-{ }
+public interface IMutableStateLease<T> : IMutableState<T>, IDisposable;
 
 public class MutableStateLease<T, TKey, TState, TResource>(
     SharedResourcePool<TKey, TResource>.Lease lease,
@@ -26,8 +25,8 @@ public class MutableStateLease<T, TKey, TState, TResource>(
     }
 
     public object? UntypedValue {
-        get => State.UntypedValue;
-        set => State.UntypedValue = value;
+        get => ((IMutableState)State).UntypedValue;
+        set => ((IMutableState)State).UntypedValue = value;
     }
 
     public T? ValueOrDefault => State.ValueOrDefault;
@@ -65,7 +64,7 @@ public class MutableStateLease<T, TKey, TState, TResource>(
         => State.Set(state, updater);
 
     public void Set(IResult result)
-        => State.Set(result);
+        => ((IMutableState)State).Set(result);
 
     public bool IsValue([MaybeNullWhen(false)] out T value)
         => State.IsValue(out value);
@@ -122,5 +121,5 @@ public class MutableStateLease<T, TState>(SharedResourcePool<Symbol, TState>.Lea
     : MutableStateLease<T, Symbol, TState, TState>(lease, lease.Resource)
     where TState : class, IMutableState<T>;
 
-public class MutableStateLease<T>(SharedResourcePool<Symbol, IMutableState<T>>.Lease lease)
-    : MutableStateLease<T, IMutableState<T>>(lease);
+public class MutableStateLease<T>(SharedResourcePool<Symbol, MutableState<T>>.Lease lease)
+    : MutableStateLease<T, MutableState<T>>(lease);

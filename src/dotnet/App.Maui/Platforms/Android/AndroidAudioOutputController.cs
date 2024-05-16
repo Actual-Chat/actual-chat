@@ -17,9 +17,9 @@ public sealed class AndroidAudioOutputController : ScopedServiceBase<UIHub>, IAu
     private const string AndroidAudioOutput = nameof(AndroidAudioOutput);
     private readonly AudioSwitch _audioSwitch;
     private readonly AudioManager _audioManager;
-    private readonly IMutableState<bool> _isAudioOn;
+    private readonly MutableState<bool> _isAudioOn;
     private readonly IStoredState<bool> _isSpeakerphoneOnStored;
-    private readonly IComputedState<bool> _isSpeakerphoneOn;
+    private readonly ComputedState<bool> _isSpeakerphoneOn;
     private readonly object _lock = new();
 
     public IState<bool> IsAudioOn => _isAudioOn;

@@ -10,8 +10,8 @@ public interface IAudioOutputController
 
 public sealed class AudioOutputController : ScopedServiceBase<UIHub>, IAudioOutputController
 {
-    private readonly IMutableState<bool> _isAudioOn;
-    private readonly IMutableState<bool> _isSpeakerphoneOn;
+    private readonly MutableState<bool> _isAudioOn;
+    private readonly MutableState<bool> _isSpeakerphoneOn;
 
     public IState<bool> IsAudioOn => _isAudioOn;
     public IState<bool> IsSpeakerphoneOn => _isSpeakerphoneOn;

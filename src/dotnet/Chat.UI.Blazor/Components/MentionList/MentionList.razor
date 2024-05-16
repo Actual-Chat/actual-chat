@@ -50,7 +50,7 @@
     [CascadingParameter] public MentionListManager Manager { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
 
-    public IMutableState<string?> Filter { get; private set; } = null!;
+    public MutableState<string?> Filter { get; private set; } = null!;
     public MentionSearchResult[] Mentions => State.Value;
     public MentionSearchResult? Selection {
         get => _selection;

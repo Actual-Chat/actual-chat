@@ -16,7 +16,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
     private static readonly string JSUnregisterRequestNotificationHandlerMethod =
         $"{NotificationBlazorUIModule.ImportName}.NotificationUI.unregisterRequestNotificationHandler";
 
-    private readonly IMutableState<bool?> _permissionState;
+    private readonly MutableState<bool?> _permissionState;
     private readonly TaskCompletionSource _whenPermissionStateReady = TaskCompletionSourceExt.New();
     private volatile Task<string?>? _registerDeviceTask;
     private IDeviceTokenRetriever? _deviceTokenRetriever;

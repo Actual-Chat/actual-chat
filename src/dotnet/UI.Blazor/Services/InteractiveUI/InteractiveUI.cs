@@ -8,8 +8,8 @@ public class InteractiveUI : ScopedServiceBase<UIHub>, IInteractiveUIBackend
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.InteractiveUI.init";
 
     private readonly object _lock = new();
-    private readonly IMutableState<bool> _isInteractive;
-    private readonly IMutableState<ActiveDemandModel?> _activeDemand;
+    private readonly MutableState<bool> _isInteractive;
+    private readonly MutableState<ActiveDemandModel?> _activeDemand;
 
     // Services
     private ModalUI ModalUI => Hub.ModalUI;

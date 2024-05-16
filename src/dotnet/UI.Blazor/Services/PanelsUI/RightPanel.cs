@@ -5,8 +5,8 @@ namespace ActualChat.UI.Blazor.Services;
 public class RightPanel
 {
     private const string StatePrefix = nameof(RightPanel) + "UI";
-    private readonly IMutableState<bool> _isVisible;
-    private readonly IMutableState<bool> _isSearchMode;
+    private readonly MutableState<bool> _isVisible;
+    private readonly MutableState<bool> _isSearchMode;
     private readonly IStoredState<bool> _isVisibleStored;
     private ILogger? _log;
 

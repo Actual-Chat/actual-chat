@@ -8,9 +8,9 @@ public class HealthEventListener(IServiceProvider services, int interval = 10) :
 
     private readonly Queue<double> _last5Values = new ();
     private readonly Queue<double> _last20Values = new ();
-    private readonly IMutableState<double> _cpuMean = services.StateFactory().NewMutable<double>();
-    private readonly IMutableState<double> _cpuMean5 = services.StateFactory().NewMutable<double>();
-    private readonly IMutableState<double> _cpuMean20 = services.StateFactory().NewMutable<double>();
+    private readonly MutableState<double> _cpuMean = services.StateFactory().NewMutable<double>();
+    private readonly MutableState<double> _cpuMean5 = services.StateFactory().NewMutable<double>();
+    private readonly MutableState<double> _cpuMean20 = services.StateFactory().NewMutable<double>();
 
     public IState<double> CpuMean => _cpuMean;
     public IState<double> CpuMean5 => _cpuMean5;

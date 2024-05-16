@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.Pages.ComputeStateTestPage;
 
 public class ComputeStateTestService : SafeAsyncDisposableBase, IHasServices, IComputeService, INotifyInitialized
 {
-    private readonly IMutableState<string> _state;
+    private readonly MutableState<string> _state;
 
     public IServiceProvider Services { get; }
     public IState<string> State => _state;

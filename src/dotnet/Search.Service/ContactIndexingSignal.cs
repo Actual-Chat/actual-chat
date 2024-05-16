@@ -5,7 +5,7 @@ namespace ActualChat.Search;
 public sealed class ContactIndexingSignal : IAsyncDisposable
 {
     private MomentClockSet Clocks { get; }
-    private IMutableState<bool> NeedsSync { get; }
+    private MutableState<bool> NeedsSync { get; }
     private SearchSettings Settings { get; }
 
     private readonly ConcurrentTimerSet<Moment> _timers;

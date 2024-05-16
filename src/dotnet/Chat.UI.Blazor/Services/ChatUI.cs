@@ -14,9 +14,9 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private readonly SharedResourcePool<Symbol, ISyncedState<ReadPosition>> _readPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly IStoredState<ChatId> _selectedChatId;
-    private readonly IMutableState<PlaceId> _selectedPlaceId;
+    private readonly MutableState<PlaceId> _selectedPlaceId;
     private readonly IStoredState<IImmutableDictionary<PlaceId, ChatId>> _selectedChatIds;
-    private readonly IMutableState<ChatEntryId> _highlightedEntryId;
+    private readonly MutableState<ChatEntryId> _highlightedEntryId;
     private readonly ISyncedState<UserNavbarSettings> _navbarSettings;
     private ChatId _searchEnabledChatId;
     private readonly object _lock = new();

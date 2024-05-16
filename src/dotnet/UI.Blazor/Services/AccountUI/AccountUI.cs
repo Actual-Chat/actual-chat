@@ -7,8 +7,8 @@ namespace ActualChat.UI.Blazor.Services;
 public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INotifyInitialized
 {
     private readonly TaskCompletionSource _whenLoadedSource = TaskCompletionSourceExt.New();
-    private readonly IMutableState<AccountFull> _ownAccount;
-    private readonly IMutableState<Moment> _lastChangedAt;
+    private readonly MutableState<AccountFull> _ownAccount;
+    private readonly MutableState<Moment> _lastChangedAt;
     private readonly TimeSpan _maxInvalidationDelay;
     private IClientAuth? _clientAuth;
     private SignInRequesterUI? _signInRequesterUI;

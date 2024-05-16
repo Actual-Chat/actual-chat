@@ -3,7 +3,6 @@ using ActualChat.Chat.UI.Blazor.Events;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 using ActualLab.Diagnostics;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
@@ -22,9 +21,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private Task _updateReadStateTask = null!;
     private SyncedStateLease<ReadPosition> _readPosition = null!;
-    private IMutableState<ChatViewItemVisibility> _itemVisibility = null!;
-    private IMutableState<long> _shownReadEntryLid = null!;
-    private IMutableState<Navigation?> _nextNavigation = null!;
+    private MutableState<ChatViewItemVisibility> _itemVisibility = null!;
+    private MutableState<long> _shownReadEntryLid = null!;
+    private MutableState<Navigation?> _nextNavigation = null!;
     private Range<long> _lastIdRangeToLoad;
     private ChatUIHub? _hub;
     private ILogger? _log;
@@ -39,7 +38,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private NavigationManager Nav => Hub.Nav;
     private History History => Hub.History;
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
-    private IStateFactory StateFactory => Hub.StateFactory();
+    private StateFactory StateFactory => Hub.StateFactory();
     private Dispatcher Dispatcher => Hub.Dispatcher;
     private CancellationToken DisposeToken { get; }
     private ILogger Log => _log ??= Hub.LogFor(GetType());
@@ -247,7 +246,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     // - Return messages around an anchor message we are navigating to
     // If the message data is the same it should return same instances of data tiles to reduce re-rendering
     async Task<VirtualListData<ChatMessage>> IVirtualListDataSource<ChatMessage>.GetData(
-        IComputedState<VirtualListData<ChatMessage>> state,
+        ComputedState<VirtualListData<ChatMessage>> state,
         VirtualListDataQuery query,
         VirtualListData<ChatMessage> renderedData,
         CancellationToken cancellationToken)

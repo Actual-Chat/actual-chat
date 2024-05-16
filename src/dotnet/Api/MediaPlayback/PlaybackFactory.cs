@@ -11,7 +11,7 @@ public interface IPlaybackFactory
 public class PlaybackFactory : IPlaybackFactory
 {
     private readonly ActivePlaybackInfo _activePlaybackInfo;
-    private readonly IStateFactory _stateFactory;
+    private readonly StateFactory _stateFactory;
     private readonly ITrackPlayerFactory _trackPlayerFactory;
     private readonly ISleepDurationProvider _sleepDurationProvider;
     private readonly ILogger<Playback> _playbackLog;

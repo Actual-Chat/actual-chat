@@ -53,7 +53,7 @@
 </div>
 
 @code {
-    private IMutableState<ImmutableHashSet<UserId>> _selectedUserIds = null!;
+    private MutableState<ImmutableHashSet<UserId>> _selectedUserIds = null!;
 
     private string Filter { get; set; } = "";
     private Contact[] FilteredContacts { get; set; } = Array.Empty<Contact>();
@@ -63,7 +63,7 @@
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
-    private IStateFactory StateFactory => Hub.StateFactory();
+    private StateFactory StateFactory => Hub.StateFactory();
     private IAccounts Accounts => Hub.Accounts;
 
     [Parameter] public string SearchBoxPlaceholder { get; set; } = "Whom would you like to add?";

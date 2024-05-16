@@ -7,8 +7,8 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class SelectionUI : ScopedServiceBase<ChatUIHub>
 {
-    private readonly IMutableState<ImmutableHashSet<ChatEntryId>> _selection;
-    private readonly IMutableState<bool> _hasSelection;
+    private readonly MutableState<ImmutableHashSet<ChatEntryId>> _selection;
+    private readonly MutableState<bool> _hasSelection;
 
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;

@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class MiddlePanel : IDisposable
 {
-    private readonly IComputedState<bool> _isVisible;
+    private readonly ComputedState<bool> _isVisible;
 
     public PanelsUI Owner { get; }
     public IState<bool> IsVisible => _isVisible;
@@ -22,7 +22,7 @@ public class MiddlePanel : IDisposable
     public void Dispose()
         => _isVisible.Dispose();
 
-    private async Task<bool> ComputeIsVisible(IComputedState<bool> state, CancellationToken cancellationToken)
+    private async Task<bool> ComputeIsVisible(CancellationToken cancellationToken)
     {
         var screenSize = await Owner.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
         var isWide = screenSize.IsWide();

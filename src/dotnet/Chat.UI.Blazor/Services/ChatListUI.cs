@@ -14,12 +14,12 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     // modified implicitly after returned by GetItems
     private readonly List<ChatId> _activeItems = new List<ChatId>().AddMany(default, ActiveItemCountWhenLoading);
     private readonly List<ChatId> _allItems = new List<ChatId>().AddMany(default, AllItemCountWhenLoading);
-    private readonly IMutableState<bool> _isSelectedChatUnlisted;
-    private readonly IMutableState<int> _loadLimit;
-    private readonly IMutableState<ChatListView?> _activeChatListView;
+    private readonly MutableState<bool> _isSelectedChatUnlisted;
+    private readonly MutableState<int> _loadLimit;
+    private readonly MutableState<ChatListView?> _activeChatListView;
 
     private bool _isFirstLoad = true;
-    private IComputedState<Trimmed<int>>? _unreadChatCount;
+    private ComputedState<Trimmed<int>>? _unreadChatCount;
 
     private IContacts Contacts => Hub.Contacts;
     private IAuthors Authors => Hub.Authors;
@@ -345,9 +345,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
             _ = ListAllUnorderedRaw(placeId, default);
     }
 
-    private async Task<Trimmed<int>> ComputeUnreadChatCount(
-        IComputedState<Trimmed<int>> state,
-        CancellationToken cancellationToken)
+    private async Task<Trimmed<int>> ComputeUnreadChatCount(CancellationToken cancellationToken)
     {
         var chatById = await ListOverallUnordered(cancellationToken).ConfigureAwait(false);
         var count = chatById.Values.UnmutedUnreadChatCount();

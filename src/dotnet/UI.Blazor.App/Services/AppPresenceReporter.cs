@@ -7,7 +7,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class AppPresenceReporter : ScopedWorkerBase<ChatUIHub>, IComputeService
 {
-    private IMutableState<Moment> _lastCheckInAt;
+    private MutableState<Moment> _lastCheckInAt;
 
     private UserActivityUI UserActivityUI => Hub.UserActivityUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;

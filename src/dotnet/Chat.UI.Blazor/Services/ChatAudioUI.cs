@@ -10,9 +10,9 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
 {
-    private readonly IMutableState<Moment?> _stopRecordingAt;
-    private readonly IMutableState<Moment?> _audioStoppedAt;
-    private readonly IMutableState<NextBeepState?> _nextBeep;
+    private readonly MutableState<Moment?> _stopRecordingAt;
+    private readonly MutableState<Moment?> _audioStoppedAt;
+    private readonly MutableState<NextBeepState?> _nextBeep;
     private readonly TaskCompletionSource _whenEnabledSource = TaskCompletionSourceExt.New();
 
     private IChats Chats => Hub.Chats;
