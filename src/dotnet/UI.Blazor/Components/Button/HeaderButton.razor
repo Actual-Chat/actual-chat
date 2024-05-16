@@ -10,6 +10,8 @@
         data-tooltip-position="@(TooltipPosition.ToPositionString())"
         data-must-keep-awake="@MustKeepAwake.ToString()"
         @attributes="@AdditionalAttributes"
+        @onclick:stopPropagation="true"
+        @onclick:preventDefault="true"
         @onclick="@Click">
     <div class="c-content">
         @ChildContent

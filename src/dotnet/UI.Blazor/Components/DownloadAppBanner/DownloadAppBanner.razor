@@ -18,16 +18,18 @@
     <div
         class="download-app-banner-button"
         @onclick="@OnDownload">
+        <div class="download-app-banner-filler"></div>
         <div class="download-app-banner-title">
             Get Actual Chat App
         </div>
         <i class="icon-download"></i>
+        <div class="download-app-banner-filler"></div>
         @if (CanBeClosed) {
-            <i class="icon-close"
-               @onclick="@OnClose"
-               @onclick:stopPropagation="true"
-               @onclick:preventDefault="true">
-            </i>
+            <HeaderButton
+                Click="@OnClose"
+                Class="c-close-btn">
+                <i class="icon-close"></i>
+            </HeaderButton>
         }
     </div>
 </div>
