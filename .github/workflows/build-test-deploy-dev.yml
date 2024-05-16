@@ -183,7 +183,7 @@ jobs:
 
       - name: Debug build of tests
         run: |
-          dotnet build ActualChat.CI.slnf --nologo --configuration Debug
+          dotnet build ActualChat.CI.slnf --nologo --no-restore --configuration Debug
 
       - name: Run unit tests
         run: ./run-build.cmd unit-tests --configuration Debug
@@ -305,7 +305,7 @@ jobs:
 
       - name: Debug Build for tests
         run: |
-          dotnet build ActualChat.CI.slnf --nologo --configuration Debug
+          dotnet build ActualChat.CI.slnf --nologo --no-restore --configuration Debug
 
       - name: Run integration tests
         env:
