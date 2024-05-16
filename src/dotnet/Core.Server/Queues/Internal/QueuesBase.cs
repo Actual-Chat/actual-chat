@@ -9,6 +9,7 @@ public abstract record QueueSettings
 {
     public int ConcurrencyLevel { get; init; } = HardwareInfo.GetProcessorCountFactor(8);
     public TimeSpan ProcessCancellationDelay { get; init; } = TimeSpan.FromSeconds(5);
+    public TimeSpan IdleTimeout { get; init; } = TimeSpan.FromSeconds(30);
     public IMomentClock? Clock { get; init; }
 }
 

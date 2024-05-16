@@ -96,20 +96,22 @@ public static class AsyncEnumerableExt
         if (whileTask.IsCompleted)
             yield break;
 
-        // ReSharper disable once NotDisposedResource
         var enumerator = source.GetAsyncEnumerator(cancellationToken);
-        await using var _ = enumerator.ConfigureAwait(false);
+        try {
+            var hasNextTask = enumerator.MoveNextAsync();
+            while (true) {
+                if (!hasNextTask.IsCompleted)
+                    await Task.WhenAny(whileTask, hasNextTask.AsTask()).ConfigureAwait(false);
 
-        var hasNextTask = enumerator.MoveNextAsync();
-        while (true) {
-            if (!hasNextTask.IsCompleted)
-                await Task.WhenAny(whileTask, hasNextTask.AsTask()).ConfigureAwait(false);
+                if (whileTask.IsCompleted || !await hasNextTask.ConfigureAwait(false))
+                    yield break;
 
-            if (whileTask.IsCompleted || !await hasNextTask.ConfigureAwait(false))
-                yield break;
-
-            yield return enumerator.Current;
-            hasNextTask = enumerator.MoveNextAsync();
+                yield return enumerator.Current;
+                hasNextTask = enumerator.MoveNextAsync();
+            }
+        }
+        finally {
+            await enumerator.DisposeSilentlyAsync().ConfigureAwait(false);
         }
     }
 
