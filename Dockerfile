@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:8.0.0-bookworm-slim as runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0.5-bookworm-slim as runtime
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
@@ -12,7 +12,7 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
 RUN apt update && apt install -y ffmpeg && apt clean
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0.100-1-bookworm-slim as dotnet-restore
+FROM mcr.microsoft.com/dotnet/sdk:8.0.300-bookworm-slim as dotnet-restore
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
@@ -49,8 +49,8 @@ COPY run-build.cmd .
 RUN ./run-build.cmd restore \
     && dotnet workload install wasm-tools
 
-# node:16-alpine because it's [cached on gh actions VM](https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md#cached-docker-images)
-FROM node:16-alpine as nodejs-restore
+# node:20-alpine because it's [cached on gh actions VM](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md#cached-docker-images)
+FROM node:20-alpine as nodejs-restore
 ARG NPM_READ_TOKEN
 ENV NPM_READ_TOKEN=$NPM_READ_TOKEN
 WORKDIR /src/src/nodejs
