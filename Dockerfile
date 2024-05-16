@@ -55,8 +55,7 @@ ARG NPM_READ_TOKEN
 ENV NPM_READ_TOKEN=$NPM_READ_TOKEN
 WORKDIR /src/src/nodejs
 RUN apk update && apk add brotli gzip
-RUN npm -g config set user root && \
-    npm -g config set audit false && \
+RUN npm -g config set audit false && \
     npm -g config set audit-level critical && \
     npm -g config set fund false && \
     npm -g config set prefer-offline true && \
