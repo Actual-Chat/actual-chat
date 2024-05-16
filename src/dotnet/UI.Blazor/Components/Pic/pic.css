@@ -17,6 +17,9 @@
     @apply absolute right-0 top-0 left-0 bottom-0;
     @apply scale-[2];
 }
+.pic-blurred.pic-svg {
+    @apply scale-[5];
+}
 .pic-blurred .pic-image {
     @apply rounded-none;
 }

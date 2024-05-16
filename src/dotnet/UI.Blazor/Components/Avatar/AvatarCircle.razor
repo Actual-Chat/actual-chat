@@ -1,15 +1,9 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
-@using Microsoft.Toolkit.HighPerformance
 @using ActualChat.UI.Blazor.Services
 @inherits FusionComponentBase
 @{
     var title = HasTooltip ? Avatar.Name : "";
-    var hasPicture = !_pictureUrl.IsNullOrEmpty();
-    var isSvg = hasPicture && (_pictureUrl.Contains("svg", StringComparison.OrdinalIgnoreCase)
-        || _pictureUrl.Contains("boringavatars", StringComparison.OrdinalIgnoreCase));
-    if (isSvg)
-        _pictureUrl += "#svgView(preserveAspectRatio(none))";
     var avatarClass = IsBlurred ? "avatar-blurred": "";
 }
 
@@ -63,5 +57,11 @@
         } else {
             _avatarKey = DefaultUserPicture.GetAvatarKey(Avatar.Id);
         }
+
+        var isSvg = !_pictureUrl.IsNullOrEmpty()
+                    && (_pictureUrl.Contains("svg", StringComparison.OrdinalIgnoreCase)
+                        || _pictureUrl.Contains("boringavatars", StringComparison.OrdinalIgnoreCase));
+        if (isSvg)
+            _class += " pic-svg";
     }
 }
