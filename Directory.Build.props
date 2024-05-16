@@ -49,7 +49,7 @@
     <SolutionDir Condition="$(SolutionDir) == ''">$(RepoRoot)</SolutionDir>
 
     <!-- UseAppPack -->
-    <UseAppPack Condition="'$(UseAppPack)' == '' and '$(Configuration)' == 'Release'">true</UseAppPack>
+    <UseAppPack Condition="'$(UseAppPack)' == '' and '$(Configuration)' == 'Release'">false</UseAppPack>
     <UseAppPack Condition="'$(UseAppPack)' == '' and '$(Configuration)' != 'Release'">false</UseAppPack>
     <AppPackDir>$(RepoRoot)artifacts/repacked/$(Configuration)/</AppPackDir>
 

@@ -16,6 +16,7 @@ Use:
     -->
     <InvariantGlobalization>true</InvariantGlobalization>
     <WasmEnableWebcil>true</WasmEnableWebcil>
+    <!-- Startup is 50-100ms slower when enabled: -->
     <WasmEnableSIMD>false</WasmEnableSIMD>
     <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
   </PropertyGroup>
