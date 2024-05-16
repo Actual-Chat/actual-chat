@@ -8,12 +8,6 @@
         "dotnet-ef"
       ]
     },
-    "microsoft.playwright.cli": {
-      "version": "1.2.3",
-      "commands": [
-        "playwright"
-      ]
-    },
     "nbgv": {
       "version": "3.6.133",
       "commands": [
