@@ -46,8 +46,8 @@ COPY tests/Directory.Build.* tests/.editorconfig tests/
 COPY build/ build/
 COPY run-build.cmd .
 
-RUN ./run-build.cmd restore \
-    && dotnet workload install wasm-tools
+RUN dotnet workload install wasm-tools \
+    && ./run-build.cmd restore
 
 # node:20-alpine because it's [cached on gh actions VM](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md#cached-docker-images)
 FROM node:20-alpine as nodejs-restore
