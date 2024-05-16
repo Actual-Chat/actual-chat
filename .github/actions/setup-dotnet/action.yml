@@ -27,11 +27,6 @@ runs:
         restore-keys: |
           ${{ runner.os }}-nuget-
 
-    - name: Restore nuget packages
-      shell: bash
-      if: ${{ inputs.restore == 'true' }}
-      run: ./run-build.cmd restore
-
     - name: Restore tools
       shell: bash
       if: ${{ inputs.restore-tools == 'true' }}
@@ -41,5 +36,10 @@ runs:
       shell: bash
       if: ${{ inputs.restore-workloads == 'true' }}
       run: |
-        dotnet workload restore
-        dotnet workload install wasm-tools
+        dotnet workload restore \
+          && dotnet workload install wasm-tools
+
+    - name: Restore nuget packages
+      shell: bash
+      if: ${{ inputs.restore == 'true' }}
+      run: ./run-build.cmd restore

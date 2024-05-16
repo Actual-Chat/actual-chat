@@ -152,7 +152,6 @@ jobs:
         uses: ./.github/actions/setup-dotnet
         with:
           restore-tools: false
-          restore-workloads: false
 
       - name: Debug Build for tests
         run: |
