@@ -1,7 +1,7 @@
 ﻿import {customElement, property} from "lit/decorators.js";
 import {css, html, LitElement} from "lit";
 import {HTMLTemplateResult} from "lit-html/development/lit-html";
-import {MessageWidth, randomIntFromInterval} from "./helpers";
+import { MessageWidth, randomIntFromInterval, StringHeight } from './helpers';
 import {messageStyles} from "./styles.lit";
 
 @customElement('string-skeleton')
@@ -10,6 +10,10 @@ class StringSkeletonLit extends LitElement {
     firstWidth = 1;
     @property()
     secondWidth = 10;
+    @property()
+    height = 3;
+    @property({type: Boolean})
+    system = false;
     @property()
     rootCls = "layout-body";
 
@@ -23,13 +27,20 @@ class StringSkeletonLit extends LitElement {
 
     render(): unknown {
         return html`
-            <div class="message string-skeleton ${this.getWidth(this.getNumber(), this.getNumber(false))}"></div>
+            <div class="string-skeleton-wrapper ${this.system ? "system-string" : ""}">
+                <div class="message string-skeleton ${this.getHeight(this.height)} ${this.getWidth(this.getNumber(), this.getNumber(false))}"></div>
+            </div>
         `;
     }
 
-    private getWidth(first: number, second: number): string {
+    private getWidth(first: number, second: number) : string {
         let num = randomIntFromInterval(first, second);
         return MessageWidth[num];
+    }
+
+    private getHeight(height: number) : string {
+        let num = (height < 1 || height > 6) ? 3 : height;
+        return StringHeight[num];
     }
 
     private getNumber(isFirst: boolean = true) : number {

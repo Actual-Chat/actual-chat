@@ -14,3 +14,12 @@ export enum MessageWidth {
     "w-9" = 9,
     "w-10" = 10,
 }
+
+export enum StringHeight {
+    "h-1" = 1,
+    "h-2" = 2,
+    "h-3" = 3,
+    "h-4" = 4,
+    "h-5" = 5,
+    "h-6" = 6,
+}

@@ -8,7 +8,6 @@ class ChatViewSkeleton extends LitElement {
     static styles = [messageStyles, css`
         :host {
             width: 100%;
-            margin: 0.375rem;
             scrollbar-width: none;
         }
         :host::-webkit-scrollbar {

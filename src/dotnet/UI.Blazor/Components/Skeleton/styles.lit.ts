@@ -76,10 +76,18 @@ export const messageStyles = css`
         opacity: 75%;
         border-radius: 0.375rem;
     }
+    .string-skeleton-wrapper {
+        display: flex;
+        width: 100%;
+    }
+    .string-skeleton-wrapper.system-string {
+        justify-content: center;
+        align-items: center;
+        margin: 1px 0;
+    }
     .string-skeleton {
-        height: 0.75rem;
         background-color: var(--skeleton);
-        border-radius: 9999px;
+        border-radius: 0.5rem;
         animation: pulse 2s infinite;
     }
     .header-skeleton,
@@ -137,6 +145,25 @@ export const messageStyles = css`
     .round-skeleton.radius-16 {
         width: 4rem;
         height: 4rem;
+    }
+
+    .message.h-1 {
+        height: 0.25rem;
+    }
+    .message.h-2 {
+        height: 0.5rem;
+    }
+    .message.h-3 {
+        height: 0.75rem;
+    }
+    .message.h-4 {
+        height: 1rem;
+    }
+    .message.h-5 {
+        height: 1.25rem;
+    }
+    .message.h-6 {
+        height: 1.5rem;
     }
 
     @keyframes pulse {

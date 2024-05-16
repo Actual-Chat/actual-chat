@@ -24,7 +24,7 @@ class ChatMessageSkeletonLit extends LitElement {
         for (let i = 0; i < messageCount; i++) {
             messages.push(html`
                 <div class="message-wrapper">
-                    <div class="message ${this.getMessageWidth(4, 10)}"></div>
+                    <div class="message ${this.getMessageWidth(4, 9)}"></div>
                 </div>`);
         }
         return html`
@@ -34,7 +34,7 @@ class ChatMessageSkeletonLit extends LitElement {
                 </div>
                 <div class="c-container">
                     <div class="title message ${this.getMessageWidth(2, 5)}"></div>
-                    <div class="message ${this.getMessageWidth(4, 10)}"></div>
+                    <div class="message ${this.getMessageWidth(4, 9)}"></div>
                 </div>
             </div>
             <div class="message-list ${animatedCls}">
