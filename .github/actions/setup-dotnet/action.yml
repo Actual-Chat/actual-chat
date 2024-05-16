@@ -35,11 +35,10 @@ runs:
     - name: Install workloads
       shell: bash
       if: ${{ inputs.restore-workloads == 'true' }}
-      run: |
-        dotnet workload restore \
-          && dotnet workload install wasm-tools
+      run: dotnet workload restore
 
     - name: Restore nuget packages
       shell: bash
       if: ${{ inputs.restore == 'true' }}
-      run: ./run-build.cmd restore
+      # wasm-tools is required by restore, but restore-workloads is too heavy for that
+      run: dotnet workload install wasm-tools && ./run-build.cmd restore
