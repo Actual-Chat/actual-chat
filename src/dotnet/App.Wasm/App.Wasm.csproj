@@ -16,9 +16,7 @@ Use:
     -->
     <InvariantGlobalization>true</InvariantGlobalization>
     <WasmEnableWebcil>true</WasmEnableWebcil>
-    <!--
     <WasmEnableSIMD>true</WasmEnableSIMD>
-    -->
     <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
   </PropertyGroup>
 
@@ -79,13 +77,13 @@ Use:
     <PackageReference Include="Microsoft.Toolkit.HighPerformance" />
     <PackageReference Include="OpenTelemetry" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    <PackageReference Include="RestEase" />
     <PackageReference Include="SauceControl.Blake2Fast" />
     <PackageReference Include="Sentry.OpenTelemetry" />
     <PackageReference Include="System.Linq.Async" />
     <PackageReference Include="System.Reactive" />
-    <PackageReference Include="RestEase" />
-    <PackageReference Include="ZString" />
     <PackageReference Include="Ulid" />
+    <PackageReference Include="ZString" />
   </ItemGroup>
 
   <ItemGroup>

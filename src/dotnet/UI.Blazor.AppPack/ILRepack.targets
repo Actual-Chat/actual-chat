@@ -14,7 +14,10 @@
       <InputAssemblies Include="$(OutputPath)MemoryPack.Core.dll" />
       <InputAssemblies Include="$(OutputPath)Newtonsoft.Json.dll" />
       <InputAssemblies Include="$(OutputPath)Pidgin.dll" />
+      <InputAssemblies Include="$(OutputPath)RestEase*.dll" />
+      <InputAssemblies Include="$(OutputPath)SauceControl.Blake*.dll" />
       <InputAssemblies Include="$(OutputPath)Ulid.dll" />
+      <InputAssemblies Include="$(OutputPath)ZString.dll" />
     </ItemGroup>
 
     <ILRepack
