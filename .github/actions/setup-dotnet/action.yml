@@ -40,4 +40,6 @@ runs:
     - name: Install workloads
       shell: bash
       if: ${{ inputs.restore-workloads == 'true' }}
-      run: dotnet workload restore
+      run: |
+        dotnet workload restore
+        dotnet workload install wasm-tools
