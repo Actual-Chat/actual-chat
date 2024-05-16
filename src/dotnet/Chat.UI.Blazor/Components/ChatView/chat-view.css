@@ -48,6 +48,10 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply mt-1;
 }
 
+.chat-message .avatar-name.skeleton {
+    @apply flex gap-x-1;
+}
+
 .chat-message-author-name {
     @apply max-h-6 overflow-hidden truncate;
     @apply font-bold text-03;

@@ -122,6 +122,8 @@ export class SideNav extends DisposableBag {
         this.element.style.transform = `translate3d(${100 * translateRatio}%, 0, 0)`;
         if (!DeviceInfo.isWebKit) {
             this.element.style.backdropFilter = `blur(3px)`;
+        } else {
+            this.element.style.setProperty('-webkit-backdrop-filter', 'blur(3px)');
         }
         this.element.style.backgroundColor = `rgba(1, 1, 1, 0)`;
         this.contentDiv.style.opacity = opacity.toString();

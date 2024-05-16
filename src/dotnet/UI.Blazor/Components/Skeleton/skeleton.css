@@ -1,12 +1,15 @@
+.skeleton-page {
+    @apply flex-y md:flex-x h-full;
+}
+.skeleton-left-panel {
+    @apply flex-x;
+}
 .thin-left-skeleton-panel {
     @apply flex-y;
-    @apply px-0.5 md:px-4.5;
     @apply bg-04;
-    width: 7.5rem;
 }
 body.narrow .thin-left-skeleton-panel {
     @apply hidden;
-    width: auto;
 }
 .thin-left-skeleton-panel .skeleton-panel-body {
     @apply items-end gap-y-3 md:gap-y-2;
@@ -60,7 +63,7 @@ body.narrow .wide-left-skeleton-panel:has(.inaccessible-place-request) {
 .right-skeleton-panel {
     @apply hidden flex-1 md:flex-y;
     @apply bg-03;
-    @apply w-full md:min-w-80;
+    @apply w-full md:min-w-80 md:max-w-80;
 }
 .right-skeleton-panel .skeleton-panel-header {
     @apply grid gap-y-2;
@@ -101,6 +104,7 @@ body.narrow .wide-left-skeleton-panel:has(.inaccessible-place-request) {
     @apply min-h-14;
 }
 .skeleton-chat-header {
+    @apply flex-x gap-x-2;
     @apply px-2;
     @apply border-b border-separator;
 }
@@ -125,8 +129,9 @@ body.wide .thin-left-skeleton-panel .skeleton-panel-footer {
     @apply justify-end;
 }
 .chat-skeleton-panel .skeleton-panel-body {
-    @apply p-2 md:p-0 md:pr-8;
+    @apply p-2 md:p-1.5;
     @apply overflow-y-auto;
+    scrollbar-width: none;
 }
 body.narrow .chat-skeleton-panel .skeleton-panel-footer {
     @apply p-0;
