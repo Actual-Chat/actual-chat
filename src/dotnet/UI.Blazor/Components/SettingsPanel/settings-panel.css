@@ -40,8 +40,8 @@
 
 /* Tab items */
 .settings-panel > .c-tabs .c-tab-items {
-    @apply flex-1 flex-y overflow-hidden;
-    @apply px-2;
+    @apply flex-1 flex-y overflow-x-hidden overflow-y-auto;
+    @apply px-2 mb-1;
 }
 .settings-panel > .c-tabs .c-tab-item {
     @apply flex-none flex-x;
