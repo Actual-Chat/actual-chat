@@ -1,5 +1,10 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <div class="skeleton-chat-header">
-    <chat-header-skeleton />
+    <div class="flex-none flex items-center justify-center h-14 px-2">
+        <round-skeleton radius="10" />
+    </div>
+    <div class="flex-1 flex items-center justify-start">
+        <string-skeleton firstWidth="3" secondWidth="8"/>
+    </div>
 </div>

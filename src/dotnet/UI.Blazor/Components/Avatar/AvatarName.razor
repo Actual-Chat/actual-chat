@@ -8,8 +8,8 @@
     var firstLength = tailwindSpacing[Random.Shared.Next(5, tailwindSpacing.Length - 1)];
     var secondLength = tailwindSpacing[Random.Shared.Next(0, 7)];
     <span class="@Class avatar-name skeleton animate-pulse">
-        <span class="bg-skeleton rounded-md border-skeleton-border border-2 w-@firstLength h-4"></span>
-        <span class="bg-skeleton rounded-md border-skeleton-border border-2 w-@secondLength h-4"></span>
+        <span class="bg-skeleton rounded-md w-@firstLength h-4"></span>
+        <span class="bg-skeleton rounded-md w-@secondLength h-4"></span>
     </span>
 } else {
     var extraClass = Click.HasDelegate ? " cursor-pointer" : "";

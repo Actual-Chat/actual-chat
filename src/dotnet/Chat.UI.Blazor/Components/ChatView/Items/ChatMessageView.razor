@@ -51,25 +51,29 @@
 }
 
 @if (isSystem) {
-    <div class="@cls"
-         data-hover-menu="@(MenuRef.New<MessageHoverMenu>(message.Entry.Id, bool.TrueString))"
-         data-menu="@(MenuRef.New<MessageMenu>(message.Entry.Id, bool.TrueString, "", ""))"
-         data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
-        <div class="chat-message group">
-            <div class="c-content">
-                <div class="message-content">
-                    <p class="chat-message-markup">
-                        <CascadingValue Value="@entry" IsFixed="true">
-                            <MarkupView Markup="@markup"/>
-                        </CascadingValue>
-                    </p>
+    if (ReferenceEquals(entry, ChatEntry.Loading)) {
+        <string-skeleton firstWidth="2" secondWidth="4" height="6" system="true"/>
+    } else {
+        <div class="@cls"
+             data-hover-menu="@(MenuRef.New<MessageHoverMenu>(message.Entry.Id, bool.TrueString))"
+             data-menu="@(MenuRef.New<MessageMenu>(message.Entry.Id, bool.TrueString, "", ""))"
+             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+            <div class="chat-message group">
+                <div class="c-content">
+                    <div class="message-content">
+                        <p class="chat-message-markup">
+                            <CascadingValue Value="@entry" IsFixed="true">
+                                <MarkupView Markup="@markup"/>
+                            </CascadingValue>
+                        </p>
+                    </div>
                 </div>
-            </div>
                 @if (entry.HasReactions) {
                     <MessageReactions Entry="@entry"/>
                 }
+            </div>
         </div>
-    </div>
+    }
     return;
 }
 
