@@ -89,13 +89,16 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
     protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {
-        Log.LogDebug("OnRun: ShardScheme={ShardScheme}, ShardIndex={ShardIndex}", ShardScheme, shardIndex);
+        DebugLog?.LogDebug("OnRun: ShardScheme={ShardScheme}, ShardIndex={ShardIndex}", ShardScheme, shardIndex);
         using var gracefulStopCts = cancellationToken.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
         var gracefulStopToken = gracefulStopCts.Token;
 
         var consumer = await GetConsumer(shardIndex, cancellationToken).ConfigureAwait(false);
         var messages = consumer.ConsumeAsync<IMemoryOwner<byte>>(
-            opts: new NatsJSConsumeOpts { MaxMsgs = 10 },
+            opts: new NatsJSConsumeOpts {
+                MaxMsgs = 10,
+                Expires = Settings.IdleTimeout,
+            },
             cancellationToken: cancellationToken);
 
         MarkStarted();
