@@ -97,37 +97,22 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         var messages = consumer.ConsumeAsync<IMemoryOwner<byte>>(
             opts: new NatsJSConsumeOpts { MaxMsgs = 10 },
             cancellationToken: cancellationToken);
-        var lastMessageAt = Clock.Now.EpochOffsetTicks;
-        var nonIdleMessages = messages
-            .TakeWhile(WhileNotIdle(cancellationToken), cancellationToken);
 
         MarkStarted();
         var parallelOptions = new ParallelOptions {
             MaxDegreeOfParallelism = Settings.ConcurrencyLevel,
             CancellationToken = cancellationToken,
         };
-        await Parallel.ForEachAsync(nonIdleMessages, parallelOptions, HandleMessage).ConfigureAwait(false);
+        await Parallel.ForEachAsync(messages, parallelOptions, HandleMessage).ConfigureAwait(false);
         return;
 
         async ValueTask HandleMessage(NatsJSMsg<IMemoryOwner<byte>> message, CancellationToken _) {
             try {
                 cancellationToken.ThrowIfCancellationRequested();
-                Interlocked.Exchange(ref lastMessageAt, Clock.Now.EpochOffsetTicks);
                 await Process(shardIndex, message, gracefulStopToken).ConfigureAwait(false);
             }
             finally {
                 message.Data.DisposeSilently();
-            }
-        }
-
-        async Task WhileNotIdle(CancellationToken cancellationToken0)
-        {
-            var idleTicks = Settings.IdleTimeout.Ticks;
-            while (!cancellationToken0.IsCancellationRequested) {
-                await Clock.Delay(Settings.IdleTimeout, cancellationToken).ConfigureAwait(false);
-                var now = Clock.Now.EpochOffsetTicks;
-                if (now - Interlocked.Read(ref lastMessageAt) > idleTicks)
-                    break;
             }
         }
     }
