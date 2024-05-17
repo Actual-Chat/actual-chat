@@ -12,12 +12,18 @@
         Click="Click"
         Tooltip="Chat properties"
         TooltipPosition="FloatingPosition.Bottom">
-        <i class="icon-layout"></i>
+        @if (!ScreenSize.IsNarrow()) {
+            <i class="icon-layout"></i>
+        } else {
+            <i class="icon-more-vertical"></i>
+        }
     </HeaderButton>
 }
 
 @code {
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter] public EventCallback Click { get; set; }
 

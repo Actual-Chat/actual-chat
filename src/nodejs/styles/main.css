@@ -125,7 +125,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply bg-01;
 }
 .layout-header > .c-content {
-    @apply ordinary-header;
+    @apply ordinary-header gap-x-2;
     @apply justify-items-stretch;
     @apply border-b border-separator;
 }

@@ -111,7 +111,6 @@ swiper-slide img {
 .media-preview-swiper {
     height: 3.5rem;
     box-sizing: border-box;
-    padding: 0.25rem;
 }
 .media-preview-swiper swiper-slide {
     height: 100%;
@@ -141,4 +140,9 @@ swiper-container.media-swiper.navigation-hidden::part(button-next) {
 swiper-container.media-swiper.navigation-visible::part(button-next),
 swiper-container.media-swiper.navigation-visible::part(button-prev) {
     transition: all 300ms ease-in-out;
+}
+
+.media-preview-swiper .swiper-slide-visible {
+    max-width: 10%;
+    cursor: pointer;
 }
