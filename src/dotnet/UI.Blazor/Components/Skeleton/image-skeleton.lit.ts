@@ -19,6 +19,15 @@ class ImageSkeleton extends LitElement {
         visibility: hidden;
       }
 
+      :host(.image-cover) {
+          height: 100%;
+          width: 100%;
+      }
+
+      :host(.image-cover) .image {
+          object-fit: cover;
+      }
+
       .image {
         width: 100%;
         height: 100%;

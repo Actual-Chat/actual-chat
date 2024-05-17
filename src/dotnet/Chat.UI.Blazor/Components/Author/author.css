@@ -1,5 +1,5 @@
 .author-circle-group {
-    @apply flex-x gap-x-2 pr-3;
+    @apply flex-x pr-3;
 }
 .author-circle-group-item {
     @apply -mr-2 border border-bg-02 rounded-full;
