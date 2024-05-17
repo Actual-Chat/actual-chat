@@ -27,9 +27,9 @@ public static partial class Constants
         public static readonly bool ServerFusionMonitor = false; // Applies only to dev server
         public static readonly bool DisableStaticFileCaching = false; // Applies only to dev server
         public static readonly bool ClientComputedCache = false;
-        public static readonly bool MeshLocks = true;
-        public static readonly bool ShardWorker = true;
-        public static readonly bool QueueProcessor = true;
+        public static readonly bool MeshLocks = false;
+        public static readonly bool ShardWorker = false;
+        public static readonly bool QueueProcessor = false;
 
         // UI services
         public static readonly bool History = false;
