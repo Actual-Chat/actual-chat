@@ -85,7 +85,7 @@ internal static class OpenSearchClientExt
     }
 
     public static DynamicResponse AssertSuccess(this DynamicResponse response, bool allowNotFound = false)
-        => response.Success && (!response.TryGetServerError(out var error) || error is null)
+        => response.Success && (!response.TryGetServerError(out var error) || error is null || error.Status < 0)
             ? response
             : response.InnerAssertSuccess(allowNotFound);
 

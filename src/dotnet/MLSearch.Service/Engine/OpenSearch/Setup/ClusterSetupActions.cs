@@ -28,29 +28,32 @@ internal sealed class ClusterSetupActions(
 {
      private readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
 
-    public async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(string modelGroup, CancellationToken cancellationToken)
+    public async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(string modelGroupName, CancellationToken cancellationToken)
     {
         using var _1 = _tracer.Region();
         // Read model group latest state
         var modelGroupResponse = await openSearch.RunAsync(
                 $$"""
-                  POST /_plugins/_ml/model_groups/_search
-                  {
-                      "query": {
-                          "match": {
-                              "name": "{{modelGroup}}"
-                          }
-                      },
-                      "sort": [{
-                          "_seq_no": { "order": "desc" }
-                      }],
-                      "size": 1
-                  }
-                  """,
+                POST /_plugins/_ml/model_groups/_search
+                {
+                    "query": {
+                        "match": {
+                            "name": "{{modelGroupName}}"
+                        }
+                    },
+                    "sort": [{
+                        "_seq_no": { "order": "desc" }
+                    }],
+                    "size": 1
+                }
+                """,
                 cancellationToken
             )
             .ConfigureAwait(false);
-        var modelGroupId = modelGroupResponse.FirstHit().Get<string>("_id");
+        var modelGroup = modelGroupResponse
+            .AssertSuccess()
+            .FirstHit();
+        var modelGroupId = modelGroup.Get<string>("_id");
         if (modelGroupId.IsNullOrEmpty()) {
             throw new InvalidOperationException(
                 "Failed to retrieve model group id."
@@ -75,7 +78,9 @@ internal sealed class ClusterSetupActions(
                 cancellationToken
             )
             .ConfigureAwait(false);
-        var model = modelResponse.FirstHit();
+        var model = modelResponse
+            .AssertSuccess()
+            .FirstHit();
         var modelId = model.Get<string>("_id");
         if (modelId.IsNullOrEmpty()) {
             throw new InvalidOperationException(
