@@ -1,21 +1,26 @@
 using ActualChat.Attributes;
 using ActualChat.Hosting;
+using ActualLab.Internal;
 
 namespace ActualChat;
 
 public static class HostRolesExt
 {
-    public static bool MustReplaceServerWithHybrid { get; set; }
+    private static readonly ConcurrentDictionary<object, BackendServiceAttribute[]> BackendServiceAttributes = new();
 
-    private static readonly ConcurrentDictionary<object, BackendServiceAttribute[]> _backendServiceAttributes = new();
+    public static bool MustReplaceServerWithHybrid { get; set; }
 
     // GetServiceMode
 
     public static ServiceMode GetBackendServiceMode<T>(this IReadOnlySet<HostRole> hostRoles)
+        where T : class
         => hostRoles.GetBackendServiceMode(typeof(T));
     public static ServiceMode GetBackendServiceMode(this IReadOnlySet<HostRole> hostRoles, Type type)
     {
-        var attrs = _backendServiceAttributes.GetOrAdd(type,
+        if (!type.IsInterface)
+            throw Errors.MustBeInterface(type, nameof(type));
+
+        var attrs = BackendServiceAttributes.GetOrAdd(type,
             static (_, t) => t.GetCustomAttributes<BackendServiceAttribute>().OrderByDescending(x => x.Priority).ToArray(),
             type);
         if (attrs.Length == 0)
@@ -29,7 +34,7 @@ public static class HostRolesExt
 
     private static ServiceMode GetBackendServiceMode(this IReadOnlySet<HostRole> hostRoles, Assembly assembly)
     {
-        var attrs = _backendServiceAttributes.GetOrAdd(assembly,
+        var attrs = BackendServiceAttributes.GetOrAdd(assembly,
             static (_, a) => a.GetCustomAttributes<BackendServiceAttribute>().OrderByDescending(x => x.Priority).ToArray(),
             assembly);
         var attr = attrs.FirstOrDefault(x => hostRoles.Contains(new HostRole(x.HostRole)));

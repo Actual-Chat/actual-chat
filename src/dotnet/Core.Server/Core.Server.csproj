@@ -16,4 +16,5 @@
     <PackageReference Include="NATS.Net" />
     <PackageReference Include="SixLabors.ImageSharp" />
   </ItemGroup>
+
 </Project>

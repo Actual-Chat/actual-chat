@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Flows;
+using ActualChat.Flows.Infrastructure;
 using ActualChat.Hosting;
 using ActualChat.Mesh;
 using ActualChat.Rpc.Internal;
@@ -22,6 +24,7 @@ public readonly struct RpcHostBuilder
     public IServiceCollection Services => Fusion.Services;
     public CommanderBuilder Commander => Fusion.Commander;
     public RpcBuilder Rpc => Fusion.Rpc;
+    public FlowRegistryBuilder Flows { get; }
     public HostInfo HostInfo { get; }
     public ILogger? Log { get; }
 
@@ -30,12 +33,36 @@ public readonly struct RpcHostBuilder
     internal RpcHostBuilder(IServiceCollection services, HostInfo hostInfo, ILogger? log)
     {
         Fusion = services.AddFusion(RpcServiceMode.Local);
+        Flows = services.FindInstance<FlowRegistryBuilder>()!;
         HostInfo = hostInfo;
         Log = log;
         IsApiHost = HostInfo.HasRole(HostRole.Api);
+        if (Services.HasService<BackendServiceDefs>())
+            return; // Already configured
 
-        if (!Services.HasService<BackendServiceDefs>())
-            AddCoreServices();
+        if (Services.HasService<RpcWebSocketServer>())
+            throw StandardError.Internal("Something is off: RpcWebSocketServer is already added.");
+        if (Services.HasService<RpcClient>())
+            throw StandardError.Internal("Something is off: RpcClient is already added.");
+
+        // Common services
+        RpcServiceRegistry.ConstructionDumpLogLevel = LogLevel.Information;
+        Services.AddSingleton(c => new BackendServiceDefs(c));
+        Services.AddSingleton(c => new RpcMeshRefResolvers(c));
+        Services.AddSingleton(c => new RpcBackendDelegates(c));
+        AddMeshServices();
+        Fusion.AddWebServer();
+        AddRpcServer(); // Must follow AddWebServer
+        AddRpcClient();
+        AddRpcPeerFactory();
+        Flows = new FlowRegistryBuilder();
+        Services.AddInstance(Flows);
+
+        // Debug stuff
+        if (Constants.DebugMode.RpcCalls.AnyServerInboundDelay is { } delay)
+            Rpc.AddInboundMiddleware(c => new RpcRandomDelayMiddleware(c) {
+                Delay = delay,
+            });
     }
 
     // AddApi
@@ -188,31 +215,6 @@ public readonly struct RpcHostBuilder
             Services.AddSingleton(serviceType, c => RpcProxies.NewHybridProxy(c, serviceType, implementationType));
         if (addCommandHandlers)
             Commander.AddHandlers(serviceType);
-    }
-
-    private void AddCoreServices()
-    {
-        if (Services.HasService<RpcWebSocketServer>())
-            throw StandardError.Internal("Something is off: RpcWebSocketServer is already added.");
-        if (Services.HasService<RpcClient>())
-            throw StandardError.Internal("Something is off: RpcClient is already added.");
-
-        // Common services
-        RpcServiceRegistry.ConstructionDumpLogLevel = LogLevel.Information;
-        Services.AddSingleton(c => new BackendServiceDefs(c));
-        Services.AddSingleton(c => new RpcMeshRefResolvers(c));
-        Services.AddSingleton(c => new RpcBackendDelegates(c));
-        AddMeshServices();
-        Fusion.AddWebServer();
-        AddRpcServer(); // Must follow AddWebServer
-        AddRpcClient();
-        AddRpcPeerFactory();
-
-        // Debug stuff
-        if (Constants.DebugMode.RpcCalls.AnyServerInboundDelay is { } delay)
-            Rpc.AddInboundMiddleware(c => new RpcRandomDelayMiddleware(c) {
-                Delay = delay,
-            });
     }
 
     private void AddMeshServices()

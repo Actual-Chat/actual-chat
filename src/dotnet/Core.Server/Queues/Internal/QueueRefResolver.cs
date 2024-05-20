@@ -54,7 +54,7 @@ public sealed class QueueRefResolver(IServiceProvider services) : IQueueRefResol
         if (finalHandler == null)
             throw Errors.NoFinalHandlerFound(commandType);
 
-        var serviceType = finalHandler.GetServiceType();
+        var serviceType = finalHandler.GetHandlerServiceType();
         if (serviceType == null)
             throw StandardError.Internal(
                 $"Unsupported command handler type: {finalHandler.GetType().GetName()}.");

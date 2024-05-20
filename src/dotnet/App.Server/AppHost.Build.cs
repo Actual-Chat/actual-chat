@@ -4,11 +4,10 @@ using ActualChat.Chat.Module;
 using ActualChat.Chat.UI.Blazor.Module;
 using ActualChat.Contacts.Module;
 using ActualChat.Contacts.UI.Blazor.Module;
-using ActualChat.Db;
 using ActualChat.Db.Module;
+using ActualChat.Flows.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Module;
-using ActualChat.Kubernetes.Module;
 using ActualChat.Media.Module;
 using ActualChat.MLSearch.Module;
 using ActualChat.Module;
@@ -146,9 +145,10 @@ public partial class AppHost
                 // Core modules
                 new CoreModule(moduleServices),
                 new CoreServerModule(moduleServices),
-                new KubernetesModule(moduleServices),
+                // new KubernetesModule(moduleServices),
                 new RedisModule(moduleServices),
                 new DbModule(moduleServices),
+                new FlowsServiceModule(moduleServices),
                 // API modules
                 new ApiModule(moduleServices),
                 // Service-specific & service modules

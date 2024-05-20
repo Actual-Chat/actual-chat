@@ -3,6 +3,7 @@ using ActualChat.App.Server.Health;
 using ActualChat.Chat.Module;
 using ActualChat.Contacts.Module;
 using ActualChat.Db.Module;
+using ActualChat.Flows.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Module;
 using ActualChat.Media.Module;
@@ -292,6 +293,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddSource(typeof(CoreServerModule).GetActivitySource().Name)
                 .AddSource(typeof(DbModule).GetActivitySource().Name)
                 .AddSource(typeof(RedisModule).GetActivitySource().Name)
+                .AddSource(typeof(FlowsServiceModule).GetActivitySource().Name)
                 .AddSource(typeof(ApiModule).GetActivitySource().Name)
                 .AddSource(typeof(ApiClientModule).GetActivitySource().Name)
                 .AddSource(typeof(StreamingServiceModule).GetActivitySource().Name)

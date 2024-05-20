@@ -4,8 +4,7 @@ namespace ActualChat.Queues.Internal;
 
 public sealed class EventHandlerRegistry(IServiceProvider services)
 {
-    private static readonly ConcurrentDictionary<CommandHandler, bool>
-        _isLocalCache = new ();
+    private static readonly ConcurrentDictionary<CommandHandler, bool> IsLocalCache = new ();
 
     private CommandHandler[]? _allEventHandlers;
     private CommandHandler[]? _localEventHandlers;
@@ -18,11 +17,11 @@ public sealed class EventHandlerRegistry(IServiceProvider services)
     public CommandHandler[] LocalEventHandlers => _localEventHandlers ??= AllEventHandlers.Where(IsLocal).ToArray();
 
     public bool IsLocal(CommandHandler handler)
-        => _isLocalCache.GetOrAdd(handler,
-            static (h, self) => {
-                var serviceType = h.GetServiceType();
-                if (serviceType == null)
-                    throw StandardError.Internal($"Unsupported command handler type: {h.GetType().GetName()}.");
+        => IsLocalCache.GetOrAdd(handler,
+            static (handler1, self) => {
+                var serviceType = handler1.GetHandlerServiceType();
+                if (serviceType is not { IsInterface: true })
+                    throw StandardError.Internal($"Unsupported command handler: {handler1}.");
 
                 var hostRoles = self.HostInfo.Roles;
                 var backendServiceMode = hostRoles.GetBackendServiceMode(serviceType);
