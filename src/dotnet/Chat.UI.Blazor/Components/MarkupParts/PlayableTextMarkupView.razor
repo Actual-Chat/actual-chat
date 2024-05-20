@@ -33,11 +33,11 @@
     private ILogger Log => _log ??= Services.LogFor(GetType());
     private Model? _rendered;
 
-    [Inject] private ActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
-    [Inject] private PlayableTextPaletteProvider PaletteProvider { get; init; } = null!;
-    [Inject] private SelectionUI SelectionUI { get; init; } = null!;
-
-    [CascadingParameter] ScreenSize ScreenSize { get; set; }
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private ActivePlaybackInfo ActivePlaybackInfo => Hub.ActivePlaybackInfo;
+    private ChatPlayers ChatPlayers => Hub.ChatPlayers;
+    private PlayableTextPaletteProvider PaletteProvider => Hub.PlayableTextPaletteProvider;
+    private SelectionUI SelectionUI => Hub.SelectionUI;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -77,11 +77,15 @@
             if (markup.TimeRange.IsEmptyOrNegative)
                 return Model.None;
 
-            var trackId = ChatAudioTrackInfo.ComposeTrackId(chatId, audioEntryId.GetValueOrDefault());
-            if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken1) is not ChatAudioTrackInfo trackInfo)
+            var chatPlayersPlaybackState = await ChatPlayers.PlaybackState.Use(cancellationToken1).ConfigureAwait(false);
+            if (chatPlayersPlaybackState is not HistoricalPlaybackState historicalPlaybackState || historicalPlaybackState.ChatId != chatId)
                 return Model.None;
 
-            var playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken1);
+            var trackId = ChatAudioTrackInfo.ComposeTrackId(chatId, audioEntryId.GetValueOrDefault());
+            if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken1).ConfigureAwait(false) is not ChatAudioTrackInfo trackInfo)
+                return Model.None;
+
+            var playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken1).ConfigureAwait(false);
             if (playbackState == null || playbackState.IsEnded)
                 return Model.None;
 
