@@ -1,4 +1,3 @@
-using ActualChat.Streaming.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
@@ -13,7 +12,6 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
 
     private readonly MutableState<PlaybackState?> _playbackState;
 
-    private AudioInitializer AudioInitializer => Hub.AudioInitializer;
     private IAudioOutputController AudioOutputController => Hub.AudioOutputController;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private TuneUI TuneUI => Hub.TuneUI;
@@ -43,19 +41,14 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
 
     public void StopHistoricalPlayback()
     {
-        var playbackState = _playbackState.Value;
-        if (playbackState is not HistoricalPlaybackState)
-            return;
-
-        _playbackState.Value = null;
-        ResumeRealtimePlayback();
+        if (PlaybackState.Value is HistoricalPlaybackState)
+            StopPlayback();
     }
 
     public void StopRealtimePlayback()
     {
-        var playbackState = _playbackState.Value;
-        if (playbackState is RealtimePlaybackState)
-            _playbackState.Value = null;
+        if (PlaybackState.Value is RealtimePlaybackState)
+            StopPlayback();
     }
 
     // Protected methods
@@ -74,7 +67,7 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) {
                     // Let's stop everything in this case
-                    _playbackState.Value = null;
+                    StopPlayback();
                     lastPlaybackState = null;
                     _ = StopPlayers();
                 }
@@ -93,11 +86,14 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
     private void StartPlayback(PlaybackState playbackState)
         => _playbackState.Value = playbackState;
 
+    private void StopPlayback()
+        => _playbackState.Value = null;
+
     private void ResumeRealtimePlayback()
         => _ = BackgroundTask.Run(async () => {
             var playbackState = await ChatAudioUI.GetExpectedRealtimePlaybackState().ConfigureAwait(false);
             if (playbackState == null)
-                StopRealtimePlayback();
+                StopPlayback();
             else
                 StartRealtimePlayback(playbackState);
         }, CancellationToken.None);
