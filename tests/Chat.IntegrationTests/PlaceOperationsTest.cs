@@ -738,6 +738,44 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         }
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ChangeAvatar(bool isPublicChat)
+    {
+        var appHost = AppHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var session1 = tester.Session;
+        await tester.SignInAsBob();
+        var commander1 = tester.Commander;
+        var authors = tester.AppServices.GetRequiredService<IAuthors>();
+        var accounts = tester.AppServices.GetRequiredService<IAccounts>();
+
+        var account = await accounts.GetOwn(session1, default);
+        var avatar1 = await CreateAvatar("Avatar 1");
+        var avatar2 = await CreateAvatar("Avatar 2");
+
+        var (_, chat) = await CreatePlaceWithDefaultChat(commander1, session1, false, isPublicChat);
+
+        await commander1.Call(new Authors_SetAvatar(session1, chat.Id, avatar2.Id));
+        var author = await authors.GetOwn(session1, chat.Id, default).Require();
+        author.AvatarId.Should().Be(avatar2.Id);
+
+        await commander1.Call(new Authors_SetAvatar(session1, chat.Id, avatar1.Id));
+        author = await authors.GetOwn(session1, chat.Id, default).Require();
+        author.AvatarId.Should().Be(avatar1.Id);
+
+        async Task<AvatarFull> CreateAvatar(string name)
+        {
+            return await commander1.Call(new Avatars_Change(session1,
+                Symbol.Empty,
+                null,
+                Change.Create(new AvatarFull(account.Id) {
+                    Name = name
+                })));
+        }
+    }
+
     private static async Task<(Place, Chat)> CreatePlaceWithDefaultChat(
         ICommander commander,
         Session session,
