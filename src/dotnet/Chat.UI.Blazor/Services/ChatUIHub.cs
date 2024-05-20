@@ -40,6 +40,8 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     private AudioInitializer? _audioInitializer;
     private IAudioOutputController? _audioOutputController;
     private IPlaybackFactory? _playbackFactory;
+    private ActivePlaybackInfo? _activePlaybackInfo;
+    private PlayableTextPaletteProvider? _playableTextPaletteProvider;
     private KeyedFactory<IChatMarkupHub, ChatId>? _chatMarkupHubFactory;
     private IStreamClient? _streamClient;
 
@@ -71,6 +73,8 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     public AudioInitializer AudioInitializer => _audioInitializer ??= Services.GetRequiredService<AudioInitializer>();
     public IAudioOutputController AudioOutputController => _audioOutputController ??= Services.GetRequiredService<IAudioOutputController>();
     public IPlaybackFactory PlaybackFactory => _playbackFactory ??= Services.GetRequiredService<IPlaybackFactory>();
+    public ActivePlaybackInfo ActivePlaybackInfo => _activePlaybackInfo ??= Services.GetRequiredService<ActivePlaybackInfo>();
+    public PlayableTextPaletteProvider PlayableTextPaletteProvider => _playableTextPaletteProvider ??= Services.GetRequiredService<PlayableTextPaletteProvider>();
     public KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
         => _chatMarkupHubFactory ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
     public IStreamClient StreamClient => _streamClient ??= Services.GetRequiredService<IStreamClient>();
