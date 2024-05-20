@@ -312,8 +312,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     {
         var (session, chatId, avatarId) = command;
         await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        var targetChat = chatId.IsPlaceChat ? chatId.PlaceId.ToRootChatId() : chatId;
 
-        var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        var author = await GetOwn(session, targetChat, cancellationToken).ConfigureAwait(false);
         if (author == null || author.AvatarId == command.AvatarId)
             return;
 
@@ -328,7 +329,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         }
 
         var upsertCommand = new AuthorsBackend_Upsert(
-            chatId, author.Id, default, author.Version,
+            targetChat, author.Id, default, author.Version,
             authorDiff);
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
