@@ -36,18 +36,18 @@ public sealed class RealtimeChatPlayer : ChatPlayer
             .FindByMinBeginsAt(minPlayAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
             .ConfigureAwait(false);
         var startId = startEntry?.LocalId ?? idRange.End;
-        var initialSleepDuration = SleepDuration.Value;
-        var syncedSleepDuration = initialSleepDuration;
-        var lastEntryBeginsAt = serverClock.Now;
-        minPlayAt = serverClock.Now;
+        var syncedSleepDuration = SleepDuration.Value;
+        var startedAt = serverClock.Now;
+        var lastEntryBeginsAt = startedAt;
+        minPlayAt = startedAt;
 
         var entries = audioEntryReader.Observe(startId, cancellationToken);
         await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (!entry.IsStreaming)
+            if (!entry.IsStreaming && entry.BeginsAt <= startedAt)
                 // Non-streaming entry:
                 // - We were asleep & missed a bunch of entries
                 // - Or audioEntryReader is still enumerating "early" entries
-                //   @ (startAt - ChatConstants.MaxEntryDuration)
+                //   @ (startedAt - ChatConstants.MaxEntryDuration)
                 continue;
 
             if (!Constants.DebugMode.AudioPlaybackPlayMyOwnAudio) {
@@ -67,11 +67,14 @@ public sealed class RealtimeChatPlayer : ChatPlayer
             // ahead of actual server clock, it's going to skip the beginning of
             // every message rather than just of the initial one / post-sleep ones.
             var sleepDuration = SleepDuration.Value;
-            if (sleepDuration != syncedSleepDuration) {
-                minPlayAt = serverClock.Now + sleepDuration - initialSleepDuration; // Re-sync minPlayAt
+            if (sleepDuration - syncedSleepDuration > Constants.Audio.MaxRealtimeStreamDrift) {
+                minPlayAt = serverClock.Now - Constants.Audio.MaxRealtimeStreamDrift; // Re-sync minPlayAt
                 syncedSleepDuration = sleepDuration;
             }
             var playAt = Moment.Max(minPlayAt, entry.BeginsAt);
+            if (entry.EndsAt.HasValue && playAt >= entry.EndsAt)
+                continue; // already completed streaming entry
+
             if (playAt >= entry.BeginsAt + Constants.Chat.MaxEntryDuration) // no EndsAt for streaming entries
                 continue;
 
