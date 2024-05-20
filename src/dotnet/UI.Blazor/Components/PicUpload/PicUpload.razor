@@ -1,9 +1,7 @@
-@using Microsoft.Toolkit.HighPerformance
-@using ActualChat.UI.Blazor.Services
+@using ActualLab.Generators
 @using ActualChat.UI.Blazor.Components.FileUpload
 @using ActualChat.UI.Blazor.Module
-@using ActualChat.Media
-@using ActualLab.Generators
+@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 @implements IAsyncDisposable
 
@@ -39,12 +37,10 @@
     @if (GenerateAvatar.HasDelegate) {
         <div class="c-btn-group">
             <Button Class="btn-modal btn-sm">
-                <Icon><i class="icon-image"></i></Icon>
-                <Title>Upload image
-                <label for="@_inputId"
-                       class="pic-upload-input-file-label absolute">
-                </label>
-                </Title>
+                <i class="icon-image"></i>
+                <span class="@Button.TitleSpanClass">Upload image</span>
+                @* NOTE: Label should be on the same level as <i> and <span> inside button content *@
+                <label for="@_inputId" class="pic-upload-input-file-label absolute"></label>
             </Button>
             <Button Class="btn-modal btn-sm" Click="GenerateAvatar">
                 <Icon><i class="icon-sync"></i></Icon>

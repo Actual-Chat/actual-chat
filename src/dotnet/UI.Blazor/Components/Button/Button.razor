@@ -1,8 +1,4 @@
 @namespace ActualChat.UI.Blazor.Components
-@{
-    var hasIcon = Icon != null;
-    var btnContentCls = hasIcon ? "" : "only-text";
-}
 
 <button
     @ref="Ref"
@@ -11,19 +7,20 @@
     data-button-class="default"
     @attributes="@GetAttributes()"
     @onclick="@Click">
-    <div class="@ContentClass @btnContentCls btn-content" tabindex="-1">
-        @if (Icon == null) {
+    <div class="@ContentClass btn-content" tabindex="-1">
+        @if (ChildContent is not null) {
             @ChildContent
         } else {
             @Icon
             if (Title != null) {
-                <span class="btn-title">@Title</span>
+                <span class="@TitleSpanClass">@Title</span>
             }
         }
     </div>
 </button>
 
 @code {
+    public const string TitleSpanClass = "btn-title";
     private ElementReference _buttonRef;
 
     [Parameter] public string Class { get; set; } = "btn-primary";
@@ -44,6 +41,11 @@
 
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    protected override void OnParametersSet() {
+        if (ChildContent is not null && (Icon is not null || Title is not null))
+            throw StandardError.Constraint("You can not set Icon or/and Title properties together with ChildContent property.");
+    }
 
     protected override Task OnAfterRenderAsync(bool firstRender)
         => firstRender
