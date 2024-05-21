@@ -43,21 +43,7 @@
         </SettingsTab>
 
         <SettingsTab @key="6" Title="Application" Id="app" IconClass="icon-settings">
-            <ChildContent>
-                @if (NativeAppSettings != null) {
-                    <AppSettingsView NativeAppSettings="@NativeAppSettings"></AppSettingsView>
-                }
-                @if (HostInfo.HostKind != HostKind.MauiApp) {
-                    <SettingsBlazorModeToggle/>
-                }
-                <TileTopic Topic="Walk-through"/>
-                <Button
-                    Class="add-avatar-btn"
-                    Click="@(OnRestartWalkThrough)">
-                    <Icon><i class="icon-refresh text-xl"></i></Icon>
-                    <Title>Restart walk-through</Title>
-                </Button>
-            </ChildContent>
+            <AppSettings />
         </SettingsTab>
 
         <SettingsTab @key="7" Title="Emails" Id="emails" IconClass="icon-email">
@@ -79,21 +65,16 @@
 @code {
     private bool _enableIncompleteUI;
 
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private BubbleUI BubbleUI { get; init; } = null!;
-    [Inject] private ToastUI ToastUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private HostInfo HostInfo => Hub.HostInfo();
+    private Features Features => Hub.Features();
+    private AccountUI AccountUI => Hub.AccountUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private INativeAppSettings? NativeAppSettings { get; set; }
-
-    protected override async Task OnInitializedAsync() {
-        NativeAppSettings = Services.GetService<INativeAppSettings>();
-        _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
-    }
+    protected override async Task OnInitializedAsync()
+        => _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
@@ -106,11 +87,6 @@
 
     private void OnCloseClick()
         => Modal.Close();
-
-    private async Task OnRestartWalkThrough() {
-        await BubbleUI.ResetSettings().ConfigureAwait(true);
-        ToastUI.Show("Walk-through tips are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
-    }
 
     // Nested types
 
