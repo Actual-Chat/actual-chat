@@ -4,6 +4,10 @@
 @implements IAttachmentListBackend
 @implements IAsyncDisposable
 @namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var successUploads = _attachments.FindAll(x => x.Uploaded).Count;
+    var isSendButtonDisabled = _attachments.Count != successUploads;
+}
 
 <input @ref="FilePickerRef" type="file" hidden multiple/>
 
@@ -13,7 +17,7 @@
             <Button Class="attachment-list-btn btn-danger btn-transparent unhovered c-remove" Click="_ => Clear()">
                 Remove all
             </Button>
-            <Button Class="attachment-list-btn btn-primary btn-transparent unhovered c-send" Click="OnSendClick">
+            <Button Class="attachment-list-btn btn-primary btn-transparent unhovered c-send" Click="OnSendClick" IsDisabled="@isSendButtonDisabled">
                 Send @_attachments.Count @("file".Pluralize(_attachments.Count))
             </Button>
         </div>
