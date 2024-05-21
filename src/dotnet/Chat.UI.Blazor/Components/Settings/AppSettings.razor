@@ -1,0 +1,31 @@
+@using ActualChat.Hosting
+@if (NativeAppSettings != null) {
+    <NativeAppSettingsView NativeAppSettings="@NativeAppSettings"></NativeAppSettingsView>
+}
+@if (HostInfo.HostKind != HostKind.MauiApp) {
+    <SettingsBlazorModeToggle/>
+}
+<TileTopic Topic="Walk-through"/>
+<Button
+    Class="add-avatar-btn"
+    Click="@(OnRestartWalkThrough)">
+    <Icon><i class="icon-refresh text-xl"></i></Icon>
+    <Title>Restart walk-through</Title>
+</Button>
+
+@code {
+    private INativeAppSettings? NativeAppSettings { get; set; }
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private HostInfo HostInfo => Hub.HostInfo();
+    private BubbleUI BubbleUI => Hub.BubbleUI;
+    private ToastUI ToastUI => Hub.ToastUI;
+
+    protected override void OnInitialized()
+        => NativeAppSettings = Hub.GetService<INativeAppSettings>();
+
+    private async Task OnRestartWalkThrough() {
+        await BubbleUI.ResetSettings().ConfigureAwait(true);
+        ToastUI.Show("Walk-through tips are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
+    }
+}

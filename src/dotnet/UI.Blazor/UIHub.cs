@@ -25,6 +25,7 @@ public class UIHub(IServiceProvider services) : Hub(services)
     private FocusUI? _focusUI;
     private TuneUI? _tuneUI;
     private ToastUI? _toastUI;
+    private BubbleUI? _bubbleUI;
     private BannerUI? _bannerUI;
     private NavbarUI? _navbarUI;
     private VisualMediaViewerUI? _visualMediaViewerUI;
@@ -61,6 +62,7 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public FocusUI FocusUI => _focusUI ??= Services.GetRequiredService<FocusUI>();
     public TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
     public ToastUI ToastUI => _toastUI ??= Services.GetRequiredService<ToastUI>();
+    public BubbleUI BubbleUI => _bubbleUI ??= Services.GetRequiredService<BubbleUI>();
     public BannerUI BannerUI => _bannerUI ??= Services.GetRequiredService<BannerUI>();
     public NavbarUI NavbarUI => _navbarUI ??= Services.GetRequiredService<NavbarUI>();
     public VisualMediaViewerUI VisualMediaViewerUI => _visualMediaViewerUI ??= Services.GetRequiredService<VisualMediaViewerUI>();
