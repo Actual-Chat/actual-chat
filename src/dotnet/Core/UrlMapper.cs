@@ -39,9 +39,9 @@ public sealed partial class UrlMapper
         _baseUrlWithoutBackslash = baseUrl.TrimSuffix("/");
         BaseUrl = baseUrl;
         BaseUri = baseUrl.ToUri();
-        IsActualChat = OrdinalIgnoreCaseEquals(BaseUri.Host, "actual.chat");
-        IsDevActualChat = OrdinalIgnoreCaseEquals(BaseUri.Host, "dev.actual.chat");
-        IsLocalActualChat = OrdinalIgnoreCaseEquals(BaseUri.Host, "local.actual.chat");
+        IsActualChat = OrdinalIgnoreCaseEquals(BaseUri.Host, Constants.Hosts.ActualChat);
+        IsDevActualChat = OrdinalIgnoreCaseEquals(BaseUri.Host, Constants.Hosts.DevActualChat);
+        IsLocalActualChat = OrdinalIgnoreCaseEquals(BaseUri.Host, Constants.Hosts.LocalActualChat);
 
         ApiBaseUrl = $"{BaseUrl}api/";
         ContentBaseUrl = $"{ApiBaseUrl}content/";

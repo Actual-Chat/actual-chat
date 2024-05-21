@@ -39,7 +39,7 @@ namespace ActualChat.App.Maui;
 [IntentFilter(
     new [] { Intent.ActionView },
     DataSchemes = new [] { "http", "https" },
-    DataHost = MauiSettings.Host,
+    DataHost = MauiSettings.DefaultHost, /* TODO(DF): rework dynamic intent filter configuration */
     DataPaths = new [] { "/" },
     DataPathPrefixes = new [] { "/chat/", "/join/", "/u/", "/user/invite/" },
     AutoVerify = true,
