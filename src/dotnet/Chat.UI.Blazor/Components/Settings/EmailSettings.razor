@@ -99,6 +99,9 @@
         var timeZones = await TimeZones.List("en-US", CancellationToken.None);
         _timeZones = timeZones.ToDictionary(x => x.Id, x => x.IanaName);
         var browserTimeZone = Hub.BrowserInfo.TimeZone;
+        if (!_timeZones.ContainsKey(browserTimeZone)) {
+            browserTimeZone = await TimeZones.ConvertWindowsToIana(browserTimeZone, default);
+        }
         var browserTimeZoneName = _timeZones.GetValueOrDefault(browserTimeZone, "N/A");
         _timeZoneFormModel = new TimeZoneFormModel(ComponentIdGenerator) {
             SelectedTimeZone = _account.TimeZone,
