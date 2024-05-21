@@ -80,7 +80,7 @@
     private static object MarkupEditorKey { get; } = new();
 
     private readonly AsyncLock _postLock = new(LockReentryMode.CheckedFail);
-    private bool Autofocus => ScreenSize.IsWide();
+    private bool Autofocus => ScreenSize.IsWide() && !BrowserInfo.IsTouchCapable;
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
@@ -106,6 +106,7 @@
     private MomentClockSet Clocks => Hub.Clocks();
     private HostInfo HostInfo => Hub.HostInfo();
     private IJSRuntime JS => Hub.JSRuntime();
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }

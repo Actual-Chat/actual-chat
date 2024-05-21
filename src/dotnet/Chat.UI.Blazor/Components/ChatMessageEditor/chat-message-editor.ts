@@ -12,6 +12,7 @@ import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { localSettings } from '../../../UI.Blazor/Services/Settings/local-settings';
 import { Log } from 'logging';
+import { DeviceInfo } from 'device-info';
 
 const { debugLog } = Log.get('MessageEditor');
 
@@ -384,6 +385,6 @@ export class ChatMessageEditor {
 
     private async restoreDraft(): Promise<void> {
         const [html] = this.chatId && await localSettings.getMany([`MessageDraft.${this.chatId}.Html`]);
-        this.markupEditor.setHtml(html ?? "", ScreenSize.isWide());
+        this.markupEditor.setHtml(html ?? "", ScreenSize.isWide() && !DeviceInfo.isTouchCapable);
     }
 }
