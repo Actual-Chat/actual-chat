@@ -17,6 +17,14 @@ body.device-ios * {
     display: block;
 }
 
+/* Disable active and focus outline on touch devices */
+.touch-capable .btn:active::after,
+.touch-capable .btn:hover:active::after,
+.touch-capable .btn:focus:active::after,
+.touch-capable .btn:hover:focus:active::after {
+    @apply !bg-transparent;
+}
+
 /* Sizes */
 .btn, .btn.btn-md {
     @apply relative;
