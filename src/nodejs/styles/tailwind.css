@@ -108,6 +108,9 @@
     .no-highlight {
         -webkit-tap-highlight-color: transparent;
     }
+    .ios-height {
+        max-height: calc(var(--vh, 1vh) * 100);
+    }
 
     .content-empty {
         content: "";

@@ -14,9 +14,10 @@ body {
     -webkit-touch-callout: none;
     overscroll-behavior-x: none; /* Disables navigate back/forward w/ swipe, doesn't work on Safari */
     width: 100%;
-    max-height: 100vh;
-    max-height: calc(var(--vh, 1vh) * 100);
-    transition: max-height 150ms ease-in;
+}
+
+body.device-ios {
+    @apply ios-height;
 }
 
 body.device-ios * {
