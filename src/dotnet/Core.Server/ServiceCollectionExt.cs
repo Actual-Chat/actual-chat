@@ -39,15 +39,7 @@ public static class ServiceCollectionExt
 
     public static FlowRegistryBuilder AddFlows(
         this IServiceCollection services)
-    {
-        var flows = services.FindInstance<FlowRegistryBuilder>();
-        if (flows != null)
-            return flows;
-
-        flows = new FlowRegistryBuilder();
-        services.AddInstance(flows, addInFront: true);
-        return flows;
-    }
+        => services.FindOrAddInstance(() => new FlowRegistryBuilder(), addInFront: true);
 
     // AddNats
 
