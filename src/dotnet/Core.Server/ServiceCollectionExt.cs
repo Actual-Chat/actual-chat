@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Flows.Infrastructure;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Queues;
@@ -33,6 +34,22 @@ public static class ServiceCollectionExt
     public static RpcHostBuilder AddRpcHost(
         this IServiceCollection services, HostInfo hostInfo, ILogger? log = null)
         => new(services, hostInfo, log);
+
+    // AddFlows
+
+    public static FlowRegistryBuilder AddFlows(
+        this IServiceCollection services)
+    {
+        var flows = services.FindInstance<FlowRegistryBuilder>();
+        if (flows != null)
+            return flows;
+
+        flows = new FlowRegistryBuilder();
+        services.AddInstance(flows, addInFront: true);
+        return flows;
+    }
+
+    // AddNats
 
     public static IServiceCollection AddNats(this IServiceCollection services, HostInfo hostInfo)
     {

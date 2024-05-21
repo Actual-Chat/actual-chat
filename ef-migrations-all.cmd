@@ -1,3 +1,4 @@
+call EF-Migrations.cmd Flows.Service add %*
 call EF-Migrations.cmd Chat.Service add %*
 call EF-Migrations.cmd Contacts.Service add %*
 call EF-Migrations.cmd Invite.Service add %*

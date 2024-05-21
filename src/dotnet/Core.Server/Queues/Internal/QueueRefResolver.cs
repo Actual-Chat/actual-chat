@@ -1,4 +1,6 @@
 using ActualChat.Attributes;
+using ActualChat.Flows;
+using ActualChat.Flows.Infrastructure;
 using ActualLab.CommandR.Internal;
 
 namespace ActualChat.Queues.Internal;
@@ -58,6 +60,12 @@ public sealed class QueueRefResolver(IServiceProvider services) : IQueueRefResol
         if (serviceType == null)
             throw StandardError.Internal(
                 $"Unsupported command handler type: {finalHandler.GetType().GetName()}.");
+
+        if (serviceType == typeof(FlowEventForwarder)) {
+            // IFlows doesn't have a command handler for IFlowEvent.
+            // FlowEventForwarder forwards it as a regular method call instead.
+            serviceType = typeof(IFlows);
+        }
 
         if (BackendServiceDefs.TryGet(serviceType, out var serviceDef))
             return serviceDef.ShardScheme;

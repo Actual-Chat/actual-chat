@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using ActualChat.Flows;
 using ActualChat.Flows.Infrastructure;
 using ActualChat.Hosting;
 using ActualChat.Mesh;
@@ -24,7 +23,6 @@ public readonly struct RpcHostBuilder
     public IServiceCollection Services => Fusion.Services;
     public CommanderBuilder Commander => Fusion.Commander;
     public RpcBuilder Rpc => Fusion.Rpc;
-    public FlowRegistryBuilder Flows { get; }
     public HostInfo HostInfo { get; }
     public ILogger? Log { get; }
 
@@ -33,7 +31,6 @@ public readonly struct RpcHostBuilder
     internal RpcHostBuilder(IServiceCollection services, HostInfo hostInfo, ILogger? log)
     {
         Fusion = services.AddFusion(RpcServiceMode.Local);
-        Flows = services.FindInstance<FlowRegistryBuilder>()!;
         HostInfo = hostInfo;
         Log = log;
         IsApiHost = HostInfo.HasRole(HostRole.Api);
@@ -55,8 +52,6 @@ public readonly struct RpcHostBuilder
         AddRpcServer(); // Must follow AddWebServer
         AddRpcClient();
         AddRpcPeerFactory();
-        Flows = new FlowRegistryBuilder();
-        Services.AddInstance(Flows);
 
         // Debug stuff
         if (Constants.DebugMode.RpcCalls.AnyServerInboundDelay is { } delay)
