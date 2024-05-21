@@ -78,7 +78,9 @@
     protected override async Task OnInitializedAsync() {
         var timeZones = await TimeZones.List("en-US", CancellationToken.None);
         _timeZones = timeZones.ToDictionary(x => x.Id, x => x.IanaName);
-        _model.TimeZone = Hub.BrowserInfo.TimeZone;
+        _model.TimeZone = _timeZones.ContainsKey(Hub.BrowserInfo.TimeZone)
+            ? Hub.BrowserInfo.TimeZone
+            : await TimeZones.ConvertWindowsToIana(Hub.BrowserInfo.TimeZone, default);
     }
 
     protected override Task<bool> Validate() {
