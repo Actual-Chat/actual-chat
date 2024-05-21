@@ -1,0 +1,21 @@
+@if (NativeHostSwitcher != null) {
+    <TileTopic Topic="Host"/>
+    <Tile Class="host-switcher-tile">
+        <HostSwitcher NativeHostSwitcher="@NativeHostSwitcher" />
+    </Tile>
+}
+
+@* Android logs *@
+@* <TileTopic Topic="Log viewer"/> *@
+@* <Tile> *@
+@* </Tile> *@
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    private IMauiHostSwitcher? NativeHostSwitcher { get; set; }
+
+    protected override void OnInitialized() {
+        NativeHostSwitcher = Hub.GetService<IMauiHostSwitcher>();
+    }
+}

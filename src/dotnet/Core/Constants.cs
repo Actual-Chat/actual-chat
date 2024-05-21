@@ -11,6 +11,13 @@ public static partial class Constants
         public static readonly Version Version = Version.Parse(StringVersion);
     }
 
+    public static class Hosts
+    {
+        public const string ActualChat = "actual.chat";
+        public const string DevActualChat = "dev.actual.chat";
+        public const string LocalActualChat = "local.actual.chat";
+    }
+
     public static class Chat
     {
         public static readonly ChatId DefaultChatId = ChatId.Group("the-actual-one");

@@ -1,0 +1,111 @@
+<Form Model="@_formModel">
+    <DataAnnotationsValidator/>
+
+    <FormBlock>
+        <InputRadioGroup
+            Name="host"
+            DisplayName="Host"
+            @bind-Value="_formModel.Host">
+
+            <TileItem>
+                <Icon>
+                    <FormRadio
+                        Id="@_formModel.ProdFormId"
+                        Value="@MauiHost.Prod.Host"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_formModel.ProdFormId" Text="@GetTitle(MauiHost.Prod)"></Label>
+                </Content>
+            </TileItem>
+
+            <TileItem>
+                <Icon>
+                    <FormRadio
+                        Id="@_formModel.DevFormId"
+                        Value="@MauiHost.Dev.Host"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_formModel.DevFormId" Text="@GetTitle(MauiHost.Dev)"></Label>
+                </Content>
+            </TileItem>
+
+        </InputRadioGroup>
+
+        @if (NativeHostSwitcher.CurrentHost != NativeHostSwitcher.GetHost()) {
+            <TileItem>
+                <Icon>
+                    <i class="icon-alert-triangle text-warning"></i>
+                </Icon>
+                <Content>
+                    Selected host has been changed. Changes will be applied after app restart. New sign-in is required.
+                </Content>
+            </TileItem>
+        }
+    </FormBlock>
+</Form>
+
+@code {
+    private FormModel _formModel = null!;
+
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Parameter, EditorRequired] public IMauiHostSwitcher NativeHostSwitcher { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _formModel = new (ComponentIdGenerator) {
+            Host = NativeHostSwitcher.GetHost().Host,
+        };
+        _formModel.HostChanged += OnCurrentHostChanged;
+    }
+
+    private string GetTitle(MauiHost host) {
+        var title = host == MauiHost.Prod ? "Prod" :
+            host == MauiHost.Dev ? "Dev" : throw new ArgumentOutOfRangeException(nameof(host));
+        return title + GetHostTags(host);
+    }
+
+    private string GetHostTags(MauiHost host) {
+        var isCurrent = NativeHostSwitcher.CurrentHost == host;
+        var isDefault = NativeHostSwitcher.DefaultHost == host;
+        if (!isCurrent && !isDefault)
+            return "";
+
+        var tags = new List<string>();
+        if (isCurrent)
+            tags.Add("current");
+        if (isDefault)
+            tags.Add("default");
+        return $" ({tags.ToCommaPhrase()})";
+    }
+
+    private void OnCurrentHostChanged(string? host) {
+        var mauiHost = MauiHost.TryCreate(host ?? "");
+        if (mauiHost != null)
+            NativeHostSwitcher.SetHost(mauiHost);
+    }
+
+    public sealed class FormModel {
+        private string? _host;
+
+        private string FormId { get; }
+        public string ProdFormId { get; }
+        public string DevFormId { get; }
+
+        public string? Host {
+            get => _host;
+            set {
+                if (_host == value)
+                    return;
+                _host = value;
+                HostChanged?.Invoke(value);
+            }
+        }
+
+        public event Action<string?>? HostChanged;
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("host-form");
+            ProdFormId = $"{FormId}-prod";
+            DevFormId = $"{FormId}-dev";
+        }
+    }
+}

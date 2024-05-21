@@ -1,8 +1,9 @@
 @using ActualChat.Hosting
 @implements IModalView<SettingsModal.Model>
-@inherits ComputedStateComponent<AccountFull>
+@inherits ComputedStateComponent<SettingsModal.ComputedModel>
 @{
-    var account = State.Value;
+    var m = State.Value;
+    var account = m.AccountFull;
     if (ReferenceEquals(account, AccountFull.Loading))
         return;
 
@@ -17,19 +18,19 @@
     <ButtonX Click="OnCloseClick"/>
     <SettingsPanel Title="Settings" CloseModalClick="OnCloseClick">
         @if (showMyAccount) {
-            <SettingsTab @key="1" Title="Your Account" Id="account" IconClass="icon-person">
+            <SettingsTab @key="1" TabIndex="1" Title="Your Account" Id="account" IconClass="icon-person">
                 <YourAccount/>
             </SettingsTab>
         }
 
         @if (showNotifications) {
-            <SettingsTab @key="3" Title="Notifications" Id="notifications" IconClass="icon-bell">
+            <SettingsTab @key="3" TabIndex="3" Title="Notifications" Id="notifications" IconClass="icon-bell">
                 <ChildContent>
                 </ChildContent>
             </SettingsTab>
         }
 
-        <SettingsTab @key="4" Title="Transcription" Id="transcription" IconClass="icon-transcription">
+        <SettingsTab @key="4" TabIndex="4" Title="Transcription" Id="transcription" IconClass="icon-transcription">
             <TitleContent>
                 <LanguageShortcut/>
             </TitleContent>
@@ -38,24 +39,30 @@
             </ChildContent>
         </SettingsTab>
 
-        <SettingsTab @key="5" Title="User Interface" Id="userInterface" IconClass="icon-sort-by-alphabet">
+        <SettingsTab @key="5" TabIndex="5" Title="User Interface" Id="userInterface" IconClass="icon-sort-by-alphabet">
             <UserInterface/>
         </SettingsTab>
 
-        <SettingsTab @key="6" Title="Application" Id="app" IconClass="icon-settings">
+        <SettingsTab @key="6" TabIndex="6" Title="Application" Id="app" IconClass="icon-settings">
             <AppSettings />
         </SettingsTab>
 
-        <SettingsTab @key="7" Title="Emails" Id="emails" IconClass="icon-email">
+        <SettingsTab @key="7" TabIndex="7" Title="Emails" Id="emails" IconClass="icon-email">
             <EmailSettings/>
         </SettingsTab>
 
+        @if (m.ShowDeveloperTools) {
+            <SettingsTab @key="99" TabIndex="99" Title="Developer tools" Id="dev-tools" IconClass="icon-eye" HasSeparatorBefore="true">
+                <DeveloperTools/>
+            </SettingsTab>
+        }
+
         @if (showLogout) {
-            <SettingsTab @key="100" Title="Log out" Id="signOut" IconClass="icon-log-out" HasSeparatorBefore="true">
+            <SettingsTab @key="100" TabIndex="100" Title="Log out" Id="signOut" IconClass="icon-log-out" HasSeparatorBefore="true">
             </SettingsTab>
         }
         @if (showQuit) {
-            <SettingsTab @key="101" Title="Quit Actual Chat" Id="quit" IconClass="icon-close" HasSeparatorBefore="false">
+            <SettingsTab @key="101" TabIndex="101" Title="Quit Actual Chat" Id="quit" IconClass="icon-close">
             </SettingsTab>
         }
 
@@ -64,6 +71,7 @@
 
 @code {
     private bool _enableIncompleteUI;
+    private IDeveloperTools? _developerTools;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private HostInfo HostInfo => Hub.HostInfo();
@@ -73,22 +81,33 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync()
-        => _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
+    protected override async Task OnInitializedAsync() {
+        _developerTools = Hub.GetService<IDeveloperTools>();
+        _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
+    }
 
-    protected override ComputedState<AccountFull>.Options GetStateOptions()
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
-            InitialValue = AccountUI.OwnAccount.Value,
+            InitialValue = new(AccountUI.OwnAccount.Value),
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
-    protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        var showDeveloperTools = _developerTools?.IsEnabled(account) ?? false;
+        return new ComputedModel(account) {
+            ShowDeveloperTools = showDeveloperTools,
+        };
+    }
 
     private void OnCloseClick()
         => Modal.Close();
 
     // Nested types
+
+    public sealed record ComputedModel(AccountFull AccountFull) {
+        public bool ShowDeveloperTools { get; init; }
+    }
 
     public sealed record Model {
         public static readonly Model Instance = new();
