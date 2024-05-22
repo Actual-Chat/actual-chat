@@ -379,7 +379,7 @@ internal sealed class ClusterSetupActions(
             )
             .ConfigureAwait(false);
         isIngestPipelineExistsResult.AssertSuccess(allowNotFound: true);
-        return isIngestPipelineExistsResult.Pipelines.Any();
+        return isIngestPipelineExistsResult.Pipelines.ContainsKey(pipelineName);
     }
 
     public async Task<bool> IsIndexExistsAsync(string indexName, CancellationToken cancellationToken)
