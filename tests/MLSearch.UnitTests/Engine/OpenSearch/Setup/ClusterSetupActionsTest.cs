@@ -467,6 +467,74 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
         Assert.False(checkResult);
     }
 
+    public class IsTemplateValidParams(string name, string pattern, int? numOfReplicas) : IXunitSerializable
+    {
+        public string Name => name;
+        public string Pattern => pattern;
+        public int? NumberOfReplicas => numOfReplicas;
+
+        [Obsolete("Called by the de-serializer; should only be called by deriving classes for de-serialization purposes")]
+        public IsTemplateValidParams() : this(string.Empty, string.Empty, default)
+        { }
+
+        public void Deserialize(IXunitSerializationInfo info)
+        {
+            name = info.GetValue<string>(nameof(name));
+            pattern = info.GetValue<string>(nameof(pattern));
+            numOfReplicas = info.GetValue<int?>(nameof(numOfReplicas));
+        }
+
+        public void Serialize(IXunitSerializationInfo info)
+        {
+            info.AddValue(nameof(name), name);
+            info.AddValue(nameof(pattern), pattern);
+            info.AddValue(nameof(numOfReplicas), numOfReplicas);
+        }
+    }
+
+    public static TheoryData<bool, IsTemplateValidParams, IsTemplateValidParams> TemplateChecks => new() {
+        { true, new("ml-template", "ml-*", 0), new("ml-template", "ml-*", 0) },
+        { true, new("ml-template", "ml-*", null), new("ml-template", "ml-*", null) },
+        { false, new("ml-template", "ml-*", 0), new("other-template", "ml-*", 0) },
+        { false, new("ml-template", "ml-*", 0), new("ml-template", "other-*", 0) },
+        { false, new("ml-template", "ml-*", 0), new("ml-template", "ml-*", 1) },
+        { false, new("ml-template", "ml-*", 0), new("ml-template", "ml-*", null) },
+        { false, new("ml-template", "ml-*", null), new("ml-template", "ml-*", 0) },
+    };
+
+    [Theory]
+    [MemberData(nameof(TemplateChecks))]
+    public async Task IsTemplateValidAsyncChecksIfTemplateExistsAndHasExpectedProps(
+        bool expected,
+        IsTemplateValidParams responseParams,
+        IsTemplateValidParams callParams
+    )
+    {
+        var numReplicas = responseParams.NumberOfReplicas;
+        var numOfReplicasSetting = numReplicas.HasValue ? $"\"number_of_replicas\": \"{numReplicas}\"" : "";
+        var response =
+        $$"""
+        {
+            "{{responseParams.Name}}": {
+                "order": 0,
+                "index_patterns": [
+                    "{{responseParams.Pattern}}"
+                ],
+                "settings": {
+                    "index": {
+                        {{numOfReplicasSetting}}
+                    }
+                },
+                "mappings": {},
+                "aliases": {}
+            }
+        }
+        """;
+        var actions = CreateActions([ (200, response) ]);
+        var result = await actions.IsTemplateValidAsync(callParams.Name, callParams.Pattern, callParams.NumberOfReplicas, CancellationToken.None);
+        Assert.Equal(expected, result);
+    }
+
     private ClusterSetupActions CreateActions(List<(int, string)> responses)
     {
         var client = new OpenSearchClient(new ConnectionSettings(
