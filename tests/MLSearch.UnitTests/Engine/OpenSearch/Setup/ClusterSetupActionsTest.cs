@@ -554,6 +554,21 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
         Assert.Equal(ExistingPipelineName.Equals(pipelineName, StringComparison.Ordinal), result);
     }
 
+    [Theory]
+    [InlineData("existing-index")]
+    [InlineData("other-index")]
+    public async Task IsIndexExistsAsyncChecksIfIndexExists(string indexName)
+    {
+        const string ExistingIndex = "existing-index";
+        var expected = ExistingIndex.Equals(indexName, StringComparison.Ordinal);
+        List<(int, string)> responses = [
+            expected ? (200, string.Empty) : (404, "{}")
+        ];
+        var actions = CreateActions(responses);
+        var result = await actions.IsIndexExistsAsync(indexName, CancellationToken.None);
+        Assert.Equal(expected, result);
+    }
+
     private ClusterSetupActions CreateActions(List<(int, string)> responses)
     {
         var client = new OpenSearchClient(new ConnectionSettings(
