@@ -5,9 +5,6 @@ using ActualChat.Performance;
 using OpenSearch.Client;
 using OpenSearch.Net;
 
-using HttpMethod = OpenSearch.Net.HttpMethod;
-
-
 namespace ActualChat.MLSearch.UnitTests.Engine.OpenSearch.Setup;
 
 // Response to model Id request
@@ -442,6 +439,36 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
         );
         Assert.StartsWith("OpenSearch request failed", exception.Message, StringComparison.Ordinal);
     }
+
+    [Theory]
+    [InlineData("EnsureTemplateAsync")]
+    [InlineData("EnsureEmbeddingIngestPipelineAsync")]
+    [InlineData("EnsureContentIndexAsync")]
+    [InlineData("EnsureContentCursorIndexAsync")]
+    [InlineData("EnsureChatsCursorIndexAsync")]
+    public async Task ActionsThrowOnUnsuccessfulEntityCreation(string actionName)
+    {
+        Func<IClusterSetupActions, Task> callAction = actionName switch {
+            "EnsureTemplateAsync" =>
+                (IClusterSetupActions actions) => actions.EnsureTemplateAsync("some_template", "*", 0, CancellationToken.None),
+            "EnsureEmbeddingIngestPipelineAsync" =>
+                (IClusterSetupActions actions) => actions.EnsureEmbeddingIngestPipelineAsync("some_pipeline", ModelId, "text", CancellationToken.None),
+            "EnsureContentIndexAsync" =>
+                (IClusterSetupActions actions) => actions.EnsureContentIndexAsync("some_index", "some_pipeline", 1024, CancellationToken.None),
+            "EnsureContentCursorIndexAsync" =>
+                (IClusterSetupActions actions) => actions.EnsureContentCursorIndexAsync("some_index", CancellationToken.None),
+            "EnsureChatsCursorIndexAsync" =>
+                (IClusterSetupActions actions) => actions.EnsureChatsCursorIndexAsync("some_index", CancellationToken.None),
+            _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
+        };
+
+        var actions = CreateActions([ (404, "{}"), (500, "{}") ]);
+        var exception = await Assert.ThrowsAsync<ExternalError>(
+            () => callAction(actions)
+        );
+        Assert.StartsWith("OpenSearch request failed", exception.Message, StringComparison.Ordinal);
+    }
+
 
     [Theory]
     [InlineData("IsTemplateValidAsync")]
