@@ -5,17 +5,21 @@
     </Tile>
 }
 
-@* Android logs *@
-@* <TileTopic Topic="Log viewer"/> *@
-@* <Tile> *@
-@* </Tile> *@
+@if (MauiLogAccessor != null) {
+    <TileTopic Topic="Log viewer"/>
+    <Tile Class="log-viewer-tile">
+        <LogViewerTile MauiLogAccessor="@MauiLogAccessor" />
+    </Tile>
+}
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private IServiceProvider Services { get; init; } = null!;
 
     private IMauiHostSwitcher? NativeHostSwitcher { get; set; }
+    private IMauiLogAccessor? MauiLogAccessor { get; set; }
 
     protected override void OnInitialized() {
-        NativeHostSwitcher = Hub.GetService<IMauiHostSwitcher>();
+        NativeHostSwitcher = Services.GetService<IMauiHostSwitcher>();
+        MauiLogAccessor = Services.GetService<IMauiLogAccessor>();
     }
 }
