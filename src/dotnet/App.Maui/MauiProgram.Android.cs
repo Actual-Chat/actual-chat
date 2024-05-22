@@ -35,6 +35,7 @@ public static partial class MauiProgram
         services.AddScoped<IRecordingPermissionRequester>(_ => new AndroidRecordingPermissionRequester());
         services.AddSingleton(c => new NativeGoogleAuth(c));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
+        services.AddScoped<IMauiLogAccessor>(c => new AndroidLogAccessor(c.LogFor<AndroidLogAccessor>()));
     }
 
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)
