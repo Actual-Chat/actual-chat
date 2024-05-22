@@ -1,5 +1,6 @@
 using ActualChat.Chat.UI.Blazor;
 using ActualChat.Notification.UI.Blazor;
+using ActualChat.UI;
 using ActualChat.UI.Blazor;
 using Foundation;
 using Microsoft.AspNetCore.Components;
@@ -11,9 +12,10 @@ using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace ActualChat.App.Maui;
 
-public class PushNotifications : IDeviceTokenRetriever, INotificationsPermission, IDisposable
+public class IosPushNotifications : IDeviceTokenRetriever, INotificationsPermission, IDisposable
 {
     private NotificationUI? _notificationUI;
+    private SystemSettingsUI? _systemSettingsUI;
     private ILogger? _log;
 
     private UIHub Hub { get; }
@@ -21,10 +23,11 @@ public class PushNotifications : IDeviceTokenRetriever, INotificationsPermission
     private UrlMapper UrlMapper => Hub.UrlMapper();
     private NavigationManager Nav => Hub.Nav;
     private NotificationUI NotificationUI => _notificationUI ??= Hub.GetRequiredService<NotificationUI>();
+    private SystemSettingsUI SystemSettingsUI => _systemSettingsUI ??= Hub.GetRequiredService<SystemSettingsUI>();
     private static UNUserNotificationCenter NotificationCenter => UNUserNotificationCenter.Current;
     private ILogger Log => _log ??= Hub.LogFor(GetType());
 
-    public PushNotifications(UIHub hub)
+    public IosPushNotifications(UIHub hub)
     {
         Hub = hub;
         Messaging = hub.GetRequiredService<IFirebaseCloudMessaging>();
@@ -83,6 +86,8 @@ public class PushNotifications : IDeviceTokenRetriever, INotificationsPermission
                 Log.LogWarning("NotificationCenter.RequestAuthorizationAsync: denied, {Error}", error);
 
             isGranted = await IsGranted(cancellationToken).ConfigureAwait(true);
+            if (isGranted == false)
+                await SystemSettingsUI.Open().ConfigureAwait(true);
             NotificationUI.SetIsGranted(isGranted);
         }, Log, "Notifications permission request failed", cancellationToken);
 
@@ -97,7 +102,7 @@ public class PushNotifications : IDeviceTokenRetriever, INotificationsPermission
         if (e.Notification.Data.TryGetValue(Constants.Notification.MessageDataKeys.Link, out var url))
             notificationUrl = url;
         _ = DispatchToBlazor(
-            c => c.GetRequiredService<PushNotifications>().HandleNotificationTap(notificationUrl),
+            c => c.GetRequiredService<IosPushNotifications>().HandleNotificationTap(notificationUrl),
             $"PushNotifications.HandleNotificationTap(\"{url}\")");
     }
 

@@ -2,6 +2,7 @@ using ActualChat.App.Maui.Services;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.Streaming.UI.Blazor.Services;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Firebase.Messaging;
@@ -31,7 +32,7 @@ public static partial class MauiProgram
         // Temporarily disabled switch between loudspeaker and earpiece
         // to have single audio channel controlled with volume buttons
         //services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
-        services.AddScoped<INotificationsPermission>(c => new AndroidNotificationsPermission(c));
+        services.AddScoped<INotificationsPermission>(c => new AndroidNotificationsPermission(c.UIHub()));
         services.AddScoped<IRecordingPermissionRequester>(_ => new AndroidRecordingPermissionRequester());
         services.AddSingleton(c => new NativeGoogleAuth(c));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
