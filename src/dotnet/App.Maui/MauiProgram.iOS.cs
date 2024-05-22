@@ -14,9 +14,9 @@ public static partial class MauiProgram
     private static partial void AddPlatformServices(this IServiceCollection services)
     {
         services.AddSingleton(CrossFirebaseCloudMessaging.Current);
-        services.AddScoped<PushNotifications>(c => new PushNotifications(c.UIHub()));
-        services.AddTransient<IDeviceTokenRetriever>(c => c.GetRequiredService<PushNotifications>());
-        services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<PushNotifications>());
+        services.AddScoped<IosPushNotifications>(c => new IosPushNotifications(c.UIHub()));
+        services.AddTransient<IDeviceTokenRetriever>(c => c.GetRequiredService<IosPushNotifications>());
+        services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<IosPushNotifications>());
         services.AddScoped<IRecordingPermissionRequester>(_ => new IosRecordingPermissionRequester());
         services.AddScoped(c => new NativeAppleAuth(c));
         services.AddScoped<TuneUI>(c => new IosTuneUI(c));
@@ -31,7 +31,7 @@ public static partial class MauiProgram
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddiOS(ios => ios.FinishedLaunching((app, options) => {
-            PushNotifications.Initialize(app, options);
+            IosPushNotifications.Initialize(app, options);
             return false;
         }));
 }

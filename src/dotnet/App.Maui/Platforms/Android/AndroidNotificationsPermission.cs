@@ -1,4 +1,6 @@
 using ActualChat.Notification.UI.Blazor;
+using ActualChat.UI;
+using ActualChat.UI.Blazor;
 using Android;
 using Android.App;
 using Android.Content.PM;
@@ -6,13 +8,15 @@ using AndroidX.Core.Content;
 
 namespace ActualChat.App.Maui;
 
-public class AndroidNotificationsPermission(IServiceProvider services) : INotificationsPermission
+public class AndroidNotificationsPermission(UIHub hub) : INotificationsPermission
 {
     private NotificationUI? _notificationUI;
+    private SystemSettingsUI? _systemSettingsUI;
     private ILogger? _log;
 
-    private NotificationUI NotificationUI => _notificationUI ??= services.GetRequiredService<NotificationUI>();
-    private ILogger Log => _log ??= services.LogFor(GetType());
+    private NotificationUI NotificationUI => _notificationUI ??= hub.GetRequiredService<NotificationUI>();
+    private SystemSettingsUI SystemSettingsUI => _systemSettingsUI ??= hub.GetRequiredService<SystemSettingsUI>();
+    private ILogger Log => _log ??= hub.LogFor(GetType());
 
     public Task<bool?> IsGranted(CancellationToken cancellationToken = default)
     {
@@ -52,6 +56,8 @@ public class AndroidNotificationsPermission(IServiceProvider services) : INotifi
                     .Show();
             await whenCompletedSource.Task.ConfigureAwait(false);
             isGranted = await IsGranted(cancellationToken).ConfigureAwait(false);
+            if (isGranted == false)
+                await SystemSettingsUI.Open().ConfigureAwait(false);
             NotificationUI.SetIsGranted(isGranted);
 
             void RequestPermission()
