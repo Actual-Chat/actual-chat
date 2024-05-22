@@ -243,12 +243,7 @@ internal sealed class ClusterSetupActions(
                 """,
                 cancellationToken
             ).ConfigureAwait(false);
-            if (!searchIndexResult.Success) {
-                throw new InvalidOperationException(
-                    $"Failed to update '{IndexNames.ChatContent}'search index",
-                    searchIndexResult.OriginalException
-                );
-            }
+            searchIndexResult.AssertSuccess();
         }
     }
 
@@ -274,12 +269,7 @@ internal sealed class ClusterSetupActions(
                 """,
                 cancellationToken
             ).ConfigureAwait(false);
-            if (!chatsCursorIndexResult.Success) {
-                throw new InvalidOperationException(
-                    "Failed to update chats cursor index",
-                    chatsCursorIndexResult.OriginalException
-                );
-            }
+            chatsCursorIndexResult.AssertSuccess();
         }
     }
 
@@ -319,12 +309,7 @@ internal sealed class ClusterSetupActions(
                 """,
                 cancellationToken
             ).ConfigureAwait(false);
-            if (!ingestCursorIndexResult.Success) {
-                throw new InvalidOperationException(
-                    "Failed to update ingest cursor index.",
-                    ingestCursorIndexResult.OriginalException
-                );
-            }
+            ingestCursorIndexResult.AssertSuccess();
         }
     }
 
@@ -351,12 +336,7 @@ internal sealed class ClusterSetupActions(
                 """,
                 cancellationToken
             ).ConfigureAwait(false);
-            if (!ingestResult.Success) {
-                throw new InvalidOperationException(
-                    $"Failed to update '{IndexNames.ChatContent}' ingest pipeline",
-                    ingestResult.OriginalException
-                );
-            }
+            ingestResult.AssertSuccess();
         }
     }
 
