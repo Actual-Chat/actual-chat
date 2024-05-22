@@ -9,6 +9,10 @@
     background-color: rgba(0,0,0,0.5);
 }
 
+body.device-ios .modal-overlay {
+    @apply ios-height;
+}
+
 .modal-focus-trap {
     @apply h-full w-full md:h-auto md:w-auto;
 }
@@ -30,14 +34,14 @@
 body.narrow .modal-frame.modal-md {
     @apply absolute bottom-0 left-0 right-0;
     @apply w-auto h-auto rounded-b-none;
-    min-height: 80vh;
+    height: 80vh;
 }
 body.narrow .modal-frame.modal-sm {
     @apply absolute;
     @apply left-4 right-4;
     @apply min-h-fit;
     @apply rounded-xl;
-    max-height: 80vh;
+    height: 80vh;
     bottom: 4vh;
 }
 
@@ -63,7 +67,7 @@ body.narrow .modal-frame.modal-xs .c-text {
 .narrow .narrow-view__modal__position-bottom {
     @apply absolute bottom-0 left-0 right-0;
     @apply w-auto h-auto rounded-b-none;
-    min-height: 80vh;
+    height: 80vh;
 }
 
 .narrow .narrow-view__modal__position-stretch {
@@ -92,6 +96,9 @@ body.narrow .modal-frame.modal-xs .c-text {
     @apply rounded-lg border-modal border;
     @apply md:shadow-modal-wide;
 }
+body.device-ios .modal-chrome {
+    @apply ios-height;
+}
 .modal-frame {
     @apply hidden flex-y items-stretch gap-y-2 overflow-hidden;
     @apply max-h-screen h-full w-full md:h-auto md:w-modal;
@@ -102,6 +109,9 @@ body.narrow .modal-frame.modal-xs .c-text {
     @apply opacity-0;
     @apply duration-300;
     transition-behavior: allow-discrete;
+}
+body.device-ios .modal-frame {
+    @apply ios-height;
 }
 .modal .modal-frame {
     @apply flex;

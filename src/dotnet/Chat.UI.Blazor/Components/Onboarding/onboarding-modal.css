@@ -2,9 +2,6 @@
     @apply h-full md:min-w-90 md:max-w-90 md:min-h-160 md:max-h-160;
     @apply p-0;
 }
-.onboarding-modal .stepper-body {
-    @apply gap-y-16;
-}
 .step-tiles {
     @apply mt-6 flex-y gap-y-4;
 }

@@ -8,11 +8,13 @@
             </div>
         }
         <div class="stepper-body">
+            <div class="stepper-filler"></div>
             @if (Steps != null) {
                 <div class="stepper-content">
                     @Steps.Invoke(this)
                 </div>
             }
+            <div class="stepper-filler"></div>
             @if (Footer != null) {
                 <div class="stepper-footer">
                     @Footer.Invoke(this)
