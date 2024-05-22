@@ -6,8 +6,8 @@ internal static class DynamicQueryResultExt
 {
     public static IDictionary<string, object> FirstHit(this DynamicResponse result)
     {
-        var hits = result.Get<List<object>>("hits.hits") ?? Enumerable.Empty<object>();
-        var hit = hits.FirstOrDefault() as IDictionary<string, object>;
-        return hit ?? throw new InvalidOperationException("Query result is empty.");
+        var hits = result.Get<List<object>>("hits.hits");
+        var hit = hits?.FirstOrDefault() as IDictionary<string, object>;
+        return hit ?? throw new InvalidOperationException("Query result is malformed or empty.");
     }
 }
