@@ -1,20 +1,21 @@
 .stepper {
     @apply flex-y grow;
+    @apply h-full;
     @apply px-4;
+    @apply overflow-x-hidden overflow-y-scroll;
 }
 .stepper-header {
     @apply ordinary-header;
     @apply p-0;
 }
 .stepper-body {
-    @apply relative;
-    @apply flex-y grow justify-center;
-}
-.stepper-body .stepper-content {
-    @apply pb-24;
+    @apply flex-y grow shrink justify-center;
 }
 .stepper-footer {
-    @apply absolute inset-x-0 bottom-8;
+    @apply py-8;
+}
+.stepper-filler {
+    @apply grow;
 }
 
 .form-block:has(.stepper) {

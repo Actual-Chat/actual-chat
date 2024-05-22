@@ -9,6 +9,10 @@
     will-change: custom; /* Ensures its own composition layer */
 }
 
+body.device-ios .side-nav {
+    @apply ios-height;
+}
+
 .side-nav.animated {
     @apply transition-transform duration-200 ease-out;
 }
