@@ -131,52 +131,351 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
 
     private readonly OpenSearchNamingPolicy _openSearchNamingPolicy = new(JsonNamingPolicy.CamelCase);
 
+    private readonly string[] _retrieveModelPropsResponses = [
+        $$"""
+            { "hits": { "hits": [ { "_id": "{{ModelGroupId}}"} ]} }
+        """,
+        $$"""
+        {
+            "hits": {
+                "hits": [
+                    {
+                        "_id": "{{ModelId}}",
+                        "_source": {
+                            "model_state": "DEPLOYED",
+                            "model_config": {
+                                "all_config": "{{ModelAllConfig}}",
+                                "embedding_dimension": {{EmbeddingDimension}}
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+        """
+    ];
+
     [Fact]
     public async Task CanRetrieveModelProps()
     {
-        var modelGroupMinResponse =
-            $$"""
-                { "hits": { "hits": [ { "_id": "{{ModelGroupId}}"} ]} }
-            """;
-        var modelMinResponse =
-            $$"""
-            {
-                "hits": {
-                    "hits": [
-                        {
-                            "_id": "{{ModelId}}",
-                            "_source": {
-                                "model_state": "DEPLOYED",
-                                "model_config": {
-                                    "all_config": "{{ModelAllConfig}}",
-                                    "embedding_dimension": {{EmbeddingDimension}}
-                                }
-                            }
-                        }
-                    ]
-                }
-            }
-            """;
-
         List<(int, string)> responses = [
-            (200, modelGroupMinResponse),
-            (200, modelMinResponse)
+            .. _retrieveModelPropsResponses.Select(r => (200, r))
         ];
+        var actions = CreateActions(responses);
 
-        var settings = new ConnectionSettings(
-            new SingleNodeConnectionPool(new Uri("fake://host:9200")),
-            new TestableInMemoryConnection(a => {}, responses)
-        );
-        var client = new OpenSearchClient(settings);
-
-        var actions = new ClusterSetupActions(client, _openSearchNamingPolicy, Tracer.None);
         var modelProps = await actions.RetrieveEmbeddingModelPropsAsync(ModelGroupName, CancellationToken.None);
+
         var expected = new EmbeddingModelProps(ModelId, EmbeddingDimension, ModelAllConfig);
         Assert.Equal(expected.Id, modelProps.Id);
         Assert.Equal(expected.EmbeddingDimension, modelProps.EmbeddingDimension);
         Assert.Equal(expected.UniqueKey, modelProps.UniqueKey);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public async Task RetrieveModelPropsThrowsOnUnsuccessfulOpenSearchCall(int successCount)
+    {
+        List<(int, string)> responses = [
+            .. _retrieveModelPropsResponses.Take(successCount).Select(r => (200, r)),
+            (500, "{}")
+        ];
+        var actions = CreateActions(responses);
+        var exception = await Assert.ThrowsAsync<ExternalError>(
+            () => actions.RetrieveEmbeddingModelPropsAsync(ModelGroupName, CancellationToken.None)
+        );
+        Assert.StartsWith("OpenSearch request failed", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public async Task RetrieveModelPropsThrowsOnMalformedOrEmptyResponse(int malformedId)
+    {
+        var malformedResponse = @"{ ""malformed"": { ""hits"": [] }}";
+        var emptyResponse = @"{ ""hits"": { ""hits"": [] }}";
+        foreach (var badResponse in new [] { malformedResponse, emptyResponse }) {
+            List<(int, string)> responses = [
+                .. _retrieveModelPropsResponses.Select((r, i) => (200, i == malformedId ? malformedResponse : r))
+            ];
+            var actions = CreateActions(responses);
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => actions.RetrieveEmbeddingModelPropsAsync(ModelGroupName, CancellationToken.None)
+            );
+            Assert.StartsWith("Query result is malformed or empty", exception.Message, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public async Task RetrieveModelPropsThrowsIfNoModelGroupIdFound()
+    {
+        List<(int, string)> responses = [
+            (200, @"{ ""hits"": { ""hits"": [ {} ] }}") // There is no '_id' property in the first hit
+        ];
+        var actions = CreateActions(responses);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => actions.RetrieveEmbeddingModelPropsAsync(ModelGroupName, CancellationToken.None)
+        );
+        Assert.StartsWith("Failed to retrieve model group id.", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RetrieveModelPropsThrowsIfNoModelIdFound()
+    {
+        List<(int, string)> responses = [
+            (200, _retrieveModelPropsResponses[0]),
+            (200, @"{ ""hits"": { ""hits"": [ {} ] }}") // There is no '_id' property in the first hit
+        ];
+        var actions = CreateActions(responses);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => actions.RetrieveEmbeddingModelPropsAsync(ModelGroupName, CancellationToken.None)
+        );
+        Assert.StartsWith("Failed to retrieve model id.", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RetrieveModelPropsThrowsIfNoSourceFound()
+    {
+        List<(int, string)> responses = [
+            (200, _retrieveModelPropsResponses[0]),
+            (200, @"{ ""hits"": { ""hits"": [ { ""_id"": ""some_id"" } ] }}") // There is no '_id' property in the first hit
+        ];
+        var actions = CreateActions(responses);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => actions.RetrieveEmbeddingModelPropsAsync(ModelGroupName, CancellationToken.None)
+        );
+        Assert.StartsWith("_source is null", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RetrieveModelPropsThrowsIfSourceDoesntHaveModelState()
+    {
+        List<(int, string)> responses = [
+            (200, _retrieveModelPropsResponses[0]),
+            (
+                200,
+                $$"""
+                {
+                    "hits": {
+                        "hits": [
+                            {
+                                "_id": "{{ModelId}}",
+                                "_source": { }
+                            }
+                        ]
+                    }
+                }
+                """
+            )
+        ];
+        var actions = CreateActions(responses);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => actions.RetrieveEmbeddingModelPropsAsync(ModelGroupName, CancellationToken.None)
+        );
+        Assert.StartsWith("model_state field is not found", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("UPLOADED")]
+    public async Task RetrieveModelPropsThrowsIfModelIsInImproperState(string modelState)
+    {
+        List<(int, string)> responses = [
+            (200, _retrieveModelPropsResponses[0]),
+            (
+                200,
+                $$"""
+                {
+                    "hits": {
+                        "hits": [
+                            {
+                                "_id": "{{ModelId}}",
+                                "_source": {
+                                    "model_state": "{{modelState}}"
+                                }
+                            }
+                        ]
+                    }
+                }
+                """
+            )
+        ];
+        var actions = CreateActions(responses);
+        var exception = await Assert.ThrowsAsync<ExternalError>(
+            () => actions.RetrieveEmbeddingModelPropsAsync(ModelGroupName, CancellationToken.None)
+        );
+        Assert.StartsWith("Invalid model state", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(string.IsNullOrEmpty(modelState) ? "<Empty>" : modelState, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RetrieveModelPropsThrowsIfSourceDoesntHaveModelConfig()
+    {
+        List<(int, string)> responses = [
+            (200, _retrieveModelPropsResponses[0]),
+            (
+                200,
+                $$"""
+                {
+                    "hits": {
+                        "hits": [
+                            {
+                                "_id": "{{ModelId}}",
+                                "_source": {
+                                    "model_state": "DEPLOYED"
+                                }
+                            }
+                        ]
+                    }
+                }
+                """
+            )
+        ];
+        var actions = CreateActions(responses);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => actions.RetrieveEmbeddingModelPropsAsync(ModelGroupName, CancellationToken.None)
+        );
+        Assert.StartsWith("model_config is null", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RetrieveModelPropsThrowsIfNoEmbeddingDimensionFound()
+    {
+        List<(int, string)> responses = [
+            (200, _retrieveModelPropsResponses[0]),
+            (
+                200,
+                $$"""
+                {
+                    "hits": {
+                        "hits": [
+                            {
+                                "_id": "{{ModelId}}",
+                                "_source": {
+                                    "model_state": "DEPLOYED",
+                                    "model_config": {}
+                                }
+                            }
+                        ]
+                    }
+                }
+                """
+            )
+        ];
+        var actions = CreateActions(responses);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => actions.RetrieveEmbeddingModelPropsAsync(ModelGroupName, CancellationToken.None)
+        );
+        Assert.StartsWith("Failed to retrieve model embedding dimension value", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RetrieveModelPropsThrowsIfNoFullModelConfigFound()
+    {
+        List<(int, string)> responses = [
+            (200, _retrieveModelPropsResponses[0]),
+            (
+                200,
+                $$"""
+                {
+                    "hits": {
+                        "hits": [
+                            {
+                                "_id": "{{ModelId}}",
+                                "_source": {
+                                    "model_state": "DEPLOYED",
+                                    "model_config": {
+                                        "embedding_dimension": {{EmbeddingDimension}}
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+                """
+            )
+        ];
+        var actions = CreateActions(responses);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => actions.RetrieveEmbeddingModelPropsAsync(ModelGroupName, CancellationToken.None)
+        );
+        Assert.StartsWith("Failed to retrieve model all_config value", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("IsTemplateValidAsync")]
+    [InlineData("IsPipelineExistsAsync")]
+    [InlineData("IsIndexExistsAsync")]
+    [InlineData("EnsureTemplateAsync")]
+    [InlineData("EnsureEmbeddingIngestPipelineAsync")]
+    [InlineData("EnsureContentIndexAsync")]
+    [InlineData("EnsureContentCursorIndexAsync")]
+    [InlineData("EnsureChatsCursorIndexAsync")]
+    public async Task ActionsThrowOnFirstUnsuccessfulOpenSearchCall(string actionName)
+    {
+        Func<IClusterSetupActions, Task> callAction = actionName switch {
+            "IsTemplateValidAsync" =>
+                (IClusterSetupActions actions) => actions.IsTemplateValidAsync("some_template", "*", 0, CancellationToken.None),
+            "IsPipelineExistsAsync" =>
+                (IClusterSetupActions actions) => actions.IsPipelineExistsAsync("some_pipeline", CancellationToken.None),
+            "IsIndexExistsAsync" =>
+                (IClusterSetupActions actions) => actions.IsIndexExistsAsync("some_index", CancellationToken.None),
+            "EnsureTemplateAsync" =>
+                (IClusterSetupActions actions) => actions.EnsureTemplateAsync("some_template", "*", 0, CancellationToken.None),
+            "EnsureEmbeddingIngestPipelineAsync" =>
+                (IClusterSetupActions actions) => actions.EnsureEmbeddingIngestPipelineAsync("some_pipeline", ModelId, "text", CancellationToken.None),
+            "EnsureContentIndexAsync" =>
+                (IClusterSetupActions actions) => actions.EnsureContentIndexAsync("some_index", "some_pipeline", 1024, CancellationToken.None),
+            "EnsureContentCursorIndexAsync" =>
+                (IClusterSetupActions actions) => actions.EnsureContentCursorIndexAsync("some_index", CancellationToken.None),
+            "EnsureChatsCursorIndexAsync" =>
+                (IClusterSetupActions actions) => actions.EnsureChatsCursorIndexAsync("some_index", CancellationToken.None),
+            _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
+        };
+
+        List<(int, string)> responses = [
+            (500, "{}")
+        ];
+        var actions = CreateActions(responses);
+        var exception = await Assert.ThrowsAsync<ExternalError>(
+            () => callAction(actions)
+        );
+        Assert.StartsWith("OpenSearch request failed", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("IsTemplateValidAsync")]
+    [InlineData("IsPipelineExistsAsync")]
+    [InlineData("IsIndexExistsAsync")]
+    public async Task CheckActionsResultToFalseOn_404_Response(string actionName)
+    {
+        Func<IClusterSetupActions, Task<bool>> callAction = actionName switch {
+            "IsTemplateValidAsync" =>
+                (IClusterSetupActions actions) => actions.IsTemplateValidAsync("some_template", "*", 0, CancellationToken.None),
+            "IsPipelineExistsAsync" =>
+                (IClusterSetupActions actions) => actions.IsPipelineExistsAsync("some_pipeline", CancellationToken.None),
+            "IsIndexExistsAsync" =>
+                (IClusterSetupActions actions) => actions.IsIndexExistsAsync("some_index", CancellationToken.None),
+            _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
+        };
+
+        List<(int, string)> responses = [
+            (404, "{}")
+        ];
+        var actions = CreateActions(responses);
+        var checkResult = await callAction(actions);
+        Assert.False(checkResult);
+    }
+
+    private ClusterSetupActions CreateActions(List<(int, string)> responses)
+    {
+        var client = new OpenSearchClient(new ConnectionSettings(
+            new SingleNodeConnectionPool(new Uri("fake://host:9200")),
+            new TestableInMemoryConnection(a => { }, responses)
+        ));
+
+        return new ClusterSetupActions(client, _openSearchNamingPolicy, Tracer.None);
+    }
 }
 
 internal class TestableInMemoryConnection : IConnection

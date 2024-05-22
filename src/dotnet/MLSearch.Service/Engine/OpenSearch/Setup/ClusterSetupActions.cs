@@ -93,9 +93,14 @@ internal sealed class ClusterSetupActions(
             );
 
         // Ensure model is deployed.
-        var modelState = modelSource.Get<string>("model_state");
+        if (!modelSource.TryGetValue("model_state", out var modelStateObj)) {
+            throw new InvalidOperationException("model_state field is not found");
+        }
+        var modelState = (string) modelStateObj;
         if (!string.Equals(modelState, "DEPLOYED", StringComparison.Ordinal)) {
-            throw new InvalidOperationException(
+            modelState = string.IsNullOrEmpty(modelState) ? "<Empty>" : modelState;
+            // Throw standard external error as it is transient
+            throw StandardError.External(
                 $"Invalid model state. Expecting deployed model, but was {modelState}."
             );
         }
