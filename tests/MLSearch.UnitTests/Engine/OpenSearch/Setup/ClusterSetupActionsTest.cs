@@ -5,6 +5,8 @@ using ActualChat.Performance;
 using OpenSearch.Client;
 using OpenSearch.Net;
 
+using HttpMethod = OpenSearch.Net.HttpMethod;
+
 namespace ActualChat.MLSearch.UnitTests.Engine.OpenSearch.Setup;
 
 // Response to model Id request
@@ -126,6 +128,7 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     private const string ModelAllConfig = "{ some: 'json config' }";
     private const int EmbeddingDimension = 1024;
 
+    private readonly IConnectionPool _fakeConnectionPool = new SingleNodeConnectionPool(new Uri("fake://host:9200"));
     private readonly OpenSearchNamingPolicy _openSearchNamingPolicy = new(JsonNamingPolicy.CamelCase);
 
     private readonly string[] _retrieveModelPropsResponses = [
@@ -596,50 +599,99 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
         Assert.Equal(expected, result);
     }
 
-    private ClusterSetupActions CreateActions(List<(int, string)> responses)
+    [Fact]
+    public async Task EnsureTemplateAsyncDoesNotRecreateTemplateIfCheckSuccessful()
     {
-        var client = new OpenSearchClient(new ConnectionSettings(
-            new SingleNodeConnectionPool(new Uri("fake://host:9200")),
-            new TestableInMemoryConnection(a => { }, responses)
-        ));
+        var (name, pattern, numReplicas) = ("test", "test-*", 1024);
+        var response =
+        $$"""
+        {
+            "{{name}}": {
+                "order": 0,
+                "index_patterns": [
+                    "{{pattern}}"
+                ],
+                "settings": {
+                    "index": {
+                        "number_of_replicas": "{{numReplicas}}"
+                    }
+                },
+                "mappings": {},
+                "aliases": {}
+            }
+        }
+        """;
+        var connection = new TestableInMemoryConnection(a => { }, [ (200, response) ]);
+        var actions = CreateActions(connection);
+
+        await actions.EnsureTemplateAsync(name, pattern, numReplicas, CancellationToken.None);
+
+        connection.AssertExpectedCallCount();
+    }
+
+    [Fact]
+    public async Task EnsureTemplateAsyncRecreatesTemplateIfNotFound()
+    {
+        var (name, pattern, numReplicas) = ("test", "test-*", 1024);
+        List<(int, string)> responses = [
+            (404, "{}"),
+            (200, "{ \"acknowledged\": true }")
+        ];
+        var expectedRequests = new HashSet<(HttpMethod, string)>() {
+            (HttpMethod.GET, "_template/test"),
+            (HttpMethod.PUT, "_template/test")
+        };
+
+        void AssertRequest(RequestData requestData)
+            => Assert.True(expectedRequests.Remove((requestData.Method, requestData.PathAndQuery)));
+        var connection = new TestableInMemoryConnection(AssertRequest, responses);
+        var actions = CreateActions(connection);
+
+        await actions.EnsureTemplateAsync(name, pattern, numReplicas, CancellationToken.None);
+
+        connection.AssertExpectedCallCount();
+    }
+
+
+    private ClusterSetupActions CreateActions(List<(int, string)> responses)
+        => CreateActions(new TestableInMemoryConnection(a => { }, responses));
+
+    private ClusterSetupActions CreateActions(TestableInMemoryConnection connection)
+    {
+        var client = new OpenSearchClient(
+            new ConnectionSettings(_fakeConnectionPool, connection)
+        );
 
         return new ClusterSetupActions(client, _openSearchNamingPolicy, Tracer.None);
     }
+
 }
 
-internal class TestableInMemoryConnection : IConnection
+internal sealed class TestableInMemoryConnection(Action<RequestData> perRequestAssertion, List<(int, string)> responses) : IConnection
 {
     internal static readonly byte[] EmptyBody = Encoding.UTF8.GetBytes("");
-
-    private readonly Action<RequestData> _perRequestAssertion;
-    private readonly List<(int, string)> _responses;
     private int _requestCounter = -1;
 
-    public TestableInMemoryConnection(Action<RequestData> assertion, List<(int, string)> responses)
-    {
-        _perRequestAssertion = assertion;
-        _responses = responses;
-    }
-
-    public void AssertExpectedCallCount() => _requestCounter.Should().Be(_responses.Count - 1);
+    public void AssertExpectedCallCount() => _requestCounter.Should().Be(responses.Count - 1);
 
     async Task<TResponse> IConnection.RequestAsync<TResponse>(RequestData requestData, CancellationToken cancellationToken)
     {
         Interlocked.Increment(ref _requestCounter);
 
-        _perRequestAssertion(requestData);
+        perRequestAssertion(requestData);
 
         await Task.Yield(); // avoids test deadlocks
 
         int statusCode;
         string response;
 
-        if (_responses.Count > _requestCounter)
-            (statusCode, response) = _responses[_requestCounter];
-        else
-            (statusCode, response) = (500, (string)null);
+        (statusCode, response) = (responses.Count > _requestCounter)
+            ? responses[_requestCounter]
+            : (500, string.Empty);
 
-        var stream = !string.IsNullOrEmpty(response) ? requestData.MemoryStreamFactory.Create(Encoding.UTF8.GetBytes(response)) : requestData.MemoryStreamFactory.Create(EmptyBody);
+        var stream = !string.IsNullOrEmpty(response)
+            ? requestData.MemoryStreamFactory.Create(Encoding.UTF8.GetBytes(response))
+            : requestData.MemoryStreamFactory.Create(EmptyBody);
 
         return await ResponseBuilder
             .ToResponseAsync<TResponse>(requestData, null, statusCode, null, stream, RequestData.MimeType, cancellationToken)
@@ -650,17 +702,18 @@ internal class TestableInMemoryConnection : IConnection
     {
         Interlocked.Increment(ref _requestCounter);
 
-        _perRequestAssertion(requestData);
+        perRequestAssertion(requestData);
 
         int statusCode;
         string response;
 
-        if (_responses.Count > _requestCounter)
-            (statusCode, response) = _responses[_requestCounter];
-        else
-            (statusCode, response) = (200, (string)null);
+        (statusCode, response) = (responses.Count > _requestCounter)
+            ? responses[_requestCounter]
+            : (500, string.Empty);
 
-        var stream = !string.IsNullOrEmpty(response) ? requestData.MemoryStreamFactory.Create(Encoding.UTF8.GetBytes(response)) : requestData.MemoryStreamFactory.Create(EmptyBody);
+        var stream = !string.IsNullOrEmpty(response)
+            ? requestData.MemoryStreamFactory.Create(Encoding.UTF8.GetBytes(response))
+            : requestData.MemoryStreamFactory.Create(EmptyBody);
 
         return ResponseBuilder.ToResponse<TResponse>(requestData, null, statusCode, null, stream, RequestData.MimeType);
     }
