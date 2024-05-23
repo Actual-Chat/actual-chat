@@ -18,10 +18,7 @@ internal sealed class TestableInMemoryOpenSearchConnection(Action<RequestData> p
 
         await Task.Yield(); // avoids test deadlocks
 
-        int statusCode;
-        string response;
-
-        (statusCode, response) = (responses.Count > _requestCounter)
+        var (statusCode, response) = responses.Count > _requestCounter
             ? responses[_requestCounter]
             : (500, string.Empty);
 
@@ -40,10 +37,7 @@ internal sealed class TestableInMemoryOpenSearchConnection(Action<RequestData> p
 
         perRequestAssertion(requestData);
 
-        int statusCode;
-        string response;
-
-        (statusCode, response) = (responses.Count > _requestCounter)
+        var (statusCode, response) = responses.Count > _requestCounter
             ? responses[_requestCounter]
             : (500, string.Empty);
 

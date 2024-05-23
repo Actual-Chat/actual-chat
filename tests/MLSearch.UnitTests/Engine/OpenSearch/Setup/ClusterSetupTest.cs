@@ -11,12 +11,12 @@ namespace ActualChat.MLSearch.UnitTests.Engine.OpenSearch.Setup;
 public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private readonly IndexNames _indexNames = new();
-    private readonly OpenSearchSettings _openSearchSettings = new OpenSearchSettings {
+    private readonly OpenSearchSettings _openSearchSettings = new() {
         ClusterUri = "some://uri",
-        ModelGroup = "setup-test-group"
+        ModelGroup = "setup-test-group",
     };
     private readonly ClusterSetupResult _setupResult = new(new EmbeddingModelProps(
-        "some-unuque-model-id", 1024, "{ some: 'json config'}"
+        "some-unique-model-id", 1024, "{ some: 'json config'}"
     ));
 
     [Fact]
@@ -318,7 +318,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
                 It.IsAny<MeshLockOptions>(),
                 It.IsAny<CancellationToken>()
             ))
-            .Returns<string, string, MeshLockOptions, CancellationToken>((key, value, options, ct)
+            .Returns<string, string, MeshLockOptions, CancellationToken>((key, value, options, _)
                 => Task.FromResult(new MeshLockHolder(Mock.Of<IMeshLocksBackend>(), "id", key, value, options)))
             .Verifiable();
 

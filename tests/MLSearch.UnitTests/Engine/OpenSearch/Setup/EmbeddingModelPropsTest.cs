@@ -39,9 +39,8 @@ public class EmbeddingModePropsTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void UniqueKeyDoesNotDependOnIdAndDimension()
     {
-        const string SameConfig = ModelAllConfig1;
-        var props10 = new EmbeddingModelProps(ModelId1, EmbeddingDimension1, SameConfig);
-        var props11 = new EmbeddingModelProps(ModelId2, EmbeddingDimension2, SameConfig);
+        var props10 = new EmbeddingModelProps(ModelId1, EmbeddingDimension1, ModelAllConfig1);
+        var props11 = new EmbeddingModelProps(ModelId2, EmbeddingDimension2, ModelAllConfig1);
 
         Assert.Equal(props10.UniqueKey, props11.UniqueKey);
     }

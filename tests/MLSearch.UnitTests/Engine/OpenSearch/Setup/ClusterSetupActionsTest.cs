@@ -46,14 +46,14 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
                 ]
             }
         }
-        """
+        """,
     ];
 
     [Fact]
     public async Task CanRetrieveModelProps()
     {
         List<(int, string)> responses = [
-            .. _retrieveModelPropsResponses.Select(r => (200, r))
+            .. _retrieveModelPropsResponses.Select(r => (200, r)),
         ];
         var actions = CreateActions(responses);
 
@@ -72,7 +72,7 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     {
         List<(int, string)> responses = [
             .. _retrieveModelPropsResponses.Take(successCount).Select(r => (200, r)),
-            (500, "{}")
+            (500, "{}"),
         ];
         var actions = CreateActions(responses);
         var exception = await Assert.ThrowsAsync<ExternalError>(
@@ -84,13 +84,13 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
-    public async Task RetrieveModelPropsThrowsOnMalformedOrEmptyResponse(int malformedId)
+    public async Task RetrieveModelPropsThrowsOnMalformedOrEmptyResponse(int badId)
     {
-        var malformedResponse = @"{ ""malformed"": { ""hits"": [] }}";
-        var emptyResponse = @"{ ""hits"": { ""hits"": [] }}";
+        const string malformedResponse = """{ "malformed": { "hits": [] }}""";
+        const string emptyResponse = """{ "hits": { "hits": [] }}""";
         foreach (var badResponse in new [] { malformedResponse, emptyResponse }) {
             List<(int, string)> responses = [
-                .. _retrieveModelPropsResponses.Select((r, i) => (200, i == malformedId ? malformedResponse : r))
+                .. _retrieveModelPropsResponses.Select((r, i) => (200, i == badId ? badResponse : r)),
             ];
             var actions = CreateActions(responses);
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -104,7 +104,7 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task RetrieveModelPropsThrowsIfNoModelGroupIdFound()
     {
         List<(int, string)> responses = [
-            (200, @"{ ""hits"": { ""hits"": [ {} ] }}") // There is no '_id' property in the first hit
+            (200, """{ "hits": { "hits": [ {} ] } }"""), // There is no '_id' property in the first hit
         ];
         var actions = CreateActions(responses);
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -118,7 +118,7 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     {
         List<(int, string)> responses = [
             (200, _retrieveModelPropsResponses[0]),
-            (200, @"{ ""hits"": { ""hits"": [ {} ] }}") // There is no '_id' property in the first hit
+            (200, """{ "hits": { "hits": [ {} ] } }"""), // There is no '_id' property in the first hit
         ];
         var actions = CreateActions(responses);
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -132,7 +132,7 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     {
         List<(int, string)> responses = [
             (200, _retrieveModelPropsResponses[0]),
-            (200, @"{ ""hits"": { ""hits"": [ { ""_id"": ""some_id"" } ] }}") // There is no '_id' property in the first hit
+            (200, """{ "hits": { "hits": [ { "_id": "some_id" } ] }}"""), // There is no '_id' property in the first hit
         ];
         var actions = CreateActions(responses);
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -160,7 +160,7 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
                     }
                 }
                 """
-            )
+            ),
         ];
         var actions = CreateActions(responses);
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -192,7 +192,7 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
                     }
                 }
                 """
-            )
+            ),
         ];
         var actions = CreateActions(responses);
         var exception = await Assert.ThrowsAsync<ExternalError>(
@@ -223,7 +223,7 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
                     }
                 }
                 """
-            )
+            ),
         ];
         var actions = CreateActions(responses);
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -254,7 +254,7 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
                     }
                 }
                 """
-            )
+            ),
         ];
         var actions = CreateActions(responses);
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -287,7 +287,7 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
                     }
                 }
                 """
-            )
+            ),
         ];
         var actions = CreateActions(responses);
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -348,11 +348,11 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
         Assert.False(checkResult);
     }
 
-    public class IsTemplateValidParams(string name, string pattern, int? numOfReplicas) : IXunitSerializable
+    public class IsTemplateValidParams(string name, string pattern, int? numberOfReplicas) : IXunitSerializable
     {
         public string Name => name;
         public string Pattern => pattern;
-        public int? NumberOfReplicas => numOfReplicas;
+        public int? NumberOfReplicas => numberOfReplicas;
 
         [Obsolete("Called by the de-serializer; should only be called by deriving classes for de-serialization purposes")]
         public IsTemplateValidParams() : this(string.Empty, string.Empty, default)
@@ -362,14 +362,14 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
         {
             name = info.GetValue<string>(nameof(name));
             pattern = info.GetValue<string>(nameof(pattern));
-            numOfReplicas = info.GetValue<int?>(nameof(numOfReplicas));
+            numberOfReplicas = info.GetValue<int?>(nameof(numberOfReplicas));
         }
 
         public void Serialize(IXunitSerializationInfo info)
         {
             info.AddValue(nameof(name), name);
             info.AddValue(nameof(pattern), pattern);
-            info.AddValue(nameof(numOfReplicas), numOfReplicas);
+            info.AddValue(nameof(numberOfReplicas), numberOfReplicas);
         }
     }
 
@@ -391,26 +391,26 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
         IsTemplateValidParams callParams
     )
     {
-        var numReplicas = responseParams.NumberOfReplicas;
-        var numOfReplicasSetting = numReplicas.HasValue ? $"\"number_of_replicas\": \"{numReplicas}\"" : "";
+        var numberOfReplicas = responseParams.NumberOfReplicas;
+        var numberOfReplicasSetting = numberOfReplicas.HasValue ? $"\"number_of_replicas\": \"{numberOfReplicas}\"" : "";
         var response =
-        $$"""
-        {
-            "{{responseParams.Name}}": {
-                "order": 0,
-                "index_patterns": [
-                    "{{responseParams.Pattern}}"
-                ],
-                "settings": {
-                    "index": {
-                        {{numOfReplicasSetting}}
-                    }
-                },
-                "mappings": {},
-                "aliases": {}
+            $$"""
+            {
+                "{{responseParams.Name}}": {
+                    "order": 0,
+                    "index_patterns": [
+                        "{{responseParams.Pattern}}"
+                    ],
+                    "settings": {
+                        "index": {
+                            {{numberOfReplicasSetting}}
+                        }
+                    },
+                    "mappings": {},
+                    "aliases": {}
+                }
             }
-        }
-        """;
+            """;
         var actions = CreateActions([ (200, response) ]);
         var result = await actions.IsTemplateValidAsync(callParams.Name, callParams.Pattern, callParams.NumberOfReplicas, CancellationToken.None);
         Assert.Equal(expected, result);
@@ -421,18 +421,18 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     [InlineData("other-pipeline")]
     public async Task IsPipelineExistsAsyncChecksIfPipelineExists(string pipelineName)
     {
-        const string ExistingPipelineName = "existing-pipeline";
-        var response =
-        $$"""
-        {
-            "{{ExistingPipelineName}}": {
-                "description": "Autogenerated pipeline"
+        const string existingPipelineName = "existing-pipeline";
+        const string response =
+            $$"""
+            {
+                "{{existingPipelineName}}": {
+                    "description": "Autogenerated pipeline"
+                }
             }
-        }
-        """;
+            """;
         var actions = CreateActions([ (200, response) ]);
         var result = await actions.IsPipelineExistsAsync(pipelineName, CancellationToken.None);
-        Assert.Equal(ExistingPipelineName.Equals(pipelineName, StringComparison.Ordinal), result);
+        Assert.Equal(existingPipelineName.Equals(pipelineName, StringComparison.Ordinal), result);
     }
 
     [Theory]
@@ -440,10 +440,10 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     [InlineData("other-index")]
     public async Task IsIndexExistsAsyncChecksIfIndexExists(string indexName)
     {
-        const string ExistingIndex = "existing-index";
-        var expected = ExistingIndex.Equals(indexName, StringComparison.Ordinal);
+        const string existingIndex = "existing-index";
+        var expected = existingIndex.Equals(indexName, StringComparison.Ordinal);
         List<(int, string)> responses = [
-            expected ? (200, string.Empty) : (404, "{}")
+            expected ? (200, string.Empty) : (404, "{}"),
         ];
         var actions = CreateActions(responses);
         var result = await actions.IsIndexExistsAsync(indexName, CancellationToken.None);
@@ -453,29 +453,29 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public async Task EnsureTemplateAsyncDoesNotRecreateTemplateIfCheckSuccessful()
     {
-        var (name, pattern, numReplicas) = ("test", "test-*", 1024);
+        var (name, pattern, numberOfReplicas) = ("test", "test-*", 1024);
         var response =
-        $$"""
-        {
-            "{{name}}": {
-                "order": 0,
-                "index_patterns": [
-                    "{{pattern}}"
-                ],
-                "settings": {
-                    "index": {
-                        "number_of_replicas": "{{numReplicas}}"
-                    }
-                },
-                "mappings": {},
-                "aliases": {}
+            $$"""
+            {
+                "{{name}}": {
+                    "order": 0,
+                    "index_patterns": [
+                        "{{pattern}}"
+                    ],
+                    "settings": {
+                        "index": {
+                            "number_of_replicas": "{{numberOfReplicas}}"
+                        }
+                    },
+                    "mappings": {},
+                    "aliases": {}
+                }
             }
-        }
-        """;
-        var connection = new TestableInMemoryOpenSearchConnection(a => { }, [ (200, response) ]);
+            """;
+        var connection = new TestableInMemoryOpenSearchConnection(_ => { }, [ (200, response) ]);
         var actions = CreateActions(connection);
 
-        await actions.EnsureTemplateAsync(name, pattern, numReplicas, CancellationToken.None);
+        await actions.EnsureTemplateAsync(name, pattern, numberOfReplicas, CancellationToken.None);
 
         connection.AssertExpectedCallCount();
     }
@@ -483,44 +483,46 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public async Task EnsureTemplateAsyncRecreatesTemplateIfNotFound()
     {
-        var (name, pattern, numReplicas) = ("test", "test-*", 1024);
+        var (name, pattern, numberOfReplicas) = ("test", "test-*", 1024);
         List<(int, string)> responses = [
             (404, "{}"),
-            (200, "{ \"acknowledged\": true }")
+            (200, "{ \"acknowledged\": true }"),
         ];
-        var expectedRequests = new HashSet<(HttpMethod, string)>() {
+        var expectedRequests = new HashSet<(HttpMethod, string)> {
             (HttpMethod.GET, "_template/test"),
-            (HttpMethod.PUT, "_template/test")
+            (HttpMethod.PUT, "_template/test"),
         };
 
-        void AssertRequest(RequestData requestData)
-            => Assert.True(expectedRequests.Remove((requestData.Method, requestData.PathAndQuery)));
         var connection = new TestableInMemoryOpenSearchConnection(AssertRequest, responses);
         var actions = CreateActions(connection);
 
-        await actions.EnsureTemplateAsync(name, pattern, numReplicas, CancellationToken.None);
+        await actions.EnsureTemplateAsync(name, pattern, numberOfReplicas, CancellationToken.None);
 
         connection.AssertExpectedCallCount();
+        return;
+
+        void AssertRequest(RequestData requestData)
+            => Assert.True(expectedRequests.Remove((requestData.Method, requestData.PathAndQuery)));
     }
 
     [Fact]
     public async Task EnsureEmbeddingIngestPipelineAsyncDoesNotRecreatePipelineIfCheckSuccessful()
     {
-        const string PipelineName = "test-pipeline";
-        const string ModelId = "model-xxx";
-        const string TextField = "text";
-        var response =
-        $$"""
-        {
-            "{{PipelineName}}": {
-                "description": "Autogenerated pipeline"
+        const string pipelineName = "test-pipeline";
+        const string modelId = "model-xxx";
+        const string textField = "text";
+        const string response =
+            $$"""
+            {
+                "{{pipelineName}}": {
+                  "description": "Autogenerated pipeline"
+                }
             }
-        }
-        """;
-        var connection = new TestableInMemoryOpenSearchConnection(a => { }, [ (200, response) ]);
+            """;
+        var connection = new TestableInMemoryOpenSearchConnection(_ => { }, [ (200, response) ]);
         var actions = CreateActions(connection);
 
-        await actions.EnsureEmbeddingIngestPipelineAsync(PipelineName, ModelId, TextField, CancellationToken.None);
+        await actions.EnsureEmbeddingIngestPipelineAsync(pipelineName, modelId, textField, CancellationToken.None);
 
         connection.AssertExpectedCallCount();
     }
@@ -528,26 +530,28 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public async Task EnsureEmbeddingIngestPipelineAsyncRecreatesPipelineIfNotFound()
     {
-        const string PipelineName = "test-pipeline";
-        const string ModelId = "model-xxx";
-        const string TextField = "text";
+        const string pipelineName = "test-pipeline";
+        const string modelId = "model-xxx";
+        const string textField = "text";
         List<(int, string)> responses = [
             (404, "{}"),
-            (200, "{ \"acknowledged\": true }")
+            (200, "{ \"acknowledged\": true }"),
         ];
-        var expectedRequests = new HashSet<(HttpMethod, string)>() {
-            (HttpMethod.GET, $"_ingest/pipeline/{PipelineName}"),
-            (HttpMethod.PUT, $"_ingest/pipeline/{PipelineName}")
+        var expectedRequests = new HashSet<(HttpMethod, string)> {
+            (HttpMethod.GET, $"_ingest/pipeline/{pipelineName}"),
+            (HttpMethod.PUT, $"_ingest/pipeline/{pipelineName}"),
         };
 
-        void AssertRequest(RequestData requestData)
-            => Assert.True(expectedRequests.Remove((requestData.Method, requestData.PathAndQuery.Trim('/'))));
         var connection = new TestableInMemoryOpenSearchConnection(AssertRequest, responses);
         var actions = CreateActions(connection);
 
-        await actions.EnsureEmbeddingIngestPipelineAsync(PipelineName, ModelId, TextField, CancellationToken.None);
+        await actions.EnsureEmbeddingIngestPipelineAsync(pipelineName, modelId, textField, CancellationToken.None);
 
         connection.AssertExpectedCallCount();
+        return;
+
+        void AssertRequest(RequestData requestData)
+            => Assert.True(expectedRequests.Remove((requestData.Method, requestData.PathAndQuery.Trim('/'))));
     }
 
     [Theory]
@@ -557,7 +561,7 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task EnsureIndexActionsDoNotRecreateIndexIfCheckIsSuccessful(string actionName)
     {
         var callAction = GetCallAction(actionName, "some_index");
-        var connection = new TestableInMemoryOpenSearchConnection(a => { }, [ (200, string.Empty) ]);
+        var connection = new TestableInMemoryOpenSearchConnection(_ => { }, [ (200, string.Empty) ]);
         var actions = CreateActions(connection);
 
         await callAction(actions);
@@ -571,20 +575,17 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     [InlineData(EnsureChatsCursorIndexAction)]
     public async Task EnsureIndexActionsRecreateIndexIfNotFound(string actionName)
     {
-        const string IndexName = "some_index";
-        var callAction = GetCallAction(actionName, IndexName);
+        const string indexName = "some_index";
+        var callAction = GetCallAction(actionName, indexName);
 
         List<(int, string)> responses = [
             (404, "{}"),
-            (200, "{ \"acknowledged\": true }")
+            (200, "{ \"acknowledged\": true }"),
         ];
-        var expectedRequests = new HashSet<(HttpMethod, string)>() {
-            (HttpMethod.HEAD, IndexName),
-            (HttpMethod.PUT, IndexName)
+        var expectedRequests = new HashSet<(HttpMethod, string)> {
+            (HttpMethod.HEAD, indexName),
+            (HttpMethod.PUT, indexName),
         };
-
-        void AssertRequest(RequestData requestData)
-            => Assert.True(expectedRequests.Remove((requestData.Method, requestData.PathAndQuery.Trim('/'))));
 
         var connection = new TestableInMemoryOpenSearchConnection(AssertRequest, responses);
         var actions = CreateActions(connection);
@@ -592,6 +593,10 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
         await callAction(actions);
 
         connection.AssertExpectedCallCount();
+        return;
+
+        void AssertRequest(RequestData requestData)
+            => Assert.True(expectedRequests.Remove((requestData.Method, requestData.PathAndQuery.Trim('/'))));
     }
 
     private readonly IConnectionPool _connectionPool = new SingleNodeConnectionPool(new Uri("fake://host:9200"));
@@ -605,31 +610,31 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
         return new ClusterSetupActions(client, _openSearchNamingPolicy, Tracer.None);
     }
     private ClusterSetupActions CreateActions(List<(int, string)> responses)
-        => CreateActions(new TestableInMemoryOpenSearchConnection(a => { }, responses));
+        => CreateActions(new TestableInMemoryOpenSearchConnection(_ => { }, responses));
 
     private static Func<IClusterSetupActions, Task> GetCallAction(string actionName, string entityName) => actionName switch {
         CheckTemplateAction or CheckPipelineAction or CheckIndexAction
             => GetCallCheckAction(actionName, entityName),
         EnsureTemplateAction =>
-            (IClusterSetupActions actions) => actions.EnsureTemplateAsync(entityName, "*", 0, CancellationToken.None),
+            actions => actions.EnsureTemplateAsync(entityName, "*", 0, CancellationToken.None),
         EnsureIngestPipelineAction =>
-            (IClusterSetupActions actions) => actions.EnsureEmbeddingIngestPipelineAsync(entityName, ModelId, "text", CancellationToken.None),
+            actions => actions.EnsureEmbeddingIngestPipelineAsync(entityName, ModelId, "text", CancellationToken.None),
         EnsureContentIndexAction =>
-            (IClusterSetupActions actions) => actions.EnsureContentIndexAsync(entityName, "some_pipeline", 1024, CancellationToken.None),
+            actions => actions.EnsureContentIndexAsync(entityName, "some_pipeline", 1024, CancellationToken.None),
         EnsureContentCursorIndexAction =>
-            (IClusterSetupActions actions) => actions.EnsureContentCursorIndexAsync(entityName, CancellationToken.None),
+            actions => actions.EnsureContentCursorIndexAsync(entityName, CancellationToken.None),
         EnsureChatsCursorIndexAction =>
-            (IClusterSetupActions actions) => actions.EnsureChatsCursorIndexAsync(entityName, CancellationToken.None),
-        _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
+            actions => actions.EnsureChatsCursorIndexAsync(entityName, CancellationToken.None),
+        _ => throw new NotSupportedException($"Action '{actionName}' is not supported."),
     };
 
     private static Func<IClusterSetupActions, Task<bool>> GetCallCheckAction(string actionName, string entityName) => actionName switch {
         CheckTemplateAction =>
-            (IClusterSetupActions actions) => actions.IsTemplateValidAsync(entityName, "*", 0, CancellationToken.None),
+            actions => actions.IsTemplateValidAsync(entityName, "*", 0, CancellationToken.None),
         CheckPipelineAction =>
-            (IClusterSetupActions actions) => actions.IsPipelineExistsAsync(entityName, CancellationToken.None),
+            actions => actions.IsPipelineExistsAsync(entityName, CancellationToken.None),
         CheckIndexAction =>
-            (IClusterSetupActions actions) => actions.IsIndexExistsAsync(entityName, CancellationToken.None),
-        _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
+            actions => actions.IsIndexExistsAsync(entityName, CancellationToken.None),
+        _ => throw new NotSupportedException($"Action '{actionName}' is not supported."),
     };
 }
