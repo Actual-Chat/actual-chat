@@ -1,20 +1,6 @@
 .sign-in-modal.modal-frame {
     @apply md:w-90 md:max-w-90 md:h-164 md:max-h-164;
 }
-.sign-in-modal .dialog-body {
-    @apply flex-y;
-    @apply gap-y-2;
-}
-
-.sign-in-modal .stepper {
-    @apply px-0;
-}
-.sign-in-modal .stepper-header {
-    @apply flex-x gap-x-2;
-}
-.sign-in-modal-header-wrapper {
-    @apply flex-y gap-y-1;
-}
 .sign-in-modal-header {
     @apply text-headline-7 text-01;
 }
