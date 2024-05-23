@@ -128,6 +128,15 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     private const string ModelAllConfig = "{ some: 'json config' }";
     private const int EmbeddingDimension = 1024;
 
+    private const string CheckTemplateAction = nameof(IClusterSetupActions.IsTemplateValidAsync);
+    private const string CheckPipelineAction = nameof(IClusterSetupActions.IsPipelineExistsAsync);
+    private const string CheckIndexAction = nameof(IClusterSetupActions.IsIndexExistsAsync);
+    private const string EnsureTemplateAction = nameof(IClusterSetupActions.EnsureTemplateAsync);
+    private const string EnsureIngestPipelineAction = nameof(IClusterSetupActions.EnsureEmbeddingIngestPipelineAsync);
+    private const string EnsureContentCursorIndexAction = nameof(IClusterSetupActions.EnsureContentCursorIndexAsync);
+    private const string EnsureContentIndexAction = nameof(IClusterSetupActions.EnsureContentIndexAsync);
+    private const string EnsureChatsCursorIndexAction = nameof(IClusterSetupActions.EnsureChatsCursorIndexAsync);
+
     private readonly IConnectionPool _fakeConnectionPool = new SingleNodeConnectionPool(new Uri("fake://host:9200"));
     private readonly OpenSearchNamingPolicy _openSearchNamingPolicy = new(JsonNamingPolicy.CamelCase);
 
@@ -403,32 +412,32 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Theory]
-    [InlineData("IsTemplateValidAsync")]
-    [InlineData("IsPipelineExistsAsync")]
-    [InlineData("IsIndexExistsAsync")]
-    [InlineData("EnsureTemplateAsync")]
-    [InlineData("EnsureEmbeddingIngestPipelineAsync")]
-    [InlineData("EnsureContentIndexAsync")]
-    [InlineData("EnsureContentCursorIndexAsync")]
-    [InlineData("EnsureChatsCursorIndexAsync")]
+    [InlineData(CheckTemplateAction)]
+    [InlineData(CheckPipelineAction)]
+    [InlineData(CheckIndexAction)]
+    [InlineData(EnsureTemplateAction)]
+    [InlineData(EnsureIngestPipelineAction)]
+    [InlineData(EnsureContentIndexAction)]
+    [InlineData(EnsureContentCursorIndexAction)]
+    [InlineData(EnsureChatsCursorIndexAction)]
     public async Task ActionsThrowOnFirstUnsuccessfulOpenSearchCall(string actionName)
     {
         Func<IClusterSetupActions, Task> callAction = actionName switch {
-            "IsTemplateValidAsync" =>
+            CheckTemplateAction =>
                 (IClusterSetupActions actions) => actions.IsTemplateValidAsync("some_template", "*", 0, CancellationToken.None),
-            "IsPipelineExistsAsync" =>
+            CheckPipelineAction =>
                 (IClusterSetupActions actions) => actions.IsPipelineExistsAsync("some_pipeline", CancellationToken.None),
-            "IsIndexExistsAsync" =>
+            CheckIndexAction =>
                 (IClusterSetupActions actions) => actions.IsIndexExistsAsync("some_index", CancellationToken.None),
-            "EnsureTemplateAsync" =>
+            EnsureTemplateAction =>
                 (IClusterSetupActions actions) => actions.EnsureTemplateAsync("some_template", "*", 0, CancellationToken.None),
-            "EnsureEmbeddingIngestPipelineAsync" =>
+            EnsureIngestPipelineAction =>
                 (IClusterSetupActions actions) => actions.EnsureEmbeddingIngestPipelineAsync("some_pipeline", ModelId, "text", CancellationToken.None),
-            "EnsureContentIndexAsync" =>
+            EnsureContentIndexAction =>
                 (IClusterSetupActions actions) => actions.EnsureContentIndexAsync("some_index", "some_pipeline", 1024, CancellationToken.None),
-            "EnsureContentCursorIndexAsync" =>
+            EnsureContentCursorIndexAction =>
                 (IClusterSetupActions actions) => actions.EnsureContentCursorIndexAsync("some_index", CancellationToken.None),
-            "EnsureChatsCursorIndexAsync" =>
+            EnsureChatsCursorIndexAction =>
                 (IClusterSetupActions actions) => actions.EnsureChatsCursorIndexAsync("some_index", CancellationToken.None),
             _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
         };
@@ -444,23 +453,23 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Theory]
-    [InlineData("EnsureTemplateAsync")]
-    [InlineData("EnsureEmbeddingIngestPipelineAsync")]
-    [InlineData("EnsureContentIndexAsync")]
-    [InlineData("EnsureContentCursorIndexAsync")]
-    [InlineData("EnsureChatsCursorIndexAsync")]
+    [InlineData(EnsureTemplateAction)]
+    [InlineData(EnsureIngestPipelineAction)]
+    [InlineData(EnsureContentIndexAction)]
+    [InlineData(EnsureContentCursorIndexAction)]
+    [InlineData(EnsureChatsCursorIndexAction)]
     public async Task ActionsThrowOnUnsuccessfulEntityCreation(string actionName)
     {
         Func<IClusterSetupActions, Task> callAction = actionName switch {
-            "EnsureTemplateAsync" =>
+            EnsureTemplateAction =>
                 (IClusterSetupActions actions) => actions.EnsureTemplateAsync("some_template", "*", 0, CancellationToken.None),
-            "EnsureEmbeddingIngestPipelineAsync" =>
+            EnsureIngestPipelineAction =>
                 (IClusterSetupActions actions) => actions.EnsureEmbeddingIngestPipelineAsync("some_pipeline", ModelId, "text", CancellationToken.None),
-            "EnsureContentIndexAsync" =>
+            EnsureContentIndexAction =>
                 (IClusterSetupActions actions) => actions.EnsureContentIndexAsync("some_index", "some_pipeline", 1024, CancellationToken.None),
-            "EnsureContentCursorIndexAsync" =>
+            EnsureContentCursorIndexAction =>
                 (IClusterSetupActions actions) => actions.EnsureContentCursorIndexAsync("some_index", CancellationToken.None),
-            "EnsureChatsCursorIndexAsync" =>
+            EnsureChatsCursorIndexAction =>
                 (IClusterSetupActions actions) => actions.EnsureChatsCursorIndexAsync("some_index", CancellationToken.None),
             _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
         };
@@ -474,17 +483,17 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
 
 
     [Theory]
-    [InlineData("IsTemplateValidAsync")]
-    [InlineData("IsPipelineExistsAsync")]
-    [InlineData("IsIndexExistsAsync")]
+    [InlineData(CheckTemplateAction)]
+    [InlineData(CheckPipelineAction)]
+    [InlineData(CheckIndexAction)]
     public async Task CheckActionsResultToFalseOn_404_Response(string actionName)
     {
         Func<IClusterSetupActions, Task<bool>> callAction = actionName switch {
-            "IsTemplateValidAsync" =>
+            CheckTemplateAction =>
                 (IClusterSetupActions actions) => actions.IsTemplateValidAsync("some_template", "*", 0, CancellationToken.None),
-            "IsPipelineExistsAsync" =>
+            CheckPipelineAction =>
                 (IClusterSetupActions actions) => actions.IsPipelineExistsAsync("some_pipeline", CancellationToken.None),
-            "IsIndexExistsAsync" =>
+            CheckIndexAction =>
                 (IClusterSetupActions actions) => actions.IsIndexExistsAsync("some_index", CancellationToken.None),
             _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
         };
@@ -710,7 +719,6 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
 
         return new ClusterSetupActions(client, _openSearchNamingPolicy, Tracer.None);
     }
-
 }
 
 internal sealed class TestableInMemoryConnection(Action<RequestData> perRequestAssertion, List<(int, string)> responses) : IConnection
