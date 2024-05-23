@@ -708,6 +708,67 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
         connection.AssertExpectedCallCount();
     }
 
+    [Theory]
+    [InlineData(EnsureContentIndexAction)]
+    [InlineData(EnsureContentCursorIndexAction)]
+    [InlineData(EnsureChatsCursorIndexAction)]
+    public async Task EnsureIndexActionsDoNotRecreateIndexIfCheckIsSuccessful(string actionName)
+    {
+        Func<IClusterSetupActions, Task> callAction = actionName switch {
+            EnsureContentIndexAction =>
+                (IClusterSetupActions actions) => actions.EnsureContentIndexAsync("some_index", "some_pipeline", 1024, CancellationToken.None),
+            EnsureContentCursorIndexAction =>
+                (IClusterSetupActions actions) => actions.EnsureContentCursorIndexAsync("some_index", CancellationToken.None),
+            EnsureChatsCursorIndexAction =>
+                (IClusterSetupActions actions) => actions.EnsureChatsCursorIndexAsync("some_index", CancellationToken.None),
+            _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
+        };
+
+        var connection = new TestableInMemoryConnection(a => { }, [ (200, string.Empty) ]);
+        var actions = CreateActions(connection);
+
+        await callAction(actions);
+
+        connection.AssertExpectedCallCount();
+    }
+
+    [Theory]
+    [InlineData(EnsureContentIndexAction)]
+    [InlineData(EnsureContentCursorIndexAction)]
+    [InlineData(EnsureChatsCursorIndexAction)]
+    public async Task EnsureIndexActionsRecreateIndexIfNotFound(string actionName)
+    {
+        const string IndexName = "some_index";
+        Func<IClusterSetupActions, Task> callAction = actionName switch {
+            EnsureContentIndexAction =>
+                (IClusterSetupActions actions) => actions.EnsureContentIndexAsync(IndexName, "some_pipeline", 1024, CancellationToken.None),
+            EnsureContentCursorIndexAction =>
+                (IClusterSetupActions actions) => actions.EnsureContentCursorIndexAsync(IndexName, CancellationToken.None),
+            EnsureChatsCursorIndexAction =>
+                (IClusterSetupActions actions) => actions.EnsureChatsCursorIndexAsync(IndexName, CancellationToken.None),
+            _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
+        };
+
+        List<(int, string)> responses = [
+            (404, "{}"),
+            (200, "{ \"acknowledged\": true }")
+        ];
+        var expectedRequests = new HashSet<(HttpMethod, string)>() {
+            (HttpMethod.HEAD, IndexName),
+            (HttpMethod.PUT, IndexName)
+        };
+
+        void AssertRequest(RequestData requestData)
+            => Assert.True(expectedRequests.Remove((requestData.Method, requestData.PathAndQuery.Trim('/'))));
+
+        var connection = new TestableInMemoryConnection(AssertRequest, responses);
+        var actions = CreateActions(connection);
+
+        await callAction(actions);
+
+        connection.AssertExpectedCallCount();
+    }
+
     private ClusterSetupActions CreateActions(List<(int, string)> responses)
         => CreateActions(new TestableInMemoryConnection(a => { }, responses));
 
