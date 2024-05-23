@@ -40,7 +40,7 @@
     } else {
         @* ChatListKind.All *@
         <div @ref="AllChatListRef" class="chat-list chat-list-all">
-            <Virtualize Items="@chatIndexes" Context="i">
+            <Virtualize Items="@chatIndexes" Context="i" ItemSize="48" OverscanCount="8">
                 <ChatListItem ListKind="@Kind" Index="@i"/>
             </Virtualize>
         </div>
