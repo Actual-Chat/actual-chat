@@ -3,6 +3,7 @@
     @apply h-full;
     @apply px-4;
     @apply overflow-x-hidden overflow-y-scroll;
+    @apply custom-scrollbar;
 }
 .stepper-header {
     @apply ordinary-header;

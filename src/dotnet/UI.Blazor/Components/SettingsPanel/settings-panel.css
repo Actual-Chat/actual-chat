@@ -42,6 +42,7 @@
 .settings-panel > .c-tabs .c-tab-items {
     @apply flex-1 flex-y overflow-x-hidden overflow-y-auto;
     @apply px-2 mb-1;
+    @apply custom-scrollbar;
 }
 .settings-panel > .c-tabs .c-tab-item {
     @apply flex-none flex-x;
