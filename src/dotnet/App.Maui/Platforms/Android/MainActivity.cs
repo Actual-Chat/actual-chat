@@ -1,5 +1,4 @@
 using ActualChat.App.Maui.Services;
-using Android;
 using Android.App;
 using Android.Content.PM;
 using Android.OS;
@@ -79,6 +78,8 @@ public partial class MainActivity : MauiAppCompatActivity
         Log = AppServices.LogFor(GetType());
         _tracer.Point($"OnCreate, is loaded: {isLoaded}");
 
+        Log.LogInformation("OnCreate. Intent: '{Intent}'", Formatters.DumpIntent(Intent));
+
         base.OnCreate(Bundle.Empty);
         _tracer.Point("OnCreate, base.OnCreate completed");
 
@@ -125,6 +126,8 @@ public partial class MainActivity : MauiAppCompatActivity
 
     protected override void OnNewIntent(Intent? intent)
     {
+        Log.LogInformation("OnNewIntent. In-Intent: '{InIntent}', Intent: '{Intent}'",
+            Formatters.DumpIntent(intent), Formatters.DumpIntent(Intent));
         base.OnNewIntent(intent);
         TryHandleNotificationTap(intent);
     }
@@ -182,6 +185,7 @@ public partial class MainActivity : MauiAppCompatActivity
         if (!keySet.Contains(Constants.Notification.MessageDataKeys.NotificationId, StringComparer.Ordinal))
             return;
 
+        Log.LogInformation("-> NotificationTap, intent with notification id is detected");
         // a notification action, lets collect message data
         var data = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach(var key in keySet) {
