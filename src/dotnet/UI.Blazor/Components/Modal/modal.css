@@ -109,6 +109,7 @@ body.device-ios .modal-chrome {
     @apply opacity-0;
     @apply duration-300;
     transition-behavior: allow-discrete;
+    transition-property: opacity, display;
 }
 body.device-ios .modal-frame {
     @apply ios-height;
