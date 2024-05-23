@@ -30,6 +30,7 @@ public class IncomingShareHandler
             !OrdinalEquals(action, Intent.ActionSendMultiple))
             return;
 
+        Log.LogInformation("-> IncomingShare, send intent is detected");
         var mimeType = intent.Type ?? "";
         var hasExtraStream = intent.Extras?.ContainsKey(Intent.ExtraStream) ?? false;
         if (OrdinalEquals(action, Intent.ActionSend)) {
