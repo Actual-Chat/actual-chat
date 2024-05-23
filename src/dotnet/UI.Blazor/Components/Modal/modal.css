@@ -122,18 +122,6 @@ body.device-ios .modal-frame {
     }
 }
 
-.modal-frame .dialog-body {
-    @apply pt-4;
-}
-.modal-frame:has(.modal-header) .dialog-body,
-.modal-frame:has(.modal-header-interactive) .dialog-body {
-    @apply pt-0;
-}
-.modal-frame .dialog-body:has(.stepper) {
-    @apply pt-0;
-    @apply overflow-hidden;
-}
-
 .btn.btn-square.modal-close {
     @apply h-fit -mr-1.5;
 }
