@@ -310,30 +310,8 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     [InlineData(EnsureChatsCursorIndexAction)]
     public async Task ActionsThrowOnFirstUnsuccessfulOpenSearchCall(string actionName)
     {
-        Func<IClusterSetupActions, Task> callAction = actionName switch {
-            CheckTemplateAction =>
-                (IClusterSetupActions actions) => actions.IsTemplateValidAsync("some_template", "*", 0, CancellationToken.None),
-            CheckPipelineAction =>
-                (IClusterSetupActions actions) => actions.IsPipelineExistsAsync("some_pipeline", CancellationToken.None),
-            CheckIndexAction =>
-                (IClusterSetupActions actions) => actions.IsIndexExistsAsync("some_index", CancellationToken.None),
-            EnsureTemplateAction =>
-                (IClusterSetupActions actions) => actions.EnsureTemplateAsync("some_template", "*", 0, CancellationToken.None),
-            EnsureIngestPipelineAction =>
-                (IClusterSetupActions actions) => actions.EnsureEmbeddingIngestPipelineAsync("some_pipeline", ModelId, "text", CancellationToken.None),
-            EnsureContentIndexAction =>
-                (IClusterSetupActions actions) => actions.EnsureContentIndexAsync("some_index", "some_pipeline", 1024, CancellationToken.None),
-            EnsureContentCursorIndexAction =>
-                (IClusterSetupActions actions) => actions.EnsureContentCursorIndexAsync("some_index", CancellationToken.None),
-            EnsureChatsCursorIndexAction =>
-                (IClusterSetupActions actions) => actions.EnsureChatsCursorIndexAsync("some_index", CancellationToken.None),
-            _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
-        };
-
-        List<(int, string)> responses = [
-            (500, "{}")
-        ];
-        var actions = CreateActions(responses);
+        var callAction = GetCallAction(actionName, "some_entity");
+        var actions = CreateActions([ (500, "{}") ]);
         var exception = await Assert.ThrowsAsync<ExternalError>(
             () => callAction(actions)
         );
@@ -348,21 +326,12 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     [InlineData(EnsureChatsCursorIndexAction)]
     public async Task ActionsThrowOnUnsuccessfulEntityCreation(string actionName)
     {
-        Func<IClusterSetupActions, Task> callAction = actionName switch {
-            EnsureTemplateAction =>
-                (IClusterSetupActions actions) => actions.EnsureTemplateAsync("some_template", "*", 0, CancellationToken.None),
-            EnsureIngestPipelineAction =>
-                (IClusterSetupActions actions) => actions.EnsureEmbeddingIngestPipelineAsync("some_pipeline", ModelId, "text", CancellationToken.None),
-            EnsureContentIndexAction =>
-                (IClusterSetupActions actions) => actions.EnsureContentIndexAsync("some_index", "some_pipeline", 1024, CancellationToken.None),
-            EnsureContentCursorIndexAction =>
-                (IClusterSetupActions actions) => actions.EnsureContentCursorIndexAsync("some_index", CancellationToken.None),
-            EnsureChatsCursorIndexAction =>
-                (IClusterSetupActions actions) => actions.EnsureChatsCursorIndexAsync("some_index", CancellationToken.None),
-            _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
-        };
-
-        var actions = CreateActions([ (404, "{}"), (500, "{}") ]);
+        var callAction = GetCallAction(actionName, "some_entity");
+        List<(int, string)> responses = [
+            (404, "{}"),
+            (500, "{}"),
+        ];
+        var actions = CreateActions(responses);
         var exception = await Assert.ThrowsAsync<ExternalError>(
             () => callAction(actions)
         );
@@ -376,20 +345,8 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     [InlineData(CheckIndexAction)]
     public async Task CheckActionsResultToFalseOn_404_Response(string actionName)
     {
-        Func<IClusterSetupActions, Task<bool>> callAction = actionName switch {
-            CheckTemplateAction =>
-                (IClusterSetupActions actions) => actions.IsTemplateValidAsync("some_template", "*", 0, CancellationToken.None),
-            CheckPipelineAction =>
-                (IClusterSetupActions actions) => actions.IsPipelineExistsAsync("some_pipeline", CancellationToken.None),
-            CheckIndexAction =>
-                (IClusterSetupActions actions) => actions.IsIndexExistsAsync("some_index", CancellationToken.None),
-            _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
-        };
-
-        List<(int, string)> responses = [
-            (404, "{}")
-        ];
-        var actions = CreateActions(responses);
+        var callAction = GetCallCheckAction(actionName, "some_entity");
+        var actions = CreateActions([ (404, "{}") ]);
         var checkResult = await callAction(actions);
         Assert.False(checkResult);
     }
@@ -602,16 +559,7 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     [InlineData(EnsureChatsCursorIndexAction)]
     public async Task EnsureIndexActionsDoNotRecreateIndexIfCheckIsSuccessful(string actionName)
     {
-        Func<IClusterSetupActions, Task> callAction = actionName switch {
-            EnsureContentIndexAction =>
-                (IClusterSetupActions actions) => actions.EnsureContentIndexAsync("some_index", "some_pipeline", 1024, CancellationToken.None),
-            EnsureContentCursorIndexAction =>
-                (IClusterSetupActions actions) => actions.EnsureContentCursorIndexAsync("some_index", CancellationToken.None),
-            EnsureChatsCursorIndexAction =>
-                (IClusterSetupActions actions) => actions.EnsureChatsCursorIndexAsync("some_index", CancellationToken.None),
-            _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
-        };
-
+        var callAction = GetCallAction(actionName, "some_index");
         var connection = new TestableInMemoryOpenSearchConnection(a => { }, [ (200, string.Empty) ]);
         var actions = CreateActions(connection);
 
@@ -627,15 +575,7 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task EnsureIndexActionsRecreateIndexIfNotFound(string actionName)
     {
         const string IndexName = "some_index";
-        Func<IClusterSetupActions, Task> callAction = actionName switch {
-            EnsureContentIndexAction =>
-                (IClusterSetupActions actions) => actions.EnsureContentIndexAsync(IndexName, "some_pipeline", 1024, CancellationToken.None),
-            EnsureContentCursorIndexAction =>
-                (IClusterSetupActions actions) => actions.EnsureContentCursorIndexAsync(IndexName, CancellationToken.None),
-            EnsureChatsCursorIndexAction =>
-                (IClusterSetupActions actions) => actions.EnsureChatsCursorIndexAsync(IndexName, CancellationToken.None),
-            _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
-        };
+        var callAction = GetCallAction(actionName, IndexName);
 
         List<(int, string)> responses = [
             (404, "{}"),
@@ -668,4 +608,30 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
 
         return new ClusterSetupActions(client, _openSearchNamingPolicy, Tracer.None);
     }
+
+    private static Func<IClusterSetupActions, Task> GetCallAction(string actionName, string entityName) => actionName switch {
+        CheckTemplateAction or CheckPipelineAction or CheckIndexAction
+            => GetCallCheckAction(actionName, entityName),
+        EnsureTemplateAction =>
+            (IClusterSetupActions actions) => actions.EnsureTemplateAsync(entityName, "*", 0, CancellationToken.None),
+        EnsureIngestPipelineAction =>
+            (IClusterSetupActions actions) => actions.EnsureEmbeddingIngestPipelineAsync(entityName, ModelId, "text", CancellationToken.None),
+        EnsureContentIndexAction =>
+            (IClusterSetupActions actions) => actions.EnsureContentIndexAsync(entityName, "some_pipeline", 1024, CancellationToken.None),
+        EnsureContentCursorIndexAction =>
+            (IClusterSetupActions actions) => actions.EnsureContentCursorIndexAsync(entityName, CancellationToken.None),
+        EnsureChatsCursorIndexAction =>
+            (IClusterSetupActions actions) => actions.EnsureChatsCursorIndexAsync(entityName, CancellationToken.None),
+        _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
+    };
+
+    private static Func<IClusterSetupActions, Task<bool>> GetCallCheckAction(string actionName, string entityName) => actionName switch {
+        CheckTemplateAction =>
+            (IClusterSetupActions actions) => actions.IsTemplateValidAsync(entityName, "*", 0, CancellationToken.None),
+        CheckPipelineAction =>
+            (IClusterSetupActions actions) => actions.IsPipelineExistsAsync(entityName, CancellationToken.None),
+        CheckIndexAction =>
+            (IClusterSetupActions actions) => actions.IsIndexExistsAsync(entityName, CancellationToken.None),
+        _ => throw new NotSupportedException($"Action '{actionName}' is not supported.")
+    };
 }
