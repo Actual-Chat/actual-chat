@@ -25,9 +25,6 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
     private const string EnsureContentIndexAction = nameof(IClusterSetupActions.EnsureContentIndexAsync);
     private const string EnsureChatsCursorIndexAction = nameof(IClusterSetupActions.EnsureChatsCursorIndexAsync);
 
-    private readonly IConnectionPool _fakeConnectionPool = new SingleNodeConnectionPool(new Uri("fake://host:9200"));
-    private readonly OpenSearchNamingPolicy _openSearchNamingPolicy = new(JsonNamingPolicy.CamelCase);
-
     private readonly string[] _retrieveModelPropsResponses = [
         $$"""
             { "hits": { "hits": [ { "_id": "{{ModelGroupId}}"} ]} }
@@ -597,17 +594,18 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
         connection.AssertExpectedCallCount();
     }
 
-    private ClusterSetupActions CreateActions(List<(int, string)> responses)
-        => CreateActions(new TestableInMemoryOpenSearchConnection(a => { }, responses));
+    private readonly IConnectionPool _connectionPool = new SingleNodeConnectionPool(new Uri("fake://host:9200"));
+    private readonly OpenSearchNamingPolicy _openSearchNamingPolicy = new(JsonNamingPolicy.CamelCase);
 
     private ClusterSetupActions CreateActions(TestableInMemoryOpenSearchConnection connection)
     {
         var client = new OpenSearchClient(
-            new ConnectionSettings(_fakeConnectionPool, connection)
+            new ConnectionSettings(_connectionPool, connection)
         );
-
         return new ClusterSetupActions(client, _openSearchNamingPolicy, Tracer.None);
     }
+    private ClusterSetupActions CreateActions(List<(int, string)> responses)
+        => CreateActions(new TestableInMemoryOpenSearchConnection(a => { }, responses));
 
     private static Func<IClusterSetupActions, Task> GetCallAction(string actionName, string entityName) => actionName switch {
         CheckTemplateAction or CheckPipelineAction or CheckIndexAction
