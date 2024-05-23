@@ -1,9 +1,11 @@
 import { BrowserInfo } from '../../UI.Blazor/Services/BrowserInfo/browser-info';
 import {
-    Cancelled, debounce,
+    Cancelled,
+    debounce,
     delayAsync,
     PromiseSource,
-    PromiseSourceWithTimeout, ResolvedPromise,
+    PromiseSourceWithTimeout,
+    ResolvedPromise,
     waitAsync,
 } from 'promises';
 import { EventHandler } from 'event-handling';
@@ -12,10 +14,11 @@ import { OnDeviceAwake } from 'on-device-awake';
 import { Log } from 'logging';
 import { Versioning } from 'versioning';
 import { AudioContextRef, AudioContextRefOptions } from './audio-context-ref';
-import { Subject, Observable, firstValueFrom } from 'rxjs';
-import { AudioContextDestinationFallback } from "./audio-context-destination-fallback";
+import { firstValueFrom, Observable, Subject } from 'rxjs';
+import { AudioContextDestinationFallback } from './audio-context-destination-fallback';
 import * as playerConstants from '../Components/AudioPlayer/constants';
 import * as recorderConstants from '../Components/AudioRecorder/constants';
+
 const { logScope, infoLog, debugLog, warnLog } = Log.get('AudioContextSource');
 
 const MaintainCyclePeriodMs = 2000;
@@ -38,10 +41,12 @@ const Debug = {
 
 export type AudioContextPurpose = 'recording' | 'playback';
 
+export type OverridenAudioContext = AudioContext & {
+    destinationOverride?: MediaStreamAudioDestinationNode;
+};
+
 export interface AudioContextSource {
     get context(): AudioContext;
-
-    get destination(): AudioNode;
 
     get refCount(): number;
 
@@ -71,32 +76,26 @@ export interface AudioContextSource {
 
 abstract class AudioContextSourceBase implements AudioContextSource {
     protected readonly refs: Map<string, AudioContextRef[]> = new Map<string, AudioContextRef[]>();
-    protected readonly fallbackDestination?: AudioContextDestinationFallback;
+    protected readonly fallbackDestination?: AudioContextDestinationFallback = null;
     protected readonly _contextCreated$: Subject<AudioContext> = new Subject<AudioContext>();
     protected readonly _contextClosed$: Subject<AudioContext> = new Subject<AudioContext>();
 
     protected onDeviceAwakeHandler: EventHandler<number>;
-    protected _context: AudioContext | null = null;
+    protected _context: OverridenAudioContext | null = null;
     protected _refCount = 0;
 
     public readonly contextCreated$: Observable<AudioContext> = this._contextCreated$.asObservable();
     public readonly contextClosed$: Observable<AudioContext> = this._contextClosed$.asObservable();
 
     // Key properties
-    public get context(): AudioContext { return this._context; }
-    public get destination(): AudioNode { return this.fallbackDestination?.destination ?? this._context.destination; }
+    public get context(): OverridenAudioContext { return this._context; }
     public get refCount(): number { return this._refCount }
     public abstract get isActive(): boolean;
 
     protected constructor(public readonly purpose: AudioContextPurpose) {
         this.onDeviceAwakeHandler = OnDeviceAwake.events.add(() => this.onDeviceAwake());
-        if (AudioContextDestinationFallback.isRequired) {
+        if (purpose === 'playback' && AudioContextDestinationFallback.isRequired) {
             this.fallbackDestination = new AudioContextDestinationFallback();
-            Interactive.interactionEvents.addJustOnce( (e) => {
-                // this play should be called without async in the same sync stack as user gesture!!!
-                debugLog?.log(`.ctor: Interactive.interactionEvents triggered`, e);
-                void this.fallbackDestination.play();
-            });
         }
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'none';
@@ -132,12 +131,6 @@ abstract class AudioContextSourceBase implements AudioContextSource {
 
     protected async loadContextWorklets(context: AudioContext): Promise<void> {
         try {
-
-            if (this.fallbackDestination) {
-                await this.fallbackDestination.attach(context);
-                if (Interactive.isAlwaysInteractive)
-                    await this.fallbackDestination.play();
-            }
             debugLog?.log(`create: loading modules`);
             const feederWorkletPath = Versioning.mapPath('/dist/feederWorklet.js');
             const encoderWorkletPath = Versioning.mapPath('/dist/opusEncoderWorklet.js');
@@ -159,8 +152,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
             return;
         if (context.state === 'closed')
             return;
-        if (this.fallbackDestination)
-            this.fallbackDestination.detach();
+        this.fallbackDestination?.detach();
         try {
             await context.close();
         }
@@ -457,17 +449,12 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         this.interactiveResumeCount = 0;
         // Try to create audio context early w/o waiting for user interaction.
         // It might be in suspended state in this case.
-        const context = new AudioContext({
+        const context: OverridenAudioContext = new AudioContext({
             latencyHint: 'balanced',
             sampleRate: this.purpose === 'playback' ? playerConstants.SAMPLE_RATE : recorderConstants.SAMPLE_RATE,
         });
         this._contextCreated$.next(context);
         try {
-            if (this.fallbackDestination) {
-                await this.fallbackDestination.attach(context);
-                if (Interactive.isAlwaysInteractive)
-                    await this.fallbackDestination.play();
-            }
             debugLog?.log(`create: loading modules`);
             const feederWorkletPath = Versioning.mapPath('/dist/feederWorklet.js');
             const encoderWorkletPath = Versioning.mapPath('/dist/opusEncoderWorklet.js');
@@ -486,6 +473,11 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
             }
 
             await Promise.all([whenModule1, whenModule2, whenModule3]);
+            if (this.fallbackDestination) {
+                context.destinationOverride = this.fallbackDestination.destination;
+                await this.fallbackDestination.attach(context);
+            }
+
             return context;
         }
         catch (e) {
@@ -590,7 +582,6 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         if (Interactive.isAlwaysInteractive) {
             debugLog?.log(`interactiveResume: Interactive.isAlwaysInteractive == true`);
             await this.resume(context, false);
-            await this.fallbackDestination?.play();
         }
         else {
             // Resume can be called during user interaction only
@@ -615,7 +606,6 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
                         warnLog?.log(reason, 'resume() failed with an error');
                         resumeTask.reject(reason);
                     });
-            void this.fallbackDestination?.play();
         });
         try {
             const timerTask = delayAsync(MaxInteractionWaitTimeMs).then(() => false);
@@ -637,6 +627,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         if (isInteractive)
             this.interactiveResumeCount++;
 
+        void this.fallbackDestination?.play();
         if (this.isRunning(context)) {
             debugLog?.log(`resume: already resumed, AudioContext:`, Log.ref(context));
             return;
@@ -653,6 +644,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
     }
 
     private async trySuspend(context: AudioContext): Promise<boolean> {
+        this.fallbackDestination?.pause();
         if (context.state === 'suspended') {
             debugLog?.log(`trySuspend: already suspended, AudioContext:`, Log.ref(context));
             return true;
@@ -774,15 +766,17 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
 
     public async resumeAudio(): Promise<void> {
         const context = this._context;
-        if (context && context.state !== 'closed' && this._refCount > 0)
+        if (context && context.state !== 'closed' && this._refCount > 0) {
             await context.resume();
-        await this.fallbackDestination?.play();
+            await this.fallbackDestination?.play();
+        }
     }
 
     public async suspendAudio(): Promise<void> {
         const context = this._context;
         if (context && context.state !== 'closed')
             await context.suspend();
+        this.fallbackDestination?.pause();
     }
 
     public pauseRef(): void {
@@ -821,6 +815,7 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
         });
         Interactive.isInteractive = true;
         await context.resume();
+        await this.fallbackDestination?.attach(context);
         await this.loadContextWorklets(context);
 
         this._contextCreated$.next(context);

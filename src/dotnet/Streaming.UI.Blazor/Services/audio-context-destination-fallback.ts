@@ -40,12 +40,11 @@ export class AudioContextDestinationFallback {
         try {
             document.body.append(this.audio);
 
-            if (!this.destinationNode || this.destinationNode.context !== context) {
-                this.destinationNode = context.createMediaStreamDestination();
-                this.destinationNode.channelInterpretation = 'speakers';
-                if (isWebRtcAecRequired)
-                    this.aecStream = await createWebRtcAecStream(this.destinationNode.stream);
-                this.audio.srcObject = this.audioStream;
+            if (!this.destinationNode) {
+                await this.createDestinationNode(context);
+            } else if (this.destinationNode.context !== context) {
+                this.detach();
+                await this.createDestinationNode(context);
             }
             debugLog?.log('attach(): success')
         } catch (e) {
@@ -92,5 +91,24 @@ export class AudioContextDestinationFallback {
             errorLog?.log('play(): failed to resume:', e);
         }
         debugLog?.log('<- play()', this.audio?.paused);
+    }
+
+    public pause(): void {
+        debugLog?.log('-> pause()', this.audio?.paused);
+        try {
+            this.audio.muted = true;
+            this.audio.pause();
+        } catch (e) {
+            errorLog?.log('pause(): failed to pause:', e);
+        }
+        debugLog?.log('<- pause()', this.audio?.paused);
+    }
+
+    private async createDestinationNode(context: AudioContext): Promise<void> {
+        this.destinationNode = context.createMediaStreamDestination();
+        this.destinationNode.channelInterpretation = 'speakers';
+        if (isWebRtcAecRequired)
+            this.aecStream = await createWebRtcAecStream(this.destinationNode.stream);
+        this.audio.srcObject = this.audioStream;
     }
 }
