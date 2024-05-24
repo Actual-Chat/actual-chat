@@ -10,7 +10,7 @@ export class AudioContextDestinationFallback {
     private destinationNode?: MediaStreamAudioDestinationNode = null;
     private aecStream: MediaStream & Disposable = null;
 
-    public static get isRequired() { return isWebRtcAecRequired || DeviceInfo.isIos && DeviceInfo.isWebKit; }
+    public static get isRequired() { return isWebRtcAecRequired; }
 
     public get destination() { return this.destinationNode; }
 
