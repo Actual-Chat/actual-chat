@@ -22,7 +22,7 @@ export class AudioInitializer {
 
         const initPlayer = async () => {
             try {
-                await AudioPlayer.init();
+                await AudioPlayer.init(baseUri);
                 this.isPlayerInitialized = true;
             } catch (e) {
                 warnLog?.log(`init: AudioPlayer.init failed:`, e);

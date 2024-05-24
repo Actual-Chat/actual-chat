@@ -44,7 +44,7 @@ export class AudioPlayer implements Resettable {
 
     public onPlaybackStateChanged?: (playbackState: PlaybackState) => void;
 
-    public static async init(): Promise<void> {
+    public static async init(baseUri: string): Promise<void> {
         this.initStarted = true;
         if (this.whenInitialized.isCompleted())
             return;

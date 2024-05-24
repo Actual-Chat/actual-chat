@@ -14,19 +14,23 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 
 import { OpusDecoder } from './opus-decoder';
 import { OpusDecoderWorker } from './opus-decoder-worker-contract';
-import { RpcNoWait, rpcServer, RpcTimeout } from 'rpc';
-import { retry } from 'promises';
+import { rpcNoWait, RpcNoWait, rpcServer, RpcTimeout } from 'rpc';
+import * as signalR from '@microsoft/signalr';
+import { HubConnectionState, IStreamResult } from '@microsoft/signalr';
+import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
+import { delayAsync, retry } from 'promises';
 import { Versioning } from 'versioning';
 import { Log } from 'logging';
 import { SAMPLE_RATE } from '../constants';
 
-const { logScope, debugLog, errorLog } = Log.get('OpusDecoderWorker');
+const { logScope, debugLog, infoLog, errorLog } = Log.get('OpusDecoderWorker');
 
 
 // TODO: create wrapper around module for all workers
 
 let codecModule: Codec | null = null;
 let useSystemDecoder = false;
+let hubConnection: signalR.HubConnection = null;
 
 const worker = self as unknown as Worker;
 const decoders = new Map<string, OpusDecoder>();
@@ -37,12 +41,42 @@ const systemCodecConfig: AudioEncoderConfig = {
 };
 
 const serverImpl: OpusDecoderWorker = {
-    create: async (artifactVersions: Map<string, string>, _timeout?: RpcTimeout): Promise<void> => {
+    create: async (artifactVersions: Map<string, string>, hubUrl: string, _timeout?: RpcTimeout): Promise<void> => {
         debugLog?.log(`-> init`);
-        if (codecModule)
-            return;
+        if (codecModule){
+            if (hubConnection.state !== HubConnectionState.Connected)
+                await serverImpl.reconnect();
 
-        Versioning.init(artifactVersions);
+            return;
+        }
+
+        if (!hubConnection) {
+            Versioning.init(artifactVersions);
+
+            // Connect to SignalR Hub
+            hubConnection = new signalR.HubConnectionBuilder()
+                .withUrl(hubUrl, {
+                    skipNegotiation: true,
+                    transport: signalR.HttpTransportType.WebSockets,
+                })
+                // We use fixed number of attempts here, because the reconnection is anyway
+                // triggered after SSB / Stl.Rpc reconnect. See:
+                // - C#: ChatAudioUI.ReconnectOnRpcReconnect
+                // - TS: AudioRecorder.ctor.
+                // Some extra attempts are needed, coz there is a chance that the primary connection
+                // stays intact, while this one drops somehow.
+                .withAutomaticReconnect([50, 350, 500, 1000, 1000, 1000])
+                .withHubProtocol(new MessagePackHubProtocol())
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+            // stateful reconnect doesn't work with skipNegotiation and moreover provides glitches
+            hubConnection.onreconnected(() => onReconnect());
+            // hubConnection.onreconnecting(() => void server.onConnectionStateChanged(
+            //     hubConnection.state === HubConnectionState.Connected,
+            //     rpcNoWait));
+            // hubConnection['_launchStreams'] = _launchStreams.bind(hubConnection);
+            debugLog?.log(`create: hub created`);
+        }
 
         if (!useSystemDecoder && globalThis.AudioDecoder) {
             const configSupport = await AudioDecoder.isConfigSupported(systemCodecConfig);
@@ -116,7 +150,38 @@ const serverImpl: OpusDecoderWorker = {
 
     releaseBuffer: async(streamId: string, buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void>  => {
         await getDecoder(streamId).releaseBuffer(buffer, _noWait);
-    }
+    },
+
+    reconnect: async (_noWait?: RpcNoWait): Promise<void> => {
+        infoLog?.log(`reconnect: `, hubConnection.state);
+        if (hubConnection.state === HubConnectionState.Connected)
+            return;
+
+        if (hubConnection.state == HubConnectionState.Connecting) {
+            // Waiting 1s for connection to happen
+            for (let i = 0; i < 10; i++) {
+                await delayAsync(100);
+                // @ts-ignore
+                if (hubConnection.state === HubConnectionState.Connected)
+                    return;
+            }
+        }
+
+        // Reconnect
+        if (hubConnection.state === HubConnectionState.Disconnected) {
+            await hubConnection.start();
+        }
+        else {
+            await hubConnection.stop();
+            await hubConnection.start();
+        }
+        void onReconnect();
+    },
+
+    disconnect: async (_noWait?: RpcNoWait): Promise<void> => {
+        infoLog?.log(`disconnect: `, hubConnection.state);
+        await hubConnection.stop();
+    },
 };
 
 const server = rpcServer(`${logScope}.server`, worker, serverImpl);
@@ -149,5 +214,15 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
         },
     };
 }
+
+ async function onReconnect(): Promise<void> {
+     infoLog?.log(`onReconnect: `, hubConnection.state);
+     const isConnected = hubConnection.state === HubConnectionState.Connected;
+     // void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait);
+     // if (isConnected && state === 'encoding') {
+     //     await startRecording();
+     // }
+ }
+
 
 
