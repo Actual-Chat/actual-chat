@@ -9,40 +9,48 @@ internal interface IServiceCoordinator
     Task<TResult> ExecuteWhenReadyAsync<TResult>(Func<CancellationToken, Task<TResult>> asyncFunc, CancellationToken funcCancellationToken);
 }
 
-internal class ServiceCoordinator(
+internal sealed class ServiceCoordinator(
     IClusterSetup clusterSetup,
+    IMomentClock clock,
     ILogger<ServiceCoordinator> log
 ) : WorkerBase, IServiceCoordinator
 {
     private TaskCompletionSource _entranceGate = new();
 
+    public RetryDelaySeq RetryDelaySeq { get; init; } = RetryDelaySeq.Exp(0.5, 60);
+    public TransiencyResolver TransiencyResolver { get; init; } = TransiencyResolvers.PreferTransient;
+    public Task OnStartTask { get; init; } = Task.CompletedTask;
+
+    protected override Task OnStart(CancellationToken cancellationToken) => OnStartTask;
     protected override async Task OnRun(CancellationToken cancellationToken)
-    {
-        await InitializeAsync(cancellationToken).ConfigureAwait(false);
-        await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced()
-            .WaitAsync(cancellationToken)
-            .ConfigureAwait(false);
-    }
+        => await InitializeAsync(cancellationToken).ConfigureAwait(false);
 
     private async Task InitializeAsync(CancellationToken cancellationToken)
     {
-        var retryDelays = RetryDelaySeq.Exp(0, 60);
+        while (!cancellationToken.IsCancellationRequested) {
+            try {
+                await AsyncChain.From(clusterSetup.InitializeAsync)
+                    .WithTransiencyResolver(TransiencyResolver)
+                    .Log(LogLevel.Debug, log)
+                    .RetryForever(RetryDelaySeq, log)
+                    .Run(cancellationToken)
+                    .ConfigureAwait(false);
 
-        try {
-            await AsyncChain.From(clusterSetup.InitializeAsync)
-                .WithTransiencyResolver(TransiencyResolvers.PreferTransient)
-                .Log(LogLevel.Debug, log)
-                .RetryForever(retryDelays, log)
-                .Run(cancellationToken)
-                .ConfigureAwait(false);
-
-            // Open Search cluster is initialized so open entrance gate
-            _entranceGate.SetResult();
-        }
-        catch (Exception e) {
-            var oldGate = Interlocked.Exchange(ref _entranceGate, new TaskCompletionSource());
-            oldGate.SetException(e);
-            throw;
+                // Open Search cluster is initialized so open entrance gate
+                _entranceGate.SetResult();
+                break;
+            }
+            catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                var transiency = TransiencyResolver(e);
+                if (transiency.IsTerminal()) {
+                    log.LogError(e, "[!] Irrecoverable error detected, exiting initialization.");
+                    throw;
+                }
+                // While with high probability the error is irrecoverable
+                // whe retry initialization to show activity in logs.
+                log.LogError(e, "[!] Critical AsyncChain pipeline error, will retry in 30s.");
+                await clock.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 
