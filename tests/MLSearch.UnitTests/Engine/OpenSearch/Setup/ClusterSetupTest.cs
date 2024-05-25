@@ -34,7 +34,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public async Task InitializationChecksForAllOfRequiredOpenSearchEnitities()
+    public async Task InitializationChecksForAllOfRequiredOpenSearchEntities()
     {
         var meshLocks = MockMeshLocks();
         var setupActions = MockSetupActions(true);
@@ -87,7 +87,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
         // Verify no other checks were performed
         setupActions.VerifyNoOtherCalls();
 
-        // Verify there was no attempt to accuire some distributed lock
+        // Verify there was no attempt to acquire some distributed lock
         meshLocks.VerifyNoOtherCalls();
     }
 
@@ -169,7 +169,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
         // Verify all methods having setups are called
         setupActions.Verify();
 
-        // Verify there are no other calls except ones we setup
+        // Verify there are no other calls except ones we set up
         setupActions.VerifyNoOtherCalls();
     }
 
