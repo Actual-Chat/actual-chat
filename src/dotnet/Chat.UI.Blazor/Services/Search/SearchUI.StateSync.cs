@@ -42,24 +42,29 @@ public partial class SearchUI
 
     private async Task UpdateSearchResults(string criteria, PlaceId placeId, CancellationToken cancellationToken)
     {
-        var results = await FindContacts(criteria, cancellationToken).ConfigureAwait(false);
-        _contactSearchResults = new Cached(criteria, placeId, results);
+        var results = await FindContacts(criteria, placeId, cancellationToken).ConfigureAwait(false);
+        _contactSearchResults = new Cached(results);
         using (Invalidation.Begin()) {
             _ = GetContactSearchResults();
             _ = PseudoGetSearchMatch();
         }
     }
 
-    private async Task<IReadOnlyList<ContactSearchResult>> FindContacts(string criteria, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<ContactSearchResult>> FindContacts(
+        string criteria,
+        PlaceId? placeId,
+        CancellationToken cancellationToken)
     {
         if (criteria.IsNullOrEmpty())
             return [];
 
         var session = Hub.Session();
+        if (placeId == PlaceId.None)
+            placeId = null; // search in all places
         var searchResults = await new[] {
-                Search.FindUserContacts(session, criteria, cancellationToken),
-                Search.FindChatContacts(session, criteria, false, cancellationToken),
-                Search.FindChatContacts(session, criteria, true, cancellationToken),
+                Search.FindUserContacts(session, placeId, criteria, cancellationToken),
+                Search.FindChatContacts(session, placeId, criteria, false, cancellationToken),
+                Search.FindChatContacts(session, placeId, criteria, true, cancellationToken),
             }.CollectResults()
             .ConfigureAwait(false);
         return searchResults.Where(x => x.HasValue).SelectMany(x => x.Value).ToList();
