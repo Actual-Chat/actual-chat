@@ -1,0 +1,52 @@
+<div class="c-navbar">
+    <CollapsedNavbar
+        SummaryClass="navbar-item group"
+        IsCollapsed="false">
+        <SummaryContent>
+            <i class="icon-activity text-xl"></i>
+            <span>Feed</span>
+        </SummaryContent>
+        <DetailsContent>
+            <NavbarItem
+                Url="/discover/recommended"
+                Class="my-0.5 incut-item"
+                IsSelected="@(ActivePage == DiscoverActivePage.Recommended)">
+                <span class="c-title">
+                    Recommended
+                </span>
+            </NavbarItem>
+            <NavbarItem
+                Url="/discover/your-posts"
+                Class="my-0.5 incut-item"
+                IsSelected="@(ActivePage == DiscoverActivePage.YourPosts)">
+                <span class="c-title">
+                    Your Posts
+                </span>
+            </NavbarItem>
+        </DetailsContent>
+    </CollapsedNavbar>
+
+    <NavbarItem
+        Url="/discover/mentions"
+        Class="my-0.5"
+        IsSelected="@(ActivePage == DiscoverActivePage.Mentions)">
+        <i class="icon-at text-xl"></i>
+        <span class="c-title">
+            Mentions
+        </span>
+    </NavbarItem>
+
+    <NavbarItem
+        Url="/discover/places-and-chats"
+        Class="my-0.5"
+        IsSelected="@(ActivePage == DiscoverActivePage.PlacesAndChats)">
+        <i class="icon-grid text-xl"></i>
+        <span class="c-title">
+            Places and Chats
+        </span>
+    </NavbarItem>
+</div>
+
+@code {
+    [CascadingParameter] public DiscoverActivePage ActivePage { get; set; }
+}

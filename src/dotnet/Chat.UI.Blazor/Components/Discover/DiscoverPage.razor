@@ -1,0 +1,23 @@
+@inherits LayoutComponentBase
+@layout DiscoverLayout
+
+<RenderIntoSlot Name="MainHeader">
+    <DiscoverHeader Title="Recommended"/>
+</RenderIntoSlot>
+
+<RenderIntoSlot Name="MainFooter">
+    <div class="discover-footer">Discover Footer</div>
+</RenderIntoSlot>
+
+<RenderIntoSlot Name="MainLeftDrawer">
+    <div class="discover-left">
+        <LeftPanelButtons/>
+        <DiscoverWideLeftPanel/>
+    </div>
+</RenderIntoSlot>
+
+<RenderIntoSlot Name="MainRightDrawer">
+    <DiscoverRightPanel/>
+</RenderIntoSlot>
+
+<DiscoverCenter/>

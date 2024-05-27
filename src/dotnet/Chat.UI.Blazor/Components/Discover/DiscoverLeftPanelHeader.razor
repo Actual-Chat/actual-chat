@@ -1,0 +1,14 @@
+<div class="c-header">
+    <span>
+        Discover
+    </span>
+    <SearchBox
+        Class="discover-search"
+        Placeholder="Search"
+        MaxLength="@Constants.Chat.MaxSearchFilterLength"
+        TextChanged="@OnFilter"/>
+</div>
+
+@code {
+    private void OnFilter() {}
+}
