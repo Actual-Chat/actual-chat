@@ -54,8 +54,11 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
         await _tester.SignOut();
     }
 
-    protected override Task DisposeAsync()
-        => _tester.DisposeSilentlyAsync().AsTask();
+    protected override async Task DisposeAsync()
+    {
+        await _tester.DisposeSilentlyAsync();
+        await base.DisposeAsync();
+    }
 
     [Fact(Skip = "TODO(FC): Fix for CI")]
     public async Task ShouldAddAndUpdate()

@@ -12,12 +12,18 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     private ISearchBackend _sut = null!;
     private ICommander _commander = null!;
 
-    protected override Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         _tester = AppHost.NewWebClientTester(Out);
         _sut = AppHost.Services.GetRequiredService<ISearchBackend>();
         _commander = AppHost.Services.Commander();
-        return Task.CompletedTask;
+    }
+
+    protected override async Task DisposeAsync()
+    {
+        await _tester.DisposeSilentlyAsync();
+        await base.DisposeAsync();
     }
 
     [Fact]

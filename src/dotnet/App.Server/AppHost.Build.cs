@@ -4,7 +4,6 @@ using ActualChat.Chat.Module;
 using ActualChat.Chat.UI.Blazor.Module;
 using ActualChat.Contacts.Module;
 using ActualChat.Contacts.UI.Blazor.Module;
-using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Module;

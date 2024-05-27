@@ -654,9 +654,6 @@ jobs:
           mkdir -p ~/.appstoreconnect/private_keys/
           echo -n "${{ env.API_KEY_BASE64 }}" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${{ env.API_KEY_ID }}.p8
           ls -ls ~/.appstoreconnect/private_keys/
-          mkdir -p ~/private_keys/
-          echo -n "${{ env.API_KEY_BASE64 }}" | base64 --decode -o ~/private_keys/AuthKey_${{ env.API_KEY_ID }}.p8
-          ls -ls ~/private_keys/
 
       - name: Validate App
         run: |-

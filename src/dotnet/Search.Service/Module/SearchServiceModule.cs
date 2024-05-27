@@ -19,6 +19,7 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices)
         var isBackendClient = HostInfo.Roles.GetBackendServiceMode<ISearchBackend>().IsClient();
 
         // Search
+        rpcHost.AddApi<ISearch, Search>();
         rpcHost.AddBackend<ISearchBackend, SearchBackend>();
 
         // Indexing

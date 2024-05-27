@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Testing.Host\Testing.Host.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Collections\" />
+  </ItemGroup>
+
+</Project>

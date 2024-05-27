@@ -34,19 +34,9 @@ public interface ISearchBackend : IComputeService, IBackendService
         int limit,
         CancellationToken cancellationToken);
 
-    Task<ContactSearchResultPage> FindUserContacts(
+    Task<ContactSearchResultPage> FindContacts(
         UserId userId,
-        string criteria,
-        int skip,
-        int limit,
-        CancellationToken cancellationToken);
-
-    Task<ContactSearchResultPage> FindChatContacts(
-        UserId userId,
-        bool isPublic,
-        string criteria,
-        int skip,
-        int limit,
+        ContactSearchQuery query,
         CancellationToken cancellationToken);
 }
 

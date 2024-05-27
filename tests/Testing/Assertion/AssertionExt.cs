@@ -1,7 +1,7 @@
 using ActualChat.Users;
 using FluentAssertions.Equivalency;
 
-namespace ActualChat.Testing.Host;
+namespace ActualChat.Testing.Assertion;
 
 public static class AssertionExt
 {

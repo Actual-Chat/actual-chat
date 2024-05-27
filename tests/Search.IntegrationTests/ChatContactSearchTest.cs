@@ -1,5 +1,5 @@
 using ActualChat.Chat;
-using ActualChat.Performance;
+using ActualChat.Contacts;
 using ActualChat.Search.Module;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
@@ -18,7 +18,6 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         using var appHost = await NewSearchEnabledAppHost(nameof(ShouldFindAddedChats));
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
-        var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
         var bob = await tester.SignInAsBob(RandomStringGenerator.Default.Next());
         var privateChat1 = await CreateChat(tester, false, "Private non-place chat 1 one");
         var privateChat2 = await CreateChat(tester, false, "Private non-place chat 2 two");
@@ -54,7 +53,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         await commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
 
         // assert
-        var searchResults = await Find(searchBackend, bob.Id, true, "chat");
+        var searchResults = await Find(tester, true, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -64,7 +63,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                     publicPlacePublicChat2.ToSearchResult(bob.Id),
                 }
             );
-        searchResults = await Find(searchBackend, bob.Id, true, "one");
+        searchResults = await Find(tester, true, "one");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -73,7 +72,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                 }
             );
 
-        searchResults = await Find(searchBackend, bob.Id, false, "chat");
+        searchResults = await Find(tester, false, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -88,7 +87,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                 }
             );
 
-        searchResults = await Find(searchBackend, bob.Id, false, "two");
+        searchResults = await Find(tester, false, "two");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -107,7 +106,6 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         using var appHost = await NewSearchEnabledAppHost(nameof(ShouldFindUpdateChats));
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
-        var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
         var bob = await tester.SignInAsBob(RandomStringGenerator.Default.Next());
         var privateChat1 = await CreateChat(tester, false, "Private non-place chat 1");
         var privateChat2 = await CreateChat(tester, false, "Private non-place chat 2");
@@ -143,7 +141,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         await commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
 
         // assert
-        var searchResults = await Find(searchBackend, bob.Id, true, "chat");
+        var searchResults = await Find(tester, true, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -153,7 +151,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                 }
             );
 
-        searchResults = await Find(searchBackend, bob.Id, false, "chat");
+        searchResults = await Find(tester, false, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -176,7 +174,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         await commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
 
         // assert
-        searchResults = await Find(searchBackend, bob.Id, true, "chat");
+        searchResults = await Find(tester, true, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -187,7 +185,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                 }
             );
 
-        searchResults = await Find(searchBackend, bob.Id, false, "chat");
+        searchResults = await Find(tester, false, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -202,10 +200,10 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                 }
             );
 
-        searchResults = await Find(searchBackend, bob.Id, true, "abra");
+        searchResults = await Find(tester, true, "abra");
         searchResults.Should().BeEmpty();
 
-        searchResults = await Find(searchBackend, bob.Id, false, "abra");
+        searchResults = await Find(tester, false, "abra");
         searchResults.Should().BeEmpty();
     }
 
@@ -216,7 +214,6 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         using var appHost = await NewSearchEnabledAppHost(nameof(ShouldFindUpdateChats));
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
-        var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
         var bob = await tester.SignInAsBob();
         var privateChat1 = await CreateChat(tester, false, "Private non-place chat 1 one");
         var privateChat2 = await CreateChat(tester, false, "Private non-place chat 2 two");
@@ -252,7 +249,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         await commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
 
         // assert
-        var searchResults = await Find(searchBackend, bob.Id, true, "chat");
+        var searchResults = await Find(tester, true, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -263,7 +260,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                 }
             );
 
-        searchResults = await Find(searchBackend, bob.Id, false, "chat");
+        searchResults = await Find(tester, false, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -290,7 +287,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         await commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
 
         // assert
-        searchResults = await Find(searchBackend, bob.Id, true, "chat");
+        searchResults = await Find(tester, true, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -299,7 +296,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                 }
             );
 
-        searchResults = await Find(searchBackend, bob.Id, false, "chat");
+        searchResults = await Find(tester, false, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -331,13 +328,16 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         return await tester.Chats.Get(tester.Session, id, CancellationToken.None).Require();
     }
 
-    private async Task<ApiArray<ContactSearchResult>> Find(ISearchBackend searchBackend, UserId ownerId, bool isPublic, string criteria)
+    private async Task<ApiArray<ContactSearchResult>> Find(IWebTester tester, bool isPublic, string criteria)
     {
-        var searchResults = await searchBackend.FindChatContacts(ownerId,
-            isPublic,
-            criteria,
-            0,
-            20,
+        var search = tester.Search;
+        var searchResults = await search.FindContacts(tester.Session,
+            new () {
+                Criteria = criteria,
+                IsPublic = isPublic,
+                Kind = ContactKind.Chat,
+                Limit = 20,
+            },
             CancellationToken.None);
         searchResults.Offset.Should().Be(0);
         return searchResults.Hits;

@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.Components;
+namespace ActualChat.Chat.UI.Blazor.Components;
 
 public enum SearchPanelSide
 {

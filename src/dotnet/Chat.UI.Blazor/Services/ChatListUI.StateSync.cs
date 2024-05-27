@@ -112,7 +112,7 @@ public partial class ChatListUI
             .ConfigureAwait(false);
         var delaySeq = RetryDelaySeq.Exp(5, 120, 0, 2);
         while (true) {
-            if (!cItem0.ValueOrDefault.Item2.IsNone) {
+            if (cItem0.ValueOrDefault?.ChatId.IsNone == false) {
                 // We're fine
                 await cItem0.WhenInvalidated(cancellationToken).ConfigureAwait(false);
                 await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
@@ -125,7 +125,7 @@ public partial class ChatListUI
             while (true) {
                 await Task.Delay(delaySeq[tryIndex], cancellationToken).ConfigureAwait(false);
                 cItem0 = await cItem0.Update(cancellationToken).ConfigureAwait(false);
-                if (!cItem0.ValueOrDefault.Item2.IsNone)
+                if (cItem0.ValueOrDefault?.ChatId.IsNone == false)
                     break; // We're fine
 
                 // And it's still None after delay

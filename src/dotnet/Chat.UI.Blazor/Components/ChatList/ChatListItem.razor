@@ -1,4 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using SearchUI = ActualChat.Chat.UI.Blazor.Services.SearchUI
 @inherits ComputedStateComponent<ChatListItem.Model>
 @{
     var m = State.Value;
@@ -30,7 +31,7 @@ else {
                 <ChatIcon Chat="chatState.Chat" ShowPresence="@true"/>
                 <div class="c-description">
                     <span class="c-title">
-                        <SearchUIHighlighter Text="@chatState.Chat.Title"/>
+                        <ContactSearchHighlighter Chat="@chatState.Chat"/>
                     </span>
                     @if (lastTextEntry != null) {
                         <div class="c-last-message">

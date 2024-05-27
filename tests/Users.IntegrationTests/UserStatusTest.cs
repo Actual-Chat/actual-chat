@@ -14,6 +14,7 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out, ILog
 
     protected override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         _tester = AppHost.NewWebClientTester(Out);
         _accounts = AppHost.Services.GetRequiredService<IAccounts>();
         _adminSession = Session.New();
@@ -22,7 +23,7 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out, ILog
 
     protected override async Task DisposeAsync()
     {
-        await _tester.DisposeAsync();
+        await _tester.DisposeSilentlyAsync();
         await base.DisposeAsync();
     }
 

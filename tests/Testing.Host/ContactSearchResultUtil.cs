@@ -1,4 +1,6 @@
-namespace ActualChat.Search.IntegrationTests;
+using ActualChat.Search;
+
+namespace ActualChat.Testing.Host;
 
 public static class ContactSearchResultUtil
 {

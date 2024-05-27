@@ -1,10 +1,6 @@
 import { Subject, } from 'rxjs';
 
-import { Log } from 'logging';
 import { setTimeout } from 'timerQueue';
-
-const { debugLog } = Log.get('SearchPanel');
-
 enum Side {
     Left,
     Right,

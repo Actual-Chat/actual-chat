@@ -1,4 +1,3 @@
-using ActualChat.Performance;
 using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
@@ -15,22 +14,19 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
     private IContactsBackend _contactsBackend = null!;
     private IAccounts _accounts = null!;
 
-    protected override Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         _tester = AppHost.NewWebClientTester(Out);
         _contacts = AppHost.Services.GetRequiredService<IContacts>();
         _contactsBackend = AppHost.Services.GetRequiredService<IContactsBackend>();
         _accounts = _tester.AppServices.GetRequiredService<IAccounts>();
-
-        FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
-        return Task.CompletedTask;
     }
 
     protected override async Task DisposeAsync()
     {
-        foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
-            FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
-        await _tester.DisposeAsync().AsTask();
+        await _tester.DisposeSilentlyAsync();
+        await base.DisposeAsync();
     }
 
     [Fact]
@@ -226,7 +222,7 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
     private async Task<List<ContactId>> ListIdsForContactSearch(CancellationToken cancellationToken = default)
     {
         var account = await _accounts.GetOwn(_tester.Session, cancellationToken);
-        var contactIds = await _contactsBackend.ListIdsForContactSearch(account.Id, cancellationToken);
+        var contactIds = await _contactsBackend.ListIdsForContactSearch(account.Id, null, cancellationToken);
         return contactIds.Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId)).OrderBy(x => x.Id).ToList();
     }
 }

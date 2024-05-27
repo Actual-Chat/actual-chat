@@ -3,7 +3,6 @@ using ActualChat.Audio;
 using ActualChat.Chat.UI.Blazor.Components.MarkupParts;
 using ActualChat.Chat.UI.Blazor.Components.MarkupParts.CodeBlockMarkupView;
 using ActualChat.Chat.UI.Blazor.Components.Settings;
-using ActualChat.Chat.UI.Blazor.Pages;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
@@ -61,6 +60,9 @@ public sealed class ChatBlazorUIModule(IServiceProvider moduleServices)
         // OnboardingUI
         services.AddScoped(c => new OnboardingUI(c.ChatUIHub()));
         services.AddAlias<IOnboardingUI, OnboardingUI>(ServiceLifetime.Scoped);
+
+        // SearchUI
+        fusion.AddService<SearchUI>(ServiceLifetime.Scoped);
 
         // IMarkupViews
         services.AddTypeMapper<IMarkupView>(map => map

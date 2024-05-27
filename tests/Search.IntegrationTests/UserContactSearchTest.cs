@@ -1,4 +1,3 @@
-using ActualChat.Performance;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 
@@ -10,7 +9,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private WebClientTester _tester = null!;
-    private ISearchBackend _sut = null!;
+    private ISearch _sut = null!;
     private ICommander _commander = null!;
 
     private static readonly AccountFull Jack = new (new User(UserId.New(), "Jack")) {
@@ -46,12 +45,19 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         LastName = "Lake",
     };
 
-    protected override Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
+
         _tester = AppHost.NewWebClientTester(Out);
-        _sut = AppHost.Services.GetRequiredService<ISearchBackend>();
+        _sut = AppHost.Services.GetRequiredService<ISearch>();
         _commander = AppHost.Services.Commander();
-        return Task.CompletedTask;
+    }
+
+    protected override async Task DisposeAsync()
+    {
+        await _tester.DisposeSilentlyAsync();
+        await base.DisposeAsync();
     }
 
     [Fact]
@@ -71,27 +77,20 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // act
         await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, ApiArray<IndexedUserContact>.Empty));
         await _commander.Call(new SearchBackend_Refresh(true));
-        var searchResults = await Find(bob, "Ja");
+        var searchResults = await Find("Ja");
 
         // assert
         searchResults.Should().BeEquivalentTo([BuildSearchResult(bob.Id, Jack)]);
 
         // act
-        searchResults = await Find(bob, "Emily Yel");
+        searchResults = await Find("Emily Yel");
 
         // assert
         searchResults.Should().BeEquivalentTo([BuildSearchResult(bob.Id, Emily)]);
     }
 
-    private async Task<ApiArray<ContactSearchResult>> Find(AccountFull bob, string criteria)
-    {
-        var response = await _sut.FindUserContacts(bob.Id,
-            criteria,
-            0,
-            20,
-            CancellationToken.None);
-        return response.Hits;
-    }
+    private Task<ApiArray<ContactSearchResult>> Find(string criteria)
+        => _sut.FindUserContacts(_tester.Session, criteria);
 
     [Fact]
     public async Task ShouldFindUpdatedUsers()
@@ -110,7 +109,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // act
         await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, ApiArray<IndexedUserContact>.Empty));
         await _commander.Call(new SearchBackend_Refresh(true));
-        var searchResults = await Find(bob, "Camila");
+        var searchResults = await Find("Camila");
 
         // assert
         searchResults.Should().BeEmpty();
@@ -119,7 +118,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         updates = ApiArray.New(BuildUserContact(Camila));
         await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, ApiArray<IndexedUserContact>.Empty));
         await _commander.Call(new SearchBackend_Refresh(true));
-        searchResults = await Find(bob, "Camila");
+        searchResults = await Find("Camila");
 
         // assert
         searchResults.Should().BeEquivalentTo([BuildSearchResult(bob.Id, Camila)]);
@@ -142,7 +141,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // act
         await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, ApiArray<IndexedUserContact>.Empty));
         await _commander.Call(new SearchBackend_Refresh(true));
-        var searchResults = await Find(bob, "em");
+        var searchResults = await Find("em");
 
         // assert
         searchResults.Should()
@@ -154,7 +153,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // act
         await _commander.Call(new SearchBackend_UserContactBulkIndex(ApiArray<IndexedUserContact>.Empty, BuildUserContacts(Emma)));
         await _commander.Call(new SearchBackend_Refresh(true));
-        searchResults = await Find(bob, "em");
+        searchResults = await Find("em");
 
         // assert
         searchResults.Should().BeEquivalentTo([BuildSearchResult(bob.Id, Emily)]);
