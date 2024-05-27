@@ -23,7 +23,8 @@ public static class ActualFluentFormatters
 
     private static void Remove<T>() where T : IValueFormatter
     {
-        foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<T>().ToList())
+        var toRemove = FluentAssertions.Formatting.Formatter.Formatters.OfType<T>().ToList();
+        foreach (var formatter in toRemove)
             FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
     }
 }

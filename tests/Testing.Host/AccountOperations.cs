@@ -5,6 +5,9 @@ namespace ActualChat.Testing.Host;
 
 public static class AccountOperations
 {
+    public static Task<AccountFull> GetOwnAccount(this IWebTester tester, CancellationToken cancellationToken = default)
+        => tester.Accounts.GetOwn(tester.Session, cancellationToken);
+
     public static async Task<AccountFull[]> CreateAccounts(
         this IWebTester tester,
         int count,

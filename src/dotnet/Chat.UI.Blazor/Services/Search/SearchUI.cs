@@ -51,10 +51,10 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         return (text, placeId);
     }
 
-    private sealed record Cached(string Criteria, PlaceId PlaceId, IReadOnlyList<ContactSearchResult> Results)
+    private sealed record Cached(IReadOnlyList<ContactSearchResult> Results)
     {
         public IReadOnlyDictionary<ChatId, SearchMatch> SearchMatches { get; } =
             Results.ToDictionary(x => x.ContactId.ChatId, x => x.SearchMatch);
-        public static readonly Cached None = new ("", PlaceId.None, []);
+        public static readonly Cached None = new ([]);
     }
 }

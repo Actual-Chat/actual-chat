@@ -7,7 +7,6 @@ using ActualLab.Generators;
 namespace ActualChat.Search.IntegrationTests;
 
 [Collection(nameof(SearchCollection))]
-[Trait("Category", "Slow")]
 public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
@@ -330,8 +329,8 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
     private async Task<ApiArray<ContactSearchResult>> Find(IWebTester tester, bool isPublic, string criteria)
     {
-        var search = tester.Search;
-        var searchResults = await search.FindContacts(tester.Session,
+        var account = await tester.GetOwnAccount();
+        var searchResults = await tester.SearchBackend.FindContacts(account.Id,
             new () {
                 Criteria = criteria,
                 IsPublic = isPublic,

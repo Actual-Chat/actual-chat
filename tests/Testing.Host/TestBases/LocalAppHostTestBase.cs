@@ -23,8 +23,8 @@ public abstract class LocalAppHostTestBase(
 
     protected override Task DisposeAsync()
     {
-        AppHost.DisposeSilently();
         ActualFluentFormatters.Remove();
+        AppHost.DisposeSilently();
         return Task.CompletedTask;
     }
 }

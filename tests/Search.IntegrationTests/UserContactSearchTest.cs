@@ -4,7 +4,6 @@ using ActualChat.Users;
 namespace ActualChat.Search.IntegrationTests;
 
 [Collection(nameof(SearchCollection))]
-[Trait("Category", "Slow")]
 public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
@@ -90,7 +89,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     }
 
     private Task<ApiArray<ContactSearchResult>> Find(string criteria)
-        => _sut.FindUserContacts(_tester.Session, criteria);
+        => _sut.FindUserContacts(_tester.Session, null, criteria);
 
     [Fact]
     public async Task ShouldFindUpdatedUsers()
