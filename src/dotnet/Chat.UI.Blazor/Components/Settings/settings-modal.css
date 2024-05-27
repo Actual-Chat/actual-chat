@@ -40,3 +40,14 @@
 .blazor-mode-tile .tile-item:not(.selected):hover .c-comment {
     @apply text-02;
 }
+
+.host-switcher-tile .form-block.with-input-radio .tile-item {
+    @apply h-16;
+    @apply px-4;
+}
+
+.languages-form > section .form-section-validation,
+.email-form > section .form-section-validation,
+.time-zone-form > section .form-section-validation {
+    @apply bg-tile;
+}
