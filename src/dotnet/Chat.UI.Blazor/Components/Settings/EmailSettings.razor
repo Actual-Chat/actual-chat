@@ -14,7 +14,7 @@
     <Form EditContext="_emailFormEditContext">
         <DataAnnotationsValidator/>
 
-        <FormBlock>
+        <FormBlock Class="email-form">
             <FormSection
                 For="() => _emailFormModel.Email"
                 InputId="@_emailFormModel.EmailFieldId"
@@ -47,7 +47,7 @@
     <Form Model="@_timeZoneFormModel">
         <DataAnnotationsValidator/>
 
-        <FormBlock>
+        <FormBlock Class="time-zone-form">
             <FormSection
                 For="() => _timeZoneFormModel.SelectedTimeZone"
                 InputId="@_timeZoneFormModel.SelectedTimeZoneFormId"
