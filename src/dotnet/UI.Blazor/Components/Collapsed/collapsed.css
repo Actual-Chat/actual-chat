@@ -24,3 +24,18 @@ details[open] > summary > i.open {
 details > summary > .c-group-title {
     @apply text-caption-1 text-02;
 }
+
+/* Collapsed Navbar */
+.navbar-collapsed > .c-title {
+    @apply flex-1 flex-x items-center gap-x-4;
+}
+details.main-collapsed .navbar-collapsed .c-chevron {
+    @apply flex-none flex;
+    @apply w-4 h-4;
+}
+details.main-collapsed .navbar-collapsed .c-chevron{
+    @apply rotate-180;
+}
+details.main-collapsed[open] .navbar-collapsed .c-chevron {
+    @apply rotate-0;
+}

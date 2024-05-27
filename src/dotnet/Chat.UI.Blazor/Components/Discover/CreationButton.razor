@@ -1,0 +1,11 @@
+<div class="creation-btn">
+    <div class="c-content">
+        @Icon
+        <span>@Title</span>
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? Icon { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+}

@@ -120,6 +120,9 @@ body.hoverable .navbar-item:hover {
 .navbar-item.active:active {
     @apply border-0;
 }
+.navbar-item.incut-item {
+    @apply ml-8;
+}
 
 .active-chats .navbar-subgroup .pin-toggle,
 .active-chats .navbar-item .pin-toggle {
