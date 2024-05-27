@@ -40,7 +40,7 @@
     } else {
         @* ChatListKind.All *@
         <div @ref="AllChatListRef" class="chat-list chat-list-all">
-            <Virtualize Items="@chatIndexes" Context="i" ItemSize="48" OverscanCount="8">
+            <Virtualize Items="@chatIndexes" Context="i" ItemSize="@m.ItemSize" OverscanCount="5">
                 <ChatListItem ListKind="@Kind" Index="@i"/>
             </Virtualize>
         </div>
@@ -57,6 +57,7 @@
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private SearchUI SearchUI => Hub.SearchUI;
+    private FontSizeUI FontSizeUI => Hub.FontSizeUI;
     private ILogger Log => _log ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
 
@@ -76,7 +77,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new (ChatListUI.GetCountWhenLoading(Kind), false, true),
+            InitialValue = new (ChatListUI.GetCountWhenLoading(Kind), 48, false, true),
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
@@ -84,10 +85,13 @@
         var chatListKind = Kind;
 
         DebugLog?.LogDebug("-> ComputeState: {List}", chatListKind);
+        await FontSizeUI.FontSize.WhenFirstTimeRead;
+        var fontSize = FontSizeUI.GetFontSizePixels();
+        var itemSize = fontSize * 3;
         var chatCount = await ChatListUI.GetCount(chatListKind).ConfigureAwait(false);
         var isSearchModeOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
         DebugLog?.LogDebug("<- ComputeState: {List}. Count={Count}, IsSearchModeOn={IsSearchModeOn}", chatListKind, chatCount, isSearchModeOn);
-        return new (chatCount, isSearchModeOn);
+        return new (chatCount, itemSize, isSearchModeOn);
     }
 
     protected override bool ShouldRender()
@@ -104,6 +108,7 @@
 
     public record struct Model(
         int ChatCount,
+        float ItemSize = 48,
         bool IsSearchModeOn = false,
         bool IsLoading = false);
 }

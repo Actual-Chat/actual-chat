@@ -1,5 +1,3 @@
-@using ActualChat.Chat.UI.Blazor.Module
-
 <TileTopic Topic="Theme"/>
 <Tile Class="theme-tile">
     <ThemeSettings/>
@@ -24,10 +22,10 @@
                         ValueChanged="@(async (string fontTitle) => await OnFontSizeChanged(fontTitle))">
                         @if (_fontSizes != null) {
                             foreach (var size in _fontSizes) {
-                                if (size.Key == _fontSize) {
-                                    <option selected value="@size.Key">@size.Key</option>
+                                if (size == _fontSize) {
+                                    <option selected value="@size">@size</option>
                                 } else {
-                                    <option value="@size.Key">@size.Key</option>
+                                    <option value="@size">@size</option>
                                 }
                             }
                         }
@@ -39,39 +37,38 @@
 </Tile>
 
 @code {
-    private static readonly string JSFontSizesClassName = "window.FontSizes";
-    private static readonly string JSFontSizeListMethod = $"{JSFontSizesClassName}.list";
-    private static readonly string JSFontSizeGetMethod = $"{JSFontSizesClassName}.get";
-    private static readonly string JSFontSizeSetMethod = $"{JSFontSizesClassName}.set";
-
     private FormModel _formModel = null!;
+    private string[]? _fontSizes;
     private string? _fontSize;
-    private Dictionary<string, string>? _fontSizes;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private IAvatars Avatars { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private UIHub UIHub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private ILogger<UserInterface> Log { get; init; } = null!;
-    [Inject] private BubbleUI BubbleUI { get; init; } = null!;
-    [Inject] private ToastUI ToastUI { get; init; } = null!;
+    private FontSizeUI FontSizeUI => UIHub.FontSizeUI;
+    private Session Session => UIHub.Session();
+    private AccountUI AccountUI => UIHub.AccountUI;
+    private IAvatars Avatars => UIHub.Avatars;
+    private IJSRuntime JS => UIHub.JSRuntime();
+    private BubbleUI BubbleUI => UIHub.BubbleUI;
+    private ToastUI ToastUI => UIHub.ToastUI;
 
     protected override void OnInitialized() {
-        _formModel = new FormModel(ComponentIdGenerator);
+        _formModel = new (ComponentIdGenerator);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            _fontSizes = await JS.InvokeAsync<Dictionary<string, string>>(JSFontSizeListMethod);
-            _fontSize = await JS.InvokeAsync<string>(JSFontSizeGetMethod);
+            await FontSizeUI.FontSize.WhenFirstTimeRead;
+            _fontSizes = await FontSizeUI.List(CancellationToken.None);
+            _fontSize = FontSizeUI.FontSize.Value;
             StateHasChanged();
         }
     }
 
     private async ValueTask OnFontSizeChanged(string fontSize) {
-        await JS.InvokeAsync<string>(JSFontSizeSetMethod, fontSize);
-        _fontSize = await JS.InvokeAsync<string>(JSFontSizeGetMethod);
+        FontSizeUI.FontSize.Value = fontSize;
+        await FontSizeUI.FontSize.WhenWritten(CancellationToken.None);
+        _fontSize = FontSizeUI.FontSize.Value;
         StateHasChanged();
     }
 

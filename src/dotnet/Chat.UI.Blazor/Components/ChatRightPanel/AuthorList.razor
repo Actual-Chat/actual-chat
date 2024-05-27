@@ -48,7 +48,7 @@
             foreach (var (name, authorIds, isCollapsed) in groups) {
                 var title = $"{name} — {authorIds.Count}";
                 <Collapsed @key="@name" Title="@title" IsCollapsed="@isCollapsed">
-                    <Virtualize Items="@authorIds" Context="authorId">
+                    <Virtualize Items="@authorIds" Context="authorId" ItemSize="@m.ItemSize" OverscanCount="5">
                         <AuthorBadge
                             @key="@authorId"
                             AuthorSid="@authorId"
@@ -70,6 +70,7 @@
     private IRoles Roles => ChatContext.Hub.Roles;
     private IAuthors Authors => ChatContext.Hub.Authors;
     private AuthorUI AuthorUI => ChatContext.Hub.AuthorUI;
+    private FontSizeUI FontSizeUI => ChatContext.Hub.FontSizeUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
@@ -140,6 +141,9 @@
         onlineAuthors.Sort(comparison);
         offlineAuthors.Sort(comparison);
         unreportedAuthors.Sort(comparison);
+        await FontSizeUI.FontSize.WhenFirstTimeRead;
+        var fontSize = FontSizeUI.GetFontSizePixels();
+        var itemSize = fontSize * 3;
 
         var allAreAnonymous = authorInfos.Length > 0 && authorInfos.All(c => c.isAnonymous);
         return new() {
@@ -150,6 +154,7 @@
             OfflineAuthorIds = offlineAuthors.Select(c => c.Id).ToList(),
             UnreportedAuthorIds = unreportedAuthors.Select(c => c.Id).ToList(),
             AllAreAnonymous = allAreAnonymous,
+            ItemSize = itemSize,
         };
     }
 
@@ -169,6 +174,7 @@
         public List<AuthorId> UnreportedAuthorIds { get; init; } = [];
         public bool AllAreAnonymous { get; init; }
         public bool IsOwner => !OwnAuthorId.IsNone && OwnerAuthorIds.Contains(OwnAuthorId);
+        public float ItemSize { get; init; } = 48;
     }
 
     public record struct AuthorInfo(AuthorId Id, string Name);
