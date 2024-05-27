@@ -7,6 +7,7 @@ using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Media;
 using ActualChat.Notification;
+using ActualChat.Search;
 using ActualChat.Security;
 using ActualChat.Streaming;
 using ActualChat.Users;
@@ -37,6 +38,9 @@ public sealed class ApiClientModule(IServiceProvider moduleServices)
         fusion.AddClient<IMentions>();
         fusion.AddClient<IReactions>();
         fusion.AddClient<IPlaces>();
+
+        // Search
+        fusion.AddClient<ISearch>();
 
         // Contacts
         fusion.AddClient<IContacts>();
