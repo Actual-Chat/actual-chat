@@ -53,7 +53,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var ownChatCount = await ChatListUI.GetCount(_kind).ConfigureAwait(false);
-        var isSearchApplied = await SearchUI.IsSearchApplied(cancellationToken);
+        var isSearchApplied = await SearchUI.IsSearchModeOn(cancellationToken);
         return new(ownChatCount, isSearchApplied);
     }
 

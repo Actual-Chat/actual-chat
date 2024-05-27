@@ -35,7 +35,7 @@ public interface ISearchBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
 
     Task<ContactSearchResultPage> FindContacts(
-        UserId userId,
+        UserId ownerId,
         ContactSearchQuery query,
         CancellationToken cancellationToken);
 }

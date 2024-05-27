@@ -18,8 +18,8 @@ public class DelegatingWorker<TResult>(
 
 public sealed class DelegatingWorker(
     Func<CancellationToken, Task> jobFactory,
-    CancellationTokenSource? stopTokenSource = null,
-    bool start = true) : DelegatingWorker<Unit>(jobFactory.ToUnitTaskFactory(), stopTokenSource)
+    CancellationTokenSource? stopTokenSource = null)
+    : DelegatingWorker<Unit>(jobFactory.ToUnitTaskFactory(), stopTokenSource)
 {
     public static DelegatingWorker<TResult> New<TResult>(
         Func<CancellationToken, Task<TResult>> jobFactory,

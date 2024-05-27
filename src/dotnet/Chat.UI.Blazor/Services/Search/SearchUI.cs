@@ -6,28 +6,20 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
 {
     private Cached _contactSearchResults = Cached.None;
+    private readonly MutableState<string> _text;
 
-    public MutableState<string> Text { get; }
-    public MutableState<bool> IsSearchModeOn { get; }
+    public IMutableState<string> Text => _text;
     private ISearch Search => Hub.Search;
     private ChatUI ChatUI => Hub.ChatUI;
 
     public SearchUI(ChatUIHub uiHub) : base(uiHub)
-    {
-        Text = uiHub.StateFactory().NewMutable("", StateCategories.Get(GetType(), nameof(Text)));
-        IsSearchModeOn = uiHub.StateFactory().NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchModeOn)));
-        Text.Updated += (state, _) => {
-            var isSearchModeOn = !string.IsNullOrWhiteSpace(state.Value);
-            if (IsSearchModeOn.Value != isSearchModeOn)
-                IsSearchModeOn.Value = isSearchModeOn;
-        };
-    }
+        => _text = uiHub.StateFactory().NewMutable("", StateCategories.Get(GetType(), nameof(Text)));
 
     void INotifyInitialized.Initialized()
         => this.Start();
 
     [ComputeMethod]
-    public virtual async Task<bool> IsSearchApplied(CancellationToken cancellationToken)
+    public virtual async Task<bool> IsSearchModeOn(CancellationToken cancellationToken)
     {
         var (criteria, _) = await GetCriteria(cancellationToken).ConfigureAwait(false);
         return !criteria.IsNullOrEmpty();
@@ -51,13 +43,12 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     [ComputeMethod]
     protected virtual async Task<(string Criteria, PlaceId placeId)> GetCriteria(CancellationToken cancellationToken)
     {
-        var isSearchModeOn = await IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
-        if (!isSearchModeOn)
+        var text = await Text.Use(cancellationToken).ConfigureAwait(false);
+        if (text.IsNullOrEmpty())
             return ("", PlaceId.None);
 
         var placeId = await ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
-        var criteria = await Text.Use(cancellationToken).ConfigureAwait(false);
-        return (criteria, placeId);
+        return (text, placeId);
     }
 
     private sealed record Cached(string Criteria, PlaceId PlaceId, IReadOnlyList<ContactSearchResult> Results)
