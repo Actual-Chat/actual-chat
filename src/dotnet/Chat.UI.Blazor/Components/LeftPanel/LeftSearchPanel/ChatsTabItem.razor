@@ -1,4 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using SearchUI = ActualChat.Chat.UI.Blazor.Services.SearchUI
 @inherits ComputedStateComponent<ChatsTabItem.Model>
 @{
     var m = State.Value;
@@ -20,7 +21,7 @@
                 <ChatIcon Chat="chatState.Chat"/>
                 <div class="c-description">
                     <span class="c-title">
-                        <SearchUIHighlighter Text="@chatState.Chat.Title"/>
+                        <ContactSearchHighlighter Chat="@chat"/>
                     </span>
                     @if (lastTextEntry != null) {
                         <div class="c-last-message">
@@ -84,10 +85,6 @@
             return indexIsValid
                 ? Model.Loading
                 : Model.None;
-
-        var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chatInfo == null)
-            return Model.None;
 
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
         if (chatState == null)

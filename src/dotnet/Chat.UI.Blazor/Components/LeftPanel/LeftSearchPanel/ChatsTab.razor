@@ -1,9 +1,10 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using SearchUI = ActualChat.Chat.UI.Blazor.Services.SearchUI
 @inherits ComputedStateComponent<ChatsTab.Model>
 
 @{
     var m = _rendered = State.Value;
-    if (m is { OwnChatsCount: 0, IsSearchModeOn: false })
+    if (m is { OwnChatCount: 0, IsSearchApplied: false })
         return;
 
     var plugs = new Dictionary<string, string>() {
@@ -16,7 +17,7 @@
     };
 }
 
-@if (!m.IsSearchModeOn) {
+@if (!m.IsSearchApplied) {
     <div class="recent-contacts">
         @foreach (var plug in plugs) {
             var cls = $"c-author {plug.Value}";
@@ -29,7 +30,7 @@
     <Divider Class="mx-1 my-1.5"/>
     <RecentlyViewed/>
 } else {
-    <OwnChatsList Count="@m.OwnChatsCount"/>
+    <OwnChatList Count="@m.OwnChatCount"/>
 }
 
 @code {
@@ -52,8 +53,8 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var ownChatCount = await ChatListUI.GetCount(_kind).ConfigureAwait(false);
-        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
-        return new(ownChatCount, !searchPhrase.IsEmpty);
+        var isSearchApplied = await SearchUI.IsSearchApplied(cancellationToken);
+        return new(ownChatCount, isSearchApplied);
     }
 
     protected override bool ShouldRender()
@@ -62,7 +63,7 @@
     // Nested types
 
     public record struct Model(
-        int OwnChatsCount,
-        bool IsSearchModeOn = false,
+        int OwnChatCount,
+        bool IsSearchApplied = false,
         bool IsLoading = false);
 }

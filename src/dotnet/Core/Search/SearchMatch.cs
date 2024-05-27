@@ -10,7 +10,6 @@ public readonly partial record struct SearchMatch(
     SearchMatchPart[] Parts)
 {
     public static readonly SearchMatch Empty = New("");
-
     private readonly SearchMatchPart[]? _parts = Parts;
 
     [DataMember(Order = 2), MemoryPackOrder(2)]
@@ -34,6 +33,9 @@ public readonly partial record struct SearchMatch(
                 yield return new SearchMatchPart((lastIndex, Text.Length), 0);
         }
     }
+
+    [IgnoreDataMember, MemoryPackIgnore]
+    public bool IsEmpty => this == Empty;
 
     public static SearchMatch New(string? text)
         => new(text ?? "", 0, Array.Empty<SearchMatchPart>());

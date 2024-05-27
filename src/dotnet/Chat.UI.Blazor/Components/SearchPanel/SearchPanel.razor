@@ -1,6 +1,5 @@
-@using ActualChat.UI.Blazor.Services
-@using ActualChat.UI.Blazor.Module
-@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Module
+@namespace ActualChat.Chat.UI.Blazor.Components
 @{
     var cls = IsSmooth ? "smooth open" : "instant open";
 }
@@ -32,7 +31,7 @@
 </div>
 
 @code {
-    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.SearchPanel.create";
+    private static readonly string JSCreateMethod = $"{ChatBlazorUIModule.ImportName}.SearchPanel.create";
 
     TextInput? _inputRef = null;
 

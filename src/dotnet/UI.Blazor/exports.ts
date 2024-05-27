@@ -32,7 +32,6 @@ export * from './Components/VisualMediaViewerModal/visual-media-viewer';
 export * from './Components/Menu/menu-host';
 export * from './Components/Modal/modal-host';
 export * from './Components/Overlays/loading-cat-svg.lit';
-export * from './Components/SearchPanel/search-panel';
 export * from './Components/SideNav/side-nav';
 export * from './Components/TextBox/text-box';
 export * from './Components/TextInput/text-input';

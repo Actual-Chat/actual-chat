@@ -74,7 +74,7 @@ services:
   smtp4dev:
     image: rnwood/smtp4dev:3.2.0-ci20221023104
     ports:
-      - "5000:80"
+      - "5080:80"
       - "25:25"
   nats:
     image: nats:2.10.10-alpine3.19

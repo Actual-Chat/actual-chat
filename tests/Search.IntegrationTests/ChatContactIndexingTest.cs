@@ -1,5 +1,5 @@
 using ActualChat.Chat;
-using ActualChat.Performance;
+using ActualChat.Contacts;
 using ActualChat.Search.Module;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
@@ -19,20 +19,20 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
         @out)
 {
     private WebClientTester _tester = null!;
-    private ISearchBackend _searchBackend = null!;
+    private ISearch _search = null!;
     private ChatContactIndexer _chatContactIndexer = null!;
 
     protected override async Task InitializeAsync()
     {
         await base.InitializeAsync();
         _tester = AppHost.NewWebClientTester(Out);
-        _searchBackend = AppHost.Services.GetRequiredService<ISearchBackend>();
+        _search = AppHost.Services.GetRequiredService<ISearch>();
         _chatContactIndexer = AppHost.Services.GetRequiredService<ChatContactIndexer>();
     }
 
     protected override async Task DisposeAsync()
     {
-        await _tester.DisposeAsync().AsTask();
+        await _tester.DisposeSilentlyAsync();
         await base.DisposeAsync();
     }
 
@@ -57,9 +57,8 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
         var publicPlacePublicChat2 = await CreateChat(true, "Public place public chat 2 two", publicPlace.Id);
 
         // assert
-        var userId = bob.Id;
         await _chatContactIndexer.WhenInitialized.WaitAsync(TimeSpan.FromSeconds(10));
-        var searchResults = await Find(userId, true, "chat", 4);
+        var searchResults = await Find( true, "chat", 4);
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -70,7 +69,7 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
                 }
             );
 
-        searchResults = await Find(userId, true, "chat 1", 2);
+        searchResults = await Find(true, "chat 1", 2);
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -79,7 +78,7 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
                 }
             );
 
-        searchResults = await Find(userId, false, "chat", 8);
+        searchResults = await Find(false, "chat", 8);
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -94,7 +93,7 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
                 }
             );
 
-        searchResults = await Find(userId, false, "chat 2", 4);
+        searchResults = await Find(false, "chat 2", 4);
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -106,16 +105,18 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
             );
     }
 
-    private async Task<ApiArray<ContactSearchResult>> Find(UserId userId, bool isPublic, string criteria, int expectedCount, int requestCount = 20)
+    private async Task<ApiArray<ContactSearchResult>> Find(bool isPublic, string criteria, int expectedCount, int requestCount = 20)
     {
         ContactSearchResultPage searchResults = ContactSearchResultPage.Empty;
         await TestExt.When(async () => {
-                searchResults = await _searchBackend.FindChatContacts(
-                    userId,
-                    isPublic,
-                    criteria,
-                    0,
-                    requestCount,
+                searchResults = await _search.FindContacts(
+                    _tester.Session,
+                    new () {
+                        Criteria = criteria,
+                        Kind = ContactKind.Chat,
+                        Limit = requestCount,
+                        IsPublic = isPublic,
+                    },
                     CancellationToken.None);
                 Out.WriteLine("Found {0} out of expected {1}",
                     searchResults.Hits.Count,

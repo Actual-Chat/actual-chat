@@ -6,7 +6,7 @@ namespace ActualChat.Testing.Host;
 public static class AccountOperations
 {
     public static async Task<AccountFull[]> CreateAccounts(
-        this IWebClientTester tester,
+        this IWebTester tester,
         int count,
         Func<int, string>? userNameFactory = null,
         Func<int, string>? nameFactory = null,

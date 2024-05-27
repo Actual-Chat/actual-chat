@@ -15,5 +15,6 @@ export * from './Components/MentionList/mention-list';
 export * from './Components/Navbar/navbar-place-buttons';
 export * from './Components/Navbar/navbar-chat-buttons';
 export * from './Components/Onboarding/phone-verification-cat-svg.lit';
+export * from './Components/SearchPanel/search-panel';
 export * from './Components/Selection/selection-host';
 export * from './Services/LanguageUI/language-ui';

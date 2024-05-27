@@ -90,11 +90,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     }
 
     // Not a [ComputeMethod]!
-    public async Task<ContactSearchResultPage> FindUserContacts(
+    public async Task<ContactSearchResultPage> FindContacts(
         UserId userId,
-        string criteria,
-        int skip,
-        int limit,
+        ContactSearchQuery query,
         CancellationToken cancellationToken)
     {
         if (!Settings.IsSearchEnabled) {
@@ -105,8 +103,34 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
-        skip = skip.Clamp(0, int.MaxValue);
-        limit = limit.Clamp(0, Constants.Search.PageSizeLimit);
+        var kind = query.Kind;
+        switch (kind) {
+        case ContactKind.User:
+            return await FindUserContacts(userId, query, cancellationToken).ConfigureAwait(false);
+        case ContactKind.Chat:
+            return await FindChatContacts(userId, query, cancellationToken).ConfigureAwait(false);
+        default:
+            throw new ArgumentOutOfRangeException(nameof(kind), kind, "Invalid contact kind");
+        }
+    }
+
+    // Not a [ComputeMethod]!
+    private async Task<ContactSearchResultPage> FindUserContacts(
+        UserId userId,
+        ContactSearchQuery query,
+        CancellationToken cancellationToken)
+    {
+        if (!Settings.IsSearchEnabled) {
+            Log.LogWarning($"{nameof(FindUserContacts)}: search is disabled");
+            return ContactSearchResultPage.Empty;
+        }
+
+        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
+            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
+
+        // TODO: consider placeId
+        var skip = query.Skip.Clamp(0, int.MaxValue);
+        var limit = query.Limit.Clamp(0, Constants.Search.PageSizeLimit);
 
         var searchResponse =
             await OpenSearchClient.SearchAsync<IndexedUserContact>(s
@@ -119,7 +143,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
                                 => q.MultiMatch(
                                     m
                                     => m.Fields(x => x.FullName, x => x.FirstName, x => x.SecondName)
-                                        .Query(criteria)
+                                        .Query(query.Criteria)
                                         .Type(TextQueryType.PhrasePrefix)))
                                 .MustNot(q => q.Match(m
                                     => m.Field(x => x.Id).Query(userId)))))
@@ -144,12 +168,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     }
 
     // Not a [ComputeMethod]!
-    public async Task<ContactSearchResultPage> FindChatContacts(
+    private async Task<ContactSearchResultPage> FindChatContacts(
         UserId userId,
-        bool isPublic,
-        string criteria,
-        int skip,
-        int limit,
+        ContactSearchQuery query,
         CancellationToken cancellationToken)
     {
         if (!Settings.IsSearchEnabled) {
@@ -160,23 +181,23 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
-        skip = skip.Clamp(0, int.MaxValue);
-        limit = limit.Clamp(0, Constants.Search.PageSizeLimit);
+        var skip = query.Skip.Clamp(0, int.MaxValue);
+        var limit = query.Limit.Clamp(0, Constants.Search.PageSizeLimit);
 
-        var chatContactIds = !isPublic
-            ? await ContactsBackend.ListIdsForContactSearch(userId, cancellationToken).ConfigureAwait(false)
+        var chatContactIds = !query.IsPublic
+            ? await ContactsBackend.ListIdsForContactSearch(userId, query.PlaceId, cancellationToken).ConfigureAwait(false)
             : ApiArray<ContactId>.Empty;
         var searchResponse =
             await OpenSearchClient.SearchAsync<IndexedChatContact>(s
-                => s.Index(IndexNames.GetChatContactIndexName(isPublic))
+                => s.Index(IndexNames.GetChatContactIndexName(query.IsPublic))
                     .From(skip)
                     .Size(limit)
                     .Query(qq => qq.Bool(b => {
-                            var prefixCondition = b.Must(q => q.MatchPhrasePrefix(p => p.Query(criteria).Field(x => x.Title)));
+                            var prefixCondition = b.Must(q => q.MatchPhrasePrefix(p => p.Query(query.Criteria).Field(x => x.Title)));
                             var terms = chatContactIds
                                 .Select(x => x.ChatId.Value)
                                 .ToList();
-                            return isPublic
+                            return query.IsPublic
                                 ? prefixCondition
                                 : prefixCondition.Filter(q => q.Terms(t => t.Field(x => x.Id).Terms(terms)));
                     }))

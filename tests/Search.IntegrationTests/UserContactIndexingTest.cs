@@ -1,4 +1,4 @@
-using ActualChat.Performance;
+using ActualChat.Contacts;
 using ActualChat.Search.Module;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
@@ -18,7 +18,7 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
         @out, log)
 {
     private WebClientTester _tester = null!;
-    private ISearchBackend _searchBackend = null!;
+    private ISearch _search = null!;
     private UserContactIndexer _userContactIndexer = null!;
     private ICommander _commander = null!;
 
@@ -26,7 +26,7 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
     {
         await base.InitializeAsync();
         _tester = AppHost.NewWebClientTester(Out);
-        _searchBackend = AppHost.Services.GetRequiredService<ISearchBackend>();
+        _search = AppHost.Services.GetRequiredService<ISearch>();
         _userContactIndexer = AppHost.Services.GetRequiredService<UserContactIndexer>();
         _commander = AppHost.Services.Commander();
     }
@@ -49,10 +49,10 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
         await _userContactIndexer.WhenInitialized.WaitAsync(TimeSpan.FromSeconds(10));
 
         // assert
-        await Find(userId, "User", 20);
-        var searchResults = await Find(userId, "User 3", 11);
+        await Find("User", 20);
+        var searchResults = await Find("User 3", 11);
         searchResults.Should().ContainSingle(x => x.SearchMatch.Text == "User 39");
-        searchResults = await Find(userId, "User", 49, 50);
+        searchResults = await Find("User", 49, 50);
         searchResults.Should().NotContain(x => x.SearchMatch.Text == "User 49");
 
         // TODO: fix
@@ -79,19 +79,21 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
         }
 
         // assert
-        searchResults = await Find(userId, "User A", 10);
+        searchResults = await Find("User A", 10);
         var expected = accounts[10..20].Select(x => BuildSearchResult(userId, x.Id, "User A" + x.LastName)).ToArray();
         searchResults.Should().BeEquivalentTo(expected);
     }
 
-    private async Task<ApiArray<ContactSearchResult>> Find(UserId userId, string criteria, int expectedCount, int requestCount = 20)
+    private async Task<ApiArray<ContactSearchResult>> Find(string criteria, int expectedCount, int requestCount = 20)
     {
         ContactSearchResultPage searchResults = ContactSearchResultPage.Empty;
         await TestExt.When(async () => {
-                searchResults = await _searchBackend.FindUserContacts(userId,
-                    criteria,
-                    0,
-                    requestCount,
+                searchResults = await _search.FindContacts(_tester.Session,
+                    new () {
+                        Criteria = criteria,
+                        Kind = ContactKind.User,
+                        Limit = requestCount,
+                    },
                     CancellationToken.None);
                 Log.LogInformation("Found {FoundCount} out of expected {ExpectedCount}",
                         searchResults.Hits.Count,

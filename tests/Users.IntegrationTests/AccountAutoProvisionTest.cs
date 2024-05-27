@@ -14,6 +14,7 @@ public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper 
 
     protected override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         _appHost = await NewAppHost("new-user");
         _tester = _appHost.NewWebClientTester(Out);
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();

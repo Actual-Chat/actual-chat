@@ -1,5 +1,5 @@
 @using ActualChat.Search
-@using ActualChat.UI.Blazor.Services
+@using SearchUI = ActualChat.Chat.UI.Blazor.Services.SearchUI
 @inherits ComputedStateComponent<SearchMatch>
 
 <SearchMatchHighlighter Match="@State.Value"/>
@@ -9,21 +9,17 @@
 
     [Inject] private SearchUI SearchUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string Text { get; set; } = "";
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<SearchMatch>.Options GetStateOptions()
         => new() {
-            InitialValue = SearchMatch.New(Text),
+            InitialValue = SearchMatch.New(Chat.Title),
             UpdateDelayer = UpdateDelayer, // De-bounces the re-renders
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
     protected override async Task<SearchMatch> ComputeState(CancellationToken cancellationToken) {
-        if (Text.IsNullOrEmpty())
-            return SearchMatch.Empty;
-
-        var text = Text;
-        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
-        return searchPhrase.GetMatch(text);
+        var searchMatch = await SearchUI.GetSearchMatch(Chat.Id);
+        return !searchMatch.IsEmpty ? searchMatch : SearchMatch.New(Chat.Title);
     }
 }

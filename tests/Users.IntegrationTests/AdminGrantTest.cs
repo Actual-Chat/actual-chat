@@ -11,14 +11,17 @@ public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
     private WebClientTester _tester = null!;
 
-    protected override Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         _tester = AppHost.NewWebClientTester(Out);
-        return Task.CompletedTask;
     }
 
-    protected override Task DisposeAsync()
-        => _tester.DisposeAsync().AsTask();
+    protected override async Task DisposeAsync()
+    {
+        await _tester.DisposeSilentlyAsync();
+        await base.DisposeAsync();
+    }
 
     [Fact]
     public async Task UserWithActualChatDomainAndGoogleIdentityShouldBeGrantedWithAdminRights()

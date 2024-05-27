@@ -1,3 +1,4 @@
+using ActualChat.Search;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
@@ -19,7 +20,6 @@ public class UIHub(IServiceProvider services) : Hub(services)
     private KeepAwakeUI? _keepAwakeUI;
     private ClipboardUI? _clipboardUI;
     private PanelsUI? _panelsUI;
-    private SearchUI? _searchUI;
     private ShareUI? _shareUI;
     private ModalUI? _modalUI;
     private FocusUI? _focusUI;
@@ -42,12 +42,14 @@ public class UIHub(IServiceProvider services) : Hub(services)
     private Dispatcher? _dispatcher;
     private AppBlazorCircuitContext? _circuitContext;
     private IJSRuntime? _jsRuntime;
+    private ISearch? _search;
 
     public IFusionTime FusionTime => _fusionTime ??= Services.GetRequiredService<IFusionTime>();
     public LiveTime LiveTime => _liveTime ??= Services.GetRequiredService<LiveTime>();
     public IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
     public IAvatars Avatars => _avatars ??= Services.GetRequiredService<IAvatars>();
     public Media.IMediaLinkPreviews MediaLinkPreviews => _linkPreviews ??= Services.GetRequiredService<Media.IMediaLinkPreviews>();
+    public ISearch Search => _search ??= Services.GetRequiredService<ISearch>();
     public LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
     public AccountUI AccountUI => _accountUI ??= Services.GetRequiredService<AccountUI>();
     public AutoNavigationUI AutoNavigationUI => _autoNavigationUI ??= Services.GetRequiredService<AutoNavigationUI>();
@@ -57,7 +59,6 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public KeepAwakeUI KeepAwakeUI => _keepAwakeUI ??= Services.GetRequiredService<KeepAwakeUI>();
     public ClipboardUI ClipboardUI => _clipboardUI ??= Services.GetRequiredService<ClipboardUI>();
     public PanelsUI PanelsUI => _panelsUI ??= Services.GetRequiredService<PanelsUI>();
-    public SearchUI SearchUI => _searchUI ??= Services.GetRequiredService<SearchUI>();
     public ShareUI ShareUI => _shareUI ??= Services.GetRequiredService<ShareUI>();
     public ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
     public FocusUI FocusUI => _focusUI ??= Services.GetRequiredService<FocusUI>();

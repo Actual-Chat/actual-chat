@@ -90,13 +90,13 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     }
 
     [ComputeMethod]
-    public virtual Task<(bool, ChatId)> GetItem(ChatListKind listKind, int index)
+    public virtual Task<Item> GetItem(ChatListKind listKind, int index)
     {
         var items = GetItems(listKind);
         lock (items) {
             var indexIsValid = index >= 0 && index < items.Count;
             var chatId = indexIsValid ? items[index] : ChatId.None;
-            return Task.FromResult((indexIsValid, chatId));
+            return Task.FromResult(new Item(indexIsValid, chatId));
         }
     }
 
@@ -155,12 +155,15 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         ChatListSettings settings,
         CancellationToken cancellationToken = default)
     {
+        if (await SearchUI.IsSearchApplied(cancellationToken).ConfigureAwait(false)) {
+            var searchResults = await SearchUI.GetContactSearchResults().ConfigureAwait(false);
+            var foundChats = await searchResults.Select(x => ChatUI.Get(x.ContactId.ChatId, cancellationToken))
+                .Collect()
+                .ConfigureAwait(false);
+            return foundChats.SkipNullItems().ToList();
+        }
         var chatById = await ListAllUnordered(placeId, settings.Filter, cancellationToken).ConfigureAwait(false);
-        var chats = chatById.Values.OrderBy(settings.Order, ChatListPreOrder.ChatList);
-
-        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
-        chats = chats.FilterAndOrderBySearchPhrase(searchPhrase);
-        return chats.ToList();
+        return chatById.Values.OrderBy(settings.Order, ChatListPreOrder.ChatList).ToList();
     }
 
     public virtual Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListPeopleContacts(
@@ -363,4 +366,6 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
             });
         return settings;
     }
+
+    public sealed record Item(bool IsIndexValid, ChatId ChatId);
 }
