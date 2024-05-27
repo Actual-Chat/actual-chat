@@ -18,7 +18,7 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
         @out, log)
 {
     private WebClientTester _tester = null!;
-    private ISearch _search = null!;
+    private ISearchBackend _searchBackend = null!;
     private UserContactIndexer _userContactIndexer = null!;
     private ICommander _commander = null!;
 
@@ -26,7 +26,7 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
     {
         await base.InitializeAsync();
         _tester = AppHost.NewWebClientTester(Out);
-        _search = AppHost.Services.GetRequiredService<ISearch>();
+        _searchBackend = AppHost.Services.GetRequiredService<ISearchBackend>();
         _userContactIndexer = AppHost.Services.GetRequiredService<UserContactIndexer>();
         _commander = AppHost.Services.Commander();
     }
@@ -49,10 +49,10 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
         await _userContactIndexer.WhenInitialized.WaitAsync(TimeSpan.FromSeconds(10));
 
         // assert
-        await Find("User", 20);
-        var searchResults = await Find("User 3", 11);
+        await Find(userId, "User", 20);
+        var searchResults = await Find(userId, "User 3", 11);
         searchResults.Should().ContainSingle(x => x.SearchMatch.Text == "User 39");
-        searchResults = await Find("User", 49, 50);
+        searchResults = await Find(userId, "User", 49, 50);
         searchResults.Should().NotContain(x => x.SearchMatch.Text == "User 49");
 
         // TODO: fix
@@ -73,22 +73,21 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
         // act
         for (int i = 10; i < 20; i++) {
             var account = await _tester.SignIn(accounts[i].User);
-            await _commander.Call(new Accounts_Update(_tester.Session,
-                account with { LastName = "A" + i },
-                account.Version));
+            var cmd = new Accounts_Update(_tester.Session, account with { LastName = "A" + i }, account.Version);
+            await _commander.Call(cmd);
         }
 
         // assert
-        searchResults = await Find("User A", 10);
+        searchResults = await Find(userId, "User A", 10);
         var expected = accounts[10..20].Select(x => BuildSearchResult(userId, x.Id, "User A" + x.LastName)).ToArray();
         searchResults.Should().BeEquivalentTo(expected);
     }
 
-    private async Task<ApiArray<ContactSearchResult>> Find(string criteria, int expectedCount, int requestCount = 20)
+    private async Task<ApiArray<ContactSearchResult>> Find(UserId ownerId, string criteria, int expectedCount, int requestCount = 20)
     {
         ContactSearchResultPage searchResults = ContactSearchResultPage.Empty;
         await TestExt.When(async () => {
-                searchResults = await _search.FindContacts(_tester.Session,
+                searchResults = await _searchBackend.FindContacts(ownerId,
                     new () {
                         Criteria = criteria,
                         Kind = ContactKind.User,

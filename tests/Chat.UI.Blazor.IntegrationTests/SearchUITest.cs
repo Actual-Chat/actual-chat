@@ -7,8 +7,8 @@ using SearchUI = ActualChat.Chat.UI.Blazor.Services.SearchUI;
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
 [Collection(nameof(SearchUICollection))]
-public class SearchUITest(AppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
+public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<SearchAppHostFixture>(fixture, @out)
 {
     private BlazorTester _tester = null!;
     private SearchUI _searchUI = null!;

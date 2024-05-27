@@ -155,7 +155,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         ChatListSettings settings,
         CancellationToken cancellationToken = default)
     {
-        if (await SearchUI.IsSearchApplied(cancellationToken).ConfigureAwait(false)) {
+        if (await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false)) {
             var searchResults = await SearchUI.GetContactSearchResults().ConfigureAwait(false);
             var foundChats = await searchResults.Select(x => ChatUI.Get(x.ContactId.ChatId, cancellationToken))
                 .Collect()

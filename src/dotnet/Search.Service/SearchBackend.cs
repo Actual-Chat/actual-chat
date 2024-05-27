@@ -91,7 +91,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
 
     // Not a [ComputeMethod]!
     public async Task<ContactSearchResultPage> FindContacts(
-        UserId userId,
+        UserId ownerId,
         ContactSearchQuery query,
         CancellationToken cancellationToken)
     {
@@ -106,9 +106,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         var kind = query.Kind;
         switch (kind) {
         case ContactKind.User:
-            return await FindUserContacts(userId, query, cancellationToken).ConfigureAwait(false);
+            return await FindUserContacts(ownerId, query, cancellationToken).ConfigureAwait(false);
         case ContactKind.Chat:
-            return await FindChatContacts(userId, query, cancellationToken).ConfigureAwait(false);
+            return await FindChatContacts(ownerId, query, cancellationToken).ConfigureAwait(false);
         default:
             throw new ArgumentOutOfRangeException(nameof(kind), kind, "Invalid contact kind");
         }
