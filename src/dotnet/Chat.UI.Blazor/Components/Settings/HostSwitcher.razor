@@ -34,11 +34,14 @@
         @if (NativeHostSwitcher.CurrentHost != NativeHostSwitcher.GetHost()) {
             <TileItem>
                 <Icon>
-                    <i class="icon-alert-triangle text-warning"></i>
+                    <i class="icon-alert-triangle text-warning text-2xl"></i>
                 </Icon>
                 <Content>
-                    Selected host has been changed. Changes will be applied after app restart. New sign-in is required.
+                    Host has been changed.
                 </Content>
+                <Caption>
+                    Changes will be applied after app restart. New sign-in is required.
+                </Caption>
             </TileItem>
         }
     </FormBlock>
