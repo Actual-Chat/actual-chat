@@ -344,8 +344,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (tile.Items.Count == 0)
                 continue;
 
-            if (renderedTiles.TryGetValue(tile.Key, out var renderedTile))
-                tiles.Add(renderedTile.Items.SequenceEqual(tile.Items) ? renderedTile : tile);
+            if (renderedTiles.TryGetValue(tile.Key, out var renderedTile)) {
+                var tileToAdd = ReferenceEquals(tile, renderedTile) || renderedTile.Items.SequenceEqual(tile.Items)
+                    ? renderedTile
+                    : tile;
+                tiles.Add(tileToAdd);
+            }
             else
                 tiles.Add(tile);
             prevMessage = tile.Items[^1];
