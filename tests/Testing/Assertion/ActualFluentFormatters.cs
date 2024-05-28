@@ -1,24 +1,46 @@
 using FluentAssertions.Formatting;
+// ReSharper disable InconsistentlySynchronizedField
 
 namespace ActualChat.Testing.Assertion;
 
 public static class ActualFluentFormatters
 {
+    private static readonly object Lock = new ();
+    private static volatile bool _isUsed = false;
+
     public static void Use()
     {
-        AddRemove<UserFormatter>();
-        AddRemove<ContactFormatter>();
-        AddRemove<ContactSearchResultFormatter>();
+        if (_isUsed)
+            return;
+
+        lock (Lock) {
+            if (_isUsed)
+                return;
+
+            Add<UserFormatter>();
+            Add<ContactFormatter>();
+            Add<ContactSearchResultFormatter>();
+            _isUsed = true;
+        }
     }
 
     public static void Remove()
     {
-        Remove<UserFormatter>();
-        Remove<ContactFormatter>();
-        Remove<ContactSearchResultFormatter>();
+        if (!_isUsed)
+            return;
+
+        lock (Lock) {
+            if (!_isUsed)
+                return;
+
+            Remove<UserFormatter>();
+            Remove<ContactFormatter>();
+            Remove<ContactSearchResultFormatter>();
+            _isUsed = false;
+        }
     }
 
-    private static void AddRemove<T>() where T : IValueFormatter, new()
+    private static void Add<T>() where T : IValueFormatter, new()
         => FluentAssertions.Formatting.Formatter.AddFormatter(new T());
 
     private static void Remove<T>() where T : IValueFormatter
