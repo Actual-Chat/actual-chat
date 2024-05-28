@@ -189,19 +189,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             : ApiArray<ContactId>.Empty;
         var searchResponse =
             await OpenSearchClient.SearchAsync<IndexedChatContact>(s
-                => s.Index(IndexNames.GetChatContactIndexName(query.IsPublic))
-                    .From(skip)
-                    .Size(limit)
-                    .Query(qq => qq.Bool(b => {
-                            var prefixCondition = b.Must(q => q.MatchPhrasePrefix(p => p.Query(query.Criteria).Field(x => x.Title)));
-                            var terms = chatContactIds
-                                .Select(x => x.ChatId.Value)
-                                .ToList();
-                            return query.IsPublic
-                                ? prefixCondition
-                                : prefixCondition.Filter(q => q.Terms(t => t.Field(x => x.Id).Terms(terms)));
-                    }))
-                    .IgnoreUnavailable(),
+                        => s.Index(IndexNames.GetChatContactIndexName(query.IsPublic))
+                            .From(skip)
+                            .Size(limit)
+                            .Query(qq => qq.Bool(ConfigureChatContactQueryDescriptor))
+                            .IgnoreUnavailable(),
                     cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
@@ -216,6 +208,29 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         {
             // TODO: highlighting
             return new ContactSearchResult(new ContactId(userId, ChatId.Parse(x.Source!.Id)), SearchMatch.New(x.Source.Title));
+        }
+
+        BoolQueryDescriptor<IndexedChatContact> ConfigureChatContactQueryDescriptor(BoolQueryDescriptor<IndexedChatContact> descriptor)
+        {
+            descriptor = descriptor.Must(q
+                => q.MatchPhrasePrefix(p => p.Query(query.Criteria).Field(x => x.Title)));
+            var chatIdTerms = chatContactIds
+                .Select(x => x.ChatId.Value)
+                .ToList();
+            // filter private chats by ids
+            if (!query.IsPublic)
+                return descriptor.Filter(q => q.Terms(t => t.Field(x => x.Id).Terms(chatIdTerms)));
+
+            // return all public chats
+            if (query.PlaceId is null)
+                return descriptor;
+
+            // return public chats without places
+            if (query.PlaceId == PlaceId.None)
+                return descriptor.Filter(qq => qq.Term(t => t.Field(x => x.PlaceId).Value("").Verbatim()));
+
+            // filter public chats by place id
+            return descriptor.Filter(q => q.Term(t => t.Field(x => x.PlaceId).Value(query.PlaceId)));
         }
     }
 

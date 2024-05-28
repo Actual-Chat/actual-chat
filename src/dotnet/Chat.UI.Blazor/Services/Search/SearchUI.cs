@@ -10,7 +10,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
 
     public IMutableState<string> Text => _text;
     private ISearch Search => Hub.Search;
-    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
 
     public SearchUI(ChatUIHub uiHub) : base(uiHub)
         => _text = uiHub.StateFactory().NewMutable("", StateCategories.Get(GetType(), nameof(Text)));
@@ -47,8 +47,8 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         if (text.IsNullOrEmpty())
             return ("", PlaceId.None);
 
-        var placeId = await ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
-        return (text, placeId);
+        var chatListView = await ChatListUI.ActiveChatListView.Use(cancellationToken).ConfigureAwait(false);
+        return chatListView is null ? (text, PlaceId.None) : (text, chatListView.PlaceId);
     }
 
     private sealed record Cached(IReadOnlyList<ContactSearchResult> Results)

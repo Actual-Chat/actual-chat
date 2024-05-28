@@ -1,3 +1,4 @@
+using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Contacts;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
@@ -12,12 +13,14 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
 {
     private BlazorTester _tester = null!;
     private SearchUI _searchUI = null!;
+    private ChatListUI _chatListUI = null!;
 
     protected override async Task InitializeAsync()
     {
         await base.InitializeAsync();
         _tester = AppHost.NewBlazorTester(Out);
         _searchUI = _tester.ScopedAppServices.ChatUIHub().SearchUI;
+        _chatListUI = _tester.ScopedAppServices.ChatUIHub().ChatListUI;
     }
 
     protected override async Task DisposeAsync()
@@ -75,19 +78,22 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
 
         // act
         _searchUI.Text.Value = "two";
-        searchResults = await GetSearchResults(6);
 
         // assert
-        searchResults.Should()
-            .BeEquivalentTo(new[] {
-                    privateChat2.ToSearchResult(bob.Id),
-                    privatePlacePrivateChat2.ToSearchResult(bob.Id),
-                    privatePlacePublicChat2.ToSearchResult(bob.Id),
-                    publicPlacePrivateChat2.ToSearchResult(bob.Id),
-                    publicChat2.ToSearchResult(bob.Id),
-                    publicPlacePublicChat2.ToSearchResult(bob.Id),
-                },
-                o => o.WithStrictOrdering());
+        await AssertSearchResults(bob.Id,
+            privateChat2,
+            privatePlacePrivateChat2,
+            privatePlacePublicChat2,
+            publicPlacePrivateChat2,
+            publicChat2,
+            publicPlacePublicChat2);
+
+        // act
+        _chatListUI.ActivateChatList(privatePlace.Id);
+        _searchUI.Text.Value = "two";
+
+        // assert
+        await AssertSearchResults(bob.Id, privatePlacePrivateChat2, privatePlacePublicChat2);
     }
 
     private async Task WaitUntilIndexed(UserId userId, string criteria, int expectedCount)
@@ -118,6 +124,27 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         await TestExt.When(async () => {
                 var results = await _searchUI.GetContactSearchResults();
                 results.Count.Should().Be(expectedCount);
+            },
+            TimeSpan.FromSeconds(10));
+        return await _searchUI.GetContactSearchResults();
+    }
+
+    private async Task<IReadOnlyList<ContactSearchResult>> AssertSearchResults(params ContactSearchResult[] expected)
+    {
+        await TestExt.When(async () => {
+                var results = await _searchUI.GetContactSearchResults();
+                results.Should().BeEquivalentTo(expected, o => o.WithoutStrictOrdering());
+            },
+            TimeSpan.FromSeconds(20));
+        return await _searchUI.GetContactSearchResults();
+    }
+
+    private async Task<IReadOnlyList<ContactSearchResult>> AssertSearchResults(UserId ownerId, params Chat[] expected)
+    {
+        await TestExt.When(async () => {
+                var results = await _searchUI.GetContactSearchResults();
+                results.Should()
+                    .BeEquivalentTo(expected.Select(x => x.ToSearchResult(ownerId)), o => o.WithoutStrictOrdering());
             },
             TimeSpan.FromSeconds(20));
         return await _searchUI.GetContactSearchResults();
