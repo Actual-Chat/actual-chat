@@ -29,6 +29,7 @@ using ActualLab.Fusion.EntityFramework;
 using ActualLab.IO;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Server;
+using Microsoft.OpenApi.Models;
 
 namespace ActualChat.App.Server.Module;
 
@@ -98,12 +99,12 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         app.UseStaticFiles();
 
         // Swagger
-        /*
+        // Needed for ML Bot <-> OpenAPI integration
         app.UseSwagger();
         app.UseSwaggerUI(c => {
             c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
         });
-        */
+        
 
         // Response compression
         if (!Env.IsDevelopment()) // disable compression for local development and hot reload

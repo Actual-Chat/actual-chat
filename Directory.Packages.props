@@ -78,6 +78,8 @@
     <PackageVersion Include="sqlite-net-pcl" Version="1.9.172" />
     <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.8" />
     <PackageVersion Include="TurnerSoftware.RobotsExclusionTools" Version="0.9.1" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerGen" Version="6.5.0" />
     <PackageVersion Include="Twilio" Version="7.0.4" />
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="7.5.1" />
     <PackageVersion Include="libphonenumber-csharp" Version="8.13.34" />

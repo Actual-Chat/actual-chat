@@ -114,5 +114,18 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddWorkerPool<IChatBotWorker, MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId>(
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
+        // -- Register Controllers --
+        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
+        
+        // -- Register Swagger endpoint (OpenAPI) --
+        services.AddEndpointsApiExplorer();
+        services.AddSwaggerGen(c => {
+            c.IncludeXmlComments(
+                Path.Combine(
+                    AppContext.BaseDirectory, 
+                    $"{Assembly.GetExecutingAssembly().GetName().Name}.xml"
+                )
+            );
+        });
     }
 }
