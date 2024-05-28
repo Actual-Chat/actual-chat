@@ -2,6 +2,7 @@ using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Search.Module;
 using ActualChat.Testing.Host;
+using ActualChat.Users;
 using ActualLab.Generators;
 
 namespace ActualChat.Search.IntegrationTests;
@@ -55,47 +56,52 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         var searchResults = await Find(tester, true, "chat");
         searchResults.Should()
             .BeEquivalentTo(
-                new[] {
-                    publicChat1.ToSearchResult(bob.Id),
-                    publicChat2.ToSearchResult(bob.Id),
-                    publicPlacePublicChat1.ToSearchResult(bob.Id),
-                    publicPlacePublicChat2.ToSearchResult(bob.Id),
-                }
-            );
+                ToSearchResults(bob,
+                    publicChat1,
+                    publicChat2,
+                    publicPlacePublicChat1,
+                    publicPlacePublicChat2));
+
         searchResults = await Find(tester, true, "one");
         searchResults.Should()
-            .BeEquivalentTo(
-                new[] {
-                    publicChat1.ToSearchResult(bob.Id),
-                    publicPlacePublicChat1.ToSearchResult(bob.Id),
-                }
-            );
+            .BeEquivalentTo(ToSearchResults(bob, publicChat1, publicPlacePublicChat1));
+
+        searchResults = await Find(tester, true, "one", publicPlace.Id);
+        searchResults.Should()
+            .BeEquivalentTo(ToSearchResults(bob, publicPlacePublicChat1));
+
+        searchResults = await Find(tester, true, "one", PlaceId.None);
+        searchResults.Should()
+            .BeEquivalentTo(ToSearchResults(bob, publicChat1));
 
         searchResults = await Find(tester, false, "chat");
         searchResults.Should()
             .BeEquivalentTo(
-                new[] {
-                    privateChat1.ToSearchResult(bob.Id),
-                    privateChat2.ToSearchResult(bob.Id),
-                    publicPlacePrivateChat1.ToSearchResult(bob.Id),
-                    publicPlacePrivateChat2.ToSearchResult(bob.Id),
-                    privatePlacePublicChat1.ToSearchResult(bob.Id),
-                    privatePlacePublicChat2.ToSearchResult(bob.Id),
-                    privatePlacePrivateChat1.ToSearchResult(bob.Id),
-                    privatePlacePrivateChat2.ToSearchResult(bob.Id),
-                }
-            );
+                ToSearchResults(bob,
+                    privateChat1,
+                    privateChat2,
+                    publicPlacePrivateChat1,
+                    publicPlacePrivateChat2,
+                    privatePlacePublicChat1,
+                    privatePlacePublicChat2,
+                    privatePlacePrivateChat1,
+                    privatePlacePrivateChat2));
 
         searchResults = await Find(tester, false, "two");
         searchResults.Should()
             .BeEquivalentTo(
-                new[] {
-                    privateChat2.ToSearchResult(bob.Id),
-                    publicPlacePrivateChat2.ToSearchResult(bob.Id),
-                    privatePlacePublicChat2.ToSearchResult(bob.Id),
-                    privatePlacePrivateChat2.ToSearchResult(bob.Id),
-                }
-            );
+                ToSearchResults(bob,
+                    privateChat2,
+                    publicPlacePrivateChat2,
+                    privatePlacePublicChat2,
+                    privatePlacePrivateChat2));
+
+        searchResults = await Find(tester, false, "two", privatePlace.Id);
+        searchResults.Should()
+            .BeEquivalentTo(
+                ToSearchResults(bob,
+                    privatePlacePublicChat2,
+                    privatePlacePrivateChat2));
     }
 
     [Fact]
@@ -143,26 +149,29 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         var searchResults = await Find(tester, true, "chat");
         searchResults.Should()
             .BeEquivalentTo(
-                new[] {
-                    publicChat1.ToSearchResult(bob.Id),
-                    publicChat2.ToSearchResult(bob.Id),
-                    publicPlacePublicChat2.ToSearchResult(bob.Id),
-                }
-            );
+                ToSearchResults(bob,
+                    publicChat1,
+                    publicChat2,
+                    publicPlacePublicChat2));
+
+        searchResults = await Find(tester, true, "chat", publicPlace.Id);
+        searchResults.Should().BeEquivalentTo(ToSearchResults(bob, publicPlacePublicChat2));
 
         searchResults = await Find(tester, false, "chat");
         searchResults.Should()
             .BeEquivalentTo(
-                new[] {
-                    privateChat1.ToSearchResult(bob.Id),
-                    privateChat2.ToSearchResult(bob.Id),
-                    publicPlacePrivateChat1.ToSearchResult(bob.Id),
-                    publicPlacePrivateChat2.ToSearchResult(bob.Id),
-                    privatePlacePublicChat1.ToSearchResult(bob.Id),
-                    privatePlacePublicChat2.ToSearchResult(bob.Id),
-                    privatePlacePrivateChat2.ToSearchResult(bob.Id),
-                }
-            );
+                ToSearchResults(bob,
+                    privateChat1,
+                    privateChat2,
+                    publicPlacePrivateChat1,
+                    publicPlacePrivateChat2,
+                    privatePlacePublicChat1,
+                    privatePlacePublicChat2,
+                    privatePlacePrivateChat2));
+
+        searchResults = await Find(tester, false, "chat", publicPlace.Id);
+        searchResults.Should()
+            .BeEquivalentTo(ToSearchResults(bob, publicPlacePrivateChat1, publicPlacePrivateChat2));
 
         // act
         updates = BuildChatContacts(
@@ -175,34 +184,56 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // assert
         searchResults = await Find(tester, true, "chat");
         searchResults.Should()
-            .BeEquivalentTo(
-                new[] {
-                    publicChat1.ToSearchResult(bob.Id),
-                    publicChat2.ToSearchResult(bob.Id),
-                    publicPlacePublicChat1.ToSearchResult(bob.Id),
-                    publicPlacePublicChat2.ToSearchResult(bob.Id),
-                }
-            );
+            .BeEquivalentTo(ToSearchResults(bob,
+                publicChat1,
+                publicChat2,
+                publicPlacePublicChat1,
+                publicPlacePublicChat2));
+
+        searchResults = await Find(tester, true, "chat", publicPlace.Id);
+        searchResults.Should()
+            .BeEquivalentTo(ToSearchResults(bob,
+                publicPlacePublicChat1,
+                publicPlacePublicChat2));
 
         searchResults = await Find(tester, false, "chat");
         searchResults.Should()
             .BeEquivalentTo(
-                new[] {
-                    privateChat1.ToSearchResult(bob.Id),
-                    privateChat2.ToSearchResult(bob.Id),
-                    publicPlacePrivateChat1.ToSearchResult(bob.Id),
-                    publicPlacePrivateChat2.ToSearchResult(bob.Id),
-                    privatePlacePublicChat1.ToSearchResult(bob.Id),
-                    privatePlacePublicChat2.ToSearchResult(bob.Id),
-                    privatePlacePrivateChat1.ToSearchResult(bob.Id),
-                    privatePlacePrivateChat2.ToSearchResult(bob.Id),
-                }
-            );
+                ToSearchResults(bob,
+                    privateChat1,
+                    privateChat2,
+                    publicPlacePrivateChat1,
+                    publicPlacePrivateChat2,
+                    privatePlacePublicChat1,
+                    privatePlacePublicChat2,
+                    privatePlacePrivateChat1,
+                    privatePlacePrivateChat2));
+
+        searchResults = await Find(tester, false, "chat", privatePlace.Id);
+        searchResults.Should()
+            .BeEquivalentTo(
+                ToSearchResults(bob,
+                    privatePlacePublicChat1,
+                    privatePlacePublicChat2,
+                    privatePlacePrivateChat1,
+                    privatePlacePrivateChat2));
 
         searchResults = await Find(tester, true, "abra");
         searchResults.Should().BeEmpty();
 
+        searchResults = await Find(tester, true, "abra", publicPlace.Id);
+        searchResults.Should().BeEmpty();
+
+        searchResults = await Find(tester, true, "abra", privatePlace.Id);
+        searchResults.Should().BeEmpty();
+
         searchResults = await Find(tester, false, "abra");
+        searchResults.Should().BeEmpty();
+
+        searchResults = await Find(tester, false, "abra", publicPlace.Id);
+        searchResults.Should().BeEmpty();
+
+        searchResults = await Find(tester, false, "abra", privatePlace.Id);
         searchResults.Should().BeEmpty();
     }
 
@@ -214,10 +245,10 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
         var bob = await tester.SignInAsBob();
-        var privateChat1 = await CreateChat(tester, false, "Private non-place chat 1 one");
-        var privateChat2 = await CreateChat(tester, false, "Private non-place chat 2 two");
-        var publicChat1 = await CreateChat(tester, true, "Public non-place chat 1 one");
-        var publicChat2 = await CreateChat(tester, true, "Public non-place chat 2 two");
+        var privateChat1 = await CreateChat(tester, false, "Non-place private chat 1 one");
+        var privateChat2 = await CreateChat(tester, false, "Non-place private chat 2 two");
+        var publicChat1 = await CreateChat(tester, true, "Non-place public chat 1 one");
+        var publicChat2 = await CreateChat(tester, true, "Non-place public chat 2 two");
         var privatePlace = await CreatePlace(tester, false, "Bob's private Place");
         var privatePlacePrivateChat1 = await CreateChat(tester, false, "Private place private chat 1 one", privatePlace.Id);
         var privatePlacePrivateChat2 = await CreateChat(tester, false, "Private place private chat 2 two", privatePlace.Id);
@@ -250,29 +281,23 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // assert
         var searchResults = await Find(tester, true, "chat");
         searchResults.Should()
-            .BeEquivalentTo(
-                new[] {
-                    publicChat1.ToSearchResult(bob.Id),
-                    publicChat2.ToSearchResult(bob.Id),
-                    publicPlacePublicChat1.ToSearchResult(bob.Id),
-                    publicPlacePublicChat2.ToSearchResult(bob.Id),
-                }
-            );
+            .BeEquivalentTo(ToSearchResults(bob,
+                publicChat1,
+                publicChat2,
+                publicPlacePublicChat1,
+                publicPlacePublicChat2));
 
         searchResults = await Find(tester, false, "chat");
         searchResults.Should()
-            .BeEquivalentTo(
-                new[] {
-                    privateChat1.ToSearchResult(bob.Id),
-                    privateChat2.ToSearchResult(bob.Id),
-                    publicPlacePrivateChat1.ToSearchResult(bob.Id),
-                    publicPlacePrivateChat2.ToSearchResult(bob.Id),
-                    privatePlacePublicChat1.ToSearchResult(bob.Id),
-                    privatePlacePublicChat2.ToSearchResult(bob.Id),
-                    privatePlacePrivateChat1.ToSearchResult(bob.Id),
-                    privatePlacePrivateChat2.ToSearchResult(bob.Id),
-                }
-            );
+            .BeEquivalentTo(ToSearchResults(bob,
+                privateChat1,
+                privateChat2,
+                publicPlacePrivateChat1,
+                publicPlacePrivateChat2,
+                privatePlacePublicChat1,
+                privatePlacePublicChat2,
+                privatePlacePrivateChat1,
+                privatePlacePrivateChat2));
 
         // act
         await commander.Call(new SearchBackend_ChatContactBulkIndex(ApiArray<IndexedChatContact>.Empty,
@@ -288,23 +313,33 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // assert
         searchResults = await Find(tester, true, "chat");
         searchResults.Should()
-            .BeEquivalentTo(
-                new[] {
-                    publicChat1.ToSearchResult(bob.Id),
-                    publicPlacePublicChat2.ToSearchResult(bob.Id),
-                }
-            );
+            .BeEquivalentTo(ToSearchResults(bob, publicChat1, publicPlacePublicChat2));
+
+        searchResults = await Find(tester, true, "chat", publicPlace.Id);
+        searchResults.Should()
+            .BeEquivalentTo(ToSearchResults(bob, publicPlacePublicChat2));
 
         searchResults = await Find(tester, false, "chat");
         searchResults.Should()
             .BeEquivalentTo(
-                new[] {
-                    privateChat2.ToSearchResult(bob.Id),
-                    publicPlacePrivateChat1.ToSearchResult(bob.Id),
-                    privatePlacePublicChat2.ToSearchResult(bob.Id),
-                    privatePlacePrivateChat1.ToSearchResult(bob.Id),
-                }
-            );
+                ToSearchResults(bob,
+                    privateChat2,
+                    publicPlacePrivateChat1,
+                    privatePlacePublicChat2,
+                    privatePlacePrivateChat1));
+
+        searchResults = await Find(tester, false, "chat", privatePlace.Id);
+        searchResults.Should()
+            .BeEquivalentTo(
+                ToSearchResults(bob,
+                    privatePlacePublicChat2,
+                    privatePlacePrivateChat1));
+
+        searchResults = await Find(tester, false, "one", privatePlace.Id);
+        searchResults.Should()
+            .BeEquivalentTo(
+                ToSearchResults(bob,
+                    privatePlacePrivateChat1));
     }
 
     // Private methods
@@ -327,7 +362,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         return await tester.Chats.Get(tester.Session, id, CancellationToken.None).Require();
     }
 
-    private async Task<ApiArray<ContactSearchResult>> Find(IWebTester tester, bool isPublic, string criteria)
+    private async Task<ApiArray<ContactSearchResult>> Find(IWebTester tester, bool isPublic, string criteria, PlaceId? placeId = null)
     {
         var account = await tester.GetOwnAccount();
         var searchResults = await tester.SearchBackend.FindContacts(account.Id,
@@ -336,6 +371,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                 IsPublic = isPublic,
                 Kind = ContactKind.Chat,
                 Limit = 20,
+                PlaceId = placeId,
             },
             CancellationToken.None);
         searchResults.Offset.Should().Be(0);
@@ -349,4 +385,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                     cfg.AddInMemoryCollection(($"{nameof(SearchSettings)}:{nameof(SearchSettings.IsSearchEnabled)}", "true"));
                 },
             });
+
+    private IEnumerable<ContactSearchResult> ToSearchResults(Account account, params Chat.Chat[] chats)
+        => chats.Select(x => x.ToSearchResult(account.Id));
 }
