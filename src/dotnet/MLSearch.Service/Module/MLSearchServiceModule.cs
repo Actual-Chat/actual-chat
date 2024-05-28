@@ -123,7 +123,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         rpcHost.AddApiOrLocal<IMLSearch, MLSearchImpl>();
 
         // -- Register Swagger endpoint (OpenAPI) --
-        /*
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(c => {
             c.IncludeXmlComments(
@@ -143,6 +142,5 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             });
             c.SwaggerDoc("bot-tools-v1", new OpenApiInfo { Title = "Bot Tools API - V1", Version = "v1"});
         });
-        */
     }
 }
