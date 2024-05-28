@@ -664,14 +664,6 @@ export class VirtualList {
             this._itemRange = null;
             this._viewport = null;
 
-            // make layout footer visible on mobile when virtual keyboard is open
-            this._layoutFooter.scrollIntoView(false);
-            fastRaf({
-                write: () => {
-                    this._layoutFooter.scrollIntoView(false);
-                }
-            });
-
             // trigger update only for first render to load data if needed
             if (rs.renderIndex <= 1)
                 void this.updateViewport();

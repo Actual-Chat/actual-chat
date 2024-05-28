@@ -48,4 +48,12 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListTile<TItem>>
             }
         }
     }
+
+    public bool IsSimilarTo(VirtualListData<TItem> other)
+        => RequestedStartExpansion == other.RequestedStartExpansion
+            && RequestedEndExpansion == other.RequestedEndExpansion
+            && HasVeryFirstItem == other.HasVeryFirstItem
+            && HasVeryLastItem == other.HasVeryLastItem
+            && ScrollToKey == other.ScrollToKey
+            && Tiles.SequenceEqual(other.Tiles);
 }

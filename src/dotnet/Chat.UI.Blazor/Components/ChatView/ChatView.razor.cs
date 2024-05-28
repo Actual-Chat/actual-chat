@@ -328,6 +328,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var shownReadyEntryLid = _shownReadEntryLid.Value;
+        var renderedTiles = renderedData.Tiles.ToDictionary(t => t.Key);
         var tiles = new List<VirtualListTile<ChatMessage>>();
         foreach (var idTile in idTiles) {
             var lastReadEntryLid = shownReadyEntryLid;
@@ -343,7 +344,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (tile.Items.Count == 0)
                 continue;
 
-            tiles.Add(tile);
+            if (renderedTiles.TryGetValue(tile.Key, out var renderedTile))
+                tiles.Add(renderedTile.Items.SequenceEqual(tile.Items) ? renderedTile : tile);
+            else
+                tiles.Add(tile);
             prevMessage = tile.Items[^1];
 #if false
         // Uncomment for debugging:
@@ -387,7 +391,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             else if (nav.MustHighlight)
                 ChatUI.HighlightEntry(navEntry.Id, navigate: false);
         }
-
         var result = new VirtualListData<ChatMessage>(tiles) {
             Index = renderedData.Index + 1,
             HasVeryFirstItem = hasVeryFirstItem,
@@ -402,7 +405,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             NavigationState = nav ?? renderedData.NavigationState,
             ItemVisibilityState = itemVisibility,
         };
-        return result;
+
+        // do not return new instance if data is the same to prevent re-renders
+        return result.IsSimilarTo(renderedData)
+            ? renderedData
+            : result;
     }
 
     private static Tile<long>[] GetIdTilesToLoad(Range<long> idRangeToLoad, Range<long> chatIdRange)
