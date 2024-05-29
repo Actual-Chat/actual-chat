@@ -39,11 +39,16 @@ public static partial class Constants
         public static class SystemTags
         {
             public static readonly Symbol Notes = "notes";
+            // Not used!
             public static readonly Symbol Family = "family";
+            // Not used!
             public static readonly Symbol Friends = "friends";
+            // Not used!
             public static readonly Symbol ClassmatesAlumni = "classmates-alumni";
+            // Not used!
             public static readonly Symbol Coworkers = "coworkers";
             public static readonly Symbol Welcome = "welcome";
+            public static readonly Symbol Bot = "ml-bot";
         }
     }
 
