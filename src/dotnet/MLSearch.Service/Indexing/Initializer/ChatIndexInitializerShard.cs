@@ -1,5 +1,3 @@
-using ActualChat.Chat;
-
 namespace ActualChat.MLSearch.Indexing.Initializer;
 
 internal interface IChatIndexInitializerShard
@@ -11,7 +9,7 @@ internal interface IChatIndexInitializerShard
 internal sealed class ChatIndexInitializerShard(
     IMomentClock clock,
     ICommander commander,
-    IChatsBackend chats,
+    IInfiniteChatSequence chatSequence,
     ICursorStates<ChatIndexInitializerShard.Cursor> cursorStates,
     ILogger<ChatIndexInitializerShard> log
 ) : IChatIndexInitializerShard
@@ -21,7 +19,6 @@ internal sealed class ChatIndexInitializerShard(
     private const int BatchSize = 1000;
     private static readonly TimeSpan UpdateCursorInterval = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(10);
-    private static readonly TimeSpan NoChatsIdleInterval = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan ExecuteJobTimeout = TimeSpan.FromMinutes(3);
     private readonly Channel<MLSearch_TriggerChatIndexingCompletion> _events =
         Channel.CreateBounded<MLSearch_TriggerChatIndexingCompletion>(new BoundedChannelOptions(BatchSize) {
@@ -115,7 +112,7 @@ internal sealed class ChatIndexInitializerShard(
     {
         await Task.Yield();
 
-        await foreach(var (chatId, version) in EnumerateChatsAsync(minVersion, cancellationToken).ConfigureAwait(false)) {
+        await foreach(var (chatId, version) in chatSequence.LoadAsync(minVersion, cancellationToken).ConfigureAwait(false)) {
             await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             while(true) {
                 try {
@@ -127,38 +124,6 @@ internal sealed class ChatIndexInitializerShard(
                 catch(Exception e) when (e is not OperationCanceledException) {
                     log.LogError(e, "Failed to schedule an indexing job for chat #{ChatId}.", chatId);
                     await clock.Delay(RetryInterval, cancellationToken).ConfigureAwait(false);
-                }
-            }
-        }
-    }
-
-    private async IAsyncEnumerable<(ChatId, long)> EnumerateChatsAsync(
-        long minVersion, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        while (!cancellationToken.IsCancellationRequested) {
-            ApiArray<Chat.Chat> batch;
-            try {
-                // TODO: handle the case with infinite getting the same chats in a batch
-                // when there are more than BatchSize chats with the same version
-                batch = await chats
-                    .ListChanged(minVersion, long.MaxValue, ChatId.None, BatchSize, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch(Exception e) when (e is not OperationCanceledException) {
-                log.LogError(e,
-                    "Failed to load a batch of chats of length {Len} in the version range from {MinVersion} to infinity.",
-                    BatchSize, minVersion);
-                await clock.Delay(RetryInterval, cancellationToken).ConfigureAwait(false);
-                continue;
-            }
-            if (batch.Count==0) {
-                await Task.Delay(NoChatsIdleInterval, cancellationToken).ConfigureAwait(false);
-            }
-            else {
-                foreach (var chat in batch) {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    minVersion = chat.Version + 1;
-                    yield return (chat.Id, chat.Version);
                 }
             }
         }
