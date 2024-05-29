@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Security.Cryptography.X509Certificates;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Search.Db;
@@ -58,6 +59,11 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices)
         var connectionSettings = new ConnectionSettings(
             new SingleNodeConnectionPool(new Uri(openSearchClusterUri)),
             sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
+        if (!Settings.ClientCertificatePath.IsNullOrEmpty()) {
+            var certPath = Path.Combine(Settings.ClientCertificatePath, "tls.crt");
+            var keyPath = Path.Combine(Settings.ClientCertificatePath, "tls.key");
+            connectionSettings.ClientCertificate(X509Certificate2.CreateFromPemFile(certPath, keyPath));
+        }
         services.AddSingleton<IOpenSearchClient>(_ => new OpenSearchClient(connectionSettings));
         services.AddSingleton<OpenSearchConfigurator>()
             .AddHostedService(c => c.GetRequiredService<OpenSearchConfigurator>());
