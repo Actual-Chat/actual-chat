@@ -20,6 +20,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     private IndexNames IndexNames { get; } = services.GetRequiredService<IndexNames>();
     private IOpenSearchClient OpenSearchClient { get; } = services.GetRequiredService<IOpenSearchClient>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private UserContactIndexer UserContactIndexer { get; } = services.GetRequiredService<UserContactIndexer>();
     private ChatContactIndexer ChatContactIndexer { get; } = services.GetRequiredService<ChatContactIndexer>();
@@ -132,23 +133,18 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         var skip = query.Skip.Clamp(0, int.MaxValue);
         var limit = query.Limit.Clamp(0, Constants.Search.PageSizeLimit);
 
+        ApiArray<UserId>? placeUserIds = null;
+        if (query.PlaceId is { IsNone: false } placeId)
+            placeUserIds = await AuthorsBackend.ListPlaceUserIds(placeId, cancellationToken).ConfigureAwait(false);
+
         var searchResponse =
             await OpenSearchClient.SearchAsync<IndexedUserContact>(s
-                => s.Index(IndexNames.PublicUserIndexName)
-                    .From(skip)
-                    .Size(limit)
-                    .Query(qq
-                        => qq.Bool(b
-                            => b.Must(q
-                                => q.MultiMatch(
-                                    m
-                                    => m.Fields(x => x.FullName, x => x.FirstName, x => x.SecondName)
-                                        .Query(query.Criteria)
-                                        .Type(TextQueryType.PhrasePrefix)))
-                                .MustNot(q => q.Match(m
-                                    => m.Field(x => x.Id).Query(userId)))))
-                    .IgnoreUnavailable(),
-                cancellationToken)
+                        => s.Index(IndexNames.PublicUserIndexName)
+                            .From(skip)
+                            .Size(limit)
+                            .Query(qq => qq.Bool(ConfigureUserContactQueryDescriptor))
+                            .IgnoreUnavailable(),
+                    cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
         if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
@@ -164,6 +160,23 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             var peerChatId = new PeerChatId(userId, UserId.Parse(x.Source!.Id));
             var contactId = new ContactId(userId, peerChatId.ToChatId());
             return new ContactSearchResult(contactId, SearchMatch.New(x.Source.FullName));
+        }
+
+        BoolQueryDescriptor<IndexedUserContact> ConfigureUserContactQueryDescriptor(BoolQueryDescriptor<IndexedUserContact> descriptor)
+        {
+            descriptor = descriptor.Must(q
+                    => q.MultiMatch(
+                        m
+                            => m.Fields(x => x.FullName, x => x.FirstName, x => x.SecondName)
+                                .Query(query.Criteria)
+                                .Type(TextQueryType.PhrasePrefix)))
+                .MustNot(q => q.Match(m
+                    => m.Field(x => x.Id).Query(userId)));
+            if (placeUserIds == null)
+                return descriptor;
+
+            // TODO: we need to index place contacts since place can grow
+            return descriptor.Filter(q => q.Terms(t => t.Field(x => x.Id).Terms(placeUserIds.Value)));
         }
     }
 
@@ -329,7 +342,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (indices.Count == 0)
             return;
 
-        await OpenSearchClient.Indices.RefreshAsync(Indices.Index(indices), ct:cancellationToken).ConfigureAwait(false);
+        await OpenSearchClient.Indices.RefreshAsync(Indices.Index(indices), ct: cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

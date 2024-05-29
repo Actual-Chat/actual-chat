@@ -45,14 +45,15 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
         var accounts = await _tester.CreateAccounts(count);
 
         // act
-        var userId = accounts[^1].Id;
+        var owner = accounts[^1];
+        var ownerId = owner.Id;
         await _userContactIndexer.WhenInitialized.WaitAsync(TimeSpan.FromSeconds(10));
 
         // assert
-        await Find(userId, "User", 20);
-        var searchResults = await Find(userId, "User 3", 11);
+        await Find(ownerId, "User", 20);
+        var searchResults = await Find(ownerId, "User 3", 11);
         searchResults.Should().ContainSingle(x => x.SearchMatch.Text == "User 39");
-        searchResults = await Find(userId, "User", 49, 50);
+        searchResults = await Find(ownerId, "User", 49, 50);
         searchResults.Should().NotContain(x => x.SearchMatch.Text == "User 49");
 
         // TODO: fix
@@ -78,8 +79,8 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
         }
 
         // assert
-        searchResults = await Find(userId, "User A", 10);
-        var expected = accounts[10..20].Select(x => BuildSearchResult(userId, x.Id, "User A" + x.LastName)).ToArray();
+        searchResults = await Find(ownerId, "User A", 10);
+        var expected = accounts[10..20].Select(x => ownerId.BuildSearchResult(x.Id, "User A" + x.LastName));
         searchResults.Should().BeEquivalentTo(expected);
     }
 
@@ -103,7 +104,4 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
             TimeSpan.FromSeconds(10));
         return searchResults.Hits;
     }
-
-    private static ContactSearchResult BuildSearchResult(UserId ownerId, UserId otherUserId, string fullName)
-        => new (new ContactId(ownerId, new PeerChatId(ownerId, otherUserId).ToChatId()), SearchMatch.New(fullName));
 }
