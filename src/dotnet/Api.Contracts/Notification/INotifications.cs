@@ -29,4 +29,4 @@ public sealed partial record Notifications_RegisterDevice(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] Symbol DeviceId,
     [property: DataMember, MemoryPackOrder(2)] DeviceType DeviceType
-) : ISessionCommand<Unit>; // NOTE(AY): Add backend, implement IApiCommand
+) : ISessionCommand<Unit>, IApiCommand;

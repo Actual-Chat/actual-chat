@@ -1,14 +1,14 @@
-﻿using ActualChat.Notification.Db;
-using ActualChat.Users;
-using Microsoft.EntityFrameworkCore;
-using ActualLab.Fusion.EntityFramework;
+﻿using ActualChat.Users;
 
 namespace ActualChat.Notification;
 
-public class Notifications(IServiceProvider services) : DbServiceBase<NotificationDbContext>(services), INotifications
+public class Notifications(IServiceProvider services) : INotifications
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private INotificationsBackend Backend { get; } = services.GetRequiredService<INotificationsBackend>();
+
+    private MomentClockSet Clocks { get; } = services.Clocks();
+    private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
     public virtual async Task<Notification?> Get(
@@ -49,43 +49,10 @@ public class Notifications(IServiceProvider services) : DbServiceBase<Notificati
     public virtual async Task OnRegisterDevice(
         Notifications_RegisterDevice command, CancellationToken cancellationToken)
     {
-        // NOTE(AY): Add backend, implement IApiCommand
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            var device = context.Operation.Items.Get<DbDevice>();
-            var isNew = context.Operation.Items.GetOrDefault(false);
-            if (isNew && device != null)
-                _ = Backend.ListDevices(new UserId(device.UserId), default);
-            return;
-        }
-
         var (session, deviceId, deviceType) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-        var existingDbDevice = await dbContext.Devices.ForUpdate()
-            .FirstOrDefaultAsync(d => d.Id == deviceId.Value, cancellationToken)
-            .ConfigureAwait(false);
-
-        var dbDevice = existingDbDevice;
-        if (dbDevice == null) {
-            dbDevice = new DbDevice {
-                Id = deviceId,
-                Type = deviceType,
-                UserId = account.Id,
-                Version = VersionGenerator.NextVersion(),
-                CreatedAt = Clocks.SystemClock.Now,
-            };
-            dbContext.Add(dbDevice);
-        }
-        else
-            dbDevice.AccessedAt = Clocks.SystemClock.Now;
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.Set(dbDevice);
-        context.Operation.Items.Set(existingDbDevice == null);
+        var registerDeviceCommand = new NotificationsBackend_RegisterDevice(account.Id, deviceId, deviceType);
+        await Commander.Run(registerDeviceCommand, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
