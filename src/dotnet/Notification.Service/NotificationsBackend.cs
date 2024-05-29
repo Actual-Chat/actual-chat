@@ -3,11 +3,9 @@ using ActualChat.Chat.Events;
 using ActualChat.Notification.Db;
 using ActualChat.Queues;
 using ActualChat.Users;
-using ActualLab.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using ActualLab.Fusion.EntityFramework;
-using ActualLab.Versioning;
 
 namespace ActualChat.Notification;
 
@@ -198,6 +196,45 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         return true;
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnRegisterDevice(NotificationsBackend_RegisterDevice command, CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+
+        if (Invalidation.IsActive) {
+            var device = context.Operation.Items.Get<DbDevice>();
+            var isNew = context.Operation.Items.GetOrDefault(false);
+            if (isNew && device != null)
+                _ = ListDevices(new UserId(device.UserId), default);
+            return;
+        }
+
+        var (userId, deviceId, deviceType) = command;
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+        var existingDbDevice = await dbContext.Devices.ForUpdate()
+            .FirstOrDefaultAsync(d => d.Id == deviceId.Value, cancellationToken)
+            .ConfigureAwait(false);
+
+        var dbDevice = existingDbDevice;
+        if (dbDevice == null) {
+            dbDevice = new DbDevice {
+                Id = deviceId,
+                Type = deviceType,
+                UserId = userId,
+                Version = VersionGenerator.NextVersion(),
+                CreatedAt = Clocks.SystemClock.Now,
+            };
+            dbContext.Add(dbDevice);
+        }
+        else
+            dbDevice.AccessedAt = Clocks.SystemClock.Now;
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        context.Operation.Items.Set(dbDevice);
+        context.Operation.Items.Set(existingDbDevice == null);
     }
 
     // [CommandHandler]

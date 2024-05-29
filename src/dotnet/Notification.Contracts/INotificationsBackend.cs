@@ -22,10 +22,11 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task<bool> OnUpsert(NotificationsBackend_Upsert command, CancellationToken cancellationToken);
     [CommandHandler]
+    Task OnRegisterDevice(NotificationsBackend_RegisterDevice command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task OnRemoveDevices(NotificationsBackend_RemoveDevices command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveAccount(NotificationsBackend_RemoveAccount command, CancellationToken cancellationToken);
-
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -47,6 +48,18 @@ public sealed partial record NotificationsBackend_Upsert(
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public UserId ShardKey => Notification.UserId;
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_RegisterDevice(
+    [property: DataMember, MemoryPackOrder(0)] UserId UserId,
+    [property: DataMember, MemoryPackOrder(1)] Symbol DeviceId,
+    [property: DataMember, MemoryPackOrder(2)] DeviceType DeviceType
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public UserId ShardKey => UserId;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
