@@ -20,4 +20,7 @@ public static class AuthorsBackendExt
         author = await commander.Call(command, true, cancellationToken).ConfigureAwait(false);
         return author;
     }
+
+    public static Task<ApiArray<UserId>> ListPlaceUserIds(this IAuthorsBackend authorsBackend, PlaceId placeId, CancellationToken cancellationToken)
+        => authorsBackend.ListUserIds(placeId.ToRootChatId(), cancellationToken);
 }

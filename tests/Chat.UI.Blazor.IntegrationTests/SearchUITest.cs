@@ -49,25 +49,35 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         var publicPlacePublicChat1 = await CreateChat(true, "Public place public chat 1 one", publicPlace.Id);
         var publicPlacePublicChat2 = await CreateChat(true, "Public place public chat 2 two", publicPlace.Id);
 
+        var publicPlaceMember1 = await _tester.CreateAccount("Public place Member", "One");
+        var publicPlaceMember2 = await _tester.CreateAccount("Public place Member", "Two");
+        var privatePlaceMember1 = await _tester.CreateAccount("Private place Member", "One");
+        var privatePlaceMember2 = await _tester.CreateAccount("Private place Member", "Two");
+        var everyPlaceMember1 = await _tester.CreateAccount("Every place Member", "One");
+        var everyPlaceMember2 = await _tester.CreateAccount("Every place Member", "Two");
+        await _tester.InviteToPlace(privatePlace.Id, privatePlaceMember1, privatePlaceMember2, everyPlaceMember1, everyPlaceMember2);
+        await _tester.InviteToPlace(publicPlace.Id, publicPlaceMember1, publicPlaceMember2, everyPlaceMember1, everyPlaceMember2);
+
         // assert
         // TODO: add user contacts
 
         // act
-        await WaitUntilIndexed(bob.Id, "one", 6);
+        await WaitUntilIndexed(bob.Id, "one", 9);
         _searchUI.Text.Value = "one";
-        var searchResults = await GetSearchResults(6);
+        var searchResults = await GetSearchResults(9);
 
         // assert
-        searchResults.Should()
-            .BeEquivalentTo(new[] {
-                    privateChat1.ToSearchResult(bob.Id),
-                    privatePlacePrivateChat1.ToSearchResult(bob.Id),
-                    privatePlacePublicChat1.ToSearchResult(bob.Id),
-                    publicPlacePrivateChat1.ToSearchResult(bob.Id),
-                    publicChat1.ToSearchResult(bob.Id),
-                    publicPlacePublicChat1.ToSearchResult(bob.Id),
-                },
-                o => o.WithStrictOrdering());
+        var expected = bob.BuildSearchResults(privatePlaceMember1,
+                publicPlaceMember1,
+                everyPlaceMember1)
+            .Concat(bob.BuildSearchResults(privateChat1,
+                privatePlacePrivateChat1,
+                privatePlacePublicChat1,
+                publicPlacePrivateChat1,
+                publicChat1,
+                publicPlacePublicChat1))
+            .ToArray();
+        searchResults.Should().BeEquivalentTo(expected);
 
         // act
         _searchUI.Text.Value = "bla bla";
@@ -80,26 +90,51 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         _searchUI.Text.Value = "two";
 
         // assert
-        await AssertSearchResults(bob.Id,
-            privateChat2,
-            privatePlacePrivateChat2,
-            privatePlacePublicChat2,
-            publicPlacePrivateChat2,
-            publicChat2,
-            publicPlacePublicChat2);
+        expected = bob.BuildSearchResults(privatePlaceMember2,
+                publicPlaceMember2,
+                everyPlaceMember2)
+            .Concat(bob.BuildSearchResults(privateChat2,
+                privatePlacePrivateChat2,
+                privatePlacePublicChat2,
+                publicPlacePrivateChat2,
+                publicChat2,
+                publicPlacePublicChat2))
+            .ToArray();
+        await AssertSearchResults(expected);
 
         // act
         _chatListUI.ActivateChatList(privatePlace.Id);
         _searchUI.Text.Value = "two";
 
         // assert
-        await AssertSearchResults(bob.Id, privatePlacePrivateChat2, privatePlacePublicChat2);
+        expected = bob.BuildSearchResults(privatePlaceMember2,
+                everyPlaceMember2)
+            .Concat(bob.BuildSearchResults(privatePlacePrivateChat2,
+                privatePlacePublicChat2))
+            .ToArray();
+        await AssertSearchResults(expected);
+
+        // act
+        _chatListUI.ActivateChatList(publicPlace.Id);
+        _searchUI.Text.Value = "two";
+
+        // assert
+        expected = bob.BuildSearchResults(publicPlaceMember2, everyPlaceMember2)
+            .Concat(bob.BuildSearchResults(publicPlacePrivateChat2, publicPlacePublicChat2))
+            .ToArray();
+        await AssertSearchResults(expected);
     }
 
     private async Task WaitUntilIndexed(UserId userId, string criteria, int expectedCount)
     {
         var searchBackend = _tester.AppServices.GetRequiredService<ISearchBackend>();
         await TestExt.When(async () => {
+                var userContacts = await searchBackend.FindContacts(userId,
+                    new ContactSearchQuery {
+                        Criteria = criteria,
+                        Kind = ContactKind.User,
+                    },
+                    CancellationToken.None);
                 var publicChatContacts = await searchBackend.FindContacts(userId,
                     new ContactSearchQuery {
                         Criteria = criteria,
@@ -114,7 +149,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
                         IsPublic = false,
                     },
                     CancellationToken.None);
-                (publicChatContacts.Hits.Count + privateChatContacts.Hits.Count).Should().BeGreaterOrEqualTo(expectedCount);
+                (userContacts.Hits.Count + publicChatContacts.Hits.Count + privateChatContacts.Hits.Count).Should().BeGreaterOrEqualTo(expectedCount);
             },
             TimeSpan.FromSeconds(10));
     }
@@ -134,17 +169,6 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         await TestExt.When(async () => {
                 var results = await _searchUI.GetContactSearchResults();
                 results.Should().BeEquivalentTo(expected, o => o.WithoutStrictOrdering());
-            },
-            TimeSpan.FromSeconds(20));
-        return await _searchUI.GetContactSearchResults();
-    }
-
-    private async Task<IReadOnlyList<ContactSearchResult>> AssertSearchResults(UserId ownerId, params Chat[] expected)
-    {
-        await TestExt.When(async () => {
-                var results = await _searchUI.GetContactSearchResults();
-                results.Should()
-                    .BeEquivalentTo(expected.Select(x => x.ToSearchResult(ownerId)), o => o.WithoutStrictOrdering());
             },
             TimeSpan.FromSeconds(20));
         return await _searchUI.GetContactSearchResults();

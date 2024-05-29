@@ -145,6 +145,9 @@ public static class ChatOperations
         await commander.Call(new Places_Invite(session, placeId, userIds));
     }
 
+    public static Task InviteToPlace(this IWebTester tester, PlaceId placeId, params Account[] accounts)
+        => tester.InviteToPlace(placeId, accounts.Select(x => x.Id).ToArray());
+
     public static async Task InviteToChat(this IWebTester tester, ChatId chatId, params UserId[] userIds)
     {
         var session = tester.Session;

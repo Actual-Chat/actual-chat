@@ -62,10 +62,10 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    publicChat1.ToSearchResult(bob.Id),
-                    publicChat2.ToSearchResult(bob.Id),
-                    publicPlacePublicChat1.ToSearchResult(bob.Id),
-                    publicPlacePublicChat2.ToSearchResult(bob.Id),
+                    publicChat1.BuildSearchResult(bob.Id),
+                    publicChat2.BuildSearchResult(bob.Id),
+                    publicPlacePublicChat1.BuildSearchResult(bob.Id),
+                    publicPlacePublicChat2.BuildSearchResult(bob.Id),
                 }
             );
 
@@ -73,8 +73,8 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    publicChat1.ToSearchResult(bob.Id),
-                    publicPlacePublicChat1.ToSearchResult(bob.Id),
+                    publicChat1.BuildSearchResult(bob.Id),
+                    publicPlacePublicChat1.BuildSearchResult(bob.Id),
                 }
             );
 
@@ -82,14 +82,14 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    privateChat1.ToSearchResult(bob.Id),
-                    privateChat2.ToSearchResult(bob.Id),
-                    publicPlacePrivateChat1.ToSearchResult(bob.Id),
-                    publicPlacePrivateChat2.ToSearchResult(bob.Id),
-                    privatePlacePublicChat1.ToSearchResult(bob.Id),
-                    privatePlacePublicChat2.ToSearchResult(bob.Id),
-                    privatePlacePrivateChat1.ToSearchResult(bob.Id),
-                    privatePlacePrivateChat2.ToSearchResult(bob.Id),
+                    privateChat1.BuildSearchResult(bob.Id),
+                    privateChat2.BuildSearchResult(bob.Id),
+                    publicPlacePrivateChat1.BuildSearchResult(bob.Id),
+                    publicPlacePrivateChat2.BuildSearchResult(bob.Id),
+                    privatePlacePublicChat1.BuildSearchResult(bob.Id),
+                    privatePlacePublicChat2.BuildSearchResult(bob.Id),
+                    privatePlacePrivateChat1.BuildSearchResult(bob.Id),
+                    privatePlacePrivateChat2.BuildSearchResult(bob.Id),
                 }
             );
 
@@ -97,10 +97,10 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    privateChat2.ToSearchResult(bob.Id),
-                    publicPlacePrivateChat2.ToSearchResult(bob.Id),
-                    privatePlacePublicChat2.ToSearchResult(bob.Id),
-                    privatePlacePrivateChat2.ToSearchResult(bob.Id),
+                    privateChat2.BuildSearchResult(bob.Id),
+                    publicPlacePrivateChat2.BuildSearchResult(bob.Id),
+                    privatePlacePublicChat2.BuildSearchResult(bob.Id),
+                    privatePlacePrivateChat2.BuildSearchResult(bob.Id),
                 }
             );
     }
