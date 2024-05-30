@@ -333,6 +333,8 @@
     --recorder-on-middle: var(--magenta-50);
     --audio-panel-button: var(--white);
     --audio-panel-button-text: var(--gray-40);
+    --post-panel-narrow-landscape: var(--white-04);
+    --audio-panel-narrow-landscape-button: var(--white-04);
 
     /* Download Banner */
     --download-banner-left: var(--magenta-40);
@@ -548,6 +550,8 @@
     --recorder-on-middle: var(--magenta-50);
     --audio-panel-button: var(--ash-26);
     --audio-panel-button-text: var(--ash-70);
+    --post-panel-narrow-landscape: var(--white-04);
+    --audio-panel-narrow-landscape-button: var(--white-04);
 
     /* Download Banner */
     --download-banner-left: var(--magenta-40);
@@ -762,6 +766,8 @@
     --recorder-on-middle: var(--magenta-50);
     --audio-panel-button: var(--white);
     --audio-panel-button-text: var(--gray-40);
+    --post-panel-narrow-landscape: var(--white-04);
+    --audio-panel-narrow-landscape-button: var(--white-04);
 
     /* Download Banner */
     --download-banner-left: var(--magenta-40);

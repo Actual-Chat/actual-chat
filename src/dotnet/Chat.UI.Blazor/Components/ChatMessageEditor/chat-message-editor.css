@@ -5,17 +5,25 @@
 .chat-message-editor.narrow {
     background: transparent;
 }
+body.narrow .chat-message-editor {
+    @apply landscape:mt-4;
+}
 .chat-message-editor > .c-content {
     @apply flex-none flex-x justify-items-stretch items-stretch gap-x-2.5;
-    @apply p-0 md:px-3 md:py-2;
+    @apply p-0 landscape:px-3 landscape:py-2;
+}
+body.narrow .chat-message-editor > .c-content {
+    @apply landscape:bg-post-panel;
 }
 .post-panel-wrapper {
     @apply flex-1 -flex-y;
     @apply overflow-x-hidden;
     @apply bg-post-panel md:bg-01;
+    scrollbar-width: none;
 }
 .narrow .post-panel-wrapper {
     background: linear-gradient(to bottom, var(--transparent) 45%, var(--audio-panel-gradient-bottom) 30%);
+    @apply landscape:rounded-3xl;
 }
 .narrow.narrow-panel .post-panel-wrapper {
     background: linear-gradient(to top, var(--audio-panel-gradient-bottom) 75%, var(--transparent) 25%);
@@ -37,6 +45,10 @@
     @apply overflow-hidden;
     @apply break-all;
 }
+body.narrow .post-panel {
+    @apply landscape:py-0;
+    @apply landscape:bg-[var(--post-panel-narrow-landscape)];
+}
 .post-panel .message-input {
     @apply flex-1;
     @apply max-h-48 md:max-h-88;
@@ -46,6 +58,9 @@
     @apply bg-post-panel md:bg-transparent;
     @apply cursor-text;
     word-break: break-word;
+}
+body.narrow .post-panel .message-input {
+    @apply landscape:max-h-24;
 }
 .ac-bubble-host:has(.ac-bubble) + .base-layout .post-panel .message-input {
     @apply pointer-events-none;
@@ -61,6 +76,9 @@
     /* AY: It's an inline element that grows to flexbox container, so setting its width defines the weight,
        but flexbox ensures it never grows above what's allowed;
        I checked w-full, etc. - all these options let the text (1 long word) to overflow-x the container. */
+}
+body.narrow .post-panel .message-input .editor-content {
+    @apply landscape:bg-[var(--post-panel-narrow-landscape)];
 }
 .post-panel .message-input .editor-content::-webkit-scrollbar {
     display: none;
@@ -400,4 +418,29 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply truncate;
     @apply text-sm md:text-base;
     @apply text-02;
+}
+
+.landscape-sub-footer {
+    @apply absolute -top-8;
+    @apply flex;
+    @apply h-8 inset-x-0;
+    background: linear-gradient(to top, var(--background-01), transparent);
+}
+.landscape-sub-footer::before {
+    content: '';
+    @apply absolute left-0;
+    @apply w-8 h-8;
+    background: radial-gradient(circle at right top, transparent 70%, var(--post-panel) 72%)
+}
+.landscape-sub-footer::after {
+    content: '';
+    @apply absolute right-0;
+    @apply w-8 h-8;
+    background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 72%)
+}
+body.wide .landscape-sub-footer {
+    @apply hidden;
+}
+body.narrow .landscape-sub-footer {
+    @apply portrait:hidden;
 }

@@ -28,6 +28,7 @@
         @if (ScreenSize.IsWide()) {
             <RelatedChatEntryPanel/>
         }
+        <div class="landscape-sub-footer"></div>
         <div class="c-content">
             <div class="post-panel-wrapper">
                 <div class="post-panel"
@@ -60,14 +61,13 @@
                 </div>
                 @if (ScreenSize.IsNarrow()) {
                     <RelatedChatEntryPanel/>
-                    <div class="audio-panel-wrapper">
-                        <ChatAudioPanel Chat="@Chat"/>
-                    </div>
                 }
+                <div class="audio-panel-wrapper">
+                    <ChatAudioPanel Chat="@Chat" Class="top-chat-audio-panel"/>
+                </div>
+
             </div>
-            @if (ScreenSize.IsWide()) {
-                <ChatAudioPanel Chat="@Chat"/>
-            }
+            <ChatAudioPanel Chat="@Chat" Class="right-chat-audio-panel"/>
         </div>
     </MentionListManager>
 </div>
