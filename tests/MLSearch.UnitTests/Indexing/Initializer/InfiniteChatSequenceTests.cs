@@ -54,6 +54,38 @@ public class InfiniteChatSequenceTests
         );
     }
 
+    [Fact]
+    public async Task ThereIsADelayBeforeRetryingInCaseOfAnEmptyBatch()
+    {
+        var emptyBatchDelay = TimeSpan.FromSeconds(11111);
+
+        var clock = new Mock<IMomentClock>();
+        clock
+            .Setup(x => x.Delay(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var batchCount = 0;
+        var chats = new Mock<IChatsBackend>();
+        chats
+            .Setup(ListChangedCall)
+            .Returns<long, long, ChatId, int, CancellationToken>(
+                (minVersion, _, _, size, _) => batchCount++ == 0
+                    ? Task.FromResult(new ApiArray<Chat.Chat>([]))
+                    : GetNextBatch(minVersion, size)
+            );
+
+        var sequence = new InfiniteChatSequence(clock.Object, chats.Object, Log) {
+            NoChatsIdleInterval = emptyBatchDelay
+        };
+
+        await sequence.LoadAsync(1, CancellationToken.None).Take(1).EnumerateAll();
+
+        chats.Verify(ListChangedCall, Times.Exactly(2));
+        clock.Verify(
+            x => x.Delay(It.Is<TimeSpan>(ts => ts==emptyBatchDelay), It.IsAny<CancellationToken>()), Times.Once);
+        clock.VerifyNoOtherCalls();
+    }
+
     private static Task<ApiArray<Chat.Chat>> GetNextBatch(long lastVersion, int batchSize)
     {
         var batch = new Chat.Chat[batchSize];
