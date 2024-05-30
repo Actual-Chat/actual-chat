@@ -431,10 +431,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
+#pragma warning disable CA1309 // Use ordinal string comparison
+
         var chatsQuery = lastId.IsNone
             ? dbContext.Chats.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
             : dbContext.Chats.Where(x => (x.Version > minVersion && x.Version <= maxVersion)
-                || (x.Version==minVersion && string.CompareOrdinal(x.Id, lastId.Value) > 0));
+                || (x.Version==minVersion && string.Compare(x.Id, lastId.Value) > 0));
+
+#pragma warning restore CA1309 // Use ordinal string comparison
+
         return await chatsQuery
             .Where(x => !Constants.Chat.SystemChatSids.Contains(x.Id))
             .OrderBy(x => x.Version)
