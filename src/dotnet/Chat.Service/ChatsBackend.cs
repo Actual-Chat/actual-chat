@@ -430,38 +430,20 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
-        var dbChats = await dbContext.Chats
-            .Where(x => x.Version >= minVersion
-                && x.Version <= maxVersion
-                && !Constants.Chat.SystemChatSids.Contains(x.Id))
+
+        var chatsQuery = lastId.IsNone
+            ? dbContext.Chats.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
+            : dbContext.Chats.Where(x => (x.Version > minVersion && x.Version <= maxVersion)
+                || (x.Version==minVersion && string.CompareOrdinal(x.Id, lastId.Value) > 0));
+        return await chatsQuery
+            .Where(x => !Constants.Chat.SystemChatSids.Contains(x.Id))
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
             .Take(limit)
-            .ToListAsync(cancellationToken)
+            .AsAsyncEnumerable()
+            .Select(x => x.ToModel())
+            .ToApiArrayAsync(cancellationToken)
             .ConfigureAwait(false);
-        if (dbChats.Count == 0)
-            return ApiArray<Chat>.Empty;
-
-        var chats = dbChats.ConvertAll(x => x.ToModel());
-        if (lastId.IsNone)
-            // no chats created at minCreatedAt that we need to skip
-            return chats.ToApiArray();
-
-        var lastIdIndex = GetLastIndex();
-        return lastIdIndex < 0 ? chats.ToApiArray() : chats[(lastIdIndex + 1)..].ToApiArray();
-
-        int GetLastIndex()
-        {
-            for (int i = 0; i < chats.Count; i++) {
-                var chat = chats[i];
-                if (chat.Version > minVersion)
-                    return -1;
-
-                if (chat.Id == lastId)
-                    return i;
-            }
-            return -1;
-        }
     }
 
     // Not a [ComputeMethod]!
