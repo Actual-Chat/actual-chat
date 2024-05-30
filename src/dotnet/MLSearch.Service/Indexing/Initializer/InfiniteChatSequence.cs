@@ -37,14 +37,15 @@ public class InfiniteChatSequence(
                 await clock.Delay(RetryInterval, cancellationToken).ConfigureAwait(false);
                 continue;
             }
+
             if (batch.Count==0) {
                 await clock.Delay(NoChatsIdleInterval, cancellationToken).ConfigureAwait(false);
+                continue;
             }
-            else {
-                foreach (var chat in batch) {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    yield return (lastChatId, lastVersion) = (chat.Id, chat.Version);
-                }
+
+            foreach (var chat in batch) {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return (lastChatId, lastVersion) = (chat.Id, chat.Version);
             }
         }
     }
