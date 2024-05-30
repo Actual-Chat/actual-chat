@@ -55,7 +55,7 @@ public class InfiniteChatSequenceTests
     }
 
     [Fact]
-    public async Task ThereIsADelayBeforeRetryingInCaseOfAnEmptyBatch()
+    public async Task ThereIsDelayBeforeRetryingInCaseOfEmptyBatch()
     {
         var emptyBatchDelay = TimeSpan.FromSeconds(11111);
 
@@ -70,7 +70,7 @@ public class InfiniteChatSequenceTests
             .Setup(ListChangedCall)
             .Returns<long, long, ChatId, int, CancellationToken>(
                 (minVersion, _, _, size, _) => batchCount++ == 0
-                    ? Task.FromResult(new ApiArray<Chat.Chat>([]))
+                    ? Task.FromResult(ApiArray.Empty<Chat.Chat>())
                     : GetNextBatch(minVersion, size)
             );
 
@@ -82,7 +82,7 @@ public class InfiniteChatSequenceTests
 
         chats.Verify(ListChangedCall, Times.Exactly(2));
         clock.Verify(
-            x => x.Delay(It.Is<TimeSpan>(ts => ts==emptyBatchDelay), It.IsAny<CancellationToken>()), Times.Once);
+            x => x.Delay(It.Is<TimeSpan>(ts => ts == emptyBatchDelay), It.IsAny<CancellationToken>()), Times.Once);
         clock.VerifyNoOtherCalls();
     }
 
@@ -93,7 +93,7 @@ public class InfiniteChatSequenceTests
             var chatId = new ChatId(Generate.Option);
             batch[i] = new Chat.Chat(chatId, lastVersion + i + 1);
         }
-        return Task.FromResult(new ApiArray<Chat.Chat>(batch));
+        return Task.FromResult(batch.ToApiArray());
     }
 
     [Fact]
@@ -114,8 +114,8 @@ public class InfiniteChatSequenceTests
     {
         var cancellationSource = new CancellationTokenSource();
 
-        var chatsBackend = new Mock<IChatsBackend>();
-        chatsBackend
+        var chats = new Mock<IChatsBackend>();
+        chats
             .Setup(ListChangedCall)
             .Throws<long, long, ChatId, int, CancellationToken, TaskCanceledException>(
                 (_, _, _, _, ct) => {
@@ -123,7 +123,7 @@ public class InfiniteChatSequenceTests
                     return new TaskCanceledException("", null, ct);
                 });
 
-        var sequence = new InfiniteChatSequence(Clock, chatsBackend.Object, Log);
+        var sequence = new InfiniteChatSequence(Clock, chats.Object, Log);
 
         var e = await Assert.ThrowsAsync<TaskCanceledException>(async () => {
             await sequence.LoadAsync(1, cancellationSource.Token).Take(1).EnumerateAll();
@@ -177,7 +177,7 @@ public class InfiniteChatSequenceTests
             .Setup(ListChangedCall)
             .ReturnsAsync(() => {
                 cancellationSource.Cancel();
-                return new ApiArray<Chat.Chat>([]);
+                return ApiArray.Empty<Chat.Chat>();
             });
 
         var sequence = new InfiniteChatSequence(clock.Object, chats.Object, Log) {
@@ -190,7 +190,7 @@ public class InfiniteChatSequenceTests
         Assert.True(e.IsCancellationOf(cancellationSource.Token));
 
         clock.Verify(
-            x => x.Delay(It.Is<TimeSpan>(ts => ts==emptyBatchDelay), It.IsAny<CancellationToken>()), Times.Once);
+            x => x.Delay(It.Is<TimeSpan>(ts => ts == emptyBatchDelay), It.IsAny<CancellationToken>()), Times.Once);
         clock.VerifyNoOtherCalls();
     }
 
@@ -213,7 +213,7 @@ public class InfiniteChatSequenceTests
             .Returns<long, long, ChatId, int, CancellationToken>(
                 (minVersion, _, _, size, _) => {
                     batchNum++;
-                    if (batchNum==2) {
+                    if (batchNum == 2) {
                         throw new InvalidOperationException("Something is wrong.");
                     }
                     return GetNextBatch(minVersion, size);
@@ -231,7 +231,7 @@ public class InfiniteChatSequenceTests
         await sequence.LoadAsync(1, cancellationSource.Token).Take(3*batchSize / 2).EnumerateAll();
 
         clock.Verify(
-            x => x.Delay(It.Is<TimeSpan>(ts => ts==retryDelay), It.IsAny<CancellationToken>()), Times.Once);
+            x => x.Delay(It.Is<TimeSpan>(ts => ts == retryDelay), It.IsAny<CancellationToken>()), Times.Once);
         clock.VerifyNoOtherCalls();
 
         log.Verify(
