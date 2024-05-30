@@ -2,7 +2,7 @@
 @using ActualChat.Streaming.UI.Blazor.Components
 @inherits FusionComponentBase
 
-<div class="chat-audio-panel">
+<div class="chat-audio-panel @Class">
     <div class="playback-button"
          data-bubble="@(BubbleRef.New<ListenButtonBubble>())"
          data-bubble-priority="110"
@@ -34,4 +34,5 @@
 
 @code {
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter] public string Class { get; set; } = "";
 }
