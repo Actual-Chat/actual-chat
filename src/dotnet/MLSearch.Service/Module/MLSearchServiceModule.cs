@@ -93,6 +93,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             rpcHost.AddBackend<IChatIndexInitializerTrigger, ChatIndexInitializerTrigger>();
             services.AddSingleton<ICursorStates<ChatIndexInitializerShard.Cursor>>(static services
                 => services.CreateInstanceWith<CursorStates<ChatIndexInitializerShard.Cursor>>(IndexNames.ChatCursor));
+            services.AddSingleton<IInfiniteChatSequence, InfiniteChatSequence>();
             services.AddSingleton<IChatIndexInitializerShard, ChatIndexInitializerShard>();
             services.AddSingleton(static services
                 => services.CreateInstanceWith<ChatIndexInitializer>(
