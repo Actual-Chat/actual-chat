@@ -343,8 +343,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
     private async Task<ApiArray<ContactSearchResult>> Find(IWebTester tester, bool isPublic, string criteria, PlaceId? placeId = null)
     {
-        var account = await tester.GetOwnAccount();
-        var searchResults = await tester.SearchBackend.FindContacts(account.Id,
+        var searchResults = await tester.Search.FindContacts(tester.Session,
             new () {
                 Criteria = criteria,
                 IsPublic = isPublic,

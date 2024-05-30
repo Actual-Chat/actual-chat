@@ -19,7 +19,6 @@ public class BlazorTester : TestContext, IWebTester
     public IChats Chats => AppServices.GetRequiredService<IChats>();
     public IPlaces Places => AppServices.GetRequiredService<IPlaces>();
     public ISearch Search => AppServices.GetRequiredService<ISearch>();
-    public ISearchBackend SearchBackend => AppServices.GetRequiredService<ISearchBackend>();
     public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
     public Session Session { get; }
     public UrlMapper UrlMapper => AppServices.UrlMapper();

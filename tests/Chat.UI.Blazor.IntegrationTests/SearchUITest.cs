@@ -1,5 +1,4 @@
 using ActualChat.Chat.UI.Blazor.Services;
-using ActualChat.Contacts;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
@@ -58,11 +57,8 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         await _tester.InviteToPlace(privatePlace.Id, privatePlaceMember1, privatePlaceMember2, everyPlaceMember1, everyPlaceMember2);
         await _tester.InviteToPlace(publicPlace.Id, publicPlaceMember1, publicPlaceMember2, everyPlaceMember1, everyPlaceMember2);
 
-        // assert
-        // TODO: add user contacts
-
         // act
-        await WaitUntilIndexed(bob.Id, "one", 9);
+        await WaitUntilIndexed("one", 9);
         _searchUI.Text.Value = "one";
         var searchResults = await GetSearchResults(9);
 
@@ -125,31 +121,14 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         await AssertSearchResults(expected);
     }
 
-    private async Task WaitUntilIndexed(UserId userId, string criteria, int expectedCount)
+    private async Task WaitUntilIndexed(string criteria, int expectedCount)
     {
-        var searchBackend = _tester.AppServices.GetRequiredService<ISearchBackend>();
+        var search = _tester.AppServices.GetRequiredService<ISearch>();
         await TestExt.When(async () => {
-                var userContacts = await searchBackend.FindContacts(userId,
-                    new ContactSearchQuery {
-                        Criteria = criteria,
-                        Kind = ContactKind.User,
-                    },
-                    CancellationToken.None);
-                var publicChatContacts = await searchBackend.FindContacts(userId,
-                    new ContactSearchQuery {
-                        Criteria = criteria,
-                        Kind = ContactKind.Chat,
-                        IsPublic = true,
-                    },
-                    CancellationToken.None);
-                var privateChatContacts = await searchBackend.FindContacts(userId,
-                    new ContactSearchQuery {
-                        Criteria = criteria,
-                        Kind = ContactKind.Chat,
-                        IsPublic = false,
-                    },
-                    CancellationToken.None);
-                (userContacts.Hits.Count + publicChatContacts.Hits.Count + privateChatContacts.Hits.Count).Should().BeGreaterOrEqualTo(expectedCount);
+                var userContacts = await search.FindUserContacts(_tester.Session, null, criteria);
+                var publicChatContacts = await search.FindChatContacts(_tester.Session, null, criteria, true);
+                var privateChatContacts = await search.FindChatContacts(_tester.Session, null, criteria, false);
+                (userContacts.Count + publicChatContacts.Count + privateChatContacts.Count).Should().BeGreaterOrEqualTo(expectedCount);
             },
             TimeSpan.FromSeconds(10));
     }
@@ -164,14 +143,14 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         return await _searchUI.GetContactSearchResults();
     }
 
-    private async Task<IReadOnlyList<ContactSearchResult>> AssertSearchResults(params ContactSearchResult[] expected)
+    private async Task AssertSearchResults(params ContactSearchResult[] expected)
     {
         await TestExt.When(async () => {
                 var results = await _searchUI.GetContactSearchResults();
                 results.Should().BeEquivalentTo(expected, o => o.WithoutStrictOrdering());
             },
             TimeSpan.FromSeconds(20));
-        return await _searchUI.GetContactSearchResults();
+        await _searchUI.GetContactSearchResults();
     }
 
     private async Task<Chat> CreateChat(bool isPublic, string title, PlaceId? placeId = null)
