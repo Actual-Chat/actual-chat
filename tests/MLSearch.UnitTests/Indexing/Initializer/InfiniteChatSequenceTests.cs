@@ -239,5 +239,33 @@ public class InfiniteChatSequenceTests
         clock.VerifyNoOtherCalls();
     }
 
-    // Uses version and id of the last processed chat when retries after db error
+    [Fact]
+    public async Task LoadMethodReceivesVersionAndIdOfTheLastSeenChat()
+    {
+        const long version = 1;
+        var (lastSeenId, lastSeenVersion) = (ChatId.None, version);
+        var chats = new Mock<IChatsBackend>();
+        var allChecksPassed = true;
+        var batchCount = 0;
+        chats
+            .Setup(ListChangedCall)
+            .Returns<long, long, ChatId, int, CancellationToken>(
+                (lastVersion, _, lastId, batchSize, _) => {
+                    batchCount += 1;
+                    allChecksPassed |= (lastSeenId, lastSeenVersion) == (lastId, lastVersion);
+                    return GetNextBatch(lastVersion, batchSize);
+                });
+
+        const int batchSize = 5;
+
+        var sequence = new InfiniteChatSequence(Clock, chats.Object, Log) {
+            BatchSize = batchSize,
+        };
+        var chatSequence = sequence.LoadAsync(version, CancellationToken.None).Take((5 * batchSize) + 1);
+        await foreach (var (chatId, chatVersion) in chatSequence) {
+            (lastSeenId, lastSeenVersion) = (chatId, chatVersion);
+        }
+        Assert.True(allChecksPassed, "Unexpected parameters of ListChanged method detected.");
+        Assert.True(batchCount > 0, "No batches were loaded.");
+    }
 }
