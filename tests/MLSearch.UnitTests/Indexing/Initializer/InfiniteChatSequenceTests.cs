@@ -4,12 +4,20 @@ using System.Linq.Expressions;
 
 namespace ActualChat.MLSearch.UnitTests.Indexing.Initializer;
 
+internal static class SequenceHelpers
+{
+    public static async Task EnumerateAll<T>(this IAsyncEnumerable<T> sequence)
+    {
+        await foreach (var _ in sequence) { }
+    }
+}
+
 public class InfiniteChatSequenceTests
 {
-    private readonly IMomentClock Clock = Mock.Of<IMomentClock>();
-    private readonly IChatsBackend Chats = Mock.Of<IChatsBackend>();
-    private readonly ILogger<InfiniteChatSequence> Log = Mock.Of<ILogger<InfiniteChatSequence>>();
-    private readonly Expression<Func<IChatsBackend, Task<ApiArray<Chat.Chat>>>> ListChangedCall =
+    private static readonly IMomentClock Clock = Mock.Of<IMomentClock>();
+    private static readonly IChatsBackend Chats = Mock.Of<IChatsBackend>();
+    private static readonly ILogger<InfiniteChatSequence> Log = Mock.Of<ILogger<InfiniteChatSequence>>();
+    private static readonly Expression<Func<IChatsBackend, Task<ApiArray<Chat.Chat>>>> ListChangedCall =
         x => x.ListChanged(
             It.IsAny<long>(),
             It.IsAny<long>(),
@@ -24,7 +32,7 @@ public class InfiniteChatSequenceTests
         chats
             .Setup(ListChangedCall)
             .Returns<long, long, ChatId, int, CancellationToken>(
-                (minVersion, _, _, batchSize, _) => GetNextBatch(minVersion, batchSize)
+                (minVersion, _, _, size, _) => GetNextBatch(minVersion, size)
             );
 
         const int batchSize = 5;
@@ -35,7 +43,7 @@ public class InfiniteChatSequenceTests
 
         const int maxChatCount = 23;
         var prevVersion = 0L;
-        await foreach (var (chatId, version) in sequence.LoadAsync(1, CancellationToken.None).Take(maxChatCount)) {
+        await foreach (var (_, version) in sequence.LoadAsync(1, CancellationToken.None).Take(maxChatCount)) {
             Assert.True(version > prevVersion);
             prevVersion = version;
         }
@@ -64,7 +72,7 @@ public class InfiniteChatSequenceTests
         var cancellationSource = new CancellationTokenSource();
         await cancellationSource.CancelAsync();
         var e = await Assert.ThrowsAsync<OperationCanceledException>(async () => {
-            await foreach (var _ in sequence.LoadAsync(1, cancellationSource.Token).Take(1));
+            await sequence.LoadAsync(1, cancellationSource.Token).Take(1).EnumerateAll();
         });
         Assert.True(e.IsCancellationOf(cancellationSource.Token));
     }
@@ -86,7 +94,7 @@ public class InfiniteChatSequenceTests
         var sequence = new InfiniteChatSequence(Clock, chatsBackend.Object, Log);
 
         var e = await Assert.ThrowsAsync<TaskCanceledException>(async () => {
-            await foreach (var _ in sequence.LoadAsync(1, cancellationSource.Token).Take(1));
+            await sequence.LoadAsync(1, cancellationSource.Token).Take(1).EnumerateAll();
         });
         Assert.True(e.IsCancellationOf(cancellationSource.Token));
     }
@@ -114,7 +122,7 @@ public class InfiniteChatSequenceTests
         var sequence = new InfiniteChatSequence(clock.Object, chats.Object, Log);
 
         var e = await Assert.ThrowsAsync<TaskCanceledException>(async () => {
-            await foreach (var _ in sequence.LoadAsync(1, cancellationSource.Token).Take(1));
+            await sequence.LoadAsync(1, cancellationSource.Token).Take(1).EnumerateAll();
         });
         Assert.True(e.IsCancellationOf(cancellationSource.Token));
     }
@@ -145,7 +153,7 @@ public class InfiniteChatSequenceTests
         };
 
         var e = await Assert.ThrowsAsync<TaskCanceledException>(async () => {
-            await foreach (var _ in sequence.LoadAsync(1, cancellationSource.Token).Take(1));
+            await sequence.LoadAsync(1, cancellationSource.Token).Take(1).EnumerateAll();
         });
         Assert.True(e.IsCancellationOf(cancellationSource.Token));
 
@@ -171,12 +179,12 @@ public class InfiniteChatSequenceTests
         chats
             .Setup(ListChangedCall)
             .Returns<long, long, ChatId, int, CancellationToken>(
-                (minVersion, _, _, batchSize, _) => {
+                (minVersion, _, _, size, _) => {
                     batchNum++;
                     if (batchNum==2) {
                         throw new InvalidOperationException("Something is wrong.");
                     }
-                    return GetNextBatch(minVersion, batchSize);
+                    return GetNextBatch(minVersion, size);
                 });
 
         var log = LogMock.Create<InfiniteChatSequence>();
@@ -188,7 +196,7 @@ public class InfiniteChatSequenceTests
             RetryInterval = retryDelay,
         };
 
-        await foreach (var _ in sequence.LoadAsync(1, cancellationSource.Token).Take(3*batchSize / 2));
+        await sequence.LoadAsync(1, cancellationSource.Token).Take(3*batchSize / 2).EnumerateAll();
 
         clock.Verify(
             x => x.Delay(It.Is<TimeSpan>(ts => ts==retryDelay), It.IsAny<CancellationToken>()), Times.Once);
@@ -213,7 +221,7 @@ public class InfiniteChatSequenceTests
         chats
             .Setup(ListChangedCall)
             .Returns<long, long, ChatId, int, CancellationToken>(
-                (minVersion, _, _, batchSize, _) => GetNextBatch(minVersion, batchSize)
+                (minVersion, _, _, size, _) => GetNextBatch(minVersion, size)
             );
 
         const int batchSize = 5;
@@ -250,10 +258,12 @@ public class InfiniteChatSequenceTests
         chats
             .Setup(ListChangedCall)
             .Returns<long, long, ChatId, int, CancellationToken>(
-                (lastVersion, _, lastId, batchSize, _) => {
+                (lastVersion, _, lastId, size, _) => {
                     batchCount += 1;
+                    // ReSharper disable AccessToModifiedClosure
                     allChecksPassed |= (lastSeenId, lastSeenVersion) == (lastId, lastVersion);
-                    return GetNextBatch(lastVersion, batchSize);
+                    // ReSharper restore AccessToModifiedClosure
+                    return GetNextBatch(lastVersion, size);
                 });
 
         const int batchSize = 5;
