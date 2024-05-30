@@ -20,15 +20,14 @@ public class InfiniteChatSequence(
     public async IAsyncEnumerable<(ChatId, long)> LoadAsync(
         long minVersion, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        var (lastChatId, lastVersion) = (ChatId.None, minVersion);
         while (true) {
             cancellationToken.ThrowIfCancellationRequested();
 
             ApiArray<Chat.Chat> batch;
             try {
-                // TODO: handle the case with infinite getting the same chats in a batch
-                // when there are more than BatchSize chats with the same version
                 batch = await chats
-                    .ListChanged(minVersion, long.MaxValue, ChatId.None, BatchSize, cancellationToken)
+                    .ListChanged(lastVersion, long.MaxValue, lastChatId, BatchSize, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch(Exception e) when (!e.IsCancellationOf(cancellationToken)) {
@@ -44,8 +43,7 @@ public class InfiniteChatSequence(
             else {
                 foreach (var chat in batch) {
                     cancellationToken.ThrowIfCancellationRequested();
-                    minVersion = chat.Version + 1;
-                    yield return (chat.Id, chat.Version);
+                    yield return (lastChatId, lastVersion) = (chat.Id, chat.Version);
                 }
             }
         }

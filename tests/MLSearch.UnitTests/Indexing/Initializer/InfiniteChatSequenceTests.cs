@@ -46,12 +46,12 @@ public class InfiniteChatSequenceTests
         );
     }
 
-    private static Task<ApiArray<Chat.Chat>> GetNextBatch(long minVersion, int batchSize)
+    private static Task<ApiArray<Chat.Chat>> GetNextBatch(long lastVersion, int batchSize)
     {
         var batch = new Chat.Chat[batchSize];
         for (var i = 0; i < batchSize; i++) {
             var chatId = new ChatId(Generate.Option);
-            batch[i] = new Chat.Chat(chatId, minVersion + i);
+            batch[i] = new Chat.Chat(chatId, lastVersion + i + 1);
         }
         return Task.FromResult(new ApiArray<Chat.Chat>(batch));
     }
@@ -226,7 +226,7 @@ public class InfiniteChatSequenceTests
         var cancellationSource = new CancellationTokenSource();
         var e = await Assert.ThrowsAsync<OperationCanceledException>(async () => {
             var count = 0;
-            var chatSeq = sequence.LoadAsync(1, cancellationSource.Token).Take(batchSize * (numBatchLoads + 1));
+            var chatSeq = sequence.LoadAsync(1, cancellationSource.Token).Take((batchSize * numBatchLoads) + 1);
             await foreach (var _ in chatSeq) {
                 if (++count >= canceledAfter) {
                     await cancellationSource.CancelAsync();
