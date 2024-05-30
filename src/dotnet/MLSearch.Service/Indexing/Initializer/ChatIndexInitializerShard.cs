@@ -14,25 +14,36 @@ internal sealed class ChatIndexInitializerShard(
     ILogger<ChatIndexInitializerShard> log
 ) : IChatIndexInitializerShard
 {
+    private object _lock = new();
     internal record Cursor(long LastVersion);
-    private const string CursorKey = $"{nameof(ChatIndexInitializer)}.{nameof(Cursor)}";
-    private const int BatchSize = 1000;
-    private static readonly TimeSpan UpdateCursorInterval = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(10);
-    private static readonly TimeSpan ExecuteJobTimeout = TimeSpan.FromMinutes(3);
-    private readonly Channel<MLSearch_TriggerChatIndexingCompletion> _events =
-        Channel.CreateBounded<MLSearch_TriggerChatIndexingCompletion>(new BoundedChannelOptions(BatchSize) {
+    public const string CursorKey = $"{nameof(ChatIndexInitializer)}.{nameof(Cursor)}";
+
+    private long _maxVersion;
+    private long _eventCount;
+    private Channel<MLSearch_TriggerChatIndexingCompletion>? _events;
+    private Channel<MLSearch_TriggerChatIndexingCompletion> Events => LazyInitializer.EnsureInitialized(
+        ref _events,
+        ref _lock,
+        () => Channel.CreateBounded<MLSearch_TriggerChatIndexingCompletion>(new BoundedChannelOptions(InputBufferCapacity) {
             FullMode = BoundedChannelFullMode.Wait,
             SingleReader = true,
             SingleWriter = false,
-        });
-    private long _eventCount;
-    private long _maxVersion;
-    private readonly SemaphoreSlim _semaphore = new(BatchSize, BatchSize);
+        }));
+    private SemaphoreSlim? _semaphore;
+    private SemaphoreSlim Semaphore => LazyInitializer.EnsureInitialized(
+        ref _semaphore,
+        ref _lock,
+        () => new(MaxConcurrency, MaxConcurrency));
     private readonly ConcurrentDictionary<ChatId, (long, long)> _scheduledJobs = new();
 
+    public int InputBufferCapacity { get; init; } = 50;
+    public int MaxConcurrency { get; init; } = 20;
+    public TimeSpan UpdateCursorInterval { get; init; } = TimeSpan.FromSeconds(30);
+    public TimeSpan RetryInterval { get; init; } = TimeSpan.FromSeconds(10);
+    public TimeSpan ExecuteJobTimeout { get; init; } = TimeSpan.FromMinutes(3);
+
     public async ValueTask PostAsync(MLSearch_TriggerChatIndexingCompletion evt, CancellationToken cancellationToken)
-        => await _events.Writer.WriteAsync(evt, cancellationToken).ConfigureAwait(false);
+        => await Events.Writer.WriteAsync(evt, cancellationToken).ConfigureAwait(false);
 
     public async Task UseAsync(CancellationToken cancellationToken)
     {
@@ -50,13 +61,13 @@ internal sealed class ChatIndexInitializerShard(
         await Task.Yield();
 
         while (!cancellationToken.IsCancellationRequested) {
-            var evt = await _events.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+            var evt = await Events.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
             Interlocked.Increment(ref _eventCount);
             if (_scheduledJobs.TryRemove(evt.Id, out var info) && info is var (version, _)) {
                 if (Volatile.Read(ref _maxVersion) < version) {
                     Volatile.Write(ref _maxVersion, version);
                 }
-                _semaphore.Release();
+                Semaphore.Release();
             }
         }
     }
@@ -96,7 +107,7 @@ internal sealed class ChatIndexInitializerShard(
                     if (_scheduledJobs.TryRemove(jobId, out var info) && info is var (_, timestamp)) {
                         log.LogInformation("Evicting indexing job for chat #{JobId} which is stall for {Interval}.",
                             jobId, TimeSpan.FromTicks(now - timestamp));
-                        _semaphore.Release();
+                        Semaphore.Release();
                     }
                 }
                 await cursorStates.SaveAsync(CursorKey, new Cursor(nextVersion), cancellationToken).ConfigureAwait(false);
@@ -113,7 +124,7 @@ internal sealed class ChatIndexInitializerShard(
         await Task.Yield();
 
         await foreach(var (chatId, version) in chatSequence.LoadAsync(minVersion, cancellationToken).ConfigureAwait(false)) {
-            await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             while(true) {
                 try {
                     var job = new MLSearch_TriggerChatIndexing(chatId);
