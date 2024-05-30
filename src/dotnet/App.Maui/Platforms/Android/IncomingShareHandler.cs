@@ -30,46 +30,22 @@ public class IncomingShareHandler
             !OrdinalEquals(action, Intent.ActionSendMultiple))
             return;
 
-        Log.LogInformation("-> IncomingShare, send intent is detected");
+        Log.LogInformation("-> IncomingShare, send intent is detected. Action: {Action}", action);
         var mimeType = intent.Type ?? "";
         var hasExtraStream = intent.Extras?.ContainsKey(Intent.ExtraStream) ?? false;
         if (OrdinalEquals(action, Intent.ActionSend)) {
-            if (OrdinalEquals(mimeType, System.Net.Mime.MediaTypeNames.Text.Plain))
+            if (hasExtraStream)
+                _ = HandleFilesSend(mimeType, GetStreams(intent, false));
+            else if (OrdinalEquals(mimeType, System.Net.Mime.MediaTypeNames.Text.Plain))
                 _ = HandlePlainTextSend(intent.GetStringExtra(Intent.ExtraText));
-            else if (hasExtraStream) {
-                var stream = Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
-                    ? intent.GetParcelableExtra(Intent.ExtraStream, Class.FromType(typeof(Uri)))
-#pragma warning disable CA1422
-                    : intent.GetParcelableExtra(Intent.ExtraStream);
-#pragma warning restore CA1422
-                if (stream is Uri uri)
-                    _ = HandleFilesSend(mimeType, new[] { uri });
-                else
-                    Log.LogWarning("Unsupported stream type: '{StreamType}'", stream?.ToString() ?? "<null>");
-            }
             else
                 Log.LogWarning("Unsupported send mime type: '{MimiType}'", mimeType);
         }
         else {
-            if (hasExtraStream) {
-                var streams = Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
-                    ? intent.GetParcelableArrayListExtra(Intent.ExtraStream, Class.FromType(typeof(Uri)))
-#pragma warning disable CA1422
-                    : intent.GetParcelableArrayListExtra(Intent.ExtraStream);
-#pragma warning restore CA1422
-                if (streams == null)
-                    Log.LogWarning("No file streams provided");
-                else {
-                    var uris = streams.OfType<Uri>().ToArray();
-                    if (uris.Length > 0)
-                        _ = HandleFilesSend(mimeType, uris);
-                    else
-                        Log.LogWarning("No supported image files provided");
-                }
-            }
-            else {
-                Log.LogWarning("Unsupported send mime type: '{MimiType}'", mimeType);
-            }
+            if (hasExtraStream)
+                _ = HandleFilesSend(mimeType, GetStreams(intent, true));
+            else
+                Log.LogWarning("No extra streams for SendMultiple action. Mime type: '{MimiType}'", mimeType);
         }
     }
 
@@ -82,7 +58,24 @@ public class IncomingShareHandler
         Log.LogInformation("About to send text: '{Text}'", text);
         return DispatchToBlazor(
             c => c.GetRequiredService<IncomingShareUI>().ShareText(text),
-            "IncomingShareUI.ShareText(...)", true);
+            "IncomingShareUI.ShareText(...)", true)
+            .WithErrorLog(Log, "Failed send text")
+            .SuppressExceptions();
+    }
+
+    private Task HandleFilesSend(string mimeType, IList? streams)
+    {
+        if (streams == null || streams.Count == 0) {
+            Log.LogWarning("No file streams provided");
+            return Task.CompletedTask;
+        }
+        var uris = streams.OfType<Uri>().ToArray();
+        if (uris.Length <= 0) {
+            Log.LogWarning("No supported file streams provided. Type: {StreamType}",
+                streams[0]?.GetType().FullName ?? "<null>");
+            return Task.CompletedTask;
+        }
+        return HandleFilesSend(mimeType, (ICollection<Uri>)uris);
     }
 
     private Task HandleFilesSend(string mimeType, ICollection<Uri> uris)
@@ -101,6 +94,29 @@ public class IncomingShareHandler
                 .SkipNullItems()
                 .ToArray();
             incomingShareUI.ShareFiles(fileInfos);
-        }, "IncomingShareUI.ShareFiles(...)", true);
+        }, "IncomingShareUI.ShareFiles(...)", true)
+        .WithErrorLog(Log, "Failed send files")
+        .SuppressExceptions();
+    }
+
+    private static IList? GetStreams(Intent intent, bool multipleStreams)
+    {
+        if (!multipleStreams) {
+            var stream = Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
+                ? intent.GetParcelableExtra(Intent.ExtraStream, Class.FromType(typeof(Uri)))
+#pragma warning disable CA1422
+                : intent.GetParcelableExtra(Intent.ExtraStream);
+#pragma warning restore CA1422
+            var streams = new object?[] { stream };
+            return streams;
+        }
+        else {
+            var streams = Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
+                ? intent.GetParcelableArrayListExtra(Intent.ExtraStream, Class.FromType(typeof(Uri)))
+#pragma warning disable CA1422
+                : intent.GetParcelableArrayListExtra(Intent.ExtraStream);
+#pragma warning restore CA1422
+            return streams;
+        }
     }
 }
