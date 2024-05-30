@@ -20,7 +20,6 @@ public interface IWebTester : IDisposable, IAsyncDisposable
     IChats Chats { get; }
     IPlaces Places { get; }
     ISearch Search { get; }
-    ISearchBackend SearchBackend { get; }
     IAuthBackend AuthBackend { get; }
     Session Session { get; }
     UrlMapper UrlMapper { get; }
@@ -46,7 +45,6 @@ public class WebClientTester : IWebClientTester
     public IChats Chats => AppServices.GetRequiredService<IChats>();
     public IPlaces Places => AppServices.GetRequiredService<IPlaces>();
     public ISearch Search => AppServices.GetRequiredService<ISearch>();
-    public ISearchBackend SearchBackend => AppServices.GetRequiredService<ISearchBackend>();
     public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
     public Session Session { get; }
     public UrlMapper UrlMapper => AppServices.UrlMapper();
