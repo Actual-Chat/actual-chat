@@ -78,9 +78,19 @@
     protected override async Task OnInitializedAsync() {
         var timeZones = await TimeZones.List("en-US", CancellationToken.None);
         _timeZones = timeZones.ToDictionary(x => x.Id, x => x.IanaName);
-        _model.TimeZone = _timeZones.ContainsKey(Hub.BrowserInfo.TimeZone)
-            ? Hub.BrowserInfo.TimeZone
-            : await TimeZones.ConvertWindowsToIana(Hub.BrowserInfo.TimeZone, default);
+        if (_timeZones.ContainsKey(Hub.BrowserInfo.TimeZone))
+            _model.TimeZone = Hub.BrowserInfo.TimeZone;
+        else {
+            string convertedTimeZone = "";
+            try {
+                convertedTimeZone = await TimeZones.ConvertWindowsToIana(Hub.BrowserInfo.TimeZone, default);
+            }
+            catch {
+                // Ignore
+            }
+            if (!convertedTimeZone.IsNullOrEmpty())
+                _model.TimeZone = convertedTimeZone;
+        }
     }
 
     protected override Task<bool> Validate() {
