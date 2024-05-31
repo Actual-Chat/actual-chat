@@ -14,12 +14,21 @@ internal sealed class ChatIndexInitializerShard(
     ILogger<ChatIndexInitializerShard> log
 ) : IChatIndexInitializerShard
 {
-    private object _lock = new();
-    internal record Cursor(long LastVersion);
     public const string CursorKey = $"{nameof(ChatIndexInitializer)}.{nameof(Cursor)}";
+    internal record Cursor(long LastVersion);
+    public class SharedState(Cursor cursor, int maxConcurrency)
+    {
+        private long _maxVersion = cursor.LastVersion;
+        public ref long MaxVersion => ref _maxVersion;
+        private long _eventCount;
+        public ref long EventCount => ref _eventCount;
+        public long PrevEventCount { get; set; }
 
-    private long _maxVersion;
-    private long _eventCount;
+        public SemaphoreSlim Semaphore { get; } = new(maxConcurrency, maxConcurrency);
+        public ConcurrentDictionary<ChatId, (long, long)> ScheduledJobs { get; } = new();
+    }
+
+    private object _lock = new();
     private Channel<MLSearch_TriggerChatIndexingCompletion>? _events;
     private Channel<MLSearch_TriggerChatIndexingCompletion> Events => LazyInitializer.EnsureInitialized(
         ref _events,
@@ -29,12 +38,6 @@ internal sealed class ChatIndexInitializerShard(
             SingleReader = true,
             SingleWriter = false,
         }));
-    private SemaphoreSlim? _semaphore;
-    private SemaphoreSlim Semaphore => LazyInitializer.EnsureInitialized(
-        ref _semaphore,
-        ref _lock,
-        () => new(MaxConcurrency, MaxConcurrency));
-    private readonly ConcurrentDictionary<ChatId, (long, long)> _scheduledJobs = new();
 
     public int InputBufferCapacity { get; init; } = 50;
     public int MaxConcurrency { get; init; } = 20;
@@ -48,95 +51,139 @@ internal sealed class ChatIndexInitializerShard(
     public async Task UseAsync(CancellationToken cancellationToken)
     {
         var cursor = await cursorStates.LoadAsync(CursorKey, cancellationToken).ConfigureAwait(false) ?? new(0);
-        _maxVersion = cursor.LastVersion;
+        var state = new SharedState(cursor, MaxConcurrency);
+
+        var chats = chatSequence
+            .LoadAsync(cursor.LastVersion, cancellationToken)
+            .Select(info => new ChatInfo(info));
+        var completionEvents = ReadCompletionEvents(cancellationToken);
+        var updateCursorMoments = ReadUpdateCursorMoments(cancellationToken);
+
         await Task.WhenAll([
-            ScheduleJobsAsync(cursor.LastVersion, cancellationToken),
-            HandleEventsAsync(cancellationToken),
-            UpdateCursorAsync(cancellationToken),
+            RunAsync(chats, (evt, ct) => ScheduleJobForChatAsync(evt, state, RetryInterval, commander, clock, log, ct), cancellationToken),
+            RunAsync(completionEvents, (evt, ct) => HandleCompletionEventAsync(evt, state, ct), cancellationToken),
+            RunAsync(updateCursorMoments, (evt, ct) => UpdateCursorAsync(evt, state, ExecuteJobTimeout, cursorStates, log, ct), cancellationToken),
         ]).ConfigureAwait(false);
     }
 
-    private async Task HandleEventsAsync(CancellationToken cancellationToken)
+    private static ValueTask HandleCompletionEventAsync(
+        MLSearch_TriggerChatIndexingCompletion evt, SharedState state, CancellationToken _)
     {
-        await Task.Yield();
-
-        while (!cancellationToken.IsCancellationRequested) {
-            var evt = await Events.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
-            Interlocked.Increment(ref _eventCount);
-            if (_scheduledJobs.TryRemove(evt.Id, out var info) && info is var (version, _)) {
-                if (Volatile.Read(ref _maxVersion) < version) {
-                    Volatile.Write(ref _maxVersion, version);
-                }
-                Semaphore.Release();
+        Interlocked.Increment(ref state.EventCount);
+        if (state.ScheduledJobs.TryRemove(evt.Id, out var info) && info is var (version, _)) {
+            if (Volatile.Read(ref state.MaxVersion) < version) {
+                Volatile.Write(ref state.MaxVersion, version);
             }
+            state.Semaphore.Release();
+        }
+        return ValueTask.CompletedTask;
+    }
+
+    private async IAsyncEnumerable<MLSearch_TriggerChatIndexingCompletion> ReadCompletionEvents(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        while (true) {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return await Events.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private async Task UpdateCursorAsync(CancellationToken cancellationToken)
+    private async IAsyncEnumerable<Moment> ReadUpdateCursorMoments(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await Task.Yield();
+        while (true) {
+            await clock.Delay(UpdateCursorInterval, cancellationToken).ConfigureAwait(false);
+            yield return clock.Now;
+        }
+    }
+    private static async ValueTask UpdateCursorAsync(
+        Moment updateMoment,
+        SharedState state,
+        TimeSpan stallJobTimeout,
+        ICursorStates<Cursor> cursorStates,
+        ILogger log,
+        CancellationToken cancellationToken)
+    {
+        try {
+            var eventCount = Volatile.Read(ref state.EventCount);
+            if (eventCount == state.PrevEventCount) {
+                // There is no point in advancing cursor as no job reported its completion.
+                return;
+            }
+            state.PrevEventCount = eventCount;
+            var now = updateMoment.EpochOffset.Ticks;
+            var pastMoment = now - stallJobTimeout.Ticks;
+            var stallJobs = new List<ChatId>();
+            // This is max chat version where indexing is completed.
+            // In the case our schedule is empty we may want to advance cursor till there.
+            var nextVersion = Volatile.Read(ref state.MaxVersion) + 1;
+            foreach (var (jobId, (version, timestamp)) in state.ScheduledJobs) {
+                if (timestamp < pastMoment) {
+                    // Job is stall, so skipping its version.
+                    stallJobs.Add(jobId);
+                }
+                else {
+                    // Job is still in the scheduled state,
+                    // so we may want to re-run it in the case of failure.
+                    nextVersion = Math.Min(nextVersion, version);
+                }
+            }
+            foreach (var jobId in stallJobs) {
+                if (state.ScheduledJobs.TryRemove(jobId, out var info) && info is var (_, timestamp)) {
+                    log.LogInformation("Evicting indexing job for chat #{JobId} which is stall for {Interval}.",
+                        jobId, TimeSpan.FromTicks(now - timestamp));
+                    state.Semaphore.Release();
+                }
+            }
+            await cursorStates.SaveAsync(CursorKey, new Cursor(nextVersion), cancellationToken).ConfigureAwait(false);
+            log.LogInformation("Indexing cursor is advanced to the chat version #{Version}", nextVersion);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            log.LogError(e, "Failed to update cursor state.");
+        }
+    }
 
-        var lastEventCount = Volatile.Read(ref _eventCount);
-        while (!cancellationToken.IsCancellationRequested) {
+    public record ChatInfo(ChatId chatId, long version)
+    {
+        public ChatInfo((ChatId ChatId, long Version) info): this(info.ChatId, info.Version)
+        { }
+    }
+
+    private static async ValueTask ScheduleJobForChatAsync(
+        ChatInfo chatInfo,
+        SharedState state,
+        TimeSpan retryInterval,
+        ICommander commander,
+        IMomentClock clock,
+        ILogger log,
+        CancellationToken cancellationToken)
+    {
+        var (chatId, version) = chatInfo;
+        await state.Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        while (true) {
             try {
-                await clock.Delay(UpdateCursorInterval, cancellationToken).ConfigureAwait(false);
-                var eventCount = Volatile.Read(ref _eventCount);
-                if (eventCount == lastEventCount) {
-                    // There is no point in advancing cursor as no job reported its completion.
-                    continue;
-                }
-                lastEventCount = eventCount;
-                var now = clock.Now.EpochOffset.Ticks;
-                var pastMoment = now - ExecuteJobTimeout.Ticks;
-                var stallJobs = new List<ChatId>();
-                // This is max chat version where indexing is completed.
-                // In the case our schedule is empty we may want to advance cursor till there.
-                var nextVersion = Volatile.Read(ref _maxVersion) + 1;
-                foreach (var (jobId, (version, timestamp)) in _scheduledJobs) {
-                    if (timestamp < pastMoment) {
-                        // Job is stall, so skipping its version.
-                        stallJobs.Add(jobId);
-                    }
-                    else {
-                        // Job is still in the scheduled state,
-                        // so we may want to re-run it in the case of failure.
-                        nextVersion = Math.Min(nextVersion, version);
-                    }
-                }
-                foreach (var jobId in stallJobs) {
-                    if (_scheduledJobs.TryRemove(jobId, out var info) && info is var (_, timestamp)) {
-                        log.LogInformation("Evicting indexing job for chat #{JobId} which is stall for {Interval}.",
-                            jobId, TimeSpan.FromTicks(now - timestamp));
-                        Semaphore.Release();
-                    }
-                }
-                await cursorStates.SaveAsync(CursorKey, new Cursor(nextVersion), cancellationToken).ConfigureAwait(false);
-                log.LogInformation("Indexing cursor is advanced to the chat version #{Version}", nextVersion);
+                var job = new MLSearch_TriggerChatIndexing(chatId);
+                await commander.Call(job, cancellationToken).ConfigureAwait(false);
+                state.ScheduledJobs[chatId] = (version, clock.Now.EpochOffset.Ticks);
+                break;
             }
             catch (Exception e) when (e is not OperationCanceledException) {
-                log.LogError(e, "Failed to update cursor state.");
+                log.LogError(e, "Failed to schedule an indexing job for chat #{ChatId}.", chatId);
+                await clock.Delay(retryInterval, cancellationToken).ConfigureAwait(false);
             }
         }
     }
 
-    private async Task ScheduleJobsAsync(long minVersion, CancellationToken cancellationToken)
+    private static async Task RunAsync<TEvent>(
+        IAsyncEnumerable<TEvent> events,
+        Func<TEvent, CancellationToken, ValueTask> handler,
+        CancellationToken cancellationToken
+    )
     {
         await Task.Yield();
 
-        await foreach(var (chatId, version) in chatSequence.LoadAsync(minVersion, cancellationToken).ConfigureAwait(false)) {
-            await Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-            while(true) {
-                try {
-                    var job = new MLSearch_TriggerChatIndexing(chatId);
-                    await commander.Call(job, cancellationToken).ConfigureAwait(false);
-                    _scheduledJobs[chatId] = (version, clock.Now.EpochOffset.Ticks);
-                    break;
-                }
-                catch(Exception e) when (e is not OperationCanceledException) {
-                    log.LogError(e, "Failed to schedule an indexing job for chat #{ChatId}.", chatId);
-                    await clock.Delay(RetryInterval, cancellationToken).ConfigureAwait(false);
-                }
-            }
+        await foreach(var evt in events.ConfigureAwait(false).WithCancellation(cancellationToken)) {
+            await handler.Invoke(evt, cancellationToken).ConfigureAwait(false);
         }
     }
 }
