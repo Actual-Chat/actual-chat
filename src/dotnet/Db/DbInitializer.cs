@@ -1,3 +1,5 @@
+using System.Data;
+using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
@@ -27,6 +29,19 @@ public abstract class DbInitializer<
     {
         var dbContext = DbHub.ContextFactory.CreateDbContext(default);
         dbContext.ReadWrite(readWrite);
+
+        // Disable auto prepare for statements as we change Collation during migration
+        var connectionString = dbContext.Database.GetConnectionString();
+        var connectionStringBuilder = new DbConnectionStringBuilder {
+            ConnectionString = connectionString,
+        };
+        const string maxAutoPrepare = "Max Auto Prepare";
+        if (connectionStringBuilder.ContainsKey(maxAutoPrepare)
+            && (string)connectionStringBuilder[maxAutoPrepare] != "0")
+            connectionStringBuilder[maxAutoPrepare] = "0";
+        if (dbContext.Database.GetDbConnection().State == ConnectionState.Closed)
+            dbContext.Database.SetConnectionString(connectionStringBuilder.ConnectionString);
+
         ConfigureContext(dbContext);
         return dbContext;
     }
