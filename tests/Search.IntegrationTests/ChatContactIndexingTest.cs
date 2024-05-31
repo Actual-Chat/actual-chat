@@ -1,6 +1,7 @@
 using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Search.Module;
+using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
 
@@ -66,7 +67,8 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
                     publicChat2.BuildSearchResult(bob.Id),
                     publicPlacePublicChat1.BuildSearchResult(bob.Id),
                     publicPlacePublicChat2.BuildSearchResult(bob.Id),
-                }
+                },
+                o => o.ExcludingSearchMatch()
             );
 
         searchResults = await Find(true, "chat 1", 2);
@@ -75,7 +77,8 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
                 new[] {
                     publicChat1.BuildSearchResult(bob.Id),
                     publicPlacePublicChat1.BuildSearchResult(bob.Id),
-                }
+                },
+                o => o.ExcludingSearchMatch()
             );
 
         searchResults = await Find(false, "chat", 8);
@@ -90,7 +93,8 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
                     privatePlacePublicChat2.BuildSearchResult(bob.Id),
                     privatePlacePrivateChat1.BuildSearchResult(bob.Id),
                     privatePlacePrivateChat2.BuildSearchResult(bob.Id),
-                }
+                },
+                o => o.ExcludingSearchMatch()
             );
 
         searchResults = await Find(false, "chat 2", 4);
@@ -101,7 +105,8 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
                     publicPlacePrivateChat2.BuildSearchResult(bob.Id),
                     privatePlacePublicChat2.BuildSearchResult(bob.Id),
                     privatePlacePrivateChat2.BuildSearchResult(bob.Id),
-                }
+                },
+                o => o.ExcludingSearchMatch()
             );
     }
 

@@ -1,5 +1,6 @@
 using ActualChat.Contacts;
 using ActualChat.Search.Module;
+using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 
@@ -81,8 +82,9 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
         // assert
         await _tester.SignIn(owner.User);
         searchResults = await Find("User A", 10);
-        var expected = accounts[10..20].Select(x => ownerId.BuildSearchResult(x.Id, "User A" + x.LastName));
-        searchResults.Should().BeEquivalentTo(expected);
+        var expected = accounts[10..20]
+            .Select(x => ownerId.BuildSearchResult(x.Id, "User A" + x.LastName, [(0, 4), (5, 8)]));
+        searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingRank());
     }
 
     private async Task<ApiArray<ContactSearchResult>> Find(string criteria, int expectedCount, int requestCount = 20)

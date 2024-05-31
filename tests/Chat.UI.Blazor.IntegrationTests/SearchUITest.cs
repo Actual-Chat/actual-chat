@@ -1,5 +1,6 @@
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Search;
+using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
 using SearchUI = ActualChat.Chat.UI.Blazor.Services.SearchUI;
@@ -73,7 +74,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
                 publicChat1,
                 publicPlacePublicChat1))
             .ToArray();
-        searchResults.Should().BeEquivalentTo(expected);
+        searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act
         _searchUI.Text.Value = "bla bla";
@@ -147,7 +148,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
     {
         await TestExt.When(async () => {
                 var results = await _searchUI.GetContactSearchResults();
-                results.Should().BeEquivalentTo(expected, o => o.WithoutStrictOrdering());
+                results.Should().BeEquivalentTo(expected, o => o.WithoutStrictOrdering().ExcludingSearchMatch());
             },
             TimeSpan.FromSeconds(20));
         await _searchUI.GetContactSearchResults();

@@ -106,7 +106,7 @@
 
     private void OnNavbarSelectedGroupChanged(object? s, EventArgs e) {
         if (PanelsUI.Left.IsSearchMode)
-            PanelsUI.Left.SearchToggle();
+            PanelsUI.Left.ToggleSearchMode();
         if (NavbarUI.IsPinnedChatSelected(out _))
             PanelsUI.HidePanels();
     }

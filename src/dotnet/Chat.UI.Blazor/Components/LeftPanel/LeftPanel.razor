@@ -75,7 +75,7 @@
 
     private void OpenRightSearchPanel() {
         PanelsUI.Right.SearchToggle();
-        PanelsUI.Left.SearchToggle();
+        PanelsUI.Left.ToggleSearchMode();
         if (ScreenSize.IsNarrow()) {
             PanelsUI.Left.SetIsVisible(false);
         }
