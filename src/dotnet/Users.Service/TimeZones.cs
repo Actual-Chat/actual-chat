@@ -3,7 +3,7 @@ using TimeZoneNames;
 
 namespace ActualChat.Users;
 
-public class TimeZones : ITimeZones
+public class TimeZones(ILogger<TimeZones> log) : ITimeZones
 {
     // [ComputeMethod]
     public virtual Task<ApiArray<TimeZone>> List(string languageCode, CancellationToken cancellationToken)
@@ -17,7 +17,13 @@ public class TimeZones : ITimeZones
     // [ComputeMethod]
     public virtual Task<string> ConvertWindowsToIana(string windowsTimeZone, CancellationToken cancellationToken)
     {
-        var ianaTimeZone = TZConvert.WindowsToIana(windowsTimeZone);
-        return Task.FromResult(ianaTimeZone);
+        try {
+            var ianaTimeZone = TZConvert.WindowsToIana(windowsTimeZone);
+            return Task.FromResult(ianaTimeZone);
+        }
+        catch (InvalidTimeZoneException e) {
+            log.LogWarning(e, "Failed to converter Windows time zone to Iana");
+        }
+        return Task.FromResult("");
     }
 }
