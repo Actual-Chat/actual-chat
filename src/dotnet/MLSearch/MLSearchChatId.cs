@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.MLSearch;
 
+using MLSearchChatId = ChatId;
+
+/*
 // TODO: this is a stub, remove or implement properly
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public readonly partial struct MLSearchChatId : ISymbolIdentifier<MLSearchChatId>
@@ -30,4 +33,6 @@ public readonly partial struct MLSearchChatId : ISymbolIdentifier<MLSearchChatId
     public override bool Equals(object? obj) => obj is MLSearchChatId other && Equals(other);
     public override int GetHashCode() => Id.GetHashCode();
     public static bool operator ==(MLSearchChatId left, MLSearchChatId right) => left.Equals(right);
-    public static bool operator !=(MLSearchChatId left, MLSearchChatId right) => !left.Equals(right);}
+    public static bool operator !=(MLSearchChatId left, MLSearchChatId right) => !left.Equals(right);
+}
+*/

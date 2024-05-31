@@ -119,8 +119,11 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         );
         // -- Register Controllers --
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
-        
+        // -- Register IMLSearchHanders --
+        services.AddSingleton<IMLSearch, MLSearchImpl>();
+
         // -- Register Swagger endpoint (OpenAPI) --
+        /*
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(c => {
             c.IncludeXmlComments(
@@ -140,5 +143,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             });
             c.SwaggerDoc("bot-tools-v1", new OpenApiInfo { Title = "Bot Tools API - V1", Version = "v1"});
         });
+        */
     }
 }

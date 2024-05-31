@@ -2,6 +2,7 @@
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Invite
 @using ActualChat.Media
+@using ActualChat.MLSearch
 @inherits ComputedStateComponent<PlaceSettingsStartModalPage.ComputedModel>
 
 @{
@@ -170,7 +171,7 @@
 
     protected override void OnInitialized() {
         PlaceId = Context.GetTypedModel<PlaceId>();
-        Context.SetTitle("Edit place settings");
+        Context.SetTitle("Edit CREATE ML CHAT settings");
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
         Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
         base.OnInitialized();
@@ -255,6 +256,9 @@
     }
 
     private async Task Save() {
+        var command = new MLSearch_CreateChat(Session, default, default);
+        await UICommander.Run(command);
+        /*
         var place = await Hub.Places.Get(Session, PlaceId, default).Require();
         var newPlace = place with {
             Title = _form!.Title,
@@ -265,6 +269,7 @@
             Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
         });
         await UICommander.Run(command);
+        */
     }
 
     private void OnPlaceDeleteClick()

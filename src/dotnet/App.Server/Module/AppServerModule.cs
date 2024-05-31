@@ -100,10 +100,12 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
 
         // Swagger
         // Needed for ML Bot <-> OpenAPI integration
+        /* WTF?! This is not what I've saved.
         app.UseSwagger();
         app.UseSwaggerUI(c => {
             c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
         });
+        */
         
 
         // Response compression

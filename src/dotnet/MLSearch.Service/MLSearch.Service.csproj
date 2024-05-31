@@ -2,6 +2,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
     <ProjectReference Include="..\Db\Db.csproj" />
+    <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\MLSearch.Contracts\MLSearch.Contracts.csproj" />
   </ItemGroup>
   <ItemGroup>
