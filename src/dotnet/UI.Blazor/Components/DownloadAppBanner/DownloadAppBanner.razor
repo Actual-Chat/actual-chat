@@ -27,6 +27,8 @@
         @if (CanBeClosed) {
             <HeaderButton
                 Click="@OnClose"
+                PreventDefault="@true"
+                StopPropagation="@true"
                 Class="c-close-btn">
                 <i class="icon-close"></i>
             </HeaderButton>
