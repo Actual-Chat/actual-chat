@@ -27,6 +27,20 @@ internal sealed class ChatIndexInitializerShard(
         public SemaphoreSlim Semaphore { get; } = new(maxConcurrency, maxConcurrency);
         public ConcurrentDictionary<ChatId, (long, long)> ScheduledJobs { get; } = new();
     }
+    public delegate ValueTask UpdateCursorHandler(
+        Moment moment, SharedState state, TimeSpan stallJobTimeout,
+        ICursorStates<Cursor> cursorStates,
+        ILogger log,
+        CancellationToken cancellationToken);
+
+    public delegate ValueTask ScheduleJobHandler(
+        ChatInfo chatInfo, SharedState state, TimeSpan retryInterval,
+        ICommander commander,
+        IMomentClock clock,
+        ILogger log,
+        CancellationToken cancellationToken);
+    public delegate void CompleteJobHandler(
+        MLSearch_TriggerChatIndexingCompletion evt, SharedState state);
 
     private object _lock = new();
     private Channel<MLSearch_TriggerChatIndexingCompletion>? _events;
@@ -45,6 +59,10 @@ internal sealed class ChatIndexInitializerShard(
     public TimeSpan RetryInterval { get; init; } = TimeSpan.FromSeconds(10);
     public TimeSpan ExecuteJobTimeout { get; init; } = TimeSpan.FromMinutes(3);
 
+    public UpdateCursorHandler OnUpdateCursor { get; init; } = UpdateCursorAsync;
+    public ScheduleJobHandler OnScheduleJob { get; init; } = ScheduleJobForChatAsync;
+    public CompleteJobHandler OnCompleteJob { get; init; } = HandleCompletionEvent;
+
     public async ValueTask PostAsync(MLSearch_TriggerChatIndexingCompletion evt, CancellationToken cancellationToken)
         => await Events.Writer.WriteAsync(evt, cancellationToken).ConfigureAwait(false);
 
@@ -60,14 +78,18 @@ internal sealed class ChatIndexInitializerShard(
         var updateCursorMoments = ReadUpdateCursorMoments(cancellationToken);
 
         await Task.WhenAll([
-            RunAsync(chats, (evt, ct) => ScheduleJobForChatAsync(evt, state, RetryInterval, commander, clock, log, ct), cancellationToken),
-            RunAsync(completionEvents, (evt, ct) => HandleCompletionEventAsync(evt, state, ct), cancellationToken),
-            RunAsync(updateCursorMoments, (evt, ct) => UpdateCursorAsync(evt, state, ExecuteJobTimeout, cursorStates, log, ct), cancellationToken),
+            RunAsync(chats, ScheduleJobForChatAsync, state, cancellationToken),
+            RunAsync(completionEvents, HandleCompletionEventAsync, state, cancellationToken),
+            RunAsync(updateCursorMoments, UpdateCursorAsync, state, cancellationToken),
         ]).ConfigureAwait(false);
     }
 
-    private static ValueTask HandleCompletionEventAsync(
-        MLSearch_TriggerChatIndexingCompletion evt, SharedState state, CancellationToken _)
+    private ValueTask HandleCompletionEventAsync(MLSearch_TriggerChatIndexingCompletion evt, SharedState state, CancellationToken _) {
+        OnCompleteJob(evt, state);
+        return ValueTask.CompletedTask;
+    }
+    public static void HandleCompletionEvent(
+        MLSearch_TriggerChatIndexingCompletion evt, SharedState state)
     {
         Interlocked.Increment(ref state.EventCount);
         if (state.ScheduledJobs.TryRemove(evt.Id, out var info) && info is var (version, _)) {
@@ -76,7 +98,6 @@ internal sealed class ChatIndexInitializerShard(
             }
             state.Semaphore.Release();
         }
-        return ValueTask.CompletedTask;
     }
 
     private async IAsyncEnumerable<MLSearch_TriggerChatIndexingCompletion> ReadCompletionEvents(
@@ -96,7 +117,11 @@ internal sealed class ChatIndexInitializerShard(
             yield return clock.Now;
         }
     }
-    private static async ValueTask UpdateCursorAsync(
+
+    private ValueTask UpdateCursorAsync(Moment updateMoment, SharedState state, CancellationToken cancellationToken)
+        => OnUpdateCursor(updateMoment, state, UpdateCursorInterval, cursorStates, log, cancellationToken);
+
+    public static async ValueTask UpdateCursorAsync(
         Moment updateMoment,
         SharedState state,
         TimeSpan stallJobTimeout,
@@ -149,6 +174,9 @@ internal sealed class ChatIndexInitializerShard(
         { }
     }
 
+    private ValueTask ScheduleJobForChatAsync(ChatInfo chatInfo, SharedState state, CancellationToken cancellationToken)
+        => OnScheduleJob(chatInfo, state, RetryInterval, commander, clock, log, cancellationToken);
+
     private static async ValueTask ScheduleJobForChatAsync(
         ChatInfo chatInfo,
         SharedState state,
@@ -176,14 +204,15 @@ internal sealed class ChatIndexInitializerShard(
 
     private static async Task RunAsync<TEvent>(
         IAsyncEnumerable<TEvent> events,
-        Func<TEvent, CancellationToken, ValueTask> handler,
+        Func<TEvent, SharedState, CancellationToken, ValueTask> handler,
+        SharedState state,
         CancellationToken cancellationToken
     )
     {
         await Task.Yield();
 
         await foreach(var evt in events.ConfigureAwait(false).WithCancellation(cancellationToken)) {
-            await handler.Invoke(evt, cancellationToken).ConfigureAwait(false);
+            await handler.Invoke(evt, state, cancellationToken).ConfigureAwait(false);
         }
     }
 }
