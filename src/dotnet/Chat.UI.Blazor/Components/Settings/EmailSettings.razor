@@ -68,8 +68,12 @@
                 </InputSelect>
             </FormSection>
             @if (timeZoneChanged) {
-                <span>'@(_timeZoneFormModel.BrowserTimeZoneName)' is detected.</span>
-                <Button Class="btn-outline" ContentClass="text-sm" Click="@OnUpdateTimeZone">Update</Button>
+                @if (_timeZoneFormModel.BrowserTimeZoneIsRecognized) {
+                    <span>'@(_timeZoneFormModel.BrowserTimeZoneName)' is detected.</span>
+                    <Button Class="btn-outline" ContentClass="text-sm" Click="@OnUpdateTimeZone">Update</Button>
+                } else {
+                    <span>'@(_timeZoneFormModel.BrowserTimeZone)' is detected, but it's not recognized.</span>
+                }
             }
         </FormBlock>
     </Form>
@@ -100,13 +104,21 @@
         _timeZones = timeZones.ToDictionary(x => x.Id, x => x.IanaName);
         var browserTimeZone = Hub.BrowserInfo.TimeZone;
         if (!_timeZones.ContainsKey(browserTimeZone)) {
-            browserTimeZone = await TimeZones.ConvertWindowsToIana(browserTimeZone, default);
+            try {
+                var tempTimeZone = await TimeZones.ConvertWindowsToIana(browserTimeZone, default);
+                if (!tempTimeZone.IsNullOrEmpty())
+                    browserTimeZone = tempTimeZone;
+            }
+            catch {
+                // Ignore
+            }
         }
-        var browserTimeZoneName = _timeZones.GetValueOrDefault(browserTimeZone, "N/A");
+        var browserTimeZoneName = _timeZones.GetValueOrDefault(browserTimeZone, "");
         _timeZoneFormModel = new TimeZoneFormModel(ComponentIdGenerator) {
             SelectedTimeZone = _account.TimeZone,
             BrowserTimeZone = browserTimeZone,
-            BrowserTimeZoneName = browserTimeZoneName,
+            BrowserTimeZoneIsRecognized = !browserTimeZoneName.IsNullOrEmpty(),
+            BrowserTimeZoneName = browserTimeZoneName.NullIfEmpty() ?? "N/A",
         };
     }
 
@@ -150,8 +162,9 @@
 
     public sealed class TimeZoneFormModel {
         public string SelectedTimeZone { get; set; } = "";
-        public string BrowserTimeZone { get; set; } = "";
-        public string BrowserTimeZoneName { get; set; } = "";
+        public string BrowserTimeZone { get; init; } = "";
+        public string BrowserTimeZoneName { get; init; } = "";
+        public bool BrowserTimeZoneIsRecognized { get; init; }
 
         private string FormId { get; }
         public string SelectedTimeZoneFormId { get; }
