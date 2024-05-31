@@ -1,7 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<button @ref="ButtonRef"
-        class="@Class btn-h"
+<button class="@Class btn-h"
         name="@Name"
         type="@GetButtonType()"
         disabled="@IsDisabled"
@@ -10,8 +9,8 @@
         data-tooltip-position="@(TooltipPosition.ToPositionString())"
         data-must-keep-awake="@MustKeepAwake.ToString()"
         @attributes="@AdditionalAttributes"
-        @onclick:stopPropagation="true"
-        @onclick:preventDefault="true"
+        @onclick:stopPropagation="@StopPropagation"
+        @onclick:preventDefault="@PreventDefault"
         @onclick="@Click">
     <div class="c-content">
         @ChildContent
@@ -31,10 +30,11 @@
     [Parameter] public FloatingPosition TooltipPosition { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+    [Parameter] public bool StopPropagation { get; set; }
+    [Parameter] public bool PreventDefault { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
-    public ElementReference ButtonRef { get; private set; }
 
     private string GetButtonType()
         => Type.ToString().ToLower();
