@@ -14,7 +14,7 @@ public readonly partial record struct SearchMatch(
 
     [DataMember(Order = 2), MemoryPackOrder(2)]
     public SearchMatchPart[] Parts {
-        get => _parts ?? Array.Empty<SearchMatchPart>();
+        get => _parts ?? [];
         init => _parts = value;
     }
 
@@ -38,7 +38,7 @@ public readonly partial record struct SearchMatch(
     public bool IsEmpty => this == Empty;
 
     public static SearchMatch New(string? text)
-        => new(text ?? "", 0, Array.Empty<SearchMatchPart>());
+        => new(text ?? "", 0, []);
 
     public override string ToString()
     {

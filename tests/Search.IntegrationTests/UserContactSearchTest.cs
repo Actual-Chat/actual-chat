@@ -1,3 +1,4 @@
+using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 
@@ -33,7 +34,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     };
     private static readonly AccountFull Emma = new (new User(UserId.New(), "Emma")) {
         Name = "Emma",
-        LastName = "Blue",
+        LastName = "Emerson",
     };
     private static readonly AccountFull Emily = new (new User(UserId.New(), "Emily")) {
         Name = "Emily",
@@ -79,13 +80,15 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         var searchResults = await Find("Ja");
 
         // assert
-        searchResults.Should().BeEquivalentTo([bob.BuildSearchResult(Jack)]);
+        searchResults.Should()
+            .BeEquivalentTo([bob.BuildSearchResult(Jack, [(0, 4)])], o => o.ExcludingRank());
 
         // act
         searchResults = await Find("Emily Yel");
 
         // assert
-        searchResults.Should().BeEquivalentTo([bob.BuildSearchResult(Emily)]);
+        searchResults.Should()
+            .BeEquivalentTo([bob.BuildSearchResult(Emily, [(0, 5), (6, 12)])], o => o.ExcludingRank());
     }
 
     private Task<ApiArray<ContactSearchResult>> Find(string criteria, PlaceId? placeId = null)
@@ -120,7 +123,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults = await Find("Camila");
 
         // assert
-        searchResults.Should().BeEquivalentTo([bob.BuildSearchResult(Camila)]);
+        searchResults.Should().BeEquivalentTo([bob.BuildSearchResult(Camila, [(0, 6)])], o => o.ExcludingRank());
     }
 
     [Fact]
@@ -145,9 +148,9 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // assert
         searchResults.Should()
             .BeEquivalentTo([
-                bob.BuildSearchResult(Emily),
-                bob.BuildSearchResult(Emma),
-            ]);
+                bob.BuildSearchResult(Emily, [(0, 5)]),
+                bob.BuildSearchResult(Emma, [(0, 4), (5, 12)]),
+            ], o => o.ExcludingRank());
 
         // act
         await _commander.Call(new SearchBackend_UserContactBulkIndex([], BuildUserContacts(Emma)));
@@ -155,7 +158,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults = await Find("em");
 
         // assert
-        searchResults.Should().BeEquivalentTo([bob.BuildSearchResult(Emily)]);
+        searchResults.Should().BeEquivalentTo([bob.BuildSearchResult(Emily, [(0, 5)])], o => o.ExcludingRank());
     }
 
     [Fact]
@@ -184,23 +187,28 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         var (placeId, _) = await _tester.CreatePlace(false);
         await _tester.InviteToPlace(placeId,
             Rebecca,
+            Emma,
             Luke,
-            Emily,
-            Camila);
+            Emily);
 
         // act
-        await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, ApiArray<IndexedUserContact>.Empty));
+        await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, []));
         await _commander.Call(new SearchBackend_Refresh(true));
         var searchResults = await Find("em", placeId);
 
         // assert
-        searchResults.Should().BeEquivalentTo([bob.BuildSearchResult(Emily)]);
+        searchResults.Should()
+            .BeEquivalentTo([
+                    bob.BuildSearchResult(Emily, [(0, 5)]),
+                    bob.BuildSearchResult(Emma, [(0, 4), (5, 12)]),
+                ],
+                o => o.ExcludingRank());
 
         // act
         searchResults = await Find("Emily Yel", placeId);
 
         // assert
-        searchResults.Should().BeEquivalentTo([bob.BuildSearchResult(Emily)]);
+        searchResults.Should().BeEquivalentTo([bob.BuildSearchResult(Emily, [(0, 5), (6, 12)])], o => o.ExcludingRank());
     }
 
     // Private methods
