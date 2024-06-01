@@ -2,8 +2,8 @@ namespace ActualChat.MLSearch.Indexing.Initializer;
 
 internal interface IChatIndexInitializerShard
 {
-    ValueTask PostAsync(MLSearch_TriggerChatIndexingCompletion job, CancellationToken cancellationToken);
-    Task UseAsync(CancellationToken cancellationToken);
+    ValueTask PostAsync(MLSearch_TriggerChatIndexingCompletion job, CancellationToken cancellationToken = default);
+    Task UseAsync(CancellationToken cancellationToken = default);
 }
 
 internal sealed class ChatIndexInitializerShard(
@@ -73,10 +73,10 @@ internal sealed class ChatIndexInitializerShard(
     public UpdateCursorHandler OnUpdateCursor { get; init; } = UpdateCursorAsync;
 
     // # Public API methods
-    public async ValueTask PostAsync(MLSearch_TriggerChatIndexingCompletion evt, CancellationToken cancellationToken)
+    public async ValueTask PostAsync(MLSearch_TriggerChatIndexingCompletion evt, CancellationToken cancellationToken = default)
         => await Events.Writer.WriteAsync(evt, cancellationToken).ConfigureAwait(false);
 
-    public async Task UseAsync(CancellationToken cancellationToken)
+    public async Task UseAsync(CancellationToken cancellationToken = default)
     {
         var cursor = await cursorStates.LoadAsync(CursorKey, cancellationToken).ConfigureAwait(false) ?? new(0);
         var state = new SharedState(cursor, MaxConcurrency);
