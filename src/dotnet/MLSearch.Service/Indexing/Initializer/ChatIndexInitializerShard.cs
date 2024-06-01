@@ -15,7 +15,9 @@ internal sealed class ChatIndexInitializerShard(
 ) : IChatIndexInitializerShard
 {
     public const string CursorKey = $"{nameof(ChatIndexInitializer)}.{nameof(Cursor)}";
-    internal record Cursor(long LastVersion);
+
+    // # Helper types
+    public record Cursor(long LastVersion);
     public class SharedState(Cursor cursor, int maxConcurrency)
     {
         private long _maxVersion = cursor.LastVersion;
@@ -27,12 +29,18 @@ internal sealed class ChatIndexInitializerShard(
         public SemaphoreSlim Semaphore { get; } = new(maxConcurrency, maxConcurrency);
         public ConcurrentDictionary<ChatId, (long, long)> ScheduledJobs { get; } = new();
     }
+    public record ChatInfo(ChatId chatId, long version)
+    {
+        public ChatInfo((ChatId ChatId, long Version) info): this(info.ChatId, info.Version)
+        { }
+    }
+
+    // # Delegates
     public delegate ValueTask UpdateCursorHandler(
         Moment moment, SharedState state, TimeSpan stallJobTimeout,
         ICursorStates<Cursor> cursorStates,
         ILogger log,
         CancellationToken cancellationToken);
-
     public delegate ValueTask ScheduleJobHandler(
         ChatInfo chatInfo, SharedState state, TimeSpan retryInterval,
         ICommander commander,
@@ -42,6 +50,7 @@ internal sealed class ChatIndexInitializerShard(
     public delegate void CompleteJobHandler(
         MLSearch_TriggerChatIndexingCompletion evt, SharedState state);
 
+    // # Fields
     private object _lock = new();
     private Channel<MLSearch_TriggerChatIndexingCompletion>? _events;
     private Channel<MLSearch_TriggerChatIndexingCompletion> Events => LazyInitializer.EnsureInitialized(
@@ -53,16 +62,17 @@ internal sealed class ChatIndexInitializerShard(
             SingleWriter = false,
         }));
 
+    // # Configuration properties
     public int InputBufferCapacity { get; init; } = 50;
     public int MaxConcurrency { get; init; } = 20;
     public TimeSpan UpdateCursorInterval { get; init; } = TimeSpan.FromSeconds(30);
     public TimeSpan RetryInterval { get; init; } = TimeSpan.FromSeconds(10);
     public TimeSpan ExecuteJobTimeout { get; init; } = TimeSpan.FromMinutes(3);
-
-    public UpdateCursorHandler OnUpdateCursor { get; init; } = UpdateCursorAsync;
     public ScheduleJobHandler OnScheduleJob { get; init; } = ScheduleJobForChatAsync;
     public CompleteJobHandler OnCompleteJob { get; init; } = HandleCompletionEvent;
+    public UpdateCursorHandler OnUpdateCursor { get; init; } = UpdateCursorAsync;
 
+    // # Public API methods
     public async ValueTask PostAsync(MLSearch_TriggerChatIndexingCompletion evt, CancellationToken cancellationToken)
         => await Events.Writer.WriteAsync(evt, cancellationToken).ConfigureAwait(false);
 
@@ -84,10 +94,65 @@ internal sealed class ChatIndexInitializerShard(
         ]).ConfigureAwait(false);
     }
 
+    // # Implementation
+    private static async Task RunAsync<TEvent>(
+        IAsyncEnumerable<TEvent> events,
+        Func<TEvent, SharedState, CancellationToken, ValueTask> handler,
+        SharedState state,
+        CancellationToken cancellationToken
+    )
+    {
+        await Task.Yield();
+
+        await foreach(var evt in events.ConfigureAwait(false).WithCancellation(cancellationToken)) {
+            await handler.Invoke(evt, state, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    // ## Schedule jobs
+    private ValueTask ScheduleJobForChatAsync(ChatInfo chatInfo, SharedState state, CancellationToken cancellationToken)
+        => OnScheduleJob(chatInfo, state, RetryInterval, commander, clock, log, cancellationToken);
+
+    private static async ValueTask ScheduleJobForChatAsync(
+        ChatInfo chatInfo,
+        SharedState state,
+        TimeSpan retryInterval,
+        ICommander commander,
+        IMomentClock clock,
+        ILogger log,
+        CancellationToken cancellationToken)
+    {
+        var (chatId, version) = chatInfo;
+        await state.Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        while (true) {
+            try {
+                var job = new MLSearch_TriggerChatIndexing(chatId);
+                await commander.Call(job, cancellationToken).ConfigureAwait(false);
+                state.ScheduledJobs[chatId] = (version, clock.Now.EpochOffset.Ticks);
+                break;
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                log.LogError(e, "Failed to schedule an indexing job for chat #{ChatId}.", chatId);
+                await clock.Delay(retryInterval, cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    // ## Handle job completion events
+    private async IAsyncEnumerable<MLSearch_TriggerChatIndexingCompletion> ReadCompletionEvents(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        while (true) {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return await Events.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     private ValueTask HandleCompletionEventAsync(MLSearch_TriggerChatIndexingCompletion evt, SharedState state, CancellationToken _) {
         OnCompleteJob(evt, state);
         return ValueTask.CompletedTask;
     }
+
     public static void HandleCompletionEvent(
         MLSearch_TriggerChatIndexingCompletion evt, SharedState state)
     {
@@ -100,15 +165,7 @@ internal sealed class ChatIndexInitializerShard(
         }
     }
 
-    private async IAsyncEnumerable<MLSearch_TriggerChatIndexingCompletion> ReadCompletionEvents(
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        while (true) {
-            cancellationToken.ThrowIfCancellationRequested();
-            yield return await Events.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
-        }
-    }
-
+    // ## Update cursor
     private async IAsyncEnumerable<Moment> ReadUpdateCursorMoments(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -165,54 +222,6 @@ internal sealed class ChatIndexInitializerShard(
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             log.LogError(e, "Failed to update cursor state.");
-        }
-    }
-
-    public record ChatInfo(ChatId chatId, long version)
-    {
-        public ChatInfo((ChatId ChatId, long Version) info): this(info.ChatId, info.Version)
-        { }
-    }
-
-    private ValueTask ScheduleJobForChatAsync(ChatInfo chatInfo, SharedState state, CancellationToken cancellationToken)
-        => OnScheduleJob(chatInfo, state, RetryInterval, commander, clock, log, cancellationToken);
-
-    private static async ValueTask ScheduleJobForChatAsync(
-        ChatInfo chatInfo,
-        SharedState state,
-        TimeSpan retryInterval,
-        ICommander commander,
-        IMomentClock clock,
-        ILogger log,
-        CancellationToken cancellationToken)
-    {
-        var (chatId, version) = chatInfo;
-        await state.Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-        while (true) {
-            try {
-                var job = new MLSearch_TriggerChatIndexing(chatId);
-                await commander.Call(job, cancellationToken).ConfigureAwait(false);
-                state.ScheduledJobs[chatId] = (version, clock.Now.EpochOffset.Ticks);
-                break;
-            }
-            catch (Exception e) when (e is not OperationCanceledException) {
-                log.LogError(e, "Failed to schedule an indexing job for chat #{ChatId}.", chatId);
-                await clock.Delay(retryInterval, cancellationToken).ConfigureAwait(false);
-            }
-        }
-    }
-
-    private static async Task RunAsync<TEvent>(
-        IAsyncEnumerable<TEvent> events,
-        Func<TEvent, SharedState, CancellationToken, ValueTask> handler,
-        SharedState state,
-        CancellationToken cancellationToken
-    )
-    {
-        await Task.Yield();
-
-        await foreach(var evt in events.ConfigureAwait(false).WithCancellation(cancellationToken)) {
-            await handler.Invoke(evt, state, cancellationToken).ConfigureAwait(false);
         }
     }
 }
