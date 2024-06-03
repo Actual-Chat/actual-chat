@@ -120,9 +120,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // -- Register Controllers --
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
         // -- Register IMLSearchHanders --
-        services.AddSingleton<IMLSearch, MLSearchImpl>();
-        var fusion = services.AddFusion();
-        fusion.AddClient<IMLSearch>();
+        rpcHost.AddApiOrLocal<IMLSearch, MLSearchImpl>();
 
         // -- Register Swagger endpoint (OpenAPI) --
         /*
@@ -130,7 +128,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSwaggerGen(c => {
             c.IncludeXmlComments(
                 Path.Combine(
-                    AppContext.BaseDirectory, 
+                    AppContext.BaseDirectory,
                     $"{Assembly.GetExecutingAssembly().GetName().Name}.xml"
                 )
             );
