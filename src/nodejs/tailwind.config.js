@@ -196,6 +196,13 @@ module.exports = {
         'recorder-on-middle': 'var(--recorder-on-middle)',
         'audio-panel-button': 'var(--audio-panel-button)',
         'audio-panel-button-text': 'var(--audio-panel-button-text)',
+        'mobile-landscape-post-panel': 'var(--mobile-landscape-post-panel)',
+        'mobile-landscape-audio-panel-button': 'var(--mobile-landscape-audio-panel-button)',
+        'mobile-landscape-audio-panel-button-text': 'var(--mobile-landscape-audio-panel-button-text)',
+        'mobile-landscape-audio-panel-playback-on': 'var(--mobile-landscape-audio-panel-playback-on)',
+        'related-chat-entry': 'var(--related-chat-entry)',
+        'mobile-related-chat-entry': 'var(--mobile-related-chat-entry)',
+
         'tile': 'var(--tile)',
 
         // Download Banner

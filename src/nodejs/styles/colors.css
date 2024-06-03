@@ -333,8 +333,12 @@
     --recorder-on-middle: var(--magenta-50);
     --audio-panel-button: var(--white);
     --audio-panel-button-text: var(--gray-40);
-    --post-panel-narrow-landscape: var(--white-04);
-    --audio-panel-narrow-landscape-button: var(--white-04);
+    --mobile-landscape-post-panel: var(--gray-30);
+    --mobile-landscape-audio-panel-button: var(--gray-30);
+    --mobile-landscape-audio-panel-button-text: var(--gray-60);
+    --mobile-landscape-audio-panel-playback-on: var(--blue-10);
+    --related-chat-entry: var(--gray-95);
+    --mobile-related-chat-entry: var(--gray-30);
 
     /* Download Banner */
     --download-banner-left: var(--magenta-40);
@@ -550,8 +554,12 @@
     --recorder-on-middle: var(--magenta-50);
     --audio-panel-button: var(--ash-26);
     --audio-panel-button-text: var(--ash-70);
-    --post-panel-narrow-landscape: var(--white-04);
-    --audio-panel-narrow-landscape-button: var(--white-04);
+    --mobile-landscape-post-panel: var(--ash-30);
+    --mobile-landscape-audio-panel-button: var(--ash-30);
+    --mobile-landscape-audio-panel-button-text: var(--ash-60);
+    --mobile-landscape-audio-panel-playback-on: var(--blue-10);
+    --related-chat-entry: var(--ash-22);
+    --mobile-related-chat-entry: var(--ash-22);
 
     /* Download Banner */
     --download-banner-left: var(--magenta-40);
@@ -766,8 +774,12 @@
     --recorder-on-middle: var(--magenta-50);
     --audio-panel-button: var(--white);
     --audio-panel-button-text: var(--gray-40);
-    --post-panel-narrow-landscape: var(--white-04);
-    --audio-panel-narrow-landscape-button: var(--white-04);
+    --mobile-landscape-post-panel: var(--gray-30);
+    --mobile-landscape-audio-panel-button: var(--gray-30);
+    --mobile-landscape-audio-panel-button-text: var(--gray-60);
+    --mobile-landscape-audio-panel-playback-on: var(--blue-10);
+    --related-chat-entry: var(--gray-95);
+    --mobile-related-chat-entry: var(--gray-30);
 
     /* Download Banner */
     --download-banner-left: var(--magenta-40);

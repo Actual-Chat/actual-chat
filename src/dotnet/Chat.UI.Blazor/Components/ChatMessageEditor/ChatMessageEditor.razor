@@ -8,18 +8,11 @@
 @using ActualChat.Kvas
 @using ActualLab.Locking
 @using System.Diagnostics.CodeAnalysis
-@{
-    var editorCls = "";
-    if (ScreenSize.IsNarrow())
-        editorCls = "narrow";
-    if (ScreenSize.IsWide())
-        editorCls = "wide";
-}
 
 <OnUIEvent TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusChatMessageEditorEvent" />
 <OnUIEvent TEvent="@EditChatMessageEvent" Handler="OnEditChatMessageEvent" />
 <OnUIEvent TEvent="@CancelChatMessageEditEvent" Handler="OnCancelChatMessageEditEvent" />
-<div @ref="Ref" class="chat-message-editor @editorCls">
+<div @ref="Ref" class="chat-message-editor">
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@ChatMarkupHub.MentionSearchProvider">
         <AttachmentList
             @key="AttachmentListKey"
@@ -28,46 +21,42 @@
         @if (ScreenSize.IsWide()) {
             <RelatedChatEntryPanel/>
         }
-        <div class="landscape-sub-footer"></div>
         <div class="c-content">
-            <div class="post-panel-wrapper">
-                <div class="post-panel"
-                     data-bubble="@(BubbleRef.New<TextMessagePanelBubble>())"
-                     data-bubble-priority="105"
-                     data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
-                    <ButtonRound Class="post-panel-btn attach-btn btn-transparent unhovered">
-                        <i class="icon-attach-2 text-2xl"></i>
-                    </ButtonRound>
-                    <label for="message-input" class="message-input-label">
-                        <MarkupEditor
-                            @key="MarkupEditorKey"
-                            @ref="MarkupEditorRef"
-                            MentionNamer="@ChatMarkupHub.MentionNamer"
-                            HtmlConverter="@ChatMarkupHub.EditorHtmlConverter"
-                            Id="message-input"
-                            Class="message-input -flex-y"
-                            Autofocus="Autofocus"
-                            Placeholder="Write a message - or simply record one!"
-                            Post="text => Post(text)"
-                            Cancel="@(() => OnCancel())"
-                            OpenPrevious="OnOpenPrevious"/>
-                    </label>
-                    <button class="post-panel-btn post-message btn btn-round btn-transparent unhovered"
-                        @onmousedown="@(_ => Post())"
-                        @onmousedown:preventDefault="true">
-                        <i class="icon-paper-plane text-2xl"></i>
-                    </button>
-                    <NotifyCallPanel @ref="NotifyCallPanelRef" />
-                </div>
+            <div class="post-panel"
+                 data-bubble="@(BubbleRef.New<TextMessagePanelBubble>())"
+                 data-bubble-priority="105"
+                 data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
                 @if (ScreenSize.IsNarrow()) {
-                    <RelatedChatEntryPanel/>
+                    <div class="rounded-sub-footer"></div>
                 }
-                <div class="audio-panel-wrapper">
-                    <ChatAudioPanel Chat="@Chat" Class="top-chat-audio-panel"/>
-                </div>
-
+                <ButtonRound Class="post-panel-btn attach-btn btn-transparent unhovered">
+                    <i class="icon-attach-2 text-2xl"></i>
+                </ButtonRound>
+                <label for="message-input" class="message-input-label">
+                    <MarkupEditor
+                        @key="MarkupEditorKey"
+                        @ref="MarkupEditorRef"
+                        MentionNamer="@ChatMarkupHub.MentionNamer"
+                        HtmlConverter="@ChatMarkupHub.EditorHtmlConverter"
+                        Id="message-input"
+                        Class="message-input -flex-y"
+                        Autofocus="Autofocus"
+                        Placeholder="Write a message - or simply record one!"
+                        Post="text => Post(text)"
+                        Cancel="@(() => OnCancel())"
+                        OpenPrevious="OnOpenPrevious"/>
+                </label>
+                <button class="post-panel-btn post-message btn btn-round btn-transparent unhovered"
+                    @onmousedown="@(_ => Post())"
+                    @onmousedown:preventDefault="true">
+                    <i class="icon-paper-plane text-2xl"></i>
+                </button>
+                <NotifyCallPanel @ref="NotifyCallPanelRef"/>
             </div>
-            <ChatAudioPanel Chat="@Chat" Class="right-chat-audio-panel"/>
+            @if (ScreenSize.IsNarrow()) {
+                <RelatedChatEntryPanel/>
+            }
+            <ChatAudioPanel Chat="@Chat"/>
         </div>
     </MentionListManager>
 </div>
