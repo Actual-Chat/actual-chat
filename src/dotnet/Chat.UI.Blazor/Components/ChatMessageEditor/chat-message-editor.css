@@ -2,37 +2,32 @@
     @apply relative;
     @apply bg-post-panel md:bg-01;
 }
-.chat-message-editor.narrow {
-    background: transparent;
-}
 body.narrow .chat-message-editor {
+    background: transparent;
     @apply landscape:mt-4;
 }
+
+/* Bottom Panel, Desktop view */
 .chat-message-editor > .c-content {
     @apply flex-none flex-x justify-items-stretch items-stretch gap-x-2.5;
-    @apply p-0 landscape:px-3 landscape:py-2;
+    @apply px-3 py-2;
 }
+
+/* Bottom Panel, Mobile, Portrait */
+body.narrow .chat-message-editor > .c-content {
+    @apply portrait:-flex-y;
+    @apply portrait:p-0;
+}
+
+/* Bottom Panel, Mobile, Landscape */
 body.narrow .chat-message-editor > .c-content {
     @apply landscape:bg-post-panel;
 }
-.post-panel-wrapper {
-    @apply flex-1 -flex-y;
-    @apply overflow-x-hidden;
-    @apply bg-post-panel md:bg-01;
-    scrollbar-width: none;
-}
-.narrow .post-panel-wrapper {
-    background: linear-gradient(to bottom, var(--transparent) 45%, var(--audio-panel-gradient-bottom) 30%);
-    @apply landscape:rounded-3xl;
-}
-.narrow.narrow-panel .post-panel-wrapper {
-    background: linear-gradient(to top, var(--audio-panel-gradient-bottom) 75%, var(--transparent) 25%);
-}
-.narrow .audio-panel-wrapper {
+body.narrow .audio-panel-wrapper {
     @apply -mb-0.5;
     background: linear-gradient(to bottom, var(--transparent) 70%, var(--audio-panel-gradient-bottom) 0%);
 }
-.narrow.narrow-panel .audio-panel-wrapper {
+body.narrow .narrow-panel .audio-panel-wrapper {
     @apply -mb-0.5;
     background: linear-gradient(to bottom, var(--transparent) 50%, var(--audio-panel-gradient-bottom) 0%);
 }
@@ -47,11 +42,12 @@ body.narrow .chat-message-editor > .c-content {
 }
 body.narrow .post-panel {
     @apply landscape:py-0;
-    @apply landscape:bg-[var(--post-panel-narrow-landscape)];
+    @apply landscape:rounded-3xl;
+    @apply landscape:bg-mobile-landscape-post-panel;
 }
 .post-panel .message-input {
     @apply flex-1;
-    @apply max-h-48 md:max-h-88;
+    @apply max-h-36 md:max-h-88;
     @apply overflow-hidden;
     @apply outline-none;
     @apply text-post-panel-text md:text-02;
@@ -78,7 +74,7 @@ body.narrow .post-panel .message-input {
        I checked w-full, etc. - all these options let the text (1 long word) to overflow-x the container. */
 }
 body.narrow .post-panel .message-input .editor-content {
-    @apply landscape:bg-[var(--post-panel-narrow-landscape)];
+    @apply landscape:bg-mobile-landscape-post-panel;
 }
 .post-panel .message-input .editor-content::-webkit-scrollbar {
     display: none;
@@ -98,6 +94,9 @@ body.narrow .post-panel .message-input .editor-content {
     @apply h-12 w-10;
     @apply bg-transparent;
     @apply text-round-title;
+}
+body.narrow .post-panel-btn {
+    @apply !text-mobile-landscape-audio-panel-button-text;
 }
 body.hoverable .post-panel-btn:hover {
     @apply text-02;
@@ -332,6 +331,14 @@ body.narrow .attachment-filename {
     @apply bg-danger;
 }
 
+
+/* Related Chat Entry Panel (Reply, Edit) */
+body.narrow .chat-message-editor:has(.related-chat-entry-panel) {
+    @apply landscape:mt-16;
+}
+body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rounded-sub-footer {
+    @apply landscape:-top-20;
+}
 .related-chat-entry-panel {
     @apply flex-x;
     @apply h-10;
@@ -341,47 +348,41 @@ body.narrow .attachment-filename {
 }
 body.narrow .related-chat-entry-panel {
     @apply h-auto;
-    @apply p-1 -mb-0.5;
+    @apply p-1;
     @apply overflow-hidden;
     @apply bg-post-panel;
-    animation: show-related 0.1s linear;
 }
-@keyframes show-related {
-    0% {
-        height: 0;
+@media (orientation: landscape) {
+    body.narrow .related-chat-entry-panel {
+        @apply absolute -top-12 inset-x-0 z-10;
+        @apply px-3 pt-2 pb-0;
     }
-    100% {
-        height: auto;
-    }
-}
-
-body.narrow .related-chat-entry-panel * {
-    @apply bg-06;
 }
 .related-chat-entry-panel .related-chat-entry > .c-content {
     @apply flex-1 flex-x items-center gap-x-2;
     @apply max-w-full max-h-10 md:max-h-8;
+    @apply md:pr-4;
+}
+.related-chat-entry-panel .related-chat-entry {
+    @apply bg-related-chat-entry;
 }
 body.narrow .related-chat-entry-panel .related-chat-entry {
     @apply min-h-10;
-    @apply px-1;
+    @apply pl-1 pr-2;
     @apply rounded-lg;
     @apply overflow-hidden;
-    animation: related-slide-in 0.25s ease-in-out;
+    @apply bg-mobile-related-chat-entry;
+    animation: related-slide-in 250ms ease-in-out;
 }
 @keyframes related-slide-in {
     0% {
-        transform: translateX(100%);
-        min-height: 0;
-        height: 0;
+        transform: translateY(100%);
     }
     50% {
-        transform: translateX(100%);
-        min-height: 2.5rem;
-        height: auto;
+        transform: translateY(100%);
     }
     100% {
-        transform: translateX(0);
+        transform: translateY(0);
     }
 }
 body.narrow .related-chat-entry-panel .related-chat-entry .avatar-name,
@@ -420,27 +421,24 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply text-02;
 }
 
-.landscape-sub-footer {
-    @apply absolute -top-8;
+.rounded-sub-footer {
+    @apply absolute portrait:top-17 landscape:-top-8;
     @apply flex;
     @apply h-8 inset-x-0;
     background: linear-gradient(to top, var(--background-01), transparent);
 }
-.landscape-sub-footer::before {
+.narrow-panel .rounded-sub-footer {
+    @apply portrait:top-9;
+}
+.rounded-sub-footer::before {
     content: '';
     @apply absolute left-0;
     @apply w-8 h-8;
     background: radial-gradient(circle at right top, transparent 70%, var(--post-panel) 72%)
 }
-.landscape-sub-footer::after {
+.rounded-sub-footer::after {
     content: '';
     @apply absolute right-0;
     @apply w-8 h-8;
     background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 72%)
-}
-body.wide .landscape-sub-footer {
-    @apply hidden;
-}
-body.narrow .landscape-sub-footer {
-    @apply portrait:hidden;
 }
