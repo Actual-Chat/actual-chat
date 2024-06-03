@@ -34,7 +34,7 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
         MeshLockOptions lockOptions,
         CancellationToken cancellationToken = default)
     {
-        var holder = CreateHolder(key, value, lockOptions);
+        var holder = CreateHolder(key, value, lockOptions, cancellationToken);
         DebugLog?.LogDebug("TryLock: {Key} = {StoredValue}", key, holder.StoredValue);
         try {
             cancellationToken.ThrowIfCancellationRequested();
@@ -63,7 +63,7 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
         var warningDelayTask = warningDelay > TimeSpan.Zero
             ? Clock.Delay(warningDelay, cancellationToken)
             : null;
-        var holder = CreateHolder(key, value, lockOptions);
+        var holder = CreateHolder(key, value, lockOptions, cancellationToken);
         DebugLog?.LogDebug("Lock: {Key} = {StoredValue}", key, holder.StoredValue);
         IAsyncSubscription<string>? changes = null;
         try {
@@ -137,8 +137,8 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
 
     // Protected methods
 
-    protected virtual MeshLockHolder CreateHolder(string key, string value, MeshLockOptions options)
-        => new(this, NextHolderId(), key, value, options);
+    protected virtual MeshLockHolder CreateHolder(string key, string value, MeshLockOptions options, CancellationToken cancellationToken)
+        => new(this, NextHolderId(), key, value, options, cancellationToken);
 
     protected virtual string NextHolderId()
         => ZString.Concat(HolderKeyPrefix, Interlocked.Increment(ref LastHolderId));
