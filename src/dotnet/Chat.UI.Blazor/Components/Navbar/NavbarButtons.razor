@@ -7,7 +7,7 @@
 
 @if (ownAccount.IsActive()) {
     <NavbarButton
-        Tooltip="Add new Chat or Place"
+        Tooltip="Create new Chat or Place"
         TooltipPosition="FloatingPosition.Right"
         data-bubble="@(BubbleRef.New<CreateChatBubble>())"
         data-bubble-priority="201"
