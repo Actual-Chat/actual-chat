@@ -39,7 +39,7 @@ internal class MLSearchImpl (ICommander commander): IMLSearch
             cancellationToken: cancellationToken
         ).ConfigureAwait(false);
         // ---
-        UserId mlBotUserId = new("ml-search", AssumeValid.Option);
+        UserId mlBotUserId = Constants.User.MLSearchBot.UserId;
         var upsertCommand = new AuthorsBackend_Upsert(
             chat.Id, default, mlBotUserId, null,
             new AuthorDiff() {
@@ -51,7 +51,7 @@ internal class MLSearchImpl (ICommander commander): IMLSearch
         var botAuthor = await commander.Call(upsertCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
         // ---
         var promoteCommand = new Authors_PromoteToOwner(command.Session, botAuthor.Id);
-        var promoteRseult = await commander.Call(promoteCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
+        var __promoteResult = await commander.Call(promoteCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
         return new MLSearchChat(chat.Id);
     }
 }
