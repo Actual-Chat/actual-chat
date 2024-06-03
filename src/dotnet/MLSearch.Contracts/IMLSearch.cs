@@ -12,7 +12,7 @@ public sealed partial record MLSearch_CreateChat(
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion
 ) : ISessionCommand<MLSearchChat>, IApiCommand;
 
-public interface IMLSearch
+public interface IMLSearch : IComputeService
 {
     // Commands
 

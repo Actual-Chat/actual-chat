@@ -5,7 +5,7 @@ namespace ActualChat.MLSearch;
 
 internal class MLSearchImpl (ICommander commander): IMLSearch
 {
-    public async Task<MLSearchChat> OnCreate(MLSearch_CreateChat command, CancellationToken cancellationToken)
+    public virtual async Task<MLSearchChat> OnCreate(MLSearch_CreateChat command, CancellationToken cancellationToken)
     {
         // This method is called from the client side
         // It creates a new ML search chat with two participants:
@@ -35,7 +35,7 @@ internal class MLSearchImpl (ICommander commander): IMLSearch
         var chatChangeCommand = new Chats_Change(command.Session, ChatId.None, null, chatChange);
         var chat = await commander.Call(
             chatChangeCommand, 
-            isOutermost: false, 
+            isOutermost: true, 
             cancellationToken: cancellationToken
         ).ConfigureAwait(false);
         // ---
@@ -48,10 +48,10 @@ internal class MLSearchImpl (ICommander commander): IMLSearch
                 AvatarId = null,
             }
         );
-        var botAuthor = await commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
+        var botAuthor = await commander.Call(upsertCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
         // ---
         var promoteCommand = new Authors_PromoteToOwner(command.Session, botAuthor.Id);
-        var promoteRseult = await commander.Call(promoteCommand, cancellationToken).ConfigureAwait(false);
+        var promoteRseult = await commander.Call(promoteCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
         return new MLSearchChat(chat.Id);
     }
 }

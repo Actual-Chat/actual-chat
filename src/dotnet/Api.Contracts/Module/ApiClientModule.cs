@@ -38,7 +38,7 @@ public sealed class ApiClientModule(IServiceProvider moduleServices)
         fusion.AddClient<IMentions>();
         fusion.AddClient<IReactions>();
         fusion.AddClient<IPlaces>();
-
+        
         // Search
         fusion.AddClient<ISearch>();
 
