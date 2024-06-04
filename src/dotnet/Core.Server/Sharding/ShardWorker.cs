@@ -26,6 +26,7 @@ public abstract class ShardWorker : WorkerBase
     public IMomentClock Clock => ShardLocks.Clock;
 
     protected ShardWorker(IServiceProvider services, ShardScheme shardScheme, string? keyPrefix = null)
+        : base(services.HostLifetime()?.ApplicationStopping.CreateLinkedTokenSource() ?? new CancellationTokenSource())
     {
         Services = services;
         ShardScheme = shardScheme;
@@ -97,14 +98,14 @@ public abstract class ShardWorker : WorkerBase
     {
         var failureCount = 0;
         while (!cancellationToken.IsCancellationRequested) {
-            DebugLog?.LogDebug("Shard #{ShardIndex}: acquiring lock for {ThisNodeId}", shardIndex, ThisNode.Ref);
+            Log.LogInformation("Shard #{ShardIndex}: acquiring lock for {ThisNodeId}", shardIndex, ThisNode.Ref);
             var lockHolder = await ShardLocks.Lock(shardIndex.Format(), "", cancellationToken).ConfigureAwait(false);
             var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
             var lockToken = lockCts.Token;
             var lockIsLost = false;
             Exception? error = null;
             try {
-                DebugLog?.LogDebug("Shard #{ShardIndex} -> {ThisNodeId}", shardIndex, ThisNode.Ref);
+                Log.LogInformation("Shard #{ShardIndex} -> {ThisNodeId}", shardIndex, ThisNode.Ref);
                 await OnRun(shardIndex, lockToken).ConfigureAwait(false);
                 failureCount = 0;
             }
@@ -124,7 +125,7 @@ public abstract class ShardWorker : WorkerBase
                 if (lockIsLost)
                     Log.LogWarning("Shard #{ShardIndex} <- {ThisNodeId} (shard lock is lost)", shardIndex, ThisNode.Ref);
                 else
-                    DebugLog?.LogDebug("Shard #{ShardIndex} <- {ThisNode}", shardIndex, ThisNode.Ref);
+                    Log.LogInformation("Shard #{ShardIndex} <- {ThisNode}", shardIndex, ThisNode.Ref);
             }
 
             if (error != null) {
