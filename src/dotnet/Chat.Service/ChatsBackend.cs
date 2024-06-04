@@ -575,7 +575,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 if (chatId.IsNone) {
                     if (placeId.IsNone)
                         chatId = PlaceChatId.Root(new PlaceId(Generate.Option));
-                    else if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, update.SystemTag))
+                    else if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, update.SystemTag)) // TODO: replace with tag rules
                         chatId = new PlaceChatId(PlaceChatId.Format(placeId, Constants.Chat.SystemTags.Welcome));
                     else
                         chatId = new PlaceChatId(placeId, Generate.Option);
@@ -684,7 +684,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             dbChat.RequireVersion(expectedVersion);
             if (chatId.IsPlaceChat) {
                 update.ValidateForPlaceChat();
-                if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, dbChat.SystemTag)
+                if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, dbChat.SystemTag) // TODO: make a separate rule
                     && update.IsPublic == false)
                     throw StandardError.Constraint("Can't change chat type to private for 'Welcome' chat.");
             }
@@ -694,7 +694,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
         else if (change.IsRemove()) {
             dbChat.Require();
-            if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, dbChat.SystemTag))
+            if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, dbChat.SystemTag)) // TODO: make a separate rule
                 throw StandardError.Constraint("It's prohibited to remove 'Welcome' chat.");
 
             if (!dbChat.MediaId.IsNullOrEmpty()) {

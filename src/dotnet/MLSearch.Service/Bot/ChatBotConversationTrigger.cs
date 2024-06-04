@@ -19,7 +19,6 @@ internal class ChatBotConversationTrigger(ICommander commander, IChatsBackend ch
     {
         //var peerChatId = eventCommand.Entry.ChatId.PeerChatId;
         //if (!peerChatId.IsNone && peerChatId.HasUser(Constants.User.MLSearchBot.UserId)) {
-
         var chat = await chats.Get(eventCommand.Entry.ChatId, cancellationToken).ConfigureAwait(false);
         if (chat != null && OrdinalEquals(Constants.Chat.SystemTags.Bot, chat.SystemTag)) {
             // User is writing of changing something.
