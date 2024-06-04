@@ -29,7 +29,7 @@ internal sealed class ChatIndexInitializerShard(
         public long PrevEventCount { get; set; }
 
         public SemaphoreSlim Semaphore { get; } = new(maxConcurrency, maxConcurrency);
-        public ConcurrentDictionary<ChatId, (long, long)> ScheduledJobs { get; } = new();
+        public ConcurrentDictionary<ChatId, (long, Moment)> ScheduledJobs { get; } = new();
     }
     public record ChatInfo(ChatId ChatId, long Version)
     {
@@ -147,7 +147,7 @@ internal sealed class ChatIndexInitializerShard(
             var (chatId, version) = chatInfo;
             var job = new MLSearch_TriggerChatIndexing(chatId);
             await commander.Call(job, cancellationToken).ConfigureAwait(false);
-            state.ScheduledJobs[chatId] = (version, clock.Now.EpochOffset.Ticks);
+            state.ScheduledJobs[chatId] = (version, clock.Now);
         }
     }
 
@@ -207,8 +207,7 @@ internal sealed class ChatIndexInitializerShard(
                 return;
             }
             state.PrevEventCount = eventCount;
-            var now = updateMoment.EpochOffset.Ticks;
-            var pastMoment = now - stallJobTimeout.Ticks;
+            var pastMoment = updateMoment - stallJobTimeout;
             var stallJobs = new List<ChatId>();
             // This is max chat version where indexing is completed.
             // In the case our schedule is empty we may want to advance cursor till there.
@@ -227,7 +226,7 @@ internal sealed class ChatIndexInitializerShard(
             foreach (var jobId in stallJobs) {
                 if (state.ScheduledJobs.TryRemove(jobId, out var info) && info is var (_, timestamp)) {
                     log.LogInformation("Evicting indexing job for chat #{JobId} which is stall for {Interval}.",
-                        jobId, TimeSpan.FromTicks(now - timestamp));
+                        jobId, updateMoment - timestamp);
                     state.Semaphore.Release();
                 }
             }
