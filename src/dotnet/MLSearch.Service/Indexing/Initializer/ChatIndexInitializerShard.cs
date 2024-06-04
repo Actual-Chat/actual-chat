@@ -45,7 +45,7 @@ internal sealed class ChatIndexInitializerShard(
         ILogger log,
         CancellationToken cancellationToken);
     public delegate ValueTask ScheduleJobHandler(
-        ChatInfo chatInfo, SharedState state, RetrySettings retrySettins,
+        ChatInfo chatInfo, SharedState state, RetrySettings retrySettings,
         ICommander commander,
         IMomentClock clock,
         ILogger log,
@@ -70,7 +70,7 @@ internal sealed class ChatIndexInitializerShard(
     public int MaxConcurrency { get; init; } = 20;
     public TimeSpan UpdateCursorInterval { get; init; } = TimeSpan.FromSeconds(30);
     public RetrySettings ScheduleJobRetrySettings { get; init; } =
-        new RetrySettings(10, RetryDelaySeq.Exp(0.2, 10), TransiencyResolvers.PreferTransient);
+        new (10, RetryDelaySeq.Exp(0.2, 10), TransiencyResolvers.PreferTransient);
     public TimeSpan ExecuteJobTimeout { get; init; } = TimeSpan.FromMinutes(3);
     public ScheduleJobHandler OnScheduleJob { get; init; } = ScheduleIndexingJobAsync;
     public CompleteJobHandler OnCompleteJob { get; init; } = HandleCompletionEvent;
@@ -126,28 +126,33 @@ internal sealed class ChatIndexInitializerShard(
         ILogger log,
         CancellationToken cancellationToken)
     {
+        await state.Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+
         try {
-            await state.Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-            await AsyncChain.From(ct => ScheduleChatIndexing(chatInfo, ct))
+            var (chatId, version) = chatInfo;
+
+            await AsyncChain.From(ct => ScheduleChatIndexing(chatId, commander, ct))
                 .WithTransiencyResolver(retrySettings.TransiencyResolver)
                 .Log(LogLevel.Debug, log)
                 .Retry(retrySettings.RetryDelaySeq, retrySettings.RetryCount, log)
                 .Run(cancellationToken)
             .ConfigureAwait(false);
+
+            state.ScheduledJobs[chatId] = (version, clock.Now);
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            // Any error here is terminal
+            // We'll have to restart the shard, so we don't care about the shared state anymore.
             log.LogError(e, "Failed to schedule an indexing job for chat #{ChatId}.", chatInfo.ChatId);
             throw;
         }
 
         return;
 
-        async Task ScheduleChatIndexing(ChatInfo chatInfo, CancellationToken cancellationToken)
+        static async Task ScheduleChatIndexing(ChatId chatId, ICommander commander, CancellationToken cancellationToken)
         {
-            var (chatId, version) = chatInfo;
             var job = new MLSearch_TriggerChatIndexing(chatId);
             await commander.Call(job, cancellationToken).ConfigureAwait(false);
-            state.ScheduledJobs[chatId] = (version, clock.Now);
         }
     }
 
@@ -159,6 +164,7 @@ internal sealed class ChatIndexInitializerShard(
             cancellationToken.ThrowIfCancellationRequested();
             yield return await Events.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
         }
+        // ReSharper disable once IteratorNeverReturns
     }
 
     private ValueTask HandleCompletionEventAsync(MLSearch_TriggerChatIndexingCompletion evt, SharedState state, CancellationToken _) {
@@ -187,6 +193,7 @@ internal sealed class ChatIndexInitializerShard(
             await clock.Delay(UpdateCursorInterval, cancellationToken).ConfigureAwait(false);
             yield return clock.Now;
         }
+        // ReSharper disable once IteratorNeverReturns
     }
 
     private ValueTask UpdateCursorAsync(Moment updateMoment, SharedState state, CancellationToken cancellationToken)
