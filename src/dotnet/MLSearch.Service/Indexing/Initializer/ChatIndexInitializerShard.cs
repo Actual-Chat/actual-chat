@@ -170,6 +170,7 @@ internal sealed class ChatIndexInitializerShard(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         while (true) {
+            cancellationToken.ThrowIfCancellationRequested();
             await clock.Delay(UpdateCursorInterval, cancellationToken).ConfigureAwait(false);
             yield return clock.Now;
         }

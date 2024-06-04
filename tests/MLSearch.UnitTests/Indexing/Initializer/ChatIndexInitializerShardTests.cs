@@ -1,5 +1,6 @@
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Indexing.Initializer;
+using FluentAssertions.Common;
 
 namespace ActualChat.MLSearch.UnitTests.Indexing.Initializer;
 
@@ -85,14 +86,15 @@ public class ChatIndexInitializerShardTests(ITestOutputHelper @out) : TestBase(@
 
         // Wait for completion and check all flows properly cancelled
         var e = await Assert.ThrowsAnyAsync<Exception>(async () => await useTask);
-        if (e is AggregateException aggregateException) {
-            foreach (var innerException in aggregateException.InnerExceptions) {
-                Assert.True(innerException.IsCancellationOf(cancellationSource.Token));
-            }
-        }
-        else {
-            Assert.True(e.IsCancellationOf(cancellationSource.Token));
-        }
+        Assert.True(e.IsCancellationOf(cancellationSource.Token));
+        // if (e is AggregateException aggregateException) {
+        //     foreach (var innerException in aggregateException.InnerExceptions) {
+        //         Assert.True(innerException.IsCancellationOf(cancellationSource.Token));
+        //     }
+        // }
+        // else {
+        //    Assert.True(e.IsCancellationOf(cancellationSource.Token));
+        // }
 
         // Verify flows received expected arguments
         var states = new HashSet<ChatIndexInitializerShard.SharedState>();
@@ -118,6 +120,59 @@ public class ChatIndexInitializerShardTests(ITestOutputHelper @out) : TestBase(@
                 It.Is<ILogger>(x => x == log),
                 It.Is<CancellationToken>(x => x == cancellationSource.Token)));
         Assert.Single(states);
+    }
+
+    [Fact]
+    public async Task PostAsyncMethodWaitsIfInternalBufferIsAtCapacity()
+    {
+        const int maxBufferCapacity = 10;
+
+        var infiniteChatSequence = new Mock<IInfiniteChatSequence>();
+        infiniteChatSequence
+            .Setup(x => x.LoadAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .Returns<long, CancellationToken>((_, _) => AsyncEnumerable.Empty<(ChatId, long)>());
+
+        var initializerShard = new ChatIndexInitializerShard(
+            Mock.Of<IMomentClock>(),
+            Mock.Of<ICommander>(),
+            infiniteChatSequence.Object,
+            Mock.Of<ICursorStates<ChatIndexInitializerShard.Cursor>>(),
+            Mock.Of<ILogger<ChatIndexInitializerShard>>()
+        ) {
+            OnScheduleJob = MockScheduleJobHandler().Object,
+            OnCompleteJob = MockCompleteJobHandler().Object,
+            OnUpdateCursor = MockUpdateCursorHandler(async (_, _, _, _, _, ct) => {
+                await Task.Delay(25, ct);
+            }).Object,
+            InputBufferCapacity = maxBufferCapacity,
+        };
+
+        var postTasks = Enumerable.Range(0, maxBufferCapacity)
+            .Select(_ => initializerShard.PostAsync(new MLSearch_TriggerChatIndexingCompletion(new ChatId(Generate.Option))).AsTask())
+            .ToArray();
+        // Ensure all posts up to buffer capacity are completed
+        await Task.WhenAll(postTasks).WaitAsync(TimeSpan.FromSeconds(1));
+
+        // Initiate over capacity Post call
+        var overCapacityPostTask = initializerShard.PostAsync(new MLSearch_TriggerChatIndexingCompletion(new ChatId(Generate.Option)));
+        Assert.False(overCapacityPostTask.IsCompleted);
+
+        // Prepare using of shard
+        var cancellationSource = new CancellationTokenSource();
+
+        // Assert that over capacity call is still not completed
+        Assert.False(overCapacityPostTask.IsCompleted);
+
+        // Start using the shard
+        var useTask = initializerShard.UseAsync(cancellationSource.Token);
+
+        // Ensure our over capacity call is completed
+        await overCapacityPostTask.AsTask().WaitAsync(TimeSpan.FromSeconds(1));
+
+        // Cancel execution to complete test
+        await cancellationSource.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => useTask.WaitAsync(TimeSpan.FromSeconds(1)));
     }
 
     private static Mock<ChatIndexInitializerShard.ScheduleJobHandler> MockScheduleJobHandler(
