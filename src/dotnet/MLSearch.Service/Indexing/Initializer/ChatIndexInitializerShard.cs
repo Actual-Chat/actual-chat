@@ -1,3 +1,5 @@
+using ActualLab.Resilience;
+
 namespace ActualChat.MLSearch.Indexing.Initializer;
 
 internal interface IChatIndexInitializerShard
@@ -29,11 +31,12 @@ internal sealed class ChatIndexInitializerShard(
         public SemaphoreSlim Semaphore { get; } = new(maxConcurrency, maxConcurrency);
         public ConcurrentDictionary<ChatId, (long, long)> ScheduledJobs { get; } = new();
     }
-    public record ChatInfo(ChatId chatId, long version)
+    public record ChatInfo(ChatId ChatId, long Version)
     {
         public ChatInfo((ChatId ChatId, long Version) info): this(info.ChatId, info.Version)
         { }
     }
+    public record RetrySettings(int RetryCount, RetryDelaySeq RetryDelaySeq, TransiencyResolver TransiencyResolver);
 
     // # Delegates
     public delegate ValueTask UpdateCursorHandler(
@@ -42,7 +45,7 @@ internal sealed class ChatIndexInitializerShard(
         ILogger log,
         CancellationToken cancellationToken);
     public delegate ValueTask ScheduleJobHandler(
-        ChatInfo chatInfo, SharedState state, TimeSpan retryInterval,
+        ChatInfo chatInfo, SharedState state, RetrySettings retrySettins,
         ICommander commander,
         IMomentClock clock,
         ILogger log,
@@ -66,9 +69,10 @@ internal sealed class ChatIndexInitializerShard(
     public int InputBufferCapacity { get; init; } = 50;
     public int MaxConcurrency { get; init; } = 20;
     public TimeSpan UpdateCursorInterval { get; init; } = TimeSpan.FromSeconds(30);
-    public TimeSpan RetryInterval { get; init; } = TimeSpan.FromSeconds(10);
+    public RetrySettings ScheduleJobRetrySettings { get; init; } =
+        new RetrySettings(10, RetryDelaySeq.Exp(0.2, 10), TransiencyResolvers.PreferTransient);
     public TimeSpan ExecuteJobTimeout { get; init; } = TimeSpan.FromMinutes(3);
-    public ScheduleJobHandler OnScheduleJob { get; init; } = ScheduleJobForChatAsync;
+    public ScheduleJobHandler OnScheduleJob { get; init; } = ScheduleIndexingJobAsync;
     public CompleteJobHandler OnCompleteJob { get; init; } = HandleCompletionEvent;
     public UpdateCursorHandler OnUpdateCursor { get; init; } = UpdateCursorAsync;
 
@@ -111,30 +115,39 @@ internal sealed class ChatIndexInitializerShard(
 
     // ## Schedule jobs
     private ValueTask ScheduleJobForChatAsync(ChatInfo chatInfo, SharedState state, CancellationToken cancellationToken)
-        => OnScheduleJob(chatInfo, state, RetryInterval, commander, clock, log, cancellationToken);
+        => OnScheduleJob(chatInfo, state, ScheduleJobRetrySettings, commander, clock, log, cancellationToken);
 
-    private static async ValueTask ScheduleJobForChatAsync(
+    public static async ValueTask ScheduleIndexingJobAsync(
         ChatInfo chatInfo,
         SharedState state,
-        TimeSpan retryInterval,
+        RetrySettings retrySettings,
         ICommander commander,
         IMomentClock clock,
         ILogger log,
         CancellationToken cancellationToken)
     {
-        var (chatId, version) = chatInfo;
-        await state.Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-        while (true) {
-            try {
-                var job = new MLSearch_TriggerChatIndexing(chatId);
-                await commander.Call(job, cancellationToken).ConfigureAwait(false);
-                state.ScheduledJobs[chatId] = (version, clock.Now.EpochOffset.Ticks);
-                break;
-            }
-            catch (Exception e) when (e is not OperationCanceledException) {
-                log.LogError(e, "Failed to schedule an indexing job for chat #{ChatId}.", chatId);
-                await clock.Delay(retryInterval, cancellationToken).ConfigureAwait(false);
-            }
+        try {
+            await state.Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await AsyncChain.From(ct => ScheduleChatIndexing(chatInfo, ct))
+                .WithTransiencyResolver(retrySettings.TransiencyResolver)
+                .Log(LogLevel.Debug, log)
+                .Retry(retrySettings.RetryDelaySeq, retrySettings.RetryCount, log)
+                .Run(cancellationToken)
+            .ConfigureAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            log.LogError(e, "Failed to schedule an indexing job for chat #{ChatId}.", chatInfo.ChatId);
+            throw;
+        }
+
+        return;
+
+        async Task ScheduleChatIndexing(ChatInfo chatInfo, CancellationToken cancellationToken)
+        {
+            var (chatId, version) = chatInfo;
+            var job = new MLSearch_TriggerChatIndexing(chatId);
+            await commander.Call(job, cancellationToken).ConfigureAwait(false);
+            state.ScheduledJobs[chatId] = (version, clock.Now.EpochOffset.Ticks);
         }
     }
 

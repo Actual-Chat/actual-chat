@@ -1,10 +1,9 @@
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Indexing.Initializer;
-using FluentAssertions.Common;
 
 namespace ActualChat.MLSearch.UnitTests.Indexing.Initializer;
 
-public class ChatIndexInitializerShardTests(ITestOutputHelper @out) : TestBase(@out)
+public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
     public async Task UseAsyncMethodRunsThreeFlowsWithExpectedParams()
@@ -16,7 +15,6 @@ public class ChatIndexInitializerShardTests(ITestOutputHelper @out) : TestBase(@
 
         var now = new Moment(1_999_000);
         var updateCursorInterval = TimeSpan.FromSeconds(123);
-        var retryInterval = TimeSpan.FromSeconds(777);
         var chatToIndexId = new ChatId(Generate.Option);
         var chatToIndexVersion = 999;
 
@@ -67,7 +65,6 @@ public class ChatIndexInitializerShardTests(ITestOutputHelper @out) : TestBase(@
             OnCompleteJob = mockCompleteJob.Object,
             OnUpdateCursor = mockUpdateCursor.Object,
             UpdateCursorInterval = updateCursorInterval,
-            RetryInterval = retryInterval,
         };
 
         // Run shard
@@ -100,9 +97,9 @@ public class ChatIndexInitializerShardTests(ITestOutputHelper @out) : TestBase(@
         var states = new HashSet<ChatIndexInitializerShard.SharedState>();
         mockScheduleJob
             .Verify(handler => handler(
-                It.Is<ChatIndexInitializerShard.ChatInfo>(x => x.chatId == chatToIndexId && x.version == chatToIndexVersion),
+                It.Is<ChatIndexInitializerShard.ChatInfo>(x => x.ChatId == chatToIndexId && x.Version == chatToIndexVersion),
                 It.Is<ChatIndexInitializerShard.SharedState>(x => states.Add(x) || true),
-                It.Is<TimeSpan>(x => x == retryInterval),
+                It.Is<ChatIndexInitializerShard.RetrySettings>(x => x == initializerShard.ScheduleJobRetrySettings),
                 It.Is<ICommander>(x => x == commander),
                 It.Is<IMomentClock>(x => x == clock.Object),
                 It.Is<ILogger>(x => x == log),
@@ -176,15 +173,22 @@ public class ChatIndexInitializerShardTests(ITestOutputHelper @out) : TestBase(@
     }
 
     private static Mock<ChatIndexInitializerShard.ScheduleJobHandler> MockScheduleJobHandler(
-        Func<ChatIndexInitializerShard.ChatInfo, ChatIndexInitializerShard.SharedState,
-            TimeSpan, ICommander, IMomentClock, ILogger, CancellationToken, ValueTask>? onCall = null
+        Func<
+            ChatIndexInitializerShard.ChatInfo,
+            ChatIndexInitializerShard.SharedState,
+            ChatIndexInitializerShard.RetrySettings,
+            ICommander,
+            IMomentClock,
+            ILogger,
+            CancellationToken,
+            ValueTask>? onCall = null
     )
     {
         var mock = new Mock<ChatIndexInitializerShard.ScheduleJobHandler>();
         mock.Setup(handler => handler(
                 It.IsAny<ChatIndexInitializerShard.ChatInfo>(),
                 It.IsAny<ChatIndexInitializerShard.SharedState>(),
-                It.IsAny<TimeSpan>(),
+                It.IsAny<ChatIndexInitializerShard.RetrySettings>(),
                 It.IsAny<ICommander>(),
                 It.IsAny<IMomentClock>(),
                 It.IsAny<ILogger>(),
@@ -221,8 +225,4 @@ public class ChatIndexInitializerShardTests(ITestOutputHelper @out) : TestBase(@
             .Returns(onCall ?? ((_, _, _, _, _, _) => ValueTask.CompletedTask));
         return mock;
     }
-
-    // Receiving completion event updates shard internal state
-
-    // Job scheduler respects max capacity
 }
