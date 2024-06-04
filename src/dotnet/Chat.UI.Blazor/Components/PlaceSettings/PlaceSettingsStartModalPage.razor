@@ -256,9 +256,6 @@
     }
 
     private async Task Save() {
-        var command = new MLSearch_CreateChat(Session, default, default);
-        await UICommander.Run(command);
-        /*
         var place = await Hub.Places.Get(Session, PlaceId, default).Require();
         var newPlace = place with {
             Title = _form!.Title,
@@ -269,7 +266,6 @@
             Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
         });
         await UICommander.Run(command);
-        */
     }
 
     private void OnPlaceDeleteClick()
