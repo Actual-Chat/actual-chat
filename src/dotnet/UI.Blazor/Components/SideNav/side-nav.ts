@@ -111,6 +111,9 @@ export class SideNav extends DisposableBag {
             this.element.style.backgroundColor = null;
             this.element.style.backdropFilter = null;
             this.contentDiv.style.opacity = null;
+            this.contentDiv.style.backdropFilter = null;
+            this.element.style.removeProperty('-webkit-backdrop-filter');
+            this.contentDiv.style.removeProperty('-webkit-backdrop-filter');
             return;
         }
 
@@ -120,11 +123,10 @@ export class SideNav extends DisposableBag {
         const translateRatio = closeDirectionSign * closeRatio;
         const opacity = Math.min(1, 0.05 + Math.pow(openRatio, 0.35));
         this.element.style.transform = `translate3d(${100 * translateRatio}%, 0, 0)`;
-        if (!DeviceInfo.isWebKit) {
-            this.element.style.backdropFilter = `blur(3px)`;
-        } else {
-            this.element.style.setProperty('-webkit-backdrop-filter', 'blur(3px)');
-        }
+        this.element.style.backdropFilter = `blur(3px)`;
+        this.contentDiv.style.backdropFilter = 'blur(3px)';
+        this.element.style.setProperty('-webkit-backdrop-filter', 'blur(3px)');
+        this.contentDiv.style.setProperty('-webkit-backdrop-filter', 'blur(3px)');
         this.element.style.backgroundColor = `rgba(1, 1, 1, 0)`;
         this.contentDiv.style.opacity = opacity.toString();
     }

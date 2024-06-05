@@ -9,6 +9,7 @@ body.narrow .chat-message-editor {
 
 /* Bottom Panel, Desktop view */
 .chat-message-editor > .c-content {
+    @apply relative;
     @apply flex-none flex-x justify-items-stretch items-stretch gap-x-2.5;
     @apply px-3 py-2;
 }
