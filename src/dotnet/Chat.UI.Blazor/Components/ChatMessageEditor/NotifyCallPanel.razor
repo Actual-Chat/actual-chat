@@ -1,38 +1,41 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
     var panelCls = _panelState switch {
-        PanelState.Closed => "panel-closed",
-        PanelState.Opening => "panel-opening",
-        PanelState.Closing => "panel-closing",
+        PanelState.Closed => "",
+        PanelState.Open => "panel-open",
         _ => "",
     };
 }
 
-<div class="@panelCls notify-call-panel">
-    @if (_enableIncompleteUI) {
-        <HeaderButton Class="post-panel-btn notify-call-toggle" Click="@OnClick">
-            <i class="icon-hand text-2xl"></i>
-        </HeaderButton>
-    }
-    <div class="notify-call-content">
-        <div class="actions">
-            <Button Class="notify-btn btn-transparent">
-                <Icon><i class="icon-at text-2xl"></i></Icon>
-                <Title>Notify</Title>
-            </Button>
-            everyone
+@if (_enableIncompleteUI) {
+    <ButtonRound
+        Class="post-panel-btn notify-call-btn btn-transparent hidden"
+        Click="OnClick">
+        <i class="icon-at text-2xl"></i>
+    </ButtonRound>
+    <div class="@panelCls notify-call-panel">
+        <div class="notify-call-content">
+            <div class="actions">
+                <button class="notify-btn">
+                    <i class="icon-at text-2xl"></i>
+                    <p>Notify all</p>
+                </button>
+                <button class="call-btn">
+                    <i class="icon-phone text-2xl"></i>
+                    <p>Call all</p>
+                </button>
+            </div>
+            <ButtonRound Class="post-panel-btn btn-transparent close-btn" Click="OnClick">
+                <i class="icon-close text-2xl"></i>
+            </ButtonRound>
         </div>
-        <HeaderButton Class="close-btn" Click="OnClick">
-            <i class="icon-close text-2xl"></i>
-        </HeaderButton>
     </div>
-</div>
+}
 
 @code {
     enum PanelState {
         Closed = 0,
-        Opening,
-        Closing,
+        Open,
     }
 
     private bool _enableIncompleteUI;
@@ -45,22 +48,14 @@
     }
 
     public void Close() {
-        _panelState = PanelState.Closing;
+        _panelState = PanelState.Closed;
         StateHasChanged();
     }
 
     private void OnClick() {
         _panelState = _panelState switch {
-            PanelState.Closed => PanelState.Opening,
-            PanelState.Opening => PanelState.Closing,
-            PanelState.Closing => PanelState.Opening,
+            PanelState.Closed => PanelState.Open,
             _ => PanelState.Closed,
         };
     }
-
-    private void OnNotifyClick()
-        => Close();
-
-    private void OnCloseClick()
-        => Close();
 }
