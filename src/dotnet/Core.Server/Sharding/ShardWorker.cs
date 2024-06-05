@@ -76,7 +76,7 @@ public abstract class ShardWorker : WorkerBase
                     var node = nodeIndex.HasValue ? nodes[nodeIndex.GetValueOrDefault()] : null;
                     var shardState = ShardStates[shardIndex];
                     var mustUse = node == ThisNode;
-                    if (mustUse == usedShards[shardIndex])
+                    if (mustUse == usedShards[shardIndex] && shardState is { WhenStopped.IsCompleted: false, StopToken.IsCancellationRequested: false })
                         continue;
 
                     usedShards[shardIndex] = mustUse;
@@ -90,7 +90,7 @@ public abstract class ShardWorker : WorkerBase
             }
         }
         finally {
-            await Task.WhenAll(ShardStates.Select(x => x.Stop())).SilentAwait();
+            await Task.WhenAll(ShardStates.Select(x => x.DisposeAsync().AsTask())).SilentAwait();
         }
     }
 
@@ -141,14 +141,14 @@ public abstract class ShardWorker : WorkerBase
 
     // Nested types
 
-    protected sealed class ShardState
+    protected sealed class ShardState : IAsyncDisposable
     {
         private CancellationTokenSource StopTokenSource { get; }
 
         public ShardWorker Worker { get; }
         public int Index { get; }
         public CancellationToken StopToken { get; }
-        public Task? WhenStopped { get; set; }
+        public Task? WhenStopped { get; private set; }
 
         public ShardState(ShardWorker worker, int index)
         {
@@ -159,25 +159,32 @@ public abstract class ShardWorker : WorkerBase
         }
 
         public ShardState NextState(bool mustUse)
-        {
-            if (mustUse)
-                return Start();
+            => mustUse
+                ? Start()
+                : Stop();
 
+        private ShardState Start()
+        {
+            var isAlreadyRunning = WhenStopped != null && !StopToken.IsCancellationRequested;
+            if (isAlreadyRunning)
+                return this;
+
+            var result = new ShardState(Worker, Index);
+            result.WhenStopped = Worker.Use(Index, result.StopToken);
+            return result;
+        }
+
+        private ShardState Stop()
+        {
             StopTokenSource.CancelAndDisposeSilently();
             return this;
         }
 
-        public ShardState Start()
-        {
-            var result = WhenStopped == null ? this : new ShardState(Worker, Index);
-            result.WhenStopped = Worker.Use(Index, StopToken);
-            return result;
-        }
-
-        public Task Stop()
+        public ValueTask DisposeAsync()
         {
             StopTokenSource.CancelAndDisposeSilently();
-            return WhenStopped ?? Task.CompletedTask;
+            var whenStopped = WhenStopped;
+            return whenStopped?.ToValueTask() ?? ValueTask.CompletedTask;
         }
     }
 }
