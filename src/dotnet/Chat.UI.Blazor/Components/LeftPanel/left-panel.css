@@ -21,8 +21,8 @@
     @apply flex-y items-end;
     @apply h-full;
 }
-.left-panel-buttons .c-logo-btn > .btn.btn-square,
-.left-panel-buttons .c-logo-btn > .btn.btn-square:hover {
+.left-panel-buttons .settings-btn > .btn.btn-square,
+.left-panel-buttons .settings-btn > .btn.btn-square:hover {
     @apply bg-transparent;
 }
 .left-panel-buttons > .c-content > .c-logo {
@@ -36,14 +36,10 @@
     @apply w-full;
     @apply overflow-hidden;
 }
-.left-panel-buttons > .c-content > .c-account {
-    @apply flex justify-center;
-    @apply py-2;
-}
 .left-panel-buttons .c-delimiter {
     @apply mx-1 w-10 md:w-12 border-t border-nav-separator;
 }
-.navbar-button.c-logo-btn {
+.navbar-button.settings-btn {
     @apply my-3 md:my-2;
 }
 .left-panel-content {

@@ -13,10 +13,11 @@
 }
 
 .btn.btn-square.account-btn {
-    @apply flex flex-1 ml-1 bg-transparent rounded-none;
+    @apply bg-transparent;
 }
 .btn-square.account-btn .avatar-badge {
-    @apply bg-transparent p-0;
+    @apply p-0;
+    @apply bg-transparent;
 }
 .btn-square.account-btn .avatar-badge > .c-name {
     @apply hidden;
@@ -40,13 +41,17 @@ body.hoverable .btn.btn-square.account-btn:hover > .btn-content {
 }
 
 .left-panel-account-menu .dropdown-menu-btn.btn-round .btn-content {
-    @apply bg-primary text-primary-title;
+    @apply bg-primary;
+    @apply text-primary-title;
 }
 .left-panel-account-menu .dropdown-menu-btn.btn-round .btn-content {
-    @apply bg-primary text-primary-title h-10 w-10 min-h-0 min-w-0;
+    @apply h-10 w-10 min-h-0 min-w-0;
+    @apply bg-primary;
+    @apply text-primary-title;
 }
 body.hoverable .left-panel-account-menu .dropdown-menu-btn.btn-round:hover .btn-content {
-    @apply bg-primary-hover text-primary-title;
+    @apply bg-primary-hover;
+    @apply text-primary-title;
 }
 
 .footer-account-menu {

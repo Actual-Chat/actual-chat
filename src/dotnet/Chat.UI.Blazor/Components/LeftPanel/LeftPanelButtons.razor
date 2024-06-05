@@ -5,7 +5,7 @@
     <div class="c-spacer"></div>
     <div class="c-content">
         <NavbarButton
-            Class="c-logo-btn"
+            Class="settings-btn"
             ButtonClass="unhovered"
             Tooltip="Settings"
             TooltipPosition="FloatingPosition.Right"
@@ -21,11 +21,22 @@
         <div class="c-buttons">
             <NavbarButtons/>
         </div>
-        <div class="c-account">
-            <div class="right-line"></div>
-            <AccountDropdown/>
-            <div class="right-line"></div>
-        </div>
+
+        <NavbarButton
+            Class="settings-btn"
+            ButtonClass="account-btn unhovered"
+            Tooltip="Settings"
+            TooltipPosition="FloatingPosition.Right"
+            Click="@OnLogoClick">
+            <ChildContent>
+                <AccountView/>
+            </ChildContent>
+            <Ending>
+                <LeftLine/>
+                <div class="right-line"></div>
+            </Ending>
+        </NavbarButton>
+
     </div>
 </div>
 
