@@ -9,14 +9,16 @@
         return;
 
     if (!account.IsGuestOrNone) {
-        <button
-            class="account-btn btn-square"
+        <ButtonSquare
+            Class="account-btn unhovered"
+            Tooltip="Settings"
+            TooltipPosition="FloatingPosition.Right"
+            Click="OnSettingsClick"
             data-bubble="@(BubbleRef.New<ManageAccountSettingsBubble>())"
             data-bubble-priority="205"
-            data-bubble-placement="@(FloatingPosition.RightEnd.ToPositionString())"
-            @onclick="@OnSettingsClick">
+            data-bubble-placement="@(FloatingPosition.RightEnd.ToPositionString())">
             <AccountView/>
-        </button>
+        </ButtonSquare>
     } else {
         <SignInButton ButtonType="SignInButton.MenuButton.Round" />
     }

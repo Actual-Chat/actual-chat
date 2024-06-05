@@ -318,10 +318,13 @@ export class ChatMessageEditor {
             return;
 
         this.hasContent = isTextMode;
-        if (isTextMode)
+        if (isTextMode) {
+            this.editorDiv.classList.remove('default-mode');
             this.editorDiv.classList.add('text-mode');
-        else
+        } else {
             this.editorDiv.classList.remove('text-mode');
+            this.editorDiv.classList.add('default-mode');
+        }
         this.endAnimations();
     }
 

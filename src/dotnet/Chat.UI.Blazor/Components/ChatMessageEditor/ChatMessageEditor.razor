@@ -22,13 +22,13 @@
             <RelatedChatEntryPanel/>
         }
         <div class="c-content">
+            @if (ScreenSize.IsNarrow()) {
+                <div class="rounded-sub-footer"></div>
+            }
             <div class="post-panel"
                  data-bubble="@(BubbleRef.New<TextMessagePanelBubble>())"
                  data-bubble-priority="105"
                  data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
-                @if (ScreenSize.IsNarrow()) {
-                    <div class="rounded-sub-footer"></div>
-                }
                 <ButtonRound Class="post-panel-btn attach-btn btn-transparent unhovered">
                     <i class="icon-attach-2 text-2xl"></i>
                 </ButtonRound>
