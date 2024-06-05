@@ -65,6 +65,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
                 NotificationKind.Message => new ChatEntryNotificationOption(entryId, authorId),
                 NotificationKind.Reply => new ChatEntryNotificationOption(entryId, authorId),
                 NotificationKind.Reaction => new ChatEntryNotificationOption(entryId, authorId),
+                NotificationKind.GetAttention => new GetAttentionNotificationOption(chatId, authorId, entryId.LocalId),
                 _ => throw new ArgumentOutOfRangeException(),
             },
         };
@@ -76,10 +77,19 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         this.RequireSameOrEmptyId(id);
         model.RequireSomeVersion();
 
+        long? textEntryLocalId = null;
+        string? authorSid = null;
         var chatEntryNotification = model.ChatEntryNotification;
         if (chatEntryNotification != null) {
             if (chatEntryNotification.EntryId.Kind != ChatEntryKind.Text)
                 throw new ArgumentOutOfRangeException(nameof(model), "EntryId must be a Text entry Id here.");
+            textEntryLocalId = chatEntryNotification.EntryId.LocalId;
+            authorSid = chatEntryNotification.AuthorId.Value.NullIfEmpty();
+        }
+        var getAttentionNotification = model.GetAttentionNotification;
+        if (getAttentionNotification != null) {
+            textEntryLocalId = getAttentionNotification.LastEntryLocalId;
+            authorSid = getAttentionNotification.CallerId.Value.NullIfEmpty();
         }
 
         Id = id;
@@ -91,8 +101,8 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         Content = model.Content;
         IconUrl = model.IconUrl;
         ChatId = model.ChatId;
-        TextEntryLocalId = chatEntryNotification?.EntryId.LocalId;
-        AuthorId = chatEntryNotification?.AuthorId.Value.NullIfEmpty();
+        TextEntryLocalId = textEntryLocalId;
+        AuthorId = authorSid;
         CreatedAt = model.CreatedAt;
         SentAt = model.SentAt;
         HandledAt = model.HandledAt;

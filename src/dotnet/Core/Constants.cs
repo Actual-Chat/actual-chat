@@ -187,7 +187,9 @@ public static partial class Constants
             public const string NotificationId = "notificationId";
             public const string ChatId = "chatId";
             public const string ChatEntryId = "chatEntryId";
+            public const string LastEntryLocalId = "lastEntryLocalId";
             public const string Icon = "icon";
+            public const string Kind = "kind";
             public const string Link = "link";
             public const string Tag = "tag";
             public const string Title = "title";
@@ -195,7 +197,7 @@ public static partial class Constants
             public const string ImageUrl = "imageUrl";
 
             public static readonly string[] ValidKeys = {
-                Body, ChatId, ChatEntryId, Icon, ImageUrl, Link, NotificationId, Tag, Title
+                Body, ChatId, ChatEntryId, LastEntryLocalId, Icon, ImageUrl, Kind, Link, NotificationId, Tag, Title
             };
 
             public static bool IsValidKey(string key)

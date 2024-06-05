@@ -21,10 +21,8 @@ export type PanelMode = 'Normal' | 'Narrow';
 export class ChatMessageEditor {
     private readonly backupRequired$ = new Subject<void>();
     private readonly disposed$: Subject<void> = new Subject<void>();
-    private blazorRef: DotNet.DotNetObject;
     private readonly editorDiv: HTMLDivElement;
     private readonly postPanelDiv: HTMLDivElement;
-    private readonly postButton: HTMLButtonElement;
     private readonly attachButton: HTMLButtonElement;
     private readonly input: HTMLDivElement;
     private readonly attachmentListObserver: MutationObserver;
@@ -41,17 +39,15 @@ export class ChatMessageEditor {
     private chatId: string;
     private smooth: boolean = false;
 
-    static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): ChatMessageEditor {
-        return new ChatMessageEditor(editorDiv, blazorRef);
+    static create(editorDiv: HTMLDivElement): ChatMessageEditor {
+        return new ChatMessageEditor(editorDiv);
     }
 
-    constructor(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
+    constructor(editorDiv: HTMLDivElement) {
         let domClassList = document.documentElement.classList;
         this.smooth = !domClassList.contains('device-ios');
         this.editorDiv = editorDiv;
-        this.blazorRef = blazorRef;
         this.postPanelDiv = this.editorDiv.querySelector(':scope .post-panel');
-        this.postButton = this.postPanelDiv.querySelector(':scope .post-message');
         this.attachButton = this.postPanelDiv.querySelector(':scope .attach-btn');
         this.input = this.postPanelDiv.querySelector(':scope .message-input');
 

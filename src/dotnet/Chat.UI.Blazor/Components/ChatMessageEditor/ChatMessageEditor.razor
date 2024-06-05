@@ -1,5 +1,4 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@implements IChatMessageEditorBackend
 @implements IAsyncDisposable
 @using ActualChat.Chat.UI.Blazor.Events
 @using ActualChat.Chat.UI.Blazor.Module
@@ -51,7 +50,7 @@
                     @onmousedown:preventDefault="true">
                     <i class="icon-paper-plane text-2xl"></i>
                 </button>
-                <NotifyCallPanel @ref="NotifyCallPanelRef"/>
+                <NotifyCallPanel ChatId="@Chat.Id" />
             </div>
             @if (ScreenSize.IsNarrow()) {
                 <RelatedChatEntryPanel/>
@@ -70,12 +69,10 @@
 
     private readonly AsyncLock _postLock = new(LockReentryMode.CheckedFail);
     private bool Autofocus => ScreenSize.IsWide() && !BrowserInfo.IsTouchCapable;
-    private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
     private MarkupEditor MarkupEditorRef { get; set; } = null!;
     private AttachmentList AttachmentListRef { get; set; } = null!;
-    private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
     private IChatMarkupHub ChatMarkupHub { get; set; } = null!;
     private SyncedStateLease<ReadPosition>? ReadPositionState { get; set; } = null!;
     private SentAttachmentsStorage? AttachmentsStorage { get; set; } = null!;
@@ -109,8 +106,6 @@
         AttachmentsStorage = null;
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
-        BlazorRef.DisposeSilently();
-        BlazorRef = null!;
         ReadPositionState.DisposeSilently();
         ReadPositionState = null!;
     }
@@ -135,8 +130,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            BlazorRef = DotNetObjectReference.Create<IChatMessageEditorBackend>(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
             await Task.WhenAll(MarkupEditorRef.WhenReady, AttachmentListRef.WhenReady);
             if (JSRef == null! || MarkupEditorRef.JSRef == null! || AttachmentListRef.JSRef == null!)
                 return; // Dispose may happen during await above
@@ -153,12 +147,6 @@
             AttachmentsStorage.AttachmentsStored += OnAttachmentsStored;
         }
     }
-
-    // Backend API
-
-    [JSInvokable]
-    public void CloseNotifyPanel()
-        => NotifyCallPanelRef.Close();
 
     // Private methods
 

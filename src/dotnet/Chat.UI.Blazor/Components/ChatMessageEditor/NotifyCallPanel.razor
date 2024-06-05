@@ -1,5 +1,9 @@
+@using ActualChat.Notification
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
+    if (!_enableIncompleteUI)
+        return;
+
     var panelCls = _panelState switch {
         PanelState.Closed => "",
         PanelState.Open => "panel-open",
@@ -7,30 +11,28 @@
     };
 }
 
-@if (_enableIncompleteUI) {
-    <ButtonRound
-        Class="post-panel-btn notify-call-btn btn-transparent hidden"
-        Click="OnClick">
-        <i class="icon-at text-2xl"></i>
-    </ButtonRound>
-    <div class="@panelCls notify-call-panel">
-        <div class="notify-call-content">
-            <div class="actions">
-                <button class="notify-btn">
-                    <i class="icon-at text-2xl"></i>
-                    <p>Notify all</p>
-                </button>
-                <button class="call-btn">
-                    <i class="icon-phone text-2xl"></i>
-                    <p>Call all</p>
-                </button>
-            </div>
-            <ButtonRound Class="post-panel-btn btn-transparent close-btn" Click="OnClick">
-                <i class="icon-close text-2xl"></i>
-            </ButtonRound>
+<ButtonRound
+    Class="post-panel-btn notify-call-btn btn-transparent hidden"
+    Click="OnExpandClick">
+    <i class="icon-at text-2xl"></i>
+</ButtonRound>
+<div class="@panelCls notify-call-panel">
+    <div class="notify-call-content">
+        <div class="actions">
+            <button class="notify-btn" @onclick="@OnNotifyAllClick">
+                <i class="icon-at text-2xl"></i>
+                <p>Notify all</p>
+            </button>
+            <button class="call-btn" @onclick="@OnCallAllClick">
+                <i class="icon-phone text-2xl"></i>
+                <p>Call all</p>
+            </button>
         </div>
+        <ButtonRound Class="post-panel-btn btn-transparent close-btn" Click="OnExpandClick">
+            <i class="icon-close text-2xl"></i>
+        </ButtonRound>
     </div>
-}
+</div>
 
 @code {
     enum PanelState {
@@ -41,21 +43,36 @@
     private bool _enableIncompleteUI;
     private PanelState _panelState = PanelState.Closed;
 
-    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private Features Features => Hub.Features();
+    private ModalUI ModalUI => Hub.ModalUI;
+    private ToastUI ToastUI => Hub.ToastUI;
+    private UICommander UICommander => Hub.UICommander();
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
 
     protected override async Task OnInitializedAsync() {
         _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
     }
 
-    public void Close() {
-        _panelState = PanelState.Closed;
-        StateHasChanged();
-    }
-
-    private void OnClick() {
-        _panelState = _panelState switch {
+    private void OnExpandClick()
+        => _panelState = _panelState switch {
             PanelState.Closed => PanelState.Open,
             _ => PanelState.Closed,
         };
-    }
+
+    private void OnNotifyAllClick() =>
+        _ = ModalUI.Show(new ConfirmModal.Model(
+            false,
+            $"Are you sure you want to Notify All members?",
+            NotifyAllInternal) {
+            Title = "Notify All"
+        });
+
+    private void NotifyAllInternal()
+        => _ = UICommander.Call(new Notifications_NotifyMembers(Session, ChatId));
+
+    private void OnCallAllClick()
+        => ToastUI.Show("This button doesn't do anything yet", ToastDismissDelay.Short);
 }

@@ -289,9 +289,33 @@ public class NotificationsBackend(IServiceProvider services)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
-
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("Removed {Count} devices", removedDevicesCount);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnNotifyMembers(
+        NotificationsBackend_NotifyMembers command,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var (userId, chatId, lastEntryLocalId) = command;
+        var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
+
+        var author = await AuthorsBackend
+            .GetByUserId(chatId, userId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
+
+        var now = Clocks.CoarseSystemClock.Now;
+        var similarityKey = now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
+        var content = $"{author.Avatar.Name} asks for attention";
+        var lastEntryId = (ChatEntryId)new TextEntryId(chatId, lastEntryLocalId, AssumeValid.Option);
+        await EnqueueMessageRelatedNotifications(
+                chatId, lastEntryId, author, content, NotificationKind.GetAttention, similarityKey, userIds, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // Event handlers
@@ -339,7 +363,7 @@ public class NotificationsBackend(IServiceProvider services)
         var userIds = await ListSubscribedUserIds(entry.ChatId, cancellationToken).ConfigureAwait(false);
         var similarityKey = entry.ChatId;
         await EnqueueMessageRelatedNotifications(
-                entry, author, text, NotificationKind.Message, similarityKey, userIds, cancellationToken)
+                entry.ChatId, entry.Id, author, text, NotificationKind.Message, similarityKey, userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -362,7 +386,7 @@ public class NotificationsBackend(IServiceProvider services)
         var userIds = new[] { author.UserId };
         var similarityKey = entry.ChatId;
         await EnqueueMessageRelatedNotifications(
-                entry, reactionAuthor, text, NotificationKind.Reaction, similarityKey, userIds, cancellationToken)
+                entry.ChatId, entry.Id, reactionAuthor, text, NotificationKind.Reaction, similarityKey, userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -391,7 +415,8 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     private async ValueTask EnqueueMessageRelatedNotifications(
-        ChatEntry entry,
+        ChatId chatId,
+        ChatEntryId? entryId,
         AuthorFull changeAuthor,
         string content,
         NotificationKind kind,
@@ -399,22 +424,29 @@ public class NotificationsBackend(IServiceProvider services)
         IReadOnlyCollection<UserId> userIds,
         CancellationToken cancellationToken)
     {
-        DebugLog?.LogInformation("-> EnqueueMessageRelatedNotifications. EntryId={EntryId}, Kind={Kind}, UserIds#={UserIdsCount}",
-            entry.Id, kind, userIds.Count);
+        DebugLog?.LogInformation("-> EnqueueMessageRelatedNotifications. ChatId={ChatId}, EntryId={EntryId}, Kind={Kind}, UserIds#={UserIdsCount}",
+            chatId, entryId, kind, userIds.Count);
 
-        var chat = await ChatsBackend.Get(entry.ChatId, cancellationToken).Require().ConfigureAwait(false);
+        if (entryId.HasValue && entryId.Value.ChatId != chatId)
+            throw new ArgumentOutOfRangeException(nameof(entryId), "entry.ChatId should match given chatId");
+
+        var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
         var title = GetTitle(chat, changeAuthor);
         var iconUrl = GetIconUrl(chat, changeAuthor);
         var now = Clocks.CoarseSystemClock.Now;
         var otherUserIds = changeAuthor.UserId.IsNone ? userIds : userIds.Where(uid => uid != changeAuthor.UserId);
 
         foreach (var otherUserId in otherUserIds) {
-            var presence = await UserPresences.Get(otherUserId, cancellationToken).ConfigureAwait(false);
-            // Do not send notifications to users who are online
-            if (presence is Presence.Online or Presence.Recording){
-                DebugLog?.LogInformation("EnqueueMessageRelatedNotifications. Skipping online user. EntryId={EntryId}, UserId={UserId}",
-                    entry.Id, otherUserId);
-                continue;
+            var checkPresence = kind != NotificationKind.GetAttention;
+            if (checkPresence) {
+                var presence = await UserPresences.Get(otherUserId, cancellationToken).ConfigureAwait(false);
+                // Do not send notifications to users who are online
+                if (presence is Presence.Online or Presence.Recording) {
+                    DebugLog?.LogInformation(
+                        "EnqueueMessageRelatedNotifications. Skipping online user. ChatId={ChatId}, EntryId={EntryId}, UserId={UserId}",
+                        chatId, entryId, otherUserId);
+                    continue;
+                }
             }
             var notificationId = new NotificationId(otherUserId, kind, similarityKey);
             var notification = new Notification(notificationId) {
@@ -422,8 +454,19 @@ public class NotificationsBackend(IServiceProvider services)
                 Content = content,
                 IconUrl = iconUrl,
                 SentAt = now,
-                ChatEntryNotification = new ChatEntryNotificationOption(entry.Id, changeAuthor.Id),
             };
+            if (kind == NotificationKind.GetAttention)
+                notification = notification with {
+                    GetAttentionNotification = new (chatId, changeAuthor.Id, entryId?.LocalId ?? 0),
+                };
+            else if (entryId.HasValue)
+                notification = notification with {
+                    ChatEntryNotification = new ChatEntryNotificationOption(entryId.Value, changeAuthor.Id),
+                };
+            else
+                notification = notification with {
+                    ChatNotification = new ChatNotificationOption(chatId),
+                };
             await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken).ConfigureAwait(false);
         }
     }
