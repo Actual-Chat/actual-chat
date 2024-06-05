@@ -229,8 +229,11 @@ public class NotificationsBackend(IServiceProvider services)
             };
             dbContext.Add(dbDevice);
         }
-        else
+        else {
             dbDevice.AccessedAt = Clocks.SystemClock.Now;
+            if (dbDevice.Type == DeviceType.WebBrowser && deviceType != DeviceType.WebBrowser)
+                dbDevice.Type = deviceType; // Now maui app reports device type properly, lets update it.
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation.Items.Set(dbDevice);
