@@ -27,6 +27,8 @@ public interface INotificationsBackend : IComputeService, IBackendService
     Task OnRemoveDevices(NotificationsBackend_RemoveDevices command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveAccount(NotificationsBackend_RemoveAccount command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnNotifyMembers(NotificationsBackend_NotifyMembers command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -76,6 +78,18 @@ public sealed partial record NotificationsBackend_RemoveDevices(
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_RemoveAccount(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public UserId ShardKey => UserId;
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_NotifyMembers(
+    [property: DataMember, MemoryPackOrder(0)] UserId UserId,
+    [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(2)] long LastEntryId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore]

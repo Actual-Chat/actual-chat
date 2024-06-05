@@ -40,16 +40,30 @@ public partial record Notification(
         get => Option as ChatEntryNotificationOption;
         init => Option ??= value;
     }
+    [DataMember, MemoryPackOrder(10)]
+    public GetAttentionNotificationOption? GetAttentionNotification {
+        get => Option as GetAttentionNotificationOption;
+        init => Option ??= value;
+    }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsActive => HandledAt == null;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ChatId => ChatEntryNotification?.EntryId.ChatId ?? ChatNotification?.ChatId ?? default(ChatId);
+    public ChatId ChatId =>
+        ChatEntryNotification?.EntryId.ChatId
+        ?? GetAttentionNotification?.ChatId
+        ?? ChatNotification?.ChatId
+        ?? default;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ChatEntryId EntryId => ChatEntryNotification?.EntryId ?? default;
+    public ChatEntryId EntryId =>
+        ChatEntryNotification?.EntryId
+        ?? default;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public AuthorId AuthorId => ChatEntryNotification?.AuthorId ?? default;
+    public AuthorId AuthorId =>
+        ChatEntryNotification?.AuthorId
+        ?? GetAttentionNotification?.CallerId
+        ?? default;
 
     public Notification WithSimilar(Notification similar)
     {
@@ -76,3 +90,10 @@ public partial record ChatEntryNotificationOption(
     [property: DataMember, MemoryPackOrder(0)] ChatEntryId EntryId,
     [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
     ) : NotificationOption;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record GetAttentionNotificationOption(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] AuthorId CallerId,
+    [property: DataMember, MemoryPackOrder(2)] long LastEntryLocalId
+) : NotificationOption;
