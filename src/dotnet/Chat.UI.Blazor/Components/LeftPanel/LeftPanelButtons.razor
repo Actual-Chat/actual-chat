@@ -9,7 +9,7 @@
             ButtonClass="unhovered"
             Tooltip="Settings"
             TooltipPosition="FloatingPosition.Right"
-            Click="@OnLogoClick">
+            Click="@OnClick">
             <ChildContent>
                 <logo-button-svg />
             </ChildContent>
@@ -21,28 +21,13 @@
         <div class="c-buttons">
             <NavbarButtons/>
         </div>
-
-        <NavbarButton
-            Class="settings-btn"
-            ButtonClass="account-btn unhovered"
-            Tooltip="Settings"
-            TooltipPosition="FloatingPosition.Right"
-            Click="@OnLogoClick">
-            <ChildContent>
-                <AccountView/>
-            </ChildContent>
-            <Ending>
-                <LeftLine/>
-                <div class="right-line"></div>
-            </Ending>
-        </NavbarButton>
-
+        <AccountDropdown/>
     </div>
 </div>
 
 @code {
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
-    private void OnLogoClick()
+    private void OnClick()
         => _ = UIEventHub.Publish(new ShowSettingsEvent());
 }

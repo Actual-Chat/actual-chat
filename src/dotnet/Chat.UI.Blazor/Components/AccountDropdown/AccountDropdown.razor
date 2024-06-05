@@ -9,18 +9,31 @@
         return;
 
     if (!account.IsGuestOrNone) {
-        <ButtonSquare
-            Class="account-btn unhovered"
+        <NavbarButton
+            Class="settings-btn"
+            ButtonClass="account-btn unhovered"
             Tooltip="Settings"
             TooltipPosition="FloatingPosition.Right"
-            Click="OnSettingsClick"
+            Click="@OnSettingsClick"
             data-bubble="@(BubbleRef.New<ManageAccountSettingsBubble>())"
             data-bubble-priority="205"
             data-bubble-placement="@(FloatingPosition.RightEnd.ToPositionString())">
-            <AccountView/>
-        </ButtonSquare>
+            <ChildContent>
+                <AccountView/>
+            </ChildContent>
+            <Ending>
+                <LeftLine/>
+                <div class="right-line"></div>
+            </Ending>
+        </NavbarButton>
     } else {
-        <SignInButton ButtonType="SignInButton.MenuButton.Round" />
+        <div class="navbar-button settings-btn">
+            <SignInButton
+                ButtonClass=""
+                ButtonType="SignInButton.MenuButton.Round"/>
+            <LeftLine/>
+            <div class="right-line"></div>
+        </div>
     }
 }
 
