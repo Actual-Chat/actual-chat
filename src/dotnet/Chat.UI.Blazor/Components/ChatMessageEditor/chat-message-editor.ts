@@ -28,8 +28,6 @@ export class ChatMessageEditor {
     private readonly attachButton: HTMLButtonElement;
     private readonly input: HTMLDivElement;
     private readonly attachmentListObserver: MutationObserver;
-    private readonly notifyPanel: HTMLDivElement;
-    private readonly notifyPanelObserver: MutationObserver;
     private readonly sideNavs: NodeListOf<Element>;
     private readonly sideNavObserver: MutationObserver;
     private markupEditor: MarkupEditor;
@@ -40,7 +38,6 @@ export class ChatMessageEditor {
     private isNarrowScreen: boolean = null; // Intended: updateLayout needs this on the first run
     private panelModel: PanelMode = null; // Intended: updateLayout needs this on the first run
     private hasContent: boolean = null; // Intended: updateHasContent needs this on the first run
-    private isNotifyPanelOpen: boolean = false;
     private chatId: string;
     private smooth: boolean = false;
 
@@ -56,7 +53,6 @@ export class ChatMessageEditor {
         this.postPanelDiv = this.editorDiv.querySelector(':scope .post-panel');
         this.postButton = this.postPanelDiv.querySelector(':scope .post-message');
         this.attachButton = this.postPanelDiv.querySelector(':scope .attach-btn');
-        this.notifyPanel = this.postPanelDiv.querySelector(':scope .notify-call-panel');
         this.input = this.postPanelDiv.querySelector(':scope .message-input');
 
         if (this.smooth)
@@ -82,21 +78,12 @@ export class ChatMessageEditor {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: MouseEvent) => this.onAttachButtonClick(event));
 
-        fromEvent(this.notifyPanel, 'click')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: Event) => this.onNotifyPanelClick(event));
-
         this.backupRequired$.pipe(debounceTime(1000), tap(() => this.saveDraft())).subscribe();
 
         this.attachmentListObserver = new MutationObserver(this.updateAttachmentListState);
         this.attachmentListObserver.observe(this.editorDiv, {
             attributes: true,
             childList: true,
-        });
-
-        this.notifyPanelObserver = new MutationObserver(this.updateNotifyPanelRelated);
-        this.notifyPanelObserver.observe(this.notifyPanel, {
-            attributes: true,
         });
 
         this.sideNavObserver = new MutationObserver(this.updateEditorFocus);
@@ -124,7 +111,6 @@ export class ChatMessageEditor {
             this.attachmentListElement.removeEventListener('wheel', this.onHorizontalScroll);
         }
         this.attachmentListObserver.disconnect();
-        this.notifyPanelObserver.disconnect();
         this.sideNavs.forEach(_ => {
             this.sideNavObserver.disconnect();
         });
@@ -229,14 +215,6 @@ export class ChatMessageEditor {
         }
     });
 
-    private onNotifyPanelClick = (async (event: Event) => {
-        if (event.target as HTMLElement == this.notifyPanel || (event.target as HTMLElement).classList.contains('notify-call-content')) {
-            if (this.notifyPanel.classList.contains('panel-opening')) {
-                await this.blazorRef.invokeMethodAsync('CloseNotifyPanel');
-            }
-        }
-    });
-
     private onInputPaste = async (event: ClipboardEvent) => {
         // Get pasted data via clipboard API
         // We need to handle only files pasting.
@@ -328,33 +306,6 @@ export class ChatMessageEditor {
         this.endAnimations();
     }
 
-    private updateNotifyPanelRelated = () => {
-        const isNotifyPanelOpen = this.notifyPanel.classList.contains('panel-opening');
-        if (this.isNotifyPanelOpen === isNotifyPanelOpen)
-            return;
-
-        this.isNotifyPanelOpen = isNotifyPanelOpen;
-        const attach = this.editorDiv.querySelector(':scope .attach-dropdown');
-        const label = this.editorDiv.querySelector(':scope label');
-        if (isNotifyPanelOpen) {
-            self.setTimeout(() => {
-                attach.classList.add('hidden');
-                label.classList.add('hidden');
-                this.markupEditor.isEditable(false);
-            }, 150);
-        } else {
-            attach.classList.remove('hidden');
-            label.classList.remove('hidden');
-            this.markupEditor.isEditable(true);
-        }
-
-        if (this.notifyPanel.classList.contains('panel-closing')) {
-            self.setTimeout(() => {
-                this.notifyPanel.classList.replace('panel-closing', 'panel-closed');
-            }, 150);
-        }
-    };
-
     private updateEditorFocus = (mutationList, observer) => {
         mutationList.forEach(m => {
             if (m.type == 'attributes') {
@@ -368,7 +319,6 @@ export class ChatMessageEditor {
     }
 
     private endAnimations(): void {
-        this.notifyPanel.classList.remove('ha-opening', 'panel-closing');
         const playbackWrapper = this.editorDiv.querySelector('.playback-wrapper');
         if (!playbackWrapper)
             return;
