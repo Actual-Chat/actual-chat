@@ -27,7 +27,6 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
     private UIHub Hub { get; }
     private HostInfo HostInfo => Hub.HostInfo();
     private Session Session => Hub.Session();
-    private History History => Hub.History;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private IDeviceTokenRetriever DeviceTokenRetriever => _deviceTokenRetriever ??= Hub.GetRequiredService<IDeviceTokenRetriever>();
     private UrlMapper UrlMapper => Hub.UrlMapper();
@@ -141,7 +140,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
                         deviceId ??= await DeviceTokenRetriever.GetDeviceToken(cancellationToken).ConfigureAwait(false);
                         await Hub.RpcHub().WhenClientPeerConnected(cancellationToken).ConfigureAwait(false);
                         if (deviceId != null) {
-                            var command = new Notifications_RegisterDevice(Session, deviceId, DeviceType.WebBrowser);
+                            var command = new Notifications_RegisterDevice(Session, deviceId, GetDeviceType());
                             await Hub.Commander().Call(command, cancellationToken).ConfigureAwait(false);
                         }
                         return deviceId;
@@ -153,6 +152,21 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
                 }
                 return null;
             }, CancellationToken.None);
+        }
+
+        DeviceType GetDeviceType()
+        {
+            if (HostInfo.HostKind.IsMauiApp())
+                switch (HostInfo.AppKind) {
+                case AppKind.Android:
+                    return DeviceType.AndroidApp;
+                case AppKind.Ios:
+                    return DeviceType.iOSApp;
+                case AppKind.Windows:
+                    return DeviceType.WindowsApp;
+                }
+
+            return DeviceType.WebBrowser;
         }
     }
 }
