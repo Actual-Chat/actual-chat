@@ -5,8 +5,11 @@
     <div class="c-spacer"></div>
     <div class="c-content">
         <NavbarButton
-            Class="c-logo-btn"
-            Click="@OnLogoClick">
+            Class="settings-btn"
+            ButtonClass="unhovered"
+            Tooltip="Settings"
+            TooltipPosition="FloatingPosition.Right"
+            Click="@OnClick">
             <ChildContent>
                 <logo-button-svg />
             </ChildContent>
@@ -18,17 +21,13 @@
         <div class="c-buttons">
             <NavbarButtons/>
         </div>
-        <div class="c-account">
-            <div class="right-line"></div>
-            <AccountDropdown/>
-            <div class="right-line"></div>
-        </div>
+        <AccountDropdown/>
     </div>
 </div>
 
 @code {
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
-    private void OnLogoClick()
+    private void OnClick()
         => _ = UIEventHub.Publish(new ShowSettingsEvent());
 }

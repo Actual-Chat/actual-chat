@@ -1,4 +1,5 @@
-﻿using ActualChat.Users;
+﻿using ActualChat.Chat;
+using ActualChat.Users;
 
 namespace ActualChat.Notification;
 
@@ -6,6 +7,7 @@ public class Notifications(IServiceProvider services) : INotifications
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private INotificationsBackend Backend { get; } = services.GetRequiredService<INotificationsBackend>();
+    private IChats Chats { get; } = services.GetRequiredService<IChats>();
 
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ICommander Commander { get; } = services.Commander();
@@ -53,6 +55,18 @@ public class Notifications(IServiceProvider services) : INotifications
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var registerDeviceCommand = new NotificationsBackend_RegisterDevice(account.Id, deviceId, deviceType);
         await Commander.Run(registerDeviceCommand, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnNotifyMembers(
+        Notifications_NotifyMembers command, CancellationToken cancellationToken)
+    {
+        var (session, chatId) = command;
+        _ = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        var idRange = await Chats.GetIdRange(session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var notifyCommand = new NotificationsBackend_NotifyMembers(account.Id, chatId, idRange.End - 1);
+        await Commander.Run(notifyCommand, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods

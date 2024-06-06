@@ -130,7 +130,7 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 }
 
 .chat-message-markup {
-    @apply text-02 text-text-1;
+    @apply text-02 text-base;
 }
 
 .chat-message.mention .chat-message-markup {

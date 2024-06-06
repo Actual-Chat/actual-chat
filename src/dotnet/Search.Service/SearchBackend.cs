@@ -143,7 +143,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
                             .From(skip)
                             .Size(limit)
                             .Query(qq => qq.Bool(ConfigureUserContactQueryDescriptor))
-                            .IgnoreUnavailable(),
+                            .IgnoreUnavailable()
+                            .Highlight(h => h.Fields(f
+                                => f.Field(x => x.FullName)
+                                    .PreTags(HighlightsConverter.PreTag)
+                                    .PostTags(HighlightsConverter.PostTag))),
                     cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
@@ -154,12 +158,12 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             Offset = skip,
         };
 
-        ContactSearchResult ToSearchResult(IHit<IndexedUserContact> x)
+        ContactSearchResult ToSearchResult(IHit<IndexedUserContact> hit)
         {
-            // TODO: highlighting
-            var peerChatId = new PeerChatId(userId, UserId.Parse(x.Source!.Id));
+            var peerChatId = new PeerChatId(userId, UserId.Parse(hit.Source!.Id));
             var contactId = new ContactId(userId, peerChatId.ToChatId());
-            return new ContactSearchResult(contactId, SearchMatch.New(x.Source.FullName));
+
+            return new ContactSearchResult(contactId, hit.GetSearchMatch());
         }
 
         BoolQueryDescriptor<IndexedUserContact> ConfigureUserContactQueryDescriptor(BoolQueryDescriptor<IndexedUserContact> descriptor)
@@ -206,7 +210,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
                             .From(skip)
                             .Size(limit)
                             .Query(qq => qq.Bool(ConfigureChatContactQueryDescriptor))
-                            .IgnoreUnavailable(),
+                            .IgnoreUnavailable()
+                            .Highlight(h => h.Fields(f
+                                => f.Field(x => x.Title)
+                                    .PreTags(HighlightsConverter.PreTag)
+                                    .PostTags(HighlightsConverter.PostTag))),
                     cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
@@ -217,11 +225,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             Offset = skip,
         };
 
-        ContactSearchResult ToSearchResult(IHit<IndexedChatContact> x)
-        {
-            // TODO: highlighting
-            return new ContactSearchResult(new ContactId(userId, ChatId.Parse(x.Source!.Id)), SearchMatch.New(x.Source.Title));
-        }
+        ContactSearchResult ToSearchResult(IHit<IndexedChatContact> hit)
+            => new (new ContactId(userId, ChatId.Parse(hit.Source!.Id)), hit.GetSearchMatch());
 
         BoolQueryDescriptor<IndexedChatContact> ConfigureChatContactQueryDescriptor(BoolQueryDescriptor<IndexedChatContact> descriptor)
         {

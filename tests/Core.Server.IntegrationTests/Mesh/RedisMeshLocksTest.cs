@@ -96,6 +96,39 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         changeSet.Contains(key).Should().BeTrue();
     }
 
+    [Fact(Timeout = 30_000)]
+    public async Task ReacquireTest()
+    {
+        var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(ReacquireTest));
+        var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(15) };
+
+        var ctsA = new CancellationTokenSource();
+        var ctsB = new CancellationTokenSource();
+        var key = Alphabet.AlphaNumeric.Generator8.Next();
+        await using var changes = await locks.Changes("",CancellationToken.None);
+        (await locks.ListKeys("", CancellationToken.None)).Should().BeEmpty();
+        (await locks.GetInfo(key, CancellationToken.None)).Should().BeNull();
+
+        await using var h1 = await locks.Lock(key, "", lockOptions, ctsA.Token);
+
+        await Task.Delay(2000, CancellationToken.None);
+
+        (await locks.GetInfo(key, CancellationToken.None)).Should().NotBeNull();
+        _ = BackgroundTask.Run(
+            () => Task.Delay(1000, CancellationToken.None)
+                .ContinueWith(_ => {
+                    ctsA.CancelAndDisposeSilently();
+                    // ReSharper disable once AccessToDisposedClosure
+                    // await h1.DisposeSilentlyAsync();
+                }, CancellationToken.None),
+            CancellationToken.None);
+
+        (await locks.GetInfo(key, CancellationToken.None)).Should().NotBeNull();
+        await using var h2 = await locks.Lock(key, "", lockOptions, ctsB.Token);
+
+        (await locks.GetInfo(key, CancellationToken.None)).Should().NotBeNull();
+    }
+
     [Fact(Skip = "For manual runs only. Start/stop Redis and watch the output.")]
     public async Task RedisReconnectTest()
     {

@@ -7,6 +7,8 @@
 
 @if (ownAccount.IsActive()) {
     <NavbarButton
+        Tooltip="Create new Chat or Place"
+        TooltipPosition="FloatingPosition.Right"
         data-bubble="@(BubbleRef.New<CreateChatBubble>())"
         data-bubble-priority="201"
         data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())"
@@ -106,7 +108,7 @@
 
     private void OnNavbarSelectedGroupChanged(object? s, EventArgs e) {
         if (PanelsUI.Left.IsSearchMode)
-            PanelsUI.Left.SearchToggle();
+            PanelsUI.Left.ToggleSearchMode();
         if (NavbarUI.IsPinnedChatSelected(out _))
             PanelsUI.HidePanels();
     }

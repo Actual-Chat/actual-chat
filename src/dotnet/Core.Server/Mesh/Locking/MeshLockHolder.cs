@@ -25,10 +25,15 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
         string id,
         string key,
         string value,
-        MeshLockOptions options)
+        MeshLockOptions options,
+        CancellationToken cancellationToken)
+        : base(cancellationToken == default
+            ? new CancellationTokenSource()
+            : cancellationToken.CreateLinkedTokenSource())
     {
         if (key.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(key));
+
         options.AssertValid();
 
         Backend = backend;
@@ -46,7 +51,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
         Task dependency;
         lock (Lock) {
             StopToken.ThrowIfCancellationRequested();
-            var dependencies = Dependencies ??= new();
+            var dependencies = Dependencies ??= new ();
             dependency = dependencyFactory.Invoke(StopToken);
             dependencies.Add(dependency);
         }
@@ -79,7 +84,9 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("[+] {Key}: acquired in {AcquireTime}, value = {StoredValue}",
-            FullKey, CreatedAt.Elapsed.ToShortString(), StoredValue);
+            FullKey,
+            CreatedAt.Elapsed.ToShortString(),
+            StoredValue);
         var expirationPeriod = Options.ExpirationPeriod;
         var renewPeriod = Options.RenewalPeriod;
         while (true) {
@@ -108,7 +115,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
     {
         Task[]? dependencies;
         lock (Lock) {
-            dependencies = Dependencies?.ToArray() ?? Array.Empty<Task>();
+            dependencies = Dependencies?.ToArray() ?? [];
             Dependencies = null;
         }
         try {

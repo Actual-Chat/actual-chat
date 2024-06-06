@@ -319,7 +319,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
                 It.IsAny<CancellationToken>()
             ))
             .Returns<string, string, MeshLockOptions, CancellationToken>((key, value, options, _)
-                => Task.FromResult(new MeshLockHolder(Mock.Of<IMeshLocksBackend>(), "id", key, value, options)))
+                => Task.FromResult(new MeshLockHolder(Mock.Of<IMeshLocksBackend>(), "id", key, value, options, CancellationToken.None)))
             .Verifiable();
 
         return meshLocks;

@@ -1,5 +1,4 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@implements IChatMessageEditorBackend
 @implements IAsyncDisposable
 @using ActualChat.Chat.UI.Blazor.Events
 @using ActualChat.Chat.UI.Blazor.Module
@@ -8,18 +7,11 @@
 @using ActualChat.Kvas
 @using ActualLab.Locking
 @using System.Diagnostics.CodeAnalysis
-@{
-    var editorCls = "";
-    if (ScreenSize.IsNarrow())
-        editorCls = "narrow";
-    if (ScreenSize.IsWide())
-        editorCls = "wide";
-}
 
 <OnUIEvent TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusChatMessageEditorEvent" />
 <OnUIEvent TEvent="@EditChatMessageEvent" Handler="OnEditChatMessageEvent" />
 <OnUIEvent TEvent="@CancelChatMessageEditEvent" Handler="OnCancelChatMessageEditEvent" />
-<div @ref="Ref" class="chat-message-editor @editorCls">
+<div @ref="Ref" class="chat-message-editor">
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@ChatMarkupHub.MentionSearchProvider">
         <AttachmentList
             @key="AttachmentListKey"
@@ -29,45 +21,41 @@
             <RelatedChatEntryPanel/>
         }
         <div class="c-content">
-            <div class="post-panel-wrapper">
-                <div class="post-panel"
-                     data-bubble="@(BubbleRef.New<TextMessagePanelBubble>())"
-                     data-bubble-priority="105"
-                     data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
-                    <ButtonRound Class="post-panel-btn attach-btn btn-transparent unhovered">
-                        <i class="icon-attach-2 text-2xl"></i>
-                    </ButtonRound>
-                    <label for="message-input" class="message-input-label">
-                        <MarkupEditor
-                            @key="MarkupEditorKey"
-                            @ref="MarkupEditorRef"
-                            MentionNamer="@ChatMarkupHub.MentionNamer"
-                            HtmlConverter="@ChatMarkupHub.EditorHtmlConverter"
-                            Id="message-input"
-                            Class="message-input -flex-y"
-                            Autofocus="Autofocus"
-                            Placeholder="Write a message - or simply record one!"
-                            Post="text => Post(text)"
-                            Cancel="@(() => OnCancel())"
-                            OpenPrevious="OnOpenPrevious"/>
-                    </label>
-                    <button class="post-panel-btn post-message btn btn-round btn-transparent unhovered"
-                        @onmousedown="@(_ => Post())"
-                        @onmousedown:preventDefault="true">
-                        <i class="icon-paper-plane text-2xl"></i>
-                    </button>
-                    <NotifyCallPanel @ref="NotifyCallPanelRef" />
-                </div>
-                @if (ScreenSize.IsNarrow()) {
-                    <RelatedChatEntryPanel/>
-                    <div class="audio-panel-wrapper">
-                        <ChatAudioPanel Chat="@Chat"/>
-                    </div>
-                }
-            </div>
-            @if (ScreenSize.IsWide()) {
-                <ChatAudioPanel Chat="@Chat"/>
+            @if (ScreenSize.IsNarrow()) {
+                <div class="rounded-sub-footer"></div>
             }
+            <div class="post-panel"
+                 data-bubble="@(BubbleRef.New<TextMessagePanelBubble>())"
+                 data-bubble-priority="105"
+                 data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
+                <ButtonRound Class="post-panel-btn attach-btn btn-transparent unhovered">
+                    <i class="icon-attach-2 text-2xl"></i>
+                </ButtonRound>
+                <label for="message-input" class="message-input-label">
+                    <MarkupEditor
+                        @key="MarkupEditorKey"
+                        @ref="MarkupEditorRef"
+                        MentionNamer="@ChatMarkupHub.MentionNamer"
+                        HtmlConverter="@ChatMarkupHub.EditorHtmlConverter"
+                        Id="message-input"
+                        Class="message-input -flex-y"
+                        Autofocus="Autofocus"
+                        Placeholder="Write a message - or simply record one!"
+                        Post="text => Post(text)"
+                        Cancel="@(() => OnCancel())"
+                        OpenPrevious="OnOpenPrevious"/>
+                </label>
+                <button class="post-panel-btn post-message btn btn-round btn-transparent unhovered"
+                    @onmousedown="@(_ => Post())"
+                    @onmousedown:preventDefault="true">
+                    <i class="icon-paper-plane text-2xl"></i>
+                </button>
+                <NotifyCallPanel ChatId="@Chat.Id" />
+            </div>
+            @if (ScreenSize.IsNarrow()) {
+                <RelatedChatEntryPanel/>
+            }
+            <ChatAudioPanel Chat="@Chat"/>
         </div>
     </MentionListManager>
 </div>
@@ -81,12 +69,10 @@
 
     private readonly AsyncLock _postLock = new(LockReentryMode.CheckedFail);
     private bool Autofocus => ScreenSize.IsWide() && !BrowserInfo.IsTouchCapable;
-    private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
     private MarkupEditor MarkupEditorRef { get; set; } = null!;
     private AttachmentList AttachmentListRef { get; set; } = null!;
-    private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
     private IChatMarkupHub ChatMarkupHub { get; set; } = null!;
     private SyncedStateLease<ReadPosition>? ReadPositionState { get; set; } = null!;
     private SentAttachmentsStorage? AttachmentsStorage { get; set; } = null!;
@@ -120,8 +106,6 @@
         AttachmentsStorage = null;
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
-        BlazorRef.DisposeSilently();
-        BlazorRef = null!;
         ReadPositionState.DisposeSilently();
         ReadPositionState = null!;
     }
@@ -146,8 +130,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            BlazorRef = DotNetObjectReference.Create<IChatMessageEditorBackend>(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
             await Task.WhenAll(MarkupEditorRef.WhenReady, AttachmentListRef.WhenReady);
             if (JSRef == null! || MarkupEditorRef.JSRef == null! || AttachmentListRef.JSRef == null!)
                 return; // Dispose may happen during await above
@@ -164,12 +147,6 @@
             AttachmentsStorage.AttachmentsStored += OnAttachmentsStored;
         }
     }
-
-    // Backend API
-
-    [JSInvokable]
-    public void CloseNotifyPanel()
-        => NotifyCallPanelRef.Close();
 
     // Private methods
 

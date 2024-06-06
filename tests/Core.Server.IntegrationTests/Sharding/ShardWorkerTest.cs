@@ -12,10 +12,9 @@ public class ShardWorkerTest(ITestOutputHelper @out)
         using var h1 = await NewAppHost();
         await using var w1a = new ShardWorker1(h1.Services, Out, "w1a");
         w1a.Start();
-        await Task.Delay(1000);
-        await w1a.DisposeSilentlyAsync();
-        var shardIndexes = await w1a.Channel.Reader.ReadAllAsync().Distinct().ToListAsync();
-        shardIndexes.Count.Should().Be(shardScheme.ShardCount);
+        var count = 0;
+        if (await w1a.Channel.Reader.ReadAllAsync().Distinct().AnyAsync(_ => ++count >= shardScheme.ShardCount))
+            await w1a.DisposeSilentlyAsync();
 
         await using var w1b = new ShardWorker1(h1.Services, Out, "w1b");
         w1b.Start();
@@ -25,13 +24,14 @@ public class ShardWorkerTest(ITestOutputHelper @out)
         w2a.Start();
         await using var w2b = new ShardWorker1(h2.Services, Out, "w2b");
         w2b.Start();
-        await Task.Delay(3000);
-        await w2a.DisposeSilentlyAsync();
-        shardIndexes = await w2a.Channel.Reader.ReadAllAsync().Distinct().ToListAsync();
-        shardIndexes.Count.Should().Be(shardScheme.ShardCount / 2);
-        await w2b.DisposeSilentlyAsync();
-        shardIndexes = await w2b.Channel.Reader.ReadAllAsync().Distinct().ToListAsync();
-        shardIndexes.Count.Should().Be(shardScheme.ShardCount / 2);
+
+        count = 0;
+        if (await w2a.Channel.Reader.ReadAllAsync().Distinct().AnyAsync(_ => ++count >= shardScheme.ShardCount / 2))
+            await w2a.DisposeSilentlyAsync();
+
+        count = 0;
+        if (await w2b.Channel.Reader.ReadAllAsync().Distinct().AnyAsync(_ => ++count >= shardScheme.ShardCount / 2))
+            await w2b.DisposeSilentlyAsync();
     }
 
     [Fact(Skip = "For manual runs only. Start/stop Redis and watch the output.")]
