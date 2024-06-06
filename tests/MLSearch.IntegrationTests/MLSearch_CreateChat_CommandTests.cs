@@ -25,8 +25,8 @@ public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutpu
         await using var tester = appHost.NewBlazorTester(Out);
         var someUserAccount = await tester.SignInAsBob();
         var session = tester.Session;
-        var command1 = new MLSearch_CreateChat(session);
-        var command2 = new MLSearch_CreateChat(session);
+        var command1 = new MLSearch_CreateChat(session, "Any-title", default);
+        var command2 = new MLSearch_CreateChat(session, "Any-title", default);
         var commander = tester.Commander;
         var chats = tester.AppServices.GetRequiredService<IChatsBackend>();
         
@@ -48,7 +48,7 @@ public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutpu
         await using var tester = appHost.NewBlazorTester(Out);
         var someUserAccount = await tester.SignInAsBob();
         var session = tester.Session;
-        var command = new MLSearch_CreateChat(session);
+        var command = new MLSearch_CreateChat(session, "Any-title", default);
         var commander = tester.Commander;
         var chats = tester.AppServices.GetRequiredService<IChatsBackend>();
         var authors = tester.AppServices.GetRequiredService<IAuthorsBackend>();
@@ -71,7 +71,7 @@ public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutpu
         await using var tester = appHost.NewBlazorTester(Out);
         var someUserAccount = await tester.SignInAsBob();
         var session = tester.Session;
-        var command = new MLSearch_CreateChat(session);
+        var command = new MLSearch_CreateChat(session, "Any-title", default);
         var commander = tester.Commander;
         var chats = tester.AppServices.GetRequiredService<IChats>();
         
@@ -91,7 +91,7 @@ public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutpu
         await using var tester = appHost.NewBlazorTester(Out);
         var someUserAccount = await tester.SignInAsBob();
         var session = tester.Session;
-        var command = new MLSearch_CreateChat(session);
+        var command = new MLSearch_CreateChat(session, "Any-title", default);
         var commander = tester.Commander;
         var chats = tester.AppServices.GetRequiredService<IChats>();
         var authors = tester.AppServices.GetRequiredService<IAuthorsBackend>();

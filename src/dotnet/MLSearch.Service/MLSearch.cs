@@ -16,15 +16,11 @@ internal class MLSearchImpl (ICommander commander): IMLSearch
         // Promote ownership instead of creating it by the bot from the start.
         // Reason: not sure how to create a session for a bot.
         Symbol SystemBotTag = Constants.Chat.SystemTags.Bot;
-        long botLocalId = Constants.User.MLSearchBot.AuthorLocalId;
-        const string searchTitle = "Search";
         var chatChange = Change.Create<ChatDiff> (new() {
             IsPublic = false,
-            Title = searchTitle,
+            Title = command.Title,
             Kind = ChatKind.Group,
-            // TODO:
-            MediaId = default,
-
+            MediaId = command.MediaId,
             AllowGuestAuthors = null,
             AllowAnonymousAuthors = null,
             IsTemplate = null,
