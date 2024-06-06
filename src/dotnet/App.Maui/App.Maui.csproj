@@ -10,7 +10,7 @@
 
     <!-- MAUI properties -->
     <UseMaui>true</UseMaui>
-    <MauiVersion>8.0.20</MauiVersion>
+    <MauiVersion>8.0.40</MauiVersion>
     <SingleProject>true</SingleProject>
     <IsPublishable>true</IsPublishable>
     <UseMauiNuGets>false</UseMauiNuGets>
@@ -112,7 +112,7 @@
     <PackageReference Include="Xamarin.AndroidX.Collection" />
     <PackageReference Include="Xamarin.AndroidX.Collection.Ktx" />
     <!-- Enable Firebase Analytics for Dev app only -->
-    <PackageReference Include="Xamarin.Firebase.Analytics" Condition="'$(IsDevMaui)' == 'true'" />
+    <PackageReference Include="Xamarin.Firebase.Analytics" />
     <PackageReference Include="Xamarin.Firebase.Messaging" />
     <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
     <PackageReference Include="Xamarin.GooglePlayServices.CroNet" />
@@ -122,6 +122,8 @@
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <PackageReference Include="Plugin.Firebase.CloudMessaging" />
+    <PackageReference Include="Plugin.Firebase.Analytics" />
+    <PackageReference Include="Plugin.Firebase.Crashlytics" />
     <PackageReference Include="Serilog.Sinks.Xamarin" />
     <PackageReference Include="Xamarin.Build.Download" />
   </ItemGroup>
@@ -129,6 +131,7 @@
     <PackageReference Include="Serilog.Sinks.Debug" />
     <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
+
 
   <!--
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">

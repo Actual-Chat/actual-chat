@@ -35,16 +35,6 @@ public class IosPushNotifications : IDeviceTokenRetriever, INotificationsPermiss
         Messaging.NotificationReceived += OnNotificationReceived;
     }
 
-    public static void Initialize(UIApplication app, NSDictionary options)
-    {
-        // Prevents null ref for Windows+iPhone, see:
-        // - https://github.com/xamarin/GoogleApisForiOSComponents/issues/577
-#if !HOTRESTART
-        Firebase.Core.App.Configure();
-        FirebaseCloudMessagingImplementation.Initialize();
-#endif
-    }
-
     public void Dispose()
         => Messaging.NotificationTapped -= OnNotificationTapped;
 

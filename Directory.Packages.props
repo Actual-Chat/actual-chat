@@ -170,16 +170,19 @@
     <PackageVersion Include="banditoth.MAUI.DeviceId" Version="1.0.0" />
     <!-- MAUI - Android -->
     <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.12.0.3" />
-    <PackageVersion Include="Xamarin.Firebase.Analytics" Version="121.3.0.5" />
-    <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.3.1.2" />
-    <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.7.0.3" />
+    <PackageVersion Include="Xamarin.Firebase.Crashlytics" Version="118.6.2.1" />
+    <PackageVersion Include="Xamarin.Firebase.Analytics" Version="121.3.0.6" />
+    <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.4.1.1" />
+    <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="121.0.0.1" />
     <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="118.0.1.9" />
     <PackageVersion Include="Xamarin.Google.Dagger" Version="2.48.1.2" />
     <PackageVersion Include="Xamarin.Twilio.AudioSwitch" Version="1.1.4" />
-    <PackageVersion Include="Xamarin.AndroidX.Collection" Version="1.4.0.2" />
-    <PackageVersion Include="Xamarin.AndroidX.Collection.Ktx" Version="1.4.0.1" />
+    <PackageVersion Include="Xamarin.AndroidX.Collection" Version="1.4.0.3" />
+    <PackageVersion Include="Xamarin.AndroidX.Collection.Ktx" Version="1.4.0.2" />
     <!-- MAUI - iOS -->
     <PackageVersion Include="Plugin.Firebase.CloudMessaging" Version="2.0.4" />
+    <PackageVersion Include="Plugin.Firebase.Analytics" Version="2.0.2" />
+    <PackageVersion Include="Plugin.Firebase.Crashlytics" Version="2.0.3" />
     <PackageVersion Include="Xamarin.Build.Download" Version="0.11.4" />
     <!-- TODO: Remove or migrate from these -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Cookies" Version="2.2.0" />
