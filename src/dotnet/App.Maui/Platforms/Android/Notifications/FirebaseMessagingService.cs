@@ -28,14 +28,12 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<FirebaseMessagingService>();
 
-#if IS_DEV_MAUI
  #pragma warning disable CS0169 // Field is never used
  #pragma warning disable CA1823
     // Keep reference to FirebaseAnalytics type to ensure FA package is used and will be initialized.
     private FirebaseAnalytics? _firebaseAnalytics;
  #pragma warning restore CA1823
  #pragma warning restore CS0169 // Field is never used
-#endif
 
     public override void OnNewToken(string token)
     {

@@ -5,7 +5,10 @@ using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Maui.LifecycleEvents;
+// using Plugin.Firebase.Analytics;
 using Plugin.Firebase.CloudMessaging;
+using Plugin.Firebase.Core.Platforms.iOS;
+// using Plugin.Firebase.Crashlytics;
 
 namespace ActualChat.App.Maui;
 
@@ -14,6 +17,8 @@ public static partial class MauiProgram
     private static partial void AddPlatformServices(this IServiceCollection services)
     {
         services.AddSingleton(CrossFirebaseCloudMessaging.Current);
+        // services.AddSingleton(CrossFirebaseAnalytics.Current);
+        // services.AddSingleton(CrossFirebaseCrashlytics.Current);
         services.AddScoped<IosPushNotifications>(c => new IosPushNotifications(c.UIHub()));
         services.AddTransient<IDeviceTokenRetriever>(c => c.GetRequiredService<IosPushNotifications>());
         services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<IosPushNotifications>());
@@ -31,7 +36,13 @@ public static partial class MauiProgram
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddiOS(ios => ios.FinishedLaunching((app, options) => {
-            IosPushNotifications.Initialize(app, options);
+            // Prevents null ref for Windows+iPhone, see:
+            // - https://github.com/xamarin/GoogleApisForiOSComponents/issues/577
+
+#if !HOTRESTART
+            CrossFirebase.Initialize();
+            FirebaseCloudMessagingImplementation.Initialize();
+#endif
             return false;
         }));
 }

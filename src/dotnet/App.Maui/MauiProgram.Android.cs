@@ -5,6 +5,7 @@ using ActualChat.Streaming.UI.Blazor.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
+using Android.OS;
 using Firebase.Messaging;
 using Microsoft.Maui.LifecycleEvents;
 using Activity = Android.App.Activity;
@@ -51,6 +52,7 @@ public static partial class MauiProgram
             var incomingShare = new IncomingShareHandler();
             var notificationTapHandler = new NotificationViewActionHandler();
             android.OnPostCreate((_, _) => ChatAttentionService.Instance.Init());
+            android.OnCreate(OnCreate);
             android.OnPostCreate(incomingShare.OnPostCreate);
             android.OnNewIntent(incomingShare.OnNewIntent);
             android.OnPostCreate(notificationTapHandler.OnPostCreate);
@@ -70,4 +72,7 @@ public static partial class MauiProgram
         if (!couldStepBack)
             activity.MoveTaskToBack(true);
     }
+
+    private static void OnCreate(Activity activity, Bundle? savedInstanceState)
+        => Firebase.FirebaseApp.InitializeApp(activity);
 }
