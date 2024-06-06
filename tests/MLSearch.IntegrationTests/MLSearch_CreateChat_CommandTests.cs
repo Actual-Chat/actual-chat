@@ -23,11 +23,8 @@ public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutpu
         // Arrange
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
-        // Note: [Andrew K] this is copied from another test and it looks wrong.
-        // Session must be invalidated after the sign in operation. 
-        // As long as it works we have a problem.
-        var session = tester.Session;
         var someUserAccount = await tester.SignInAsBob();
+        var session = tester.Session;
         var command1 = new MLSearch_CreateChat(session);
         var command2 = new MLSearch_CreateChat(session);
         var commander = tester.Commander;
@@ -49,11 +46,8 @@ public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutpu
         // Arrange
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
-        // Note: this is copied from another test and it looks wrong.
-        // Session must be invalidated after the sign in operation. 
-        // As long as it works we have a problem.
-        var session = tester.Session;
         var someUserAccount = await tester.SignInAsBob();
+        var session = tester.Session;
         var command = new MLSearch_CreateChat(session);
         var commander = tester.Commander;
         var chats = tester.AppServices.GetRequiredService<IChatsBackend>();
@@ -75,11 +69,8 @@ public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutpu
         // Arrange
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
-        // Note: this is copied from another test and it looks wrong.
-        // Session must be invalidated after the sign in operation. 
-        // As long as it works we have a problem.
-        var session = tester.Session;
         var someUserAccount = await tester.SignInAsBob();
+        var session = tester.Session;
         var command = new MLSearch_CreateChat(session);
         var commander = tester.Commander;
         var chats = tester.AppServices.GetRequiredService<IChats>();
@@ -98,11 +89,8 @@ public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutpu
         // Arrange
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
-        // Note: this is copied from another test and it looks wrong.
-        // Session must be invalidated after the sign in operation. 
-        // As long as it works we have a problem.
-        var session = tester.Session;
         var someUserAccount = await tester.SignInAsBob();
+        var session = tester.Session;
         var command = new MLSearch_CreateChat(session);
         var commander = tester.Commander;
         var chats = tester.AppServices.GetRequiredService<IChats>();
