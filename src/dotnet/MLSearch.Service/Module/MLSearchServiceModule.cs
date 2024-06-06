@@ -17,8 +17,12 @@ using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.Redis.Module;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+// Note: Temporary disabled. Will be re-enabled with OpenAPI PR
+// using Microsoft.OpenApi.Models;
 using OpenSearch.Client;
 using OpenSearch.Net;
+// Note: Temporary disabled. Will be re-enabled with OpenAPI PR
+// using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace ActualChat.MLSearch.Module;
 
@@ -114,5 +118,34 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddWorkerPool<IChatBotWorker, MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId>(
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
+        // -- Register Controllers --
+        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
+        // -- Register IMLSearchHanders --
+        rpcHost.AddApiOrLocal<IMLSearch, MLSearchImpl>();
+
+
+        // -- Register Swagger endpoint (OpenAPI) --
+        // Note: This is temporary disabled. Will be re-enabled in a separate PR.
+        /*
+        services.AddEndpointsApiExplorer();
+        services.AddSwaggerGen(c => {
+            c.IncludeXmlComments(
+                Path.Combine(
+                    AppContext.BaseDirectory,
+                    $"{Assembly.GetExecutingAssembly().GetName().Name}.xml"
+                )
+            );
+            c.DocInclusionPredicate((docName, apiDesc) => {
+                if (!apiDesc.TryGetMethodInfo(out MethodInfo methodInfo)) return false;
+
+                var isBotTool = methodInfo.DeclaringType
+                    .GetCustomAttributes(true)
+                    .OfType<BotToolsAttribute>()
+                    .Any();
+                return isBotTool;
+            });
+            c.SwaggerDoc("bot-tools-v1", new OpenApiInfo { Title = "Bot Tools API - V1", Version = "v1"});
+        });
+        */
     }
 }

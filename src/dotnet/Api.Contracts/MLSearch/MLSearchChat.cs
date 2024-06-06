@@ -1,6 +1,7 @@
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
 using MemoryPack;
+using MLSearchChatId = ActualChat.ChatId;
 
 namespace ActualChat.MLSearch;
 
