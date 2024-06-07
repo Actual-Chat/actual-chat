@@ -6,6 +6,7 @@ using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Media;
+using ActualChat.MLSearch;
 using ActualChat.Notification;
 using ActualChat.Search;
 using ActualChat.Security;
@@ -41,6 +42,7 @@ public sealed class ApiClientModule(IServiceProvider moduleServices)
 
         // Search
         fusion.AddClient<ISearch>();
+        fusion.AddClient<IMLSearch>();
 
         // Contacts
         fusion.AddClient<IContacts>();
