@@ -8,4 +8,7 @@ public interface ITimeZones : IComputeService
 
     [ComputeMethod]
     Task<string> ConvertWindowsToIana(string windowsTimeZone, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<string> FindDisplayName(string languageCode, string timeZoneId, CancellationToken cancellationToken);
 }
