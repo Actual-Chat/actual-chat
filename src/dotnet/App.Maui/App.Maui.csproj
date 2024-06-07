@@ -111,9 +111,9 @@
     <PackageReference Include="Xamarin.AndroidX.Core" />
     <PackageReference Include="Xamarin.AndroidX.Collection" />
     <PackageReference Include="Xamarin.AndroidX.Collection.Ktx" />
-    <!-- Enable Firebase Analytics for Dev app only -->
-    <PackageReference Include="Xamarin.Firebase.Analytics" />
-    <PackageReference Include="Xamarin.Firebase.Messaging" />
+    <PackageReference Include="Plugin.Firebase.CloudMessaging" />
+    <PackageReference Include="Plugin.Firebase.Analytics" />
+    <PackageReference Include="Plugin.Firebase.Crashlytics" />
     <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
     <PackageReference Include="Xamarin.GooglePlayServices.CroNet" />
     <PackageReference Include="Xamarin.Google.Dagger" />

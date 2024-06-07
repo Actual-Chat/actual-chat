@@ -5,10 +5,10 @@ using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Maui.LifecycleEvents;
-// using Plugin.Firebase.Analytics;
+using Plugin.Firebase.Analytics;
 using Plugin.Firebase.CloudMessaging;
 using Plugin.Firebase.Core.Platforms.iOS;
-// using Plugin.Firebase.Crashlytics;
+using Plugin.Firebase.Crashlytics;
 
 namespace ActualChat.App.Maui;
 
@@ -17,8 +17,9 @@ public static partial class MauiProgram
     private static partial void AddPlatformServices(this IServiceCollection services)
     {
         services.AddSingleton(CrossFirebaseCloudMessaging.Current);
-        // services.AddSingleton(CrossFirebaseAnalytics.Current);
-        // services.AddSingleton(CrossFirebaseCrashlytics.Current);
+        services.AddSingleton(CrossFirebaseAnalytics.Current);
+        services.AddSingleton(CrossFirebaseCrashlytics.Current);
+
         services.AddScoped<IosPushNotifications>(c => new IosPushNotifications(c.UIHub()));
         services.AddTransient<IDeviceTokenRetriever>(c => c.GetRequiredService<IosPushNotifications>());
         services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<IosPushNotifications>());
