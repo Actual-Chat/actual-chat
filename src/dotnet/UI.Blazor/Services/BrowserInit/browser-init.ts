@@ -3,6 +3,9 @@ import { EventHandlerSet } from "event-handling";
 import { delayAsync, PromiseSource } from 'promises';
 import { AppKind, BrowserInfo } from "../BrowserInfo/browser-info";
 import { Log } from "logging";
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { getAnalytics, Analytics } from 'firebase/analytics';
+
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('BrowserInit');
 
@@ -14,6 +17,9 @@ export class BrowserInit {
     public static baseUri = "";
     public static sessionHash = "";
     public static windowId = "";
+    public static firebaseApp?: FirebaseApp;
+    public static firebaseAnalytics?: Analytics;
+    public static firebasePublicKey?: string;
     public static readonly isMauiApp = document.body.classList.contains('app-maui');
     public static readonly whenInitialized = new PromiseSource<void>();
     public static readonly whenReloading = new PromiseSource<void>();
@@ -35,6 +41,8 @@ export class BrowserInit {
             this.sessionHash = sessionHash;
             this.initWindowId();
             this.initAndroid();
+            if (appKind !== 'MauiApp')
+                void this.initFirebase();
             // this.preventSuspend();
             await BrowserInfo.init(browserInfoBackendRef, appKind);
         }
@@ -187,6 +195,26 @@ export class BrowserInit {
     public static async startWebSplashRemoval(delayMs: number): Promise<void> {
         await delayAsync(delayMs);
         this.removeWebSplash();
+    }
+
+    public static async initFirebase(): Promise<FirebaseApp | null> {
+        try {
+            const response = await fetch('/dist/config/firebase.config.js');
+            if (response.ok || response.status === 304) {
+                const { config, publicKey } = await response.json();
+                const app = BrowserInit.firebaseApp = initializeApp(config, { automaticDataCollectionEnabled: true });
+                BrowserInit.firebaseAnalytics = getAnalytics(app);
+                BrowserInit.firebasePublicKey = publicKey;
+                return app;
+            }
+            else {
+                warnLog?.log(`initFirebase: unable to initialize firebase, status: ${response.status}`);
+            }
+        }
+        catch (error) {
+            errorLog?.log(`initFirebase: failed to initialize firebase app, error:`, error);
+        }
+        return null;
     }
 
     // Private methods

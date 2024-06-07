@@ -1,7 +1,7 @@
-import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/messaging';
 import { Log } from 'logging';
 import { AppKind } from '../UI.Blazor/Services/BrowserInfo/browser-info';
+import { BrowserInit } from '../UI.Blazor/Services/BrowserInit/browser-init';
 
 const { debugLog, warnLog, errorLog } = Log.get('NotificationUI');
 
@@ -51,24 +51,27 @@ export class NotificationUI {
 
     public static async getDeviceToken(): Promise<string | null>
     {
+        let { firebaseApp, firebasePublicKey} = BrowserInit;
         try {
-            const response = await fetch('/dist/config/firebase.config.js');
-            if (response.ok || response.status === 304) {
-                const { config, publicKey } = await response.json();
-                const app = initializeApp(config);
-                const messaging = getMessaging(app);
+            if (!firebaseApp) {
+                firebaseApp = await BrowserInit.initFirebase();
+                firebasePublicKey = BrowserInit.firebasePublicKey;
+            }
+
+            if (firebaseApp) {
+                const messaging = getMessaging(firebaseApp);
                 onMessage(messaging, (payload) => {
                     debugLog?.log(`onMessage, payload:`, payload);
                 });
 
                 const workerRegistration = await navigator.serviceWorker.getRegistration('sw.js');
                 const tokenOptions: GetTokenOptions = {
-                    vapidKey: publicKey,
+                    vapidKey: firebasePublicKey,
                     serviceWorkerRegistration: workerRegistration,
                 };
                 return await getToken(messaging, tokenOptions);
             } else {
-                warnLog?.log(`getDeviceToken: unable to initialize messaging subscription, status: ${response.status}`);
+                warnLog?.log(`getDeviceToken: unable to initialize messaging subscription`);
             }
             return null;
         }
