@@ -1,13 +1,10 @@
+using ActualChat.Contacts;
 using ActualChat.Users;
 
 namespace ActualChat.Search;
 
-public sealed class UserContactIndexer(IServiceProvider services) : ContactIndexer(services)
+public sealed class UserContactIndexer(IServiceProvider services, IAccountsBackend accountsBackend, IContactsBackend contactsBackend) : ContactIndexer(services)
 {
-    private IAccountsBackend? _accountsBackend;
-
-    private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
-
     protected override async Task Sync(CancellationToken cancellationToken)
     {
         if (await SyncChanges(cancellationToken).ConfigureAwait(false))
@@ -18,7 +15,7 @@ public sealed class UserContactIndexer(IServiceProvider services) : ContactIndex
     {
         using var _1 = Tracer.Region();
         var state = await ContactIndexStatesBackend.GetForUsers(cancellationToken).ConfigureAwait(false);
-        var batches = AccountsBackend
+        var batches = accountsBackend
             .BatchChanged(state.LastUpdatedVersion,
                 MaxVersion,
                 state.LastUpdatedUserId,
@@ -37,7 +34,7 @@ public sealed class UserContactIndexer(IServiceProvider services) : ContactIndex
                 last.Version,
                 last.Id);
             NeedsSync.Reset();
-            var updates = accounts.Select(x => x.ToIndexedUserContact()).ToApiArray();
+            var updates = await accounts.Select(ToIndexedUserContact).Collect().ToApiArray().ConfigureAwait(false);
             var indexCmd = new SearchBackend_UserContactBulkIndex(updates, []);
             await Commander.Call(indexCmd, cancellationToken).ConfigureAwait(false);
 
@@ -46,5 +43,11 @@ public sealed class UserContactIndexer(IServiceProvider services) : ContactIndex
             hasChanges = true;
         }
         return hasChanges;
+
+        async Task<IndexedUserContact> ToIndexedUserContact(AccountFull account)
+        {
+            var placeIds = await contactsBackend.ListPlaceIds(account.Id, cancellationToken).ConfigureAwait(false);
+            return account.ToIndexedUserContact(placeIds);
+        }
     }
 }

@@ -20,7 +20,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     private IndexNames IndexNames { get; } = services.GetRequiredService<IndexNames>();
     private IOpenSearchClient OpenSearchClient { get; } = services.GetRequiredService<IOpenSearchClient>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
-    private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private UserContactIndexer UserContactIndexer { get; } = services.GetRequiredService<UserContactIndexer>();
     private ChatContactIndexer ChatContactIndexer { get; } = services.GetRequiredService<ChatContactIndexer>();
@@ -129,13 +128,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
-        // TODO: consider placeId
         var skip = query.Skip.Clamp(0, int.MaxValue);
         var limit = query.Limit.Clamp(0, Constants.Search.PageSizeLimit);
-
-        ApiArray<UserId>? placeUserIds = null;
-        if (query.PlaceId is { IsNone: false } placeId)
-            placeUserIds = await AuthorsBackend.ListPlaceUserIds(placeId, cancellationToken).ConfigureAwait(false);
 
         var searchResponse =
             await OpenSearchClient.SearchAsync<IndexedUserContact>(s
@@ -166,22 +160,19 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             return new ContactSearchResult(contactId, hit.GetSearchMatch());
         }
 
-        BoolQueryDescriptor<IndexedUserContact> ConfigureUserContactQueryDescriptor(BoolQueryDescriptor<IndexedUserContact> descriptor)
-        {
-            descriptor = descriptor.Must(q
-                    => q.MultiMatch(
-                        m
-                            => m.Fields(x => x.FullName, x => x.FirstName, x => x.SecondName)
-                                .Query(query.Criteria)
-                                .Type(TextQueryType.PhrasePrefix)))
+        BoolQueryDescriptor<IndexedUserContact> ConfigureUserContactQueryDescriptor(
+            BoolQueryDescriptor<IndexedUserContact> descriptor)
+            => descriptor.Must(q
+                        => q.MultiMatch(
+                            m
+                                => m.Fields(x => x.FullName, x => x.FirstName, x => x.SecondName)
+                                    .Query(query.Criteria)
+                                    .Type(TextQueryType.PhrasePrefix)),
+                    query.PlaceId != null && query.PlaceId != PlaceId.None
+                        ? q => q.Match(m => m.Field(x => x.PlaceIds).Query(query.PlaceId.Value))
+                        : null)
                 .MustNot(q => q.Match(m
                     => m.Field(x => x.Id).Query(userId)));
-            if (placeUserIds == null)
-                return descriptor;
-
-            // TODO: we need to index place contacts since place can grow
-            return descriptor.Filter(q => q.Terms(t => t.Field(x => x.Id).Terms(placeUserIds.Value)));
-        }
     }
 
     // Not a [ComputeMethod]!
