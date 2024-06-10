@@ -42,8 +42,8 @@ public sealed class RealtimeChatPlayer : ChatPlayer
         minPlayAt = startedAt;
 
         var entries = audioEntryReader.Observe(startId, cancellationToken);
-        await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (!entry.IsStreaming && entry.BeginsAt <= startedAt)
+        await foreach (var entry in entries.SkipWhile(e => !e.IsStreaming).WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            if (!entry.IsStreaming && entry.BeginsAt <= minPlayAt)
                 // Non-streaming entry:
                 // - We were asleep & missed a bunch of entries
                 // - Or audioEntryReader is still enumerating "early" entries
