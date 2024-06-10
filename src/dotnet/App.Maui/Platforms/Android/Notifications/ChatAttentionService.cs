@@ -1,3 +1,4 @@
+using ActualChat.Chat.UI.Blazor.Services;
 using Android.App;
 using Android.Content;
 using Android.OS;
@@ -10,7 +11,7 @@ public record ChatAttentionRequest(
     long ChatPosition,
     DateTime CreatedOnUtc,
     string Title,
-    string Caller,
+    string Body,
     string ImageUrl);
 
 public class ChatAttentionService
@@ -30,6 +31,7 @@ public class ChatAttentionService
 
     private AlarmManager? _alarmManager;
     private Vibrator? _vibrator;
+    private Option<State?> _cachedState = Option<State?>.None;
 
     private static Context Context => Platform.AppContext;
     private static DateTime UtcNow => DateTime.UtcNow;
@@ -39,15 +41,30 @@ public class ChatAttentionService
 
     public static ChatAttentionService Instance {
         get {
-            lock (ClassSyncObject)
-                return _instance ??= new ChatAttentionService();
+            lock (ClassSyncObject) {
+                if (_instance == null) {
+                     _instance = new ChatAttentionService();
+                     ChatUI.OnReadPositionUpdated += tuple => {
+                         var (chatId, entryLid) = tuple;
+                         _instance.Clear(chatId.Value, entryLid);
+                     };
+                }
+                return _instance;
+            }
         }
     }
 
     private ChatAttentionService() { }
 
     public void Init()
-        => DoJob(null);
+    {
+        try {
+            ScheduleAlarm(true, null, TimeSpan.FromSeconds(30));
+        }
+        catch (Exception e) {
+            // Ignore
+        }
+    }
 
     public void Ask(ChatAttentionRequest request)
     {
@@ -68,14 +85,18 @@ public class ChatAttentionService
 
     public void Clear(Symbol chatId, long chatPosition)
     {
-        var state = GetPersistedState();
+        var originalState = GetPersistedState();
+        var state = originalState;
         if (state != null) {
             var existentRequest = state.GetRequest(chatId);
             if (existentRequest != null && existentRequest.ChatPosition <= chatPosition)
                 state = new State(UtcNow, state.Requests.Where(c => c != existentRequest).ToArray());
-            PersistState(state.HasRequest() ? state : null);
+            if (!state.HasRequest())
+                state = null;
+            PersistState(state);
         }
-        DoJob(state ?? State.None);
+        if (!ReferenceEquals(originalState, state))
+            DoJob(state ?? State.None);
     }
 
     public void Clear()
@@ -115,10 +136,14 @@ public class ChatAttentionService
             PersistState(state);
         }
 
+        Notify(state, false, false);
         ScheduleAlarm(state);
     }
 
     private void ScheduleAlarm(State? state)
+        => ScheduleAlarm(state?.HasRequest() ?? false, state?.MuteThreshold, RemindInterval);
+
+    private void ScheduleAlarm(bool schedule, DateTime? muteThreshold, TimeSpan dueTime)
     {
         var intent = new Intent(Context, typeof(AlarmReceiver));
         intent.SetAction(AlarmAction);
@@ -126,12 +151,11 @@ public class ChatAttentionService
             0,
             intent,
             PendingIntentFlags.Mutable | PendingIntentFlags.CancelCurrent)!;
-        if (state != null && state.HasRequest()) {
-            var dueTime = RemindInterval;
-            if (state.MuteThreshold.HasValue) {
+        if (schedule) {
+            if (muteThreshold.HasValue) {
                 var now = DateTime.UtcNow;
-                if (state.MuteThreshold.Value > now.Add(dueTime))
-                    dueTime = state.MuteThreshold.Value - now;
+                if (muteThreshold.Value > now.Add(dueTime))
+                    dueTime = muteThreshold.Value - now;
             }
             var nextMoment = Java.Lang.JavaSystem.CurrentTimeMillis() + (long)dueTime.TotalMilliseconds;
             // var windowLength = (long)TimeSpan.FromMinutes(10).TotalMilliseconds;
@@ -142,11 +166,19 @@ public class ChatAttentionService
             AlarmManager.Cancel(pendingIntent);
     }
 
-    private static void Notify(State? state)
+    private static void Notify(State? state, bool addSnooze = true, bool clear = true)
     {
         var notificationManager = NotificationManagerCompat.From(Context);
-        notificationManager.Cancel(NotificationTag, 0);
-        if (state == null || !state.HasRequest())
+        var activeNotifications = notificationManager.ActiveNotifications;
+        var existentNotifications = activeNotifications
+            .Where(c => OrdinalEquals(c.Tag, NotificationTag))
+            .ToArray();
+        var hasRequests = state != null && state.HasRequest();
+        if (clear || !hasRequests) {
+            foreach (var existentNotification in existentNotifications)
+                notificationManager.Cancel(NotificationTag, existentNotification.Id);
+        }
+        if (!hasRequests)
             return;
 
         NotificationHelper.EnsureAttentionNotificationChannelExist(Context, NotificationHelper.Constants.AttentionChannelId);
@@ -159,7 +191,7 @@ public class ChatAttentionService
             PendingIntentFlags.Immutable);
 
         var notifications = new List<(int, Android.App.Notification)>();
-        var requests = state.Requests;
+        var requests = state!.Requests;
 
         var mostImportantRequests = requests
             .OrderBy(c => c.CreatedOnUtc)
@@ -168,13 +200,7 @@ public class ChatAttentionService
         for (int i = 0; i < mostImportantRequests.Length; i++) {
             var request = requests[i];
             var title = request.Title;
-            var content = request.Caller;
-            var separatorIndex = title.IndexOf('@');
-            if (separatorIndex >= 0) {
-                // var part1 = title.Substring(0, separatorIndex).Trim();
-                var part2 = title.Substring(separatorIndex + 1).Trim();
-                title = part2;
-            }
+            var content = request.Body;
 
             var viewChatActionIntent = CreateViewChatAction(null, request.ChatId);
             var builder = CreateNotification(
@@ -190,8 +216,10 @@ public class ChatAttentionService
                     builder.SetLargeIcon(largeImage);
             }
 
-            builder.AddAction(0, "Snooze", snoozePendingIntent);
+            if (addSnooze)
+                builder.AddAction(0, "Snooze", snoozePendingIntent);
 
+            builder.SetOnlyAlertOnce(true);
             var notification = builder.Build();
             notifications.Add((i + 1, notification));
         }
@@ -204,12 +232,11 @@ public class ChatAttentionService
                 "Please check chats: " + requests.Select(c => c.Title).ToCommaPhrase(),
                 null);
             summaryBuilder.SetGroupSummary(true);
+            summaryBuilder.SetOnlyAlertOnce(true);
             var summaryNotification = summaryBuilder.Build();
             notifications.Add((0, summaryNotification));
         }
 
-        for (int i = 0; i <= MaxNotificationCount; i++)
-            notificationManager.Cancel(NotificationTag, i);
         foreach (var (id, notification) in notifications)
             notificationManager.Notify(NotificationTag, id, notification);
 
@@ -237,6 +264,7 @@ public class ChatAttentionService
     {
         var builder = new NotificationCompat.Builder(Context, NotificationHelper.Constants.AttentionChannelId)
             .SetSmallIcon(Microsoft.Maui.Resource.Drawable.notification_app_icon)
+            .SetColor(0x0036A3)
             .SetContentTitle(tile)
             .SetWhen((long)when.ToMoment().EpochOffset.TotalMilliseconds)
             .SetShowWhen(true)
@@ -251,8 +279,11 @@ public class ChatAttentionService
         return builder;
     }
 
-    private static State? GetPersistedState()
+    private State? GetPersistedState()
     {
+        if (_cachedState.HasValue)
+            return _cachedState.Value;
+
         var json = Preferences.Default.Get(PreferencesKey, "");
         if (json.IsNullOrEmpty())
             return null;
@@ -265,7 +296,7 @@ public class ChatAttentionService
         }
     }
 
-    private static void PersistState(State? state)
+    private void PersistState(State? state)
     {
         if (state == null)
             Preferences.Default.Remove(PreferencesKey);
@@ -274,6 +305,7 @@ public class ChatAttentionService
             var json = JsonSerializer.Serialize(state);
             Preferences.Default.Set(PreferencesKey, json);
         }
+        _cachedState = new Option<State?>(true, state);
 
         State SimplifyState()
         {

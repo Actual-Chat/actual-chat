@@ -50,6 +50,7 @@ public static partial class MauiProgram
             AndroidLifecycleLogger.Activate(android);
             var incomingShare = new IncomingShareHandler();
             var notificationTapHandler = new NotificationViewActionHandler();
+            android.OnPostCreate((_, _) => ChatAttentionService.Instance.Init());
             android.OnPostCreate(incomingShare.OnPostCreate);
             android.OnNewIntent(incomingShare.OnNewIntent);
             android.OnPostCreate(notificationTapHandler.OnPostCreate);

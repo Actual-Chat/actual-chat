@@ -48,7 +48,7 @@ public class NotificationData
 
     public string? Body {
         get {
-            _data.TryGetValue(Constants.Notification.MessageDataKeys.Title, out var body);
+            _data.TryGetValue(Constants.Notification.MessageDataKeys.Body, out var body);
             return body;
         }
     }
