@@ -27,6 +27,9 @@
 <p>
     <Button Click="@OnReloadUIClick">Reload UI</Button>
 </p>
+<p>
+    <Button Click="@OnThrowException">Throw Exception</Button>
+</p>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
@@ -65,4 +68,7 @@
 
     private void OnReloadUIClick()
         => Services.GetRequiredService<ReloadUI>().Reload();
+
+    private void OnThrowException()
+        => throw new InvalidOperationException("Expected test exception");
 }
