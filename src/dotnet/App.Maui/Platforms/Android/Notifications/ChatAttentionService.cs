@@ -26,8 +26,8 @@ public class ChatAttentionService
     private static readonly string AlarmAction = AlarmActionPrefix + "Alarm";
     private static readonly string SnoozeAction = AlarmActionPrefix + "Snooze";
     private static readonly string NotificationGroupKey = Context.PackageName + "n.g.attention";
-    private static readonly TimeSpan RemindInterval = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan SnoozeInterval = TimeSpan.FromMinutes(20);
+    private static readonly TimeSpan RemindInterval = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan SnoozeInterval = TimeSpan.FromMinutes(60);
 
     private AlarmManager? _alarmManager;
     private Vibrator? _vibrator;
