@@ -33,29 +33,30 @@
     RenderFragment RenderPlace(Place place) {
         return @<div class="left-panel-content-header place">
             <div class="c-content">
-                <div class="c-start">
-                    <div class="c-title">
-                        @place.Title
-                    </div>
-                    <PlaceMenuButton PlaceId="@place.Id" />
-                </div>
-                <div class="c-ending">
-                    <ChatSearchBox
-                        @ref="_searchBoxRef"
-                        Placeholder="Search"
-                        ShowSpinner="true"
-                        MaxLength="@Constants.Chat.MaxSearchFilterLength"
-                        TextChanged="@_onSearchBoxTextChanged"/>
-                </div>
-                <div class="c-icon">
-                    <Pic
-                        Title="@place.Title"
-                        Picture="@place.Picture.ToPicture()"
-                        Size="@SquareSize.SizeFull"
-                        IsSquare="@true"
-                        IsBlurred="@true"
-                        AvatarKind="@AvatarKind.Marble"
-                        AvatarKey="@place.Id.Value"/>
+               <ChatSearchBox
+                   @ref="_searchBoxRef"
+                   IsCollapsed="true"
+                   ShowClose="true"
+                   Placeholder="Search"
+                   ShowSpinner="true"
+                   MaxLength="@Constants.Chat.MaxSearchFilterLength"
+                   TextChanged="@_onSearchBoxTextChanged"/>
+               <div class="c-icon">
+                   <Pic
+                       Title="@place.Title"
+                       Picture="@place.Picture.ToPicture()"
+                       Size="@SquareSize.SizeFull"
+                       IsSquare="@true"
+                       AvatarKind="@AvatarKind.Marble"
+                       AvatarKey="@place.Id.Value"/>
+               </div>
+            </div>
+            <div class="c-info">
+                <PlaceMenuButton PlaceId="@place.Id"/>
+                <div class="c-right">
+                    <ButtonRound Class="place-plus-btn">
+                        <i class="icon-plus text-2xl"></i>
+                    </ButtonRound>
                 </div>
             </div>
         </div>;

@@ -22,6 +22,10 @@
     @apply px-2;
 }
 
+.edit-place-settings-modal .dialog-body {
+    scrollbar-width: none;
+}
+
 .edit-settings-modal .form-block:not(:first-of-type) {
     @apply border-0;
 }
@@ -164,7 +168,7 @@ body.hoverable .edit-settings-modal .item-leave-group.tile-item:hover {
 }
 
 .edit-settings-modal .pic.pic-square {
-    @apply rounded-xl overflow-hidden;
+    @apply overflow-hidden;
 }
 
 /* Edit member menu */
