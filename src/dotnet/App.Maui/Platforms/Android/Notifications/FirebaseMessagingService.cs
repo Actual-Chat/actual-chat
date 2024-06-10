@@ -94,7 +94,15 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             return false;
         }
         var sentTime = new Moment(messageSentTime * 10_000).ToDateTime();
-        var request = new ChatAttentionRequest(chatId, data.LastEntryLocalId, sentTime, data.Title ?? "", data.Body ?? "", data.ImageUrl ?? "");
+        var title = data.Title ?? "";
+        var separatorIndex = title.IndexOf('@');
+        if (separatorIndex >= 0) {
+            // var part1 = title.Substring(0, separatorIndex).Trim();
+            var part2 = title.Substring(separatorIndex + 1).Trim();
+            title = part2;
+        }
+
+        var request = new ChatAttentionRequest(chatId, data.LastEntryLocalId, sentTime, title, data.Body ?? "", data.ImageUrl ?? "");
         ChatAttentionService.Instance.Ask(request);
         return true;
     }
