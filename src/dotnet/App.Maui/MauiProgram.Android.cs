@@ -49,8 +49,11 @@ public static partial class MauiProgram
         => events.AddAndroid(android => {
             AndroidLifecycleLogger.Activate(android);
             var incomingShare = new IncomingShareHandler();
+            var notificationTapHandler = new NotificationViewActionHandler();
             android.OnPostCreate(incomingShare.OnPostCreate);
             android.OnNewIntent(incomingShare.OnNewIntent);
+            android.OnPostCreate(notificationTapHandler.OnPostCreate);
+            android.OnNewIntent(notificationTapHandler.OnNewIntent);
             android.OnResume(_ => MauiWebView.LogResume());
             android.OnPause(_ => MauiLivenessProbe.CancelCheck());
             android.OnActivityResult(AndroidActivityResultHandlers.Invoke);

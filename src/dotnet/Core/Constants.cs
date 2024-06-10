@@ -184,13 +184,6 @@ public static partial class Constants
 
     public static class Notification
     {
-        public static class ChannelIds
-        {
-            // TODO: create more channels and groups
-            // to provide to user more fine-grained control over notifications.
-            public const string Default = "fcm_default_channel";
-        }
-
         public static class MessageDataKeys
         {
             public const string NotificationId = "notificationId";
@@ -204,9 +197,10 @@ public static partial class Constants
             public const string Title = "title";
             public const string Body = "body";
             public const string ImageUrl = "imageUrl";
+            public const string Timestamp = "timestamp";
 
             public static readonly string[] ValidKeys = {
-                Body, ChatId, ChatEntryId, LastEntryLocalId, Icon, ImageUrl, Kind, Link, NotificationId, Tag, Title
+                Body, ChatId, ChatEntryId, LastEntryLocalId, Icon, ImageUrl, Kind, Link, NotificationId, Tag, Title, Timestamp
             };
 
             public static bool IsValidKey(string key)

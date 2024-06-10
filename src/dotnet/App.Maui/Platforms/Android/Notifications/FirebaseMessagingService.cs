@@ -1,11 +1,8 @@
 using ActualChat.UI.Blazor.Services;
 using Android.App;
-using Android.Content;
-using Android.Graphics;
 using AndroidX.Core.App;
 using Firebase.Analytics;
 using Firebase.Messaging;
-using AtomicInteger = Java.Util.Concurrent.Atomic.AtomicInteger;
 
 namespace ActualChat.App.Maui;
 
@@ -15,9 +12,6 @@ namespace ActualChat.App.Maui;
 #pragma warning restore CA1861
 public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingService
 {
-    private const int ImageCacheSize = 5;
-
-    private static readonly ThreadSafeLruCache<string, Bitmap?> ImagesCache = new (ImageCacheSize);
     private static ILogger? _log;
     /**
     * Request code used by display notification pending intents.
@@ -31,8 +25,6 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     * so use the truncated uptime of when the class was instantiated. The uptime will only overflow
     * every ~50 days, and even then chances of conflict will be rare.
     */
-    private static readonly AtomicInteger RequestCodeProvider =
-        new((int)Android.OS.SystemClock.ElapsedRealtime());
 
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<FirebaseMessagingService>();
 
@@ -57,35 +49,28 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             ", Priority={Priority}, OriginalPriority={OriginalPriority}, IsDeprioritized={IsDeprioritized}",
             message.MessageId, message.CollapseKey, message.Priority, message.OriginalPriority, message.Priority != message.OriginalPriority);
 
-        base.OnMessageReceived(message);
-
-        string? title;
-        string? text;
-        string? imageUrl;
-
         // There are 2 types of messages:
         // https://firebase.google.com/docs/cloud-messaging/concept-options#notifications_and_data_messages
-        var notification = message.GetNotification();
-        var data = message.Data;
         // Now we use Data message to deliver notifications to Android.
         // This allows us to control notification display style both when app is in foreground and in background modes.
-        if (notification == null) {
-            data.TryGetValue(Constants.Notification.MessageDataKeys.Title, out title);
-            data.TryGetValue(Constants.Notification.MessageDataKeys.Body, out text);
-            data.TryGetValue(Constants.Notification.MessageDataKeys.ImageUrl, out imageUrl);
+        var dataRaw = message.Data.ToDictionary(StringComparer.Ordinal);
+        if (Log.IsEnabled(LogLevel.Debug)) {
+            var dataAsText = dataRaw.Select(c => $"'{c.Key}':'{c.Value}'").ToCommaPhrase();
+            Log.LogDebug("OnMessageReceived: message #{MessageId}, Data: {Data}",
+                message.MessageId, dataAsText);
         }
-        else {
-            // Backward compatibility, we still can accept notification messages.
-            title = notification.Title;
-            text = notification.Body;
-            imageUrl = notification.ImageUrl.ToString();
-        }
-        if (title.IsNullOrEmpty() || text.IsNullOrEmpty())
+
+        var data = new NotificationData(message.MessageId, dataRaw);
+
+        if (data.NotificationKind == NotificationKind.GetAttention
+            && ShowGetAttentionNotification(data, message.SentTime))
+            return;
+
+        if (data.Title.IsNullOrEmpty() || data.Body.IsNullOrEmpty())
             return;
 
         if (AndroidUtils.IsAppForeground() ?? false) {
-            data.TryGetValue(Constants.Notification.MessageDataKeys.ChatId, out var sChatId);
-            var chatId = new ChatId(sChatId, ParseOrNone.Option);
+            var chatId = data.ChatId;
             if (!chatId.IsNone && TryGetScopedServices(out var scopedServices)) {
                 var history = scopedServices.GetRequiredService<History>();
                 if (history.LocalUrl.IsChat(out var currentChatId) && currentChatId == chatId) {
@@ -95,66 +80,58 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             }
         }
 
-        ShowNotification(title, text, imageUrl, message.Data);
+        ShowChatMessageNotification(data);
     }
 
     // Private methods
-
-    private void ShowNotification(
-        string title,
-        string text,
-        string? imageUrl,
-        IDictionary<string, string> data)
+    private static bool ShowGetAttentionNotification(
+        NotificationData data,
+        long messageSentTime)
     {
-        data.TryGetValue("tag", out var tag);
-        var intent = new Intent(this, typeof(MainActivity));
-        intent.AddFlags(ActivityFlags.SingleTop);
-
-        foreach (var key in data.Keys) {
-            string value = data[key];
-            intent.PutExtra(key, value);
+        var chatId = data.ChatId;
+        if (chatId.IsNone) {
+            Log.LogWarning("Can't show get-attention notification. Invalid ChatId. Ref messageId: '{MessageId}'", data.MessageId);
+            return false;
         }
+        var sentTime = new Moment(messageSentTime * 10_000).ToDateTime();
+        var request = new ChatAttentionRequest(chatId, data.LastEntryLocalId, sentTime, data.Title ?? "", data.Body ?? "", data.ImageUrl ?? "");
+        ChatAttentionService.Instance.Ask(request);
+        return true;
+    }
 
-        if (Log.IsEnabled(LogLevel.Debug)) {
-            var dataAsText = data.Select(c => $"'{c.Key}':'{c.Value}'").ToCommaPhrase();
-            Log.LogDebug("About to show ShowNotification '{Text}'. Data: {Data}", text, dataAsText);
-        }
+    private void ShowChatMessageNotification(NotificationData data)
+    {
+        // var intent = new Intent(this, typeof(MainActivity));
+        // intent.AddFlags(ActivityFlags.SingleTop);
+        var contentIntent = NotificationHelper.CreateViewIntent(this, data.Link);
+
+        var body = data.Body!;
+        Log.LogDebug("-> ShowChatMessageNotification, text: '{Text}'", body);
 
         // Generate an unique(ish) request code for a PendingIntent.
-        var pendingIntentRequestCode = RequestCodeProvider.IncrementAndGet();
-        var pendingIntent = PendingIntent.GetActivity(this, pendingIntentRequestCode,
-            intent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
+        //var pendingIntentRequestCode = NotificationHelper.RequestCodeProvider.IncrementAndGet();
+        var contentPendingIntent = PendingIntent.GetActivity(this, 0,
+            contentIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
-        var notificationBuilder = new NotificationCompat.Builder(this, Constants.Notification.ChannelIds.Default)
-            .SetContentTitle(title)
+        var notificationBuilder = new NotificationCompat.Builder(this, NotificationHelper.Constants.DefaultChannelId)
+            .SetContentTitle(data.Title!)
             // The small icon should be opaque white
             // https://doc.batch.com/android/advanced/customizing-notifications/#setting-up-custom-push-icons
             // ReSharper disable once AccessToStaticMemberViaDerivedType
             .SetSmallIcon(Resource.Drawable.notification_app_icon)
             .SetColor(0x0036A3)
-            .SetContentText(text)
-            .SetContentIntent(pendingIntent)
+            .SetContentText(body)
+            .SetContentIntent(contentPendingIntent)
             .SetAutoCancel(true) // closes notification after tap
             .SetPriority((int)NotificationPriority.High);
+        var imageUrl = data.ImageUrl;
         if (imageUrl != null) {
-            var largeImage = GetImage(imageUrl);
+            var largeImage = NotificationHelper.GetImage(imageUrl);
             if (largeImage != null)
                 notificationBuilder.SetLargeIcon(largeImage);
         }
         var notification = notificationBuilder.Build();
         var notificationManager = NotificationManagerCompat.From(this);
-        notificationManager.Notify(tag, 0, notification);
-    }
-
-    private static Bitmap? GetImage(string imageUrl)
-        => imageUrl.IsNullOrEmpty()
-            ? null
-            : ImagesCache.GetOrCreate(imageUrl, DownloadImage);
-
-    private static Bitmap? DownloadImage(string imageUrl)
-    {
-        var imageDownload = AndroidUtils.StartImageDownloadInBackground(imageUrl.ToUri());
-        var largeImage = AndroidUtils.WaitForAndApplyImageDownload(imageDownload);
-        return largeImage;
+        notificationManager.Notify(data.Tag, 0, notification);
     }
 }

@@ -49,6 +49,7 @@ public class FirebaseMessagingClient(
             { Constants.Notification.MessageDataKeys.Icon, absoluteIconUrl },
             { Constants.Notification.MessageDataKeys.Kind, kind.ToString() },
             { Constants.Notification.MessageDataKeys.Link, link },
+            { Constants.Notification.MessageDataKeys.Timestamp, ((long)notification.CreatedAt.EpochOffset.TotalMilliseconds).ToString(CultureInfo.InvariantCulture) },
         };
         if (lastEntryLocalId > 0)
             data.Add(Constants.Notification.MessageDataKeys.LastEntryLocalId, lastEntryLocalId.ToString(CultureInfo.InvariantCulture));
