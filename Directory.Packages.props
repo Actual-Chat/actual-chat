@@ -168,11 +168,11 @@
     <PackageVersion Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
     <PackageVersion Include="banditoth.MAUI.DeviceId" Version="1.0.0" />
+    <PackageVersion Include="Plugin.Firebase.CloudMessaging" Version="3.0.0" />
+    <PackageVersion Include="Plugin.Firebase.Analytics" Version="3.0.0" />
+    <PackageVersion Include="Plugin.Firebase.Crashlytics" Version="3.0.0" />
     <!-- MAUI - Android -->
     <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.12.0.3" />
-    <PackageVersion Include="Xamarin.Firebase.Crashlytics" Version="118.6.2.1" />
-    <PackageVersion Include="Xamarin.Firebase.Analytics" Version="121.3.0.6" />
-    <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.4.1.1" />
     <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="121.0.0.1" />
     <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="118.0.1.9" />
     <PackageVersion Include="Xamarin.Google.Dagger" Version="2.48.1.2" />
@@ -180,10 +180,10 @@
     <PackageVersion Include="Xamarin.AndroidX.Collection" Version="1.4.0.3" />
     <PackageVersion Include="Xamarin.AndroidX.Collection.Ktx" Version="1.4.0.2" />
     <!-- MAUI - iOS -->
-    <PackageVersion Include="Plugin.Firebase.CloudMessaging" Version="2.0.4" />
-    <PackageVersion Include="Plugin.Firebase.Analytics" Version="2.0.2" />
-    <PackageVersion Include="Plugin.Firebase.Crashlytics" Version="2.0.3" />
     <PackageVersion Include="Xamarin.Build.Download" Version="0.11.4" />
+    <PackageVersion Include="AdamE.Firebase.iOS.Analytics" Version="10.24.0.2" />
+    <PackageVersion Include="AdamE.Firebase.iOS.Crashlytics" Version="10.24.0.2" />
+    <PackageVersion Include="AdamE.Firebase.iOS.CloudMessaging" Version="10.24.0.2" />
     <!-- TODO: Remove or migrate from these -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Cookies" Version="2.2.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Routing" Version="2.2.2" />
