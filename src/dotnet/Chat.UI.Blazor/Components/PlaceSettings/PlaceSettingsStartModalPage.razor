@@ -24,27 +24,78 @@
     @{
         _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
     }
-    <FormBlock Class="last">
-        <DataAnnotationsValidator/>
+    @if (!m.EnableIncompleteUI) {
+        <FormBlock Class="last">
+            <DataAnnotationsValidator/>
 
-        <PicUpload
-            UploadUrl="@_form.ImageUploadUrl"
-            Size="@SquareSize.Size24"
-            Title="@_form.Title"
-            Picture="@_form.Picture"
-            AvatarKind="@AvatarKind.Marble"
-            AvatarKey="@PlaceId.Value"
-            Picked="@OnImagePicked"
-            IsSquare="@true"/>
+            <PicUpload
+                UploadUrl="@_form.ImageUploadUrl"
+                Size="@SquareSize.Size24"
+                Title="@_form.Title"
+                Picture="@_form.Picture"
+                AvatarKind="@AvatarKind.Marble"
+                AvatarKey="@PlaceId.Value"
+                Picked="@OnImagePicked"
+                IsSquare="@true"/>
 
-        <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true">
-            <TextBox
-                @bind-Value="@_form.Title"
-                Id="@_form.TitleId"
-                Placeholder="Place title*"
-                ClearButton="true"/>
-        </FormSection>
-    </FormBlock>
+            <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true">
+                <TextBox
+                    @bind-Value="@_form.Title"
+                    Id="@_form.TitleId"
+                    Placeholder="Place title*"
+                    ClearButton="true"/>
+            </FormSection>
+        </FormBlock>
+    } else {
+        <FormBlock Class="chat-settings-header place">
+            <DataAnnotationsValidator/>
+
+            <div class="c-top">
+                <Pic
+                    Picture="@_form.Background"
+                    ImageSkeletonClass="image-cover"
+                    Size="@SquareSize.SizeFull"
+                    IsSquare="true"
+                    AvatarKind="@AvatarKind.Marble"/>
+            </div>
+            <div class="c-center">
+                <PicUpload
+                    UploadUrl="@_form.ImageUploadUrl"
+                    Size="@SquareSize.Size16"
+                    Title="@_form.Title"
+                    Picture="@_form.Picture"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@PlaceId.Value"
+                    Picked="@OnImagePicked"/>
+
+                <div class="c-buttons">
+                    <PicUploadButton
+                        UploadUrl="@_form.ImageUploadUrl"
+                        Picked="@OnImagePicked"/>
+
+                    <PicUploadButton
+                        UploadUrl="@_form.ImageUploadUrl"
+                        Picked="@OnBackgroundPicked">
+                        <Icon>
+                            <i class="icon-image text-2xl"></i>
+                        </Icon>
+                    </PicUploadButton>
+                </div>
+            </div>
+        </FormBlock>
+
+        <FormBlock>
+            <DataAnnotationsValidator/>
+
+            <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true" Label="Chat title">
+                <TextBox
+                    @bind-Value="@_form.Title"
+                    Id="@_form.TitleId"
+                    Placeholder="Chat title*"
+                    ClearButton="true"/>
+            </FormSection>
+        </FormBlock>
+    }
 
     <FormBlock Class="with-input-radio first last">
         <InputRadioGroup Name="chat_type" DisplayName="Place type" @bind-Value="_form.IsPublic">
@@ -72,7 +123,6 @@
             </TileItem>
         </InputRadioGroup>
     </FormBlock>
-
 
     @if (_form.IsPublic) {
         @if (m.Link is { } publicUrl) {
@@ -186,6 +236,7 @@
         _form = new FormModel(ComponentIdGenerator) {
             Title = place.Title,
             Picture = place.Picture?.ToPicture(),
+            Background = new Picture(null, null, place.Id.Value),
             IsPublic = place.IsPublic,
             ImageUploadUrl = $"/api/chat-media/{place.Id.ToRootChatId()}/upload",
         };
@@ -217,6 +268,8 @@
         var link = !welcomeChatId.IsNone
             ? Links.Chat(welcomeChatId).ToDisplayUrl(Hub.UrlMapper())
             : (DisplayUrl?)null;
+        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+
         return new() {
             Place = place,
             Link = link,
@@ -224,11 +277,17 @@
             MembersCount = allAuthorIds.Count,
             IsOwner = place.Rules.IsOwner(),
             EnableChatCopying = Hub.AccountUI.OwnAccount.Value.IsAdmin,
+            EnableIncompleteUI = enableIncompleteUI,
         };
     }
 
     private void OnImagePicked(MediaContent mediaContent) {
         _form!.Picture = new (mediaContent);
+        StateHasChanged();
+    }
+
+    private void OnBackgroundPicked(MediaContent mediaContent) {
+        _form!.Background = new(mediaContent);
         StateHasChanged();
     }
 
@@ -260,7 +319,7 @@
             Title = _form!.Title,
             IsPublic = _form.IsPublic,
             MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
-            };
+        };
         var command = new Places_Change(Session, place.Id, place.Version, new() {
             Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
         });
@@ -283,12 +342,14 @@
 
         public string PublicUrl { get; set; } = "";
         public Picture? Picture { get; set; }
+        public Picture? Background { get; set; }
         public bool IsPublic { get; set; }
         public string ImageUploadUrl { get; init; } = "";
 
         public string FormId { get; }
         public string TitleId { get; }
         public string PictureFormId { get; }
+        public string BackgroundFormId { get; }
         public string PublicUrlFormId { get; }
         public string IsPublicFormId { get; }
         public string IsPublicTrueFormId { get; }
@@ -298,6 +359,7 @@
             FormId = componentIdGenerator.Next("edit-place-form");
             TitleId = $"{FormId}-title";
             PictureFormId = $"{FormId}-picture";
+            BackgroundFormId = $"{FormId}-background";
             PublicUrlFormId = $"{FormId}-public-url";
             IsPublicFormId = $"{FormId}-is-public";
             IsPublicTrueFormId = IsPublicFormId + "-true";
@@ -314,5 +376,6 @@
         public bool IsOwner { get; init; }
         public bool EnableChatCopying { get; init; }
         public List<Invite> Invites { get; init; } = [];
+        public bool EnableIncompleteUI { get; init; }
     }
 }

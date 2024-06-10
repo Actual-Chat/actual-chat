@@ -22,7 +22,7 @@
 <div class="pic @Class @picClass">
     @if (hasPicture) {
         <image-skeleton
-            class="pic-image"
+            class="pic-image @ImageSkeletonClass"
             src="@_pictureUrl"
             @onclick="@OnPictureClick"
             @onclick:preventDefault="true"/>
@@ -56,6 +56,7 @@
     private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
 
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ImageSkeletonClass { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public Picture? Picture { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;

@@ -1,15 +1,21 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var boxCls = _isCollapsed == true ? "" : "show-box";
+    var btnCls = "search-box-btn btn-sm";
+    if (_isCollapsed == true)
+        btnCls += " hide-box";
+}
 
-@if (_isCollapsed == true) {
-    <HeaderButton
-        Class="blackout"
+<div class="box-wrapper">
+    <ButtonRound
+        Class="@btnCls"
         Click="OnExpandClick"
         Tooltip="@Placeholder"
         TooltipPosition="FloatingPosition.Bottom">
-        <i class="icon-search"></i>
-    </HeaderButton>
-} else {
-    <div class="@Class chat-search-box">
+        <i class="icon-search text-xl"></i>
+    </ButtonRound>
+
+    <div class="@Class chat-search-box @boxCls">
         <label>
             <HeaderButton
                 Class="btn-lg search-button blackout inactive"
@@ -45,7 +51,7 @@
             }
         </label>
     </div>
-}
+</div>
 
 @code {
     private string _text = "";
