@@ -96,11 +96,8 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         var sentTime = new Moment(messageSentTime * 10_000).ToDateTime();
         var title = data.Title ?? "";
         var separatorIndex = title.IndexOf('@');
-        if (separatorIndex >= 0) {
-            // var part1 = title.Substring(0, separatorIndex).Trim();
-            var part2 = title.Substring(separatorIndex + 1).Trim();
-            title = part2;
-        }
+        if (separatorIndex >= 0)
+            title = title.Substring(separatorIndex + 1).Trim(); // take Chat title only
 
         var request = new ChatAttentionRequest(chatId, data.LastEntryLocalId, sentTime, title, data.Body ?? "", data.ImageUrl ?? "");
         ChatAttentionService.Instance.Ask(request);
@@ -109,10 +106,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
     private void ShowChatMessageNotification(NotificationData data)
     {
-        // var intent = new Intent(this, typeof(MainActivity));
-        // intent.AddFlags(ActivityFlags.SingleTop);
         var contentIntent = NotificationHelper.CreateViewIntent(this, data.Link);
-
         var body = data.Body!;
         Log.LogDebug("-> ShowChatMessageNotification, text: '{Text}'", body);
 
