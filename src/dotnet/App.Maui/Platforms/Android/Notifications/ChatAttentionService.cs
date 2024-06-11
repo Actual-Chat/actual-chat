@@ -1,7 +1,6 @@
 using ActualChat.Chat.UI.Blazor.Services;
 using Android.App;
 using Android.Content;
-using Android.OS;
 using AndroidX.Core.App;
 
 namespace ActualChat.App.Maui;
@@ -30,14 +29,13 @@ public class ChatAttentionService
     private static readonly TimeSpan SnoozeInterval = TimeSpan.FromMinutes(60);
 
     private AlarmManager? _alarmManager;
-    private Vibrator? _vibrator;
     private Option<State?> _cachedState = Option<State?>.None;
+    private bool _isInitialized;
 
     private static Context Context => Platform.AppContext;
     private static DateTime UtcNow => DateTime.UtcNow;
 
     private AlarmManager AlarmManager => _alarmManager ??= (AlarmManager)Context.GetSystemService(Context.AlarmService)!;
-    private Vibrator Vibrator => _vibrator ??= (Vibrator)Context.GetSystemService(Context.VibratorService)!;
 
     public static ChatAttentionService Instance {
         get {
@@ -58,12 +56,11 @@ public class ChatAttentionService
 
     public void Init()
     {
-        try {
-            ScheduleAlarm(true, null, TimeSpan.FromSeconds(30));
-        }
-        catch (Exception e) {
-            // Ignore
-        }
+        if (_isInitialized)
+            return;
+
+        ScheduleAlarm(true, null, TimeSpan.FromSeconds(30));
+        _isInitialized = true;
     }
 
     public void Ask(ChatAttentionRequest request)
@@ -97,12 +94,6 @@ public class ChatAttentionService
         }
         if (!ReferenceEquals(originalState, state))
             DoJob(state ?? State.None);
-    }
-
-    public void Clear()
-    {
-        PersistState(null);
-        DoJob(State.None);
     }
 
     public void OnHandleIntent(Intent intent)
@@ -158,8 +149,6 @@ public class ChatAttentionService
                     dueTime = muteThreshold.Value - now;
             }
             var nextMoment = Java.Lang.JavaSystem.CurrentTimeMillis() + (long)dueTime.TotalMilliseconds;
-            // var windowLength = (long)TimeSpan.FromMinutes(10).TotalMilliseconds;
-            // AlarmManager.SetWindow(AlarmType.RtcWakeup, nextMoment, windowLength, pendingIntent);
             AlarmManager.SetExact(AlarmType.RtcWakeup, nextMoment, pendingIntent);
         }
         else
@@ -239,9 +228,6 @@ public class ChatAttentionService
 
         foreach (var (id, notification) in notifications)
             notificationManager.Notify(NotificationTag, id, notification);
-
-        // Vibrator does not work when invoked from alarm receiver
-        //Vibrator.Vibrate(VibrationEffect.CreateWaveform( vibratePattern, -1));
     }
 
     private static PendingIntent? CreateViewChatAction(string? link, string? sChatId)
@@ -289,9 +275,11 @@ public class ChatAttentionService
             return null;
 
         try {
+ #pragma warning disable IL2026
             return JsonSerializer.Deserialize<State>(json);
+ #pragma warning restore IL2026
         }
-        catch (Exception e) {
+        catch {
             return null;
         }
     }
@@ -302,7 +290,9 @@ public class ChatAttentionService
             Preferences.Default.Remove(PreferencesKey);
         else {
             state = SimplifyState();
+ #pragma warning disable IL2026
             var json = JsonSerializer.Serialize(state);
+ #pragma warning restore IL2026
             Preferences.Default.Set(PreferencesKey, json);
         }
         _cachedState = new Option<State?>(true, state);
