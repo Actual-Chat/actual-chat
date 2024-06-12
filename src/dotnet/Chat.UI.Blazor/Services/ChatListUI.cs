@@ -158,7 +158,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     {
         if (await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false)) {
             var searchResults = await SearchUI.GetContactSearchResults().ConfigureAwait(false);
-            var foundChats = await searchResults.Select(x => ChatUI.Get(x.ContactId.ChatId, cancellationToken))
+            var foundChats = await searchResults.Select(x => ChatUI.Get(x.SearchResult.ContactId.ChatId, cancellationToken))
                 .Collect()
                 .ConfigureAwait(false);
             return foundChats.SkipNullItems().ToList();
