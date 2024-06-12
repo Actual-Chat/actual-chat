@@ -9,6 +9,7 @@ body.narrow .chat-message-editor {
 
 /* Bottom Panel, Desktop view */
 .chat-message-editor > .c-content {
+    @apply relative;
     @apply flex-none flex-x justify-items-stretch items-stretch gap-x-2.5;
     @apply px-3 py-2;
 }
@@ -32,6 +33,7 @@ body.narrow .narrow-panel .audio-panel-wrapper {
     background: linear-gradient(to bottom, var(--transparent) 50%, var(--audio-panel-gradient-bottom) 0%);
 }
 .post-panel {
+    @apply relative;
     @apply flex-auto flex-x justify-between items-center;
     @apply min-h-12;
     @apply py-1 md:py-0;
@@ -39,6 +41,16 @@ body.narrow .narrow-panel .audio-panel-wrapper {
     @apply bg-post-panel md:bg-input;
     @apply overflow-hidden;
     @apply break-all;
+}
+@media (orientation: portrait) {
+    body.narrow .post-panel {
+        @apply static;
+    }
+}
+@media (orientation: landscape) {
+    body.narrow .post-panel {
+        @apply relative;
+    }
 }
 body.narrow .post-panel {
     @apply landscape:py-0;
@@ -107,117 +119,104 @@ body.hoverable .post-panel-btn:hover {
     @apply text-placeholder text-base;
     content:attr(data-text)
 }
-/* Closed panel */
-.notify-call-panel,
-.notify-call-panel.panel-closed {
+
+/* Notify Call Panel */
+.notify-call-btn {
     @apply hidden;
-    /*@apply -flex-x;*/
-    @apply h-12 w-12;
-    @apply right-2;
-    @apply bg-transparent;
-}
-.post-panel-btn.notify-call-toggle,
-.panel-closed .post-panel-btn.notify-call-toggle {
-    @apply flex-none flex-x;
-    @apply h-12;
-    @apply self-end;
-    @apply p-0;
-    @apply outline-none;
-    @apply scale-100;
-    @apply bg-07 md:bg-03;
-    @apply text-03;
-}
-.notify-call-content,
-.panel-closed .notify-call-content {
-    @apply flex-x;
-    @apply w-0;
-    @apply justify-end items-center;
-    @apply gap-x-0;
-    @apply scale-0;
-    @apply cursor-text;
-    @apply translate-x-full;
-}
-.notify-call-content .actions {
-    @apply flex-x;
-    @apply max-h-12;
-    @apply items-center;
-    @apply gap-x-2;
-    @apply md:mr-4;
-    @apply text-06 md:text-03;
-}
-.notify-call-content .btn {
-    @apply flex-none;
-    @apply min-w-0 min-h-0 h-auto;
-    @apply px-0;
-    @apply rounded-full;
-}
-.notify-call-content .btn.notify-btn {
-    @apply bg-06 md:bg-04;
-    @apply border-bg-06 md:border-bg-04;
-    @apply text-06 md:text-03;
-}
-.notify-call-content .btn .btn-content {
-    @apply items-center;
-    @apply mx-0 -my-1 px-2;
-    @apply rounded-full;
-}
-.notify-call-content .btn.close-btn {
-    @apply flex;
-    @apply h-12 w-12;
-    @apply self-end;
-    @apply p-0;
-    @apply outline-none;
-    @apply text-06 md:text-03;
-    @apply bg-transparent;
-}
-.notify-call-content .btn.close-btn .btn-content{
-    @apply min-w-8 min-h-12;
-    @apply items-center;
-    @apply mx-0;
-    @apply rounded-full;
-    @apply bg-transparent;
-}
-.text-mode .notify-call-panel {
-    @apply hidden;
-}
-
-/* Opening panel */
-.panel-opening.notify-call-panel {
-    @apply w-full;
-    @apply bg-07 md:bg-transparent;
-}
-.panel-opening .btn.btn-round.notify-call-toggle {
-    @apply w-0;
-    @apply scale-0;
-    @apply animate-notify-toggle-hide;
-}
-.panel-opening .notify-call-content {
-    @apply w-full;
-    @apply scale-100;
-    @apply translate-x-0 transition duration-300 ease-in-out;
-}
-
-/* Closing panel */
-.panel-closing .btn.btn-round.notify-call-toggle {
-    @apply scale-100;
-    @apply animate-notify-toggle-show;
-}
-.panel-closing .notify-call-content {
-    @apply scale-0;
-    @apply animate-notify-panel-closing;
-}
-
-.post-panel-btn.post-message {
-    @apply hidden flex-none;
-    @apply self-end;
-    @apply outline-none;
-    @apply text-primary;
-    @apply duration-300;
+    @apply absolute right-0;
+    @apply duration-200 delay-300;
     @apply opacity-0;
     transition-behavior: allow-discrete;
+    transition-property: display, opacity;
+}
+.default-mode .notify-call-btn {
+    @apply static right-auto;
+    @apply flex;
+    @apply opacity-100;
+    @starting-style {
+        opacity: 0;
+    }
+}
+.notify-call-panel {
+    @apply hidden;
+    @apply absolute inset-0;
+    @apply items-center justify-end gap-x-2;
+    @apply rounded-full;
+    @apply duration-300;
+    @apply translate-x-full;
+    @apply bg-primary;
+    transition-behavior: allow-discrete;
+    transition-property: display, transform, opacity, background-color;
+}
+.notify-call-panel.panel-open {
+    @apply flex-x;
+    @apply translate-x-0;
+    @apply bg-03;
+    @starting-style {
+        transform: translateX(100%);
+        background: var(--primary);
+    }
+}
+@media (orientation: portrait) {
+    body.narrow .notify-call-panel {
+        @apply inset-1 top-auto;
+        @apply h-12;
+        @apply bg-primary;
+    }
+    body.narrow .notify-call-panel.panel-open {
+        @apply bg-post-panel;
+        @starting-style {
+            background: var(--primary);
+        }
+    }
+}
+@media (orientation: landscape) {
+    body.narrow .notify-call-panel {
+        @apply bg-primary;
+    }
+    body.narrow .notify-call-panel.panel-open {
+        @apply bg-mobile-landscape-post-panel;
+        @starting-style {
+            background: var(--primary);
+        }
+    }
+}
+.notify-call-panel .notify-call-content {
+    @apply flex-x items-center gap-x-4 md:gap-x-8;
+}
+.notify-call-panel .notify-call-content .actions {
+    @apply flex-x items-center gap-x-4;
+}
+.notify-call-panel .notify-call-content .actions button {
+    @apply flex-x items-center gap-x-2;
+    @apply px-4 py-0;
+    @apply rounded-full;
+    @apply text-text-1;
+}
+.notify-btn {
+    @apply bg-04;
+    @apply text-02;
+}
+.call-btn {
+    @apply bg-primary;
+    @apply text-primary-title;
+}
+
+/* Post button */
+.post-panel-btn.post-message {
+    @apply hidden;
+    @apply absolute right-0;
+    @apply flex-none self-end;
+    @apply outline-none;
+    @apply text-primary;
+    @apply duration-200 delay-300;
+    @apply opacity-0;
+    transition-behavior: allow-discrete;
+    transition-property: display, opacity;
 }
 
 .text-mode .post-panel-btn.post-message {
+    @apply static right-auto;
     @apply flex;
     @apply opacity-100;
     @starting-style {
@@ -424,7 +423,7 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
 .rounded-sub-footer {
     @apply absolute portrait:top-17 landscape:-top-8;
     @apply flex;
-    @apply h-8 inset-x-0;
+    @apply h-0 inset-x-0;
     background: linear-gradient(to top, var(--background-01), transparent);
 }
 .narrow-panel .rounded-sub-footer {

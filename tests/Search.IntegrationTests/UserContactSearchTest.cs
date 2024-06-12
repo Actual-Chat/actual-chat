@@ -91,9 +91,6 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
             .BeEquivalentTo([bob.BuildSearchResult(Emily, [(0, 5), (6, 12)])], o => o.ExcludingRank());
     }
 
-    private Task<ApiArray<ContactSearchResult>> Find(string criteria, PlaceId? placeId = null)
-        => _sut.FindUserContacts(_tester.Session, placeId, criteria);
-
     [Fact]
     public async Task ShouldFindUpdatedUsers()
     {
@@ -166,6 +163,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     {
         // arrange
         var bob = await _tester.SignInAsBob();
+        var (placeId, _) = await _tester.CreatePlace(false);
         await _tester.CreateAccounts(Jack,
             Rebecca,
             Luke,
@@ -174,22 +172,15 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
             Emma,
             Camila,
             Emily);
-        var updates = BuildUserContacts(Jack,
-            Rebecca,
-            Luke,
-            Olivia,
-            Aaron,
-            Emma,
-            Camila,
-            Emily);
-
-        // TODO: remove this code when IndexedUserContact has PlaceIds field
-        var (placeId, _) = await _tester.CreatePlace(false);
-        await _tester.InviteToPlace(placeId,
-            Rebecca,
-            Emma,
-            Luke,
-            Emily);
+        var updates = ApiArray.New(
+            Jack.ToIndexedUserContact(),
+            Rebecca.ToIndexedUserContact(placeId),
+            Luke.ToIndexedUserContact(placeId),
+            Olivia.ToIndexedUserContact(),
+            Aaron.ToIndexedUserContact(),
+            Emma.ToIndexedUserContact(placeId),
+            Camila.ToIndexedUserContact(),
+            Emily.ToIndexedUserContact(placeId));
 
         // act
         await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, []));
@@ -211,8 +202,34 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEquivalentTo([bob.BuildSearchResult(Emily, [(0, 5), (6, 12)])], o => o.ExcludingRank());
     }
 
+    [Fact]
+    public async Task ShouldTakeOnlyFromSpecifiedSpace()
+    {
+        // arrange
+        var bob = await _tester.SignInAsBob();
+        var (place1Id, _) = await _tester.CreatePlace(false);
+        var (place2Id, _) = await _tester.CreatePlace(false);
+        await _tester.CreateAccounts(Emily, Emma);
+        var updates = ApiArray.New(
+            Emily.ToIndexedUserContact(place1Id),
+            Emma.ToIndexedUserContact(place1Id, place2Id));
+
+        // act
+        await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, []));
+        await _commander.Call(new SearchBackend_Refresh(true));
+        var searchResults = await Find("em", place2Id);
+
+        // assert
+        searchResults.Should()
+            .BeEquivalentTo([bob.BuildSearchResult(Emma, [(0, 4), (5, 12)])],
+                o => o.ExcludingRank());
+    }
+
     // Private methods
 
     private static ApiArray<IndexedUserContact> BuildUserContacts(params AccountFull[] accounts)
         => accounts.Select(x => x.ToIndexedUserContact()).ToApiArray();
+
+    private Task<ApiArray<ContactSearchResult>> Find(string criteria, PlaceId? placeId = null)
+        => _sut.FindUserContacts(_tester.Session, placeId, criteria);
 }

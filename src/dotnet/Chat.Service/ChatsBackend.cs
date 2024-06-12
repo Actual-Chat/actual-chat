@@ -593,7 +593,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             chat = ApplyDiff(chat, update);
             dbChat = new DbChat(chat);
             if (!dbChat.SystemTag.IsNullOrEmpty()
-                && !OrdinalEquals(dbChat.SystemTag, Constants.Chat.SystemTags.Welcome)) {
+                && Constants.Chat.SystemTags.Rules.MustBeUniquePerUser(dbChat.SystemTag)) {
                 // Only group chats can have system tags
                 ownerId.Require("Command.OwnerId");
                 // Chats with system tags should be unique per user except Welcome chat.

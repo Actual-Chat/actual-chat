@@ -6,16 +6,14 @@ namespace ActualChat.Search;
 public abstract class ContactIndexer(IServiceProvider services)
     : ShardWorker(services, ShardScheme.ContactIndexerBackend), INotifyInitialized
 {
-    protected const int SyncBatchSize = 1000;
+    public const int SyncBatchSize = 100;
     private static readonly TimeSpan MaxIdleInterval = TimeSpan.FromMinutes(5);
     private readonly TaskCompletionSource _whenInitialized = new ();
     private SearchSettings? _settings;
     private IContactIndexStatesBackend? _indexedChatsBackend;
     private OpenSearchConfigurator? _openSearchConfigurator;
     private ICommander? _commander;
-    private ILogger? _log;
     private Tracer? _tracer;
-
 
     protected ContactIndexingSignal NeedsSync { get; } = new (services);
     protected long MaxVersion => (Clocks.CoarseSystemClock.Now - Settings.ContactIndexingDelay).EpochOffset.Ticks;
@@ -27,8 +25,7 @@ public abstract class ContactIndexer(IServiceProvider services)
         => _indexedChatsBackend ??= Services.GetRequiredService<IContactIndexStatesBackend>();
     protected ICommander Commander => _commander ??= Services.Commander();
     protected MomentClockSet Clocks { get; } = services.Clocks();
-    protected ILogger Log => _log ??= services.LogFor(GetType());
-    protected Tracer Tracer => _tracer ??= services.Tracer(GetType());
+    protected Tracer Tracer => _tracer ??= Services.Tracer(GetType());
 
     public Task WhenInitialized => _whenInitialized.Task;
 
@@ -40,6 +37,11 @@ public abstract class ContactIndexer(IServiceProvider services)
         Log.LogDebug("OnSyncNeeded");
         NeedsSync.SetDelayed();
     }
+
+    protected override Task OnRun(CancellationToken cancellationToken)
+        => !Settings.IsSearchEnabled
+            ? Task.CompletedTask
+            : base.OnRun(cancellationToken);
 
     protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {

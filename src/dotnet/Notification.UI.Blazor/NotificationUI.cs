@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Services;
-using ActualLab.Rpc;
 
 namespace ActualChat.Notification.UI.Blazor;
 
@@ -27,7 +26,6 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
     private UIHub Hub { get; }
     private HostInfo HostInfo => Hub.HostInfo();
     private Session Session => Hub.Session();
-    private History History => Hub.History;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private IDeviceTokenRetriever DeviceTokenRetriever => _deviceTokenRetriever ??= Hub.GetRequiredService<IDeviceTokenRetriever>();
     private UrlMapper UrlMapper => Hub.UrlMapper();
@@ -82,11 +80,24 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
         => Task.CompletedTask; // Actually handled by notification-ui.ts
 
     [JSInvokable]
-    public Task HandleNotificationNavigation(string absoluteUrl)
+    public Task HandleNotificationNavigation(string url)
     {
         // This method can be invoked from any synchronization context
-        if (LocalUrl.FromAbsolute(absoluteUrl, UrlMapper) is not { } localUrl)
+        Uri.TryCreate(url, UriKind.RelativeOrAbsolute, out var uri);
+        if (uri == null)
             return Task.CompletedTask;
+
+        LocalUrl localUrl;
+        if (uri.IsAbsoluteUri) {
+            var tempLocalUrl = LocalUrl.FromAbsolute(url, UrlMapper);
+            if (tempLocalUrl is null)
+                return Task.CompletedTask;
+
+            localUrl = tempLocalUrl.Value;
+        }
+        else
+            localUrl = new LocalUrl(url, ParseOrNone.Option);
+
         if (!localUrl.IsChat())
             return Task.CompletedTask;
 
@@ -141,7 +152,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
                         deviceId ??= await DeviceTokenRetriever.GetDeviceToken(cancellationToken).ConfigureAwait(false);
                         await Hub.RpcHub().WhenClientPeerConnected(cancellationToken).ConfigureAwait(false);
                         if (deviceId != null) {
-                            var command = new Notifications_RegisterDevice(Session, deviceId, DeviceType.WebBrowser);
+                            var command = new Notifications_RegisterDevice(Session, deviceId, GetDeviceType());
                             await Hub.Commander().Call(command, cancellationToken).ConfigureAwait(false);
                         }
                         return deviceId;
@@ -153,6 +164,21 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
                 }
                 return null;
             }, CancellationToken.None);
+        }
+
+        DeviceType GetDeviceType()
+        {
+            if (HostInfo.HostKind.IsMauiApp())
+                switch (HostInfo.AppKind) {
+                case AppKind.Android:
+                    return DeviceType.AndroidApp;
+                case AppKind.Ios:
+                    return DeviceType.iOSApp;
+                case AppKind.Windows:
+                    return DeviceType.WindowsApp;
+                }
+
+            return DeviceType.WebBrowser;
         }
     }
 }

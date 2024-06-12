@@ -7,11 +7,7 @@ using ActualChat.Queues.Internal;
 using ActualChat.Queues.Nats;
 using ActualChat.Rpc;
 using ActualLab.CommandR.Internal;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using NATS.Client.Core;
-using NATS.Client.Hosting;
-using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat;
 
@@ -78,7 +74,28 @@ public static class ServiceCollectionExt
         // NatsConnectionPool
         services.AddSingleton(c => {
             var options = c.GetRequiredService<NatsOpts>();
-            return new NatsConnectionPool(1, options, static _ => { });
+            var log = c.LogFor<NatsConnectionPool>();
+            return new NatsConnectionPool(
+                Environment.ProcessorCount / 2,
+                options,
+                connection => {
+                    connection.ConnectionOpened += (_, args) => {
+                        log.LogInformation("Connection opened: {Message}", args.Message);
+                        return ValueTask.CompletedTask;
+                    };
+                    connection.ConnectionDisconnected += (_, args) => {
+                        log.LogInformation("Disconnected: {Message}", args.Message);
+                        return ValueTask.CompletedTask;
+                    };
+                    connection.ReconnectFailed += (sender, args) => {
+                        log.LogWarning("Reconnect failed: {Message}", args.Message);
+                        return ValueTask.CompletedTask;
+                    };
+                    connection.MessageDropped += (sender, args) => {
+                        log.LogError("Message dropped: {Message}, {Subject}", args.Message, args.Subject);
+                        return ValueTask.CompletedTask;
+                    };
+                });
         });
         services.AddAlias<INatsConnectionPool, NatsConnectionPool>();
 

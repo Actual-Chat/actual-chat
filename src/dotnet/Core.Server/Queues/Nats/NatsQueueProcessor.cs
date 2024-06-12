@@ -196,9 +196,12 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             shardIndex = 0;
 
         // Double-check locking
-        if (_streams.TryGetValue(shardIndex, out var stream)) return stream;
+        if (_streams.TryGetValue(shardIndex, out var stream))
+            return stream;
+
         using var releaser = await _getStreamLocks.Lock(shardIndex, cancellationToken).ConfigureAwait(false);
-        if (_streams.TryGetValue(shardIndex, out stream)) return stream;
+        if (_streams.TryGetValue(shardIndex, out stream))
+            return stream;
 
         var streamName = GetStreamName(shardIndex);
         var context = new NatsJSContext(Connection);
@@ -215,10 +218,10 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                 }
             }
             catch (Exception e) when (e is TimeoutException or NatsJSApiNoResponseException) {
-                if (retryCount++ > 3)
+                if (retryCount++ > 5)
                     throw;
 
-                Log.LogWarning(e, $"{nameof(GetStream)}: error getting stream - timeout");
+                Log.LogWarning(e, $"{nameof(GetStream)}: error getting stream {{StreamName}} - timeout", streamName);
                 var delay = Random.Shared.Next(100, 250);
                 await Clock.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
@@ -261,12 +264,12 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                 consumer = await CreateOrUpdateConsumer(shardIndex, stream, cancellationToken).ConfigureAwait(false);
             }
             catch (TimeoutException e) when (retryCount++ <= 3) {
-                Log.LogWarning(e, $"{nameof(GetConsumer)}: error getting consumer - timeout");
+                Log.LogWarning(e, $"{nameof(GetConsumer)}: error getting consumer {{ConsumerName}} - timeout", consumerName);
                 var delay = Random.Shared.Next(100, 250);
                 await Services.Clocks().SystemClock.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
             catch (NatsJSApiNoResponseException e) when (retryCount++ <= 3) {
-                Log.LogWarning(e, $"{nameof(GetConsumer)}: error getting consumer - no response");
+                Log.LogWarning(e, $"{nameof(GetConsumer)}: error getting consumer {{ConsumerName}} - no response", consumerName);
                 var delay = Random.Shared.Next(100, 250);
                 await Services.Clocks().SystemClock.Delay(delay, cancellationToken).ConfigureAwait(false);
             }

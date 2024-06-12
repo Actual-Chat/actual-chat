@@ -26,6 +26,7 @@ public abstract class ShardWorker : WorkerBase
     public IMomentClock Clock => ShardLocks.Clock;
 
     protected ShardWorker(IServiceProvider services, ShardScheme shardScheme, string? keyPrefix = null)
+        : base(services.HostLifetime()?.ApplicationStopping.CreateLinkedTokenSource() ?? new CancellationTokenSource())
     {
         Services = services;
         ShardScheme = shardScheme;
@@ -75,7 +76,7 @@ public abstract class ShardWorker : WorkerBase
                     var node = nodeIndex.HasValue ? nodes[nodeIndex.GetValueOrDefault()] : null;
                     var shardState = ShardStates[shardIndex];
                     var mustUse = node == ThisNode;
-                    if (mustUse == usedShards[shardIndex])
+                    if (mustUse == usedShards[shardIndex] && shardState is { WhenStopped.IsCompleted: false, StopToken.IsCancellationRequested: false })
                         continue;
 
                     usedShards[shardIndex] = mustUse;
@@ -89,7 +90,7 @@ public abstract class ShardWorker : WorkerBase
             }
         }
         finally {
-            await Task.WhenAll(ShardStates.Select(x => x.Stop())).SilentAwait();
+            await Task.WhenAll(ShardStates.Select(x => x.DisposeAsync().AsTask())).SilentAwait();
         }
     }
 
@@ -97,14 +98,14 @@ public abstract class ShardWorker : WorkerBase
     {
         var failureCount = 0;
         while (!cancellationToken.IsCancellationRequested) {
-            DebugLog?.LogDebug("Shard #{ShardIndex}: acquiring lock for {ThisNodeId}", shardIndex, ThisNode.Ref);
+            Log.LogInformation("Shard #{ShardIndex}: acquiring lock for {ThisNodeId}", shardIndex, ThisNode.Ref);
             var lockHolder = await ShardLocks.Lock(shardIndex.Format(), "", cancellationToken).ConfigureAwait(false);
             var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
             var lockToken = lockCts.Token;
             var lockIsLost = false;
             Exception? error = null;
             try {
-                DebugLog?.LogDebug("Shard #{ShardIndex} -> {ThisNodeId}", shardIndex, ThisNode.Ref);
+                Log.LogInformation("Shard #{ShardIndex} -> {ThisNodeId}", shardIndex, ThisNode.Ref);
                 await OnRun(shardIndex, lockToken).ConfigureAwait(false);
                 failureCount = 0;
             }
@@ -124,7 +125,7 @@ public abstract class ShardWorker : WorkerBase
                 if (lockIsLost)
                     Log.LogWarning("Shard #{ShardIndex} <- {ThisNodeId} (shard lock is lost)", shardIndex, ThisNode.Ref);
                 else
-                    DebugLog?.LogDebug("Shard #{ShardIndex} <- {ThisNode}", shardIndex, ThisNode.Ref);
+                    Log.LogInformation("Shard #{ShardIndex} <- {ThisNode}", shardIndex, ThisNode.Ref);
             }
 
             if (error != null) {
@@ -140,14 +141,14 @@ public abstract class ShardWorker : WorkerBase
 
     // Nested types
 
-    protected sealed class ShardState
+    protected sealed class ShardState : IAsyncDisposable
     {
         private CancellationTokenSource StopTokenSource { get; }
 
         public ShardWorker Worker { get; }
         public int Index { get; }
         public CancellationToken StopToken { get; }
-        public Task? WhenStopped { get; set; }
+        public Task? WhenStopped { get; private set; }
 
         public ShardState(ShardWorker worker, int index)
         {
@@ -158,25 +159,32 @@ public abstract class ShardWorker : WorkerBase
         }
 
         public ShardState NextState(bool mustUse)
-        {
-            if (mustUse)
-                return Start();
+            => mustUse
+                ? Start()
+                : Stop();
 
+        private ShardState Start()
+        {
+            var isAlreadyRunning = WhenStopped != null && !StopToken.IsCancellationRequested;
+            if (isAlreadyRunning)
+                return this;
+
+            var result = new ShardState(Worker, Index);
+            result.WhenStopped = Worker.Use(Index, result.StopToken);
+            return result;
+        }
+
+        private ShardState Stop()
+        {
             StopTokenSource.CancelAndDisposeSilently();
             return this;
         }
 
-        public ShardState Start()
-        {
-            var result = WhenStopped == null ? this : new ShardState(Worker, Index);
-            result.WhenStopped = Worker.Use(Index, StopToken);
-            return result;
-        }
-
-        public Task Stop()
+        public ValueTask DisposeAsync()
         {
             StopTokenSource.CancelAndDisposeSilently();
-            return WhenStopped ?? Task.CompletedTask;
+            var whenStopped = WhenStopped;
+            return whenStopped?.ToValueTask() ?? ValueTask.CompletedTask;
         }
     }
 }

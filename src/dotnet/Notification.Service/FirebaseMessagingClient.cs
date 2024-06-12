@@ -14,16 +14,21 @@ public class FirebaseMessagingClient(
     private ILogger Log { get; } = log;
     private ILogger? DebugLog => !UrlMapper.IsActualChat ? Log : null;
 
-    public async Task SendMessage(Notification entry, IReadOnlyCollection<Symbol> deviceIds, CancellationToken cancellationToken)
+    public async Task SendMessage(Notification notification, IReadOnlyCollection<Symbol> deviceIds, CancellationToken cancellationToken)
     {
-        var (notificationId, _) = entry;
-        var kind = entry.Kind;
-        var title = entry.Title;
-        var content = entry.Content;
-        var iconUrl = entry.IconUrl;
-        var chatId = entry.ChatId;
-        var chatEntryNotification = entry.ChatEntryNotification;
-        var chatEntryId = chatEntryNotification?.EntryId ?? default;
+        var (notificationId, _) = notification;
+        var kind = notification.Kind;
+        var title = notification.Title;
+        var content = notification.Content;
+        var iconUrl = notification.IconUrl;
+        var chatId = notification.ChatId;
+        var chatEntryId = ChatEntryId.None;
+        long lastEntryLocalId = 0;
+        if (notification.ChatEntryNotification != null)
+            chatEntryId = notification.ChatEntryNotification.EntryId;
+        else if (notification.GetAttentionNotification != null)
+            lastEntryLocalId = notification.GetAttentionNotification.LastEntryLocalId;
+
         var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl, true);
         var isDev = UrlMapper.IsDevActualChat;
 
@@ -36,18 +41,23 @@ public class FirebaseMessagingClient(
             ? UrlMapper.ToAbsolute(Links.Chat(chatId, chatEntryId.LocalId))
             : isChatRelated ? UrlMapper.ToAbsolute(Links.Chat(chatId)) : "";
 
+        var data = new Dictionary<string, string>(StringComparer.Ordinal) {
+            { Constants.Notification.MessageDataKeys.NotificationId, notificationId },
+            { Constants.Notification.MessageDataKeys.Tag, tag },
+            { Constants.Notification.MessageDataKeys.ChatId, chatId },
+            { Constants.Notification.MessageDataKeys.ChatEntryId, chatEntryId },
+            { Constants.Notification.MessageDataKeys.Icon, absoluteIconUrl },
+            { Constants.Notification.MessageDataKeys.Kind, kind.ToString() },
+            { Constants.Notification.MessageDataKeys.Link, link },
+            { Constants.Notification.MessageDataKeys.Timestamp, ((long)notification.CreatedAt.EpochOffset.TotalMilliseconds).ToString(CultureInfo.InvariantCulture) },
+        };
+        if (lastEntryLocalId > 0)
+            data.Add(Constants.Notification.MessageDataKeys.LastEntryLocalId, lastEntryLocalId.ToString(CultureInfo.InvariantCulture));
         var multicastMessage = new MulticastMessage {
             Tokens = deviceIds.Select(id => id.Value).ToList(),
             // We do not specify Notification instance, because we use Data messages to deliver notifications to Android
             // Notification = default,
-            Data = new Dictionary<string, string>(StringComparer.Ordinal) {
-                { Constants.Notification.MessageDataKeys.NotificationId, notificationId },
-                { Constants.Notification.MessageDataKeys.Tag, tag },
-                { Constants.Notification.MessageDataKeys.ChatId, chatId },
-                { Constants.Notification.MessageDataKeys.ChatEntryId, chatEntryId },
-                { Constants.Notification.MessageDataKeys.Icon, absoluteIconUrl },
-                { Constants.Notification.MessageDataKeys.Link, link },
-            },
+            Data = data,
             Android = new AndroidConfig {
                 // We do not specify Notification instance, because we use Data messages to deliver notifications to Android
                 // Notification = default,
