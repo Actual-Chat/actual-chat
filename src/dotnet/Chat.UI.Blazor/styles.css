@@ -29,6 +29,7 @@
 @import './Components/PlaceSettings/place-settings-modal.css';
 @import './Components/Notifications/notifications.css';
 @import './Components/LeftPanel/left-panel.css';
+@import './Components/LeftPanel/ContactSearch/search-result-group-header.css';
 @import './Components/MentionList/mention-list.css';
 @import './Components/Onboarding/onboarding-modal.css';
 @import './Components/Onboarding/line-progress.css';

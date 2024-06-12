@@ -227,7 +227,8 @@ public static partial class Constants
     public static class Search
     {
         public const int PageSizeLimit = 50;
-        public const int ContactSearchDeafultPageSize = 5;
+        public const int ContactSearchDefaultPageSize = 5;
+        public const int ContactSearchExtendedPageSize = 30;
     }
 
     public static class Invalidation

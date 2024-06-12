@@ -1,6 +1,5 @@
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Search;
-using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
 using SearchUI = ActualChat.Chat.UI.Blazor.Services.SearchUI;
@@ -61,65 +60,107 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         // act
         await WaitUntilIndexed("one", 9);
         _searchUI.Text.Value = "one";
-        var searchResults = await GetSearchResults(9);
+        var foundContacts = await GetSearchResults(9);
 
         // assert
-        var expected = bob.BuildSearchResults(privatePlaceMember1,
-                publicPlaceMember1,
-                everyPlaceMember1)
-            .Concat(bob.BuildSearchResults(privateChat1,
-                privatePlacePrivateChat1,
-                privatePlacePublicChat1,
-                publicPlacePrivateChat1,
-                publicChat1,
-                publicPlacePublicChat1))
-            .ToArray();
-        searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
+        foundContacts[..3].Should().BeEquivalentTo(bob.BuildFoundContacts(privatePlaceMember1,
+            publicPlaceMember1,
+            everyPlaceMember1), o => o.ExcludingSearchMatch().ExcludingBorders());
+        foundContacts[3..5]
+            .Should()
+            .BeEquivalentTo(bob.BuildFoundContacts(true,
+                    publicChat1,
+                    publicPlacePublicChat1),
+                o => o.ExcludingSearchMatch().ExcludingBorders());
+        foundContacts[5..]
+            .Should()
+            .BeEquivalentTo(bob.BuildFoundContacts(false,
+                    privatePlacePublicChat1,
+                    privateChat1,
+                    privatePlacePrivateChat1,
+                    publicPlacePrivateChat1),
+                o => o.ExcludingSearchMatch().ExcludingBorders());
+        foundContacts[0].IsFirstInGroup.Should().Be(true);
+        foundContacts[2].IsLastInGroup.Should().Be(true);
+        foundContacts[3].IsFirstInGroup.Should().Be(true);
+        foundContacts[4].IsLastInGroup.Should().Be(true);
+        foundContacts[5].IsFirstInGroup.Should().Be(true);
+        foundContacts[8].IsLastInGroup.Should().Be(true);
 
         // act
         _searchUI.Text.Value = "bla bla";
-        searchResults = await GetSearchResults(0);
+        foundContacts = await GetSearchResults(0);
 
         // assert
-        searchResults.Should().BeEmpty();
+        foundContacts.Should().BeEmpty();
 
         // act
         _searchUI.Text.Value = "two";
 
         // assert
-        expected = bob.BuildSearchResults(privatePlaceMember2,
-                publicPlaceMember2,
-                everyPlaceMember2)
-            .Concat(bob.BuildSearchResults(privateChat2,
-                privatePlacePrivateChat2,
-                privatePlacePublicChat2,
-                publicPlacePrivateChat2,
-                publicChat2,
-                publicPlacePublicChat2))
-            .ToArray();
-        await AssertSearchResults(expected);
+        foundContacts = await GetSearchResults(9);
+        foundContacts[..3].Should().BeEquivalentTo(bob.BuildFoundContacts(privatePlaceMember2,
+            publicPlaceMember2,
+            everyPlaceMember2), o => o.ExcludingSearchMatch().ExcludingBorders());
+        foundContacts[3..5]
+            .Should()
+            .BeEquivalentTo(bob.BuildFoundContacts(true,
+                    publicChat2,
+                    publicPlacePublicChat2),
+                o => o.ExcludingSearchMatch().ExcludingBorders());
+        foundContacts[5..]
+            .Should()
+            .BeEquivalentTo(bob.BuildFoundContacts(false,
+                    privatePlacePublicChat2,
+                    privateChat2,
+                    privatePlacePrivateChat2,
+                    publicPlacePrivateChat2),
+                o => o.ExcludingSearchMatch().ExcludingBorders());
+        foundContacts[0].IsFirstInGroup.Should().Be(true);
+        foundContacts[2].IsLastInGroup.Should().Be(true);
+        foundContacts[3].IsFirstInGroup.Should().Be(true);
+        foundContacts[4].IsLastInGroup.Should().Be(true);
+        foundContacts[5].IsFirstInGroup.Should().Be(true);
+        foundContacts[8].IsLastInGroup.Should().Be(true);
 
         // act
         _chatListUI.ActivateChatList(privatePlace.Id);
         _searchUI.Text.Value = "two";
 
         // assert
-        expected = bob.BuildSearchResults(privatePlaceMember2,
-                everyPlaceMember2)
-            .Concat(bob.BuildSearchResults(privatePlacePrivateChat2,
-                privatePlacePublicChat2))
-            .ToArray();
-        await AssertSearchResults(expected);
+        foundContacts = await GetSearchResults(4);
+        foundContacts[..2]
+            .Should()
+            .BeEquivalentTo(bob.BuildFoundContacts(privatePlaceMember2, everyPlaceMember2),
+                o => o.ExcludingSearchMatch().ExcludingBorders());
+        foundContacts[2..]
+            .Should()
+            .BeEquivalentTo(bob.BuildFoundContacts(false,
+                    privatePlacePublicChat2,
+                    privatePlacePrivateChat2),
+                o => o.ExcludingSearchMatch().ExcludingBorders());
 
         // act
         _chatListUI.ActivateChatList(publicPlace.Id);
         _searchUI.Text.Value = "two";
 
         // assert
-        expected = bob.BuildSearchResults(publicPlaceMember2, everyPlaceMember2)
-            .Concat(bob.BuildSearchResults(publicPlacePrivateChat2, publicPlacePublicChat2))
-            .ToArray();
-        await AssertSearchResults(expected);
+        await TestExt.When(async () => {
+                foundContacts = await GetSearchResults(4);
+                foundContacts[..2]
+                    .Should()
+                    .BeEquivalentTo(bob.BuildFoundContacts(publicPlaceMember2, everyPlaceMember2),
+                        o => o.ExcludingSearchMatch().ExcludingBorders());
+                foundContacts[2]
+                    .Should()
+                    .BeEquivalentTo(bob.BuildFoundContact(publicPlacePublicChat2, true),
+                        o => o.ExcludingSearchMatch().ExcludingBorders());
+                foundContacts[3]
+                    .Should()
+                    .BeEquivalentTo(bob.BuildFoundContact(publicPlacePrivateChat2, false),
+                        o => o.ExcludingSearchMatch().ExcludingBorders());
+            },
+            TimeSpan.FromSeconds(20));
     }
 
     private async Task WaitUntilIndexed(string criteria, int expectedCount)
@@ -131,27 +172,18 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
                 var privateChatContacts = await search.FindChatContacts(_tester.Session, null, criteria, false);
                 (userContacts.Count + publicChatContacts.Count + privateChatContacts.Count).Should().BeGreaterOrEqualTo(expectedCount);
             },
-            TimeSpan.FromSeconds(10));
+            TimeSpan.FromSeconds(20));
     }
 
-    private async Task<IReadOnlyList<ContactSearchResult>> GetSearchResults(int expectedCount)
+    private async Task<List<FoundContact>> GetSearchResults(int expectedCount)
     {
+        IReadOnlyList<FoundContact> results = [];
         await TestExt.When(async () => {
-                var results = await _searchUI.GetContactSearchResults();
+                results = await _searchUI.GetContactSearchResults();
                 results.Count.Should().Be(expectedCount);
             },
-            TimeSpan.FromSeconds(10));
-        return await _searchUI.GetContactSearchResults();
-    }
-
-    private async Task AssertSearchResults(params ContactSearchResult[] expected)
-    {
-        await TestExt.When(async () => {
-                var results = await _searchUI.GetContactSearchResults();
-                results.Should().BeEquivalentTo(expected, o => o.WithoutStrictOrdering().ExcludingSearchMatch());
-            },
             TimeSpan.FromSeconds(20));
-        await _searchUI.GetContactSearchResults();
+        return results.ToList();
     }
 
     private async Task<Chat> CreateChat(bool isPublic, string title, PlaceId? placeId = null)
