@@ -107,8 +107,6 @@ public class Places(IServiceProvider services) : IPlaces
     public virtual async Task<Place> OnChange(Places_Change command, CancellationToken cancellationToken)
     {
         var (session, placeId, expectedVersion, placeChange) = command;
-        if (placeChange.Remove)
-            throw StandardError.Constraint("Use Places_Delete command instead to delete the place.");
 
         var place = placeId.IsNone ? null
             : await Get(session, placeId, cancellationToken).ConfigureAwait(false);
@@ -138,7 +136,7 @@ public class Places(IServiceProvider services) : IPlaces
             placeRootChat = await Chats.Get(session, rootChatId, cancellationToken).ConfigureAwait(false);
             placeRootChat.Require();
             chatExpectedVersion = placeRootChat.Version;
-            chatDiff = !placeChange.Remove ? Change.Update(ToChatDiff(placeChange.Create.Value)) : Change.Remove<ChatDiff>();
+            chatDiff = !placeChange.Remove ? Change.Update(ToChatDiff(placeChange.Update.Value)) : Change.Remove<ChatDiff>();
         }
 
         place = await Commander.Call(changePlaceCommand, cancellationToken).ConfigureAwait(false);
