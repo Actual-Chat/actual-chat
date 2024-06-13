@@ -21,6 +21,8 @@
     var publicChatHint = !isPlaceChat ?
         "Anyone can join this chat by navigating to its URL" :
         "All members of this Place will see it in Place's chat list and will be able to talk there";
+    var onMakeChatPublicClick = canChangeChatType ? EventCallback.Factory.Create(this, () => OnPublicChatClick(true)) : new EventCallback(null, null);
+    var onMakeChatPrivateClick = canChangeChatType ? EventCallback.Factory.Create(this, () => OnPublicChatClick(false)) : new EventCallback(null, null);
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -29,7 +31,7 @@
     }
     <FormBlock Class="with-input-radio first">
         <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
-            <TileItem Click="@(() => OnPublicChatClick(true))">
+            <TileItem Click="@onMakeChatPublicClick">
                 <Icon>
                     <FormRadio Id="@_form.IsPublicTrueFormId" IsDisabled="@(!canChangeChatType)" Value="@true" />
                 </Icon>
@@ -40,7 +42,7 @@
                     <Label InputId="@_form.IsPublicTrueFormId" Text="@publicChatHint"></Label>
                 </Caption>
             </TileItem>
-            <TileItem Click="@(() => OnPublicChatClick(false))">
+            <TileItem Click="@onMakeChatPrivateClick">
                 <Icon>
                     <FormRadio Id="@_form.IsPublicFalseFormId" IsDisabled="@(!canChangeChatType)" Value="@false"/>
                 </Icon>
