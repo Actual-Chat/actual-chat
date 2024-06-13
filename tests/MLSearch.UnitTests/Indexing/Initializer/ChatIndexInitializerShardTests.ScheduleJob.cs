@@ -8,6 +8,7 @@ public partial class ChatIndexInitializerShardTests
 {
     private readonly ChatIndexInitializerShard.RetrySettings _scheduleJobRetrySettings =
         new (3, RetryDelaySeq.Exp(0.3, 3), TransiencyResolvers.PreferTransient);
+
     [Fact]
     public async Task ScheduleJobMethodWaitsForSemaphoreSlot()
     {
@@ -32,6 +33,26 @@ public partial class ChatIndexInitializerShardTests
         state.Semaphore.Release();
         // Now our job must complete successfully
         await nextJob.AsTask().WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task ScheduleJobMethodLogsErrorIfNotCancellation()
+    {
+    }
+
+    [Fact]
+    public async Task ScheduleJobMethodAddsJobInfoToTheState()
+    {
+    }
+
+    [Fact]
+    public async Task ScheduleJobMethodRetriesOnTransientError()
+    {
+    }
+
+    [Fact]
+    public async Task ScheduleJobMethodUsesRetrySettingsSpecified()
+    {
     }
 
     private static Mock<ICommander> MockCommander()
