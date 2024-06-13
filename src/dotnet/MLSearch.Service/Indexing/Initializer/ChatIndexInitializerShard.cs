@@ -36,7 +36,7 @@ internal sealed class ChatIndexInitializerShard(
         public ChatInfo((ChatId ChatId, long Version) info): this(info.ChatId, info.Version)
         { }
     }
-    public record RetrySettings(int RetryCount, RetryDelaySeq RetryDelaySeq, TransiencyResolver TransiencyResolver);
+    public record RetrySettings(int AttemptCount, RetryDelaySeq RetryDelaySeq, TransiencyResolver TransiencyResolver);
 
     // # Delegates
     public delegate ValueTask UpdateCursorHandler(
@@ -128,24 +128,16 @@ internal sealed class ChatIndexInitializerShard(
     {
         await state.Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        try {
-            var (chatId, version) = chatInfo;
+        var (chatId, version) = chatInfo;
 
-            await AsyncChain.From(ct => ScheduleChatIndexing(chatId, commander, ct))
+        await AsyncChain.From(ct => ScheduleChatIndexing(chatId, commander, ct))
                 .WithTransiencyResolver(retrySettings.TransiencyResolver)
                 .Log(LogLevel.Debug, log)
-                .Retry(retrySettings.RetryDelaySeq, retrySettings.RetryCount, log)
+                .Retry(retrySettings.RetryDelaySeq, retrySettings.AttemptCount, clock, log)
                 .Run(cancellationToken)
             .ConfigureAwait(false);
 
-            state.ScheduledJobs[chatId] = (version, clock.Now);
-        }
-        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-            // Any error here is terminal
-            // We'll have to restart the shard, so we don't care about the shared state anymore.
-            log.LogError(e, "Failed to schedule an indexing job for chat #{ChatId}.", chatInfo.ChatId);
-            throw;
-        }
+        state.ScheduledJobs[chatId] = (version, clock.Now);
 
         return;
 
