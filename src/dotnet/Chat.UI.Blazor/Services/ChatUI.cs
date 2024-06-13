@@ -648,7 +648,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         modal.Close();
         await onBeforeExecuteCommand().ConfigureAwait(true);
         var command = isDelete
-            ? (ICommand)new Places_Delete(Session, placeId)
+            ? (ICommand)new Places_Change(Session, placeId, null, Change.Remove<PlaceDiff>())
             : new Places_Leave(Session, placeId);
         var result = await UICommander.Run(command).ConfigureAwait(true);
         if (result.HasError)

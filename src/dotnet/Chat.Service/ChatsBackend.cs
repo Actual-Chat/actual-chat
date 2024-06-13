@@ -580,7 +580,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     else
                         chatId = new PlaceChatId(placeId, Generate.Option);
                 }
-                else
+                else if (!chatId.IsPlaceRootChat)
                     throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
                 update.ValidateForPlaceChat();
             }

@@ -1,4 +1,5 @@
 ﻿using ActualChat.Contacts;
+using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
@@ -8,10 +9,12 @@ public class Places(IServiceProvider services) : IPlaces
     private IChatsBackend? _chatsBackend;
     private IContacts? _contacts;
 
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IRoles Roles { get; } = services.GetRequiredService<IRoles>();
     private ICommander Commander { get; } = services.Commander();
 
+    private IPlacesBackend PlacesBackend { get; } = services.GetRequiredService<PlacesBackend>();
     private IChats Chats => _chats ??= services.GetRequiredService<IChats>(); // Lazy resolving to prevent cyclic dependency
     private IChatsBackend ChatsBackend => _chatsBackend ??= services.GetRequiredService<IChatsBackend>(); // Lazy resolving to prevent cyclic dependency
     private IContacts Contacts => _contacts ??= services.GetRequiredService<IContacts>(); // Lazy resolving to prevent cyclic dependency
@@ -21,8 +24,17 @@ public class Places(IServiceProvider services) : IPlaces
         if (placeId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(placeId));
 
-        var placeRootChat = await Chats.Get(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
-        return placeRootChat?.Rules.CanRead() == true ? placeRootChat.ToPlace() : null;
+        var place = await PlacesBackend.Get(placeId, cancellationToken).ConfigureAwait(false);
+        if (place == null)
+            return null;
+
+        var rules = await GetRules(session, placeId, cancellationToken).ConfigureAwait(false);
+        if (!rules.CanRead())
+            return null;
+
+        return place with {
+            Rules = rules,
+        };
     }
 
     public virtual async Task<PlaceRules> GetRules(
@@ -98,16 +110,49 @@ public class Places(IServiceProvider services) : IPlaces
         if (placeChange.Remove)
             throw StandardError.Constraint("Use Places_Delete command instead to delete the place.");
 
-        var chatChange = new Change<ChatDiff> {
-            Create = placeChange.Create.HasValue ? Option<ChatDiff>.Some(ToChatDiff(placeChange.Create.Value)) : default,
-            Update = placeChange.Update.HasValue ? Option<ChatDiff>.Some(ToChatDiff(placeChange.Update.Value)) : default,
-            Remove = placeChange.Remove
-        };
-        var chatId = placeId.ToRootChatId();
-        var chatChangeCommand = new Chats_Change(session, chatId, expectedVersion, chatChange);
+        var place = placeId.IsNone ? null
+            : await Get(session, placeId, cancellationToken).ConfigureAwait(false);
 
-        var placeRootChat = await Commander.Call(chatChangeCommand, true, cancellationToken).ConfigureAwait(false);
-        return placeRootChat.ToPlace();
+        var changePlaceCommand = new PlacesBackend_Change(placeId, expectedVersion, placeChange.RequireValid());
+        ChatId rootChatId;
+        long? chatExpectedVersion;
+        Change<ChatDiff> chatDiff;
+        Chat? placeRootChat;
+        if (placeChange.Kind == ChangeKind.Create) {
+            var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+            account.Require(AccountFull.MustBeActive);
+            rootChatId = ChatId.None;
+            chatExpectedVersion = null;
+            chatDiff = Change.Create(ToChatDiff(placeChange.Create.Value));
+        }
+        else {
+            var requiredPermissions = placeChange.Remove
+                ? PlacePermissions.Owner
+                : PlacePermissions.EditProperties;
+            place.Require().Rules.Permissions.Require(requiredPermissions);
+
+            if (placeChange.Remove)
+                await RemovePlaceChats(session, placeId, cancellationToken).ConfigureAwait(false);
+
+            rootChatId = placeId.ToRootChatId();
+            placeRootChat = await Chats.Get(session, rootChatId, cancellationToken).ConfigureAwait(false);
+            placeRootChat.Require();
+            chatExpectedVersion = placeRootChat.Version;
+            chatDiff = !placeChange.Remove ? Change.Update(ToChatDiff(placeChange.Create.Value)) : Change.Remove<ChatDiff>();
+        }
+
+        place = await Commander.Call(changePlaceCommand, cancellationToken).ConfigureAwait(false);
+        rootChatId = rootChatId.Or(place.Id.ToRootChatId());
+
+        // Since place root chat is still used for getting place rules and place members we should synchronously update it.
+        // Should we use backend command here?
+        var chatChangeCommand = new Chats_Change(session, rootChatId, chatExpectedVersion, chatDiff);
+        placeRootChat = await Commander.Call(chatChangeCommand, true, cancellationToken).ConfigureAwait(false);
+        placeRootChat.Require();
+        if (placeRootChat.Id != rootChatId)
+            throw StandardError.Internal("Id of root place chat does not correspond place id");
+
+        return place;
     }
 
     public virtual async Task OnJoin(Places_Join command, CancellationToken cancellationToken)
@@ -153,30 +198,8 @@ public class Places(IServiceProvider services) : IPlaces
 
     public virtual async Task OnDelete(Places_Delete command, CancellationToken cancellationToken)
     {
-        var (session, placeId) = command;
-        var place = await Get(session, placeId, cancellationToken).ConfigureAwait(false);
-        if (place == null)
-            return;
-
-        place.Rules.Require(PlacePermissions.Owner);
-        var contacts = await Contacts.ListIds(session, placeId, cancellationToken).ConfigureAwait(false);
-        foreach (var contact in contacts) {
-            var chatId = contact.ChatId;
-            if (chatId.IsPeerChat(out _))
-                continue; // Ignore peer chats
-            var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
-            if (chat != null && OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag)) {
-                var resetChatTagCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> {
-                    Update = new ChatDiff { SystemTag = Symbol.Empty }
-                });
-                await Commander.Call(resetChatTagCommand, true, cancellationToken).ConfigureAwait(false);
-            }
-            var deleteChatCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> { Remove = true });
-            await Commander.Call(deleteChatCommand, true, cancellationToken).ConfigureAwait(false);
-        }
-
-        var deleteRootChatCommand = new Chats_Change(session, place.Id.ToRootChatId(), null, new Change<ChatDiff> { Remove = true });
-        await Commander.Call(deleteRootChatCommand, true, cancellationToken).ConfigureAwait(false);
+        var placeChangeCommand = new Places_Change(command.Session, command.PlaceId, null, Change.Remove<PlaceDiff>());
+        await Commander.Call(placeChangeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task OnLeave(Places_Leave command, CancellationToken cancellationToken)
@@ -204,6 +227,25 @@ public class Places(IServiceProvider services) : IPlaces
             TemplateId = Option<ChatId?>.None,
             TemplatedForUserId = Option<UserId?>.None,
         };
+
+    private async Task RemovePlaceChats(Session session, PlaceId placeId, CancellationToken cancellationToken)
+    {
+        var contacts = await Contacts.ListIds(session, placeId, cancellationToken).ConfigureAwait(false);
+        foreach (var contact in contacts) {
+            var chatId = contact.ChatId;
+            if (chatId.IsPeerChat(out _))
+                continue; // Ignore peer chats
+            var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+            if (chat != null && OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag)) {
+                var resetChatTagCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> {
+                    Update = new ChatDiff { SystemTag = Symbol.Empty }
+                });
+                await Commander.Call(resetChatTagCommand, true, cancellationToken).ConfigureAwait(false);
+            }
+            var deleteChatCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> { Remove = true });
+            await Commander.Call(deleteChatCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+    }
 
     private static void ThrowIfNone(PlaceId placeId)
     {
