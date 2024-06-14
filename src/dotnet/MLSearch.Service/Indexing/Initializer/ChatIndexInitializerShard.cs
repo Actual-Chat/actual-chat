@@ -37,6 +37,12 @@ internal sealed class ChatIndexInitializerShard(
         { }
     }
     public record RetrySettings(int AttemptCount, RetryDelaySeq RetryDelaySeq, TransiencyResolver TransiencyResolver);
+    public static class UpdateCursorStages
+    {
+        public const string NoUpdates = "NoUpdates";
+        public const string Start = "Start";
+        public const string EvictStallJobs = "EvictStallJobs";
+    }
 
     // # Delegates
     public delegate ValueTask UpdateCursorHandler(
@@ -74,7 +80,8 @@ internal sealed class ChatIndexInitializerShard(
     public TimeSpan ExecuteJobTimeout { get; init; } = TimeSpan.FromMinutes(3);
     public ScheduleJobHandler OnScheduleJob { get; init; } = ScheduleIndexingJobAsync;
     public CompleteJobHandler OnCompleteJob { get; init; } = HandleCompletionEvent;
-    public UpdateCursorHandler OnUpdateCursor { get; init; } = UpdateCursorAsync;
+    public UpdateCursorHandler OnUpdateCursor { get; init; } = (moment, state, timeout, cursorStates, log, ct)
+        => UpdateCursorAsync(moment, state, timeout, cursorStates, log, cancellationToken: ct);
 
     // # Public API methods
     public async ValueTask PostAsync(MLSearch_TriggerChatIndexingCompletion evt, CancellationToken cancellationToken = default)
@@ -197,14 +204,18 @@ internal sealed class ChatIndexInitializerShard(
         TimeSpan stallJobTimeout,
         ICursorStates<Cursor> cursorStates,
         ILogger log,
-        CancellationToken cancellationToken)
+        Tracer? tracer = null,
+        CancellationToken cancellationToken = default)
     {
         try {
             var eventCount = Volatile.Read(ref state.EventCount);
             if (eventCount == state.PrevEventCount) {
+                tracer?.Point(UpdateCursorStages.NoUpdates);
                 // There is no point in advancing cursor as no job reported its completion.
                 return;
             }
+            tracer?.Point(UpdateCursorStages.Start);
+
             state.PrevEventCount = eventCount;
             var pastMoment = updateMoment - stallJobTimeout;
             var stallJobs = new List<ChatId>();
@@ -218,13 +229,14 @@ internal sealed class ChatIndexInitializerShard(
                 }
                 else {
                     // Job is still in the scheduled state,
-                    // so we may want to re-run it in the case of failure.
+                    // so our cursor must not advance farther than that.
                     nextVersion = Math.Min(nextVersion, version);
                 }
             }
+            tracer?.Point(UpdateCursorStages.EvictStallJobs);
             foreach (var jobId in stallJobs) {
                 if (state.ScheduledJobs.TryRemove(jobId, out var info) && info is var (_, timestamp)) {
-                    log.LogInformation("Evicting indexing job for chat #{JobId} which is stall for {Interval}.",
+                    log.LogWarning("Evicting indexing job for chat #{JobId} which is stall for {Interval}.",
                         jobId, updateMoment - timestamp);
                     state.Semaphore.Release();
                 }
