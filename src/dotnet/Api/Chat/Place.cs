@@ -35,5 +35,5 @@ public sealed partial record PlaceDiff : RecordDiff
     [DataMember, MemoryPackOrder(0)] public string? Title { get; init; }
     [DataMember, MemoryPackOrder(2)] public bool? IsPublic { get; init; }
     [DataMember, MemoryPackOrder(8)] public MediaId? MediaId { get; init; }
-    [DataMember, MemoryPackOrder(9)] public MediaId BackgroundMediaId { get; init; }
+    [DataMember, MemoryPackOrder(9)] public MediaId? BackgroundMediaId { get; init; }
 }
