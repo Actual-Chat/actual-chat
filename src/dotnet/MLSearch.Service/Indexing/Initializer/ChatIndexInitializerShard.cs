@@ -162,7 +162,8 @@ internal sealed class ChatIndexInitializerShard(
     {
         while (true) {
             cancellationToken.ThrowIfCancellationRequested();
-            yield return await Events.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+            var completionEvent = await Events.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+            yield return completionEvent;
         }
         // ReSharper disable once IteratorNeverReturns
     }
