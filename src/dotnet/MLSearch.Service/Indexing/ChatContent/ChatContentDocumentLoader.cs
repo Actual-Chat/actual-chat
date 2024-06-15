@@ -33,6 +33,8 @@ internal class ChatContentDocumentLoader(
             nameof(ChatSliceEntry.Id),
         }.Select(namingPolicy.ConvertName));
 
+    public int TailSize { get; init; } = 10;
+
     public async Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(
         ChatContentCursor cursor, CancellationToken cancellationToken = default)
     {
@@ -43,7 +45,7 @@ internal class ChatContentDocumentLoader(
             SortStatements = [
                 new SortStatement(_chatEntryLocalIdField, QuerySortOrder.Descenging, MultivalueFieldMode.Max),
             ],
-            Limit = 10,
+            Limit = TailSize,
         };
 
         var result = await searchEngine.Find(query, cancellationToken).ConfigureAwait(false);
