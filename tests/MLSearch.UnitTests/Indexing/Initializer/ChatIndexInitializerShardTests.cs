@@ -1,5 +1,6 @@
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Indexing.Initializer;
+using ActualChat.Performance;
 
 namespace ActualChat.MLSearch.UnitTests.Indexing.Initializer;
 
@@ -15,6 +16,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
 
         var now = new Moment(1_999_000);
         var updateCursorInterval = TimeSpan.FromSeconds(123);
+        var stallJobTimeout = TimeSpan.FromMinutes(123);
         var chatToIndexId = new ChatId(Generate.Option);
         var chatToIndexVersion = 999;
 
@@ -23,7 +25,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
             return ValueTask.CompletedTask;
         });
         var mockCompleteJob = MockCompleteJobHandler((_, _) => completeJobSignal.SetResult());
-        var mockUpdateCursor = MockUpdateCursorHandler((_, _, _, _, _, _) => {
+        var mockUpdateCursor = MockUpdateCursorHandler((_, _, _, _, _, _, _) => {
             updateCursorSignal.SetResult();
             return ValueTask.CompletedTask;
         });
@@ -65,6 +67,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
             OnCompleteJob = mockCompleteJob.Object,
             OnUpdateCursor = mockUpdateCursor.Object,
             UpdateCursorInterval = updateCursorInterval,
+            StallJobTimeout = stallJobTimeout,
         };
 
         // Run shard
@@ -112,9 +115,10 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
             .Verify(handler => handler(
                 It.Is<Moment>(x => x == now),
                 It.Is<ChatIndexInitializerShard.SharedState>(x => states.Add(x) || true),
-                It.Is<TimeSpan>(x => x == updateCursorInterval),
+                It.Is<TimeSpan>(x => x == stallJobTimeout),
                 It.Is<ICursorStates<ChatIndexInitializerShard.Cursor>>(x => x == cursorStates),
                 It.Is<ILogger>(x => x == log),
+                It.Is<Tracer?>(x => x == null),
                 It.Is<CancellationToken>(x => x == cancellationSource.Token)));
         Assert.Single(states);
     }
@@ -138,7 +142,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
         ) {
             OnScheduleJob = MockScheduleJobHandler().Object,
             OnCompleteJob = MockCompleteJobHandler().Object,
-            OnUpdateCursor = MockUpdateCursorHandler(async (_, _, _, _, _, ct) => {
+            OnUpdateCursor = MockUpdateCursorHandler(async (_, _, _, _, _, _, ct) => {
                 await Task.Delay(25, ct);
             }).Object,
             InputBufferCapacity = maxBufferCapacity,
@@ -211,7 +215,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
 
     private static Mock<ChatIndexInitializerShard.UpdateCursorHandler> MockUpdateCursorHandler(
         Func<Moment, ChatIndexInitializerShard.SharedState, TimeSpan,
-            ICursorStates<ChatIndexInitializerShard.Cursor>, ILogger, CancellationToken, ValueTask>? onCall = null
+            ICursorStates<ChatIndexInitializerShard.Cursor>, ILogger, Tracer?, CancellationToken, ValueTask>? onCall = null
     )
     {
         var mock = new Mock<ChatIndexInitializerShard.UpdateCursorHandler>();
@@ -221,8 +225,9 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
                 It.IsAny<TimeSpan>(),
                 It.IsAny<ICursorStates<ChatIndexInitializerShard.Cursor>>(),
                 It.IsAny<ILogger>(),
+                It.IsAny<Tracer?>(),
                 It.IsAny<CancellationToken>()))
-            .Returns(onCall ?? ((_, _, _, _, _, _) => ValueTask.CompletedTask));
+            .Returns(onCall ?? ((_, _, _, _, _, _, _) => ValueTask.CompletedTask));
         return mock;
     }
 }

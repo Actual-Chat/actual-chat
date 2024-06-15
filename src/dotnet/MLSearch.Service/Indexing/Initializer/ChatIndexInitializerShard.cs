@@ -45,11 +45,6 @@ internal sealed class ChatIndexInitializerShard(
     }
 
     // # Delegates
-    public delegate ValueTask UpdateCursorHandler(
-        Moment moment, SharedState state, TimeSpan stallJobTimeout,
-        ICursorStates<Cursor> cursorStates,
-        ILogger log,
-        CancellationToken cancellationToken);
     public delegate ValueTask ScheduleJobHandler(
         ChatInfo chatInfo, SharedState state, RetrySettings retrySettings,
         ICommander commander,
@@ -58,6 +53,12 @@ internal sealed class ChatIndexInitializerShard(
         CancellationToken cancellationToken);
     public delegate void CompleteJobHandler(
         MLSearch_TriggerChatIndexingCompletion evt, SharedState state);
+    public delegate ValueTask UpdateCursorHandler(
+        Moment moment, SharedState state, TimeSpan stallJobTimeout,
+        ICursorStates<Cursor> cursorStates,
+        ILogger log,
+        Tracer? tracer = null,
+        CancellationToken cancellationToken = default);
 
     // # Fields
     private object _lock = new();
@@ -77,11 +78,11 @@ internal sealed class ChatIndexInitializerShard(
     public TimeSpan UpdateCursorInterval { get; init; } = TimeSpan.FromSeconds(30);
     public RetrySettings ScheduleJobRetrySettings { get; init; } =
         new (10, RetryDelaySeq.Exp(0.2, 10), TransiencyResolvers.PreferTransient);
-    public TimeSpan ExecuteJobTimeout { get; init; } = TimeSpan.FromMinutes(3);
+
+    public TimeSpan StallJobTimeout { get; init; } = TimeSpan.FromMinutes(3);
     public ScheduleJobHandler OnScheduleJob { get; init; } = ScheduleIndexingJobAsync;
     public CompleteJobHandler OnCompleteJob { get; init; } = HandleCompletionEvent;
-    public UpdateCursorHandler OnUpdateCursor { get; init; } = (moment, state, timeout, cursorStates, log, ct)
-        => UpdateCursorAsync(moment, state, timeout, cursorStates, log, cancellationToken: ct);
+    public UpdateCursorHandler OnUpdateCursor { get; init; } = UpdateCursorAsync;
 
     // # Public API methods
     public async ValueTask PostAsync(MLSearch_TriggerChatIndexingCompletion evt, CancellationToken cancellationToken = default)
@@ -196,7 +197,7 @@ internal sealed class ChatIndexInitializerShard(
     }
 
     private ValueTask UpdateCursorAsync(Moment updateMoment, SharedState state, CancellationToken cancellationToken)
-        => OnUpdateCursor(updateMoment, state, UpdateCursorInterval, cursorStates, log, cancellationToken);
+        => OnUpdateCursor(updateMoment, state, StallJobTimeout, cursorStates, log, cancellationToken: cancellationToken);
 
     public static async ValueTask UpdateCursorAsync(
         Moment updateMoment,
@@ -210,10 +211,12 @@ internal sealed class ChatIndexInitializerShard(
         try {
             var eventCount = Volatile.Read(ref state.EventCount);
             if (eventCount == state.PrevEventCount) {
+                // ReSharper disable once ExplicitCallerInfoArgument
                 tracer?.Point(UpdateCursorStages.NoUpdates);
                 // There is no point in advancing cursor as no job reported its completion.
                 return;
             }
+            // ReSharper disable once ExplicitCallerInfoArgument
             tracer?.Point(UpdateCursorStages.Start);
 
             state.PrevEventCount = eventCount;
@@ -223,7 +226,7 @@ internal sealed class ChatIndexInitializerShard(
             // In the case our schedule is empty we may want to advance cursor till there.
             var nextVersion = Volatile.Read(ref state.MaxVersion) + 1;
             foreach (var (jobId, (version, timestamp)) in state.ScheduledJobs) {
-                if (timestamp < pastMoment) {
+                if (timestamp <= pastMoment) {
                     // Job is stall, so skipping its version.
                     stallJobs.Add(jobId);
                 }
@@ -233,6 +236,7 @@ internal sealed class ChatIndexInitializerShard(
                     nextVersion = Math.Min(nextVersion, version);
                 }
             }
+            // ReSharper disable once ExplicitCallerInfoArgument
             tracer?.Point(UpdateCursorStages.EvictStallJobs);
             foreach (var jobId in stallJobs) {
                 if (state.ScheduledJobs.TryRemove(jobId, out var info) && info is var (_, timestamp)) {
@@ -244,8 +248,9 @@ internal sealed class ChatIndexInitializerShard(
             await cursorStates.SaveAsync(CursorKey, new Cursor(nextVersion), cancellationToken).ConfigureAwait(false);
             log.LogInformation("Indexing cursor is advanced to the chat version #{Version}", nextVersion);
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             log.LogError(e, "Failed to update cursor state.");
+            throw;
         }
     }
 }
