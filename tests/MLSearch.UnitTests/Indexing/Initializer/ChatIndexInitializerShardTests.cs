@@ -95,14 +95,6 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
         // Wait for completion and check all flows properly cancelled
         var e = await Assert.ThrowsAnyAsync<Exception>(async () => await useTask);
         Assert.True(e.IsCancellationOf(cancellationSource.Token));
-        // if (e is AggregateException aggregateException) {
-        //     foreach (var innerException in aggregateException.InnerExceptions) {
-        //         Assert.True(innerException.IsCancellationOf(cancellationSource.Token));
-        //     }
-        // }
-        // else {
-        //    Assert.True(e.IsCancellationOf(cancellationSource.Token));
-        // }
 
         // Verify flows received expected arguments
         var states = new HashSet<ChatIndexInitializerShard.SharedState>();
