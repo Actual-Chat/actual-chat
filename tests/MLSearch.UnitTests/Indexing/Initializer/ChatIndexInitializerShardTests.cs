@@ -1,6 +1,7 @@
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.Performance;
+using ActualLab.Resilience;
 
 namespace ActualChat.MLSearch.UnitTests.Indexing.Initializer;
 
@@ -17,8 +18,13 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
         var now = new Moment(1_999_000);
         var updateCursorInterval = TimeSpan.FromSeconds(123);
         var stallJobTimeout = TimeSpan.FromMinutes(123);
+        var scheduleJobRetrySettings =
+            new ChatIndexInitializerShard.RetrySettings(399,
+                RetryDelaySeq.Exp(0.2, 10),
+                TransiencyResolvers.PreferTransient);
         var chatToIndexId = new ChatId(Generate.Option);
-        var chatToIndexVersion = 999;
+        const int chatToIndexVersion = 999;
+        const int maxConcurrency = 555;
 
         var mockScheduleJob = MockScheduleJobHandler((_, _, _, _, _, _, _) => {
             scheduleJobSignal.SetResult();
@@ -68,6 +74,8 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
             OnUpdateCursor = mockUpdateCursor.Object,
             UpdateCursorInterval = updateCursorInterval,
             StallJobTimeout = stallJobTimeout,
+            MaxConcurrency = maxConcurrency,
+            ScheduleJobRetrySettings = scheduleJobRetrySettings,
         };
 
         // Run shard
@@ -102,7 +110,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
             .Verify(handler => handler(
                 It.Is<ChatIndexInitializerShard.ChatInfo>(x => x.ChatId == chatToIndexId && x.Version == chatToIndexVersion),
                 It.Is<ChatIndexInitializerShard.SharedState>(x => states.Add(x) || true),
-                It.Is<ChatIndexInitializerShard.RetrySettings>(x => x == initializerShard.ScheduleJobRetrySettings),
+                It.Is<ChatIndexInitializerShard.RetrySettings>(x => x.AttemptCount == scheduleJobRetrySettings.AttemptCount),
                 It.Is<ICommander>(x => x == commander),
                 It.Is<IMomentClock>(x => x == clock.Object),
                 It.Is<ILogger>(x => x == log),
@@ -121,6 +129,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
                 It.Is<Tracer?>(x => x == null),
                 It.Is<CancellationToken>(x => x == cancellationSource.Token)));
         Assert.Single(states);
+        Assert.Equal(maxConcurrency, states.First().Semaphore.CurrentCount);
     }
 
     [Fact]
