@@ -235,4 +235,9 @@ public static partial class Constants
     {
         public static readonly TimeSpan Delay = TimeSpan.FromSeconds(0.5);
     }
+
+    public static class Preferences
+    {
+        public const string EnableAnalytics = "analytics";
+    }
 }
