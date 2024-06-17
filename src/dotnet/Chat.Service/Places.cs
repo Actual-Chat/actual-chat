@@ -194,6 +194,7 @@ public class Places(IServiceProvider services) : IPlaces
         await Commander.Call(promoteCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
+    [Obsolete($"2024.06: Use '{nameof(Places_Change)}' with Change.Remove instead.")]
     public virtual async Task OnDelete(Places_Delete command, CancellationToken cancellationToken)
     {
         var placeChangeCommand = new Places_Change(command.Session, command.PlaceId, null, Change.Remove<PlaceDiff>());
@@ -233,6 +234,7 @@ public class Places(IServiceProvider services) : IPlaces
             var chatId = contact.ChatId;
             if (chatId.IsPeerChat(out _))
                 continue; // Ignore peer chats
+
             var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
             if (chat != null && OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag)) {
                 var resetChatTagCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> {
