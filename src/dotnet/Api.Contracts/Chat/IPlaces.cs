@@ -38,6 +38,7 @@ public interface IPlaces : IComputeService
     [CommandHandler]
     Task OnPromoteToOwner(Places_PromoteToOwner command, CancellationToken cancellationToken);
     [CommandHandler]
+    [Obsolete($"2024.06: Use '{nameof(Places_Change)}' with Change.Remove instead.")]
     Task OnDelete(Places_Delete command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnLeave(Places_Leave command, CancellationToken cancellationToken);
@@ -89,6 +90,7 @@ public sealed partial record Places_PromoteToOwner(
     [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
 ) : ISessionCommand<Unit>, IApiCommand;
 
+[Obsolete($"2024.06: Use '{nameof(Places_Change)}' with Change.Remove instead.")]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Places_Delete(
