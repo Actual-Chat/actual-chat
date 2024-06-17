@@ -24,6 +24,9 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<AppIconBadgeUpdater>(c => new AppIconBadgeUpdater(c.ChatUIHub()));
         services.AddScoped<AutoNavigationUI>(c => new AppAutoNavigationUI(c.UIHub()));
 
+        if (HostInfo.HostKind.IsServerOrWasmApp())
+            services.AddScoped<IAnalyticsUI>(c => new WebAnalyticsUI(c));
+
         var fusion = services.AddFusion();
         fusion.AddService<AppPresenceReporter>(ServiceLifetime.Scoped);
 

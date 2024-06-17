@@ -42,6 +42,8 @@ public static partial class MauiProgram
 
 #if !HOTRESTART
             CrossFirebase.Initialize();
+            var isAnalyticsEnabled = Preferences.Default.Get(Constants.Preferences.EnableAnalytics, false);
+            CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isAnalyticsEnabled;
             FirebaseCloudMessagingImplementation.Initialize();
 #endif
             return false;

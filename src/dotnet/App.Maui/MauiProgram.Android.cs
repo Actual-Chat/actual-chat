@@ -82,5 +82,9 @@ public static partial class MauiProgram
     }
 
     private static void OnCreate(Activity activity, Bundle? savedInstanceState)
-        => CrossFirebase.Initialize(activity);
+    {
+        CrossFirebase.Initialize(activity);
+        var isAnalyticsEnabled = Preferences.Default.Get(Constants.Preferences.EnableAnalytics, false);
+        CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isAnalyticsEnabled;
+    }
 }

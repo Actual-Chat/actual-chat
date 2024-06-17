@@ -2,12 +2,13 @@ import { Connectivity } from 'connectivity';
 import { EventHandlerSet } from "event-handling";
 import { delayAsync, PromiseSource } from 'promises';
 import { AppKind, BrowserInfo } from "../BrowserInfo/browser-info";
-import { Log } from "logging";
+import { Log, LogLevel } from 'logging';
 import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getAnalytics, Analytics } from 'firebase/analytics';
+import { getAnalytics, setAnalyticsCollectionEnabled, Analytics } from 'firebase/analytics';
 
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('BrowserInit');
+const IsAnalyticsEnabledSetting = 'isAnalyticsEnabled';
 
 const window = globalThis as undefined as Window;
 const sessionStorage = window.sessionStorage;
@@ -32,7 +33,7 @@ export class BrowserInit {
         apiVersion: string,
         baseUri: string,
         sessionHash: string,
-        browserInfoBackendRef: DotNet.DotNetObject,
+        browserInfoBackendRef: DotNet.DotNetObject
     ): Promise<void> {
         try {
             infoLog?.log(`-> init, apiVersion: ${apiVersion}, baseUri: ${baseUri}, sessionHash: ${sessionHash}`);
@@ -197,12 +198,23 @@ export class BrowserInit {
         this.removeWebSplash();
     }
 
-    public static async initFirebase(): Promise<FirebaseApp | null> {
+    public static async initFirebase(isAnalyticsEnabled: boolean | null = null): Promise<FirebaseApp | null> {
+        if (isAnalyticsEnabled == null) {
+            isAnalyticsEnabled = readSettingToggle(IsAnalyticsEnabledSetting);
+        }
+        if (BrowserInit.firebaseAnalytics && BrowserInit.firebasePublicKey) {
+            const analytics = BrowserInit.firebaseAnalytics;
+            setAnalyticsCollectionEnabled(analytics, isAnalyticsEnabled);
+            persistSettingToggle(IsAnalyticsEnabledSetting, isAnalyticsEnabled);
+            return analytics.app;
+        }
+
         try {
             const response = await fetch('/dist/config/firebase.config.js');
             if (response.ok || response.status === 304) {
                 const { config, publicKey } = await response.json();
-                const app = BrowserInit.firebaseApp = initializeApp(config, { automaticDataCollectionEnabled: true });
+                const app = BrowserInit.firebaseApp = initializeApp(config, { automaticDataCollectionEnabled: isAnalyticsEnabled });
+                persistSettingToggle(IsAnalyticsEnabledSetting, isAnalyticsEnabled);
                 BrowserInit.firebaseAnalytics = getAnalytics(app);
                 BrowserInit.firebasePublicKey = publicKey;
                 return app;
@@ -330,6 +342,27 @@ export class BrowserInit {
             appConnectionStateDiv.style.display = 'none';
         }
     }
+}
+
+function persistSettingToggle(settingKey: string, value: boolean): boolean {
+    const storage = globalThis?.sessionStorage;
+    if (!storage)
+        return false;
+
+    storage.setItem(settingKey, JSON.stringify(value));
+    return true;
+}
+
+function readSettingToggle(settingKey: string): boolean | null {
+    const storage = globalThis?.sessionStorage;
+    if (!storage)
+        return null;
+
+    const stringValue = storage.getItem(settingKey);
+    if (stringValue == null)
+        return false;
+
+    return JSON.parse(stringValue);
 }
 
 // This call must be done as soon as possible
