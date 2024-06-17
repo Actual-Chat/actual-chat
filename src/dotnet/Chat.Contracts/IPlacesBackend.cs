@@ -19,7 +19,8 @@ public interface IPlacesBackend : IComputeService, IBackendService
 public sealed partial record PlacesBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] PlaceId PlaceId,
     [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2)] Change<PlaceDiff> Change
+    [property: DataMember, MemoryPackOrder(2)] Change<PlaceDiff> Change,
+    [property: DataMember, MemoryPackOrder(3)] UserId OwnerId = default
 ) : ICommand<Place>, IBackendCommand, IHasShardKey<PlaceId>
 {
     [IgnoreDataMember, MemoryPackIgnore]

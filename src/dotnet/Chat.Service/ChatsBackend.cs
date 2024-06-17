@@ -122,6 +122,24 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return sChatIds.Select(x => new ChatId(x)).Where(x => !x.IsPlaceRootChat).ToApiArray();
     }
 
+    // Non-compute methods
+    public virtual async Task<ApiArray<ChatId>> ListPlaceChatIds(PlaceId placeId, CancellationToken cancellationToken)
+    {
+        if (placeId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(placeId));
+
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var idPrefix = PlaceChatId.IdPrefix + placeId.Value;
+        var sChatIds = await dbContext.Chats
+            .Where(c => c.Id.StartsWith(idPrefix))
+            .Select(c => c.Id)
+            .OrderBy(c => c)
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        return sChatIds.Select(x => new ChatId(x)).Where(x => !x.IsPlaceRootChat).ToApiArray();
+    }
+
     // [ComputeMethod]
     public virtual async Task<AuthorRules> GetRules(
         ChatId chatId,
@@ -1401,6 +1419,31 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             }));
 
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    [EventHandler]
+    public virtual async Task OnPlaceRemoved(PlaceChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var (place, oldPlace, kind) = eventCommand;
+        if (kind != ChangeKind.Remove)
+            return;
+
+        var placeId = oldPlace.Require().Id;
+        var chatIds = await ListPlaceChatIds(placeId, cancellationToken).ConfigureAwait(false);
+        foreach (var chatId in chatIds) {
+            var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (chat != null && OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag)) {
+                var resetChatTagCommand = new ChatsBackend_Change(chatId, null, new Change<ChatDiff> {
+                    Update = new ChatDiff { SystemTag = Symbol.Empty }
+                });
+                await Commander.Call(resetChatTagCommand, false, cancellationToken).ConfigureAwait(false);
+            }
+            var deleteChatCommand = new ChatsBackend_Change(chatId, null, new Change<ChatDiff> { Remove = true });
+            await Commander.Call(deleteChatCommand, false, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     // Protected methods

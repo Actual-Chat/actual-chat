@@ -10,6 +10,7 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
 {
     private IDbEntityResolver<string, DbPlace> DbPlaceResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbPlace>>();
     private IMediaBackend MediaBackend => services.GetRequiredService<IMediaBackend>();
+    private IChatsBackend ChatsBackend => services.GetRequiredService<IChatsBackend>();
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
 
     // [ComputeMethod]
@@ -39,7 +40,7 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         PlacesBackend_Change command,
         CancellationToken cancellationToken)
     {
-        var (placeId, expectedVersion, change) = command;
+        var (placeId, expectedVersion, change, ownerId) = command;
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
@@ -63,6 +64,7 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         if (change.IsCreate(out var update)) {
             oldPlace.RequireNull();
             placeId.RequireNone();
+            ownerId.Require();
 
             placeId = new PlaceId(Generate.Option);
             place = new Place(placeId) {
@@ -92,6 +94,30 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         place = dbPlace.Require().ToModel();
         context.Operation.Items.Set(place);
 
+        long? chatExpectedVersion;
+        Change<ChatDiff> chatChange;
+        var rootChatId = place.Id.ToRootChatId();
+        var rootChat = await ChatsBackend.Get(rootChatId, cancellationToken).ConfigureAwait(false);
+        if (change.Kind == ChangeKind.Create) {
+            rootChat.RequireNull();
+            chatExpectedVersion = null;
+            chatChange = Change.Create(ToChatDiff(place));
+        }
+        else {
+            rootChat.Require();
+            chatExpectedVersion = rootChat.Version;
+            chatChange = !change.Remove ? Change.Update(ToChatDiff(place)) : Change.Remove<ChatDiff>();
+        }
+
+        // Since place root chat is still used for getting place rules and place members we should synchronously update it.
+        var chatChangeCommand = new ChatsBackend_Change(rootChatId, chatExpectedVersion, chatChange);
+        if (change.Kind == ChangeKind.Create)
+            chatChangeCommand = chatChangeCommand with { OwnerId = ownerId };
+        rootChat = await Commander.Call(chatChangeCommand, true, cancellationToken).ConfigureAwait(false);
+        rootChat.Require();
+        if (rootChat.Id != rootChatId)
+            throw StandardError.Internal("Id of root place chat does not correspond place id");
+
         // Raise events
         context.Operation.AddEvent(new PlaceChangedEvent(place, oldPlace, change.Kind));
         return place;
@@ -118,5 +144,13 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
                 await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
             }
         }
+
+        static ChatDiff ToChatDiff(Place place)
+            => new() {
+                IsPublic = place.IsPublic,
+                Title = place.Title,
+                Kind = ChatKind.Place,
+                MediaId = place.MediaId,
+            };
     }
 }

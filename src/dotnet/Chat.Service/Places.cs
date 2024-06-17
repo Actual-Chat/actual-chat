@@ -112,45 +112,21 @@ public class Places(IServiceProvider services) : IPlaces
             : await Get(session, placeId, cancellationToken).ConfigureAwait(false);
 
         var changePlaceCommand = new PlacesBackend_Change(placeId, expectedVersion, placeChange.RequireValid());
-        ChatId rootChatId;
-        long? chatExpectedVersion;
-        Change<ChatDiff> chatDiff;
-        Chat? placeRootChat;
         if (placeChange.Kind == ChangeKind.Create) {
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
             account.Require(AccountFull.MustBeActive);
-            rootChatId = ChatId.None;
-            chatExpectedVersion = null;
-            chatDiff = Change.Create(ToChatDiff(placeChange.Create.Value));
+            changePlaceCommand = changePlaceCommand with {
+                OwnerId = account.Id,
+            };
         }
         else {
             var requiredPermissions = placeChange.Remove
                 ? PlacePermissions.Owner
                 : PlacePermissions.EditProperties;
             place.Require().Rules.Permissions.Require(requiredPermissions);
-
-            if (placeChange.Remove)
-                await RemovePlaceChats(session, placeId, cancellationToken).ConfigureAwait(false);
-
-            rootChatId = placeId.ToRootChatId();
-            placeRootChat = await Chats.Get(session, rootChatId, cancellationToken).ConfigureAwait(false);
-            placeRootChat.Require();
-            chatExpectedVersion = placeRootChat.Version;
-            chatDiff = !placeChange.Remove ? Change.Update(ToChatDiff(placeChange.Update.Value)) : Change.Remove<ChatDiff>();
         }
 
-        place = await Commander.Call(changePlaceCommand, cancellationToken).ConfigureAwait(false);
-        rootChatId = rootChatId.Or(place.Id.ToRootChatId());
-
-        // Since place root chat is still used for getting place rules and place members we should synchronously update it.
-        // Should we use backend command here?
-        var chatChangeCommand = new Chats_Change(session, rootChatId, chatExpectedVersion, chatDiff);
-        placeRootChat = await Commander.Call(chatChangeCommand, true, cancellationToken).ConfigureAwait(false);
-        placeRootChat.Require();
-        if (placeRootChat.Id != rootChatId)
-            throw StandardError.Internal("Id of root place chat does not correspond place id");
-
-        return place;
+        return await Commander.Call(changePlaceCommand, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task OnJoin(Places_Join command, CancellationToken cancellationToken)
@@ -226,26 +202,6 @@ public class Places(IServiceProvider services) : IPlaces
             TemplateId = Option<ChatId?>.None,
             TemplatedForUserId = Option<UserId?>.None,
         };
-
-    private async Task RemovePlaceChats(Session session, PlaceId placeId, CancellationToken cancellationToken)
-    {
-        var contacts = await Contacts.ListIds(session, placeId, cancellationToken).ConfigureAwait(false);
-        foreach (var contact in contacts) {
-            var chatId = contact.ChatId;
-            if (chatId.IsPeerChat(out _))
-                continue; // Ignore peer chats
-
-            var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
-            if (chat != null && OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag)) {
-                var resetChatTagCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> {
-                    Update = new ChatDiff { SystemTag = Symbol.Empty }
-                });
-                await Commander.Call(resetChatTagCommand, true, cancellationToken).ConfigureAwait(false);
-            }
-            var deleteChatCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> { Remove = true });
-            await Commander.Call(deleteChatCommand, true, cancellationToken).ConfigureAwait(false);
-        }
-    }
 
     private static void ThrowIfNone(PlaceId placeId)
     {
