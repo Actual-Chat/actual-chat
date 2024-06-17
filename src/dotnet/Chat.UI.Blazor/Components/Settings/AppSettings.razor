@@ -73,7 +73,7 @@
         var settings = await AccountSettings.GetUserAppSettings(CancellationToken.None);
         settings = settings with { IsAnalyticsEnabled = isAnalyticsEnabled };
         await AccountSettings.SetUserAppSettings(settings, CancellationToken.None);
-        await AnalyticsUI.UpdateAnalyticsState(isAnalyticsEnabled);
+        await AnalyticsUI.UpdateAnalyticsState(isAnalyticsEnabled, CancellationToken.None);
     }
 
     // Nested types
