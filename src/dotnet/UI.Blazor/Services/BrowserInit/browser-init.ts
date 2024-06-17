@@ -198,14 +198,17 @@ export class BrowserInit {
         this.removeWebSplash();
     }
 
+    /** Called from Blazor */
     public static async initFirebase(isAnalyticsEnabled: boolean | null = null): Promise<FirebaseApp | null> {
         if (isAnalyticsEnabled == null) {
             isAnalyticsEnabled = readSettingToggle(IsAnalyticsEnabledSetting);
         }
-        if (BrowserInit.firebaseAnalytics && BrowserInit.firebasePublicKey) {
+        else {
+            persistSettingToggle(IsAnalyticsEnabledSetting, isAnalyticsEnabled);
+        }
+        if (BrowserInit.firebaseAnalytics && BrowserInit.firebasePublicKey && isAnalyticsEnabled !== null) {
             const analytics = BrowserInit.firebaseAnalytics;
             setAnalyticsCollectionEnabled(analytics, isAnalyticsEnabled);
-            persistSettingToggle(IsAnalyticsEnabledSetting, isAnalyticsEnabled);
             return analytics.app;
         }
 
@@ -213,8 +216,7 @@ export class BrowserInit {
             const response = await fetch('/dist/config/firebase.config.js');
             if (response.ok || response.status === 304) {
                 const { config, publicKey } = await response.json();
-                const app = BrowserInit.firebaseApp = initializeApp(config, { automaticDataCollectionEnabled: isAnalyticsEnabled });
-                persistSettingToggle(IsAnalyticsEnabledSetting, isAnalyticsEnabled);
+                const app = BrowserInit.firebaseApp = initializeApp(config, { automaticDataCollectionEnabled: isAnalyticsEnabled ?? false });
                 BrowserInit.firebaseAnalytics = getAnalytics(app);
                 BrowserInit.firebasePublicKey = publicKey;
                 return app;
@@ -227,6 +229,12 @@ export class BrowserInit {
             errorLog?.log(`initFirebase: failed to initialize firebase app, error:`, error);
         }
         return null;
+    }
+
+    /** Called from Blazor */
+    public static isFirebaseConfigured(): boolean {
+        const isAnalyticsEnabled = readSettingToggle(IsAnalyticsEnabledSetting);
+        return isAnalyticsEnabled !== null;
     }
 
     // Private methods
@@ -360,7 +368,7 @@ function readSettingToggle(settingKey: string): boolean | null {
 
     const stringValue = storage.getItem(settingKey);
     if (stringValue == null)
-        return false;
+        return null
 
     return JSON.parse(stringValue);
 }

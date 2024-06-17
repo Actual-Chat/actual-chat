@@ -1,0 +1,79 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using System.ComponentModel.DataAnnotations
+@using TimeZone = ActualChat.Users.TimeZone
+@inherits Step;
+
+@if (CurrentStep != this) {
+    return;
+}
+
+<div>
+    @if (Stepper.CurrentStepIndex == 0) {
+        <p class="text-title-1 text-center">Welcome to Actual Chat!</p>
+    }
+    <p class="text-headline-1 mt-6">
+        Would you like to help us improve the Actual Chat?
+    </p>
+    <p class="text-headline-1 mt-2">
+    </p>
+    <Form
+        @ref="_formRef"
+        Class="mt-6"
+        Model="@_model">
+        <DataAnnotationsValidator/>
+        <FormBlock>
+            <FormSection
+                For="() => _model.SelectedTimeZoneName"
+                InputId="timeZone"
+                Label="Time zone"
+                Class="grow"
+                IsRequired="true"
+                IsLabelInsideInput="true">
+
+            </FormSection>
+        </FormBlock>
+    </Form>
+</div>
+
+@code {
+    private readonly Model _model = new();
+    private Form? _formRef;
+
+    [Inject] private UIHub Hub { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+    [Inject] private IAnalyticsUI AnalyticsUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public bool IsAnalyticsConfigured { get; set; }
+
+    public override bool CanSkip => true;
+
+    public override bool IsCompleted {
+        get {
+            if (OnboardingUI.UserSettings.Value.IsTimeZoneStepCompleted)
+                return true;
+
+            return !IsAnalyticsConfigured;
+        }
+    }
+
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsAnalyticsStepCompleted = true });
+
+    protected override async Task OnInitializedAsync() {
+    }
+
+    protected override Task<bool> Validate() {
+        var isValid = _formRef?.EditContext?.Validate() ?? false;
+        return Task.FromResult(isValid);
+    }
+
+    protected override async Task<bool> Save() {
+        return true;
+    }
+
+
+    public class Model {
+        public string SelectedTimeZoneName { get; set; } = "";
+    }
+}

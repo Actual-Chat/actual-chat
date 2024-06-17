@@ -6,6 +6,7 @@ namespace ActualChat.UI.Blazor.Services;
 public class BrowserInit(IServiceProvider services)
 {
     private static readonly string JSInitFirebaseMethod = $"{BlazorUICoreModule.ImportName}.{nameof(BrowserInit)}.initFirebase";
+    private static readonly string JSIsFirebaseConfiguredMethod = $"{BlazorUICoreModule.ImportName}.{nameof(BrowserInit)}.isFirebaseConfigured";
 
     private readonly TaskCompletionSource _whenInitializedSource = new();
 
@@ -48,6 +49,21 @@ public class BrowserInit(IServiceProvider services)
             await js
                 .InvokeVoidAsync(JSInitFirebaseMethod,
                     isAnalyticsEnabled)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            var log = services.LogFor(GetType());
+            log.LogError(e, "An error occurred during InitFirebase call");
+            throw;
+        }
+    }
+
+    public async Task<bool> IsFirebaseConfigured()
+    {
+        try {
+            var js = services.JSRuntime();
+            return await js
+                .InvokeAsync<bool>(JSIsFirebaseConfiguredMethod)
                 .ConfigureAwait(false);
         }
         catch (Exception e) {
