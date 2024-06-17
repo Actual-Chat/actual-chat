@@ -190,18 +190,24 @@ public class Invites(IServiceProvider services) : IInvites
         account.Require(AccountFull.MustBeActive);
 
         switch (invite.Details.Option) {
-        case UserInviteOption:
-            if (!account.IsAdmin)
-                throw StandardError.Unauthorized("Only admins can revoke user invites.");
-            break;
-        case ChatInviteOption chatInvite:
-            var rules = await Chats
-                .GetRules(session, chatInvite.ChatId, cancellationToken)
-                .ConfigureAwait(false);
-            rules.Require(ChatPermissions.Invite);
-            break;
-        default:
-            throw StandardError.Format<Invite>();
+            case UserInviteOption:
+                if (!account.IsAdmin)
+                    throw StandardError.Unauthorized("Only admins can revoke user invites.");
+                break;
+            case ChatInviteOption chatInvite:
+                var chatRules = await Chats
+                    .GetRules(session, chatInvite.ChatId, cancellationToken)
+                    .ConfigureAwait(false);
+                chatRules.Require(ChatPermissions.Invite);
+                break;
+            case PlaceInviteOption placeInvite:
+                var placeRules = await Places
+                    .GetRules(session, placeInvite.PlaceId, cancellationToken)
+                    .ConfigureAwait(false);
+                placeRules.Require(PlacePermissions.Invite);
+                break;
+            default:
+                throw StandardError.Format<Invite>();
         }
 
         return account;
