@@ -1,6 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using System.ComponentModel.DataAnnotations
-@using TimeZone = ActualChat.Users.TimeZone
+@using ActualChat.Kvas
 @inherits Step;
 
 @if (CurrentStep != this) {
@@ -16,64 +15,57 @@
     </p>
     <p class="text-headline-1 mt-2">
     </p>
-    <Form
-        @ref="_formRef"
-        Class="mt-6"
-        Model="@_model">
-        <DataAnnotationsValidator/>
-        <FormBlock>
-            <FormSection
-                For="() => _model.SelectedTimeZoneName"
-                InputId="timeZone"
-                Label="Time zone"
-                Class="grow"
-                IsRequired="true"
-                IsLabelInsideInput="true">
+    <div class="p-4 rounded-2xl bg-after-darker">
+        <p class="text-headline-1">
+            We use Firebase Analytics to monitor how visitors interact with our app and to record any app crashes that may occur.
+        </p>
+        <p class="text-headline-1 mt-2">
+            Our goal is to provide a seamless user experience, and your participation can greatly assist us.
+        </p>
+        <p class="text-headline-1 mt-2">
+            Please give your consent for us to use and process your information to enhance our services.
+        </p>
+    </div>
 
-            </FormSection>
-        </FormBlock>
-    </Form>
 </div>
 
 @code {
-    private readonly Model _model = new();
-    private Form? _formRef;
 
     [Inject] private UIHub Hub { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     [Inject] private IAnalyticsUI AnalyticsUI { get; init; } = null!;
+    private AccountSettings AccountSettings => Hub.AccountSettings();
 
     [Parameter, EditorRequired] public bool IsAnalyticsConfigured { get; set; }
 
     public override bool CanSkip => true;
 
-    public override bool IsCompleted {
-        get {
-            if (OnboardingUI.UserSettings.Value.IsTimeZoneStepCompleted)
-                return true;
+    public override string SkipTitle => "Decline";
+    public override string NextTitle => "Enable Analytics";
 
-            return !IsAnalyticsConfigured;
-        }
-    }
+    public override bool IsCompleted
+        => OnboardingUI.UserSettings.Value.IsAnalyticsStepCompleted || IsAnalyticsConfigured;
 
     protected override void MarkCompleted()
         => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsAnalyticsStepCompleted = true });
 
-    protected override async Task OnInitializedAsync() {
-    }
-
-    protected override Task<bool> Validate() {
-        var isValid = _formRef?.EditContext?.Validate() ?? false;
-        return Task.FromResult(isValid);
-    }
+    protected override Task<bool> Validate()
+        => Task.FromResult(true);
 
     protected override async Task<bool> Save() {
+        await UpdateAnalyticsState(true);
         return true;
     }
 
+    protected override async ValueTask OnSkip() {
+        await UpdateAnalyticsState(false);
+    }
 
-    public class Model {
-        public string SelectedTimeZoneName { get; set; } = "";
+    private async Task UpdateAnalyticsState(bool isAnalyticsEnabled) {
+        var settings = await AccountSettings.GetUserAppSettings(CancellationToken.None);
+        settings = settings with { IsAnalyticsEnabled = isAnalyticsEnabled };
+        await AccountSettings.SetUserAppSettings(settings, CancellationToken.None);
+        await AnalyticsUI.UpdateAnalyticsState(isAnalyticsEnabled, CancellationToken.None);
     }
 }
