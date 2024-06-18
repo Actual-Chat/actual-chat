@@ -57,7 +57,8 @@ public sealed partial record NotificationsBackend_Upsert(
 public sealed partial record NotificationsBackend_RegisterDevice(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId,
     [property: DataMember, MemoryPackOrder(1)] Symbol DeviceId,
-    [property: DataMember, MemoryPackOrder(2)] DeviceType DeviceType
+    [property: DataMember, MemoryPackOrder(2)] DeviceType DeviceType,
+    [property: DataMember, MemoryPackOrder(3)] Symbol SessionHash
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore]
