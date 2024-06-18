@@ -54,8 +54,11 @@
             <div class="c-info">
                 <PlaceMenuButton PlaceId="@place.Id"/>
                 <div class="c-right">
-                    <ButtonRound Class="place-plus-btn">
-                        <i class="icon-plus text-2xl"></i>
+                    <ButtonRound Class="place-plus-btn btn-sm btn-transparent unhovered"
+                         data-menu="@(MenuRef.New<LeftPanelPlaceMenu>(place.Id).ToString())"
+                         data-menu-trigger="@MenuTrigger.Primary"
+                         data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
+                        <i class="icon-more-vertical text-2xl"></i>
                     </ButtonRound>
                 </div>
             </div>
