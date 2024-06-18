@@ -1,218 +1,105 @@
-﻿@namespace ActualChat.Chat.UI.Blazor.Components
-@using System.ComponentModel.DataAnnotations
-@using ActualChat.Invite
+@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Media
 @inherits ComputedStateComponent<PlaceSettingsStartModalPage.ComputedModel>
-
 @{
     var m = State.Value;
     if (ReferenceEquals(m, ComputedModel.Loading))
         return;
 
-    if (m.Place == null || !m.Place.Rules.CanEditProperties()) {
+    if (m.Place == null) {
         Context.Close();
         return;
     }
-    if (_form == null)
-        return;
+
     Context.ModalDataBag.Set(nameof(ComputedModel.MembersCount), m.MembersCount);
-    var canEditMembers = m.Place.Rules.CanEditMembers();
     var isOwner = m.IsOwner;
+    var status = m.Place.IsPublic ? "Public" : "Private";
 }
 
-<Form Class="h-full" @ref="@_formRef" Model="@_form">
-    @{
-        _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
-    }
-    @if (!m.EnableIncompleteUI) {
-        <FormBlock Class="last">
-            <DataAnnotationsValidator/>
-
-            <PicUpload
-                UploadUrl="@_form.ImageUploadUrl"
-                Size="@SquareSize.Size24"
-                Title="@_form.Title"
-                Picture="@_form.Picture"
-                AvatarKind="@AvatarKind.Marble"
-                AvatarKey="@PlaceId.Value"
-                Picked="@OnImagePicked"
-                IsSquare="@true"/>
-
-            <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true">
-                <TextBox
-                    @bind-Value="@_form.Title"
-                    Id="@_form.TitleId"
-                    Placeholder="Place title*"
-                    ClearButton="true"/>
-            </FormSection>
-        </FormBlock>
-    } else {
-        <FormBlock Class="chat-settings-header place">
-            <DataAnnotationsValidator/>
-
-            <div class="c-top">
-                <Pic
-                    Picture="@_form.Background"
-                    ImageSkeletonClass="image-cover"
-                    Size="@SquareSize.SizeFull"
-                    IsSquare="true"
-                    AvatarKind="@AvatarKind.Marble"/>
-            </div>
-            <div class="c-center">
-                <PicUpload
-                    UploadUrl="@_form.ImageUploadUrl"
-                    Size="@SquareSize.Size16"
-                    Title="@_form.Title"
-                    Picture="@_form.Picture"
-                    AvatarKind="@AvatarKind.Marble"
-                    AvatarKey="@PlaceId.Value"
-                    Picked="@OnImagePicked"/>
-
-                <div class="c-buttons">
-                    <PicUploadButton
-                        UploadUrl="@_form.ImageUploadUrl"
-                        Picked="@OnImagePicked"/>
-
-                    <PicUploadButton
-                        UploadUrl="@_form.ImageUploadUrl"
-                        Picked="@OnBackgroundPicked">
-                        <Icon>
-                            <i class="icon-image text-2xl"></i>
-                        </Icon>
-                    </PicUploadButton>
-                </div>
-            </div>
-        </FormBlock>
-
-        <FormBlock>
-            <DataAnnotationsValidator/>
-
-            <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true" Label="Chat title">
-                <TextBox
-                    @bind-Value="@_form.Title"
-                    Id="@_form.TitleId"
-                    Placeholder="Chat title*"
-                    ClearButton="true"/>
-            </FormSection>
-        </FormBlock>
-    }
-
-    <FormBlock Class="with-input-radio first last">
-        <InputRadioGroup Name="chat_type" DisplayName="Place type" @bind-Value="_form.IsPublic">
-            <TileItem>
-                <Icon>
-                    <FormRadio Id="@_form.IsPublicTrueFormId" Value="@true" />
-                </Icon>
-                <Content>
-                    <Label InputId="@_form.IsPublicTrueFormId" Text="Public place"></Label>
-                </Content>
-                <Caption>
-                    <Label InputId="@_form.IsPublicTrueFormId" Text="Anyone can join this chat by navigating to its URL"></Label>
-                </Caption>
-            </TileItem>
-            <TileItem>
-                <Icon>
-                    <FormRadio Id="@_form.IsPublicFalseFormId" Value="@false"/>
-                </Icon>
-                <Content>
-                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private place"></Label>
-                </Content>
-                <Caption>
-                    <Label InputId="@_form.IsPublicFalseFormId" Text="Can be joined only if you are invited / have an invite link"></Label>
-                </Caption>
-            </TileItem>
-        </InputRadioGroup>
-    </FormBlock>
-
-    @if (_form.IsPublic) {
-        @if (m.Link is { } publicUrl) {
-            _form.PublicUrl = publicUrl.ShortLocalUrl;
-            <FormBlock Class="with-input-radio">
-                <TileItem Class="field-chat-public-url unhovered">
-                    <Icon>
-                        <i class="icon-link-2"></i>
-                    </Icon>
-                    <Content>
-                        <FormSection For="() => _form.PublicUrl" InputId="@_form.PublicUrlFormId"
-                                     Label="Public link" IsLabelInsideInput="true" HideValidationMessage="true">
-                            <TextBox @bind-Value="@_form.PublicUrl" Id="@_form.PublicUrlFormId" readonly/>
-                        </FormSection>
-                        <CopyToClipboard ButtonClass="btn-transparent" Text="@publicUrl.AbsoluteUrl"/>
-                    </Content>
-                    <Right>
-                        <CopyToClipboard Text="@publicUrl.AbsoluteUrl"/>
-                    </Right>
-                </TileItem>
-            </FormBlock>
-        }
-    } else if (m.Place.Rules.CanInvite()) {
-         <FormBlock Title="Private join links">
-             @if (m.Invites.Count > 0) {
-                 <InviteList
-                     Invites="@m.Invites"
-                     LinkFormat="@InviteLinkFormat.PrivateChat"
-                     NewInviteId="@_newInviteId"
-                     AllowRevoke="true"/>
-             }
-             <Button IsDisabled="@(m.Invites.Count >= MaxInvitesCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
-                <Icon><i class="icon-plus text-xl"></i></Icon>
-                <Title>New private join link</Title>
-             </Button>
-         </FormBlock>
-    }
-
-    @if (isOwner && m is { EnableChatCopying: true }) {
-        <FormBlock Title="Copy chats">
-            <Button Click="OnCopyChatClick" Class="btn-modal btn-w-full">
-                <Icon><i class="icon-plus text-xl"></i></Icon>
-                <Title>Copy chat into the place</Title>
-            </Button>
-        </FormBlock>
-    }
-
-    @if (canEditMembers || isOwner) {
-        <div class="chat-settings-container">
-            @if(canEditMembers) {
-                <TileItem Class="item-manage-members" Click="OnManageMembersClick">
-                    <Icon>
-                        <i class="icon-people"></i>
-                    </Icon>
-                    <Content>
-                        @m.MembersCount Members
-                    </Content>
-                    <Right>
-                        <i class="icon-chevron-right text-3xl"></i>
-                    </Right>
-                </TileItem>
-            }
-            @if (isOwner) {
-                <TileItem Class="item-leave-group" Click="@(() => OnPlaceDeleteClick())">
-                    <Icon><i class="icon-log-out"></i></Icon>
-                    <Content>Leave place & delete</Content>
-                </TileItem>
-            }
+<div class="h-full">
+    <div class="chat-settings-header place">
+        <div class="c-top">
+            <Pic
+                Picture="@m.Place.Picture.ToPicture()"
+                ImageSkeletonClass="image-cover"
+                Size="@SquareSize.SizeFull"
+                IsSquare="true"
+                AvatarKind="@AvatarKind.Marble"/>
         </div>
-    }
-</Form>
+        <div class="c-center">
+            <Pic
+                IsSquare="true"
+                Size="@SquareSize.Size16"
+                Picture="@m.Place.Picture.ToPicture()"
+                AvatarKind="@AvatarKind.Marble"
+                AvatarKey="@PlaceId.Value"/>
+
+            <div class="c-buttons">
+                @if (m.EnableIncompleteUI) {
+                    <ButtonRound
+                        Class="btn-sm"
+                        TooltipPosition="@FloatingPosition.Bottom"
+                        Tooltip="Notifications">
+                        <i class="icon-bell text-2xl"></i>
+                    </ButtonRound>
+                }
+                @if (isOwner) {
+                    <ButtonRound
+                        Class="btn-sm"
+                        TooltipPosition="@FloatingPosition.Bottom"
+                        Tooltip="Add member"
+                        Click="@OnInviteMembersClick">
+                        <i class="icon-person-add text-2xl"></i>
+                    </ButtonRound>
+                }
+                @if (isOwner) {
+                    <ButtonRound
+                        Class="btn-sm"
+                        TooltipPosition="@FloatingPosition.Bottom"
+                        Tooltip="Edit Place"
+                        Click="@OnOwnerSettingsClick">
+                        <i class="icon-more-vertical text-2xl"></i>
+                    </ButtonRound>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-settings-subheader">
+        <div class="c-title">@m.Place.Title</div>
+        <div class="status-badge public">@status</div>
+    </div>
+
+    <div class="c-panel-tabs">
+        <TabPanel
+            @key="@PlaceId.Value"
+            TabsClass="left-panel-tabs wide-left-panel-tabs"
+            BottomHill="true">
+
+            <Tab @key="@("members")" Id="members" Title="Members" Order="0">
+                <PlaceAuthorList PlaceId="@PlaceId"/>
+            </Tab>
+
+            @if (m.EnableIncompleteUI) {
+                <Tab @key="@("media")" Id="media" Title="Media" Order="1">
+                    <ToBeDone/>
+                </Tab>
+                <Tab @key="@("files")" Id="files" Title="Files" Order="2">
+                    <ToBeDone/>
+                </Tab>
+                <Tab @key="@("links")" Id="links" Title="Links" Order="3">
+                    <ToBeDone/>
+                </Tab>
+            }
+        </TabPanel>
+    </div>
+</div>
 
 @code {
-    private const int MaxInvitesCount = 5;
-    private Form?_formRef;
-    private FormModel? _form;
-    private Symbol _newInviteId = Symbol.Empty;
-    private DialogButtonInfo _submitButtonInfo = null!;
-
     [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private DiffEngine DiffEngine { get; init; } = null!;
 
     private Session Session => Hub.Session(); // Shortcut
-    private UICommander UICommander => Hub.UICommander();
     private IPlaces Places => Hub.Places;
-    private IInvites Invites => Hub.Invites;
-    private MomentClockSet Clocks => Hub.Clocks();
-    private ChatUI ChatUI => Hub.ChatUI;
-    private ModalUI ModalUI => Hub.ModalUI;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -220,27 +107,8 @@
 
     protected override void OnInitialized() {
         PlaceId = Context.GetTypedModel<PlaceId>();
-        Context.SetTitle("Edit place settings");
-        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
-        Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
+        Context.SetTitle("Place Info");
         base.OnInitialized();
-    }
-
-    protected override async Task OnInitializedAsync() {
-        const string formBagKey = "form";
-        _form = Context.PageDataBag.Get<FormModel>(formBagKey);
-        if (_form != null)
-            return;
-
-        var place = await Places.Get(Session, PlaceId, default).Require();
-        _form = new FormModel(ComponentIdGenerator) {
-            Title = place.Title,
-            Picture = place.Picture?.ToPicture(),
-            Background = new Picture(null, null, place.Id.Value),
-            IsPublic = place.IsPublic,
-            ImageUploadUrl = $"/api/chat-media/{place.Id.ToRootChatId()}/upload",
-        };
-        Context.PageDataBag.Set(formBagKey, _form);
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
@@ -258,124 +126,30 @@
             return new() { Place = place };
 
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
-        var invites = await Invites.ListPlaceInvites(Session, place.Id, cancellationToken).ConfigureAwait(false);
-        var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
-        var activeInvites = invites
-            .Where(c => c.ExpiresOn > threshold)
-            .OrderByDescending(c => c.ExpiresOn)
-            .ToList();
-        var welcomeChatId = await Places.GetWelcomeChatId(Session, placeId, cancellationToken).ConfigureAwait(false);
-        var link = !welcomeChatId.IsNone
-            ? Links.Chat(welcomeChatId).ToDisplayUrl(Hub.UrlMapper())
-            : (DisplayUrl?)null;
         var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
 
         return new() {
             Place = place,
-            Link = link,
-            Invites = activeInvites,
             MembersCount = allAuthorIds.Count,
             IsOwner = place.Rules.IsOwner(),
-            EnableChatCopying = Hub.AccountUI.OwnAccount.Value.IsAdmin,
             EnableIncompleteUI = enableIncompleteUI,
         };
     }
 
-    private void OnImagePicked(MediaContent mediaContent) {
-        _form!.Picture = new (mediaContent);
-        StateHasChanged();
-    }
+    private void OnInviteMembersClick()
+        => Context.StepIn(DiveInDialogPage.New<AddMemberModalPage>(PlaceId));
 
-    private void OnBackgroundPicked(MediaContent mediaContent) {
-        _form!.Background = new(mediaContent);
-        StateHasChanged();
-    }
-
-    private async Task OnNewInviteClick() {
-        // TODO: make it configurable
-        var invite = Invite.New(Constants.Invites.Defaults.PlaceRemaining, new PlaceInviteOption(PlaceId));
-        invite = await UICommander.Run(new Invites_Generate(Session, invite));
-        _newInviteId = invite.Id;
-    }
-
-    private void OnCopyChatClick()
-        => ModalUI.Show(new CopyChatToPlaceModal.Model(PlaceId));
-
-    private void OnManageMembersClick()
-        => Context.StepIn(DiveInDialogPage.New<EditPlaceMembersModalPage>(PlaceId));
-
-    private async Task OnSubmit() {
-        if (_formRef == null)
-            return;
-        if (!_formRef.IsValid)
-            return;
-        await Save();
-        Context.Close();
-    }
-
-    private async Task Save() {
-        var place = await Hub.Places.Get(Session, PlaceId, default).Require();
-        var newPlace = place with {
-            Title = _form!.Title,
-            IsPublic = _form.IsPublic,
-            MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
-        };
-        var command = new Places_Change(Session, place.Id, place.Version, new() {
-            Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
-        });
-        await UICommander.Run(command);
-    }
-
-    private void OnPlaceDeleteClick()
-        => ChatUI.DeletePlace(
-            PlaceId,
-            () => {
-                Context.Close();
-                return Task.CompletedTask;
-            });
+    private void OnOwnerSettingsClick()
+        => Context.StepIn(DiveInDialogPage.New<PlaceSettingsOwnerModalPage>(PlaceId));
 
     // Nested types
-
-    public sealed class FormModel {
-        [Required, MinLength(1)]
-        public string Title { get; set; } = "";
-
-        public string PublicUrl { get; set; } = "";
-        public Picture? Picture { get; set; }
-        public Picture? Background { get; set; }
-        public bool IsPublic { get; set; }
-        public string ImageUploadUrl { get; init; } = "";
-
-        public string FormId { get; }
-        public string TitleId { get; }
-        public string PictureFormId { get; }
-        public string BackgroundFormId { get; }
-        public string PublicUrlFormId { get; }
-        public string IsPublicFormId { get; }
-        public string IsPublicTrueFormId { get; }
-        public string IsPublicFalseFormId { get; }
-
-        public FormModel(ComponentIdGenerator componentIdGenerator) {
-            FormId = componentIdGenerator.Next("edit-place-form");
-            TitleId = $"{FormId}-title";
-            PictureFormId = $"{FormId}-picture";
-            BackgroundFormId = $"{FormId}-background";
-            PublicUrlFormId = $"{FormId}-public-url";
-            IsPublicFormId = $"{FormId}-is-public";
-            IsPublicTrueFormId = IsPublicFormId + "-true";
-            IsPublicFalseFormId = IsPublicFormId + "-false";
-        }
-    }
 
     public sealed record ComputedModel {
         public static readonly ComputedModel Loading = new();
 
         public Place? Place { get; init; }
         public int MembersCount { get; init; }
-        public DisplayUrl? Link { get; init; }
         public bool IsOwner { get; init; }
-        public bool EnableChatCopying { get; init; }
-        public List<Invite> Invites { get; init; } = [];
         public bool EnableIncompleteUI { get; init; }
     }
 }

@@ -93,7 +93,7 @@ body.narrow .modal-frame.modal-xs .c-text {
     @apply z-10;
     @apply overflow-hidden;
     @apply bg-modal text-03;
-    @apply rounded-lg border-modal border;
+    @apply rounded-lg;
     @apply md:shadow-modal-wide;
 }
 body.device-ios .modal-chrome {

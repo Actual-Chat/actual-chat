@@ -1,10 +1,10 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<StatusBadge.Model>
-
 @{
     var m = State.Value;
 }
-<span class="status-badge @m.BadgeColor @m.TextColor">
+
+<span class="status-badge @m.BadgeClass">
     @if (Chat is { Kind: ChatKind.Group or ChatKind.Place, IsPublic: false } && ShowLockIcon) {
         <i class="icon-lock text-sm"></i>
     }
@@ -29,8 +29,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var status = "";
-        var textColor = "text-[var(--status)]";
-        var badgeColor = "bg-transparent";
+        var badgeClass = "default";
         if (Chat.Kind is ChatKind.Group or ChatKind.Place) {
             status = Chat.IsPublic
                 ? Chat.Kind == ChatKind.Place
@@ -38,12 +37,11 @@
                     : "Public"
                 : "Private";
             if (Colorful) {
-                badgeColor = "bg-[var(--status-badge)]";
+                badgeClass = "public";
             }
             return new() {
                 Status = status,
-                TextColor = textColor,
-                BadgeColor = badgeColor,
+                BadgeClass = badgeClass,
             };
         }
         var ownAccount = ChatContext.OwnAccount;
@@ -72,26 +70,18 @@
             _ => "",
         };
         if (Colorful) {
-            badgeColor = presence switch {
-                Presence.Offline => "bg-[var(--status-offline-badge)]",
-                Presence.Away => "bg-[var(--status-away-badge)]",
-                Presence.Online => "bg-[var(--status-online-badge)]",
-                Presence.Recording => "bg-[var(--status-online-badge)]",
-                _ => "",
-            };
-            textColor = presence switch {
-                Presence.Offline => "text-[var(--status-offline)]",
-                Presence.Away => "text-[var(--status-away)]",
-                Presence.Online => "text-[var(--status-online)]",
-                Presence.Recording => "text-[var(--status-online)]",
+            badgeClass = presence switch {
+                Presence.Offline => "offline",
+                Presence.Away => "away",
+                Presence.Online => "online",
+                Presence.Recording => "recording",
                 _ => "",
             };
         }
 
         return new() {
             Status = status,
-            TextColor = textColor,
-            BadgeColor = badgeColor,
+            BadgeClass = badgeClass,
         };
     }
 
@@ -101,7 +91,6 @@
         public static readonly Model Loading = new();
 
         public string Status { get; init; } = "";
-        public string TextColor { get; init; } = "";
-        public string BadgeColor { get; init; } = "";
+        public string BadgeClass { get; init; } = "";
     }
 }

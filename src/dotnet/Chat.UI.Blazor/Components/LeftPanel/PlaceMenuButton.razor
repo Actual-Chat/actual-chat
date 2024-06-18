@@ -9,19 +9,16 @@
         return;
 }
 
-<div class="c-left"
-      data-menu="@(MenuRef.New<PlaceMenu>(PlaceId).ToString())"
-      data-menu-trigger="@MenuTrigger.Primary"
-      data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
-   <div class="c-top">
-       <span class="c-title">@m.Place.Title</span>
-       <i class="icon-chevron-right flex-none"></i>
-   </div>
-   <div class="c-bottom">
-       <span>@m.MembersCount @("Member".Pluralize(m.MembersCount))</span>
-       <span class="c-dot"></span>
-       <span>@(m.Place.IsPublic ? "Public" : "Private")</span>
-   </div>
+<div class="c-left">
+    <div class="c-top" onclick="@(() => OnPlaceSettingsClick(PlaceId))">
+        <span class="c-title">@m.Place.Title</span>
+        <i class="icon-chevron-right flex-none"></i>
+    </div>
+    <div class="c-bottom">
+        <span>@m.MembersCount @("Member".Pluralize(m.MembersCount))</span>
+        <span class="c-dot"></span>
+        <span>@(m.Place.IsPublic ? "Public" : "Private")</span>
+    </div>
 </div>
 
 @code {
@@ -29,6 +26,7 @@
     private Session Session => Hub.Session();
     private IContacts Contacts => Hub.Contacts;
     private IPlaces Places => Hub.Places;
+    private ModalUI ModalUI => Hub.ModalUI;
 
     [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
 
@@ -51,6 +49,9 @@
             MembersCount = allAuthorIds.Count,
         };
     }
+
+    private void OnPlaceSettingsClick(PlaceId placeId)
+        => _ = ModalUI.Show(new PlaceSettingsModal.Model(placeId));
 
     // Nested types
 

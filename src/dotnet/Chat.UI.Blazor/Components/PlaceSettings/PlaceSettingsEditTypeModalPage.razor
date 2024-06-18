@@ -1,0 +1,221 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Invite
+@inherits ComputedStateComponent<PlaceSettingsEditTypeModalPage.ComputedModel>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, ComputedModel.Loading))
+        return;
+
+    if (m.Place == null || !m.Place.Rules.CanEditProperties()) {
+        Context.Close();
+        return;
+    }
+    if (_form == null)
+        return;
+
+    Context.SetTitle("Place Type");
+    Context.ModalDataBag.Set(nameof(PlaceSettingsOwnerModalPage.ComputedModel.Place.IsPublic), m.IsPublic);
+    var canEditProperties = m.Place.Rules.CanEditProperties();
+}
+
+<Form Class="h-full" @ref="@_formRef" Model="@_form">
+    @{
+        _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
+    }
+    <FormBlock Class="with-input-radio first">
+        <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
+            <TileItem Click="@(() => OnPublicChatClick(true))">
+                <Icon>
+                    <FormRadio Id="@_form.IsPublicTrueFormId" IsDisabled="@(!canEditProperties)" Value="@true" />
+                </Icon>
+                <Content>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="Public"></Label>
+                </Content>
+                <Caption>
+                    <Label
+                        InputId="@_form.IsPublicTrueFormId"
+                        Text="All members of this Place will see it in Place's chat list and will be able to talk there">
+                    </Label>
+                </Caption>
+            </TileItem>
+            <TileItem Click="@(() => OnPublicChatClick(false))">
+                <Icon>
+                    <FormRadio Id="@_form.IsPublicFalseFormId" IsDisabled="@(!canEditProperties)" Value="@false"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private"></Label>
+                </Content>
+                <Caption>
+                    <Label
+                        InputId="@_form.IsPublicFalseFormId"
+                        Text="Can be joined only if you are invited / have an invite link">
+                    </Label>
+                </Caption>
+            </TileItem>
+        </InputRadioGroup>
+    </FormBlock>
+
+    @if (_form.IsPublic) {
+        @if (m.Link is { } publicUrl) {
+            _form.PublicUrl = publicUrl.ShortLocalUrl;
+            <FormBlock Class="with-input-radio first last">
+                <TileItem Class="field-chat-public-url unhovered">
+                    <Icon>
+                        <i class="icon-link-2"></i>
+                    </Icon>
+                    <Content>
+                        <FormSection For="() => _form.PublicUrl" InputId="@_form.PublicUrlFormId"
+                                     Label="Public link" IsLabelInsideInput="true" HideValidationMessage="true">
+                            <TextBox @bind-Value="@_form.PublicUrl" Id="@_form.PublicUrlFormId" readonly/>
+                        </FormSection>
+                        <CopyToClipboard ButtonClass="btn-transparent" Text="@publicUrl.AbsoluteUrl"/>
+                    </Content>
+                </TileItem>
+            </FormBlock>
+        }
+    } else if (m.Place.Rules.CanInvite()) {
+        <FormBlock Title="Manage links" Class="first last">
+            @if (m.Invites.Count > 0) {
+                <InviteList
+                    Invites="m.Invites"
+                    LinkFormat="@InviteLinkFormat.PrivateChat"
+                    NewInviteId="@_newInviteId"
+                    AllowRevoke="true"/>
+            }
+            <Button IsDisabled="@(m.Invites.Count >= MaxInvitesCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
+                <Icon><i class="icon-plus text-xl"></i></Icon>
+                <Title>New private join link</Title>
+            </Button>
+        </FormBlock>
+    }
+</Form>
+
+
+@code {
+    private const int MaxInvitesCount = 5;
+    private Form?_formRef;
+    private FormModel? _form;
+    private Symbol _newInviteId = Symbol.Empty;
+    private DialogButtonInfo _submitButtonInfo = null!;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private DiffEngine DiffEngine { get; init; } = null!;
+
+    private Session Session => Hub.Session();
+    private IPlaces Places => Hub.Places;
+
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+
+    private PlaceId PlaceId { get; set; }
+
+    protected override void OnInitialized() {
+        PlaceId = Context.GetTypedModel<PlaceId>();
+        Context.SetTitle("Edit place settings");
+        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
+        Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync() {
+        var place = await Places.Get(Session, PlaceId, default).Require();
+        _form = new FormModel(ComponentIdGenerator) {
+            IsPublic = place.IsPublic,
+        };
+        Context.SetClass("edit-chat-type");
+        await base.OnInitializedAsync();
+    }
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options() {
+                InitialValue = ComputedModel.Loading,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var placeId = PlaceId;
+
+        var place = await Places.Get(Session, placeId, default).Require();
+        if (!place.Rules.CanEditProperties())
+            return new() { Place = place };
+
+        var invites = await Hub.Invites.ListPlaceInvites(Session, placeId, cancellationToken);
+        var threshold = Hub.Clocks().SystemClock.Now - TimeSpan.FromDays(3);
+        var activeInvites = invites
+            .Where(c => c.ExpiresOn > threshold)
+            .OrderByDescending(c => c.ExpiresOn)
+            .ToList();
+        var link = Links.Chat(placeId.ToRootChatId()).ToDisplayUrl(Hub.UrlMapper());
+        var isPublic = place.IsPublic;
+        return new() {
+            Place = place,
+            Link = link,
+            Invites = activeInvites,
+            IsPublic = isPublic,
+        };
+    }
+
+    private async Task OnNewInviteClick() {
+        var invite = Invite.New(Constants.Invites.Defaults.PlaceRemaining, new PlaceInviteOption(PlaceId));
+        invite = await Hub.UICommander().Run(new Invites_Generate(Session, invite));
+        _newInviteId = invite.Id;
+    }
+
+    private async Task OnSubmit() {
+        if (_formRef == null)
+            return;
+        if (!_formRef.IsValid)
+            return;
+        await Save();
+        Context.Close();
+    }
+
+    private async Task Save() {
+        var place = await Hub.Places.Get(Session, PlaceId, default).Require();
+        var newPlace = place with {
+            IsPublic = _form!.IsPublic,
+        };
+        var command = new Places_Change(Session, place.Id, place.Version, new() {
+            Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
+        });
+        await Hub.UICommander().Run(command);
+    }
+
+    private void OnPublicChatClick(bool isPublic) {
+        if (_form!.IsPublic == isPublic)
+            return;
+        _form!.IsPublic = isPublic;
+        StateHasChanged();
+    }
+
+    // Nested types
+
+    public sealed class FormModel {
+        public string PublicUrl { get; set; } = "";
+        public bool IsPublic { get; set; }
+
+        public string FormId { get; }
+        public string PublicUrlFormId { get; }
+        public string IsPublicFormId { get; }
+        public string IsPublicTrueFormId { get; }
+        public string IsPublicFalseFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("new-chat-form");
+            PublicUrlFormId = $"{FormId}-public-url";
+            IsPublicFormId = $"{FormId}-is-public";
+            IsPublicTrueFormId = IsPublicFormId + "-true";
+            IsPublicFalseFormId = IsPublicFormId + "-false";
+        }
+    }
+
+    public sealed record ComputedModel {
+        public static readonly ComputedModel Loading = new();
+
+        public Place? Place { get; init; }
+        public DisplayUrl? Link { get; init; }
+        public List<Invite> Invites { get; init; } = [];
+        public bool IsPublic { get; init; }
+    }
+}

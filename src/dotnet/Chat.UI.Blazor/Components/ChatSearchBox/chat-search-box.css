@@ -7,7 +7,7 @@
 .chat-search-box {
     @apply hidden;
     @apply w-full;
-    @apply duration-150 delay-150;
+    @apply duration-200 delay-200;
     @apply opacity-0;
     @apply rounded-full;
     @apply overflow-hidden;
@@ -27,9 +27,9 @@
 }
 .search-box-btn.btn-round {
     @apply hidden absolute;
-    @apply bg-[var(--place-header-search)];
-    @apply text-[var(--place-header-text)];
-    @apply duration-150 delay-150;
+    @apply bg-place-header-search;
+    @apply text-place-header-text;
+    @apply duration-200 delay-200;
     @apply opacity-0;
     transition-behavior: allow-discrete;
     transition-property: display, opacity;

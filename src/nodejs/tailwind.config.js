@@ -203,6 +203,9 @@ module.exports = {
         'related-chat-entry': 'var(--related-chat-entry)',
         'mobile-related-chat-entry': 'var(--mobile-related-chat-entry)',
 
+        'place-header-search': 'var(--place-header-search)',
+        'place-header-text': 'var(--place-header-text)',
+
         'tile': 'var(--tile)',
 
         // Download Banner
@@ -211,6 +214,16 @@ module.exports = {
 
         'viewer-header': 'var(--viewer-header)',
         'link-preview-icon': 'var(--link-preview-icon)',
+
+        // Status Badge
+        'status': 'var(--status)',
+        'status-badge': 'var(--status-badge)',
+        'status-online': 'var(--status-online)',
+        'status-online-badge': 'var(--status-online-badge)',
+        'status-away': 'var(--status-away)',
+        'status-away-badge': 'var(--status-away-badge)',
+        'status-offline': 'var(--status-offline)',
+        'status-offline-badge': 'var(--status-offline-badge)',
       },
       textColor: {
         '01': 'var(--text-01)',

@@ -168,7 +168,7 @@
 
     protected override void OnInitialized() {
         ChatId = Context.GetTypedModel<ChatId>();
-        Context.SetTitle("Edit chat settings");
+        Context.SetTitle("Chat settings");
         if (ChatId.IsPeerChat(out _)) {
             throw StandardError.NotSupported("Peer chat is not supported.");
         }
