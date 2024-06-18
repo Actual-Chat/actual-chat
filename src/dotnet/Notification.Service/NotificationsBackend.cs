@@ -1,8 +1,10 @@
 using ActualChat.Chat;
 using ActualChat.Chat.Events;
+using ActualChat.Db;
 using ActualChat.Notification.Db;
 using ActualChat.Queues;
 using ActualChat.Users;
+using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using ActualLab.Fusion.EntityFramework;
@@ -45,18 +47,8 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [ComputeMethod]
-    public virtual async Task<IReadOnlyList<Device>> ListDevices(UserId userId, CancellationToken cancellationToken)
-    {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var dbDevices = await dbContext.Devices
-            .Where(d => d.UserId == userId)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        var devices = dbDevices.Select(d => d.ToModel()).ToList();
-        return devices;
-    }
+    public virtual Task<IReadOnlyList<Device>> ListDevices(UserId userId, CancellationToken cancellationToken)
+        => ListDevices(userId, Symbol.Empty, cancellationToken);
 
     // [ComputeMethod]
     public virtual async Task<IReadOnlyList<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken)
@@ -211,7 +203,7 @@ public class NotificationsBackend(IServiceProvider services)
             return;
         }
 
-        var (userId, deviceId, deviceType) = command;
+        var (userId, deviceId, deviceType, sessionHash) = command;
         var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var existingDbDevice = await dbContext.Devices.ForUpdate()
@@ -224,6 +216,7 @@ public class NotificationsBackend(IServiceProvider services)
                 Id = deviceId,
                 Type = deviceType,
                 UserId = userId,
+                SessionHash = sessionHash,
                 Version = VersionGenerator.NextVersion(),
                 CreatedAt = Clocks.SystemClock.Now,
             };
@@ -393,6 +386,24 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
+    [EventHandler]
+    public virtual async Task OnSignedOut(
+        UserSignedOutEvent eventCommand,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var sessionId = eventCommand.SessionId;
+        var session = new Session(sessionId);
+        var devices = await ListDevices(eventCommand.UserId, session.Hash, cancellationToken).ConfigureAwait(false);
+        if (devices.Count == 0)
+            return;
+
+        var command = new NotificationsBackend_RemoveDevices(devices.Select(c => c.DeviceId).ToApiArray());
+        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+    }
+
     // Protected methods
 
     // [ComputeMethod]
@@ -508,5 +519,19 @@ public class NotificationsBackend(IServiceProvider services)
             return Constants.Notification.ThrottleIntervals.Message;
 
         return null;
+    }
+
+    private async Task<IReadOnlyList<Device>> ListDevices(UserId userId, Symbol sessionHash, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbDevices = await dbContext.Devices
+            .Where(d => d.UserId == userId)
+            .WhereIf(d => d.SessionHash == sessionHash.Value, !sessionHash.IsEmpty)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var devices = dbDevices.Select(d => d.ToModel()).ToList();
+        return devices;
     }
 }
