@@ -62,7 +62,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
         var cursor = new ChatContentCursor(0, 0);
         var chatId = new ChatId(Generate.Option);
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 101, AssumeValid.Option);
-        _ = await documentLoader.LoadTailAsync(cursor);
+        _ = await documentLoader.LoadTailAsync(cursor, 5);
         _ = await documentLoader.LoadByEntryIdsAsync([chatEntryId]);
         Assert.True(isIdFieldNameExpected);
         Assert.True(isLocalIdFieldNameExpected);
@@ -71,7 +71,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
     [Fact]
     public async Task LoadTailMethodProperlyCallsSearchEngine()
     {
-        const int tailSize = 333;
+        const int tailSetSize = 333;
         var namingPolicy = ResolveNamingPolicy(NamingPolicy.CamelCase);
         var resultDocuments = CreateSearchResults();
         var searchEngine = new Mock<ISearchEngine<ChatSlice>>();
@@ -80,17 +80,15 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
             .Returns<SearchQuery, CancellationToken>((_, _) => {
                 return Task.FromResult(new SearchResult<ChatSlice>(resultDocuments));
             });
-        var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy) {
-            TailSize = tailSize
-        };
+        var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy);
 
         var ctSource = new CancellationTokenSource();
         var cursor = new ChatContentCursor(0, 0);
-        var results = await documentLoader.LoadTailAsync(cursor, ctSource.Token);
+        var results = await documentLoader.LoadTailAsync(cursor, tailSetSize, ctSource.Token);
         Assert.Equal(resultDocuments.Select(rankedDoc => rankedDoc.Document), results);
 
         searchEngine.Verify(x => x.Find(
-            It.Is<SearchQuery>(x => x.Limit == tailSize
+            It.Is<SearchQuery>(x => x.Limit == tailSetSize
                 && x.MetadataFilters.Single() is Int64RangeFilter
                 && x.SortStatements![0].SortOrder == QuerySortOrder.Descenging),
             It.Is<CancellationToken>(x => x == ctSource.Token)
@@ -109,13 +107,12 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
         var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy);
 
         var cursor = new ChatContentCursor(0, 0);
-        await Assert.ThrowsAsync<UniqueException>(() => documentLoader.LoadTailAsync(cursor));
+        await Assert.ThrowsAsync<UniqueException>(() => documentLoader.LoadTailAsync(cursor, 5));
     }
 
     [Fact]
     public async Task LoadByEntryIdsMethodProperlyCallsSearchEngine()
     {
-        const int tailSize = 333;
         var namingPolicy = ResolveNamingPolicy(NamingPolicy.CamelCase);
         var resultDocuments = CreateSearchResults();
         var searchEngine = new Mock<ISearchEngine<ChatSlice>>();
@@ -124,9 +121,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
             .Returns<SearchQuery, CancellationToken>((_, _) => {
                 return Task.FromResult(new SearchResult<ChatSlice>(resultDocuments));
             });
-        var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy) {
-            TailSize = tailSize
-        };
+        var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy);
 
         var ctSource = new CancellationTokenSource();
         var chatId = new ChatId(Generate.Option);
@@ -163,32 +158,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
         _ => throw new NotSupportedException(),
     });
 
-    private static RankedDocument<ChatSlice>[] CreateSearchResults()
-    {
-        var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
-        var chatId = new ChatId(Generate.Option);
-        var entryIds = Enumerable.Range(1, 4)
-            .Select(id => new ChatEntryId(chatId, ChatEntryKind.Text, id, AssumeValid.Option))
-            .ToArray();
-        var textItems = new [] {
-            "An accident happend to my brother Jim.",
-            "Somebody threw a tomato at him.",
-            "Tomatoes are juicy they can't hurt the skin.",
-            "But this one was specially packed in a tin.",
-        };
-        return entryIds.Zip(textItems)
-            .Select((args, i) => {
-                var (id, text) = args;
-                var metadata = new ChatSliceMetadata(
-                    [authorId],
-                    [new ChatSliceEntry(id, 1, 1)], null, null,
-                    [], [], [], [],
-                    false,
-                    "en-US",
-                    DateTime.Now.AddMinutes(-i)
-                );
-                return new RankedDocument<ChatSlice>(i, new ChatSlice(metadata, text));
-            })
-            .ToArray();
-    }
+    private static RankedDocument<ChatSlice>[] CreateSearchResults() => ContentHelpers.CreateDocuments()
+        .Select((doc, i) => new RankedDocument<ChatSlice>(i, doc))
+        .ToArray();
 }
