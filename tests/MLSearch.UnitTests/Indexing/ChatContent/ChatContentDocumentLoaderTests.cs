@@ -68,10 +68,127 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
         Assert.True(isLocalIdFieldNameExpected);
     }
 
+    [Fact]
+    public async Task LoadTailMethodProperlyCallsSearchEngine()
+    {
+        const int tailSize = 333;
+        var namingPolicy = ResolveNamingPolicy(NamingPolicy.CamelCase);
+        var resultDocuments = CreateSearchResults();
+        var searchEngine = new Mock<ISearchEngine<ChatSlice>>();
+        searchEngine
+            .Setup(x => x.Find(It.IsAny<SearchQuery>(), It.IsAny<CancellationToken>()))
+            .Returns<SearchQuery, CancellationToken>((_, _) => {
+                return Task.FromResult(new SearchResult<ChatSlice>(resultDocuments));
+            });
+        var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy) {
+            TailSize = tailSize
+        };
+
+        var ctSource = new CancellationTokenSource();
+        var cursor = new ChatContentCursor(0, 0);
+        var results = await documentLoader.LoadTailAsync(cursor, ctSource.Token);
+        Assert.Equal(resultDocuments.Select(rankedDoc => rankedDoc.Document), results);
+
+        searchEngine.Verify(x => x.Find(
+            It.Is<SearchQuery>(x => x.Limit == tailSize
+                && x.MetadataFilters.Single() is Int64RangeFilter
+                && x.SortStatements![0].SortOrder == QuerySortOrder.Descenging),
+            It.Is<CancellationToken>(x => x == ctSource.Token)
+        ));
+    }
+
+    [Fact]
+    public async Task LoadTailMethodDoesntSwallowExceptions()
+    {
+        var namingPolicy = ResolveNamingPolicy(NamingPolicy.CamelCase);
+        var searchEngine = new Mock<ISearchEngine<ChatSlice>>();
+        searchEngine
+            .Setup(x => x.Find(It.IsAny<SearchQuery>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromException<SearchResult<ChatSlice>>(new UniqueException()));
+
+        var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy);
+
+        var cursor = new ChatContentCursor(0, 0);
+        await Assert.ThrowsAsync<UniqueException>(() => documentLoader.LoadTailAsync(cursor));
+    }
+
+    [Fact]
+    public async Task LoadByEntryIdsMethodProperlyCallsSearchEngine()
+    {
+        const int tailSize = 333;
+        var namingPolicy = ResolveNamingPolicy(NamingPolicy.CamelCase);
+        var resultDocuments = CreateSearchResults();
+        var searchEngine = new Mock<ISearchEngine<ChatSlice>>();
+        searchEngine
+            .Setup(x => x.Find(It.IsAny<SearchQuery>(), It.IsAny<CancellationToken>()))
+            .Returns<SearchQuery, CancellationToken>((_, _) => {
+                return Task.FromResult(new SearchResult<ChatSlice>(resultDocuments));
+            });
+        var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy) {
+            TailSize = tailSize
+        };
+
+        var ctSource = new CancellationTokenSource();
+        var chatId = new ChatId(Generate.Option);
+        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 101, AssumeValid.Option);
+        var results = await documentLoader.LoadByEntryIdsAsync([chatEntryId], ctSource.Token);
+        Assert.Equal(resultDocuments.Select(rankedDoc => rankedDoc.Document), results);
+
+        searchEngine.Verify(x => x.Find(
+            It.Is<SearchQuery>(x => x.MetadataFilters.Single() is OrFilter),
+            It.Is<CancellationToken>(x => x == ctSource.Token)
+        ));
+    }
+
+    [Fact]
+    public async Task LoadByEntryIdsMethodDoesntSwallowExceptions()
+    {
+        var namingPolicy = ResolveNamingPolicy(NamingPolicy.CamelCase);
+        var searchEngine = new Mock<ISearchEngine<ChatSlice>>();
+        searchEngine
+            .Setup(x => x.Find(It.IsAny<SearchQuery>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromException<SearchResult<ChatSlice>>(new UniqueException()));
+
+        var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy);
+
+        var chatId = new ChatId(Generate.Option);
+        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 101, AssumeValid.Option);
+        await Assert.ThrowsAsync<UniqueException>(() => documentLoader.LoadByEntryIdsAsync([chatEntryId]));
+    }
+
     private static OpenSearchNamingPolicy ResolveNamingPolicy(NamingPolicy policy) => new(policy switch {
         NamingPolicy.PascalCase => new PascalCasePolicy(),
         NamingPolicy.CamelCase => JsonNamingPolicy.CamelCase,
         NamingPolicy.SnakeCase => JsonNamingPolicy.SnakeCaseLower,
         _ => throw new NotSupportedException(),
     });
+
+    private static RankedDocument<ChatSlice>[] CreateSearchResults()
+    {
+        var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
+        var chatId = new ChatId(Generate.Option);
+        var entryIds = Enumerable.Range(1, 4)
+            .Select(id => new ChatEntryId(chatId, ChatEntryKind.Text, id, AssumeValid.Option))
+            .ToArray();
+        var textItems = new [] {
+            "An accident happend to my brother Jim.",
+            "Somebody threw a tomato at him.",
+            "Tomatoes are juicy they can't hurt the skin.",
+            "But this one was specially packed in a tin.",
+        };
+        return entryIds.Zip(textItems)
+            .Select((args, i) => {
+                var (id, text) = args;
+                var metadata = new ChatSliceMetadata(
+                    [authorId],
+                    [new ChatSliceEntry(id, 1, 1)], null, null,
+                    [], [], [], [],
+                    false,
+                    "en-US",
+                    DateTime.Now.AddMinutes(-i)
+                );
+                return new RankedDocument<ChatSlice>(i, new ChatSlice(metadata, text));
+            })
+            .ToArray();
+    }
 }
