@@ -25,7 +25,6 @@ internal sealed class ChatContentIndexer(
         Delete,
     }
 
-    private const int MaxTailSetSize = 5;
     private ChatContentCursor _cursor = new(0, 0);
     private ChatContentCursor _nextCursor = new(0, 0);
 
@@ -35,10 +34,15 @@ internal sealed class ChatContentIndexer(
     private readonly Dictionary<string, ChatSlice> _outUpdates = new(StringComparer.Ordinal);
     private readonly HashSet<string> _outRemoves = new(StringComparer.Ordinal);
 
+    public ChatContentCursor Cursor => _cursor;
+    public IReadOnlyDictionary<string, ChatSlice> TailDocs => _tailDocs;
+
+    public int MaxTailSetSize { get; init; } = 5;
+
     public async Task InitAsync(ChatContentCursor cursor, CancellationToken cancellationToken)
     {
         _cursor = cursor;
-        var tailDocuments = await documentLoader.LoadTailAsync(cursor, cancellationToken).ConfigureAwait(false);
+        var tailDocuments = await documentLoader.LoadTailAsync(cursor, MaxTailSetSize, cancellationToken).ConfigureAwait(false);
         foreach (var document in tailDocuments) {
             _tailDocs.Add(document.Id, document);
         }
