@@ -18,10 +18,20 @@ internal class ChatBotConversationTrigger(ICommander commander, IChatsBackend ch
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         var chat = await chats.Get(eventCommand.Entry.ChatId, cancellationToken).ConfigureAwait(false);
-        if (chat != null && OrdinalEquals(Constants.Chat.SystemTags.Bot, chat.SystemTag)) {
-            // User is writing of changing something.
-            var e = new MLSearch_TriggerContinueConversationWithBot(eventCommand.Entry.ChatId);
-            await commander.Call(e, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return;
+        if (eventCommand.Entry.IsSystemEntry)
+            return;
+        if (!OrdinalEquals(Constants.Chat.SystemTags.Bot, chat.SystemTag))
+            return;
+        // TODO:
+        /*
+        if (eventCommand.Entry.AuthorId == Constants.User.MLSearchBot.UserId) {
+            return;
         }
+        */
+        // User is writing of changing something.
+        var e = new MLSearch_TriggerContinueConversationWithBot(eventCommand.Entry.ChatId);
+        await commander.Call(e, cancellationToken).ConfigureAwait(false);
     }
 }
