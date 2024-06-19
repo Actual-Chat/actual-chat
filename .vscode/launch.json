@@ -14,7 +14,7 @@
         // "-multihost-role:BackendServer"
       ],
       "cwd": "${workspaceFolder}/src/dotnet/App.Server",
-      "justMyCode":true,
+      "justMyCode": false,
       "stopAtEntry": false,
       "serverReadyAction": {
         "action": "openExternally",

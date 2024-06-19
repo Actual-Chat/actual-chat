@@ -1,6 +1,7 @@
 name: actual-chat-infra
 include:
   - ./services/opensearch/docker-compose.yaml
+  - ./docker-compose.observability.yml
 services:
   redis:
     image: "redis:7.2.4-alpine3.19"
@@ -16,6 +17,8 @@ services:
       POSTGRES_HOST_AUTH_METHOD: "password"
     ports:
       - "5432:5432"
+    expose:
+      - 5432
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready" ]
       interval: 10s

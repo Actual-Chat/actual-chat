@@ -20,26 +20,38 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
         // - Normalizes user name & invalidates AuthBackend.GetUser if it was changed
         // - Updates UserPresence.Get & invalidates it if it's not computed or offline
 
+        using var _activity = AppDiagnostics.AppTrace.StartActivity("AuthBackendCommandFilters:OnSignIn");
         var context = CommandContext.GetCurrent();
-        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-
-        var sessionInfo = context.Operation.Items.Get<SessionInfo>(); // Set by default command handler
-        if (sessionInfo == null)
-            throw StandardError.Internal("No SessionInfo in operation's items.");
-
-        var userId = new UserId(sessionInfo.UserId);
-        if (Invalidation.IsActive) {
-            if (context.Operation.Items.Get<UserNameChangedTag>() != null)
-                _ = AuthBackend.GetUser(default, userId, default);
-            return;
+        using (var _InvokeRemainingHandlers = AppDiagnostics.AppTrace.StartActivity("OnSignIn:InvokeRemainingHandlers")) {
+            await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+        }
+        SessionInfo? sessionInfo;
+        using (var _GetSessionInfo = AppDiagnostics.AppTrace.StartActivity("OnSignIn:GetSessionInfo")) {
+            sessionInfo = context.Operation.Items.Get<SessionInfo>(); // Set by default command handler
+            if (sessionInfo == null)
+                throw StandardError.Internal("No SessionInfo in operation's items.");
+        }
+        UserId userId;
+        using (var _Invalidation = AppDiagnostics.AppTrace.StartActivity("OnSignIn:Invalidation")) {
+            userId = new UserId(sessionInfo.UserId);
+            if (Invalidation.IsActive) {
+                if (context.Operation.Items.Get<UserNameChangedTag>() != null)
+                    _ = AuthBackend.GetUser(default, userId, default);
+                return;
+            }
         }
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbUser = await DbUsers.Get(dbContext, userId, true, cancellationToken).ConfigureAwait(false);
-        if (dbUser == null)
-            return; // Should never happen, but if it somehow does, there is no extra to do in this case
+        UsersDbContext dbContext;
+        using (var _CreateCommandDbContext = AppDiagnostics.AppTrace.StartActivity("OnSignIn:CreateCommandDbContext")) {
+            dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            await using var __ = dbContext.ConfigureAwait(false);
+        }
+        DbUser dbUser;
+        using (var _GetDbUser = AppDiagnostics.AppTrace.StartActivity("OnSignIn:GetDbUser")) {
+            dbUser = await DbUsers.Get(dbContext, userId, true, cancellationToken).ConfigureAwait(false);
+            if (dbUser == null)
+                return; // Should never happen, but if it somehow does, there is no extra to do in this case
+        }
 
         // Let's try to fix auto-generated user name here
         var newName = UserNamer.NormalizeName(dbUser.Name);
@@ -47,8 +59,9 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
             context.Operation.Items.Set(new UserNameChangedTag());
             dbUser.Name = newName;
         }
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        using (var _SaveChangesAsync = AppDiagnostics.AppTrace.StartActivity("OnSignIn:SaveChangesAsync")) {
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
 
         // MigrateGuestKeys is disabled for now, coz it causes more problems than solves
         // context.Operation.AddEvent(new ServerKvas_MigrateGuestKeys(command.Session));

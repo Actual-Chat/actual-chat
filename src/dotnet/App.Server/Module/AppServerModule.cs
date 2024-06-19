@@ -29,6 +29,7 @@ using ActualLab.Fusion.EntityFramework;
 using ActualLab.IO;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Server;
+using ActualChat.Users;
 
 namespace ActualChat.App.Server.Module;
 
@@ -288,6 +289,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddSource(typeof(DbKey).GetActivitySource().Name) // ActualLab.Fusion.EntityFramework
                 // Our own activity sources (one per assembly)
                 .AddSource(AppTrace.Name)
+                .AddSource(typeof(AppServerAuthHelper).GetActivitySource().Name)
                 .AddSource(typeof(CoreModule).GetActivitySource().Name)
                 .AddSource(typeof(CoreServerModule).GetActivitySource().Name)
                 .AddSource(typeof(DbModule).GetActivitySource().Name)

@@ -46,7 +46,7 @@ public static class HttpSessionExt
                     httpContext.AddSessionCookie(session);
                 return (session, isNew);
             }
-            catch (TimeoutException) {
+            catch (TimeoutException e) {
                 if (tryIndex >= 2)
                     throw;
             }

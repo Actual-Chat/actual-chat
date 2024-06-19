@@ -19,6 +19,7 @@ using ActualLab.Fusion.Server;
 using ActualLab.Fusion.Server.Authentication;
 using Twilio;
 using Twilio.Clients;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users.Module;
 
@@ -189,6 +190,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             services.AddSingleton<ITextMessageSender, LogOnlyTextMessageSender>();
 
         // IAuth & IAuthBackend
+        services.AddSingleton<IDbShardResolver<UsersDbContext>, DbShardResolverTraced<UsersDbContext>>();
+
         fusion.AddDbAuthService<UsersDbContext, DbSessionInfo, DbUser, string>(auth => {
             auth.ConfigureAuthService(_ => new() {
                 MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
