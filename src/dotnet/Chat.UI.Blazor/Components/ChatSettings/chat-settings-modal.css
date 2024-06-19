@@ -17,10 +17,10 @@
     @apply bg-transparent;
 }
 .edit-settings-modal:has(.chat-settings-header) .modal-header-interactive .btn-h {
-    @apply text-white;
+    @apply text-viewer-header-text;
 }
 .edit-settings-modal:has(.chat-settings-header) .modal-header-interactive .modal-title {
-    @apply text-white;
+    @apply text-viewer-header-text;
 }
 
 .edit-chat-settings-modal .dialog-body {

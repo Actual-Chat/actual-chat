@@ -212,7 +212,7 @@ module.exports = {
         'download-banner-left': 'var(--download-banner-left)',
         'download-banner-right': 'var(--download-banner-right)',
 
-        'viewer-header': 'var(--viewer-header)',
+        'viewer-header-text': 'var(--viewer-header-text)',
         'link-preview-icon': 'var(--link-preview-icon)',
 
         // Status Badge
