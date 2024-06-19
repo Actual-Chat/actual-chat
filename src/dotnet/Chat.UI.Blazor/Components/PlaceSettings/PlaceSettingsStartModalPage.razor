@@ -110,7 +110,7 @@
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
-    private Session Session => Hub.Session(); // Shortcut
+    private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
