@@ -104,6 +104,10 @@
 
     private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
+    private UICommander UICommander => Hub.UICommander();
+    private IInvites Invites => Hub.Invites;
+    private MomentClockSet Clocks => Hub.Clocks();
+    private UrlMapper UrlMapper => Hub.UrlMapper();
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -140,15 +144,15 @@
         if (!place.Rules.CanEditProperties())
             return new() { Place = place };
 
-        var invites = await Hub.Invites.ListPlaceInvites(Session, placeId, cancellationToken);
-        var threshold = Hub.Clocks().SystemClock.Now - TimeSpan.FromDays(3);
+        var invites = await Invites.ListPlaceInvites(Session, placeId, cancellationToken);
+        var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
         var activeInvites = invites
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
             .ToList();
         var welcomeChatId = await Places.GetWelcomeChatId(Session, placeId, cancellationToken).ConfigureAwait(false);
         var link = !welcomeChatId.IsNone
-            ? Links.Chat(welcomeChatId).ToDisplayUrl(Hub.UrlMapper())
+            ? Links.Chat(welcomeChatId).ToDisplayUrl(UrlMapper)
             : (DisplayUrl?)null;
         var isPublic = place.IsPublic;
         return new() {
@@ -161,7 +165,7 @@
 
     private async Task OnNewInviteClick() {
         var invite = Invite.New(Constants.Invites.Defaults.PlaceRemaining, new PlaceInviteOption(PlaceId));
-        invite = await Hub.UICommander().Run(new Invites_Generate(Session, invite));
+        invite = await UICommander.Run(new Invites_Generate(Session, invite));
         _newInviteId = invite.Id;
     }
 
@@ -182,7 +186,7 @@
         var command = new Places_Change(Session, place.Id, place.Version, new() {
             Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
         });
-        await Hub.UICommander().Run(command);
+        await UICommander.Run(command);
     }
 
     private void OnPublicChatClick(bool isPublic) {
