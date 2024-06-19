@@ -229,7 +229,7 @@
     }
 
     private async Task Save() {
-        var place = await Hub.Places.Get(Session, PlaceId, default).Require();
+        var place = await Places.Get(Session, PlaceId, default).Require();
         var newPlace = place with {
             Title = _form!.Title,
             MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,

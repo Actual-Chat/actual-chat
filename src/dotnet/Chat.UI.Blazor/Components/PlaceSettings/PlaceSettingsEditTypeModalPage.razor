@@ -175,7 +175,7 @@
     }
 
     private async Task Save() {
-        var place = await Hub.Places.Get(Session, PlaceId, default).Require();
+        var place = await Places.Get(Session, PlaceId, default).Require();
         var newPlace = place with {
             IsPublic = _form!.IsPublic,
         };
