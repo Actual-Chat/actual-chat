@@ -63,4 +63,53 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
         var cursor = new ChatContentCursor(0, 0);
         await Assert.ThrowsAsync<UniqueException>(() => contentIndexer.InitAsync(cursor, CancellationToken.None));
     }
+
+    public class EntryToDocMap(int numDocs, int? start = default, int? end = default) : IXunitSerializable
+    {
+        public int NumDocs => numDocs;
+        public int? Start => start;
+        public int? End => end;
+
+        [Obsolete("Called by the de-serializer; should only be called by deriving classes for de-serialization purposes")]
+        public EntryToDocMap() : this(default, default, default)
+        { }
+
+        public void Deserialize(IXunitSerializationInfo info)
+        {
+            numDocs = info.GetValue<int>(nameof(numDocs));
+            start = info.GetValue<int?>(nameof(start));
+            end = info.GetValue<int?>(nameof(end));
+        }
+
+        public void Serialize(IXunitSerializationInfo info)
+        {
+            info.AddValue(nameof(numDocs), numDocs);
+            info.AddValue(nameof(start), start);
+            info.AddValue(nameof(end), end);
+        }
+    }
+
+    public static TheoryData<EntryToDocMap> EntryMappings
+    {
+        get {
+            int?[] starts = [null, 0, 100];
+            int?[] ends =  [200, null];
+            var theoryData = new TheoryData<EntryToDocMap>();
+            for (var docNumber = 1; docNumber < 4; docNumber++) {
+                foreach (var start in starts) {
+                    foreach (var end in ends) {
+                        theoryData.Add(new EntryToDocMap(docNumber, start, end));
+                    }
+                }
+            }
+            return theoryData;
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(EntryMappings))]
+    public async Task ApplyingRemoveEventProperlyUpdatesUnderlyingIndex(EntryToDocMap entryToDocMap)
+    {
+
+    }
 }

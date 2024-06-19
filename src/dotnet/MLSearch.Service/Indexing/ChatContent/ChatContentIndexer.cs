@@ -19,7 +19,6 @@ internal sealed class ChatContentIndexer(
 {
     private enum ChatEventType
     {
-        None,
         Create,
         Update,
         Delete,
@@ -36,6 +35,9 @@ internal sealed class ChatContentIndexer(
 
     public ChatContentCursor Cursor => _cursor;
     public IReadOnlyDictionary<string, ChatSlice> TailDocs => _tailDocs;
+    public IReadOnlyList<ChatEntry> Buffer => _buffer;
+    public IReadOnlyDictionary<string, ChatSlice> OutUpdates => _outUpdates;
+    public IReadOnlySet<string> OutRemoves => _outRemoves;
 
     public int MaxTailSetSize { get; init; } = 5;
 
@@ -50,18 +52,15 @@ internal sealed class ChatContentIndexer(
 
     public async ValueTask ApplyAsync(ChatEntry entry, CancellationToken cancellationToken)
     {
-        var eventType = entry.IsRemoved ? ChatEventType.Delete
-            : entry.LocalId > _cursor.LastEntryLocalId ? ChatEventType.Create : ChatEventType.Update;
-
         // Lookup for the entry related documents
         var existingDocuments = await LookupDocumentsAsync(entry, cancellationToken).ConfigureAwait(false);
-        // Adjust event type
-        eventType = eventType switch {
-            ChatEventType.Create when existingDocuments.Count!=0 => ChatEventType.Update,
-            ChatEventType.Update when existingDocuments.Count==0 => ChatEventType.Create,
-            ChatEventType.Delete when existingDocuments.Count==0 => ChatEventType.None,
-            _ => eventType,
-        };
+        if (entry.IsRemoved && existingDocuments.Count == 0) {
+            // There is no existing docs, so we don't have to change anything.
+            return;
+        }
+
+        var eventType = entry.IsRemoved ? ChatEventType.Delete
+            : existingDocuments.Count==0 ? ChatEventType.Create : ChatEventType.Update;
 
         if (eventType==ChatEventType.Create) {
             // Buffer new entries until Flush
