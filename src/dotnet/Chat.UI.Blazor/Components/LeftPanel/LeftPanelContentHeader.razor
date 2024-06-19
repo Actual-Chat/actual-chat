@@ -43,13 +43,24 @@
                            MaxLength="@Constants.Chat.MaxSearchFilterLength"
                            TextChanged="@_onSearchBoxTextChanged"/>
                        <div class="c-icon">
+                       @if (place.Background != null) {
+                           <Pic
+                               Title="@place.Title"
+                               Picture="@place.Background.ToPicture()"
+                               Size="@SquareSize.SizeFull"
+                               IsSquare="@true"
+                               AvatarKind="@AvatarKind.Marble"
+                               AvatarKey="@place.Id.Value"/>
+                       } else {
                            <Pic
                                Title="@place.Title"
                                Picture="@place.Picture.ToPicture()"
                                Size="@SquareSize.SizeFull"
                                IsSquare="@true"
+                               IsBlurred="@true"
                                AvatarKind="@AvatarKind.Marble"
                                AvatarKey="@place.Id.Value"/>
+                       }
                        </div>
                    </div>
                    @if (_isMember) {
@@ -91,6 +102,7 @@
     private SearchUI SearchUI => Hub.SearchUI;
     private IContacts Contacts => Hub.Contacts;
     private Session Session => Hub.Session();
+    private IPlaces Places => Hub.Places;
     private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
 
     protected override async Task OnInitializedAsync() {
@@ -130,7 +142,7 @@
                 : PlaceId.None;
         _place = placeId.IsNone
             ? null
-            : await Hub.Places.Get(Hub.Session(), placeId, default).ConfigureAwait(false);
+            : await Places.Get(Session, placeId, default).ConfigureAwait(false);
         var places = await Contacts.ListPlaceIds(Session, default).ConfigureAwait(false);
         _isMember = places.Contains(placeId);
     }

@@ -19,12 +19,24 @@
 <div class="h-full">
     <div class="chat-settings-header place">
         <div class="c-top">
-            <Pic
-                Picture="@m.Place.Picture.ToPicture()"
-                ImageSkeletonClass="image-cover"
-                Size="@SquareSize.SizeFull"
-                IsSquare="true"
-                AvatarKind="@AvatarKind.Marble"/>
+            @if (m.Place.Background != null) {
+                <Pic
+                    Picture="@m.Place.Background.ToPicture()"
+                    ImageSkeletonClass="image-cover"
+                    Size="@SquareSize.SizeFull"
+                    IsSquare="true"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@PlaceId.Value"/>
+            } else {
+                <Pic
+                    Picture="@m.Place.Picture.ToPicture()"
+                    ImageSkeletonClass="image-cover"
+                    Size="@SquareSize.SizeFull"
+                    IsSquare="true"
+                    IsBlurred="true"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@PlaceId.Value"/>
+            }
         </div>
         <div class="c-center">
             <Pic
@@ -100,8 +112,6 @@
 
     private Session Session => Hub.Session(); // Shortcut
     private IPlaces Places => Hub.Places;
-    private IChats Chats => Hub.Chats;
-    private AccountUI AccountUI => Hub.AccountUI;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -126,13 +136,6 @@
         var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
         if (place == null || !place.Rules.CanEditProperties())
             return new() { Place = place };
-
-        var welcomeChatId = await Places.GetWelcomeChatId(Session, placeId, cancellationToken).ConfigureAwait(false);
-        var chat = await Chats.Get(Session, welcomeChatId, cancellationToken).ConfigureAwait(false);
-        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        if (chat != null) {
-            var chatContext = new ChatContext(Hub, chat, account);
-        }
 
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);

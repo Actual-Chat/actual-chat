@@ -145,6 +145,8 @@
     private UICommander UICommander => Hub.UICommander();
     private IPlaces Places => Hub.Places;
     private ChatUI ChatUI => Hub.ChatUI;
+    private Features Features => Hub.Features();
+    private AccountUI AccountUI => Hub.AccountUI;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -168,7 +170,7 @@
         _form = new FormModel(ComponentIdGenerator) {
             Title = place.Title,
             Picture = place.Picture?.ToPicture(),
-            Background = new Picture(null, null, place.Id.Value),
+            Background = place.Background?.ToPicture(),
             ImageUploadUrl = $"/api/chat-media/{place.Id.ToRootChatId()}/upload",
         };
         Context.PageDataBag.Set(formBagKey, _form);
@@ -189,13 +191,13 @@
             return new() { Place = place };
 
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
 
         return new() {
             Place = place,
             MembersCount = allAuthorIds.Count,
             IsOwner = place.Rules.IsOwner(),
-            EnableChatCopying = Hub.AccountUI.OwnAccount.Value.IsAdmin,
+            EnableChatCopying = AccountUI.OwnAccount.Value.IsAdmin,
             EnableIncompleteUI = enableIncompleteUI,
         };
     }
@@ -233,6 +235,7 @@
         var newPlace = place with {
             Title = _form!.Title,
             MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
+            BackgroundMediaId = _form.Background?.MediaContent?.MediaId ?? MediaId.None,
         };
         var command = new Places_Change(Session, place.Id, place.Version, new() {
             Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),

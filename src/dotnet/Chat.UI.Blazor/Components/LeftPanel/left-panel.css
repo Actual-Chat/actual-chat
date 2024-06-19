@@ -54,8 +54,8 @@
     @apply flex-y;
 }
 .left-panel-content-header.place .c-icon {
-    @apply absolute top-1/2;
-    @apply inset-x-0;
+    @apply absolute top-1/2 inset-x-0;
+    @apply min-h-26;
     @apply -translate-y-1/2;
 }
 .left-panel-content-header > .c-content {
