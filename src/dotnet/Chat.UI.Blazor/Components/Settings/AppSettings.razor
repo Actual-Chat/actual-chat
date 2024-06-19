@@ -14,11 +14,11 @@
 @if (HostInfo.HostKind != HostKind.MauiApp) {
     <SettingsBlazorModeToggle/>
 }
-<TileTopic Topic="How we use your data"/>
+<TileTopic Topic="Data Usage Consent"/>
 <Tile>
     <TileItem Click="@OnAnalyticsEnabledClick">
         <Icon><i class="icon-radio-button-on-fill text-2xl"></i></Icon>
-        <Content>Use data to improve Actual Chat</Content>
+        <Content>Enhance Actual Chat with Data</Content>
         <Caption>@status</Caption>
         <Right>
             <Toggle IsChecked="@m.IsAnalyticsEnabled"
@@ -26,7 +26,7 @@
         </Right>
     </TileItem>
     <p class="px-3">
-        This setting allows us to use and process your information to improve our services.
+        This setting allows us to use and process your information to enhance our services.
     </p>
 </Tile>
 
