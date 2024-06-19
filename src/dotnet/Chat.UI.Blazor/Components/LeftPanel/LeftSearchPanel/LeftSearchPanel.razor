@@ -32,7 +32,7 @@
 
         @if (_showSearchAiButton) {
             <div class="ai-btn">
-                <Button Class="btn-primary" Click="@OnAISearchClicked">
+                <Button Class="btn-primary" Click="@OnAISearchClick">
                     <i class="icon-ai-search"></i>
                     Open AI Search
                 </Button>
@@ -58,11 +58,6 @@
     protected override void OnInitialized() {
         _showSearchAiButton = !PanelsUI.Right.IsSearchMode.Value;
         base.OnInitialized();
-    }
-
-    private async Task OnAISearchClicked() {
-        await OnAISearchClick.InvokeAsync().ConfigureAwait(false);
-        CloseSearchPanel();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

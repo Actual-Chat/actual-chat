@@ -11,7 +11,7 @@ internal class SampleChatBot(ICommander commander, IMediaLinkPreviews mediaLinkP
     : IBotConversationHandler, IComputeService
 {
     protected virtual string NotFoundMessage()
-        => "Was not able to find anything";
+        => "Was not able to find anything relevant";
 
     public async Task ExecuteAsync(
         IReadOnlyCollection<ChatEntry>? updatedDocuments,

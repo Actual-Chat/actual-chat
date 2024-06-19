@@ -52,9 +52,10 @@ public class LeftPanel : IDisposable
             VisibilityChanged?.Invoke();
         }, Log);
 
-    public void ToggleSearchMode()
-    {
-        IsSearchMode = !IsSearchMode;
+    public void ToggleSearchMode() => SetSearchMode(!IsSearchMode);
+
+    public void SetSearchMode(bool isVisible) {
+        IsSearchMode = isVisible;
         SearchModeChanged?.Invoke();
     }
 

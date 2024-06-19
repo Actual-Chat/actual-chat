@@ -76,15 +76,9 @@
     }
 
     private async Task<ActualChat.ChatId?> CreateSearchChat() {
-        /*
-        PanelsUI.Right.SearchToggle();
-        PanelsUI.Left.ToggleSearchMode();
-        if (ScreenSize.IsNarrow()) {
-            PanelsUI.Left.SetIsVisible(false);
-        }
-        */
+        var searchChatTitle = "Search";
         var session = Hub.Session();
-        var createSearchChatCommand = new MLSearch_CreateChat(session, "Search", default);
+        var createSearchChatCommand = new MLSearch_CreateChat(session, searchChatTitle, default);
         var (searchChat, createSearchChatError) = await Hub.UICommander().Run(createSearchChatCommand, CancellationToken.None);
         if (createSearchChatError != null)
             return null;
@@ -98,9 +92,12 @@
         }
         var searchChatId = createSearchChatResult.Value;
         // TODO: This is not right. Couldn't find the right way to go in the codebase.
-        // Issue: Using the Hub.Nav.NavigateTo does not reset the left panel. 
-        // It does change the chat view though.
+        // Note: Using the Hub.Nav.NavigateTo does not reset the left panel. 
         Hub.NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
+        PanelsUI.Left.SetSearchMode(false);
+        if (ScreenSize.IsNarrow()) {
+            PanelsUI.Left.SetIsVisible(false);
+        }
         
         var link = Links.Chat(searchChatId);
         Hub.Nav.NavigateTo(link);
