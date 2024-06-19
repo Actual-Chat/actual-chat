@@ -34,7 +34,7 @@
                 <Caption>
                     <Label
                         InputId="@_form.IsPublicTrueFormId"
-                        Text="All members of this Place will see it in Place's chat list and will be able to talk there">
+                        Text="Anyone can join this place by navigating to its URL">
                     </Label>
                 </Caption>
             </TileItem>
@@ -146,7 +146,10 @@
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
             .ToList();
-        var link = Links.Chat(placeId.ToRootChatId()).ToDisplayUrl(Hub.UrlMapper());
+        var welcomeChatId = await Places.GetWelcomeChatId(Session, placeId, cancellationToken).ConfigureAwait(false);
+        var link = !welcomeChatId.IsNone
+            ? Links.Chat(welcomeChatId).ToDisplayUrl(Hub.UrlMapper())
+            : (DisplayUrl?)null;
         var isPublic = place.IsPublic;
         return new() {
             Place = place,

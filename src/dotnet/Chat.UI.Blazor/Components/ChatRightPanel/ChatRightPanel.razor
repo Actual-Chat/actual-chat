@@ -29,7 +29,7 @@
 
                             @if (m.ShowMembersTab) {
                                 <Tab @key="@("members")" Id="members" Title="Members" Order="0">
-                                    <AuthorList ChatContext="@ChatContext"/>
+                                    <AuthorList ChatId="@Chat.Id"/>
                                 </Tab>
                             }
                             @if (m.EnableIncompleteUI) {

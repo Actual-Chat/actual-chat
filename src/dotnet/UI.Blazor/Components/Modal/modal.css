@@ -237,3 +237,22 @@ body.narrow .dialog-buttons {
 .modal-overlay-fullscreen .modal-header {
     @apply hidden;
 }
+
+.dialog-body .c-chat-list {
+    @apply flex-y justify-center gap-y-1;
+    @apply px-2;
+}
+.dialog-body .c-chat-list .c-chat {
+    @apply flex-x items-center gap-x-2;
+    @apply px-2 py-1;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+}
+.dialog-body .c-chat-list .c-chat .c-chat-title {
+    @apply line-clamp-1;
+    @apply text-headline-1 text-01;
+}
+body.hoverable .dialog-body .c-chat-list .c-chat:hover {
+    @apply bg-hover;
+    @apply cursor-pointer;
+}
