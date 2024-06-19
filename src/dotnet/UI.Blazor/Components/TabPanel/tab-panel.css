@@ -64,48 +64,39 @@
 }
 
 /* SideNav and Modal tabs */
-.side-nav .tab-panel-tabs,
-.modal-frame .tab-panel-tabs {
+.tab-panel-tabs {
     @apply max-h-14;
     @apply p-0 m-0;
 }
-.side-nav .tab-panel-tabs .btn-group,
-.modal-frame .tab-panel-tabs .btn-group {
+.tab-panel-tabs .btn-group {
     @apply items-center justify-start gap-x-0;
     @apply min-h-14;
     @apply px-4;
 }
-.side-nav .tab-panel-tabs .btn-group .btn-group-container,
-.modal-frame .tab-panel-tabs .btn-group .btn-group-container {
+.tab-panel-tabs .btn-group .btn-group-container {
     @apply self-center;
     @apply min-h-14;
 }
-.side-nav .tab-panel-tabs .btn,
-.modal-frame .tab-panel-tabs .btn {
+.tab-panel-tabs .btn {
     @apply min-w-0 min-h-0;
     @apply p-0;
     @apply rounded-lg;
 }
-.side-nav .tab-panel-tabs .btn.tab-btn.on .btn-content,
-.modal-frame .tab-panel-tabs .btn.tab-btn.on .btn-content {
+.tab-panel-tabs .btn.tab-btn.on .btn-content {
     @apply text-02;
 }
-body.hoverable .side-nav .tab-panel-tabs .tab-btn:hover .btn-content,
-body.hoverable .modal-frame .tab-panel-tabs .tab-btn:hover .btn-content {
+body.hoverable .tab-panel-tabs .tab-btn:hover .btn-content {
     @apply bg-round-hover text-primary;
 }
-body.hoverable .side-nav .tab-panel-tabs .tab-btn.on:hover .btn-content,
-body.hoverable .modal-frame .tab-panel-tabs .tab-btn.on:hover .btn-content {
+body.hoverable .tab-panel-tabs .tab-btn.on:hover .btn-content {
     @apply bg-transparent cursor-default;
 }
-.side-nav .tab-panel-tabs .tab-btn .btn-content,
-.modal-frame .tab-panel-tabs .tab-btn .btn-content {
+.tab-panel-tabs .tab-btn .btn-content {
     @apply gap-x-1;
     @apply py-1.5 px-2;
     @apply rounded-xl;
 }
-.side-nav .tab-panel-tabs .tab-btn .btn-content .message-counter-badge,
-.modal-frame .tab-panel-tabs .tab-btn .btn-content .message-counter-badge {
+.tab-panel-tabs .tab-btn .btn-content .message-counter-badge {
     @apply ml-1;
 }
 
