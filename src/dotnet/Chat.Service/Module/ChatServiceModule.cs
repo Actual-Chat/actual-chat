@@ -29,6 +29,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         // Places
         rpcHost.AddApiOrLocal<IPlaces, Places>(); // Used by Chats
+        rpcHost.AddBackend<IPlacesBackend, PlacesBackend>();
 
         // Authors
         rpcHost.AddApiOrLocal<IAuthors, Authors>(); // Used by Chats
@@ -94,6 +95,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
             // DbCopiedChat
             db.AddEntityResolver<string, DbChatCopyState>();
+
+            // DbPlace
+            db.AddEntityResolver<string, DbPlace>();
         });
     }
 }

@@ -11,5 +11,5 @@ public partial class ContactSearchQuery
     [DataMember, MemoryPackOrder(2)] public PlaceId? PlaceId { get; init; }
     [DataMember, MemoryPackOrder(3)] public bool IsPublic { get; init; }
     [DataMember, MemoryPackOrder(4)] public int Skip { get; init; }
-    [DataMember, MemoryPackOrder(5)] public int Limit { get; init; } = Constants.Search.ContactSearchDeafultPageSize;
+    [DataMember, MemoryPackOrder(5)] public int Limit { get; init; } = Constants.Search.ContactSearchDefaultPageSize;
 }

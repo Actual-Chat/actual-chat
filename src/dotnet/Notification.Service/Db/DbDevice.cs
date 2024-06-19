@@ -16,6 +16,7 @@ public class DbDevice : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [ConcurrencyCheck] public long Version { get; set; }
 
     public string UserId { get; set; } = null!;
+    public string SessionHash { get; set; } = null!;
     public DeviceType Type { get; set; }
 
     public DateTime CreatedAt {

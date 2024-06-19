@@ -6,7 +6,7 @@ namespace ActualChat.Search;
 public abstract class ContactIndexer(IServiceProvider services)
     : ShardWorker(services, ShardScheme.ContactIndexerBackend), INotifyInitialized
 {
-    protected const int SyncBatchSize = 1000;
+    public const int SyncBatchSize = 100;
     private static readonly TimeSpan MaxIdleInterval = TimeSpan.FromMinutes(5);
     private readonly TaskCompletionSource _whenInitialized = new ();
     private SearchSettings? _settings;

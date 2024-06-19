@@ -55,6 +55,11 @@ public interface IChatsBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
 
     // Non-compute methods
+    Task<ApiArray<ChatId>> ListPlaceChatIds(
+        PlaceId placeId,
+        CancellationToken cancellationToken);
+
+    // Non-compute methods
     Task<ApiArray<Chat>> List(
         Moment minCreatedAt,
         ChatId lastChatId,

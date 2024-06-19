@@ -42,8 +42,16 @@ public class Chats(IServiceProvider services) : IChats
                 Picture = contact.Account.Avatar.Media,
             };
         }
-        else if (chat == null)
-            return null;
+        else {
+            if (chat == null)
+                return null;
+
+            if (chatId is { IsPlaceChat: true, IsPlaceRootChat: false }) {
+                var place = await Places.Get(session, chatId.PlaceId, cancellationToken).ConfigureAwait(false);
+                if (place == null)
+                    return null;
+            }
+        }
 
         var rules = await GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanRead())

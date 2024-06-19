@@ -1,10 +1,35 @@
+@using ActualChat.Kvas
 @using ActualChat.Hosting
+@inherits ComputedStateComponent<AppSettings.Model>
+@{
+    var m = State.Value;
+    var status = m.IsAnalyticsEnabled
+        ? "Gathering statistics"
+        : "Turned off";
+}
+
 @if (NativeAppSettings != null) {
     <NativeAppSettingsView NativeAppSettings="@NativeAppSettings"></NativeAppSettingsView>
 }
 @if (HostInfo.HostKind != HostKind.MauiApp) {
     <SettingsBlazorModeToggle/>
 }
+<TileTopic Topic="Data Usage Consent"/>
+<Tile>
+    <TileItem Click="@OnAnalyticsEnabledClick">
+        <Icon><i class="icon-radio-button-on-fill text-2xl"></i></Icon>
+        <Content>Enhance Actual Chat with Data</Content>
+        <Caption>@status</Caption>
+        <Right>
+            <Toggle IsChecked="@m.IsAnalyticsEnabled"
+            />
+        </Right>
+    </TileItem>
+    <p class="px-3">
+        This setting allows us to use and process your information to enhance our services.
+    </p>
+</Tile>
+
 <TileTopic Topic="Walk-through"/>
 <Button
     Class="add-avatar-btn"
@@ -13,19 +38,47 @@
     <Title>Restart walk-through</Title>
 </Button>
 
+
 @code {
     private INativeAppSettings? NativeAppSettings { get; set; }
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
+    [Inject] private IAnalyticsUI AnalyticsUI { get; init; } = null!;
     private HostInfo HostInfo => Hub.HostInfo();
     private BubbleUI BubbleUI => Hub.BubbleUI;
     private ToastUI ToastUI => Hub.ToastUI;
 
-    protected override void OnInitialized()
-        => NativeAppSettings = Hub.GetService<INativeAppSettings>();
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        NativeAppSettings = Hub.GetService<INativeAppSettings>();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new(){ InitialValue = Model.None };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var settings = await AccountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
+        return new (settings.IsAnalyticsEnabled);
+    }
 
     private async Task OnRestartWalkThrough() {
         await BubbleUI.ResetSettings().ConfigureAwait(true);
         ToastUI.Show("Walk-through tips are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
+    }
+
+    private async Task OnAnalyticsEnabledClick() {
+        var isAnalyticsEnabled = !State.Value.IsAnalyticsEnabled;
+        var settings = await AccountSettings.GetUserAppSettings(CancellationToken.None);
+        settings = settings with { IsAnalyticsEnabled = isAnalyticsEnabled };
+        await AccountSettings.SetUserAppSettings(settings, CancellationToken.None);
+        await AnalyticsUI.UpdateAnalyticsState(isAnalyticsEnabled, CancellationToken.None);
+    }
+
+    // Nested types
+
+    public record Model(bool IsAnalyticsEnabled) {
+        public static readonly Model None = new(false);
     }
 }

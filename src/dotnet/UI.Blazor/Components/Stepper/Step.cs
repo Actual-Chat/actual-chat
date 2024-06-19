@@ -4,6 +4,8 @@ public abstract class Step : ComponentBase
 {
     public virtual bool CanSkip => false;
     public virtual bool IsCompleted => false;
+    public virtual string SkipTitle => "Skip";
+    public virtual string NextTitle => "Next";
     public Step? CurrentStep => Stepper.CurrentStep;
 
     [CascadingParameter] public Stepper Stepper { get; set; } = null!;

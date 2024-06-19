@@ -151,7 +151,8 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
                 => p.Keyword(x => x.Name(e => e.Id))
                     .Text(x => x.Name(e => e.FullName))
                     .Text(x => x.Name(e => e.FirstName))
-                    .Text(x => x.Name(e => e.SecondName))))
+                    .Text(x => x.Name(e => e.SecondName))
+                    .Text(x => x.Name(o => o.PlaceIds))))
             .Settings(s => s.RefreshInterval(Settings.RefreshInterval));
 
     private ICreateIndexRequest ConfigureChatContactIndex(CreateIndexDescriptor index)

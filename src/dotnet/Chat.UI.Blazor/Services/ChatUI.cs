@@ -54,6 +54,8 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     public Task WhenLoaded => _selectedChatId.WhenRead;
     public Task WhenActivePlaceRestored => _whenActivePlaceRestored.Task;
 
+    public static event Action<(ChatId, long)> OnReadPositionUpdated = _ => { };
+
     public ChatUI(ChatUIHub hub) : base(hub)
     {
         NavbarUI = Hub.Services.GetRequiredService<NavbarUI>();
@@ -355,14 +357,25 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         try {
             var result = new SyncedStateLease<ReadPosition>(lease);
             await result.WhenFirstTimeRead.WaitAsync(cancellationToken).ConfigureAwait(false);
+            InvokeReadPositionUpdated(result.State);
+            result.State.Updated += (s, k) => {
+                if (k == StateEventKind.Updated)
+                    InvokeReadPositionUpdated(s);
+            };
             return result;
         }
         catch {
             lease.Dispose();
             throw;
         }
-    }
 
+        static void InvokeReadPositionUpdated(IState<ReadPosition> state)
+        {
+            var chatId = state.Value.ChatId;
+            var entryLid = state.Value.EntryLid;
+            OnReadPositionUpdated.Invoke((chatId, entryLid));
+        }
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -635,7 +648,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         modal.Close();
         await onBeforeExecuteCommand().ConfigureAwait(true);
         var command = isDelete
-            ? (ICommand)new Places_Delete(Session, placeId)
+            ? (ICommand)new Places_Change(Session, placeId, null, Change.Remove<PlaceDiff>())
             : new Places_Leave(Session, placeId);
         var result = await UICommander.Run(command).ConfigureAwait(true);
         if (result.HasError)

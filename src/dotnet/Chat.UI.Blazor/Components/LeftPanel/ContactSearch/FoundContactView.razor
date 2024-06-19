@@ -1,6 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using SearchUI = ActualChat.Chat.UI.Blazor.Services.SearchUI
-@inherits ComputedStateComponent<ChatsTabItem.Model>
+@inherits ComputedStateComponent<FoundContactView.Model>
 @{
     var m = State.Value;
     if (m == Model.None)
@@ -11,7 +11,7 @@
     var chatInfo = chatState.Info;
     var lastTextEntry = chatInfo.LastTextEntry;
 }
-
+@* TODO: merge with ChatListItem or at least refactor and extract common parts *@
 @if (m == Model.Loading) {
     <ChatListItemSkeleton />
 } else {
@@ -51,20 +51,15 @@
                 HasMentions="chatState.Info.HasUnreadMentions"/>
         </div>
     </div>
-    @if (m.IsLastItemInBlock) {
-        <Divider Class="mx-1 my-1.5"/>
-    }
 }
 
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ChatUI ChatUI => Hub.ChatUI;
-    private ChatListUI ChatListUI => Hub.ChatListUI;
     private SearchUI SearchUI => Hub.SearchUI;
     private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
 
-    [Parameter, EditorRequired] public ChatListKind ListKind { get; set; } = ChatListKind.All;
-    [Parameter, EditorRequired] public int Index { get; set; }
+    [Parameter, EditorRequired] public FoundContact Item { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -77,31 +72,14 @@
     {
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.
-        var listKind = ListKind;
-        var index = Index;
-
-        var (indexIsValid, chatId) = await ChatListUI.GetItem(listKind, index).ConfigureAwait(false);
-        if (chatId.IsNone)
-            return indexIsValid
-                ? Model.Loading
-                : Model.None;
+        var chatId = Item.SearchResult.ContactId.ChatId;
 
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
         if (chatState == null)
             return Model.None;
 
-        var isLastItemInBlock = false;
-        if (chatState.Contact.IsPinned && listKind == ChatListKind.All) {
-            var (_, nextChatId) = await ChatListUI.GetItem(listKind, index + 1).ConfigureAwait(false);
-            var nextChatInfo = nextChatId.IsNone ? null
-                : await ChatUI.Get(nextChatId, cancellationToken).ConfigureAwait(false);
-            if (nextChatInfo != null)
-                isLastItemInBlock = !nextChatInfo.Contact.IsPinned;
-        }
-
         return new() {
-            ChatState = chatState,
-            IsLastItemInBlock = isLastItemInBlock,
+            ChatState = chatState
         };
     }
 
@@ -112,6 +90,5 @@
         public static readonly Model None = new() { ChatState = ChatState.None };
 
         public ChatState ChatState { get; init; } = ChatState.None;
-        public bool IsLastItemInBlock { get; init; }
     }
 }

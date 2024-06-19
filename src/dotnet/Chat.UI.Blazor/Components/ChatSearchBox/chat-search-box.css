@@ -1,24 +1,78 @@
-.chat-search-box {
-    @apply w-full;
+.box-wrapper {
+    @apply relative z-10;
+    @apply flex-x items-center justify-end;
+    @apply w-full h-12;
 }
+
+.chat-search-box {
+    @apply hidden;
+    @apply w-full;
+    @apply duration-200 delay-200;
+    @apply opacity-0;
+    @apply rounded-full;
+    @apply overflow-hidden;
+    transform: translateX(-100%);
+    transition-behavior: allow-discrete;
+    transition-property: display, opacity, transform, backdrop-filter;
+}
+.chat-search-box.show-box {
+    @apply block;
+    @apply opacity-100;
+    transform: translateX(0);
+    backdrop-filter: blur(4px);
+    @starting-style {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+}
+.search-box-btn.btn-round {
+    @apply hidden absolute;
+    @apply bg-place-header-search;
+    @apply text-place-header-text;
+    @apply duration-200 delay-200;
+    @apply opacity-0;
+    transition-behavior: allow-discrete;
+    transition-property: display, opacity;
+}
+.search-box-btn.btn-round.hide-box {
+    @apply flex;
+    @apply opacity-100;
+    @starting-style {
+        opacity: 0;
+    }
+}
+
 .chat-search-box input {
-    @apply h-10 rounded-full pl-10 pr-10 text-left bg-04;
+    @apply h-10;
+    @apply px-10;
+    @apply rounded-full;
+    @apply bg-04;
+    @apply text-left;
 }
 .chat-search-box input::placeholder {
     @apply text-left;
 }
 .chat-search-box .search-button {
-    @apply w-10 h-10 absolute left-0 self-center;
+    @apply absolute left-0 self-center;
+    @apply w-10 h-10;
 }
 .chat-search-box .cancel-button {
-    @apply w-10 h-10 absolute right-0 self-center;
+    @apply absolute right-0 self-center;
+    @apply w-10 h-10;
 }
 .chat-search-box .btn.btn-round .btn-content {
-    @apply bg-transparent text-03;
+    @apply bg-transparent;
+    @apply text-03;
 }
 .chat-search-box label {
-    @apply relative flex-x;
+    @apply relative;
+    @apply flex-x;
 }
 .chat-search-box-spinner {
-    @apply absolute right-0 mr-2 self-center w-5 h-5 min-w-5 min-h-5 max-w-5 max-h-5 border-2 border-text-03 border-dashed rounded-full animate-spin;
+    @apply absolute right-0;
+    @apply self-center;
+    @apply w-5 h-5 min-w-5 min-h-5 max-w-5 max-h-5;
+    @apply mr-2;
+    @apply border-2 border-text-03 border-dashed rounded-full;
+    @apply animate-spin;
 }

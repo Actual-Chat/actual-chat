@@ -1,0 +1,71 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Kvas
+@inherits Step;
+
+@if (CurrentStep != this) {
+    return;
+}
+
+<div>
+    @if (Stepper.CurrentStepIndex == 0) {
+        <p class="text-title-1 text-center">Welcome to Actual Chat!</p>
+    }
+    <p class="text-headline-1 mt-6">
+        Would you like to help us improve Actual Chat?
+    </p>
+    <p class="text-headline-1 mt-2">
+    </p>
+    <div class="p-4 rounded-2xl bg-after-darker">
+        <p class="text-headline-1">
+            We use Firebase Analytics to monitor how visitors interact with our app and to record any app crashes that may occur.
+        </p>
+        <p class="text-headline-1 mt-2">
+            Our goal is to provide a seamless user experience, and your participation can greatly assist us.
+        </p>
+        <p class="text-headline-1 mt-2">
+            Please give your consent to use and process your information to enhance our services.
+        </p>
+    </div>
+
+</div>
+
+@code {
+
+    [Inject] private UIHub Hub { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+    [Inject] private IAnalyticsUI AnalyticsUI { get; init; } = null!;
+    private AccountSettings AccountSettings => Hub.AccountSettings();
+
+    [Parameter, EditorRequired] public bool IsAnalyticsConfigured { get; set; }
+
+    public override bool CanSkip => true;
+
+    public override string SkipTitle => "Decline";
+    public override string NextTitle => "Enable Analytics";
+
+    public override bool IsCompleted
+        => OnboardingUI.UserSettings.Value.IsAnalyticsStepCompleted || IsAnalyticsConfigured;
+
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsAnalyticsStepCompleted = true });
+
+    protected override Task<bool> Validate()
+        => Task.FromResult(true);
+
+    protected override async Task<bool> Save() {
+        await UpdateAnalyticsState(true);
+        return true;
+    }
+
+    protected override async ValueTask OnSkip() {
+        await UpdateAnalyticsState(false);
+    }
+
+    private async Task UpdateAnalyticsState(bool isAnalyticsEnabled) {
+        var settings = await AccountSettings.GetUserAppSettings(CancellationToken.None);
+        settings = settings with { IsAnalyticsEnabled = isAnalyticsEnabled };
+        await AccountSettings.SetUserAppSettings(settings, CancellationToken.None);
+        await AnalyticsUI.UpdateAnalyticsState(isAnalyticsEnabled, CancellationToken.None);
+    }
+}

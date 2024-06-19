@@ -18,8 +18,7 @@ public static class OpenSearchResponseExt
                 .EnsureSuffix("."));
 
         log ??= StaticLog.For(typeof(OpenSearchResponseExt));
-        if (response is BulkResponse bulkResponse) {
-            var failureCount = bulkResponse.ItemsWithErrors.Count();
+        if (response is BulkResponse { IsValid: false } bulkResponse && bulkResponse.ItemsWithErrors.Count() is var failureCount and > 0) {
             var firstFailed = bulkResponse.ItemsWithErrors.FirstOrDefault();
             var firstFailedReason = firstFailed?.Error?.Reason ?? "N/A";
             log.LogError("OpenSearch Bulk request failed: {ItemsFailed}, {FailureReason}", failureCount, firstFailedReason);

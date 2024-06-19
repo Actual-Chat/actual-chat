@@ -1,0 +1,27 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var btnText = _isExpanded ? "Show less" : "Show more";
+}
+
+<div class="search-result-group-header">
+    <div class="c-title">
+        @Title
+    </div>
+    <Button Class="show-more-btn btn-transparent unhovered btn-sm" Click="@OnClick">
+        @btnText
+    </Button>
+</div>
+
+@code {
+    private bool _isExpanded;
+
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public EventCallback Expand { get; set; }
+    [Parameter] public EventCallback Collapse { get; set; }
+
+    private Task OnClick(MouseEventArgs e) {
+        var result = _isExpanded ? Collapse.InvokeAsync() : Expand.InvokeAsync();
+        _isExpanded = !_isExpanded;
+        return result;
+    }
+}

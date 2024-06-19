@@ -1,0 +1,51 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<IReadOnlyList<FoundContact>>
+@{
+    var foundContacts = State.ValueOrDefault;
+    if (foundContacts == null) {
+        // TODO: loading view
+        return;
+    }
+}
+
+<div class="chat-list own-chats-list">
+    @foreach (var foundContact in foundContacts) {
+        @if (foundContact.IsFirstInGroup) {
+            <SearchResultGroupHeader
+                Title="@ToDisplayText(foundContact.Scope)"
+                Expand="@(() => OnExpand(foundContact.Scope))"
+                Collapse="@(() => OnCollapse(foundContact.Scope))"/>
+        }
+        <FoundContactView @key="@foundContact.SearchResult.ContactId" Item="@foundContact"/>
+        @if (foundContact.IsLastInGroup) {
+            <Divider Class="mx-1 my-1.5"/>
+        }
+    }
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private SearchUI SearchUI => Hub.SearchUI;
+
+    protected override async Task<IReadOnlyList<FoundContact>> ComputeState(CancellationToken cancellationToken) {
+        var isOn = await SearchUI.IsSearchModeOn(cancellationToken);
+        if (!isOn)
+            return [];
+
+        return await SearchUI.GetContactSearchResults();
+    }
+
+    private Task OnExpand(ContactSearchScope scope)
+        => SearchUI.ShowMore(scope);
+
+    private Task OnCollapse(ContactSearchScope scope)
+        => SearchUI.ShowLess(scope);
+
+    private string ToDisplayText(ContactSearchScope scope)
+        => scope switch {
+            ContactSearchScope.People => "People",
+            ContactSearchScope.PublicChats => "Public chats",
+            ContactSearchScope.PrivateChats => "Private chats",
+            _ => scope.ToString(),
+        };
+}

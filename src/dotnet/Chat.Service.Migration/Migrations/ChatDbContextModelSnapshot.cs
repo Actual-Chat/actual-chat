@@ -419,6 +419,52 @@ namespace ActualChat.Chat.Migrations
                     b.ToTable("mentions");
                 });
 
+            modelBuilder.Entity("ActualChat.Chat.Db.DbPlace", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BackgroundMediaId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("background_media_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_public");
+
+                    b.Property<string>("MediaId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("media_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_places");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_places_created_at");
+
+                    b.HasIndex("Version", "Id")
+                        .HasDatabaseName("ix_places_version_id");
+
+                    b.ToTable("places");
+                });
+
             modelBuilder.Entity("ActualChat.Chat.Db.DbReaction", b =>
                 {
                     b.Property<string>("Id")

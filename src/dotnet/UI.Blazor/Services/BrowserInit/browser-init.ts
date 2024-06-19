@@ -2,9 +2,13 @@ import { Connectivity } from 'connectivity';
 import { EventHandlerSet } from "event-handling";
 import { delayAsync, PromiseSource } from 'promises';
 import { AppKind, BrowserInfo } from "../BrowserInfo/browser-info";
-import { Log } from "logging";
+import { Log, LogLevel } from 'logging';
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { getAnalytics, setAnalyticsCollectionEnabled, Analytics } from 'firebase/analytics';
+
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('BrowserInit');
+const IsAnalyticsEnabledSetting = 'isAnalyticsEnabled';
 
 const window = globalThis as undefined as Window;
 const sessionStorage = window.sessionStorage;
@@ -14,6 +18,9 @@ export class BrowserInit {
     public static baseUri = "";
     public static sessionHash = "";
     public static windowId = "";
+    public static firebaseApp?: FirebaseApp;
+    public static firebaseAnalytics?: Analytics;
+    public static firebasePublicKey?: string;
     public static readonly isMauiApp = document.body.classList.contains('app-maui');
     public static readonly whenInitialized = new PromiseSource<void>();
     public static readonly whenReloading = new PromiseSource<void>();
@@ -26,7 +33,7 @@ export class BrowserInit {
         apiVersion: string,
         baseUri: string,
         sessionHash: string,
-        browserInfoBackendRef: DotNet.DotNetObject,
+        browserInfoBackendRef: DotNet.DotNetObject
     ): Promise<void> {
         try {
             infoLog?.log(`-> init, apiVersion: ${apiVersion}, baseUri: ${baseUri}, sessionHash: ${sessionHash}`);
@@ -35,6 +42,8 @@ export class BrowserInit {
             this.sessionHash = sessionHash;
             this.initWindowId();
             this.initAndroid();
+            if (appKind !== 'MauiApp')
+                void this.initFirebase();
             // this.preventSuspend();
             await BrowserInfo.init(browserInfoBackendRef, appKind);
         }
@@ -189,6 +198,45 @@ export class BrowserInit {
         this.removeWebSplash();
     }
 
+    /** Called from Blazor */
+    public static async initFirebase(isAnalyticsEnabled: boolean | null = null): Promise<FirebaseApp | null> {
+        if (isAnalyticsEnabled == null) {
+            isAnalyticsEnabled = readSettingToggle(IsAnalyticsEnabledSetting);
+        }
+        else {
+            persistSettingToggle(IsAnalyticsEnabledSetting, isAnalyticsEnabled);
+        }
+        if (BrowserInit.firebaseAnalytics && BrowserInit.firebasePublicKey && isAnalyticsEnabled !== null) {
+            const analytics = BrowserInit.firebaseAnalytics;
+            setAnalyticsCollectionEnabled(analytics, isAnalyticsEnabled);
+            return analytics.app;
+        }
+
+        try {
+            const response = await fetch('/dist/config/firebase.config.js');
+            if (response.ok || response.status === 304) {
+                const { config, publicKey } = await response.json();
+                const app = BrowserInit.firebaseApp = initializeApp(config, { automaticDataCollectionEnabled: isAnalyticsEnabled ?? false });
+                BrowserInit.firebaseAnalytics = getAnalytics(app);
+                BrowserInit.firebasePublicKey = publicKey;
+                return app;
+            }
+            else {
+                warnLog?.log(`initFirebase: unable to initialize firebase, status: ${response.status}`);
+            }
+        }
+        catch (error) {
+            errorLog?.log(`initFirebase: failed to initialize firebase app, error:`, error);
+        }
+        return null;
+    }
+
+    /** Called from Blazor */
+    public static isFirebaseConfigured(): boolean {
+        const isAnalyticsEnabled = readSettingToggle(IsAnalyticsEnabledSetting);
+        return isAnalyticsEnabled !== null;
+    }
+
     // Private methods
 
     private static initWindowId(): void {
@@ -302,6 +350,27 @@ export class BrowserInit {
             appConnectionStateDiv.style.display = 'none';
         }
     }
+}
+
+function persistSettingToggle(settingKey: string, value: boolean): boolean {
+    const storage = globalThis?.sessionStorage;
+    if (!storage)
+        return false;
+
+    storage.setItem(settingKey, JSON.stringify(value));
+    return true;
+}
+
+function readSettingToggle(settingKey: string): boolean | null {
+    const storage = globalThis?.sessionStorage;
+    if (!storage)
+        return null;
+
+    const stringValue = storage.getItem(settingKey);
+    if (stringValue == null)
+        return null
+
+    return JSON.parse(stringValue);
 }
 
 // This call must be done as soon as possible

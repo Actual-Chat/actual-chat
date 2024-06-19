@@ -1,0 +1,11 @@
+.search-result-group-header {
+    @apply flex-x items-center;
+    @apply p-0;
+}
+.search-result-group-header .c-title {
+    @apply flex-1 flex items-center;
+    @apply text-01 text-headline-1;
+}
+.search-result-group-header .show-more-btn.btn {
+    @apply px-0;
+}

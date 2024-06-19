@@ -40,6 +40,8 @@
     public bool CanMoveForward => CurrentStepIndex is var i and >= 0 && i < LastStepIndex;
     public bool CanMoveBack => CurrentStepIndex > 0;
     public bool CanSkip => _currentStep is { CanSkip: true };
+    public string SkipTitle => _currentStep?.SkipTitle ?? "Skip";
+    public string NextTitle => _currentStep?.NextTitle ?? "Next";
     public Step? CurrentStep => _currentStep;
 
     public void AddStep(Step step) {

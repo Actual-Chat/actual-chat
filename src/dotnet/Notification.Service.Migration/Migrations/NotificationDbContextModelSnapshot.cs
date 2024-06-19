@@ -38,6 +38,11 @@ namespace ActualChat.Notification.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("SessionHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("session_hash");
+
                     b.Property<int>("Type")
                         .HasColumnType("integer")
                         .HasColumnName("type");

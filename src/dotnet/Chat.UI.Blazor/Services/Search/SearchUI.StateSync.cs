@@ -24,14 +24,14 @@ public partial class SearchUI
         var cCriteria = await Computed.Capture(() => GetCriteria(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var criteriaChanges = cCriteria.Changes(cancellationToken)
-            .Where(x => !x.HasError && !x.Value.Criteria.IsNullOrEmpty())
+            .Where(x => !x.HasError && !x.Value.Text.IsNullOrEmpty())
             .Select(x => x.Value);
         DelegatingWorker? activeSearchJob = null;
         try {
-            await foreach (var (criteria, placeId) in criteriaChanges.ConfigureAwait(false)) {
+            await foreach (var criteria in criteriaChanges.ConfigureAwait(false)) {
                 if (activeSearchJob != null)
                     await activeSearchJob.DisposeSilentlyAsync().ConfigureAwait(false);
-                activeSearchJob = DelegatingWorker.New(ct => UpdateSearchResults(criteria, placeId, ct),
+                activeSearchJob = DelegatingWorker.New(ct => UpdateSearchResults(criteria, ct),
                     cancellationToken.CreateLinkedTokenSource(SearchTimeout));
             }
         }
@@ -40,33 +40,48 @@ public partial class SearchUI
         }
     }
 
-    private async Task UpdateSearchResults(string criteria, PlaceId placeId, CancellationToken cancellationToken)
+    private async Task UpdateSearchResults(
+        Criteria criteria,
+        CancellationToken cancellationToken)
     {
-        var results = await FindContacts(criteria, placeId, cancellationToken).ConfigureAwait(false);
-        _contactSearchResults = new Cached(results);
+        var searchResultMap = await FindContacts(criteria, cancellationToken).ConfigureAwait(false);
+        var foundContacts = new List<FoundContact>(searchResultMap.Sum(x => x.Value.Count));
+        foreach (var scope in Scopes) {
+            if (!searchResultMap.TryGetValue(scope, out var searchResults) && searchResults.Count > 0)
+                continue;
+
+            for (int i = 0; i < searchResults.Count; i++) {
+                var searchResult = searchResults[i];
+                foundContacts.Add(new FoundContact(searchResult, scope, i == 0, i == searchResults.Count - 1));
+            }
+        }
+        _cached = new Cached(criteria, foundContacts);
         using (Invalidation.Begin()) {
             _ = GetContactSearchResults();
             _ = PseudoGetSearchMatch();
         }
     }
 
-    private async Task<IReadOnlyList<ContactSearchResult>> FindContacts(
-        string criteria,
-        PlaceId? placeId,
+    private async Task<Dictionary<ContactSearchScope, ApiArray<ContactSearchResult>>> FindContacts(
+        Criteria criteria,
         CancellationToken cancellationToken)
     {
-        if (criteria.IsNullOrEmpty())
+        if (criteria == Criteria.None)
             return [];
 
-        var session = Hub.Session();
-        if (placeId == PlaceId.None)
-            placeId = null; // search in all places
-        var searchResults = await new[] {
-                Search.FindUserContacts(session, placeId, criteria, cancellationToken),
-                Search.FindChatContacts(session, placeId, criteria, false, cancellationToken),
-                Search.FindChatContacts(session, placeId, criteria, true, cancellationToken),
-            }.CollectResults()
-            .ConfigureAwait(false);
-        return searchResults.Where(x => x.HasValue).SelectMany(x => x.Value).ToList();
+        var session = Session;
+        var allSearchResults = await Scopes.Select(Find).CollectResults().ConfigureAwait(false);
+        var resultByScope = new Dictionary<ContactSearchScope, ApiArray<ContactSearchResult>>();
+        for (var i = 0; i < Scopes.Length; i++) {
+            var scope = Scopes[i];
+            var (searchResults, error) = allSearchResults[i];
+            if (error is null)
+                resultByScope[scope] = searchResults.Hits;
+        }
+        return resultByScope;
+
+        Task<ContactSearchResultPage> Find(ContactSearchScope scope)
+            // TODO: reuse cached data for scope
+            => Search.FindContacts(session, criteria.ToQuery(scope), cancellationToken);
     }
 }

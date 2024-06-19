@@ -3,7 +3,6 @@ using Android.App;
 using Android.Content.PM;
 using Android.OS;
 using Android.Content;
-using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Android.Views;
 using AndroidX.Activity.Result;
@@ -50,7 +49,7 @@ public partial class MainActivity : MauiAppCompatActivity
     public static MainActivity Current => _current
         ?? throw StandardError.Internal($"{nameof(MainActivity)} isn't created yet.");
     public static readonly TimeSpan MaxPermissionRequestDuration = TimeSpan.FromMinutes(1);
-    private static readonly Tracer _tracer = Tracer.Default[nameof(MainActivity)];
+    private static readonly Tracer Tracer = Tracer.Default[nameof(MainActivity)];
 
     private ActivityResultLauncher _permissionRequestLauncher = null!;
     private TaskCompletionSource? _permissionRequestCompletedSource;
@@ -59,7 +58,7 @@ public partial class MainActivity : MauiAppCompatActivity
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
-        using var _1 = _tracer.Region();
+        using var _1 = Tracer.Region();
 
         var isLoaded = false;
         Interlocked.Exchange(ref _current, this);
@@ -76,12 +75,12 @@ public partial class MainActivity : MauiAppCompatActivity
             // TODO: to think how we can gracefully handle this partial recreation.
         }
         Log = AppServices.LogFor(GetType());
-        _tracer.Point($"OnCreate, is loaded: {isLoaded}");
 
-        Log.LogInformation("OnCreate. Intent: '{Intent}'", Formatters.DumpIntent(Intent));
+        Log.LogInformation("OnCreate. IsLoaded={IsLoaded}", isLoaded);
 
-        base.OnCreate(Bundle.Empty);
-        _tracer.Point("OnCreate, base.OnCreate completed");
+        // ReSharper disable once ExplicitCallerInfoArgument
+        using(Tracer.Region("Calling base.OnCreate"))
+            base.OnCreate(Bundle.Empty);
 
         // base.OnCreate call hides native splash screen. Set NavigationBar color the same as web splash screen
         // background color to make it looks like web splash screen covers entire screen.
@@ -100,8 +99,6 @@ public partial class MainActivity : MauiAppCompatActivity
                 _permissionRequestCompletedSource?.TrySetResult();
                 _permissionRequestCompletedSource = null;
             }));
-        CreateNotificationChannel();
-        TryHandleNotificationTap(Intent);
 
         // Keep the splash screen on-screen for longer periods
         // https://developer.android.com/develop/ui/views/launch/splash-screen#suspend-drawing
@@ -109,27 +106,10 @@ public partial class MainActivity : MauiAppCompatActivity
         contentView!.ViewTreeObserver!.AddOnPreDrawListener(new SplashDelayer(contentView));
     }
 
-// NOTE(AY): Doesn't work, not sure why
-#if false
-    public override void OnCreate(Bundle? savedInstanceState, PersistableBundle? persistentState)
-    {
-        base.OnCreate(savedInstanceState, persistentState);
-        SplashScreen.SetOnExitAnimationListener(new SplashScreenExitAnimationListener());
-    }
-#endif
-
     protected override void OnDestroy()
     {
         base.OnDestroy();
         Interlocked.CompareExchange(ref _current, null, this);
-    }
-
-    protected override void OnNewIntent(Intent? intent)
-    {
-        Log.LogInformation("OnNewIntent. In-Intent: '{InIntent}', Intent: '{Intent}'",
-            Formatters.DumpIntent(intent), Formatters.DumpIntent(Intent));
-        base.OnNewIntent(intent);
-        TryHandleNotificationTap(intent);
     }
 
     public override void OnTrimMemory(TrimMemory level)
@@ -137,14 +117,6 @@ public partial class MainActivity : MauiAppCompatActivity
         Log.LogInformation("OnTrimMemory, Level: {Level}", level);
         DumpMemoryInfo();
         base.OnTrimMemory(level);
-    }
-
-    public Task RequestPermission(string permission, CancellationToken cancellationToken = default)
-    {
-        var whenCompletedSource = TaskCompletionSourceExt.New();
-        _ = Task.Delay(MaxPermissionRequestDuration, cancellationToken)
-            .ContinueWith(_ => whenCompletedSource.TrySetResult(), TaskScheduler.Default);
-        return RequestPermission(permission, whenCompletedSource);
     }
 
     public Task RequestPermission(string permission, TaskCompletionSource whenCompletedSource)
@@ -160,58 +132,6 @@ public partial class MainActivity : MauiAppCompatActivity
         base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
         _permissionRequestCompletedSource?.TrySetResult();
         _permissionRequestCompletedSource = null;
-    }
-
-    private void CreateNotificationChannel()
-    {
-        if (OperatingSystem.IsOSPlatformVersionAtLeast("android", 26)) {
-            var notificationManager = (NotificationManager)GetSystemService(NotificationService)!;
-            // After you create a notification channel,
-            // you cannot change the notification behaviors—the user has complete control at that point.
-            // Though you can still change a channel's name and description.
-            // https://developer.android.com/develop/ui/views/notifications/channels
-            var channel = new NotificationChannel(Constants.Notification.ChannelIds.Default, "Default", NotificationImportance.High);
-            notificationManager.CreateNotificationChannel(channel);
-        }
-    }
-
-    private void TryHandleNotificationTap(Intent? intent)
-    {
-        var extras = intent?.Extras;
-        if (extras == null)
-            return;
-
-        var keySet = extras.KeySet()!.ToArray();
-        if (!keySet.Contains(Constants.Notification.MessageDataKeys.NotificationId, StringComparer.Ordinal))
-            return;
-
-        Log.LogInformation("-> NotificationTap, intent with notification id is detected");
-        // a notification action, lets collect message data
-        var data = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach(var key in keySet) {
-            if (!Constants.Notification.MessageDataKeys.IsValidKey(key))
-                continue;
-            if (data.ContainsKey(key))
-                continue;
-
-            var extraValue = extras.Get(key);
-            if (extraValue != null)
-                data.Add(key, extraValue.ToString());
-        }
-
-        if (Log.IsEnabled(LogLevel.Information)) {
-            var dataAsText = data.Select(c => $"'{c.Key}':'{c.Value}'").ToCommaPhrase();
-            Log.LogInformation("NotificationTap, Data: {Data}", dataAsText);
-        }
-
-        var url = data.GetValueOrDefault(Constants.Notification.MessageDataKeys.Link);
-        if (url.IsNullOrEmpty())
-            return;
-
-        var autoNavigationTasks = AppServices.GetRequiredService<AutoNavigationTasks>();
-        autoNavigationTasks.Add(DispatchToBlazor(
-            c => c.GetRequiredService<NotificationUI>().HandleNotificationNavigation(url),
-            $"NotificationUI.HandleNotificationNavigation(\"{url}\")"));
     }
 
     private void DumpMemoryInfo()

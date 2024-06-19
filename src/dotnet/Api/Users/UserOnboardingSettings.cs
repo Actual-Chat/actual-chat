@@ -22,6 +22,7 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
     [DataMember, MemoryPackOrder(7)] public bool IsPermissionsStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(8)] public bool IsVerifyEmailStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(9)] public bool IsTimeZoneStepCompleted { get; init; }
+    [DataMember, MemoryPackOrder(10)] public bool IsAnalyticsStepCompleted { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool HasUncompletedSteps
@@ -31,5 +32,6 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
             IsCreateChatsStepCompleted: true,
             IsVerifyEmailStepCompleted: true,
             IsTimeZoneStepCompleted: true,
+            IsAnalyticsStepCompleted: true,
         };
 }
