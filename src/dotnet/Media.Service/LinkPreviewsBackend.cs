@@ -67,7 +67,7 @@ public class LinkPreviewsBackend(MediaSettings settings, IChatsBackend chatsBack
     // [EventHandler]
     public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        var (entry, _, changeKind) = eventCommand;
+        var (entry, _, changeKind, _) = eventCommand;
         if (Invalidation.IsActive)
             return Task.CompletedTask; // It just spawns other commands, so nothing to do here
 

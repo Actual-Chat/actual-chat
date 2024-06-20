@@ -357,7 +357,7 @@ export class VirtualList {
                 for (const itemRef of itemRefsWithWrongSize) {
                     const key = getItemKey(itemRef);
                     const item = this._items.get(key);
-                    if (item.size < 0) {
+                    if (item && item.size < 0) {
                         const itemRect = itemRef.getBoundingClientRect();
                         item.size = itemRect.height;
                     }
@@ -1083,7 +1083,7 @@ export class VirtualList {
         let itemsWereMeasured = false;
         for (const key of unmeasuredItems) {
             const item = this._items.get(key);
-            if (item.size < 0) {
+            if (item && item.size < 0) {
                 const itemRef = this.getItemRef(key);
                 const itemRect = itemRef.getBoundingClientRect();
                 item.size = itemRect.height;

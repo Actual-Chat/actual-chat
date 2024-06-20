@@ -872,6 +872,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         change.RequireValid();
         ChatEntry entry;
+        ChatEntry? oldEntry;
         var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using (var __ = dbContext.ConfigureAwait(false)) {
             var dbEntry = chatEntryId.IsNone
@@ -880,7 +881,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     // ReSharper disable once AccessToModifiedClosure
                     .FirstOrDefaultAsync(c => c.Id == chatEntryId, cancellationToken)
                     .ConfigureAwait(false);
-            var oldEntry = dbEntry?.ToModel();
+            oldEntry = dbEntry?.ToModel();
 
             if (chatId.IsPeerChat(out var peerChatId))
                 _ = await EnsureExists(peerChatId, cancellationToken).ConfigureAwait(false);
@@ -953,7 +954,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
 
         // Raise events
-        context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind));
+        context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind, oldEntry));
         return entry;
 
         ChatEntry ApplyDiff(ChatEntry originalEntry, ChatEntryDiff? diff, bool isUpdate)
