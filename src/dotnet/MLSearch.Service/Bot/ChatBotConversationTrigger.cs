@@ -30,7 +30,7 @@ internal class ChatBotConversationTrigger(ICommander commander, IChatsBackend ch
             return;
         }
         */
-        // User is writing of changing something.
+        // User is writing or changing something.
         var e = new MLSearch_TriggerContinueConversationWithBot(eventCommand.Entry.ChatId);
         await commander.Call(e, cancellationToken).ConfigureAwait(false);
     }
