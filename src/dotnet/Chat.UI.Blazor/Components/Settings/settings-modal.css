@@ -51,3 +51,11 @@
 .time-zone-form > section .form-section-validation {
     @apply bg-tile;
 }
+
+.enhance-data.tile .tile-item {
+    @apply h-12;
+}
+.enhance-data.tile .c-description {
+    @apply pl-12 pr-16;
+    @apply text-caption-6;
+}

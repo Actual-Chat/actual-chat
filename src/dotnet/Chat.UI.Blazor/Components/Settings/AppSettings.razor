@@ -15,17 +15,16 @@
     <SettingsBlazorModeToggle/>
 }
 <TileTopic Topic="Data Usage Consent"/>
-<Tile>
+<Tile Class="enhance-data">
     <TileItem Click="@OnAnalyticsEnabledClick">
-        <Icon><i class="icon-radio-button-on-fill text-2xl"></i></Icon>
+        <Icon><i class="icon-info text-2xl"></i></Icon>
         <Content>Enhance Actual Chat with Data</Content>
         <Caption>@status</Caption>
         <Right>
-            <Toggle IsChecked="@m.IsAnalyticsEnabled"
-            />
+            <Toggle IsChecked="@m.IsAnalyticsEnabled"/>
         </Right>
     </TileItem>
-    <p class="px-3">
+    <p class="c-description">
         This setting allows us to use and process your information to enhance our services.
     </p>
 </Tile>
