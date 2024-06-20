@@ -3,8 +3,6 @@
 @inherits ComputedStateComponent<PlaceMenuButton.Model>
 @{
     var m = State.Value;
-    if (!m.IsPlaceMember)
-        return;
     if (m.Place == null)
         return;
 }
@@ -40,12 +38,9 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var placeId = PlaceId;
         var place = await Hub.Places.Get(Hub.Session(), placeId, default).Require().ConfigureAwait(false);
-        var places = await Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
-        var isMember = places.Contains(placeId);
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
         return new() {
             Place = place,
-            IsPlaceMember = isMember,
             MembersCount = allAuthorIds.Count,
         };
     }
@@ -59,7 +54,6 @@
         public static readonly Model Loading = new();
 
         public Place? Place { get; init; }
-        public bool IsPlaceMember { get; init; }
         public int MembersCount { get; init; }
     }
 }
