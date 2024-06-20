@@ -42,17 +42,6 @@ internal class SampleChatBot(ICommander commander, UrlMapper urlMapper, IChatsBa
         var chat = await chats.Get(chatId, cancellationToken).ConfigureAwait(false);
         var textEntryId = new TextEntryId(chatId, 0, AssumeValid.Option);
 
-        // TODO: How to add this link as a preview?
-        /*
-        ActualChat.Media.LinkPreview? linkPreview = null;
-        LinkPreviewMode? linkPreviewMode = LinkPreviewMode.None;
-        if (!foundDocument.Document.Metadata.ChatEntries.IsEmpty){
-            entryId = foundDocument.Document.Metadata.ChatEntries.First().LocalId;
-            linkPreview = await mediaLinkPreviews.GetForEntry(foundDocument.Document.Metadata.ChatId, foundDocument.Document.Metadata.ChatEntries.First().Id, cancellationToken).ConfigureAwait(false);
-            linkPreviewMode = LinkPreviewMode.Full;
-        }
-        */
-
         string? text;
         ChatEntryId? forwardedFrom = null;
         if (!foundDocument.IsNone && !foundDocument.Document.Metadata.ChatEntries.IsEmpty) {
