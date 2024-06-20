@@ -613,7 +613,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (_, author, changeKind) = eventCommand;
+        var (_, author, changeKind, _) = eventCommand;
         if (changeKind == ChangeKind.Remove)
             return;
 
