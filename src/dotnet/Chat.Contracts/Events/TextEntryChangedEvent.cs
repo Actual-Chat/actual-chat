@@ -6,7 +6,8 @@ namespace ActualChat.Chat.Events;
 public partial record TextEntryChangedEvent(
     [property: DataMember, MemoryPackOrder(1)] ChatEntry Entry,
     [property: DataMember, MemoryPackOrder(2)] AuthorFull Author,
-    [property: DataMember, MemoryPackOrder(3)] ChangeKind ChangeKind
+    [property: DataMember, MemoryPackOrder(3)] ChangeKind ChangeKind,
+    [property: DataMember, MemoryPackOrder(4)] ChatEntry? OldEntry
 ) : EventCommand, IHasShardKey<ChatEntryId>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

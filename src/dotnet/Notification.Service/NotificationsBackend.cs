@@ -322,7 +322,7 @@ public class NotificationsBackend(IServiceProvider services)
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (entry, author, changeKind) = eventCommand;
+        var (entry, author, changeKind, oldEntry) = eventCommand;
         if (entry.IsSystemEntry)
             return;
 
@@ -332,6 +332,9 @@ public class NotificationsBackend(IServiceProvider services)
                 return;
             // When transcribed message is being finalized, it's updated to IsStreaming = false.
             // At this moment we can notify chat users.
+            var hasFinalized = oldEntry is { IsStreaming: true } && !entry.IsStreaming;
+            if (!hasFinalized)
+                return;
         }
         else {
             if (changeKind != ChangeKind.Create)
