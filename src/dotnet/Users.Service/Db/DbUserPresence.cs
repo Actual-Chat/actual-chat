@@ -10,7 +10,9 @@ public class DbUserPresence : IRequirementTarget
 
     [Key] public string UserId { get; set; } = "";
 
-    public DateTime OnlineCheckInAt {
+    public bool IsActive { get; set; }
+
+    public DateTime CheckInAt {
         get => _onlineCheckInAt.DefaultKind(DateTimeKind.Utc);
         set => _onlineCheckInAt = value.DefaultKind(DateTimeKind.Utc);
     }

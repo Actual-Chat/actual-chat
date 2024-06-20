@@ -11,6 +11,7 @@ public class AppPresenceReporter : ScopedWorkerBase<ChatUIHub>, IComputeService
 
     private UserActivityUI UserActivityUI => Hub.UserActivityUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private RpcHub RpcHub => Hub.RpcHub();
     private Moment CpuNow => Clocks.CpuClock.Now;
 
@@ -40,12 +41,11 @@ public class AppPresenceReporter : ScopedWorkerBase<ChatUIHub>, IComputeService
     protected virtual async Task<bool> IsActive(CancellationToken cancellationToken)
     {
         var now = CpuNow;
-        var lastCheckInAt = await _lastCheckInAt.Use(cancellationToken).ConfigureAwait(false);
         var activeUntil = await GetActiveUntil(cancellationToken).ConfigureAwait(false);
 
         return activeUntil > now
             ? WithAutoInvalidation(activeUntil, true)
-            : WithAutoInvalidation(lastCheckInAt + Constants.Presence.CheckInPeriod, false);
+            : WithAutoInvalidation(_lastCheckInAt.Value + Constants.Presence.CheckInPeriod, false);
 
         bool WithAutoInvalidation(Moment invalidateAt, bool result) {
             Computed.GetCurrent().Invalidate(invalidateAt - now);
@@ -57,18 +57,13 @@ public class AppPresenceReporter : ScopedWorkerBase<ChatUIHub>, IComputeService
     protected virtual async Task<Moment> GetActiveUntil(CancellationToken cancellationToken)
     {
         var now = CpuNow;
-        if (await ChatAudioUI.IsAudioOn().ConfigureAwait(false))
+        if (ActiveChatsUI.ActiveChats.Value.Any(c => c.IsRecording))
             return WithAutoInvalidation(CpuNow + Constants.Presence.ActivityPeriod);
 
         var activeUntil = await UserActivityUI.ActiveUntil.Use(cancellationToken).ConfigureAwait(false);
-        var audioStoppedAt = await ChatAudioUI.AudioStoppedAt.Use(cancellationToken).ConfigureAwait(false);
-        if (audioStoppedAt != null)
-            activeUntil = Moment.Max(audioStoppedAt.Value + Constants.Presence.ActivityPeriod, activeUntil);
-
-        if (activeUntil > now)
-            return WithAutoInvalidation(activeUntil);
-
-        return activeUntil;
+        return activeUntil > now
+            ? WithAutoInvalidation(activeUntil)
+            : activeUntil;
 
         Moment WithAutoInvalidation(Moment result) {
             Computed.GetCurrent().Invalidate(result - now);
