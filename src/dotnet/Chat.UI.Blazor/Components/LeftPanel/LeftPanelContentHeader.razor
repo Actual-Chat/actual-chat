@@ -10,6 +10,9 @@
 
     RenderFragment RenderChat() =>
         @<div class="left-panel-content-header">
+            @if (m.EnableIncompleteUI) {
+                <LeftChatSearchPanel/>
+            }
             <div class="c-content">
                 <div class="c-title">
                     Chats
@@ -24,10 +27,6 @@
                             ShowClose="true"
                             MaxLength="@Constants.Chat.MaxSearchFilterLength"
                             TextChanged="@_onSearchBoxTextChanged"/>
-                    } else {
-                        <HeaderButton Class="blackout" Click="@OnSearchClick">
-                            <i class="icon-search text-2xl"></i>
-                        </HeaderButton>
                     }
                 </div>
             </div>
