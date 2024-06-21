@@ -10,6 +10,89 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
 {
     private readonly PrincipalId _authorId = new (UserId.New(), AssumeValid.Option);
 
+    [Fact]
+    public async Task ApplyingCreateEventPutsEventIntoInternalBuffer()
+    {
+        var chats = Mock.Of<IChatsBackend>();
+        // Doc loader returns empty list, so event considered as new chat entry
+        var docLoader = new Mock<IChatContentDocumentLoader>();
+        docLoader
+            .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        var docMapper = Mock.Of<IChatContentMapper>();
+        var sink = Mock.Of<ISink<ChatSlice, string>>();
+
+        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, sink);
+
+        var chatId = new ChatId(Generate.Option);
+        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
+        var chatEntry = new ChatEntry(chatEntryId, 0) {
+            Content = "Some fresh message."
+        };
+        await contentIndexer.ApplyAsync(chatEntry, CancellationToken.None);
+
+        Assert.True(contentIndexer.Buffer.Count > 0);
+        Assert.Equal(chatEntryId, contentIndexer.Buffer.Last().Id);
+    }
+
+    [Fact]
+    public async Task ApplyingUpdateEventRightAfterCreateEventUpdatesEntryInBuffer()
+    {
+        var chats = Mock.Of<IChatsBackend>();
+        // Doc loader returns empty list, so event considered as new chat entry
+        var docLoader = new Mock<IChatContentDocumentLoader>();
+        docLoader
+            .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        var docMapper = Mock.Of<IChatContentMapper>();
+        var sink = Mock.Of<ISink<ChatSlice, string>>();
+
+        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, sink);
+
+        var chatId = new ChatId(Generate.Option);
+        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
+        var chatEntry = new ChatEntry(chatEntryId, 0) {
+            Content = "Some fresh message."
+        };
+        await contentIndexer.ApplyAsync(chatEntry, CancellationToken.None);
+        var bufferLength = contentIndexer.Buffer.Count;
+        var modifiedEntry = new ChatEntry(chatEntryId, 1) {
+            Content = "Modified message."
+        };
+        await contentIndexer.ApplyAsync(modifiedEntry, CancellationToken.None);
+
+        Assert.Equal(bufferLength, contentIndexer.Buffer.Count);
+        Assert.Equal(modifiedEntry, contentIndexer.Buffer.First(entry => entry.Id==chatEntryId));
+    }
+
+    [Fact]
+    public async Task ApplyingRemoveEventRightAfterCreateEventUpdatesEntryInBuffer()
+    {
+        var chats = Mock.Of<IChatsBackend>();
+        // Doc loader returns empty list, so event considered as new chat entry
+        var docLoader = new Mock<IChatContentDocumentLoader>();
+        docLoader
+            .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        var docMapper = Mock.Of<IChatContentMapper>();
+        var sink = Mock.Of<ISink<ChatSlice, string>>();
+
+        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, sink);
+
+        var chatId = new ChatId(Generate.Option);
+        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
+        var chatEntry = new ChatEntry(chatEntryId, 0) {
+            Content = "Some fresh message."
+        };
+        await contentIndexer.ApplyAsync(chatEntry, CancellationToken.None);
+        var removedEntry = new ChatEntry(chatEntryId, 1) {
+            IsRemoved = true
+        };
+        await contentIndexer.ApplyAsync(removedEntry, CancellationToken.None);
+
+        Assert.Empty(contentIndexer.Buffer);
+    }
+
     public class EntryToDocMap(int numDocs, bool isFirst, bool isLast) : IXunitSerializable
     {
         public int NumDocs => numDocs;

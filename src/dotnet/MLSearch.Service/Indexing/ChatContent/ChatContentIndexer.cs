@@ -24,18 +24,51 @@ internal sealed class ChatContentIndexer(
         Delete,
     }
 
+    private class EntryBuffer : IReadOnlyCollection<ChatEntry>
+    {
+        private readonly LinkedList<ChatEntry> _entries = [];
+        private readonly Dictionary<ChatEntryId, LinkedListNode<ChatEntry>> _nodeMap = [];
+
+        public int Count => _entries.Count;
+        public IEnumerator<ChatEntry> GetEnumerator() => _entries.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public bool Contains(ChatEntry entry) => _nodeMap.ContainsKey(entry.Id);
+
+        public void AddOrUpdate(ChatEntry entry)
+        {
+            if (_nodeMap.TryGetValue(entry.Id, out var node)) {
+                node.Value = entry;
+                return;
+            }
+
+            node = new LinkedListNode<ChatEntry>(entry);
+            _nodeMap.Add(entry.Id, node);
+            _entries.AddLast(node);
+        }
+
+        public bool Remove(ChatEntry entry)
+        {
+            if (_nodeMap.Remove(entry.Id, out var node)) {
+                _entries.Remove(node);
+                return true;
+            }
+            return false;
+        }
+    }
+
     private ChatContentCursor _cursor = new(0, 0);
     private ChatContentCursor _nextCursor = new(0, 0);
 
     private readonly Dictionary<string, ChatSlice> _tailDocs = new(StringComparer.Ordinal);
 
-    private readonly List<ChatEntry> _buffer = [];
+    private readonly EntryBuffer _buffer = [];
     private readonly Dictionary<string, ChatSlice> _outUpdates = new(StringComparer.Ordinal);
     private readonly HashSet<string> _outRemoves = new(StringComparer.Ordinal);
 
     public ChatContentCursor Cursor => _cursor;
     public IReadOnlyDictionary<string, ChatSlice> TailDocs => _tailDocs;
-    public IReadOnlyList<ChatEntry> Buffer => _buffer;
+    public IReadOnlyCollection<ChatEntry> Buffer => _buffer;
     public IReadOnlyDictionary<string, ChatSlice> OutUpdates => _outUpdates;
     public IReadOnlySet<string> OutRemoves => _outRemoves;
 
@@ -52,6 +85,15 @@ internal sealed class ChatContentIndexer(
 
     public async ValueTask ApplyAsync(ChatEntry entry, CancellationToken cancellationToken)
     {
+        if (_buffer.Contains(entry)) {
+            // We can assume there is no entry presence in index or other output buffers
+            if (entry.IsRemoved) {
+                _buffer.Remove(entry);
+                return;
+            }
+            _buffer.AddOrUpdate(entry);
+            return;
+        }
         // Lookup for the entry related documents
         var existingDocuments = await LookupDocumentsAsync(entry, cancellationToken).ConfigureAwait(false);
         if (entry.IsRemoved && existingDocuments.Count == 0) {
@@ -64,7 +106,7 @@ internal sealed class ChatContentIndexer(
 
         if (eventType==ChatEventType.Create) {
             // Buffer new entries until Flush
-            _buffer.Add(entry);
+            _buffer.AddOrUpdate(entry);
         }
         else {
             // Now for updates and removes load all corresponding entries (we have ids in docs)
@@ -134,7 +176,7 @@ internal sealed class ChatContentIndexer(
     }
 
     private async IAsyncEnumerable<SourceEntries> ArrangeBufferedEntriesAsync(
-        IReadOnlyList<ChatEntry> bufferedEntries,
+        IReadOnlyCollection<ChatEntry> bufferedEntries,
         IReadOnlyCollection<ChatSlice> tailDocuments,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
