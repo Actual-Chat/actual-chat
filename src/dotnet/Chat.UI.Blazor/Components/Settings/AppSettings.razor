@@ -59,7 +59,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await AccountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
-        return new (settings.IsAnalyticsEnabled);
+        return new (settings.IsAnalyticsEnabled ?? false);
     }
 
     private async Task OnRestartWalkThrough() {
