@@ -71,7 +71,9 @@ internal sealed class ChatContentIndexer(
             var sourceEntries = await GetSourceEntriesAsync(entry, existingDocuments, cancellationToken).ConfigureAwait(false);
 
             // Send source entries to build document(s)
-            var newDocuments = await BuildDocumentsAsync(sourceEntries, cancellationToken).ConfigureAwait(false);
+            var newDocuments = sourceEntries.Entries.Count > 0
+                ? await BuildDocumentsAsync(sourceEntries, cancellationToken).ConfigureAwait(false)
+                : [];
 
             // Now we have existing documents and new documents
             // So delete all existing documents where there is no corresponding new one
@@ -148,13 +150,13 @@ internal sealed class ChatContentIndexer(
         foreach (var entry in bufferedEntries) {
             tailEntries.Add(entry);
             if (tailEntries.Count == 3) {
-                yield return new SourceEntries(0, null, [.. tailEntries]);
+                yield return new SourceEntries(null, null, [.. tailEntries]);
                 tailEntries.Clear();
             }
         }
 
         if (tailEntries.Count > 0) {
-            yield return new SourceEntries(0, null, tailEntries);
+            yield return new SourceEntries(null, null, tailEntries);
         }
     }
 
@@ -170,10 +172,26 @@ internal sealed class ChatContentIndexer(
         var docs = new List<ChatSlice>(associatedDocuments);
         docs.Sort(CompareSlices);
 
-        var entries = await LoadByIdsAsync(docs.SelectMany(doc => doc.Metadata.ChatEntries).Select(e => e.Id), cancellationToken)
-            .ConfigureAwait(false);
+        var order = 0;
+        var entryOrder = new Dictionary<ChatEntryId, int>();
+        var entryIds = new List<ChatEntryId>();
+        foreach (var entryId in docs.SelectMany(doc => doc.Metadata.ChatEntries).Select(e => e.Id)) {
+            if (entryOrder.TryAdd(entryId, order)) {
+                entryIds.Add(entryId);
+                order++;
+            }
+        }
+        var entries = (await LoadByIdsAsync(entryIds, cancellationToken).ConfigureAwait(false))
+            .Where(e => !e.IsRemoved)
+            .ToList();
+        entries.Sort((a, b) => entryOrder[a.Id].CompareTo(entryOrder[b.Id]));
 
-        return new SourceEntries(docs[0].Metadata.StartOffset ?? 0, docs[docs.Count-1].Metadata.EndOffset, entries);
+        var firstMeta = docs[0].Metadata;
+        var lastMeta = docs[docs.Count - 1].Metadata;
+        var startOffset = firstMeta.ChatEntries[0].Id == entry.Id ? default : firstMeta.StartOffset;
+        var endOffset = lastMeta.ChatEntries[lastMeta.ChatEntries.Length - 1].Id == entry.Id ? default : lastMeta.EndOffset;
+
+        return new SourceEntries(startOffset, endOffset, entries);
 
         int CompareSlices(ChatSlice a, ChatSlice b)
             => GetStartOffset(a, entry).CompareTo(GetStartOffset(b, entry));

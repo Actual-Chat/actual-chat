@@ -80,8 +80,8 @@ internal class ChatContentMapper(
                 var content = e.Content;
                 var (isFirst, isLast) = (i == 0, i == entryCount - 1);
                 if (isFirst || isLast) {
-                    var start = isFirst ? sourceEntries.StartOffset : 0;
-                    var end = (isLast ? sourceEntries.EndOffset : null) ?? content.Length;
+                    var start = (isFirst ? sourceEntries.StartOffset : default) ?? 0;
+                    var end = (isLast ? sourceEntries.EndOffset : default) ?? content.Length;
                     return content.Substring(start, end - start);
                 }
                 return content;
