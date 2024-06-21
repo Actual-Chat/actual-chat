@@ -1,0 +1,94 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Module
+@{
+    var cls = _isOpen ? "open" : "closed";
+}
+
+<div class="left-search-panel chat-search @cls">
+    <div class="c-search">
+        <div class="search-input">
+            <label>
+                <TextInput
+                    @ref="_inputRef"
+                    Class="w-full dialog-unstyled"
+                    Placeholder="@Placeholder"
+                    MaxLength="@MaxLength"
+                    OnFocus="@(_ => OnClick(true))"
+                    TextChanged="OnSearchInputTextChanged">
+                </TextInput>
+
+                <ButtonRound Click="@(_ => OnClick(true))" Class="c-ai-btn">
+                    <i class="icon-ai-search text-xl"></i>
+                </ButtonRound>
+                <HeaderButton Click="@(_ => OnClick(false))" Class="c-close-btn">
+                    <i class="icon-close text-2xl"></i>
+                </HeaderButton>
+            </label>
+        </div>
+    </div>
+    <div class="c-content">
+        <TabPanel
+            @key="@("left-chat-search-panel")"
+            TabsClass="left-panel-tabs wide-left-panel-tabs"
+            BottomHill="true">
+
+            <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
+                <div class="c-container">
+                    <ChatsTab/>
+                </div>
+            </Tab>
+            <Tab @key="@("threads")" Id="Threads" Title="Threads" Order="1">
+                <ToBeDone/>
+            </Tab>
+            <Tab @key="@("tags")" Id="tags" Title="Tags" Order="2">
+                <ToBeDone/>
+            </Tab>
+            <Tab @key="@("media")" Id="media" Title="Media" Order="3">
+                <ToBeDone/>
+            </Tab>
+        </TabPanel>
+
+        <div class="ai-btn">
+            <Button Class="btn-primary" Click="@OpenRightSearchPanel">
+                <i class="icon-ai-search"></i>
+                Open AI Search
+            </Button>
+        </div>
+
+    </div>
+</div>
+
+@code {
+    private bool _isOpen;
+
+    TextInput? _inputRef = null;
+
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
+    [Inject] private SearchUI SearchUI { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    [Parameter] public string Placeholder { get; set; } = "Search";
+    [Parameter] public int? MaxLength { get; set; }
+
+    private void OnClick(bool openPanel) {
+        if (!openPanel)
+            Cancel();
+        _isOpen = openPanel;
+        StateHasChanged();
+    }
+
+    private void OnSearchInputTextChanged(string text)
+        => SearchUI.Text.Value = text;
+
+    private ValueTask Cancel()
+        => _inputRef?.Clear() ?? default;
+
+    private void OpenRightSearchPanel() {
+        PanelsUI.Right.SearchToggle();
+        PanelsUI.Left.ToggleSearchMode();
+        if (ScreenSize.IsNarrow()) {
+            PanelsUI.Left.SetIsVisible(false);
+        }
+    }
+}
