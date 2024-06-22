@@ -131,7 +131,7 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
         var updatedEntryId = updatedDoc.Metadata.ChatEntries.Single().Id;
         var chats = new Mock<IChatsBackend>();
         // There must be no calls to GetTile, as updatedDoc contains single entry,
-        // so there is no need loading anything
+        // so there is no need of loading anything
         chats.Setup(x => x.GetTile(
             It.IsAny<ChatId>(),
             It.IsAny<ChatEntryKind>(),
@@ -177,6 +177,76 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
             Assert.Same(updatedDoc, contentIndexer.TailDocs[updatedDoc!.Id]);
             Assert.Same(updatedDoc, contentIndexer.OutUpdates[updatedDoc!.Id]);
         }
+
+        chats.Verify(x => x.GetTile(
+            It.IsAny<ChatId>(),
+            It.IsAny<ChatEntryKind>(),
+            It.IsAny<ActualLab.Mathematics.Range<long>>(),
+            It.Is<bool>(x => x == true),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RemovingDocumentCleansTailAndOutputBuffer()
+    {
+        var tailDocuments = ContentHelpers.CreateDocuments();
+        var updatedDoc = tailDocuments[tailDocuments.Length / 2];
+        var updatedEntryId = updatedDoc.Metadata.ChatEntries.Single().Id;
+        var chats = new Mock<IChatsBackend>();
+        // There must be no calls to GetTile, as updatedDoc contains single entry,
+        // so there is no need of loading anything
+        chats.Setup(x => x.GetTile(
+            It.IsAny<ChatId>(),
+            It.IsAny<ChatEntryKind>(),
+            It.IsAny<ActualLab.Mathematics.Range<long>>(),
+            It.Is<bool>(x => x == true),
+            It.IsAny<CancellationToken>()));
+
+        var docLoader = new Mock<IChatContentDocumentLoader>();
+        // Emulate loading tail documents
+        docLoader
+            .Setup(x => x.LoadTailAsync(
+                It.IsAny<ChatContentCursor>(),
+                It.IsAny<int>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(tailDocuments);
+        // On update we get the document from index by entry Id
+        docLoader
+            .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([updatedDoc]);
+
+        var docMapper = MockDocMapper(doc => updatedDoc = doc);
+
+        var sink = Mock.Of<ISink<ChatSlice, string>>();
+
+        var contentIndexer = new ChatContentIndexer(chats.Object, docLoader.Object, docMapper.Object, sink);
+
+        var cursor = new ChatContentCursor(0, 0);
+        await contentIndexer.InitAsync(cursor, CancellationToken.None);
+
+        Assert.Equal(tailDocuments.Length, contentIndexer.TailDocs.Count);
+
+        HashSet<string> updatedDocIds = [updatedDoc.Id];
+
+        var version = 1;
+        var updatedEntry = new ChatEntry(updatedEntryId, ++version) {
+            Content = "Some fresh update.",
+        };
+        await contentIndexer.ApplyAsync(updatedEntry, CancellationToken.None);
+
+        updatedDocIds.Add(updatedDoc.Id);
+
+        Assert.Same(updatedDoc, contentIndexer.TailDocs[updatedDoc.Id]);
+        Assert.Same(updatedDoc, contentIndexer.OutUpdates[updatedDoc.Id]);
+
+        var removedEntry = new ChatEntry(updatedEntryId, ++version) {
+            IsRemoved = true,
+        };
+        await contentIndexer.ApplyAsync(removedEntry, CancellationToken.None);
+
+        Assert.DoesNotContain(contentIndexer.TailDocs.Keys, updatedDocIds.Contains);
+        Assert.DoesNotContain(contentIndexer.OutUpdates.Keys, updatedDocIds.Contains);
+        Assert.Contains(updatedDoc.Id, contentIndexer.OutRemoves);
 
         chats.Verify(x => x.GetTile(
             It.IsAny<ChatId>(),
