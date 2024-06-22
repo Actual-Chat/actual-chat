@@ -66,7 +66,7 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public async Task ApplyingRemoveEventRightAfterCreateEventUpdatesEntryInBuffer()
+    public async Task ApplyingRemoveEventRightAfterCreateEventRemovesEntryFromBuffer()
     {
         var chats = Mock.Of<IChatsBackend>();
         // Doc loader returns empty list, so event considered as new chat entry
@@ -91,6 +91,119 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
         await contentIndexer.ApplyAsync(removedEntry, CancellationToken.None);
 
         Assert.Empty(contentIndexer.Buffer);
+    }
+
+    [Fact]
+    public async Task ApplyingOrphanedRemoveEventDoesNotChangeBuffer()
+    {
+        var chats = Mock.Of<IChatsBackend>();
+        // Doc loader returns empty list, so event doesn't have index footprint yet
+        var docLoader = new Mock<IChatContentDocumentLoader>();
+        docLoader
+            .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        var docMapper = Mock.Of<IChatContentMapper>();
+        var sink = Mock.Of<ISink<ChatSlice, string>>();
+
+        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, sink);
+
+        var chatId = new ChatId(Generate.Option);
+        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
+        var removedEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 202, AssumeValid.Option);
+        var chatEntry = new ChatEntry(chatEntryId, 0) {
+            Content = "Some fresh message."
+        };
+        await contentIndexer.ApplyAsync(chatEntry, CancellationToken.None);
+        var removedEntry = new ChatEntry(removedEntryId, 1) {
+            IsRemoved = true
+        };
+        var buffer = contentIndexer.Buffer.ToArray();
+        await contentIndexer.ApplyAsync(removedEntry, CancellationToken.None);
+
+        Assert.Equal(buffer, contentIndexer.Buffer);
+    }
+
+    [Fact]
+    public async Task UpdatingDocumentUpdatesTailAndOutputBuffer()
+    {
+        var tailDocuments = ContentHelpers.CreateDocuments();
+        var updatedDoc = tailDocuments[tailDocuments.Length / 2];
+        var updatedEntryId = updatedDoc.Metadata.ChatEntries.Single().Id;
+        var chats = new Mock<IChatsBackend>();
+        // There must be no calls to GetTile, as updatedDoc contains single entry,
+        // so there is no need loading anything
+        chats.Setup(x => x.GetTile(
+            It.IsAny<ChatId>(),
+            It.IsAny<ChatEntryKind>(),
+            It.IsAny<ActualLab.Mathematics.Range<long>>(),
+            It.Is<bool>(x => x == true),
+            It.IsAny<CancellationToken>()));
+
+        var docLoader = new Mock<IChatContentDocumentLoader>();
+        // Emulate loading tail documents
+        docLoader
+            .Setup(x => x.LoadTailAsync(
+                It.IsAny<ChatContentCursor>(),
+                It.IsAny<int>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(tailDocuments);
+        // On update we get the document from index by entry Id
+        docLoader
+            .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([updatedDoc]);
+        var docMapper = new Mock<IChatContentMapper>();
+        docMapper
+            .Setup(x => x.MapAsync(
+                It.IsAny<SourceEntries>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<SourceEntries, CancellationToken>((entries, _) => {
+                if (entries.Entries.Count == 0) {
+                    return ValueTask.FromResult<IReadOnlyCollection<ChatSlice>>([]);
+                }
+                var metadata = new ChatSliceMetadata(
+                    [_authorId],
+                    [.. entries.Entries.Select(e => new ChatSliceEntry(e.Id, e.LocalId, e.Version))], entries.StartOffset, entries.EndOffset,
+                    [], [], [], [],
+                    false,
+                    "en-US",
+                    DateTime.Now
+                );
+                var content = entries.Entries.Select(e => e.Content)
+                    .Aggregate(new StringBuilder(), (txt, ln) => txt.AppendLine(ln)).ToString();
+                updatedDoc = new ChatSlice(metadata, content);
+                return ValueTask.FromResult<IReadOnlyCollection<ChatSlice>>([updatedDoc]);
+            });
+
+        var sink = Mock.Of<ISink<ChatSlice, string>>();
+
+        var contentIndexer = new ChatContentIndexer(chats.Object, docLoader.Object, docMapper.Object, sink);
+
+        var cursor = new ChatContentCursor(0, 0);
+        await contentIndexer.InitAsync(cursor, CancellationToken.None);
+
+        Assert.Equal(tailDocuments.Length, contentIndexer.TailDocs.Count);
+
+        var updatedContents = new[] {
+            "I don't know why I'm doing this.",
+            "I hope it won't break."
+        };
+        var version = 1;
+        foreach (var content in updatedContents) {
+            var updatedEntry = new ChatEntry(updatedEntryId, ++version) {
+                Content = content,
+            };
+            await contentIndexer.ApplyAsync(updatedEntry, CancellationToken.None);
+
+            Assert.Same(updatedDoc, contentIndexer.TailDocs[updatedDoc!.Id]);
+            Assert.Same(updatedDoc, contentIndexer.OutUpdates[updatedDoc!.Id]);
+        }
+
+        chats.Verify(x => x.GetTile(
+            It.IsAny<ChatId>(),
+            It.IsAny<ChatEntryKind>(),
+            It.IsAny<ActualLab.Mathematics.Range<long>>(),
+            It.Is<bool>(x => x == true),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 
     public class EntryToDocMap(int numDocs, bool isFirst, bool isLast) : IXunitSerializable
@@ -181,7 +294,12 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
             .Setup(x => x.LoadByEntryIdsAsync(
                 It.IsAny<IEnumerable<ChatEntryId>>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(existingDocs);
+            .Returns<IEnumerable<ChatEntryId>, CancellationToken>(
+                (entryIds, _) => {
+                    var idSet = new HashSet<ChatEntryId>(entryIds);
+                    var result = existingDocs.Where(x => x.Metadata.ChatEntries.Any(e => idSet.Contains(e.Id))).ToList();
+                    return Task.FromResult<IReadOnlyCollection<ChatSlice>>(result);
+                });
         ChatSlice? updatedDoc = null;
         var docMapper = new Mock<IChatContentMapper>();
         docMapper
