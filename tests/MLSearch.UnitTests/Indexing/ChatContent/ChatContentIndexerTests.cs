@@ -151,28 +151,8 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
         docLoader
             .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([updatedDoc]);
-        var docMapper = new Mock<IChatContentMapper>();
-        docMapper
-            .Setup(x => x.MapAsync(
-                It.IsAny<SourceEntries>(),
-                It.IsAny<CancellationToken>()))
-            .Returns<SourceEntries, CancellationToken>((entries, _) => {
-                if (entries.Entries.Count == 0) {
-                    return ValueTask.FromResult<IReadOnlyCollection<ChatSlice>>([]);
-                }
-                var metadata = new ChatSliceMetadata(
-                    [_authorId],
-                    [.. entries.Entries.Select(e => new ChatSliceEntry(e.Id, e.LocalId, e.Version))], entries.StartOffset, entries.EndOffset,
-                    [], [], [], [],
-                    false,
-                    "en-US",
-                    DateTime.Now
-                );
-                var content = entries.Entries.Select(e => e.Content)
-                    .Aggregate(new StringBuilder(), (txt, ln) => txt.AppendLine(ln)).ToString();
-                updatedDoc = new ChatSlice(metadata, content);
-                return ValueTask.FromResult<IReadOnlyCollection<ChatSlice>>([updatedDoc]);
-            });
+
+        var docMapper = MockDocMapper(doc => updatedDoc = doc);
 
         var sink = Mock.Of<ISink<ChatSlice, string>>();
 
@@ -300,29 +280,9 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
                     var result = existingDocs.Where(x => x.Metadata.ChatEntries.Any(e => idSet.Contains(e.Id))).ToList();
                     return Task.FromResult<IReadOnlyCollection<ChatSlice>>(result);
                 });
+
         ChatSlice? updatedDoc = null;
-        var docMapper = new Mock<IChatContentMapper>();
-        docMapper
-            .Setup(x => x.MapAsync(
-                It.IsAny<SourceEntries>(),
-                It.IsAny<CancellationToken>()))
-            .Returns<SourceEntries, CancellationToken>((entries, _) => {
-                if (entries.Entries.Count == 0) {
-                    return ValueTask.FromResult<IReadOnlyCollection<ChatSlice>>([]);
-                }
-                var metadata = new ChatSliceMetadata(
-                    [_authorId],
-                    [.. entries.Entries.Select(e => new ChatSliceEntry(e.Id, e.LocalId, e.Version))], entries.StartOffset, entries.EndOffset,
-                    [], [], [], [],
-                    false,
-                    "en-US",
-                    DateTime.Now
-                );
-                var content = entries.Entries.Select(e => e.Content)
-                    .Aggregate(new StringBuilder(), (txt, ln) => txt.AppendLine(ln)).ToString();
-                updatedDoc = new ChatSlice(metadata, content);
-                return ValueTask.FromResult<IReadOnlyCollection<ChatSlice>>([updatedDoc]);
-            });
+        var docMapper = MockDocMapper(doc => updatedDoc = doc);
 
         var sink = Mock.Of<ISink<ChatSlice, string>>();
 
@@ -352,6 +312,34 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
         else {
             Assert.Equal(UniqueEndOffset, updatedDoc.Metadata.EndOffset!.Value);
         }
+    }
+
+    private Mock<IChatContentMapper> MockDocMapper(Action<ChatSlice> onUpdatedDoc)
+    {
+        var docMapper = new Mock<IChatContentMapper>();
+        docMapper
+            .Setup(x => x.MapAsync(
+                It.IsAny<SourceEntries>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<SourceEntries, CancellationToken>((entries, _) => {
+                if (entries.Entries.Count == 0) {
+                    return ValueTask.FromResult<IReadOnlyCollection<ChatSlice>>([]);
+                }
+                var metadata = new ChatSliceMetadata(
+                    [_authorId],
+                    [.. entries.Entries.Select(e => new ChatSliceEntry(e.Id, e.LocalId, e.Version))], entries.StartOffset, entries.EndOffset,
+                    [], [], [], [],
+                    false,
+                    "en-US",
+                    DateTime.Now
+                );
+                var content = entries.Entries.Select(e => e.Content)
+                    .Aggregate(new StringBuilder(), (txt, ln) => txt.AppendLine(ln)).ToString();
+                var updatedDoc = new ChatSlice(metadata, content);
+                onUpdatedDoc(updatedDoc);
+                return ValueTask.FromResult<IReadOnlyCollection<ChatSlice>>([updatedDoc]);
+            });
+        return docMapper;
     }
 
     private const string FirstEntryContent =
