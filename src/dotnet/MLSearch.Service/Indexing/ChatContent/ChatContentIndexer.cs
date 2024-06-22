@@ -219,11 +219,14 @@ internal sealed class ChatContentIndexer(
         var entryIds = new List<ChatEntryId>();
         foreach (var entryId in docs.SelectMany(doc => doc.Metadata.ChatEntries).Select(e => e.Id)) {
             if (entryOrder.TryAdd(entryId, order)) {
-                entryIds.Add(entryId);
+                if (entryId != entry.Id) {
+                    entryIds.Add(entryId);
+                }
                 order++;
             }
         }
         var entries = (await LoadByIdsAsync(entryIds, cancellationToken).ConfigureAwait(false))
+            .Append(entry)
             .Where(e => !e.IsRemoved)
             .ToList();
         entries.Sort((a, b) => entryOrder[a.Id].CompareTo(entryOrder[b.Id]));
