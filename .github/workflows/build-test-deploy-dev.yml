@@ -189,7 +189,7 @@ jobs:
         run: ./run-build.cmd unit-tests --configuration Debug
 
       - name: Report unit test results
-        uses: phoenix-actions/test-reporting@v13
+        uses: phoenix-actions/test-reporting@v15
         if: success() || failure()    # run this step even if previous step failed
         with:
           name: Unit tests results     # Name of the check run which will be created
@@ -330,7 +330,7 @@ jobs:
           ./run-build.cmd integration-tests --configuration Debug
 
       - name: Report integration test results
-        uses: phoenix-actions/test-reporting@v13
+        uses: phoenix-actions/test-reporting@v15
         if: success() || failure()    # run this step even if previous step failed
         with:
           name: Integration tests results     # Name of the check run which will be created

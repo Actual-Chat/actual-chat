@@ -10,5 +10,15 @@ public static class ChatExt
             IsPublic = chat.IsPublic && place?.IsPublic != false,
             Title = chat.Title,
             PlaceId = chat.Id.PlaceId,
+            IsPlaceRootChat = chat.Id.IsPlaceRootChat,
+        };
+
+    public static IndexedChatContact ToIndexedPlaceContact(this Place place)
+        => new() {
+            Id = place.Id.ToRootChatId(),
+            IsPublic = place.IsPublic,
+            Title = place.Title,
+            PlaceId = place.Id,
+            IsPlaceRootChat = true,
         };
 }

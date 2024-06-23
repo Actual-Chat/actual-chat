@@ -9,6 +9,13 @@ public static class EnumerableExt
         yield return suffix;
     }
 
+    public static IEnumerable<T> AddBefore<T>(this IEnumerable<T> source, T prefix)
+    {
+        yield return prefix;
+        foreach (var item in source)
+            yield return item;
+    }
+
     public static (IReadOnlyCollection<T> Matched, IReadOnlyCollection<T> NotMatched) Split<T>(this IEnumerable<T> source, Func<T, bool> predicate)
     {
         List<T>? matched = null;

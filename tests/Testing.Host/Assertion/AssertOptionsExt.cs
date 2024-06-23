@@ -1,15 +1,19 @@
 using ActualChat.Search;
 using ActualChat.Users;
-using FluentAssertions.Equivalency;
 using ActualLab.Versioning;
+using FluentAssertions.Equivalency;
 
-namespace ActualChat.Testing.Assertion;
+namespace ActualChat.Testing.Host.Assertion;
 
 public static class AssertOptionsExt
 {
     public static EquivalencyAssertionOptions<AccountFull> IdName(
         this EquivalencyAssertionOptions<AccountFull> options)
         => options.Including(x => x.Id).Including(x => x.FullName).Including(x => x.User.Name);
+
+    public static EquivalencyAssertionOptions<Chat.Chat> IdTitle(
+        this EquivalencyAssertionOptions<Chat.Chat> options)
+        => options.Including(x => x.Id).Including(x => x.Title);
 
     public static EquivalencyAssertionOptions<T> ExcludingSystemProperties<T>(
         this EquivalencyAssertionOptions<T> options) where T : notnull

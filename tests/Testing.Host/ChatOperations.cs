@@ -7,7 +7,18 @@ namespace ActualChat.Testing.Host;
 public static class ChatOperations
 {
     private const string DefaultChatTitle = "test chat";
-    private const string DefaultPlaceTitle = "test place";
+
+    public static async Task<(Chat.Chat Chat, Symbol InviteId)> CreateAndGetChat(
+        this IWebTester tester,
+        bool isPublicChat,
+        string title = DefaultChatTitle,
+        PlaceId? placeId = null)
+    {
+        var (id, inviteId) = await CreateChat(tester,
+            c => c with { IsPublic = isPublicChat, Title = title, PlaceId = placeId, Kind = null });
+        var chat = await tester.Chats.Get(tester.Session, id, CancellationToken.None).Require();
+        return (chat, inviteId);
+    }
 
     public static Task<(ChatId, Symbol)> CreateChat(
         this IWebTester tester,
@@ -44,38 +55,6 @@ public static class ChatOperations
         }
 
         return (chatId, inviteId);
-    }
-
-    public static Task<(PlaceId, Symbol)> CreatePlace(this IWebTester tester, bool isPublicPlace, string title = DefaultPlaceTitle)
-        => CreatePlace(tester, c => c with { IsPublic = isPublicPlace });
-
-    public static async Task<(PlaceId, Symbol)> CreatePlace(this IWebTester tester, Func<PlaceDiff, PlaceDiff> configure)
-    {
-        var session = tester.Session;
-        var placeDiff = configure(new PlaceDiff() {
-            Title = DefaultPlaceTitle,
-        });
-        var isPublicPlace = placeDiff.IsPublic ?? false;
-
-        var commander = tester.Commander;
-        var place = await commander.Call(new Places_Change(session,
-            default,
-            null,
-            new () {
-                Create = placeDiff,
-            }));
-        place.Require();
-        var placeId = place.Id;
-
-        var inviteId = Symbol.Empty;
-        if (!isPublicPlace) {
-            // TODO(DF): Somehow activate possibility to join place. Invite code?
-            // var invite = Invite.Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(placeId));
-            // invite = await commander.Call(new Invites_Generate(session, invite));
-            // inviteId = invite.Id;
-        }
-
-        return (placeId, inviteId);
     }
 
     public static async Task<AuthorFull> JoinChat(this IWebTester tester, ChatId chatId, Symbol inviteId,
@@ -138,15 +117,8 @@ public static class ChatOperations
         authorIds.Should().Contain(author.Id);
     }
 
-    public static async Task InviteToPlace(this IWebTester tester, PlaceId placeId, params UserId[] userIds)
-    {
-        var session = tester.Session;
-        var commander = tester.Commander;
-        await commander.Call(new Places_Invite(session, placeId, userIds));
-    }
-
-    public static Task InviteToPlace(this IWebTester tester, PlaceId placeId, params Account[] accounts)
-        => tester.InviteToPlace(placeId, accounts.Select(x => x.Id).ToArray());
+    public static Task InviteToChat(this IWebTester tester, ChatId chatId, params Account[] users)
+        => tester.InviteToChat(chatId, users.Select(x => x.Id).ToArray());
 
     public static async Task InviteToChat(this IWebTester tester, ChatId chatId, params UserId[] userIds)
     {

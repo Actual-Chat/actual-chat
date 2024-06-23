@@ -20,7 +20,7 @@ public class AppHostFixture(IMessageSink messageSink)
         },
         ConfigureServices = (_, cfg) => {
             cfg.AddSingleton(_ => new IndexNames {
-                IndexPrefix = UniqueNames.Elastic(IndexNames.TestPrefix),
+                IndexPrefix = UniqueNames.OpenSearch(IndexNames.TestPrefix),
             });
             cfg
                 .AddSingleton<OpenSearchInit>()

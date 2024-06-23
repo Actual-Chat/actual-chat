@@ -98,21 +98,18 @@ public sealed partial record SearchBackend_StartChatContactIndexing
 public sealed partial record SearchBackend_Refresh(
     [property: DataMember, MemoryPackOrder(0)] ApiArray<ChatId> ChatIds,
     [property: DataMember, MemoryPackOrder(1)] bool RefreshUsers,
-    [property: DataMember, MemoryPackOrder(2)] bool RefreshPublicChats,
-    [property: DataMember, MemoryPackOrder(3)] bool RefreshPrivateChats
+    [property: DataMember, MemoryPackOrder(2)] bool RefreshChats
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId> // Review
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => !ChatIds.IsEmpty ? ChatIds[0] : default;
 
-    public SearchBackend_Refresh(params ChatId[] chatIds) : this(chatIds.ToApiArray(), false, false, false) { }
+    public SearchBackend_Refresh(params ChatId[] chatIds) : this(chatIds.ToApiArray(), false, false) { }
 
     public SearchBackend_Refresh(
         bool refreshUsers = false,
-        bool refreshPublicChats = false,
-        bool refreshPrivateChats = false) : this(ApiArray<ChatId>.Empty,
+        bool refreshChats = false) : this(ApiArray<ChatId>.Empty,
         refreshUsers,
-        refreshPublicChats,
-        refreshPrivateChats)
+        refreshChats)
     { }
 }

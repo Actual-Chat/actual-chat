@@ -1,4 +1,4 @@
-using ActualChat.Testing.Assertion;
+using ActualChat.Testing.Host.Assertion;
 
 namespace ActualChat.Testing.Host;
 

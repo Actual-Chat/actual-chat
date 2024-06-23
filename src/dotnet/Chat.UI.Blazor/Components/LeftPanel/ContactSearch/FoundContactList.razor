@@ -1,4 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Search
 @inherits ComputedStateComponent<IReadOnlyList<FoundContact>>
 @{
     var foundContacts = State.ValueOrDefault;
@@ -12,7 +13,7 @@
     @foreach (var foundContact in foundContacts) {
         @if (foundContact.IsFirstInGroup) {
             <SearchResultGroupHeader
-                Title="@ToDisplayText(foundContact.Scope)"
+                Title="@foundContact.Scope.ToString()"
                 Expand="@(() => OnExpand(foundContact.Scope))"
                 Collapse="@(() => OnCollapse(foundContact.Scope))"/>
         }
@@ -40,12 +41,4 @@
 
     private Task OnCollapse(ContactSearchScope scope)
         => SearchUI.ShowLess(scope);
-
-    private string ToDisplayText(ContactSearchScope scope)
-        => scope switch {
-            ContactSearchScope.People => "People",
-            ContactSearchScope.PublicChats => "Public chats",
-            ContactSearchScope.PrivateChats => "Private chats",
-            _ => scope.ToString(),
-        };
 }

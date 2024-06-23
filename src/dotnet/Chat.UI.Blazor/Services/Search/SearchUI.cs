@@ -1,4 +1,3 @@
-using ActualChat.Contacts;
 using ActualChat.Search;
 using ActualLab.Interception;
 
@@ -6,7 +5,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
 {
-    private static readonly ContactSearchScope[] Scopes = [ContactSearchScope.People, ContactSearchScope.PublicChats, ContactSearchScope.PrivateChats, ];
+    private static readonly ContactSearchScope[] Scopes = [ContactSearchScope.People, ContactSearchScope.Groups, ContactSearchScope.Places ];
     private Cached _cached = Cached.None;
     private readonly MutableState<string> _text;
 
@@ -67,16 +66,18 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         ExtendedLimits.Value = current.Add(scope);
     }
 
-    public async Task ShowLess(ContactSearchScope scope, CancellationToken cancellationToken = default)
+    public async Task ShowLess(ContactSearchScope chatKind, CancellationToken cancellationToken = default)
     {
         var current = await ExtendedLimits.Use(cancellationToken).ConfigureAwait(false);
-        ExtendedLimits.Value = current.Remove(scope);
+        ExtendedLimits.Value = current.Remove(chatKind);
     }
 
     private sealed record Cached(Criteria Criteria, IReadOnlyList<FoundContact> FoundContacts)
     {
         public IReadOnlyDictionary<ChatId, SearchMatch> SearchMatches { get; } =
-            FoundContacts.Select(x => x.SearchResult).ToDictionary(x => x.ContactId.ChatId, x => x.SearchMatch);
+            FoundContacts.Select(x => x.SearchResult)
+                .DistinctBy(x => x.ContactId.ChatId)
+                .ToDictionary(x => x.ContactId.ChatId, x => x.SearchMatch);
 
         public static readonly Cached None = new (Criteria.None, []);
     }
@@ -85,13 +86,17 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     {
         public static readonly Criteria None = new ("", PlaceId.None, []);
 
-        public ContactSearchQuery ToQuery(ContactSearchScope scope)
-            => new() {
+        public ContactSearchQuery ToQuery(SubgroupKey key)
+            => new () {
                 Criteria = Text,
                 PlaceId = PlaceId == PlaceId.None ? null : PlaceId, // search in places if None
-                Kind = scope == ContactSearchScope.People ? ContactKind.User : ContactKind.Chat,
-                IsPublic = scope != ContactSearchScope.PrivateChats,
-                Limit = ExtendedLimits.Contains(scope) ? Constants.Search.ContactSearchExtendedPageSize : Constants.Search.ContactSearchDefaultPageSize,
+                Scope = key.Scope,
+                Limit = ExtendedLimits.Contains(key.Scope)
+                    ? Constants.Search.ContactSearchExtendedPageSize
+                    : Constants.Search.ContactSearchDefaultPageSize,
+                Own = key.Own,
             };
     }
+
+    protected sealed record SubgroupKey(ContactSearchScope Scope, bool Own);
 }

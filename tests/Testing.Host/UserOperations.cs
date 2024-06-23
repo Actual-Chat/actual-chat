@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ActualChat.Users;
+using ActualLab.Generators;
 using Microsoft.AspNetCore.Authentication.Google;
 
 namespace ActualChat.Testing.Host;
@@ -16,6 +17,9 @@ public static class UserOperations
             user = user.WithIdentity(identity);
         return tester.SignIn(user);
     }
+
+    public static Task<AccountFull> SignInAsUniqueBob(this IWebTester tester)
+        => tester.SignInAsBob(RandomStringGenerator.Default.Next());
 
     public static Task<AccountFull> SignInAsBobAdmin(this IWebTester tester)
         => tester.SignIn(NewAdmin());

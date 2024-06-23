@@ -1,6 +1,6 @@
 using FluentAssertions.Formatting;
 
-namespace ActualChat.Testing.Assertion;
+namespace ActualChat.Testing.Host.Assertion;
 
 public class UserFormatter : IValueFormatter
 {

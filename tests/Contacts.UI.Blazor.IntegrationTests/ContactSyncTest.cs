@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Security;
-using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
+using ActualChat.Testing.Host.Assertion;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;
 using ActualLab.Generators;

@@ -1,56 +1,21 @@
-using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
+using ActualChat.Testing.Host.Assertion;
 using ActualChat.Users;
 
 namespace ActualChat.Search.IntegrationTests;
 
 [Collection(nameof(SearchCollection))]
+[Trait("Category", "Slow")]
 public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedDbLocalAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private WebClientTester _tester = null!;
-    private ISearch _sut = null!;
     private ICommander _commander = null!;
-
-    private static readonly AccountFull Jack = new (new User(UserId.New(), "Jack")) {
-        Name = "Jack",
-        LastName = "Stone",
-    };
-    private static readonly AccountFull Rebecca = new (new User(UserId.New(), "Rebecca")) {
-        Name = "Rebecca",
-        LastName = "Scissors",
-    };
-    private static readonly AccountFull Luke = new (new User(UserId.New(), "Luke")) {
-        Name = "Luke",
-        LastName = "Paper",
-    };
-    private static readonly AccountFull Olivia = new (new User(UserId.New(), "Olivia")) {
-        Name = "Olivia",
-        LastName = "Green",
-    };
-    private static readonly AccountFull Aaron = new (new User(UserId.New(), "Aaron")) {
-        Name = "Aaron",
-        LastName = "Sky",
-    };
-    private static readonly AccountFull Emma = new (new User(UserId.New(), "Emma")) {
-        Name = "Emma",
-        LastName = "Emerson",
-    };
-    private static readonly AccountFull Emily = new (new User(UserId.New(), "Emily")) {
-        Name = "Emily",
-        LastName = "Yellow",
-    };
-    private static readonly AccountFull Camila = new (new User(UserId.New(), "Camila")) {
-        Name = "Camila",
-        LastName = "Lake",
-    };
 
     protected override async Task InitializeAsync()
     {
         await base.InitializeAsync();
-
         _tester = AppHost.NewWebClientTester(Out);
-        _sut = AppHost.Services.GetRequiredService<ISearch>();
         _commander = AppHost.Services.Commander();
     }
 
@@ -61,167 +26,236 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     }
 
     [Fact]
-    public async Task ShouldFindAddedUsers()
+    public async Task ShouldNotFindOwnUserContacts()
     {
         // arrange
-        var bob = await _tester.SignInAsBob();
-        var updates = BuildUserContacts(Jack,
-            Rebecca,
-            Luke,
-            Olivia,
-            Aaron,
-            Emma,
-            Camila,
-            Emily);
+        await _tester.SignInAsAlice();
+        var accounts = await _tester.CreateAccounts(10);
+        await _tester.SignInAsUniqueBob();
 
         // act
+        var updates = BuildUserContacts(accounts);
         await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, ApiArray<IndexedUserContact>.Empty));
         await _commander.Call(new SearchBackend_Refresh(true));
-        var searchResults = await Find("Ja");
-
-        // assert
-        searchResults.Should()
-            .BeEquivalentTo([bob.BuildSearchResult(Jack, [(0, 4)])], o => o.ExcludingRank());
 
         // act
-        searchResults = await Find("Emily Yel");
+        var searchResults = await _tester.FindPeople("User", true);
+
+        // assert
+        searchResults.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ShouldNotFindOtherUserContacts()
+    {
+        // arrange
+        await _tester.SignInAsAlice();
+        var accounts = await _tester.CreateAccounts(10);
+        var bob = await _tester.SignInAsUniqueBob();
+        foreach (var other in accounts)
+            await _tester.CreatePeerContact(bob, other);
+
+        // act
+        var updates = BuildUserContacts(accounts);
+        await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, ApiArray<IndexedUserContact>.Empty));
+        await _commander.Call(new SearchBackend_Refresh(true));
+
+        // act
+        var searchResults = await _tester.FindPeople("User", false);
+
+        // assert
+        searchResults.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ShouldFindUsers()
+    {
+        // arrange
+        await _tester.SignInAsAlice();
+        var accounts = await _tester.CreateAccounts(10);
+        var bob = await _tester.SignInAsUniqueBob();
+        for (int i = 0; i < 5; i++)
+            await _tester.CreatePeerContact(bob, accounts[i]);
+
+        // act
+        var updates = BuildUserContacts(accounts);
+        await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, ApiArray<IndexedUserContact>.Empty));
+        await _commander.Call(new SearchBackend_Refresh(true));
+
+        // act
+        var searchResults = await _tester.FindPeople("User", true);
 
         // assert
         searchResults.Should()
-            .BeEquivalentTo([bob.BuildSearchResult(Emily, [(0, 5), (6, 12)])], o => o.ExcludingRank());
+            .BeEquivalentTo(bob.BuildSearchResults(accounts[..5]), o => o.ExcludingSearchMatch());
+
+        // act
+        searchResults = await _tester.FindPeople("User", false);
+
+        // assert
+        searchResults.Should()
+            .BeEquivalentTo(bob.BuildSearchResults(accounts[5..]), o => o.ExcludingSearchMatch());
     }
 
     [Fact]
     public async Task ShouldFindUpdatedUsers()
     {
         // arrange
-        var bob = await _tester.SignInAsBob();
-        var updates = BuildUserContacts(Jack,
-            Rebecca,
-            Luke,
-            Olivia,
-            Aaron,
-            Emma,
-            Camila with { Name = "Ca1mila" },
-            Emily);
+        await _tester.SignInAsAlice();
+        var accounts = await _tester.CreateAccounts(10);
+        var bob = await _tester.SignInAsUniqueBob();
+        for (int i = 0; i < 5; i++)
+            await _tester.CreatePeerContact(bob, accounts[i]);
 
         // act
-        await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, []));
+        var updates = BuildUserContacts(accounts);
+        await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, ApiArray<IndexedUserContact>.Empty));
         await _commander.Call(new SearchBackend_Refresh(true));
-        var searchResults = await Find("Camila");
 
         // assert
-        searchResults.Should().BeEmpty();
+        var searchResults = await _tester.FindPeople("User", true);
+        searchResults.Should()
+            .BeEquivalentTo(bob.BuildSearchResults(accounts[..5]), o => o.ExcludingSearchMatch());
+
+        // assert
+        searchResults = await _tester.FindPeople("User", false);
+        searchResults.Should()
+            .BeEquivalentTo(bob.BuildSearchResults(accounts[5..]), o => o.ExcludingSearchMatch());
 
         // act
-        updates = BuildUserContacts(Camila);
+        updates = BuildUserContacts(accounts[4] with { Name = "aaa" }, accounts[9] with { Name = "aaa" });
         await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, []));
         await _commander.Call(new SearchBackend_Refresh(true));
-        searchResults = await Find("Camila");
 
         // assert
-        searchResults.Should().BeEquivalentTo([bob.BuildSearchResult(Camila, [(0, 6)])], o => o.ExcludingRank());
+        searchResults = await _tester.FindPeople("User", true);
+        searchResults.Should()
+            .BeEquivalentTo(bob.BuildSearchResults(accounts[..4]), o => o.ExcludingSearchMatch());
+
+        // assert
+        searchResults = await _tester.FindPeople("User", false);
+        searchResults.Should()
+            .BeEquivalentTo(bob.BuildSearchResults(accounts[5..9]), o => o.ExcludingSearchMatch());
     }
 
     [Fact]
     public async Task ShouldNotFindDeletedUsers()
     {
         // arrange
-        var bob = await _tester.SignInAsBob();
-        var updates = BuildUserContacts(Jack,
-            Rebecca,
-            Luke,
-            Olivia,
-            Aaron,
-            Emma,
-            Camila,
-            Emily);
+        await _tester.SignInAsAlice();
+        var accounts = await _tester.CreateAccounts(10);
+        var bob = await _tester.SignInAsUniqueBob();
+        for (int i = 0; i < 5; i++)
+            await _tester.CreatePeerContact(bob, accounts[i]);
 
         // act
-        await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, []));
+        var updates = BuildUserContacts(accounts);
+        await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, ApiArray<IndexedUserContact>.Empty));
         await _commander.Call(new SearchBackend_Refresh(true));
-        var searchResults = await Find("em");
 
         // assert
+        var searchResults = await _tester.FindPeople("User", true);
         searchResults.Should()
-            .BeEquivalentTo([
-                bob.BuildSearchResult(Emily, [(0, 5)]),
-                bob.BuildSearchResult(Emma, [(0, 4), (5, 12)]),
-            ], o => o.ExcludingRank());
-
-        // act
-        await _commander.Call(new SearchBackend_UserContactBulkIndex([], BuildUserContacts(Emma)));
-        await _commander.Call(new SearchBackend_Refresh(true));
-        searchResults = await Find("em");
+            .BeEquivalentTo(bob.BuildSearchResults(accounts[..5]), o => o.ExcludingSearchMatch());
 
         // assert
-        searchResults.Should().BeEquivalentTo([bob.BuildSearchResult(Emily, [(0, 5)])], o => o.ExcludingRank());
+        searchResults = await _tester.FindPeople("User", false);
+        searchResults.Should()
+            .BeEquivalentTo(bob.BuildSearchResults(accounts[5..]), o => o.ExcludingSearchMatch());
+
+        // act
+        var deleted = BuildUserContacts(accounts[4], accounts[9]);
+        await _commander.Call(new SearchBackend_UserContactBulkIndex([], deleted));
+        await _commander.Call(new SearchBackend_Refresh(true));
+
+        // assert
+        searchResults = await _tester.FindPeople("User", true);
+        searchResults.Should()
+            .BeEquivalentTo(bob.BuildSearchResults(accounts[..4]), o => o.ExcludingSearchMatch());
+
+        // assert
+        searchResults = await _tester.FindPeople("User", false);
+        searchResults.Should()
+            .BeEquivalentTo(bob.BuildSearchResults(accounts[5..9]), o => o.ExcludingSearchMatch());
     }
 
     [Fact]
-    public async Task ShouldFindOnlyPlaceMembers()
+    public async Task ShouldFindOnlPlaceMembers()
     {
         // arrange
-        var bob = await _tester.SignInAsBob();
-        var (placeId, _) = await _tester.CreatePlace(false);
-        await _tester.CreateAccounts(Jack,
-            Rebecca,
-            Luke,
-            Olivia,
-            Aaron,
-            Emma,
-            Camila,
-            Emily);
-        var updates = ApiArray.New(
-            Jack.ToIndexedUserContact(),
-            Rebecca.ToIndexedUserContact(placeId),
-            Luke.ToIndexedUserContact(placeId),
-            Olivia.ToIndexedUserContact(),
-            Aaron.ToIndexedUserContact(),
-            Emma.ToIndexedUserContact(placeId),
-            Camila.ToIndexedUserContact(),
-            Emily.ToIndexedUserContact(placeId));
+        var bob = await _tester.SignInAsUniqueBob();
+        await _tester.SignInAsAlice();
+        var places = await _tester.CreatePlaceContacts(bob, 1);
+        var people = await _tester.CreateUserContacts(bob, places);
+        await _tester.SignIn(bob);
 
         // act
+        var updates = people.Select(x => x.Value.ToIndexedUserContact(places[x.Key.PlaceKey].Id)).ToApiArray();
         await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, []));
         await _commander.Call(new SearchBackend_Refresh(true));
-        var searchResults = await Find("em", placeId);
+
+        // assert
+        var searchResults = await _tester.FindPeople("one", true, places.JoinedPrivatePlace1().Id);
+        searchResults.Should()
+            .BeEquivalentTo(
+                bob.BuildSearchResults(people.Friend1FromPrivatePlace1(), people.Friend2FromPrivatePlace1()),
+                o => o.ExcludingSearchMatch());
+
+        // assert
+        searchResults = await _tester.FindPeople("one", false, places.JoinedPrivatePlace1().Id);
+        searchResults.Should()
+            .BeEquivalentTo(
+                bob.BuildSearchResults(people.Stranger1FromPrivatePlace1(), people.Stranger2FromPrivatePlace1()),
+                o => o.ExcludingSearchMatch());
+    }
+
+    [Fact]
+    public async Task ShouldTakeOnlyFromSpecifiedPlace()
+    {
+        // arrange
+        var friendFromPlace1 = await _tester.CreateAccount("Place 1 member - Bob's friend");
+        var strangerFromPlace1 = await _tester.CreateAccount("Place 1 member - Not Bob's friend");
+        var friendFromPlace2 = await _tester.CreateAccount("Place 2 member - Bob's friend");
+        var strangerFromPlace2 = await _tester.CreateAccount("Place 2 member - Not Bob's friend");
+        var friendFromBothPlaces = await _tester.CreateAccount("Both places member - Bob's friend");
+        var strangerFromBothPlaces = await _tester.CreateAccount("Both places member - Not Bob's friend");
+        var bob = await _tester.SignInAsBob();
+        await _tester.SignInAsAlice();
+        var place1 = await _tester.CreatePlace(false, userToInvite: bob);
+        var place2 = await _tester.CreatePlace(false, userToInvite: bob);
+        await _tester.SignIn(bob);
+        await _tester.CreatePeerContacts(bob, friendFromPlace1, friendFromPlace2, friendFromBothPlaces);
+
+        // act
+        var updates = ApiArray.New(
+            friendFromPlace1.ToIndexedUserContact(place1.Id),
+            strangerFromPlace1.ToIndexedUserContact(place1.Id),
+            friendFromPlace2.ToIndexedUserContact(place2.Id),
+            strangerFromPlace2.ToIndexedUserContact(place2.Id),
+            friendFromBothPlaces.ToIndexedUserContact(place1.Id, place2.Id),
+            strangerFromBothPlaces.ToIndexedUserContact(place1.Id, place2.Id));
+        await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, []));
+        await _commander.Call(new SearchBackend_Refresh(true));
+        await _tester.SignIn(bob);
+        var searchResults = await _tester.FindPeople("member", true, place2.Id);
 
         // assert
         searchResults.Should()
             .BeEquivalentTo([
-                    bob.BuildSearchResult(Emily, [(0, 5)]),
-                    bob.BuildSearchResult(Emma, [(0, 4), (5, 12)]),
+                    bob.BuildSearchResult(friendFromPlace2, [(8, 14)]),
+                    bob.BuildSearchResult(friendFromBothPlaces, [(12, 18)]),
                 ],
                 o => o.ExcludingRank());
 
         // act
-        searchResults = await Find("Emily Yel", placeId);
-
-        // assert
-        searchResults.Should().BeEquivalentTo([bob.BuildSearchResult(Emily, [(0, 5), (6, 12)])], o => o.ExcludingRank());
-    }
-
-    [Fact]
-    public async Task ShouldTakeOnlyFromSpecifiedSpace()
-    {
-        // arrange
-        var bob = await _tester.SignInAsBob();
-        var (place1Id, _) = await _tester.CreatePlace(false);
-        var (place2Id, _) = await _tester.CreatePlace(false);
-        await _tester.CreateAccounts(Emily, Emma);
-        var updates = ApiArray.New(
-            Emily.ToIndexedUserContact(place1Id),
-            Emma.ToIndexedUserContact(place1Id, place2Id));
-
-        // act
-        await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, []));
-        await _commander.Call(new SearchBackend_Refresh(true));
-        var searchResults = await Find("em", place2Id);
+        searchResults = await _tester.FindPeople("member", false, place2.Id);
 
         // assert
         searchResults.Should()
-            .BeEquivalentTo([bob.BuildSearchResult(Emma, [(0, 4), (5, 12)])],
+            .BeEquivalentTo([
+                    bob.BuildSearchResult(strangerFromPlace2, [(8, 14)]),
+                    bob.BuildSearchResult(strangerFromBothPlaces, [(12, 18)])
+                ],
                 o => o.ExcludingRank());
     }
 
@@ -229,7 +263,4 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
     private static ApiArray<IndexedUserContact> BuildUserContacts(params AccountFull[] accounts)
         => accounts.Select(x => x.ToIndexedUserContact()).ToApiArray();
-
-    private Task<ApiArray<ContactSearchResult>> Find(string criteria, PlaceId? placeId = null)
-        => _sut.FindUserContacts(_tester.Session, placeId, criteria);
 }

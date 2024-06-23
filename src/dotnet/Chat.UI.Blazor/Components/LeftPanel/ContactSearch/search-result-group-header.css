@@ -4,8 +4,8 @@
 }
 .search-result-group-header .c-title {
     @apply flex-1 flex items-center;
-    @apply text-01 text-headline-1;
+    @apply text-square-title text-headline-1;
 }
 .search-result-group-header .show-more-btn.btn {
-    @apply px-0;
+    @apply px-0 text-caption-4;
 }
