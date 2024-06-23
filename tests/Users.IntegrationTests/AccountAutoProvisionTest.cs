@@ -1,6 +1,6 @@
 using ActualChat.App.Server;
-using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
+using ActualChat.Testing.Host.Assertion;
 
 namespace ActualChat.Users.IntegrationTests;
 

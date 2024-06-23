@@ -8,7 +8,6 @@ public class UserContactSearchStressTest(AppHostFixture fixture, ITestOutputHelp
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private WebClientTester _tester = null!;
-    private ISearch _sut = null!;
     private ICommander _commander = null!;
 
     protected override async Task InitializeAsync()
@@ -16,7 +15,6 @@ public class UserContactSearchStressTest(AppHostFixture fixture, ITestOutputHelp
         await base.InitializeAsync();
 
         _tester = AppHost.NewWebClientTester(Out);
-        _sut = AppHost.Services.GetRequiredService<ISearch>();
         _commander = AppHost.Services.Commander();
     }
 
@@ -36,20 +34,20 @@ public class UserContactSearchStressTest(AppHostFixture fixture, ITestOutputHelp
         // arrange
         var accounts = await _tester.CreateAccounts(accountCount);
         await _tester.SignInAsBob();
-        var (placeId, _) = await _tester.CreatePlace(false);
+        var place = await _tester.CreatePlace(false);
 
         // act
         foreach (var batch in accounts.Chunk(ContactIndexer.SyncBatchSize)) {
             var placeIds = GeneratePlaceIds()
                 .Select(_ => new PlaceId(Generate.Option))
-                .Concat([placeId])
+                .Concat([place.Id])
                 .Concat(GeneratePlaceIds())
                 .ToApiArray();
             var updates = batch.Select(x => x.ToIndexedUserContact(placeIds)).ToApiArray();
             await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, []));
         }
         await _commander.Call(new SearchBackend_Refresh(true));
-        var searchResults = await Find("User", placeId);
+        var searchResults = await _tester.FindPeople("User", false, place.Id);
 
         // assert
         searchResults
@@ -64,6 +62,4 @@ public class UserContactSearchStressTest(AppHostFixture fixture, ITestOutputHelp
 
     // Private methods
 
-    private Task<ApiArray<ContactSearchResult>> Find(string criteria, PlaceId? placeId = null)
-        => _sut.FindUserContacts(_tester.Session, placeId, criteria);
 }

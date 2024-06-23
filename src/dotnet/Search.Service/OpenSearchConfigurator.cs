@@ -45,12 +45,12 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
 
     private async Task Run(CancellationToken cancellationToken)
     {
-        await RunChain(AsyncChain.From(EnsureTemplates), cancellationToken).ConfigureAwait(false);
-        await RunChain(AsyncChain.From(EnsureContactIndices), cancellationToken).ConfigureAwait(false);
+        await RunChain(AsyncChain.From(EnsureTemplates)).ConfigureAwait(false);
+        await RunChain(AsyncChain.From(EnsureContactIndices)).ConfigureAwait(false);
 
         return;
 
-        Task RunChain(AsyncChain chain, CancellationToken cancellationToken)
+        Task RunChain(AsyncChain chain)
             => chain.Retry(RetryDelaySeq.Exp(0, 60), 10)
                 .Log(LogLevel.Debug, Log)
                 .RunIsolated(cancellationToken);
@@ -105,17 +105,14 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
 
     private Task EnsureContactIndicesUnsafe(CancellationToken cancellationToken)
         => Task.WhenAll(
-            EnsureContactIndex<IndexedUserContact>(IndexNames.PublicUserIndexName,
+            EnsureContactIndex(IndexNames.PublicUserIndexName,
                 ConfigureUserContactIndex,
                 cancellationToken),
-            EnsureContactIndex<IndexedChatContact>(IndexNames.GetChatContactIndexName(true),
-                ConfigureChatContactIndex,
-                cancellationToken),
-            EnsureContactIndex<IndexedChatContact>(IndexNames.GetChatContactIndexName(false),
+            EnsureContactIndex(IndexNames.ChatIndexName,
                 ConfigureChatContactIndex,
                 cancellationToken));
 
-    private async Task EnsureContactIndex<T>(IndexName indexName, Func<CreateIndexDescriptor, ICreateIndexRequest> configure, CancellationToken cancellationToken)
+    private async Task EnsureContactIndex(IndexName indexName, Func<CreateIndexDescriptor, ICreateIndexRequest> configure, CancellationToken cancellationToken)
     {
         var existsResponse = await OpenSearchClient.Indices.ExistsAsync(indexName, ct:cancellationToken).ConfigureAwait(false);
         if (existsResponse.Exists)
