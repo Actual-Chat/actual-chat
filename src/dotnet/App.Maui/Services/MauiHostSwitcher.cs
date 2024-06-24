@@ -23,7 +23,7 @@ public class MauiHostSwitcher(UrlMapper urlMapper, ReloadUI reloadUI) : IMauiHos
         var hostOverride = host != DefaultHost ? host : null;
         SaveHostOverride(hostOverride);
         _ = MauiSession.RemoveStored().SuppressExceptions();
-        reloadUI.Clear(true, true);
+        _ = reloadUI.Clear(true, true);
     }
 
     public static MauiHost? GetHostOverride()

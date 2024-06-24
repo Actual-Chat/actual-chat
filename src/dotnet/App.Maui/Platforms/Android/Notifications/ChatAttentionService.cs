@@ -149,7 +149,7 @@ public class ChatAttentionService
                     dueTime = muteThreshold.Value - now;
             }
             var nextMoment = Java.Lang.JavaSystem.CurrentTimeMillis() + (long)dueTime.TotalMilliseconds;
-            AlarmManager.SetExact(AlarmType.RtcWakeup, nextMoment, pendingIntent);
+            AlarmManager.SetWindow(AlarmType.RtcWakeup, nextMoment, 10 * 60_000, pendingIntent);
         }
         else
             AlarmManager.Cancel(pendingIntent);

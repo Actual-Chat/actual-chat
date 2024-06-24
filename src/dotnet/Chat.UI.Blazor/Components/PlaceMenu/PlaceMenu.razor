@@ -18,13 +18,11 @@
         Text="Settings"
         Click="OnPlaceSettingsClick">
     </MenuEntry>
-    @if (_isOwner && EnableChatCopying) {
-        <MenuEntry
-            Icon="icon-cloud-upload"
-            Text="Copy chat into the Place"
-            Click="OnImportChatsClick">
-        </MenuEntry>
-    }
+    <MenuEntry
+        Icon="icon-cloud-upload"
+        Text="Copy chat into the Place"
+        Click="OnImportChatsClick">
+    </MenuEntry>
 }
 @if (_canLeave) {
     <MenuEntrySeparator />
@@ -48,7 +46,6 @@
     private IPlaces Places => Hub.Places;
     private ModalUI ModalUI => Hub.ModalUI;
     private ChatUI ChatUI => Hub.ChatUI;
-    private bool EnableChatCopying => Hub.AccountUI.OwnAccount.Value.IsAdmin;
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is not [ var placeSid ])

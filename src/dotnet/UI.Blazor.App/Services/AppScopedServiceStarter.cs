@@ -140,7 +140,10 @@ public class AppScopedServiceStarter
         var accountSettings = Services.AccountSettings();
         var settings = await accountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
         var isAnalyticsEnabled = settings.IsAnalyticsEnabled;
-        await analyticsUI.UpdateAnalyticsState(isAnalyticsEnabled, cancellationToken).ConfigureAwait(false);
+        if (!isAnalyticsEnabled.HasValue)
+            return;
+
+        await analyticsUI.UpdateAnalyticsState(isAnalyticsEnabled.Value, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task StartHostedServices()

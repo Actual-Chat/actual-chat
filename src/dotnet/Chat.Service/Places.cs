@@ -1,5 +1,4 @@
-﻿using ActualChat.Contacts;
-using ActualChat.Users;
+﻿using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
@@ -7,7 +6,6 @@ public class Places(IServiceProvider services) : IPlaces
 {
     private IChats? _chats;
     private IChatsBackend? _chatsBackend;
-    private IContacts? _contacts;
 
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
@@ -17,7 +15,6 @@ public class Places(IServiceProvider services) : IPlaces
     private IPlacesBackend PlacesBackend { get; } = services.GetRequiredService<PlacesBackend>();
     private IChats Chats => _chats ??= services.GetRequiredService<IChats>(); // Lazy resolving to prevent cyclic dependency
     private IChatsBackend ChatsBackend => _chatsBackend ??= services.GetRequiredService<IChatsBackend>(); // Lazy resolving to prevent cyclic dependency
-    private IContacts Contacts => _contacts ??= services.GetRequiredService<IContacts>(); // Lazy resolving to prevent cyclic dependency
 
     public virtual async Task<Place?> Get(Session session, PlaceId placeId, CancellationToken cancellationToken)
     {
@@ -188,20 +185,6 @@ public class Places(IServiceProvider services) : IPlaces
         var leaveCommand = new Authors_Leave(session, placeId.ToRootChatId());
         await Commander.Call(leaveCommand, true, cancellationToken).ConfigureAwait(false);
     }
-
-    private static ChatDiff ToChatDiff(PlaceDiff placeDiff)
-        => new() {
-            IsPublic = placeDiff.IsPublic,
-            Title = placeDiff.Title,
-            Kind = ChatKind.Place,
-            MediaId = placeDiff.MediaId,
-
-            AllowGuestAuthors = null,
-            AllowAnonymousAuthors = null,
-            IsTemplate = null,
-            TemplateId = Option<ChatId?>.None,
-            TemplatedForUserId = Option<UserId?>.None,
-        };
 
     private static void ThrowIfNone(PlaceId placeId)
     {

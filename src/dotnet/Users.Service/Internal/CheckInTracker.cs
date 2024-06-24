@@ -10,8 +10,8 @@ public class CheckInTracker
     public void Set(UserId userId, Moment at, bool isActive)
         => _items.AddOrUpdate(
             userId,
-            static (_, x) => new (x.at, x.isActive ? x.at : null),
-            static (_, prev, x) => x.at >= prev.At ? new (x.at, x.isActive ? x.at : prev.LastActiveAt) : prev,
+            static (_, x) => new (x.at, x.isActive, null),
+            static (_, prev, x) => x.at >= prev.At ? new (x.at, x.isActive, prev) : prev,
             (at, isActive));
 
     public void Remove(UserId userId)

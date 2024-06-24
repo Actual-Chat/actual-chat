@@ -113,7 +113,7 @@
                     </Right>
                 </TileItem>
             }
-            @if (isOwner && m is { EnableChatCopying: true }) {
+            @if (isOwner) {
                 <TileItem Click="OnCopyChatClick" Class="copy-chat-item">
                     <Icon>
                         <i class="icon-cloud-upload text-xl"></i>
@@ -122,8 +122,6 @@
                         Copy chat into the Place
                     </Content>
                 </TileItem>
-            }
-            @if (isOwner) {
                 <TileItem Class="item-leave-group" Click="@(() => OnPlaceDeleteClick())">
                     <Icon><i class="icon-log-out"></i></Icon>
                     <Content>Leave place & delete</Content>
@@ -196,7 +194,6 @@
             Place = place,
             MembersCount = allAuthorIds.Count,
             IsOwner = place.Rules.IsOwner(),
-            EnableChatCopying = AccountUI.OwnAccount.Value.IsAdmin,
         };
     }
 
@@ -278,6 +275,5 @@
         public Place? Place { get; init; }
         public int MembersCount { get; init; }
         public bool IsOwner { get; init; }
-        public bool EnableChatCopying { get; init; }
     }
 }
