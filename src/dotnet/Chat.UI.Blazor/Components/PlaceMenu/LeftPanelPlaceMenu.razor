@@ -9,6 +9,11 @@
 </MenuEntry>
 @if (_isOwner) {
     <MenuEntry
+        Icon="icon-cloud-upload"
+        Text="Copy chat into the Place"
+        Click="OnImportChatsClick">
+    </MenuEntry>
+    <MenuEntry
         Icon="icon-edit"
         Text="Settings"
         Click="OnPlaceSettingsClick">
@@ -62,4 +67,7 @@
 
     private void OnPlaceLeaveClick()
         => ChatUI.LeavePlace(_placeId);
+
+    private void OnImportChatsClick()
+        => ModalUI.Show(new CopyChatFromListToPlaceModal.Model(_placeId));
 }
