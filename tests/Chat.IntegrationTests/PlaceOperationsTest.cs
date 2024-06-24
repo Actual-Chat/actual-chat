@@ -1,5 +1,6 @@
 ﻿using System.Security;
 using ActualChat.Contacts;
+using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Queues;
 using ActualChat.Testing.Host;
@@ -9,7 +10,7 @@ namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(PlaceCollection))]
 public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out, log:fixture.AppHost.Services.LogFor<PlaceOperationsTest>())
 {
     private const string PlaceTitle = "AC Place";
     private const string ChatTitle = "General";
@@ -777,9 +778,10 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     }
 
     [Fact]
-    public async Task UserShouldBeAbleToRejoinPlacePrivateChatOnlyAfterRejoingPlace()
+    public async Task UserShouldBeAbleToRejoinPlacePrivateChatOnlyAfterRejoiningPlace()
     {
         var appHost = AppHost;
+        Log.LogInformation("HostInfo.IsTested={IsTested}", AppHost.Services.GetRequiredService<HostInfo>().IsTested);
         await using var tester = appHost.NewBlazorTester(Out);
         var session1 = tester.Session;
         await tester.SignInAsBob();
