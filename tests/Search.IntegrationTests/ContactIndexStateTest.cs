@@ -1,5 +1,5 @@
-using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
+using ActualChat.Testing.Host.Assertion;
 using ActualLab.Versioning;
 
 namespace ActualChat.Search.IntegrationTests;

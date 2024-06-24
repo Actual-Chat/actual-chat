@@ -1,17 +1,16 @@
-using ActualChat.Contacts;
 using FluentAssertions.Formatting;
 
-namespace ActualChat.Testing.Assertion;
+namespace ActualChat.Testing.Host.Assertion;
 
-public class ContactFormatter : IValueFormatter
+public class ChatFormatter : IValueFormatter
 {
     public bool CanHandle(object value)
-        => value is Contact;
+        => value is Chat.Chat;
 
     public void Format(object value, FormattedObjectGraph formattedGraph, FormattingContext context, FormatChild formatChild)
     {
-        var contact = (Contact)value;
-        var result = $"{contact.Chat.Title} (#{contact.Id})";
+        var chat = (Chat.Chat)value;
+        var result = $"{chat.Title} (#{chat.Id})";
         if (context.UseLineBreaks)
             formattedGraph.AddLine(result);
         else

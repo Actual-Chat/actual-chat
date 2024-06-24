@@ -1,17 +1,17 @@
-using ActualChat.Search;
+using ActualChat.Chat.UI.Blazor.Services;
 using FluentAssertions.Formatting;
 
-namespace ActualChat.Testing.Assertion;
+namespace ActualChat.Testing.Host.Assertion;
 
-public class ContactSearchResultFormatter : IValueFormatter
+public class FoundContactFormatter : IValueFormatter
 {
     public bool CanHandle(object value)
-        => value is ContactSearchResult;
+        => value is FoundContact;
 
     public void Format(object value, FormattedObjectGraph formattedGraph, FormattingContext context, FormatChild formatChild)
     {
-        var item = (ContactSearchResult)value;
-        var result = $"{item.Text} (#{item.Id})";
+        var foundContact = (FoundContact)value;
+        var result = $"{foundContact.SearchResult.SearchMatch.Text} (#{foundContact.SearchResult.Id})";
         if (context.UseLineBreaks)
             formattedGraph.AddLine(result);
         else

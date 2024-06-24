@@ -1,7 +1,8 @@
 using FluentAssertions.Formatting;
+
 // ReSharper disable InconsistentlySynchronizedField
 
-namespace ActualChat.Testing.Assertion;
+namespace ActualChat.Testing.Host.Assertion;
 
 public static class ActualFluentFormatters
 {
@@ -18,8 +19,10 @@ public static class ActualFluentFormatters
                 return;
 
             Add<UserFormatter>();
+            Add<ChatFormatter>();
             Add<ContactFormatter>();
             Add<ContactSearchResultFormatter>();
+            Add<FoundContactFormatter>();
             _isUsed = true;
         }
     }
@@ -34,8 +37,10 @@ public static class ActualFluentFormatters
                 return;
 
             Remove<UserFormatter>();
+            Remove<ChatFormatter>();
             Remove<ContactFormatter>();
             Remove<ContactSearchResultFormatter>();
+            Remove<FoundContactFormatter>();
             _isUsed = false;
         }
     }

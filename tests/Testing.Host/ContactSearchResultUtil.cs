@@ -1,4 +1,4 @@
-using ActualChat.Chat.UI.Blazor.Components;
+using ActualChat.Chat;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Search;
 using ActualChat.Users;
@@ -16,8 +16,8 @@ public static class ContactSearchResultUtil
     {
         var foundContacts = new List<FoundContact>();
         foundContacts.AddRange(otherUsers.Select(owner.BuildFoundContact));
-        foundContacts.AddRange(publicChats.Select(x => owner.BuildFoundContact(x, true)));
-        foundContacts.AddRange(publicChats.Select(x => owner.BuildFoundContact(x, false)));
+        foundContacts.AddRange(publicChats.Select(owner.BuildFoundContact));
+        foundContacts.AddRange(publicChats.Select(owner.BuildFoundContact));
         return foundContacts;
     }
 
@@ -26,30 +26,52 @@ public static class ContactSearchResultUtil
 
     public static IEnumerable<FoundContact> BuildFoundContacts(
         this Account owner,
-        bool isPublic,
         params Chat.Chat[] chats)
-        => chats.Select(x => owner.BuildFoundContact(x, isPublic));
+        => chats.Select(owner.BuildFoundContact);
+
+    public static IEnumerable<FoundContact> BuildFoundContacts(
+        this Account owner,
+        params Place[] places)
+        => places.Select(owner.BuildFoundContact);
 
     public static FoundContact BuildFoundContact(this Account owner, AccountFull other)
         => new (owner.BuildSearchResult(other), ContactSearchScope.People);
 
-    public static FoundContact BuildFoundContact(this Account owner, Chat.Chat chat, bool isPublic)
-        => new (owner.BuildSearchResult(chat), isPublic ? ContactSearchScope.PublicChats : ContactSearchScope.PrivateChats);
+    public static FoundContact BuildFoundContact(this Account owner, Chat.Chat chat)
+        => new (owner.BuildSearchResult(chat), ContactSearchScope.Groups);
+
+    public static FoundContact BuildFoundContact(this Account owner, Place place)
+        => new (owner.BuildSearchResult(place), ContactSearchScope.Places);
 
     public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params Chat.Chat[] chats)
         => chats.Select(x => owner.BuildSearchResult(x));
 
+    public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params Place[] places)
+        => places.Select(x => owner.BuildSearchResult(x));
+
     public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params (Chat.Chat Chat, Range<int>[]? SearchMatchPartRanges)[] chats)
         => chats.Select(x => owner.BuildSearchResult(x.Chat, x.SearchMatchPartRanges));
+
+    public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params (Place Place, Range<int>[]? SearchMatchPartRanges)[] chats)
+        => chats.Select(x => owner.BuildSearchResult(x.Place, x.SearchMatchPartRanges));
 
     public static ContactSearchResult BuildSearchResult(this Account owner, Chat.Chat chat, Range<int>[]? searchMatchPartRanges = null)
         => chat.BuildSearchResult(owner.Id, searchMatchPartRanges);
 
+    public static ContactSearchResult BuildSearchResult(this Account owner, Place place, Range<int>[]? searchMatchPartRanges = null)
+        => place.BuildSearchResult(owner.Id, searchMatchPartRanges);
+
     public static ContactSearchResult BuildSearchResult(this Chat.Chat chat, UserId userId, Range<int>[]? searchMatchPartRanges = null)
         => BuildSearchResult(userId, chat.Id, chat.Title, searchMatchPartRanges);
 
+    public static ContactSearchResult BuildSearchResult(this Place place, UserId userId, Range<int>[]? searchMatchPartRanges = null)
+        => BuildSearchResult(userId, place.Id, place.Title, searchMatchPartRanges);
+
     public static ContactSearchResult BuildSearchResult(this UserId ownerId, ChatId chatId, string title, Range<int>[]? searchMatchPartRanges = null)
         => new (new ContactId(ownerId, chatId), searchMatchPartRanges.BuildSearchMatch(title));
+
+    public static ContactSearchResult BuildSearchResult(this UserId ownerId, PlaceId placeId, string title, Range<int>[]? searchMatchPartRanges = null)
+        => new (new ContactId(ownerId, placeId.ToRootChatId()), searchMatchPartRanges.BuildSearchMatch(title));
 
     public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params AccountFull[] others)
         => others.Select(x => owner.BuildSearchResult(x));

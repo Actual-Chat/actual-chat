@@ -14,7 +14,7 @@ public class Search(ISearchBackend backend, IAccounts accounts, IPlaces places) 
         if (!ownAccount.IsActive())
             return ContactSearchResultPage.Empty;
 
-        if (query.PlaceId != null && query.PlaceId != PlaceId.None) {
+        if (query.MustFilterByPlace) {
             var place = await places.Get(session, query.PlaceId.Value, cancellationToken).ConfigureAwait(false);
             if (place is null)
                 return ContactSearchResultPage.Empty;

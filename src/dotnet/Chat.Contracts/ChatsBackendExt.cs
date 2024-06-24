@@ -160,15 +160,4 @@ public static class ChatsBackendExt
             minVersion = last.Version;
         }
     }
-
-    public static async Task<Place?> GetPlace(
-        this IChatsBackend chatsBackend,
-        PlaceId placeId,
-        CancellationToken cancellationToken)
-    {
-        placeId.Require();
-
-        var placeRootChat = await chatsBackend.Get(placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
-        return placeRootChat?.ToPlace();
-    }
 }

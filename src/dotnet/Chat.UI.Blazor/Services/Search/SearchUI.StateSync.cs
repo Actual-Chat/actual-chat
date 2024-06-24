@@ -47,7 +47,7 @@ public partial class SearchUI
         var searchResultMap = await FindContacts(criteria, cancellationToken).ConfigureAwait(false);
         var foundContacts = new List<FoundContact>(searchResultMap.Sum(x => x.Value.Count));
         foreach (var scope in Scopes) {
-            if (!searchResultMap.TryGetValue(scope, out var searchResults) && searchResults.Count > 0)
+            if (!searchResultMap.TryGetValue(scope, out var searchResults) || searchResults.Count == 0)
                 continue;
 
             for (int i = 0; i < searchResults.Count; i++) {
@@ -62,7 +62,7 @@ public partial class SearchUI
         }
     }
 
-    private async Task<Dictionary<ContactSearchScope, ApiArray<ContactSearchResult>>> FindContacts(
+    private async Task<Dictionary<ContactSearchScope, IReadOnlyList<ContactSearchResult>>> FindContacts(
         Criteria criteria,
         CancellationToken cancellationToken)
     {
@@ -70,18 +70,24 @@ public partial class SearchUI
             return [];
 
         var session = Session;
-        var allSearchResults = await Scopes.Select(Find).CollectResults().ConfigureAwait(false);
-        var resultByScope = new Dictionary<ContactSearchScope, ApiArray<ContactSearchResult>>();
-        for (var i = 0; i < Scopes.Length; i++) {
-            var scope = Scopes[i];
+        var scopes = criteria.PlaceId.IsNone
+            ? Scopes
+            : Scopes.Where(x => x is not ContactSearchScope.Places);
+        var subgroups = scopes.SelectMany(x => new SubgroupKey[] { new (x, true), new (x, false) }).ToArray();
+        var allSearchResults = await subgroups.Select(Find)
+            .CollectResults()
+            .ConfigureAwait(false);
+        var resultByScope = new Dictionary<ContactSearchScope, IReadOnlyList<ContactSearchResult>>();
+        for (var i = 0; i < subgroups.Length; i++) {
+            var (scope, _) = subgroups[i];
             var (searchResults, error) = allSearchResults[i];
             if (error is null)
-                resultByScope[scope] = searchResults.Hits;
+                resultByScope[scope] = resultByScope.GetValueOrDefault(scope, []).Concat(searchResults.Hits).ToList();
         }
         return resultByScope;
 
-        Task<ContactSearchResultPage> Find(ContactSearchScope scope)
+        Task<ContactSearchResultPage> Find(SubgroupKey key)
             // TODO: reuse cached data for scope
-            => Search.FindContacts(session, criteria.ToQuery(scope), cancellationToken);
+            => Search.FindContacts(session, criteria.ToQuery(key), cancellationToken);
     }
 }

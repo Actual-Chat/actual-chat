@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Security.Claims;
 using ActualChat.Performance;
-using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;

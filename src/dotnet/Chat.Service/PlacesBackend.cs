@@ -9,8 +9,8 @@ namespace ActualChat.Chat;
 public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IPlacesBackend
 {
     private IDbEntityResolver<string, DbPlace> DbPlaceResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbPlace>>();
-    private IMediaBackend MediaBackend => services.GetRequiredService<IMediaBackend>();
-    private IChatsBackend ChatsBackend => services.GetRequiredService<IChatsBackend>();
+    private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
+    private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
 
     // [ComputeMethod]

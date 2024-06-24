@@ -11,5 +11,6 @@ public sealed partial record IndexedChatContact : IRequirementTarget
     [DataMember, MemoryPackOrder(1)] public PlaceId PlaceId { get; init; }
     [DataMember, MemoryPackOrder(2)] public string Title { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public bool IsPublic { get; init; }
+    [DataMember, MemoryPackOrder(4)] public bool IsPlaceRootChat { get; init; } // TODO: maybe index places separately
     // TODO: store Version
 }
