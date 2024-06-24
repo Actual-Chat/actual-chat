@@ -6,7 +6,6 @@ using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Media;
-using ActualChat.Queues;
 using ActualChat.Users;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
@@ -34,6 +33,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IMediaBackend? _mediaBackend;
     private ILinkPreviewsBackend? _linkPreviewsBackend;
     private IInvitesBackend? _invitesBackend;
+    private IPlacesBackend? _placesBackend;
     private IServerKvasBackend? _serverKvasBackend;
 
     private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
@@ -42,6 +42,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IMediaBackend MediaBackend => _mediaBackend ??= Services.GetRequiredService<IMediaBackend>();
     private ILinkPreviewsBackend LinkPreviewsBackend => _linkPreviewsBackend ??= Services.GetRequiredService<ILinkPreviewsBackend>();
     private IInvitesBackend InvitesBackend => _invitesBackend ??= Services.GetRequiredService<IInvitesBackend>();
+    private IPlacesBackend PlacesBackend => _placesBackend ??= Services.GetRequiredService<IPlacesBackend>();
     private IServerKvasBackend ServerKvasBackend => _serverKvasBackend ??= Services.GetRequiredService<IServerKvasBackend>();
 
     private HostInfo HostInfo { get; } = services.HostInfo();
@@ -1578,32 +1579,42 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (chat == null)
             return AuthorRules.None(chatId);
 
+        var place = await PlacesBackend.Get(placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+        if (place == null)
+            return AuthorRules.None(chatId);
+
         var rootChatId = placeChatId.PlaceId.ToRootChatId();
-        if (!principalId.IsUser(out var userId) && principalId.IsAuthor(out var authorId)) {
-            var rootAuthorId = new AuthorId(rootChatId, authorId.LocalId, AssumeValid.Option);
-            var rootAuthor = await AuthorsBackend.Get(rootChatId, rootAuthorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
-            userId = rootAuthor?.UserId ?? default;
+        PrincipalId rootChatPrincipalId;
+        if (principalId.IsUser(out _))
+            rootChatPrincipalId = principalId;
+        else if (principalId.IsAuthor(out var pAuthorId))
+            rootChatPrincipalId = new PrincipalId(new AuthorId(rootChatId, pAuthorId.LocalId, AssumeValid.Option), AssumeValid.Option);
+        else
+            throw StandardError.Internal("Can't remap principal id for root chat");
+
+        var rootChatRules = await GetRules(rootChatId, rootChatPrincipalId, cancellationToken).ConfigureAwait(false);
+        if (!rootChatRules.CanRead())
+            return AuthorRules.None(chatId);
+
+        var account = rootChatRules.Account;
+        if (account.IsNone)
+            return AuthorRules.None(chatId);
+
+        var isPlaceMember = rootChatRules.Author is { HasLeft: false };
+        var directRules = await GetRulesRaw(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        if (!isPlaceMember) {
+            if (chat.IsPublic && directRules.CanRead())
+                return new AuthorRules(chat.Id, directRules.Author, account, ChatPermissions.Read);
+            return AuthorRules.None(chatId);
         }
 
-        if (userId.IsNone)
-            return AuthorRules.None(chatId);
-
-        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        if (account == null)
-            return AuthorRules.None(chatId);
-
-        var rootChatPrincipalId = new PrincipalId(account.Id, AssumeValid.Option);
-        var rootChatRules = await GetRules(rootChatId, rootChatPrincipalId, cancellationToken).ConfigureAwait(false);
         if (chat.IsPublic) {
             var author = await AuthorsBackend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
             var permissions = rootChatRules.Permissions & ~ChatPermissions.Leave; // Do not allow to leave public chat on a place
             return new AuthorRules(chat.Id, author, account, permissions);
         }
 
-        if (!rootChatRules.CanRead())
-            return AuthorRules.None(chatId);
-
-        return await GetRulesRaw(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        return directRules;
     }
 
     // Private / internal methods
