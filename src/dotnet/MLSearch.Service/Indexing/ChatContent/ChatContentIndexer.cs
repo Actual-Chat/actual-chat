@@ -68,6 +68,7 @@ internal sealed class ChatContentIndexer(
     private readonly HashSet<string> _outRemoves = new(StringComparer.Ordinal);
 
     public ChatContentCursor Cursor => _cursor;
+    public ChatContentCursor NextCursor => _nextCursor;
     public IReadOnlyDictionary<string, ChatSlice> TailDocs => _tailDocs;
     public IReadOnlyCollection<ChatEntry> Buffer => _buffer;
     public IReadOnlyDictionary<string, ChatSlice> OutUpdates => _outUpdates;
