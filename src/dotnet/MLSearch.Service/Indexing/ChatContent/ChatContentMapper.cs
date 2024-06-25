@@ -5,14 +5,14 @@ using ActualChat.MLSearch.Documents;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;
 
-internal interface IChatContentMapper: IDocumentMapper<SourceEntries, IReadOnlyCollection<ChatSlice>>;
+internal interface IChatContentMapper: IDocumentMapper<SourceEntries, ChatSlice>;
 
 internal class ChatContentMapper(
     IMarkupParser markupParser,
     IReactionsBackend reactionsBackend
 ) : IChatContentMapper
 {
-    public async ValueTask<IReadOnlyCollection<ChatSlice>> MapAsync(SourceEntries sourceEntries, CancellationToken cancellationToken = default)
+    public async ValueTask<ChatSlice> MapAsync(SourceEntries sourceEntries, CancellationToken cancellationToken = default)
     {
         // TODO: in the future we may want to split sourse sequence into several documents
         // but for now lets create just single ChatSlice
@@ -104,6 +104,6 @@ internal class ChatContentMapper(
             // TODO:
             Timestamp: timestamp
         );
-        return [new ChatSlice(metadata, content.ToString())];
+        return new ChatSlice(metadata, content.ToString());
     }
 }

@@ -392,9 +392,6 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
                 It.IsAny<SourceEntries>(),
                 It.IsAny<CancellationToken>()))
             .Returns<SourceEntries, CancellationToken>((entries, _) => {
-                if (entries.Entries.Count == 0) {
-                    return ValueTask.FromResult<IReadOnlyCollection<ChatSlice>>([]);
-                }
                 var metadata = new ChatSliceMetadata(
                     [_authorId],
                     [.. entries.Entries.Select(e => new ChatSliceEntry(e.Id, e.LocalId, e.Version))], entries.StartOffset, entries.EndOffset,
@@ -407,7 +404,7 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
                     .Aggregate(new StringBuilder(), (txt, ln) => txt.AppendLine(ln)).ToString();
                 var updatedDoc = new ChatSlice(metadata, content);
                 onUpdatedDoc(updatedDoc);
-                return ValueTask.FromResult<IReadOnlyCollection<ChatSlice>>([updatedDoc]);
+                return ValueTask.FromResult(updatedDoc);
             });
         return docMapper;
     }
