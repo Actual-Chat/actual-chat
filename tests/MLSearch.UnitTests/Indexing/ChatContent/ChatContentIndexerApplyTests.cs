@@ -6,7 +6,7 @@ using ActualChat.MLSearch.Indexing.ChatContent;
 
 namespace ActualChat.MLSearch.UnitTests.Indexing.ChatContent;
 
-public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
+public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@out)
 {
     private readonly PrincipalId _authorId = new (UserId.New(), AssumeValid.Option);
 
