@@ -181,6 +181,9 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
 
             Assert.Same(updatedDoc, contentIndexer.TailDocs[updatedDoc!.Id]);
             Assert.Same(updatedDoc, contentIndexer.OutUpdates[updatedDoc!.Id]);
+
+            var expectedNextCursor = new ChatContentCursor(updatedEntry);
+            Assert.Equal(expectedNextCursor, contentIndexer.NextCursor);
         }
 
         chats.Verify(x => x.GetTile(
@@ -245,10 +248,16 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
         Assert.Same(updatedDoc, contentIndexer.TailDocs[updatedDoc.Id]);
         Assert.Same(updatedDoc, contentIndexer.OutUpdates[updatedDoc.Id]);
 
+        var expectedNextCursor = new ChatContentCursor(updatedEntry);
+        Assert.Equal(expectedNextCursor, contentIndexer.NextCursor);
+
         var removedEntry = new ChatEntry(updatedEntryId, ++version) {
             IsRemoved = true,
         };
         await contentIndexer.ApplyAsync(removedEntry, CancellationToken.None);
+
+        expectedNextCursor = new ChatContentCursor(removedEntry);
+        Assert.Equal(expectedNextCursor, contentIndexer.NextCursor);
 
         Assert.DoesNotContain(contentIndexer.TailDocs.Keys, updatedDocIds.Contains);
         Assert.DoesNotContain(contentIndexer.OutUpdates.Keys, updatedDocIds.Contains);
