@@ -817,9 +817,13 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         await commander1.Call(new Places_Invite(session1, place.Id, [user2.Id]));
 
-        chatRules = await chats.GetRules(session2, chat.Id, default);
-        canJoin = chatRules.CanJoin();
-        canJoin.Should().BeTrue();
+        await commander2.Call(new Invites_Use(session2, invite.Id), true);
+
+        await ComputedTest.When(async ct => {
+            chatRules = await chats.GetRules(session2, chat.Id, ct);
+            canJoin = chatRules.CanJoin();
+            canJoin.Should().BeTrue();
+        });
     }
 
     private static async Task<(Place, Chat)> CreatePlaceWithDefaultChat(
