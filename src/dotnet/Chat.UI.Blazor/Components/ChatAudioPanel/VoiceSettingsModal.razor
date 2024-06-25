@@ -1,96 +1,13 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IModalView<VoiceSettingsModal.Model>
-@inherits ComputedStateComponent<VoiceSettingsModal.ComputedModel>
-@{
-    var m = State.Value;
-    var voiceStatus = !m.CanChangeMustStreamVoice
-        ? "Disabled for anonymous users"
-        : m.MustStreamVoice
-            ? "On"
-            : "Off";
 
-    var listeningModeInfo = m.ListeningMode.GetInfo();
-}
-
-<DialogFrame Title="Voice settings" Class="transcription-options-modal modal-sm" HasCloseButton="true">
-    <Body>
-    <FormBlock Class="first last">
-        <LanguageButtonGroup ChatId="@ModalModel.ChatId" Click="@(() => Modal.Close())"/>
-
-        <TileItem Click="@OnVoiceStreamingClick">
-            <Icon><i class="icon-radio-button-on-fill text-2xl"></i></Icon>
-            <Content>Voice streaming</Content>
-            <Caption>@voiceStatus</Caption>
-            <Right>
-                <Toggle
-                    IsDisabled="@(!m.CanChangeMustStreamVoice)"
-                    IsChecked="@m.MustStreamVoice" />
-            </Right>
-        </TileItem>
-
-        <TileItem Click="@OnListeningModeClick">
-            <Icon><i class="icon-listen text-2xl"></i></Icon>
-            <Content>Extended listening</Content>
-            <Caption>@(listeningModeInfo.IsDefault ? "Off" : "On")</Caption>
-            <Right>
-                <span class="text-primary text-sm">@listeningModeInfo.Text</span>
-            </Right>
-        </TileItem>
-
-    </FormBlock>
-    </Body>
-</DialogFrame>
+<DiveInDialogFrame
+    HasCloseButton="true"
+    Class="transcription-options-modal modal-sm"
+    StartPage="@(DiveInDialogPage.New<VoiceSettingsStartModalPage>(ModalModel.ChatId))" />
 
 @code {
-    private ChatVoiceSettings? _chatVoiceSettings;
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private ChatId ChatId => ModalModel.ChatId;
-    private ChatUI ChatUI => Hub.ChatUI;
-    private ChatVoiceSettings ChatVoiceSettings => _chatVoiceSettings ??= new(Hub.Services, Hub.AccountSettings());
-
-    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
-
-    protected override ComputedState<ComputedModel>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<ComputedModel>.Options() {
-                InitialValue = new(false, false, ListeningMode.Default),
-                UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
-            });
-
-    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var chatId = ChatId;
-
-        var settings = await ChatVoiceSettings.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
-
-        var listeningMode = chatInfo?.UserSettings.ListeningMode ?? ListeningMode.Default;
-        var mustStreamVoice = settings.VoiceMode.HasVoice();
-        return new (mustStreamVoice, settings.CanChange, listeningMode);
-    }
-
-    private async Task OnMustStreamVoiceChanged(bool mustStreamVoice) {
-        var voiceMode = mustStreamVoice
-            ? VoiceMode.TextAndVoice
-            : VoiceMode.JustText;
-        await ChatVoiceSettings.Set(Session, ChatId, voiceMode);
-    }
-
-    private Task OnVoiceStreamingClick()
-        => OnMustStreamVoiceChanged(!State.Value.MustStreamVoice);
-
-    private Task OnListeningModeClick()
-        => Hub.ModalUI.Show(new ListeningSettingsModal.Model(ChatId));
-
-    // Nested types
-
-    public sealed record ComputedModel(
-        bool MustStreamVoice,
-        bool CanChangeMustStreamVoice,
-        ListeningMode ListeningMode);
 
     public sealed record Model(ChatId ChatId);
 }
