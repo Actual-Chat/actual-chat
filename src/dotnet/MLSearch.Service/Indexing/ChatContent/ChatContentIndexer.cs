@@ -113,22 +113,22 @@ internal sealed class ChatContentIndexer(
             var sourceEntries = await GetSourceEntriesAsync(entry, existingDocuments, cancellationToken).ConfigureAwait(false);
 
             // Send source entries to build document(s)
-            var newDocuments = sourceEntries.Entries.Count > 0
-                ? await BuildDocumentsAsync(sourceEntries, cancellationToken).ConfigureAwait(false)
-                : [];
+            var newDoc = sourceEntries.Entries.Count > 0
+                ? await BuildDocumentAsync(sourceEntries, cancellationToken).ConfigureAwait(false)
+                : null;
 
             // Now we have existing documents and new documents
             // So delete all existing documents where there is no corresponding new one
             foreach (var docId in existingDocuments.Select(doc => doc.Id)) {
-                var isDeleted = !newDocuments.Any(newDoc => newDoc.Id.Equals(docId, StringComparison.Ordinal));
+                var isDeleted = newDoc?.Id.Equals(docId, StringComparison.Ordinal) != true;
                 if (isDeleted) {
                     _tailDocs.Remove(docId);
                     _outUpdates.Remove(docId);
                     _outRemoves.Add(docId);
                 }
             }
-            // Add new documents to output buffer and update caches
-            foreach (var newDoc in newDocuments) {
+            // Add new document to output buffer and update caches
+            if (newDoc != null) {
                 _outUpdates[newDoc.Id] = newDoc;
                 if (_tailDocs.ContainsKey(newDoc.Id)) {
                     _tailDocs[newDoc.Id] = newDoc;
@@ -143,13 +143,11 @@ internal sealed class ChatContentIndexer(
     {
         // Process buffer & tail
         await foreach (var entrySet in ArrangeBufferedEntriesAsync(_buffer, _tailDocs.Values, cancellationToken).ConfigureAwait(false)) {
-            var newDocuments = await BuildDocumentsAsync(entrySet, cancellationToken).ConfigureAwait(false);
-            foreach (var newDoc in newDocuments) {
-                // Append each new doc to the output
-                _outUpdates[newDoc.Id] = newDoc;
-                // Save new docs as potential tails for a future processing
-                _tailDocs[newDoc.Id] = newDoc;
-            }
+            var newDoc = await BuildDocumentAsync(entrySet, cancellationToken).ConfigureAwait(false);
+            // Append each new doc to the output
+            _outUpdates[newDoc.Id] = newDoc;
+            // Save new docs as potential tails for a future processing
+            _tailDocs[newDoc.Id] = newDoc;
         }
         // Apply changes to the document index
         await sink.ExecuteAsync(_outUpdates.Values, _outRemoves, cancellationToken).ConfigureAwait(false);
@@ -206,7 +204,7 @@ internal sealed class ChatContentIndexer(
         IEnumerable<ChatEntryId> entryIds,
         CancellationToken cancellationToken) => await chatsBackend.GetEntries(entryIds, true, cancellationToken).ConfigureAwait(false);
 
-    private async Task<IReadOnlyCollection<ChatSlice>> BuildDocumentsAsync(SourceEntries sourceEntries, CancellationToken cancellationToken)
+    private async Task<ChatSlice> BuildDocumentAsync(SourceEntries sourceEntries, CancellationToken cancellationToken)
         => await documentMapper.MapAsync(sourceEntries, cancellationToken).ConfigureAwait(false);
 
     private async Task<SourceEntries> GetSourceEntriesAsync(ChatEntry entry, IReadOnlyCollection<ChatSlice> associatedDocuments, CancellationToken cancellationToken)
