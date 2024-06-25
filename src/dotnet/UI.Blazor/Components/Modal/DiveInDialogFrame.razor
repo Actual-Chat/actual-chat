@@ -1,7 +1,6 @@
 ﻿@using ActualChat.UI.Blazor.Pages.DiveInModalTestPage
 @namespace ActualChat.UI.Blazor.Components
 @implements IDiveInModalContext;
-
 @{
     var pageContext = _pageInfo.Context;
 }
@@ -12,6 +11,10 @@
         var title = pageContext.Title;
         var cls = Class + " " + pageContext.Class;
         var narrowViewSettings = _narrowViewSettingsBuilder.GetFrom(pageContext.ButtonInfos);
+        // TODO: DiveInModal DialogFrame with "modal-sm" class must have Position = DialogFramePosition.Bottom
+        if (Class.Contains("modal-sm")) {
+            narrowViewSettings = narrowViewSettings with { Position = DialogFramePosition.Bottom };
+        }
     }
     <DialogFrame
         HasHeader="@HasHeader"
@@ -42,6 +45,7 @@
     [Parameter] public string ButtonsClass { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
     [Parameter] public bool HasCloseButton { get; set; }
+    [Parameter] public DialogFrameNarrowViewSettings NarrowViewSettings { get; set; } = DialogFrameNarrowViewSettings.Bottom;
     [Parameter, EditorRequired] public DiveInDialogPage StartPage { get; set; } = null!;
 
     protected override void OnInitialized()

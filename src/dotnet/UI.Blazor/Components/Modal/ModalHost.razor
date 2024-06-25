@@ -28,6 +28,7 @@
 
 @code {
     private static readonly string JSUpdateBodyStyleMethod = $"{BlazorUICoreModule.ImportName}.ModalHost.updateBodyStyle";
+    private static readonly string JSHideModalMethod = $"{BlazorUICoreModule.ImportName}.ModalHost.hideModal";
 
     private ImmutableList<ModalRef> _renderedRefs = ImmutableList<ModalRef>.Empty;
     private ImmutableList<ModalRef> _refs = ImmutableList<ModalRef>.Empty;
@@ -79,6 +80,13 @@
 
         if (!CloseInternal(modalRef, force))
             return false;
+
+        JS.InvokeVoidAsync(JSHideModalMethod, id);
+        // TODO: need normal delay
+        var delay = Task.Run(async delegate {
+            await Task.Delay(500);
+        });
+        delay.Wait();
 
         OnModalClosed?.Invoke();
         History.Save<OwnHistoryState>();

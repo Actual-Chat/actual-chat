@@ -1,44 +1,44 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@implements IModalView<ListeningSettingsModal.Model>
 @using ActualChat.Kvas
-@inherits ComputedStateComponent<ListeningSettingsModal.ComputedModel>
+@inherits ComputedStateComponent<VoiceSettingsListeningModalPage.ComputedModel>
 @{
     var m = State.Value;
     var mode = m.ListeningMode;
 }
-<DialogFrame
-    Title="Turn off listening in this chat:"
-    Class="transcription-options-modal modal-sm"
-    HasCloseButton="false">
-    <Body>
-    <FormBlock Class="first last">
-        @foreach (var info in ListeningModeInfo.All) {
-            RenderFragment content;
-            if (info.Duration < TimeSpan.MaxValue) {
-                content = @<span>After <u>@info.Text</u> of inactivity</span>;
-            } else {
-                content = @<span><u>Keep listening</u> while the app is active</span>;
-            }
-            <TileItem Click="@(() => SetListeningMode(info.Mode))">
-                <Content>@content</Content>
-                <Right>
-                    @if (mode == info.Mode) {
-                        <i class="icon-checkmark-simple text-primary text-2xl"></i>
-                    }
-                </Right>
-            </TileItem>
+
+<FormBlock Class="first last">
+    @foreach (var info in ListeningModeInfo.All) {
+        RenderFragment content;
+        if (info.Duration < TimeSpan.MaxValue) {
+            content = @<span>After <u>@info.Text</u> of inactivity</span>;
+        } else {
+            content = @<span><u>Keep listening</u> while the app is active</span>;
         }
-    </FormBlock>
-    </Body>
-</DialogFrame>
+        <TileItem Click="@(() => SetListeningMode(info.Mode))">
+            <Content>@content</Content>
+            <Right>
+                @if (mode == info.Mode) {
+                    <i class="icon-checkmark-simple text-primary text-2xl"></i>
+                }
+            </Right>
+        </TileItem>
+    }
+</FormBlock>
 
 @code {
     [Inject] public ChatUIHub Hub { get; set; } = null!;
 
-    [CascadingParameter] public Modal Modal { get; set; } = null!;
-    [Parameter] public Model ModalModel { get; set; } = null!;
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+
+    private ChatId ChatId { get; set; }
 
     private AccountSettings AccountSettings => Hub.AccountSettings();
+
+    protected override void OnInitialized() {
+        ChatId = Context.GetTypedModel<ChatId>();
+        Context.SetTitle("Turn off listening in this chat:");
+        base.OnInitialized();
+    }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -49,7 +49,7 @@
             });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var chatId = ModalModel.ChatId;
+        var chatId = ChatId;
 
         var userChatSettings = await AccountSettings
             .GetUserChatSettings(chatId, cancellationToken)
@@ -59,7 +59,7 @@
     }
 
     private async Task SetListeningMode(ListeningMode listeningMode) {
-        var chatId = ModalModel.ChatId;
+        var chatId = ChatId;
 
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, default);
         userChatSettings = userChatSettings with { ListeningMode = listeningMode };
@@ -72,12 +72,10 @@
         } else {
             await AccountSettings.RemoveAlwaysListenedChat(chatId, default);
         }
-        Modal.Close();
+        Context.Close();
     }
 
     // Nested types
 
     public sealed record ComputedModel(ListeningMode ListeningMode);
-
-    public sealed record Model(ChatId ChatId);
 }

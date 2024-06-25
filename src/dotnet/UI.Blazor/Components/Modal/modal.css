@@ -6,7 +6,17 @@
     @apply top-0 left-0 h-full w-full;
     @apply overflow-x-hidden overflow-y-hidden;
     @apply outline-0;
+    @apply duration-300;
     background-color: rgba(0,0,0,0.5);
+    transition-behavior: allow-discrete;
+    transition-property: display, background-color;
+}
+.modal-overlay.hide {
+    @apply flex;
+    background-color: rgba(0,0,0,0);
+    @starting-style {
+        background-color: rgba(0,0,0,0.5);
+    }
 }
 
 body.device-ios .modal-overlay {
@@ -39,9 +49,9 @@ body.narrow .modal-frame.modal-md {
 body.narrow .modal-frame.modal-sm {
     @apply absolute;
     @apply left-4 right-4;
-    @apply min-h-fit;
+    @apply min-h-fit h-auto;
     @apply rounded-xl;
-    height: 80vh;
+    max-height: 80vh;
     bottom: 4vh;
 }
 
@@ -100,25 +110,33 @@ body.device-ios .modal-chrome {
     @apply ios-height;
 }
 .modal-frame {
-    @apply hidden flex-y items-stretch gap-y-2 overflow-hidden;
+    @apply flex-y items-stretch gap-y-2 overflow-hidden;
     @apply max-h-screen h-full w-full md:h-auto md:w-modal;
     @apply pb-4;
     @apply rounded-lg;
     @apply font-medium;
     @apply md:shadow-modal-wide;
-    @apply opacity-0;
     @apply duration-300;
     transition-behavior: allow-discrete;
-    transition-property: opacity, display;
+    transition-property: opacity, display, transform;
 }
 body.device-ios .modal-frame {
     @apply ios-height;
 }
-.modal .modal-frame {
-    @apply flex;
+.modal-overlay .modal-frame {
     @apply opacity-100;
+    transform: scaleX(1) translateY(0);
     @starting-style {
         opacity: 0;
+        transform: scaleX(0) translateY(100%);
+    }
+}
+.modal-overlay.hide .modal-frame {
+    @apply opacity-0;
+    transform: scaleX(0) translateY(100%);
+    @starting-style {
+        opacity: 1;
+        transform: scaleX(1) translateY(0);
     }
 }
 
