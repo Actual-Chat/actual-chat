@@ -14,6 +14,7 @@ internal sealed class ChatContentIndexer(
     IChatsBackend chatsBackend,
     IChatContentDocumentLoader documentLoader,
     IChatContentMapper documentMapper,
+    IChatContentArranger contentArranger,
     ISink<ChatSlice, string> sink
 ) : IChatContentIndexer
 {
@@ -173,36 +174,14 @@ internal sealed class ChatContentIndexer(
         return _cursor;
     }
 
-    private async IAsyncEnumerable<SourceEntries> ArrangeBufferedEntriesAsync(
+    private IAsyncEnumerable<SourceEntries> ArrangeBufferedEntriesAsync(
         IReadOnlyCollection<ChatEntry> bufferedEntries,
         IReadOnlyCollection<ChatSlice> tailDocuments,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        // TODO: for now we just group buffered messages by three into a document
-        // but in future we want to select document depending on the content
-        var tailEntryIds = tailDocuments
-            .Where(doc => doc.Metadata.ChatEntries.Length < 3)
-            .Take(1)
-            .SelectMany(doc => doc.Metadata.ChatEntries)
-            .Select(e => e.Id);
-        var tailEntries = new List<ChatEntry>(
-            await LoadByIdsAsync(tailEntryIds, cancellationToken).ConfigureAwait(false));
-        foreach (var entry in bufferedEntries) {
-            tailEntries.Add(entry);
-            if (tailEntries.Count == 3) {
-                yield return new SourceEntries(null, null, [.. tailEntries]);
-                tailEntries.Clear();
-            }
-        }
+        CancellationToken cancellationToken)
+        => contentArranger.ArrangeAsync(bufferedEntries, tailDocuments, cancellationToken);
 
-        if (tailEntries.Count > 0) {
-            yield return new SourceEntries(null, null, tailEntries);
-        }
-    }
-
-    private async Task<IReadOnlyList<ChatEntry>> LoadByIdsAsync(
-        IEnumerable<ChatEntryId> entryIds,
-        CancellationToken cancellationToken) => await chatsBackend.GetEntries(entryIds, true, cancellationToken).ConfigureAwait(false);
+    private ValueTask<IReadOnlyList<ChatEntry>> LoadByIdsAsync(IEnumerable<ChatEntryId> entryIds, CancellationToken cancellationToken)
+        => chatsBackend.GetEntries(entryIds, true, cancellationToken);
 
     private async Task<ChatSlice> BuildDocumentAsync(SourceEntries sourceEntries, CancellationToken cancellationToken)
         => await documentMapper.MapAsync(sourceEntries, cancellationToken).ConfigureAwait(false);

@@ -22,8 +22,9 @@ public class ChatContentIndexerInitTests(ITestOutputHelper @out) : TestBase(@out
             .ReturnsAsync(tailDocuments);
         var docMapper = Mock.Of<IChatContentMapper>();
         var sink = Mock.Of<ISink<ChatSlice, string>>();
+        var contentArranger = Mock.Of<IChatContentArranger>();
 
-        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, sink) {
+        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, contentArranger, sink) {
             MaxTailSetSize = maxTailSetSize,
         };
 
@@ -57,8 +58,9 @@ public class ChatContentIndexerInitTests(ITestOutputHelper @out) : TestBase(@out
             .Returns(Task.FromException<IReadOnlyCollection<ChatSlice>>(new UniqueException()));
         var docMapper = Mock.Of<IChatContentMapper>();
         var sink = Mock.Of<ISink<ChatSlice, string>>();
+        var contentArranger = Mock.Of<IChatContentArranger>();
 
-        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, sink);
+        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, contentArranger, sink);
 
         var cursor = new ChatContentCursor(0, 0);
         await Assert.ThrowsAsync<UniqueException>(() => contentIndexer.InitAsync(cursor, CancellationToken.None));

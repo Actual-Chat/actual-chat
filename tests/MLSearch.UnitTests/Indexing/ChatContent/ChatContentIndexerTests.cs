@@ -21,8 +21,9 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
             .ReturnsAsync([]);
         var docMapper = Mock.Of<IChatContentMapper>();
         var sink = Mock.Of<ISink<ChatSlice, string>>();
+        var contentArranger = Mock.Of<IChatContentArranger>();
 
-        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, sink);
+        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, contentArranger, sink);
 
         var chatId = new ChatId(Generate.Option);
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
@@ -46,8 +47,9 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
             .ReturnsAsync([]);
         var docMapper = Mock.Of<IChatContentMapper>();
         var sink = Mock.Of<ISink<ChatSlice, string>>();
+        var contentArranger = Mock.Of<IChatContentArranger>();
 
-        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, sink);
+        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, contentArranger, sink);
 
         var chatId = new ChatId(Generate.Option);
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
@@ -76,8 +78,9 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
             .ReturnsAsync([]);
         var docMapper = Mock.Of<IChatContentMapper>();
         var sink = Mock.Of<ISink<ChatSlice, string>>();
+        var contentArranger = Mock.Of<IChatContentArranger>();
 
-        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, sink);
+        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, contentArranger, sink);
 
         var chatId = new ChatId(Generate.Option);
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
@@ -104,8 +107,9 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
             .ReturnsAsync([]);
         var docMapper = Mock.Of<IChatContentMapper>();
         var sink = Mock.Of<ISink<ChatSlice, string>>();
+        var contentArranger = Mock.Of<IChatContentArranger>();
 
-        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, sink);
+        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper, contentArranger, sink);
 
         var chatId = new ChatId(Generate.Option);
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
@@ -155,8 +159,9 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
         var docMapper = MockDocMapper(doc => updatedDoc = doc);
 
         var sink = Mock.Of<ISink<ChatSlice, string>>();
+        var contentArranger = Mock.Of<IChatContentArranger>();
 
-        var contentIndexer = new ChatContentIndexer(chats.Object, docLoader.Object, docMapper.Object, sink);
+        var contentIndexer = new ChatContentIndexer(chats.Object, docLoader.Object, docMapper.Object, contentArranger, sink);
 
         var cursor = new ChatContentCursor(0, 0);
         await contentIndexer.InitAsync(cursor, CancellationToken.None);
@@ -218,8 +223,9 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
         var docMapper = MockDocMapper(doc => updatedDoc = doc);
 
         var sink = Mock.Of<ISink<ChatSlice, string>>();
+        var contentArranger = Mock.Of<IChatContentArranger>();
 
-        var contentIndexer = new ChatContentIndexer(chats.Object, docLoader.Object, docMapper.Object, sink);
+        var contentIndexer = new ChatContentIndexer(chats.Object, docLoader.Object, docMapper.Object, contentArranger, sink);
 
         var cursor = new ChatContentCursor(0, 0);
         await contentIndexer.InitAsync(cursor, CancellationToken.None);
@@ -355,8 +361,9 @@ public class ChatContentIndexerTests(ITestOutputHelper @out) : TestBase(@out)
         var docMapper = MockDocMapper(doc => updatedDoc = doc);
 
         var sink = Mock.Of<ISink<ChatSlice, string>>();
+        var contentArranger = Mock.Of<IChatContentArranger>();
 
-        var contentIndexer = new ChatContentIndexer(chats.Object, docLoader.Object, docMapper.Object, sink);
+        var contentIndexer = new ChatContentIndexer(chats.Object, docLoader.Object, docMapper.Object, contentArranger, sink);
         await contentIndexer.ApplyAsync(chatEntry, CancellationToken.None);
 
         var docsToRemove = existingDocs
