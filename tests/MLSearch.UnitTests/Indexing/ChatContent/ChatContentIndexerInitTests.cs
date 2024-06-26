@@ -33,9 +33,9 @@ public class ChatContentIndexerInitTests(ITestOutputHelper @out) : TestBase(@out
         await contentIndexer.InitAsync(cursor, cancellationSource.Token);
 
         docLoader.Verify(x => x.LoadTailAsync(
-            It.Is<ChatContentCursor>(x => x == cursor),
-            It.Is<int>(x => x == maxTailSetSize),
-            It.Is<CancellationToken>(x => x == cancellationSource.Token)
+            It.Is<ChatContentCursor>(c => c == cursor),
+            It.Is<int>(sz => sz == maxTailSetSize),
+            It.Is<CancellationToken>(ct => ct == cancellationSource.Token)
         ), Times.Once);
 
         Assert.Equal(cursor, contentIndexer.Cursor);

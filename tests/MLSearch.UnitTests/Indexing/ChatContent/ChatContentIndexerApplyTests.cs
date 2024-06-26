@@ -25,8 +25,8 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
 
         var chatId = new ChatId(Generate.Option);
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
-        var chatEntry = new ChatEntry(chatEntryId, 0) {
-            Content = "Some fresh message."
+        var chatEntry = new ChatEntry(chatEntryId) {
+            Content = "Some fresh message.",
         };
         await contentIndexer.ApplyAsync(chatEntry, CancellationToken.None);
 
@@ -51,8 +51,8 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
 
         var chatId = new ChatId(Generate.Option);
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
-        var chatEntry = new ChatEntry(chatEntryId, 0) {
-            Content = "Some fresh message."
+        var chatEntry = new ChatEntry(chatEntryId) {
+            Content = "Some fresh message.",
         };
         await contentIndexer.ApplyAsync(chatEntry, CancellationToken.None);
         var bufferLength = contentIndexer.Buffer.Count;
@@ -82,8 +82,8 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
 
         var chatId = new ChatId(Generate.Option);
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
-        var chatEntry = new ChatEntry(chatEntryId, 0) {
-            Content = "Some fresh message."
+        var chatEntry = new ChatEntry(chatEntryId) {
+            Content = "Some fresh message.",
         };
         await contentIndexer.ApplyAsync(chatEntry, CancellationToken.None);
         var removedEntry = new ChatEntry(chatEntryId, 1) {
@@ -112,8 +112,8 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
         var chatId = new ChatId(Generate.Option);
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
         var removedEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 202, AssumeValid.Option);
-        var chatEntry = new ChatEntry(chatEntryId, 0) {
-            Content = "Some fresh message."
+        var chatEntry = new ChatEntry(chatEntryId) {
+            Content = "Some fresh message.",
         };
         await contentIndexer.ApplyAsync(chatEntry, CancellationToken.None);
         var removedEntry = new ChatEntry(removedEntryId, 1) {
@@ -138,7 +138,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
             It.IsAny<ChatId>(),
             It.IsAny<ChatEntryKind>(),
             It.IsAny<ActualLab.Mathematics.Range<long>>(),
-            It.Is<bool>(x => x == true),
+            It.Is<bool>(include => include == true),
             It.IsAny<CancellationToken>()));
 
         var docLoader = new Mock<IChatContentDocumentLoader>();
@@ -149,7 +149,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
                 It.IsAny<int>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(tailDocuments);
-        // On update we get the document from index by entry Id
+        // On update, we get the document from index by entry id
         docLoader
             .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([updatedDoc]);
@@ -188,7 +188,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
             It.IsAny<ChatId>(),
             It.IsAny<ChatEntryKind>(),
             It.IsAny<ActualLab.Mathematics.Range<long>>(),
-            It.Is<bool>(x => x == true),
+            It.Is<bool>(include => include == true),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -205,7 +205,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
             It.IsAny<ChatId>(),
             It.IsAny<ChatEntryKind>(),
             It.IsAny<ActualLab.Mathematics.Range<long>>(),
-            It.Is<bool>(x => x == true),
+            It.Is<bool>(include => include == true),
             It.IsAny<CancellationToken>()));
 
         var docLoader = new Mock<IChatContentDocumentLoader>();
@@ -216,7 +216,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
                 It.IsAny<int>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(tailDocuments);
-        // On update we get the document from index by entry Id
+        // On update, we get the document from index by entry id
         docLoader
             .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([updatedDoc]);
@@ -265,7 +265,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
             It.IsAny<ChatId>(),
             It.IsAny<ChatEntryKind>(),
             It.IsAny<ActualLab.Mathematics.Range<long>>(),
-            It.Is<bool>(x => x == true),
+            It.Is<bool>(include => include == true),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -297,11 +297,11 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
     public static TheoryData<EntryToDocMap> EntryMappings
     {
         get {
-            bool[] bools = [false, true];
+            bool[] booleans = [false, true];
             var theoryData = new TheoryData<EntryToDocMap>();
             for (var docNumber = 1; docNumber < 4; docNumber++) {
-                foreach (var isFirst in bools) {
-                    foreach (var isLast in bools) {
+                foreach (var isFirst in booleans) {
+                    foreach (var isLast in booleans) {
                         theoryData.Add(new EntryToDocMap(docNumber, isFirst, isLast));
                     }
                 }
@@ -316,7 +316,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
     {
         var chatId = new ChatId(Generate.Option);
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
-        var chatEntry = new ChatEntry(chatEntryId, 0) {
+        var chatEntry = new ChatEntry(chatEntryId) {
             IsRemoved = true,
         };
         var existingDocs = GenerateExistingDocsForEntry(chatEntryId, entryToDocMap);
@@ -345,7 +345,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
                 It.IsAny<ChatId>(),
                 It.IsAny<ChatEntryKind>(),
                 It.IsAny<ActualLab.Mathematics.Range<long>>(),
-                It.Is<bool>(x => x == true),
+                It.Is<bool>(include => include == true),
                 It.IsAny<CancellationToken>()))
             .Returns<ChatId, ChatEntryKind, ActualLab.Mathematics.Range<long>, bool, CancellationToken>(
                 (_, _, range, includeRemoved, _) => {
