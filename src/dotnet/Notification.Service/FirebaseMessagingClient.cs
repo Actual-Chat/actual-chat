@@ -68,7 +68,7 @@ public class FirebaseMessagingClient(
                 },
                 Priority = Priority.High,
                 // CollapseKey = default, /* We don't use collapsible messages */
-                TimeToLive = TimeSpan.FromMinutes(180),
+                TimeToLive = TimeSpan.FromDays(10),
             },
             Apns = new ApnsConfig {
                 Aps = new Aps {
