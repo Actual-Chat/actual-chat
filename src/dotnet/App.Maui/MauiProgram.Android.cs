@@ -6,12 +6,10 @@ using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Android.OS;
+using Firebase;
 using Firebase.Messaging;
 using Microsoft.Maui.LifecycleEvents;
 using Plugin.Firebase.Analytics;
-using Plugin.Firebase.CloudMessaging;
-using Plugin.Firebase.Core.Platforms.Android;
-using Plugin.Firebase.Crashlytics;
 using Activity = Android.App.Activity;
 
 namespace ActualChat.App.Maui;
@@ -24,10 +22,6 @@ public static partial class MauiProgram
             // Enable delivery data export per instance.
             // https://firebase.google.com/docs/cloud-messaging/understand-delivery?platform=android#enable-message-delivery-data-export
             FirebaseMessaging.Instance.SetDeliveryMetricsExportToBigQuery(true);
-
-        services.AddSingleton(CrossFirebaseCloudMessaging.Current);
-        services.AddSingleton(CrossFirebaseAnalytics.Current);
-        services.AddSingleton(CrossFirebaseCrashlytics.Current);
 
         services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>
             Java.Util.Concurrent.Executors.NewWorkStealingPool()!);
@@ -74,7 +68,7 @@ public static partial class MauiProgram
             });
         });
 
-    private static async Task OnBackPressed(Android.App.Activity activity)
+    private static async Task OnBackPressed(Activity activity)
     {
         var couldStepBack = await DispatchToBlazor(c => c.GetRequiredService<History>().TryStepBack()).ConfigureAwait(true);
         if (!couldStepBack)
@@ -83,7 +77,7 @@ public static partial class MauiProgram
 
     private static void OnCreate(Activity activity, Bundle? savedInstanceState)
     {
-        CrossFirebase.Initialize(activity);
+        FirebaseApp.InitializeApp(activity);
         FirebaseAnalyticsImplementation.Initialize(activity);
         var isAnalyticsEnabled = Preferences.Default.Get(Constants.Preferences.EnableAnalytics, false);
         CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isAnalyticsEnabled;
