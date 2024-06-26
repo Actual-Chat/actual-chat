@@ -37,6 +37,16 @@
     <Title>Restart walk-through</Title>
 </Button>
 
+@if (m.IsAdmin) {
+    <TileTopic Topic="Onboarding"/>
+    <Button
+        Class="add-avatar-btn"
+        Click="@(OnRestartOnboarding)">
+        <Icon><i class="icon-refresh text-xl"></i></Icon>
+        <Title>Restart onboarding</Title>
+    </Button>
+}
+
 
 @code {
     private INativeAppSettings? NativeAppSettings { get; set; }
@@ -44,6 +54,7 @@
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
     [Inject] private IAnalyticsUI AnalyticsUI { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     private HostInfo HostInfo => Hub.HostInfo();
     private BubbleUI BubbleUI => Hub.BubbleUI;
     private ToastUI ToastUI => Hub.ToastUI;
@@ -59,12 +70,18 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await AccountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
-        return new (settings.IsAnalyticsEnabled ?? false);
+        var account = Hub.AccountUI.OwnAccount.Value;
+        return new (settings.IsAnalyticsEnabled ?? false, account.IsAdmin);
     }
 
     private async Task OnRestartWalkThrough() {
         await BubbleUI.ResetSettings().ConfigureAwait(true);
         ToastUI.Show("Walk-through tips are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
+    }
+
+    private async Task OnRestartOnboarding() {
+        await OnboardingUI.ResetSettings().ConfigureAwait(true);
+        ToastUI.Show("Onboarding steps are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
     private async Task OnAnalyticsEnabledClick() {
@@ -77,7 +94,7 @@
 
     // Nested types
 
-    public record Model(bool IsAnalyticsEnabled) {
-        public static readonly Model None = new(false);
+    public record Model(bool IsAnalyticsEnabled, bool IsAdmin) {
+        public static readonly Model None = new(false, false);
     }
 }
