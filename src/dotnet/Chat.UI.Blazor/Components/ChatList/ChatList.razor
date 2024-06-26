@@ -1,4 +1,4 @@
-@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using ActualChat.Comparison
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatList.Model>
 @{
@@ -7,11 +7,7 @@
     _rendered = m;
     if (Kind == ChatListKind.All && searchModeTriggered)
         _resetScrollPositionRequested = true;
-    DebugLog?.LogDebug("Rendered: {List}, ChatCount={ChatCount}", Kind, m.ChatCount);
-    if (m is { ChatCount: 0, IsSearchModeOn: false })
-        return;
-
-    var chatIndexes = Enumerable.Range(0, m.ChatCount).ToList();
+    DebugLog?.LogDebug("Rendered: {List}", Kind);
 }
 
 @if (m.IsLoading) {
@@ -20,7 +16,7 @@
     </div>
 } else {
     @if (Kind == ChatListKind.Active) {
-        if (m.ChatCount == 0)
+        if (m.Chats.Count == 0)
             return;
 
         <div class="c-delimiter"></div>
@@ -31,18 +27,29 @@
             <div class="c-title" data-tooltip="Chats where you are listening or recording right now">Active Chats</div>
 
             <div class="chat-list chat-list-active">
-                @for (var i = 0; i < m.ChatCount; i++) {
-                    <ChatListItem ListKind="@Kind" Index="@i"/>
+                @foreach(var chatInfo in m.Chats) {
+                    <ChatListItem ListKind="@Kind" ChatInfo="@chatInfo"/>
                 }
             </div>
         </div>
     } else {
         @* ChatListKind.All *@
-        <div @ref="AllChatListRef" class="chat-list chat-list-all">
-            <Virtualize Items="@chatIndexes" Context="i" ItemSize="@m.ItemSize" OverscanCount="5">
-                <ChatListItem ListKind="@Kind" Index="@i"/>
-            </Virtualize>
-        </div>
+        <VirtualList
+            Class="chat-list chat-list-all"
+            DataSource="@this"
+            KeyComparer="@LongAsStringKeyComparer.Default"
+            >
+            <Item>
+                <ChatListItem
+                    ListKind="@Kind"
+                    ChatState="@context.ChatState"
+                    IsLastItemInBlock="@context.IsLastItemInBlock"
+                    IsFirstItem="@context.IsFirstItem"/>
+            </Item>
+            <Skeleton>
+                <ChatListItemSkeleton />
+            </Skeleton>
+        </VirtualList>
     }
 }
 
@@ -60,7 +67,7 @@
     private ILogger Log => _log ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
 
-    private ElementReference AllChatListRef { get; set; }
+    // private ElementReference AllChatListRef { get; set; }
 
     [Parameter, EditorRequired] public ChatListKind Kind { get; set; }
 
@@ -76,7 +83,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new (ChatListUI.GetCountWhenLoading(Kind), 48, false, true),
+            InitialValue = new (ImmutableList<ChatInfo>.Empty, false, true),
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
@@ -84,30 +91,28 @@
         var chatListKind = Kind;
 
         DebugLog?.LogDebug("-> ComputeState: {List}", chatListKind);
-        await FontSizeUI.FontSize.WhenFirstTimeRead;
-        var fontSize = FontSizeUI.GetFontSizePixels();
-        var itemSize = fontSize * 3;
-        var chatCount = await ChatListUI.GetCount(chatListKind).ConfigureAwait(false);
+        var chats = new List<ChatInfo>() as IReadOnlyList<ChatInfo>;
+        if (Kind == ChatListKind.Active)
+            chats = await ChatListUI.ListActive(cancellationToken).ConfigureAwait(false);
         var isSearchModeOn = await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false);
-        DebugLog?.LogDebug("<- ComputeState: {List}. Count={Count}, IsSearchModeOn={IsSearchModeOn}", chatListKind, chatCount, isSearchModeOn);
-        return new (chatCount, itemSize, isSearchModeOn);
+        DebugLog?.LogDebug("<- ComputeState: {List}. IsSearchModeOn={IsSearchModeOn}", chatListKind, isSearchModeOn);
+        return new (chats, isSearchModeOn);
     }
 
-    protected override bool ShouldRender()
-        => State.HasError || State.Value != _rendered;
+    // protected override bool ShouldRender()
+    //     => State.HasError || State.Value != _rendered;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (_resetScrollPositionRequested) {
-            await AllChatListRef.ScrollToTop();
-            _resetScrollPositionRequested = false;
-        }
+        // if (_resetScrollPositionRequested) {
+        //     await AllChatListRef.ScrollToTop();
+        //     _resetScrollPositionRequested = false;
+        // }
     }
 
     // Nested types
 
     public record struct Model(
-        int ChatCount,
-        float ItemSize = 48,
+        IReadOnlyList<ChatInfo> Chats,
         bool IsSearchModeOn = false,
         bool IsLoading = false);
 }

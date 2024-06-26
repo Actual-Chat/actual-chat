@@ -1,13 +1,8 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using SearchUI = ActualChat.Chat.UI.Blazor.Services.SearchUI
-@inherits ComputedStateComponent<ChatListItem.Model>
 @{
-    var m = State.Value;
-    DebugLog?.LogDebug("Rendered: {ListKind} #{Index}, ChatId='{ChatId}'", ListKind, Index, m.ChatState.Id);
-    if (m == Model.None)
-        return;
-
-    var chatState = m.ChatState;
+    DebugLog?.LogDebug("Rendered: {ListKind} #{ChatTitle}, ChatId='{ChatId}'", ListKind, ChatState.Chat.Title, ChatState.Id);
+    var chatState = ChatState;
     var chat = chatState.Chat;
     var chatInfo = chatState.Info;
     var isWide = ScreenSize.IsWide();
@@ -16,46 +11,42 @@
     var hasButtons = isWide || isActiveChatList || isListeningOrRecording;
     var lastTextEntry = chatInfo.LastTextEntry;
     var audioState = chatState.AudioState;
+    var attributes = ListKind == ChatListKind.All && IsFirstItem ? FirstItemAttributes : NoneAttributes;
 }
 
-@if (m == Model.Loading) {
-    <ChatListItemSkeleton />
-}
-else {
-    var attributes = ListKind == ChatListKind.All && Index == 0 ? FirstItemAttributes : NoneAttributes;
-    <NavbarItem
-        Url="@($"/chat/{chat.Id}")"
-        ReplaceOnPrefix="/chat/"
-        IsSelected="@(chatState.IsSelected && ListKind != ChatListKind.Active)"
-        data-menu="@(MenuRef.New<ChatMenu>(chat.Id, ListKind.Format()).ToString())"
-        data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"
-        @attributes="@attributes">
-        <ChildContent>
-            <div class="c-container">
-                <ChatIcon Chat="chatState.Chat" ShowPresence="@true"/>
-                <div class="c-description">
+<NavbarItem
+    Url="@($"/chat/{chat.Id}")"
+    ReplaceOnPrefix="/chat/"
+    IsSelected="@(chatState.IsSelected && ListKind != ChatListKind.Active)"
+    data-menu="@(MenuRef.New<ChatMenu>(chat.Id, ListKind.Format()).ToString())"
+    data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"
+    @attributes="@attributes">
+    <ChildContent>
+        <div class="c-container">
+            <ChatIcon Chat="chatState.Chat" ShowPresence="@true"/>
+            <div class="c-description">
                     <span class="c-chat-title">
                         <span>@chat.Title</span>
                         <span class="c-incut"></span>
                         @if (lastTextEntry != null && hasButtons && !isListeningOrRecording) {
                             <LastEntryTime LastEntry="@lastTextEntry"/>
                         }
-                    </span>
-                    @if (lastTextEntry != null) {
-                        <div class="c-last-message">
-                            @if (chatState.Chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
+                </span>
+                @if (lastTextEntry != null) {
+                    <div class="c-last-message">
+                        @if (chatState.Chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
                                 <span class="c-name">
-                                    <AuthorName AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
-                                </span>
-                            }
-                            @if (lastTextEntry.IsStreaming) {
-                                <chat-list-item-streaming-svg class="w-4 h-4"/>
-                            }
-                            else {
-                                <span class="c-text">
-                                    @chatInfo.LastTextEntryText
-                                </span>
-                            }
+                                <AuthorName AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
+                            </span>
+                        }
+                        @if (lastTextEntry.IsStreaming) {
+                            <chat-list-item-streaming-svg class="w-4 h-4"/>
+                        }
+                        else {
+                            <span class="c-text">
+                                @chatInfo.LastTextEntryText
+                            </span>
+                        }
                             <div class="c-incut"></div>
                             @if (hasButtons && !isListeningOrRecording) {
                                 <UnreadCount
@@ -63,46 +54,45 @@ else {
                                     NotificationMode="@chatState.Info.UserSettings.NotificationMode"
                                     HasMentions="chatState.Info.HasUnreadMentions"/>
                             }
-                        </div>
-                    }
+                    </div>
+                }
+            </div>
+        </div>
+    </ChildContent>
+    <Ending>
+        @{
+            var hasMenu = !isActiveChatList && isWide;
+            var isHoverable = isWide && !isActiveChatList && !isListeningOrRecording;
+        }
+        <div class="@(isHoverable ? "hoverable" : "") slot">
+            <UnreadCount
+                Value="@chatState.Info.UnreadCount"
+                NotificationMode="@chatState.Info.UserSettings.NotificationMode"
+                HasMentions="chatState.Info.HasUnreadMentions"/>
+            @if (hasButtons) {
+                @if (chatState.IsRecording) {
+                    <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="blackout"/>
+                }
+                <div class="@(hasMenu ? "" : "pr-1")">
+                    <ChatListListenToggle AudioState="@audioState" Class="blackout"/>
                 </div>
-            </div>
-        </ChildContent>
-        <Ending>
-            @{
-                var hasMenu = !isActiveChatList && isWide;
-                var isHoverable = isWide && !isActiveChatList && !isListeningOrRecording;
             }
-            <div class="@(isHoverable ? "hoverable" : "") slot">
-                <UnreadCount
-                    Value="@chatState.Info.UnreadCount"
-                    NotificationMode="@chatState.Info.UserSettings.NotificationMode"
-                    HasMentions="chatState.Info.HasUnreadMentions"/>
-                @if (hasButtons) {
-                    @if (chatState.IsRecording) {
-                        <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="blackout"/>
-                    }
-                    <div class="@(hasMenu ? "" : "pr-1")">
-                        <ChatListListenToggle AudioState="@audioState" Class="blackout"/>
-                    </div>
-                }
-                @if (hasMenu) {
-                    <div
-                        class="menu"
-                        data-menu="@(MenuRef.New<ChatMenu>(chat.Id, ListKind.Format()).ToString())"
-                        data-menu-trigger="@MenuTrigger.Primary"
-                        data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
+            @if (hasMenu) {
+                <div
+                    class="menu"
+                    data-menu="@(MenuRef.New<ChatMenu>(chat.Id, ListKind.Format()).ToString())"
+                    data-menu-trigger="@MenuTrigger.Primary"
+                    data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
 
-                        <HeaderButton Class="blackout">
-                            <i class="icon-more-vertical text-2xl"></i>
-                        </HeaderButton>
-                    </div>
-                }
-            </div>
-        </Ending>
-    </NavbarItem>
-}
-@if (m.IsLastItemInBlock) {
+                    <HeaderButton Class="blackout">
+                        <i class="icon-more-vertical text-2xl"></i>
+                    </HeaderButton>
+                </div>
+            }
+        </div>
+    </Ending>
+</NavbarItem>
+@if (IsLastItemInBlock) {
     <Divider Class="mx-1 my-1.5"/>
 }
 
@@ -129,83 +119,74 @@ else {
     private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
 
     [Parameter, EditorRequired] public ChatListKind ListKind { get; set; } = ChatListKind.All;
-    [Parameter, EditorRequired] public int Index { get; set; }
+    [Parameter, EditorRequired] public ChatState ChatState { get; set; } = ChatState.None;
+    [Parameter] public bool IsLastItemInBlock { get; set; }
+    [Parameter] public bool IsFirstItem { get; set; }
 
     // public ChatListItem() {
     //     Options = ComputedStateComponentOptions.RecomputeOnParametersSet;
     // }
 
-    protected override void OnInitialized() {
+    // protected override void OnInitialized() {
+    //
+    //     DebugLog?.LogDebug("Initialized: {ListKind} #{Index}", ListKind, Index);
+    //     base.OnInitialized();
+    // }
+    //
+    // protected override void OnParametersSet() {
+    //     DebugLog?.LogDebug("OnParametersSet: {ListKind} #{Index}", ListKind, Index);
+    //     base.OnParametersSet();
+    // }
 
-        DebugLog?.LogDebug("Initialized: {ListKind} #{Index}", ListKind, Index);
-        base.OnInitialized();
-    }
+    // protected override ComputedState<Model>.Options GetStateOptions()
+    //     => ComputedStateComponent.GetStateOptions(GetType(),
+    //         t => new ComputedState<Model>.Options {
+    //             InitialValue = new () {
+    //                 ChatState = new (ChatInfo, ChatAudioState.None),
+    //                 IsLastItemInBlock = false,
+    //             },
+    //             Category = ComputedStateComponent.GetStateCategory(t),
+    //         });
 
-    protected override void OnParametersSet() {
-        DebugLog?.LogDebug("OnParametersSet: {ListKind} #{Index}", ListKind, Index);
-        base.OnParametersSet();
-    }
+    // protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    // {
+    //     // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
+    //     // Properties are copied to local vars because of this.
+    //     var listKind = ListKind;
+    //     var chatInfo = ChatInfo;
+    //     var chatTitle = chatInfo.Chat.Title;
+    //     var chatId = chatInfo.Chat.Id;
+    //     DebugLog?.LogDebug("-> ComputeState: {ListKind} #{ChatTitle}", listKind, chatTitle);
+    //     var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
+    //     if (chatState == null) {
+    //         DebugLog?.LogDebug("<- ComputeState: {ListKind} #{ChatTitle}, No ChatState", ListKind, chatTitle);
+    //         return Model.None;
+    //     }
+    //
+    //     var isLastItemInBlock = false;
+    //
+    //     // ChatListUI.GetItem()
+    //     // if (chatState.Contact.IsPinned && listKind == ChatListKind.All) {
+    //     //     var (_, nextChatId) = await ChatListUI.GetItem(listKind, index + 1).ConfigureAwait(false);
+    //     //     var nextChatInfo = nextChatId.IsNone ? null
+    //     //         : await ChatUI.Get(nextChatId, cancellationToken).ConfigureAwait(false);
+    //     //     if (nextChatInfo != null)
+    //     //         isLastItemInBlock = !nextChatInfo.Contact.IsPinned;
+    //     // }
+    //
+    //     DebugLog?.LogDebug("<- ComputeState: {ListKind} #{ChatTitle}, OK, ChatId={ChatId}", ListKind, chatTitle, chatId);
+    //     return new() {
+    //         ChatState = chatState,
+    //         IsLastItemInBlock = isLastItemInBlock,
+    //     };
+    // }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
-                Category = ComputedStateComponent.GetStateCategory(t),
-            });
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
-    {
-        // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
-        // Properties are copied to local vars because of this.
-        var listKind = ListKind;
-        var index = Index;
-
-        DebugLog?.LogDebug("-> ComputeState: {ListKind} #{Index}", listKind, index);
-        var (indexIsValid, chatId) = await ChatListUI.GetItem(listKind, index).ConfigureAwait(false);
-        if (chatId.IsNone) {
-            if (indexIsValid) {
-                DebugLog?.LogDebug("<- ComputeState: {ListKind} #{Index}, Loading", ListKind, Index);
-                return Model.Loading;
-            }
-            DebugLog?.LogDebug("<- ComputeState: {ListKind} #{Index}, ChatId is None", ListKind, Index);
-            return Model.None;
-        }
-
-        var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chatInfo == null) {
-            DebugLog?.LogDebug("<- ComputeState: {ListKind} #{Index}, No ChatInfo", ListKind, Index);
-            return Model.None;
-        }
-
-        var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
-        if (chatState == null) {
-            DebugLog?.LogDebug("<- ComputeState: {ListKind} #{Index}, No ChatState", ListKind, Index);
-            return Model.None;
-        }
-
-        var isLastItemInBlock = false;
-        if (chatState.Contact.IsPinned && listKind == ChatListKind.All) {
-            var (_, nextChatId) = await ChatListUI.GetItem(listKind, index + 1).ConfigureAwait(false);
-            var nextChatInfo = nextChatId.IsNone ? null
-                : await ChatUI.Get(nextChatId, cancellationToken).ConfigureAwait(false);
-            if (nextChatInfo != null)
-                isLastItemInBlock = !nextChatInfo.Contact.IsPinned;
-        }
-
-        DebugLog?.LogDebug("<- ComputeState: {ListKind} #{Index}, OK, ChatId={ChatId}", ListKind, Index, chatId);
-        return new() {
-            ChatState = chatState,
-            IsLastItemInBlock = isLastItemInBlock,
-        };
-    }
-
-    // Nested types
-
-    public sealed record Model {
-        public static readonly Model Loading = new() { ChatState = ChatState.Loading };
-        public static readonly Model None = new() { ChatState = ChatState.None };
-
-        public ChatState ChatState { get; init; } = ChatState.None;
-        public bool IsLastItemInBlock { get; init; }
-    }
+    // // Nested types
+    //
+    // public sealed record Model {
+    //     public static readonly Model None = new() { ChatState = ChatState.None };
+    //
+    //     public ChatState ChatState { get; init; } = ChatState.None;
+    //     public bool IsLastItemInBlock { get; init; }
+    // }
 }
