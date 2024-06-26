@@ -111,9 +111,10 @@
     <PackageReference Include="Xamarin.AndroidX.Core" />
     <PackageReference Include="Xamarin.AndroidX.Collection" />
     <PackageReference Include="Xamarin.AndroidX.Collection.Ktx" />
-    <PackageReference Include="Plugin.Firebase.CloudMessaging" />
     <PackageReference Include="Plugin.Firebase.Analytics" />
-    <PackageReference Include="Plugin.Firebase.Crashlytics" />
+    <PackageReference Include="Xamarin.Firebase.Analytics" />
+    <PackageReference Include="Xamarin.Firebase.Crashlytics" />
+    <PackageReference Include="Xamarin.Firebase.Messaging" />
     <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
     <PackageReference Include="Xamarin.GooglePlayServices.CroNet" />
     <PackageReference Include="Xamarin.Google.Dagger" />
@@ -122,7 +123,6 @@
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <PackageReference Include="Plugin.Firebase.CloudMessaging" />
-    <PackageReference Include="Plugin.Firebase.Analytics" />
     <PackageReference Include="Plugin.Firebase.Crashlytics" />
     <PackageReference Include="Serilog.Sinks.Xamarin" />
     <PackageReference Include="Xamarin.Build.Download" />
