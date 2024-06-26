@@ -122,6 +122,7 @@
     <PackageReference Include="Serilog.Sinks.Xamarin" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
+    <PackageReference Include="Plugin.Firebase.Analytics" />
     <PackageReference Include="Plugin.Firebase.CloudMessaging" />
     <PackageReference Include="Plugin.Firebase.Crashlytics" />
     <PackageReference Include="Serilog.Sinks.Xamarin" />
