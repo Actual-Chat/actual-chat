@@ -12,9 +12,9 @@ public class FirebaseMessagingClient(
     private FirebaseMessaging FirebaseMessaging { get; } = firebaseMessaging;
     private ICommander Commander { get; } = commander;
     private ILogger Log { get; } = log;
-    private ILogger? DebugLog => !UrlMapper.IsActualChat ? Log : null;
+    private ILogger? DebugLog => Log;
 
-    public async Task SendMessage(Notification notification, IReadOnlyCollection<Symbol> deviceIds, CancellationToken cancellationToken)
+    public async Task SendMessage(Notification notification, IReadOnlyCollection<Symbol> deviceIds, bool? enableAnalytics, CancellationToken cancellationToken)
     {
         var (notificationId, _) = notification;
         var kind = notification.Kind;
@@ -97,7 +97,7 @@ public class FirebaseMessagingClient(
                 },
             },
         };
-        if (isDev)
+        if (isDev || enableAnalytics.GetValueOrDefault())
             multicastMessage.Android.FcmOptions = new AndroidFcmOptions {
                 AnalyticsLabel = "dev_test" // Add label to see data messages statistics in Message delivery reports.
             };

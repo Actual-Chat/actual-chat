@@ -23,6 +23,7 @@ public class NotificationsBackend(IServiceProvider services)
     });
 
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
+    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private IDbEntityResolver<string, DbNotification> DbNotificationResolver { get; }
@@ -35,7 +36,7 @@ public class NotificationsBackend(IServiceProvider services)
         = services.GetRequiredService<FirebaseMessagingClient>();
     private IQueues Queues { get; } = services.Queues();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
-    private ILogger? DebugLog => !UrlMapper.IsActualChat ? Log : null;
+    private ILogger? DebugLog => Log;
 
     // [ComputeMethod]
     public virtual async Task<Notification?> Get(
@@ -100,7 +101,7 @@ public class NotificationsBackend(IServiceProvider services)
         var notification = command.Notification;
         var userId = notification.UserId.Require();
 
-        DebugLog?.LogInformation("-> OnNotify. EntryId={EntryId}, UserId={UserIdsCount}, NotificationId={NotificationId}",
+        DebugLog?.LogInformation("-> OnNotify. EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}",
             notification.EntryId, userId, notification.Id);
 
         var similar = await Get(notification.Id, cancellationToken).ConfigureAwait(false);
@@ -425,10 +426,12 @@ public class NotificationsBackend(IServiceProvider services)
             return;
         }
 
+        var account = await AccountsBackend.Get(userId, cancellationToken1).ConfigureAwait(false);
+        var isAdmin = account is { IsAdmin: true };
         var deviceIds = devices.Select(d => d.DeviceId).ToList();
         DebugLog?.LogInformation("-> Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdsCount}",
             notification.EntryId, userId, notification.Id, deviceIds.Count);
-        await FirebaseMessagingClient.SendMessage(notification, deviceIds, cancellationToken1).ConfigureAwait(false);
+        await FirebaseMessagingClient.SendMessage(notification, deviceIds, isAdmin, cancellationToken1).ConfigureAwait(false);
         DebugLog?.LogInformation("<- Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdsCount}",
             notification.EntryId, userId, notification.Id, deviceIds.Count);
     }
