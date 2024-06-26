@@ -253,6 +253,41 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         return chatInfos;
     }
 
+    [ComputeMethod]
+    public virtual async Task<VirtualListTile<ChatListItemModel>> GetTile(Tile<int> indexTile, CancellationToken cancellationToken)
+    {
+        var longRange = indexTile.Range.AsLongRange();
+        var indexes = Enumerable.Range(indexTile.Start, indexTile.Range.Size());
+        var items = await indexes
+            .Select(index => GetItem(ChatListKind.All, index))
+            .Collect()
+            .ConfigureAwait(false);
+
+        var states = await items
+            .Select(item => ChatUI.GetState(item.ChatId, false, cancellationToken))
+            .Collect()
+            .ConfigureAwait(false);
+
+        var result = new List<ChatListItemModel>();
+        for (var i = 0; i < states.Length; i++) {
+            var chatState = states[i];
+            if (chatState == null)
+                continue;
+
+            var isLastItemInBlock = false;
+            if (chatState.Contact.IsPinned && i < states.Length - 1) {
+                // tile range is larger than pinned chat limit
+                var nextChatState = states[i + 1];
+                if (nextChatState != null)
+                    isLastItemInBlock = !nextChatState.Contact.IsPinned;
+            }
+            var isFirstItem = i == 0 && indexTile.Start == 0;
+            result.Add(new ChatListItemModel(chatState, isLastItemInBlock, isFirstItem));
+        }
+
+        return new VirtualListTile<ChatListItemModel>(longRange, result);
+    }
+
     // Protected methods
 
     [ComputeMethod]
