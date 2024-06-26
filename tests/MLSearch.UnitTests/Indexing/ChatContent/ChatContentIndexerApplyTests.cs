@@ -8,8 +8,6 @@ namespace ActualChat.MLSearch.UnitTests.Indexing.ChatContent;
 
 public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@out)
 {
-    private readonly PrincipalId _authorId = new (UserId.New(), AssumeValid.Option);
-
     [Fact]
     public async Task ApplyingCreateEventPutsEventIntoInternalBuffer()
     {
@@ -130,7 +128,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public async Task UpdatingDocumentUpdatesTailAndOutputBuffer()
     {
-        var tailDocuments = ContentHelpers.CreateDocuments();
+        var tailDocuments = ChatContentTestHelpers.CreateDocuments();
         var updatedDoc = tailDocuments[tailDocuments.Length / 2];
         var updatedEntryId = updatedDoc.Metadata.ChatEntries.Single().Id;
         var chats = new Mock<IChatsBackend>();
@@ -156,7 +154,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
             .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([updatedDoc]);
 
-        var docMapper = MockDocMapper(doc => updatedDoc = doc);
+        var docMapper = ChatContentTestHelpers.MockDocMapper(doc => updatedDoc = doc);
 
         var sink = Mock.Of<ISink<ChatSlice, string>>();
         var contentArranger = Mock.Of<IChatContentArranger>();
@@ -197,7 +195,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public async Task RemovingDocumentCleansTailAndOutputBuffer()
     {
-        var tailDocuments = ContentHelpers.CreateDocuments();
+        var tailDocuments = ChatContentTestHelpers.CreateDocuments();
         var updatedDoc = tailDocuments[tailDocuments.Length / 2];
         var updatedEntryId = updatedDoc.Metadata.ChatEntries.Single().Id;
         var chats = new Mock<IChatsBackend>();
@@ -223,7 +221,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
             .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([updatedDoc]);
 
-        var docMapper = MockDocMapper(doc => updatedDoc = doc);
+        var docMapper = ChatContentTestHelpers.MockDocMapper(doc => updatedDoc = doc);
 
         var sink = Mock.Of<ISink<ChatSlice, string>>();
         var contentArranger = Mock.Of<IChatContentArranger>();
@@ -367,7 +365,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
                 });
 
         ChatSlice? updatedDoc = null;
-        var docMapper = MockDocMapper(doc => updatedDoc = doc);
+        var docMapper = ChatContentTestHelpers.MockDocMapper(doc => updatedDoc = doc);
 
         var sink = Mock.Of<ISink<ChatSlice, string>>();
         var contentArranger = Mock.Of<IChatContentArranger>();
@@ -400,31 +398,6 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
         }
     }
 
-    private Mock<IChatContentMapper> MockDocMapper(Action<ChatSlice> onUpdatedDoc)
-    {
-        var docMapper = new Mock<IChatContentMapper>();
-        docMapper
-            .Setup(x => x.MapAsync(
-                It.IsAny<SourceEntries>(),
-                It.IsAny<CancellationToken>()))
-            .Returns<SourceEntries, CancellationToken>((entries, _) => {
-                var metadata = new ChatSliceMetadata(
-                    [_authorId],
-                    [.. entries.Entries.Select(e => new ChatSliceEntry(e.Id, e.LocalId, e.Version))], entries.StartOffset, entries.EndOffset,
-                    [], [], [], [],
-                    false,
-                    "en-US",
-                    DateTime.Now
-                );
-                var content = entries.Entries.Select(e => e.Content)
-                    .Aggregate(new StringBuilder(), (txt, ln) => txt.AppendLine(ln)).ToString();
-                var updatedDoc = new ChatSlice(metadata, content);
-                onUpdatedDoc(updatedDoc);
-                return ValueTask.FromResult(updatedDoc);
-            });
-        return docMapper;
-    }
-
     private const string FirstEntryContent =
     $$$"""
         Oh, no!
@@ -447,6 +420,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
 
     private ChatSlice[] GenerateExistingDocsForEntry(ChatEntryId chatEntryId, EntryToDocMap entryToDocMap)
     {
+        var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
         var chatId = chatEntryId.ChatId;
         var numDocs = entryToDocMap.NumDocs;
 
@@ -490,7 +464,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
                 : sliceEnd;
 
             var metadata = new ChatSliceMetadata(
-                [_authorId],
+                [authorId],
                 [.. entries], startOffset, endOffset,
                 [], [], [], [],
                 false,
