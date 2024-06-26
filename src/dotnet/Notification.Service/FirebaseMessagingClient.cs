@@ -104,7 +104,7 @@ public class FirebaseMessagingClient(
         var batchResponse = await FirebaseMessaging
             .SendEachForMulticastAsync(multicastMessage, cancellationToken)
             .ConfigureAwait(false);
-        if (isDev) {
+        if (DebugLog != null) {
             var messageIds = string.Join(", ",
                 batchResponse.Responses.Select(c =>
                     c.IsSuccess
@@ -112,7 +112,7 @@ public class FirebaseMessagingClient(
                         : c.Exception.MessagingErrorCode.HasValue
                             ? "errCode=" + c.Exception.MessagingErrorCode
                             : c.Exception.Message));
-            DebugLog?.LogInformation("Sent {Successfully}/{Total} messages. Result: '{MessageIds}'",
+            DebugLog.LogInformation("Sent {Successfully}/{Total} messages. Result: '{MessageIds}'",
                 batchResponse.SuccessCount, batchResponse.Responses.Count, messageIds);
         }
 
