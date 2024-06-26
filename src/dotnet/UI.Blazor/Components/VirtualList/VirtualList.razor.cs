@@ -41,6 +41,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
     [Parameter] public int SkeletonCount { get; set; } = 10;
     [Parameter] public double SpacerSize { get; set; } = 200;
+    [Parameter] public int MaxExpandBy { get; set; } = 120;
     [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.Ordinal;
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
     // trigger StateHasChanged on parent component.
@@ -96,7 +97,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(VirtualList.JSCreateMethod, Ref, BlazorRef, Identity);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(VirtualList.JSCreateMethod, Ref, BlazorRef, Identity, MaxExpandBy);
         }
     }
 

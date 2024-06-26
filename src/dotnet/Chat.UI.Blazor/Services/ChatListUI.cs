@@ -282,7 +282,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
                     isLastItemInBlock = !nextChatState.Contact.IsPinned;
             }
             var isFirstItem = i == 0 && indexTile.Start == 0;
-            result.Add(new ChatListItemModel(chatState, isLastItemInBlock, isFirstItem));
+            result.Add(new ChatListItemModel(indexTile.Start + i, chatState, isLastItemInBlock, isFirstItem));
         }
 
         return new VirtualListTile<ChatListItemModel>(longRange, result);

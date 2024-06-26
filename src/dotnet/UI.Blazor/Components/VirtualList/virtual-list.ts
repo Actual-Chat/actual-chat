@@ -22,7 +22,6 @@ const SafetyTimerPeriod: number = 1600;
 const PivotSyncEpsilon: number = 16;
 const VisibilityEpsilon: number = 4;
 const EdgeEpsilon: number = 4;
-const MaxExpandBy: number = 120;
 const ScrollDebounce: number = 200;
 const SkeletonDetectionBoundary: number = 200;
 const MinViewPortSize: number = 400;
@@ -36,6 +35,7 @@ export class VirtualList {
     private readonly _renderStateRef: HTMLElement;
     private readonly _blazorRef: DotNet.DotNetObject;
     private readonly _identity: string;
+    private readonly _maxExpand: number;
     private readonly _spacerRef: HTMLElement;
     private readonly _endSpacerRef: HTMLElement;
     private readonly _renderIndexRef: HTMLElement;
@@ -85,14 +85,16 @@ export class VirtualList {
         ref: HTMLElement,
         backendRef: DotNet.DotNetObject,
         identity: string,
+        maxExpand: number,
     ) {
-        return new VirtualList(ref, backendRef, identity);
+        return new VirtualList(ref, backendRef, identity, maxExpand);
     }
 
     public constructor(
         ref: HTMLElement,
         backendRef: DotNet.DotNetObject,
         identity: string,
+        maxExpand: number,
     ) {
         if (debugLog) {
             debugLog?.log(`constructor`);
@@ -103,6 +105,8 @@ export class VirtualList {
         this._ref = ref;
         this._blazorRef = backendRef;
         this._identity = identity;
+        this._maxExpand = maxExpand;
+
         this._isDisposed = false;
         this._abortController = new AbortController();
         this._spacerRef = this._ref.querySelector(':scope > .c-spacer-start');
@@ -1244,7 +1248,7 @@ export class VirtualList {
                 : 'start';
         const alreadyLoadedFromStart = Math.abs(alreadyLoaded.start - viewport.start);
         const alreadyLoadedTillEnd = Math.abs(alreadyLoaded.end - viewport.end);
-        const loadZoneTrigger = viewportSize * 2;
+        const loadZoneTrigger = viewportSize;
         const loadZoneSize = loadZoneTrigger * 2;
         let loadStart = viewport.start - viewportSize * 1.5; // keep at least 1.5 viewport more in both directions
         let loadEnd = viewport.end + viewportSize * 1.5;
@@ -1334,8 +1338,9 @@ export class VirtualList {
         if (startGap < viewportSize && endGap < viewportSize)
             return this._lastQuery;
 
-        const expandStartBy = clamp(Math.ceil(startGap / itemSize / responseFulfillmentRatio), 0, MaxExpandBy);
-        const expandEndBy = clamp(Math.ceil(endGap / itemSize / responseFulfillmentRatio), 0, MaxExpandBy);
+        const maxExpandBy = this._maxExpand;
+        const expandStartBy = clamp(Math.ceil(startGap / itemSize / responseFulfillmentRatio), 0, maxExpandBy);
+        const expandEndBy = clamp(Math.ceil(endGap / itemSize / responseFulfillmentRatio), 0, maxExpandBy);
         const keyRange = new Range(firstItem.key, lastItem.key);
         const query = new VirtualListDataQuery(keyRange, loadZone);
         query.expandStartBy = expandStartBy;
