@@ -79,8 +79,8 @@
         ToastUI.Show("Walk-through tips are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
-    private async Task OnRestartOnboarding() {
-        await OnboardingUI.ResetSettings().ConfigureAwait(true);
+    private void OnRestartOnboarding() {
+        OnboardingUI.ResetSettings();
         ToastUI.Show("Onboarding steps are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
