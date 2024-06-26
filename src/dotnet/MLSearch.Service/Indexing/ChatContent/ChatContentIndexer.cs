@@ -56,6 +56,12 @@ internal sealed class ChatContentIndexer(
             }
             return false;
         }
+
+        public void Clear()
+        {
+            _nodeMap.Clear();
+            _entries.Clear();
+        }
     }
 
     private ChatContentCursor _cursor = new(0, 0);
@@ -167,11 +173,15 @@ internal sealed class ChatContentIndexer(
         foreach (var (tailDoc, _) in tailSet.UnorderedItems) {
             _tailDocs.Add(tailDoc.Id, tailDoc);
         }
+
+        // Update cursor value
+        _cursor = _nextCursor = _buffer.Select(e => new ChatContentCursor(e)).Append(_nextCursor).Max()!;
+
         // Clear output buffers
         _outUpdates.Clear();
         _outRemoves.Clear();
-        // Update cursor value
-        _cursor = _nextCursor = _buffer.Select(e => new ChatContentCursor(e)).Append(_nextCursor).Max()!;
+        _buffer.Clear();
+
         return _cursor;
     }
 

@@ -158,7 +158,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
         _ => throw new NotSupportedException(),
     });
 
-    private static RankedDocument<ChatSlice>[] CreateSearchResults() => ContentHelpers.CreateDocuments()
+    private static RankedDocument<ChatSlice>[] CreateSearchResults() => ChatContentTestHelpers.CreateDocuments()
         .Select((doc, i) => new RankedDocument<ChatSlice>(i, doc))
         .ToArray();
 }

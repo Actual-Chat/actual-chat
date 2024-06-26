@@ -11,7 +11,7 @@ public class ChatContentIndexerInitTests(ITestOutputHelper @out) : TestBase(@out
     public async Task InitMethodLoadsTailDocuments()
     {
         const int maxTailSetSize = 333;
-        var tailDocuments = ContentHelpers.CreateDocuments();
+        var tailDocuments = ChatContentTestHelpers.CreateDocuments();
         var chats = Mock.Of<IChatsBackend>();
         var docLoader = new Mock<IChatContentDocumentLoader>();
         docLoader
