@@ -15,7 +15,7 @@ internal static class ChatContentTestHelpers
             .Select(id => new ChatEntryId(chatId, ChatEntryKind.Text, id, AssumeValid.Option))
             .ToArray();
         var textItems = new [] {
-            "An accident happend to my brother Jim.",
+            "An accident happened to my brother Jim.",
             "Somebody threw a tomato at him.",
             "Tomatoes are juicy they can't hurt the skin.",
             "But this one was specially packed in a tin.",

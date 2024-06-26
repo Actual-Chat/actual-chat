@@ -44,11 +44,11 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
                 It.IsAny<int>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(tailDocuments);
-        // On update we get the document from index by entry Id
+        // On update, we get the document from index by entry id
         docLoader
             .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
             .Returns<IEnumerable<ChatEntryId>, CancellationToken>(
-                (ids, ct) => {
+                (ids, _) => {
                     var idSet = ids.ToHashSet();
                     var docs = tailDocuments
                         .Where(doc => doc.Metadata.ChatEntries.Any(e => idSet.Contains(e.Id)));
@@ -72,11 +72,9 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
                 It.IsAny<IReadOnlyCollection<ChatSlice>>(),
                 It.IsAny<CancellationToken>()))
             .Returns<IReadOnlyCollection<ChatEntry>, IReadOnlyCollection<ChatSlice>, CancellationToken>(
-                (entries, tailDocs, ct) => {
-                    var sources = new List<SourceEntries>();
-                    foreach (var chunk in entries.Chunk(2)) {
-                        sources.Add(new SourceEntries(null, null, chunk));
-                    }
+                (entries, _, _) => {
+                    var sources = entries.Chunk(2)
+                        .Select(chunk => new SourceEntries(null, null, chunk)).ToList();
                     return sources.AsAsyncEnumerable();
                 }
             );
@@ -89,7 +87,7 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
                 It.IsAny<IReadOnlyCollection<string>>(),
                 It.IsAny<CancellationToken>()))
             .Returns<IReadOnlyCollection<ChatSlice>, IReadOnlyCollection<string>, CancellationToken>(
-                (updates, removes, ct) => {
+                (updates, removes, _) => {
                     actualUpdates = [.. updates];
                     actualRemoves = [.. removes];
                     return Task.CompletedTask;
