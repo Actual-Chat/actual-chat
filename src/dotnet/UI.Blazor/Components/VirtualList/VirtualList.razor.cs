@@ -41,6 +41,9 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
     [Parameter] public int SkeletonCount { get; set; } = 10;
     [Parameter] public double SpacerSize { get; set; } = 200;
+    [Parameter] public VirtualListEdge DefaultEdge { get; set; }
+    [Parameter] public double ExpandTriggerMultiplier { get; set; } = 1;
+    [Parameter] public double ExpandMultiplier { get; set; } = 1.5;
     [Parameter] public int MaxExpandBy { get; set; } = 120;
     [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.Ordinal;
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
@@ -97,7 +100,14 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(VirtualList.JSCreateMethod, Ref, BlazorRef, Identity, MaxExpandBy);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(VirtualList.JSCreateMethod,
+                Ref,
+                BlazorRef,
+                Identity,
+                DefaultEdge,
+                ExpandTriggerMultiplier,
+                ExpandMultiplier,
+                MaxExpandBy);
         }
     }
 

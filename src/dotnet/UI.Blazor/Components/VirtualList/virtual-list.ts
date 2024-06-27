@@ -35,6 +35,9 @@ export class VirtualList {
     private readonly _renderStateRef: HTMLElement;
     private readonly _blazorRef: DotNet.DotNetObject;
     private readonly _identity: string;
+    private readonly _defaultEdge: VirtualListEdge;
+    private readonly _expandTriggerMultiplier: number;
+    private readonly _expandMultiplier: number;
     private readonly _maxExpand: number;
     private readonly _spacerRef: HTMLElement;
     private readonly _endSpacerRef: HTMLElement;
@@ -85,15 +88,21 @@ export class VirtualList {
         ref: HTMLElement,
         backendRef: DotNet.DotNetObject,
         identity: string,
+        defaultEdge: VirtualListEdge,
+        expandTriggerMultiplier: number,
+        expandMultiplier: number,
         maxExpand: number,
     ) {
-        return new VirtualList(ref, backendRef, identity, maxExpand);
+        return new VirtualList(ref, backendRef, identity, defaultEdge, expandTriggerMultiplier, expandMultiplier, maxExpand);
     }
 
     public constructor(
         ref: HTMLElement,
         backendRef: DotNet.DotNetObject,
         identity: string,
+        defaultEdge: VirtualListEdge,
+        expandTriggerMultiplier: number,
+        expandMultiplier: number,
         maxExpand: number,
     ) {
         if (debugLog) {
@@ -105,6 +114,9 @@ export class VirtualList {
         this._ref = ref;
         this._blazorRef = backendRef;
         this._identity = identity;
+        this._defaultEdge = defaultEdge;
+        this._expandTriggerMultiplier = expandTriggerMultiplier;
+        this._expandMultiplier = expandMultiplier;
         this._maxExpand = maxExpand;
 
         this._isDisposed = false;
@@ -379,8 +391,8 @@ export class VirtualList {
         if (notAnItem) {
             this.windowScrollTop = window.visualViewport.offsetTop;
             // restore sticky end edge on item resize - not adding new one!
-            if (!itemsWereMeasured && this._stickyEdge?.edge === VirtualListEdge.End)
-                this.scrollToEnd(false);
+            if (!itemsWereMeasured && this._stickyEdge?.edge === this._defaultEdge)
+                this.scrollToEdge(this._defaultEdge, false);
 
             if (DeviceInfo.isIos) {
                 const htmlElement = document.getElementsByTagName('html')[0];
@@ -400,8 +412,8 @@ export class VirtualList {
                 }
             }
         }
-        else if (!itemsWereMeasured && this._stickyEdge?.edge === VirtualListEdge.End)
-            this.scrollToEnd(true);
+        else if (!itemsWereMeasured && this._stickyEdge?.edge === this._defaultEdge)
+            this.scrollToEdge(this._defaultEdge, true);
 
         const lastItemWasMeasured = itemsWereMeasured && this._unmeasuredItems.size == 0;
         if (lastItemWasMeasured)
@@ -606,9 +618,9 @@ export class VirtualList {
                 if (!this.isKeyVisible(rs.scrollToKey)) {
                     if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
                         if (this._stickyEdge?.edge == VirtualListEdge.End)
-                            this.scrollToEnd(true);
+                            this.scrollToEdge(VirtualListEdge.End, true);
                         else
-                            this.scrollToEnd(false);
+                            this.scrollToEdge(VirtualListEdge.End, false);
                         this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
                     } else {
                         this.scrollTo(scrollToItemRef, false);
@@ -616,7 +628,7 @@ export class VirtualList {
                 }
                 else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
                     this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
-                    this.scrollToEnd(true);
+                    this.scrollToEdge(VirtualListEdge.End, true);
                 }
             } else if (this._stickyEdge != null && rs.query.isNone) {
                 // Sticky edge scroll when we are not requesting data with query - render of new items only
@@ -635,11 +647,10 @@ export class VirtualList {
                 } else {
                     this.setStickyEdge({ itemKey: itemKey, edge: this._stickyEdge.edge });
                     if (this._stickyEdge?.edge === VirtualListEdge.End) {
-                        this.scrollToEnd(true);
+                        this.scrollToEdge(VirtualListEdge.End, true);
                     }
                     else if (this._stickyEdge?.edge === VirtualListEdge.Start) {
-                        let itemRef = this.getItemRef(itemKey);
-                        this.scrollTo(itemRef, false);
+                        this.scrollToEdge(VirtualListEdge.Start, true);
                     }
                 }
             }
@@ -651,7 +662,7 @@ export class VirtualList {
             }
             else {
                 if (rs.renderIndex <= 2)
-                    this.scrollToEnd(false);
+                    this.scrollToEdge(this._defaultEdge, false);
                 warnLog?.log(`endRender: there are no pivots`);
             }
         } finally {
@@ -973,28 +984,39 @@ export class VirtualList {
         });
     }
 
-    private scrollToEnd(useSmoothScroll: boolean = false) {
+    private scrollToEdge(edge: VirtualListEdge = VirtualListEdge.End, useSmoothScroll: boolean = false) {
         const now = Date.now();
         const isInitialRender = now - this.createdAt < 1500; // first 1.5 seconds after creating the virtual list
         if (this._renderState.renderIndex <= 1 || isInitialRender)
             useSmoothScroll = false; // fix for scroll to the end on chat switch
         if (DeviceInfo.isIos) // on devices with virtual keyboard editor can be scrolled out below the keyboard with smooth scroll
             useSmoothScroll = false;
-        debugLog?.log('scrollTo end', useSmoothScroll);
+        debugLog?.log('scrollTo end', edge, useSmoothScroll);
         this._inertialScroll.freeze();
         this._scrollTime = Date.now();
-        if (useSmoothScroll) {
-            this._endAnchorRef.scrollIntoView({
-                behavior: "smooth",
-                block: 'center',
-                inline: 'nearest',
-            });
+        if (edge == VirtualListEdge.End) {
+            if (useSmoothScroll) {
+                this._endAnchorRef.scrollIntoView({
+                    behavior: "smooth",
+                    block: 'center',
+                    inline: 'nearest',
+                });
+            } else {
+                this._ref.scrollTop = this._ref.scrollHeight;
+            }
+            void this.turnOnIsEndAnchorVisible();
+            this.turnOffIsEndAnchorVisibleDebounced.reset();
+        } else {
+            if (useSmoothScroll) {
+                this._spacerRef.scrollIntoView({
+                    behavior: "smooth",
+                    block: 'center',
+                    inline: 'nearest',
+                });
+            } else {
+                this._ref.scrollTop = 0;
+            }
         }
-        else {
-            this._ref.scrollTop = this._ref.scrollHeight;
-        }
-        void this.turnOnIsEndAnchorVisible();
-        this.turnOffIsEndAnchorVisibleDebounced.reset();
         fastRaf({
             write: () => {
                 this._inertialScroll.unfreeze();
@@ -1003,6 +1025,9 @@ export class VirtualList {
     }
 
     private setStickyEdge(stickyEdge: VirtualListStickyEdgeState | null): boolean {
+        if (stickyEdge && !stickyEdge.itemKey)
+            return false; // itemKey is undefined
+
         const old = this._stickyEdge;
         if (old?.itemKey !== stickyEdge?.itemKey || old?.edge !== stickyEdge?.edge) {
             debugLog?.log(`setStickyEdge:`, stickyEdge);
@@ -1248,10 +1273,11 @@ export class VirtualList {
                 : 'start';
         const alreadyLoadedFromStart = Math.abs(alreadyLoaded.start - viewport.start);
         const alreadyLoadedTillEnd = Math.abs(alreadyLoaded.end - viewport.end);
-        const loadZoneTrigger = viewportSize;
-        const loadZoneSize = loadZoneTrigger * 2;
-        let loadStart = viewport.start - viewportSize * 1.5; // keep at least 1.5 viewport more in both directions
-        let loadEnd = viewport.end + viewportSize * 1.5;
+        const loadZoneTrigger = viewportSize * this._expandTriggerMultiplier;
+        // keep at least _expandMultiplier * viewport more in both directions
+        const loadZoneSize = viewportSize * this._expandMultiplier;
+        let loadStart = viewport.start - loadZoneSize;
+        let loadEnd = viewport.end + loadZoneSize;
 
         switch (lastQuerySide) {
             case "none":
@@ -1334,8 +1360,11 @@ export class VirtualList {
         const lastItem = items[endIndex] ?? items[items.length - 1];
         const startGap = Math.max(0, firstItem.range.start - loadZone.start);
         const endGap = Math.max(0, loadZone.end - lastItem.range.end);
-        // skip queries that load few more items - we prefer to load more
-        if (startGap < viewportSize && endGap < viewportSize)
+        // skip queries that load few more items - we prefer to load more - if not close of the skeletons
+        const smallGap = loadZoneSize * 0.5;
+        const isFirstItemInViewport = !rs.hasVeryFirstItem && firstItem.range.end > viewport.start;
+        const isLastItemInViewport = !rs.hasVeryLastItem && lastItem.range.start <= viewport.end;
+        if (startGap < smallGap  && endGap < smallGap && firstItem.range.start && !isFirstItemInViewport && !isLastItemInViewport)
             return this._lastQuery;
 
         const maxExpandBy = this._maxExpand;
