@@ -8,6 +8,7 @@
     Class="chat-view"
     DataSource="@this"
     Identity="@Chat.Id"
+    DefaultEdge="@VirtualListEdge.End"
     KeyComparer="@LongAsStringKeyComparer.Default"
     ItemVisibilityChanged="@OnItemVisibilityChanged">
     <Item>
