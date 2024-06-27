@@ -24,7 +24,7 @@ public partial class SearchUI
         var cCriteria = await Computed.Capture(() => GetCriteria(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var criteriaChanges = cCriteria.Changes(cancellationToken)
-            .Where(x => !x.HasError && !x.Value.Text.IsNullOrEmpty())
+            .Where(x => !x.HasError)
             .Select(x => x.Value);
         DelegatingWorker? activeSearchJob = null;
         try {
@@ -44,17 +44,24 @@ public partial class SearchUI
         Criteria criteria,
         CancellationToken cancellationToken)
     {
-        var searchResultMap = await FindContacts(criteria, cancellationToken).ConfigureAwait(false);
-        var foundContacts = new List<FoundContact>(searchResultMap.Sum(x => x.Value.Count));
-        foreach (var scope in Scopes) {
-            if (!searchResultMap.TryGetValue(scope, out var searchResults) || searchResults.Count == 0)
-                continue;
+        List<FoundContact> foundContacts;
+        var isSearchModeOn = !criteria.Text.IsNullOrEmpty();
+        _isSearchModeOn.Value = isSearchModeOn;
+        if (isSearchModeOn) {
+            var searchResultMap = await FindContacts(criteria, cancellationToken).ConfigureAwait(false);
+            foundContacts = new List<FoundContact>(searchResultMap.Sum(x => x.Value.Count));
+            foreach (var scope in Scopes) {
+                if (!searchResultMap.TryGetValue(scope, out var searchResults) || searchResults.Count == 0)
+                    continue;
 
-            for (int i = 0; i < searchResults.Count; i++) {
-                var searchResult = searchResults[i];
-                foundContacts.Add(new FoundContact(searchResult, scope, i == 0, i == searchResults.Count - 1));
+                for (int i = 0; i < searchResults.Count; i++) {
+                    var searchResult = searchResults[i];
+                    foundContacts.Add(new FoundContact(searchResult, scope, i == 0, i == searchResults.Count - 1));
+                }
             }
         }
+        else
+            foundContacts = new List<FoundContact>();
         _cached = new Cached(criteria, foundContacts);
         using (Invalidation.Begin()) {
             _ = GetContactSearchResults();

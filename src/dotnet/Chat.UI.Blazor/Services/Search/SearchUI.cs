@@ -8,6 +8,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     private static readonly ContactSearchScope[] Scopes = [ContactSearchScope.People, ContactSearchScope.Groups, ContactSearchScope.Places ];
     private Cached _cached = Cached.None;
     private readonly MutableState<string> _text;
+    private readonly MutableState<bool> _isSearchModeOn;
 
     public IMutableState<string> Text => _text;
     private IMutableState<ImmutableHashSet<ContactSearchScope>> ExtendedLimits { get; }
@@ -16,8 +17,10 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
 
     public SearchUI(ChatUIHub uiHub) : base(uiHub)
     {
-        _text = uiHub.StateFactory().NewMutable("", StateCategories.Get(GetType(), nameof(Text)));
-        ExtendedLimits = uiHub.StateFactory()
+        var stateFactory = uiHub.StateFactory();
+        _text = stateFactory.NewMutable("", StateCategories.Get(GetType(), nameof(Text)));
+        _isSearchModeOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchModeOn)));
+        ExtendedLimits = stateFactory
             .NewMutable(ImmutableHashSet<ContactSearchScope>.Empty, StateCategories.Get(GetType(), nameof(ExtendedLimits)));
     }
 
@@ -25,11 +28,8 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         => this.Start();
 
     [ComputeMethod]
-    public virtual async Task<bool> IsSearchModeOn(CancellationToken cancellationToken)
-    {
-        var (criteria, _, _) = await GetCriteria(cancellationToken).ConfigureAwait(false);
-        return !criteria.IsNullOrEmpty();
-    }
+    public virtual Task<bool> IsSearchModeOn(CancellationToken cancellationToken)
+        => _isSearchModeOn.Use(cancellationToken).AsTask();
 
     [ComputeMethod] // Synced
     public virtual async Task<SearchMatch> GetSearchMatch(ChatId chatId)
