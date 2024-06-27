@@ -8,7 +8,7 @@ internal interface IChatContentIndexerFactory
 internal sealed class ChatContentIndexerFactory(IServiceProvider services) : IChatContentIndexerFactory
 {
     private readonly ObjectFactory<ChatContentIndexer> _factoryMethod =
-        ActivatorUtilities.CreateFactory<ChatContentIndexer>(Array.Empty<Type>());
+        ActivatorUtilities.CreateFactory<ChatContentIndexer>([]);
 
-    public IChatContentIndexer Create() => _factoryMethod(services, Array.Empty<object>());
+    public IChatContentIndexer Create() => _factoryMethod(services, []);
 }
