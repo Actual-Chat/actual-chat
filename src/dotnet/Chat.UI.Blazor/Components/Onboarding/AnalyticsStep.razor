@@ -10,21 +10,22 @@
     @if (Stepper.CurrentStepIndex == 0) {
         <p class="text-title-1 text-center">Welcome to Actual Chat!</p>
     }
-    <p class="text-headline-1 mt-6">
-        Would you like to help us improve Actual Chat?
-    </p>
-    <p class="text-headline-1 mt-2">
-    </p>
-    <div class="p-4 rounded-2xl bg-after-darker">
-        <p class="text-headline-1">
-            We use Firebase Analytics to monitor how visitors interact with our app and to record any app crashes that may occur.
+    <div class="analytics-step">
+        <p class="c-subtitle">
+            Telemetry Consent Request
         </p>
-        <p class="text-headline-1 mt-2">
-            Our goal is to provide a seamless user experience, and your participation can greatly assist us.
-        </p>
-        <p class="text-headline-1 mt-2">
-            Please give your consent to use and process your information to enhance our services.
-        </p>
+        <div class="c-content">
+            Actual Chat collects certain telemetry events, such as error and crash logs, to help us identify user
+            experience issues faster. The data is currently processed by
+            <a href="https://firebase.google.com/docs/analytics" target="_blank">
+                Firebase Analytics
+            </a> and
+            <a href="https://sentry.io/" target="_blank">
+                Sentry
+            </a>, though we may use
+            other services in the future. Please help us improve Actual Chat by consenting to the collection and
+            processing of your telemetry data.
+        </div>
     </div>
 
 </div>
