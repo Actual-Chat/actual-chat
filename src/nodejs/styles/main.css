@@ -137,7 +137,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply absolute flex-none flex-y top-14 z-10;
     @apply w-full;
     @apply overflow-visible;
-    @apply bg-01;
+    @apply bg-transparent;
 }
 
 .layout-body {

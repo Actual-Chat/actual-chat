@@ -24,7 +24,7 @@
             var linkKind = link.IsPrivateChatInvite()
                 ? "Private join link"
                 : "Public link";
-            var copyText = shareModel.Request.GetShareTextAndLink(UrlMapper);
+            var copyText = shareModel.Request.GetShareLink(UrlMapper);
             <div class="chat-link">
                 <div class="c-link-url">
                     <div class="c-round">
