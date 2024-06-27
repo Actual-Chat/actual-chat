@@ -17,7 +17,7 @@ public partial class ChatIndexInitializerShardTests
         var chatInfo = new ChatIndexInitializerShard.ChatInfo(ChatId.None, 0);
         var cursor = new ChatIndexInitializerShard.Cursor(333);
         var state = new ChatIndexInitializerShard.SharedState(cursor, maxConcurrency);
-        var queues = MockQueues().Object;
+        var queues = QueuesMock.Create().Object;
         var clock = Mock.Of<MomentClock>();
         var log = Mock.Of<ILogger>();
         foreach (var _ in Enumerable.Range(0, maxConcurrency)) {
@@ -47,7 +47,7 @@ public partial class ChatIndexInitializerShardTests
         var clock = Mock.Of<MomentClock>();
         var cancellationSource = new CancellationTokenSource();
         var log = LogMock.Create<ChatIndexInitializer>();
-        var queues = MockQueues(static (_, ct) =>
+        var queues = QueuesMock.Create(static (_, ct) =>
             ActualLab.Async.TaskExt.NewNeverEndingUnreferenced().WaitAsync(TimeSpan.FromSeconds(1), ct));
 
         var scheduleTask = ChatIndexInitializerShard.ScheduleIndexingJobAsync(
@@ -72,7 +72,7 @@ public partial class ChatIndexInitializerShardTests
 
         var clock = Mock.Of<MomentClock>();
         var log = LogMock.Create<ChatIndexInitializer>();
-        var queues = MockQueues(static (_, _) => Task.FromException(new UniqueException()));
+        var queues = QueuesMock.Create(static (_, _) => Task.FromException(new UniqueException()));
 
         ChatIndexInitializerShard.RetrySettings retrySettings =
             new (0, RetryDelaySeq.Exp(0.3, 3), TransiencyResolvers.PreferTransient);
@@ -108,7 +108,7 @@ public partial class ChatIndexInitializerShardTests
             });
 
         var log = Mock.Of<ILogger>();
-        var queues = MockQueues(static (_, _) => Task.FromException(new UniqueException()));
+        var queues = QueuesMock.Create(static (_, _) => Task.FromException(new UniqueException()));
 
         await Assert.ThrowsAsync<UniqueException>(async () =>
             await ChatIndexInitializerShard.ScheduleIndexingJobAsync(
@@ -137,7 +137,7 @@ public partial class ChatIndexInitializerShardTests
         var clock = new Mock<MomentClock>();
         clock.SetupGet(x => x.Now).Returns(scheduleMoment);
         var log = Mock.Of<ILogger>();
-        var queues = MockQueues();
+        var queues = QueuesMock.Create();
         await ChatIndexInitializerShard.ScheduleIndexingJobAsync(
             chatInfo, state, _scheduleJobRetrySettings, queues.Object, clock.Object, log, CancellationToken.None);
 
@@ -159,7 +159,7 @@ public partial class ChatIndexInitializerShardTests
         var log = Mock.Of<ILogger>();
 
         ICommand? observedCommand = null;
-        var queues = MockQueues((context, _) => {
+        var queues = QueuesMock.Create((context, _) => {
             observedCommand = context.UntypedCommand;
             return Task.CompletedTask;
         });
@@ -167,37 +167,5 @@ public partial class ChatIndexInitializerShardTests
             chatInfo, state, _scheduleJobRetrySettings, queues.Object, clock, log, CancellationToken.None);
 
         Assert.True(observedCommand is MLSearch_TriggerChatIndexing { ChatId: var observedChatId } && chatId == observedChatId);
-    }
-
-    private static Mock<IQueues> MockQueues(Func<QueuedCommand, CancellationToken, Task>? action = null)
-    {
-        var queueRefResolver = new Mock<IQueueRefResolver>();
-        queueRefResolver
-            .Setup(x => x.GetQueueShardRef(It.IsAny<ICommand>(), It.IsAny<Requester>()))
-            .Returns(new QueueShardRef(ShardScheme.EventQueue, 1));
-        var services = new Mock<IServiceProvider>();
-        services
-            .Setup(x => x.GetService(typeof(IQueueRefResolver)))
-            .Returns(queueRefResolver.Object);
-        var queues = new Mock<IQueues>();
-        queues
-            .SetupGet(x => x.Services)
-            .Returns(services.Object);
-
-        var queueSender = new Mock<IQueueSender>();
-        queueSender
-            .Setup(x => x.Enqueue(
-                It.IsAny<QueueShardRef>(),
-                It.IsAny<QueuedCommand>(),
-                It.IsAny<CancellationToken>()))
-            .Returns<QueueShardRef, QueuedCommand, CancellationToken>(
-                (_, queuedCommand, ct) => {
-                    return action?.Invoke(queuedCommand, ct) ?? Task.CompletedTask;
-                }
-            );
-        queues
-            .Setup(x => x.GetSender(It.IsAny<QueueRef>()))
-            .Returns(queueSender.Object);
-        return queues;
     }
 }

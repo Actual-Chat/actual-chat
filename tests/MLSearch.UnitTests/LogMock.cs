@@ -30,4 +30,3 @@ public static class LogMock
             It.IsAny<Func<It.IsAnyType, Exception?, string>>());
     }
 }
-
