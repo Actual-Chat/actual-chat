@@ -17,7 +17,7 @@
     };
 }
 
-@if (!m.IsSearchApplied) {
+@if (!m.IsSearchApplied && m.EnableIncompleteUI) {
     <div class="recent-contacts">
         @foreach (var plug in plugs) {
             var cls = $"c-author {plug.Value}";
@@ -41,6 +41,7 @@
 
     private SearchUI SearchUI => Hub.SearchUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
+    private Features Features => Hub.Features();
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -54,7 +55,8 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var ownChatCount = await ChatListUI.GetCount(_kind).ConfigureAwait(false);
         var isSearchApplied = await SearchUI.IsSearchModeOn(cancellationToken);
-        return new(ownChatCount, isSearchApplied);
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        return new(ownChatCount, isSearchApplied, enableIncompleteUI);
     }
 
     protected override bool ShouldRender()
@@ -65,5 +67,6 @@
     public record struct Model(
         int OwnChatCount,
         bool IsSearchApplied = false,
-        bool IsLoading = false);
+        bool IsLoading = false,
+        bool EnableIncompleteUI = false);
 }

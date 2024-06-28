@@ -10,9 +10,7 @@
 
     RenderFragment RenderChat() =>
         @<div class="left-panel-content-header">
-            @if (m.EnableIncompleteUI) {
-                <LeftChatSearchPanel/>
-            }
+            <LeftChatSearchPanel />
             <div class="c-content">
                 <div class="c-title">
                     Chats
@@ -96,13 +94,13 @@
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
 
     private NavbarUI NavbarUI => Hub.NavbarUI;
     private SearchUI SearchUI => Hub.SearchUI;
     private IContacts Contacts => Hub.Contacts;
     private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
+    private Features Features => Hub.Features();
     private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
 
     protected override async Task OnInitializedAsync() {
@@ -134,7 +132,7 @@
             : await Places.Get(Session, placeId, default).ConfigureAwait(false);
         var places = await Contacts.ListPlaceIds(Session, default).ConfigureAwait(false);
         var isMember = places.Contains(placeId);
-        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
 
         return new() {
             Place = place,

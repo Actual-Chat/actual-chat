@@ -1,6 +1,8 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Module
+@inherits ComputedStateComponent<bool>
 @{
+    var enableIncompleteUI = State.Value;
     var cls = _isOpen ? "open" : "closed";
 }
 
@@ -17,9 +19,11 @@
                     TextChanged="OnSearchInputTextChanged">
                 </TextInput>
 
-                <ButtonRound Click="@OpenRightSearchPanel" Class="c-ai-btn">
-                    <i class="icon-ai-search text-xl"></i>
-                </ButtonRound>
+                @if (enableIncompleteUI) {
+                    <ButtonRound Click="@OpenRightSearchPanel" Class="c-ai-btn">
+                        <i class="icon-ai-search text-xl"></i>
+                    </ButtonRound>
+                }
                 <HeaderButton Click="@(_ => OnClick(false))" Class="c-close-btn">
                     <i class="icon-close text-2xl"></i>
                 </HeaderButton>
@@ -37,24 +41,27 @@
                     <ChatsTab/>
                 </div>
             </Tab>
-            <Tab @key="@("threads")" Id="Threads" Title="Threads" Order="1">
-                <ToBeDone/>
-            </Tab>
-            <Tab @key="@("tags")" Id="tags" Title="Tags" Order="2">
-                <ToBeDone/>
-            </Tab>
-            <Tab @key="@("media")" Id="media" Title="Media" Order="3">
-                <ToBeDone/>
-            </Tab>
+            @if (enableIncompleteUI) {
+                <Tab @key="@("threads")" Id="Threads" Title="Threads" Order="1">
+                    <ToBeDone/>
+                </Tab>
+                <Tab @key="@("tags")" Id="tags" Title="Tags" Order="2">
+                    <ToBeDone/>
+                </Tab>
+                <Tab @key="@("media")" Id="media" Title="Media" Order="3">
+                    <ToBeDone/>
+                </Tab>
+            }
         </TabPanel>
 
-        <div class="ai-btn">
-            <Button Class="btn-primary" Click="@OpenRightSearchPanel">
-                <i class="icon-ai-search"></i>
-                Open AI Search
-            </Button>
-        </div>
-
+        @if (enableIncompleteUI) {
+            <div class="ai-btn">
+                <Button Class="btn-primary" Click="@OpenRightSearchPanel">
+                    <i class="icon-ai-search"></i>
+                    Open AI Search
+                </Button>
+            </div>
+        }
     </div>
 </div>
 
@@ -63,13 +70,26 @@
 
     TextInput? _inputRef = null;
 
-    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
-    [Inject] private SearchUI SearchUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+
+    private PanelsUI PanelsUI => Hub.PanelsUI;
+    private SearchUI SearchUI => Hub.SearchUI;
+    private Features Features => Hub.Features();
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter] public string Placeholder { get; set; } = "Search";
     [Parameter] public int? MaxLength { get; set; }
+    [Parameter] public bool EnableIncompleteUI { get; set; }
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => new() {
+            InitialValue = false,
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
+        => await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
 
     private void OnClick(bool openPanel) {
         if (!openPanel)
