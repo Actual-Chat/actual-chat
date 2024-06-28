@@ -23,6 +23,10 @@
                     <ButtonRound Click="@OpenRightSearchPanel" Class="c-ai-btn">
                         <i class="icon-ai-search text-xl"></i>
                     </ButtonRound>
+                } else {
+                    <ButtonRound Click="@OnSearchButtonClick" Class="c-ai-btn search-btn">
+                        <i class="icon-search text-xl"></i>
+                    </ButtonRound>
                 }
                 <HeaderButton Click="@(_ => OnClick(false))" Class="c-close-btn">
                     <i class="icon-close text-2xl"></i>
@@ -30,39 +34,41 @@
             </label>
         </div>
     </div>
-    <div class="c-content">
-        <TabPanel
-            @key="@("left-chat-search-panel")"
-            TabsClass="left-panel-tabs wide-left-panel-tabs"
-            BottomHill="true">
+    @if (enableIncompleteUI) {
+        <div class="c-content">
+            <TabPanel
+                @key="@("left-chat-search-panel")"
+                TabsClass="left-panel-tabs wide-left-panel-tabs"
+                BottomHill="true">
 
-            <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
-                <div class="c-container">
-                    <ChatsTab/>
-                </div>
-            </Tab>
+                <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
+                    <div class="c-container">
+                        <ChatsTab/>
+                    </div>
+                </Tab>
+                @if (enableIncompleteUI) {
+                    <Tab @key="@("threads")" Id="Threads" Title="Threads" Order="1">
+                        <ToBeDone/>
+                    </Tab>
+                    <Tab @key="@("tags")" Id="tags" Title="Tags" Order="2">
+                        <ToBeDone/>
+                    </Tab>
+                    <Tab @key="@("media")" Id="media" Title="Media" Order="3">
+                        <ToBeDone/>
+                    </Tab>
+                }
+            </TabPanel>
+
             @if (enableIncompleteUI) {
-                <Tab @key="@("threads")" Id="Threads" Title="Threads" Order="1">
-                    <ToBeDone/>
-                </Tab>
-                <Tab @key="@("tags")" Id="tags" Title="Tags" Order="2">
-                    <ToBeDone/>
-                </Tab>
-                <Tab @key="@("media")" Id="media" Title="Media" Order="3">
-                    <ToBeDone/>
-                </Tab>
+                <div class="ai-btn">
+                    <Button Class="btn-primary" Click="@OpenRightSearchPanel">
+                        <i class="icon-ai-search"></i>
+                        Open AI Search
+                    </Button>
+                </div>
             }
-        </TabPanel>
-
-        @if (enableIncompleteUI) {
-            <div class="ai-btn">
-                <Button Class="btn-primary" Click="@OpenRightSearchPanel">
-                    <i class="icon-ai-search"></i>
-                    Open AI Search
-                </Button>
-            </div>
-        }
-    </div>
+        </div>
+    }
 </div>
 
 @code {
@@ -80,7 +86,6 @@
 
     [Parameter] public string Placeholder { get; set; } = "Search";
     [Parameter] public int? MaxLength { get; set; }
-    [Parameter] public bool EnableIncompleteUI { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() {
@@ -97,6 +102,9 @@
         _isOpen = openPanel;
         StateHasChanged();
     }
+
+    private void OnSearchButtonClick()
+        => _inputRef?.Focus();
 
     private void OnSearchInputTextChanged(string text)
         => SearchUI.Text.Value = text;

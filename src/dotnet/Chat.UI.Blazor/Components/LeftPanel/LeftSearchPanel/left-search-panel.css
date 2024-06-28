@@ -68,6 +68,10 @@
     @apply bg-primary;
     @apply text-white;
 }
+.left-search-panel.chat-search .c-ai-btn.search-btn {
+    @apply bg-04;
+    @apply text-03;
+}
 .left-search-panel.chat-search.open .c-ai-btn {
     @apply hidden;
     @apply opacity-0;
@@ -102,6 +106,9 @@
 }
 body.hoverable .left-search-panel.chat-search .c-ai-btn.btn-round:hover {
     @apply bg-primary;
+}
+body.hoverable .left-search-panel.chat-search .c-ai-btn.search-btn.btn-round:hover {
+    @apply bg-04;
 }
 
 .left-search-panel.chat-search .tab-panel .btn-group {

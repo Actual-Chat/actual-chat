@@ -15,18 +15,6 @@
                 <div class="c-title">
                     Chats
                 </div>
-                <div class="c-ending">
-                    @if (!m.EnableIncompleteUI) {
-                        <ChatSearchBox
-                            @ref="_searchBoxRef"
-                            Placeholder="Find chat..."
-                            IsCollapsed="true"
-                            ShowSpinner="true"
-                            ShowClose="true"
-                            MaxLength="@Constants.Chat.MaxSearchFilterLength"
-                            TextChanged="@_onSearchBoxTextChanged"/>
-                    }
-                </div>
             </div>
         </div>;
 
