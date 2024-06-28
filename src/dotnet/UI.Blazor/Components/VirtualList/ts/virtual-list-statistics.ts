@@ -1,6 +1,6 @@
 import { clamp } from 'math';
 
-const DefaultItemSize: number = 30;
+const DefaultItemSize: number = 48;
 const MinItemSize: number = 12;
 const MaxItemSize: number = 240;
 const ItemCountResetThreshold: number = 1000;

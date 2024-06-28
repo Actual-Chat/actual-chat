@@ -105,6 +105,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
                 BlazorRef,
                 Identity,
                 DefaultEdge,
+                SpacerSize,
                 ExpandTriggerMultiplier,
                 ExpandMultiplier,
                 MaxExpandBy);

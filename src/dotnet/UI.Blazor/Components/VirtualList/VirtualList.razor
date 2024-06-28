@@ -9,18 +9,6 @@
     // We are unable to scroll to the right location until JS client part of the Virtual List created
     var hasJsComponentCreated = JSRef != null;
     var data = Data;
-    var spacerSize = SpacerSize;
-    var endSpacerSize = SpacerSize;
-    if (data.HasVeryFirstItem) {
-        spacerSize = 0;
-    }
-    if (data.HasVeryLastItem) {
-        endSpacerSize = 0;
-    }
-
-    if (!hasJsComponentCreated || data.Tiles.Count == 0)
-        spacerSize = 1000;
-
     var containerClass = !hasJsComponentCreated
         ? "hide"
         : "";
@@ -41,8 +29,9 @@
         RenderIndex = renderIndex,
         Query = Query,
         KeyRange = data.KeyRange,
-        SpacerSize = spacerSize,
-        EndSpacerSize = endSpacerSize,
+        Count = data.Tiles.Sum(t => t.Items.Sum(i => i.CountAs)),
+        BeforeCount = Data.BeforeCount,
+        AfterCount = Data.AfterCount,
         RequestedStartExpansion = data.RequestedStartExpansion,
         RequestedEndExpansion = data.RequestedEndExpansion,
         StartExpansion = startExpansion,
@@ -74,8 +63,7 @@
     </div>
 
     <div @key="@VirtualListSpecialKeys.Spacer"
-         class="c-spacer-start"
-         style="height: @(spacerSize)px">
+         class="c-spacer-start">
         <VirtualListSkeletonView SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 
@@ -89,8 +77,7 @@
     </ul>
 
     <div @key="@VirtualListSpecialKeys.EndSpacer"
-         class="c-spacer-end"
-         style="height: @(endSpacerSize)px">
+         class="c-spacer-end">
         <VirtualListSkeletonView SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 
