@@ -36,6 +36,7 @@ export class VirtualList {
     private readonly _blazorRef: DotNet.DotNetObject;
     private readonly _identity: string;
     private readonly _defaultEdge: VirtualListEdge;
+    private readonly _defaultSpacerSize: number;
     private readonly _expandTriggerMultiplier: number;
     private readonly _expandMultiplier: number;
     private readonly _maxExpand: number;
@@ -81,6 +82,9 @@ export class VirtualList {
     private _orderedItems: VirtualListItem[] = [];
     private _itemRange: NumberRange | null = null;
     private _viewport: NumberRange | null = null;
+    private _lastViewport: NumberRange | null = null;
+    private _spacerSize: number | null = null;
+    private _endSpacerSize: number | null = null;
     private _shouldRecalculateItemRange: boolean = true;
     private _shouldUpdateOrderedItems: boolean = true;
 
@@ -89,11 +93,12 @@ export class VirtualList {
         backendRef: DotNet.DotNetObject,
         identity: string,
         defaultEdge: VirtualListEdge,
+        spacerSize: number,
         expandTriggerMultiplier: number,
         expandMultiplier: number,
         maxExpand: number,
     ) {
-        return new VirtualList(ref, backendRef, identity, defaultEdge, expandTriggerMultiplier, expandMultiplier, maxExpand);
+        return new VirtualList(ref, backendRef, identity, defaultEdge, spacerSize, expandTriggerMultiplier, expandMultiplier, maxExpand);
     }
 
     public constructor(
@@ -101,6 +106,7 @@ export class VirtualList {
         backendRef: DotNet.DotNetObject,
         identity: string,
         defaultEdge: VirtualListEdge,
+        spacerSize: number,
         expandTriggerMultiplier: number,
         expandMultiplier: number,
         maxExpand: number,
@@ -115,6 +121,7 @@ export class VirtualList {
         this._blazorRef = backendRef;
         this._identity = identity;
         this._defaultEdge = defaultEdge;
+        this._defaultSpacerSize = spacerSize;
         this._expandTriggerMultiplier = expandTriggerMultiplier;
         this._expandMultiplier = expandMultiplier;
         this._maxExpand = maxExpand;
@@ -183,8 +190,9 @@ export class VirtualList {
             renderIndex: -1,
             query: VirtualListDataQuery.None,
             keyRange: new Range<string>('',''),
-            spacerSize: 0,
-            endSpacerSize: 0,
+            beforeCount: null,
+            afterCount: null,
+            count: 0,
             requestedStartExpansion: null,
             requestedEndExpansion: null,
             startExpansion: 0,
@@ -247,8 +255,8 @@ export class VirtualList {
         return this._itemRange == null
             ? null
             : new NumberRange(
-                this._itemRange.start - this._renderState.spacerSize,
-                this._itemRange.end + this._renderState.endSpacerSize);
+                this._itemRange.start - this._spacerSize ?? 0,
+                this._itemRange.end + this._endSpacerSize ?? 0);
     }
 
     private parseRenderState(): VirtualListRenderState | null {
@@ -585,15 +593,71 @@ export class VirtualList {
             return;
         }
 
-        // Adjust spacer size
-        if (rs.hasVeryFirstItem) {
-            this._spacerRef.style.height = '0px';
+        let spacerSize = this._defaultSpacerSize;
+        let endSpacerSize = this._defaultSpacerSize;
+        // const totalCount = rs.beforeCount + rs.afterCount + rs.count;
+        if (rs.beforeCount !== null && rs.afterCount !== null) {
+            // count of same-size items is provided - let's adjust spacers size to avoid scrollbar jumps
+            // const totalSize = totalCount * this._statistics.itemSize;
+            // const renderedSize = rs.count * this._statistics.itemSize;
+            spacerSize = rs.beforeCount * this._statistics.itemSize;
+            endSpacerSize = rs.afterCount * this._statistics.itemSize;
+
+
+            // if (this._defaultEdge === VirtualListEdge.End) {
+                // const fullRange = new NumberRange(-totalSize, 0);
+                // const itemRange = fullRange.intersectWith(this._itemRange ?? new NumberRange(-renderedSize, 0));
+                // const viewport = fullRange.intersectWith(this._viewport ?? this._lastViewport ?? new NumberRange(-MinViewPortSize, 0));
+                // if (rs.query.isNone) {
+                //     if (!this._spacerSize || !this._endSpacerSize) {
+                //         // first renders - initialize spacers
+                //
+                //     }
+                //     else {
+                //         // keep existing spacers
+                //         spacerSize = null;
+                //         endSpacerSize = null;
+                //     }
+                // }
+                // if (itemRange.intersectWith(viewport).isEmpty) {
+                //     const midPoint = (viewport.end + viewport.start) / 2;
+                //     const renderedEnd = midPoint + renderedSize / 2;
+                //     endSpacerSize = renderedEnd < 0
+                //         ? -renderedEnd
+                //         : 0;
+                //     spacerSize = totalSize - renderedSize - endSpacerSize;
+                // }
+                // else {
+                //     rs.query.virtualRange
+                // }
+            // }
+            // else {
+            //     const itemRange = this._itemRange ?? new NumberRange(0, renderedSize);
+            //     const viewport = this._viewport ?? this._lastViewport ?? new NumberRange(0, MinViewPortSize);
+            //     if (itemRange.intersectWith(viewport).isEmpty) {
+            //
+            //     }
+            //     else {
+            //
+            //     }
+            // }
+
+            // viewport
         }
-        else if (rs.keyRange?.start) {
-            this._spacerRef.style.height = '200px';
+        else if (!rs.keyRange?.start) {
+            // no data loaded yet
+            spacerSize = 1000;
         }
-        if (rs.hasVeryLastItem)
-            this._endSpacerRef.style.height = '0px';
+        else {
+            if (rs.hasVeryFirstItem)
+                spacerSize = 0;
+            if (rs.hasVeryLastItem)
+                endSpacerSize = 0;
+        }
+        this._spacerRef.style.height = `${spacerSize}px`;
+        this._endSpacerRef.style.height = `${endSpacerSize}px`;
+        this._spacerSize = spacerSize;
+        this._endSpacerSize = endSpacerSize;
 
         const startedAt = this._renderStartedAt;
         const now = Date.now();
@@ -675,6 +739,7 @@ export class VirtualList {
             this._renderStartedAt = null;
             this._whenRequestDataCompleted?.resolve(undefined);
 
+            this._lastViewport = this._viewport;
             this._pivots = [];
             this._itemRange = null;
             this._viewport = null;
@@ -1143,17 +1208,37 @@ export class VirtualList {
             return false;
 
         const orderedItems = this._orderedItems;
-        // find rightmost measured item
-        let cornerStoneItemIndex = orderedItems.length - 1;
-        let cornerStoneItem = orderedItems[cornerStoneItemIndex];
-        while (cornerStoneItemIndex > 0 && !cornerStoneItem.isMeasured)
-            cornerStoneItem = orderedItems[--cornerStoneItemIndex];
+        let cornerStoneItemIndex = 0;
+        let cornerStoneItem = orderedItems[0];
 
-        if (!cornerStoneItem.range) {
+        // find rightmost measured item if the default edge is `End` and leftmost otherwise
+        if (this._defaultEdge === VirtualListEdge.End) {
             cornerStoneItemIndex = orderedItems.length - 1;
             cornerStoneItem = orderedItems[cornerStoneItemIndex];
-            cornerStoneItem.range = new NumberRange(-cornerStoneItem.size, 0);
+            while (cornerStoneItemIndex > 0 && !cornerStoneItem.isMeasured)
+                cornerStoneItem = orderedItems[--cornerStoneItemIndex];
+
+            // reset ranges and recalculate from cornerstone item
+            if (!cornerStoneItem.range) {
+                cornerStoneItemIndex = orderedItems.length - 1;
+                cornerStoneItem = orderedItems[cornerStoneItemIndex];
+                cornerStoneItem.range = new NumberRange(-cornerStoneItem.size, 0);
+            }
+
         }
+        else {
+            while (cornerStoneItemIndex < orderedItems.length - 1 && !cornerStoneItem.isMeasured)
+                cornerStoneItem = orderedItems[++cornerStoneItemIndex];
+
+            // reset ranges and recalculate from cornerstone item
+            if (!cornerStoneItem.range) {
+                cornerStoneItemIndex = 0;
+                cornerStoneItem = orderedItems[cornerStoneItemIndex];
+                cornerStoneItem.range = new NumberRange(0, cornerStoneItem.size);
+            }
+        }
+
+        // calculate range of other items
         let prevItem = cornerStoneItem;
         for (let i = cornerStoneItemIndex + 1; i < orderedItems.length; i++) {
             const item = orderedItems[i];
@@ -1166,6 +1251,7 @@ export class VirtualList {
             item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
             prevItem = item;
         }
+
         this._itemRange = new NumberRange(
             orderedItems[0].range.start,
             orderedItems[orderedItems.length - 1].range.end);

@@ -7,8 +7,9 @@ public sealed class VirtualListRenderState
     public VirtualListDataQuery Query { get; init; } = VirtualListDataQuery.None;
 
     public Range<string> KeyRange { get; init; }
-    public double SpacerSize { get; init; }
-    public double EndSpacerSize { get; init; }
+    public int? BeforeCount { get; init; }
+    public int? AfterCount { get; init; }
+    public int Count { get; init; }
     public int? RequestedStartExpansion { get; init; }
     public int? RequestedEndExpansion { get; init; }
     public int StartExpansion { get; init; }

@@ -37,7 +37,8 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
         var tiles = new List<VirtualListTile<ChatListItemModel>>();
         foreach (var indexTile in indexTiles) {
             var tile = await ChatListUI.GetTile(indexTile, cancellationToken).ConfigureAwait(false);
-            tiles.Add(tile);
+            if (tile.Items.Count > 0)
+                tiles.Add(tile);
         }
 
         var hasVeryFirstItem = range.Start == 0;
@@ -45,6 +46,8 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
 
         return new VirtualListData<ChatListItemModel>(tiles) {
             Index = renderedData.Index + 1,
+            BeforeCount = range.Start,
+            AfterCount = (chatCount - range.End).Clamp(0, chatCount),
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
             RequestedStartExpansion = query.IsNone
