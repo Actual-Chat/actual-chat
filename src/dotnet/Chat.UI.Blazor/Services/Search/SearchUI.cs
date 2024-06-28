@@ -75,7 +75,9 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     private sealed record Cached(Criteria Criteria, IReadOnlyList<FoundContact> FoundContacts)
     {
         public IReadOnlyDictionary<ChatId, SearchMatch> SearchMatches { get; } =
-            FoundContacts.Select(x => x.SearchResult)
+            FoundContacts
+                .Select(x => x.SearchResult)
+                .Where(x => !x.ContactId.IsNone)
                 .DistinctBy(x => x.ContactId.ChatId)
                 .ToDictionary(x => x.ContactId.ChatId, x => x.SearchMatch);
 

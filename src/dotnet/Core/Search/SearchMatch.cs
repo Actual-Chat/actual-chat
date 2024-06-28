@@ -4,7 +4,7 @@ namespace ActualChat.Search;
 
 [StructLayout(LayoutKind.Auto)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public readonly partial record struct SearchMatch(
+public partial record  SearchMatch(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] string Text,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] double Rank,
     SearchMatchPart[] Parts)

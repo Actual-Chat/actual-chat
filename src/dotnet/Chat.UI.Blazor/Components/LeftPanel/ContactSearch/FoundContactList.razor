@@ -17,7 +17,11 @@
                 Expand="@(() => OnExpand(foundContact.Scope))"
                 Collapse="@(() => OnCollapse(foundContact.Scope))"/>
         }
-        <FoundContactView @key="@foundContact.SearchResult.ContactId" Item="@foundContact"/>
+        var contactKey = foundContact.SearchResult.ContactId.Value;
+        if (contactKey.IsNullOrEmpty())
+            continue;
+
+        <FoundContactView @key="@contactKey" Item="@foundContact"/>
         @if (foundContact.IsLastInGroup) {
             <Divider Class="mx-1 my-1.5"/>
         }
