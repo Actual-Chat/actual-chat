@@ -2,7 +2,7 @@
     @apply hidden justify-center;
     @apply pt-1;
     @apply bg-transparent;
-    @apply duration-300;
+    @apply duration-500;
     @apply opacity-0;
     transition-property: display, opacity;
     transition-behavior: allow-discrete;

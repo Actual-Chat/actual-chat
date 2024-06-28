@@ -1,9 +1,10 @@
 import { fromEvent, Subject, takeUntil } from 'rxjs';
+import { debounce, PromiseSourceWithTimeout, throttle } from 'promises';
 
 export class DateVisor {
     private readonly dateVisor: HTMLElement;
     private readonly chatView: HTMLElement;
-    private timer: NodeJS.Timer;
+    private isScrolling: boolean;
     private disposed$: Subject<void> = new Subject<void>();
 
     static create(dateVisor: HTMLElement): DateVisor {
@@ -17,7 +18,6 @@ export class DateVisor {
         if (this.chatView == null)
             return;
 
-        this.timer = null;
         fromEvent(this.chatView, 'scroll')
             .pipe(takeUntil(this.disposed$))
             .subscribe(this.onScrollHandler);
@@ -32,14 +32,24 @@ export class DateVisor {
     }
 
     private onScrollHandler = () => {
-        if (this.timer !== null) {
-            if (!this.dateVisor.classList.contains('show') )
-                this.dateVisor.classList.add('show');
-            clearTimeout(this.timer);
-        }
-        this.timer = setTimeout(() => {
-            this.dateVisor.classList.remove('show');
-        }, 1000);
+        this.isScrolling = true;
+        this.onScrollStopDebounced();
+        const scrollWithTimeout = new PromiseSourceWithTimeout<void>();
+        scrollWithTimeout.setTimeout(800, () => {
+            this.onScrollThrottled();
+        });
+    }
+
+    private onScrollThrottled = throttle(() => this.onScroll(), 300, 'delayHead');
+    private onScroll() {
+        if (this.isScrolling && !this.dateVisor.classList.contains('show') )
+            this.dateVisor.classList.add('show');
+    }
+
+    private onScrollStopDebounced = debounce(() => this.onScrollStop(), 800);
+    private onScrollStop() {
+        this.isScrolling = false;
+        this.dateVisor.classList.remove('show');
     }
 }
 
