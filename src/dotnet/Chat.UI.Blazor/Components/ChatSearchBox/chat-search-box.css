@@ -29,7 +29,6 @@
     @apply hidden absolute;
     @apply bg-place-header-search;
     @apply text-place-header-text;
-    @apply duration-200 delay-200;
     @apply opacity-0;
     transition-behavior: allow-discrete;
     transition-property: display, opacity;

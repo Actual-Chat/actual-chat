@@ -53,6 +53,9 @@
     @apply relative;
     @apply flex-y;
 }
+.left-panel-content-header.place .box-wrapper {
+    @apply h-14;
+}
 .left-panel-content-header.place .c-icon {
     @apply absolute top-1/2 inset-x-0;
     @apply min-h-26;

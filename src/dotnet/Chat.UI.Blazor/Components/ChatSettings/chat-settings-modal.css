@@ -37,6 +37,18 @@
     scrollbar-width: none;
 }
 
+.edit-place-settings-modal .c-panel-content,
+.edit-place-settings-modal .c-panel-content .c-panel-tabs {
+    @apply flex-y;
+    @apply overflow-y-hidden;
+}
+.edit-place-settings-modal .c-panel-content .c-panel-tabs .tab-panel {
+    @apply h-full;
+}
+.edit-place-settings-modal .c-panel-content .c-panel-tabs .tab-panel .tab {
+    @apply overflow-y-auto custom-scrollbar;
+}
+
 .edit-settings-modal .form-block:not(:first-of-type) {
     @apply border-0;
 }

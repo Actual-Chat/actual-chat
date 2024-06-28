@@ -16,72 +16,72 @@
     var status = m.Place.IsPublic ? "Public" : "Private";
 }
 
-<div class="h-full">
-    <div class="chat-settings-header place">
-        <div class="c-top">
-            @if (m.Place.Background != null) {
-                <Pic
-                    Picture="@m.Place.Background.ToPicture()"
-                    ImageSkeletonClass="image-cover"
-                    Size="@SquareSize.SizeFull"
-                    IsSquare="true"
-                    AvatarKind="@AvatarKind.Marble"
-                    AvatarKey="@PlaceId.Value"/>
-            } else {
-                <Pic
-                    Picture="@m.Place.Picture.ToPicture()"
-                    ImageSkeletonClass="image-cover"
-                    Size="@SquareSize.SizeFull"
-                    IsSquare="true"
-                    IsBlurred="true"
-                    AvatarKind="@AvatarKind.Marble"
-                    AvatarKey="@PlaceId.Value"/>
-            }
-        </div>
-        <div class="c-center">
+<div class="chat-settings-header place">
+    <div class="c-top">
+        @if (m.Place.Background != null) {
             <Pic
+                Picture="@m.Place.Background.ToPicture()"
+                ImageSkeletonClass="image-cover"
+                Size="@SquareSize.SizeFull"
                 IsSquare="true"
-                Size="@SquareSize.Size16"
-                Picture="@m.Place.Picture.ToPicture()"
                 AvatarKind="@AvatarKind.Marble"
                 AvatarKey="@PlaceId.Value"/>
+        } else {
+            <Pic
+                Picture="@m.Place.Picture.ToPicture()"
+                ImageSkeletonClass="image-cover"
+                Size="@SquareSize.SizeFull"
+                IsSquare="true"
+                IsBlurred="true"
+                AvatarKind="@AvatarKind.Marble"
+                AvatarKey="@PlaceId.Value"/>
+        }
+    </div>
+    <div class="c-center">
+        <Pic
+            IsSquare="true"
+            Size="@SquareSize.Size16"
+            Picture="@m.Place.Picture.ToPicture()"
+            AvatarKind="@AvatarKind.Marble"
+            AvatarKey="@PlaceId.Value"/>
 
-            <div class="c-buttons">
-                @if (m.EnableIncompleteUI) {
-                    <ButtonRound
-                        Class="btn-sm"
-                        TooltipPosition="@FloatingPosition.Bottom"
-                        Tooltip="Notifications">
-                        <i class="icon-bell text-2xl"></i>
-                    </ButtonRound>
-                }
-                @if (isOwner) {
-                    <ButtonRound
-                        Class="btn-sm"
-                        TooltipPosition="@FloatingPosition.Bottom"
-                        Tooltip="Add member"
-                        Click="@OnInviteMembersClick">
-                        <i class="icon-person-add text-2xl"></i>
-                    </ButtonRound>
-                }
-                @if (isOwner) {
-                    <ButtonRound
-                        Class="btn-sm"
-                        TooltipPosition="@FloatingPosition.Bottom"
-                        Tooltip="Edit Place"
-                        Click="@OnOwnerSettingsClick">
-                        <i class="icon-more-vertical text-2xl"></i>
-                    </ButtonRound>
-                }
-            </div>
+        <div class="c-buttons">
+            @if (m.EnableIncompleteUI) {
+                <ButtonRound
+                    Class="btn-sm"
+                    TooltipPosition="@FloatingPosition.Bottom"
+                    Tooltip="Notifications">
+                    <i class="icon-bell text-2xl"></i>
+                </ButtonRound>
+            }
+            @if (isOwner) {
+                <ButtonRound
+                    Class="btn-sm"
+                    TooltipPosition="@FloatingPosition.Bottom"
+                    Tooltip="Add member"
+                    Click="@OnInviteMembersClick">
+                    <i class="icon-person-add text-2xl"></i>
+                </ButtonRound>
+            }
+            @if (isOwner) {
+                <ButtonRound
+                    Class="btn-sm"
+                    TooltipPosition="@FloatingPosition.Bottom"
+                    Tooltip="Edit Place"
+                    Click="@OnOwnerSettingsClick">
+                    <i class="icon-more-vertical text-2xl"></i>
+                </ButtonRound>
+            }
         </div>
     </div>
+</div>
 
-    <div class="chat-settings-subheader">
-        <div class="c-title">@m.Place.Title</div>
-        <div class="status-badge public">@status</div>
-    </div>
+<div class="chat-settings-subheader">
+    <div class="c-title">@m.Place.Title</div>
+    <div class="status-badge public">@status</div>
+</div>
 
+<div class="c-panel-content">
     <div class="c-panel-tabs">
         <TabPanel
             @key="@PlaceId.Value"
