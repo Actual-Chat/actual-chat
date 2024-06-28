@@ -15,6 +15,9 @@
         height: 3.5rem;
     }
 }
+.left-search-panel.chat-search.open:not(:has(.height-anchor)) {
+    @apply h-fit;
+}
 .left-search-panel.chat-search > .c-content {
     @apply z-10;
     @apply hidden flex-y;
