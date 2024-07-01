@@ -11,7 +11,15 @@
     };
 }
 
-@if (m.EnableIncompleteUI) {
+@if (m.Account.IsAdmin) {
+    <ButtonRound
+        Class="post-panel-btn notify-call-btn btn-transparent hidden"
+        Tooltip="Notify All"
+        TooltipPosition="FloatingPosition.Top"
+        Click="@OnNotifyAllClick">
+        <i class="icon-at text-2xl"></i>
+    </ButtonRound>
+} else if (m.EnableIncompleteUI) {
     <ButtonRound
         Class="post-panel-btn notify-call-btn btn-transparent hidden"
         Tooltip="Notify Panel"
@@ -36,14 +44,6 @@
             </ButtonRound>
         </div>
     </div>
-} else if (m is { EnableIncompleteUI: false, Account.IsAdmin: true }) {
-    <ButtonRound
-        Class="post-panel-btn notify-call-btn btn-transparent hidden"
-        Tooltip="Notify All"
-        TooltipPosition="FloatingPosition.Top"
-        Click="@OnNotifyAllClick">
-        <i class="icon-at text-2xl"></i>
-    </ButtonRound>
 }
 
 @code {
