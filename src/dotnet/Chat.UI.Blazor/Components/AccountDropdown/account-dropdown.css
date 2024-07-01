@@ -15,6 +15,9 @@
 .btn.btn-square.account-btn {
     @apply bg-transparent;
 }
+body.narrow .btn.btn-square.account-btn {
+    @apply rounded-none;
+}
 .btn-square.account-btn .avatar-badge {
     @apply p-0;
     @apply bg-transparent;

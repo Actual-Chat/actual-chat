@@ -1,5 +1,5 @@
 .left-search-panel.chat-search {
-    @apply absolute inset-0 z-10 gap-y-0;
+    @apply absolute inset-0 z-50 gap-y-0;
     @apply flex-y gap-y-0;
     @apply h-14;
     @apply p-0;

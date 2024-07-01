@@ -1,8 +1,8 @@
 @using ActualChat.Notification
 @namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<NotifyCallPanel.Model>
 @{
-    if (!_enableIncompleteUI)
-        return;
+    var m = State.Value;
 
     var panelCls = _panelState switch {
         PanelState.Closed => "",
@@ -11,28 +11,40 @@
     };
 }
 
-<ButtonRound
-    Class="post-panel-btn notify-call-btn btn-transparent hidden"
-    Click="OnExpandClick">
-    <i class="icon-at text-2xl"></i>
-</ButtonRound>
-<div class="@panelCls notify-call-panel">
-    <div class="notify-call-content">
-        <div class="actions">
-            <button class="notify-btn" @onclick="@OnNotifyAllClick">
-                <i class="icon-at text-2xl"></i>
-                <p>Notify all</p>
-            </button>
-            <button class="call-btn" @onclick="@OnCallAllClick">
-                <i class="icon-phone text-2xl"></i>
-                <p>Call all</p>
-            </button>
+@if (m.EnableIncompleteUI) {
+    <ButtonRound
+        Class="post-panel-btn notify-call-btn btn-transparent hidden"
+        Tooltip="Notify Panel"
+        TooltipPosition="FloatingPosition.Top"
+        Click="@OnExpandClick">
+        <i class="icon-at text-2xl"></i>
+    </ButtonRound>
+    <div class="@panelCls notify-call-panel">
+        <div class="notify-call-content">
+            <div class="actions">
+                <button class="notify-btn" @onclick="@OnNotifyAllClick">
+                    <i class="icon-at text-2xl"></i>
+                    <p>Notify all</p>
+                </button>
+                <button class="call-btn" @onclick="@OnCallAllClick">
+                    <i class="icon-phone text-2xl"></i>
+                    <p>Call all</p>
+                </button>
+            </div>
+            <ButtonRound Class="post-panel-btn btn-transparent close-btn" Click="@OnExpandClick">
+                <i class="icon-close text-2xl"></i>
+            </ButtonRound>
         </div>
-        <ButtonRound Class="post-panel-btn btn-transparent close-btn" Click="OnExpandClick">
-            <i class="icon-close text-2xl"></i>
-        </ButtonRound>
     </div>
-</div>
+} else if (m is { EnableIncompleteUI: false, Account.IsAdmin: true }) {
+    <ButtonRound
+        Class="post-panel-btn notify-call-btn btn-transparent hidden"
+        Tooltip="Notify All"
+        TooltipPosition="FloatingPosition.Top"
+        Click="@OnNotifyAllClick">
+        <i class="icon-at text-2xl"></i>
+    </ButtonRound>
+}
 
 @code {
     enum PanelState {
@@ -40,7 +52,6 @@
         Open,
     }
 
-    private bool _enableIncompleteUI;
     private PanelState _panelState = PanelState.Closed;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -49,18 +60,29 @@
     private ModalUI ModalUI => Hub.ModalUI;
     private ToastUI ToastUI => Hub.ToastUI;
     private UICommander UICommander => Hub.UICommander();
+    private AccountUI AccountUI => Hub.AccountUI;
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
 
-    protected override async Task OnInitializedAsync() {
-        _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(AccountUI.OwnAccount.Value, false),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        return new(
+            await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false),
+            await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false));
     }
 
-    private void OnExpandClick()
-        => _panelState = _panelState switch {
+    private void OnExpandClick() {
+        _panelState = _panelState switch {
             PanelState.Closed => PanelState.Open,
             _ => PanelState.Closed,
         };
+        StateHasChanged();
+    }
 
     private void OnNotifyAllClick() =>
         _ = ModalUI.Show(new ConfirmModal.Model(
@@ -75,4 +97,8 @@
 
     private void OnCallAllClick()
         => ToastUI.Show("This button doesn't do anything yet", ToastDismissDelay.Short);
+
+    // Nested types
+
+    public sealed record Model(AccountFull Account, bool EnableIncompleteUI);
 }
