@@ -20,11 +20,11 @@
     [Parameter] public bool HasEscapeHandler { get; set; } = true;
 
     private void OnCloseClick()
-        => _ = Modal.Close();
+        => Modal.Close();
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender && HasEscapeHandler)
-            _escapeSubscription = await Escapist.Subscribe(() => _ = Modal.Close());
+            _escapeSubscription = await Escapist.Subscribe(() => Modal.Close());
     }
 
     public async ValueTask DisposeAsync() {

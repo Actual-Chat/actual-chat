@@ -27,8 +27,8 @@ public partial class Modal : FusionComponentBase, IDisposable
         }
     }
 
-    public bool Close(bool force = false)
-        => Ref.Close(force);
+    public void Close(bool force = false)
+        => _ = Ref.Close(force);
 
     public ModalStepRef StepIn(string name)
         => Ref.StepIn(name);
