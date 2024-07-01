@@ -72,7 +72,7 @@
         return modalRef;
     }
 
-    public bool Close(Symbol id, bool force)
+    public async Task<bool> Close(Symbol id, bool force)
     {
         var modalRef = FindRef(id);
         if (modalRef == null)
@@ -81,12 +81,8 @@
         if (!CloseInternal(modalRef, force))
             return false;
 
-        JS.InvokeVoidAsync(JSHideModalMethod, id);
-        // TODO: need normal delay
-        var delay = Task.Run(async delegate {
-            await Task.Delay(500);
-        });
-        delay.Wait();
+        await JS.InvokeVoidAsync(JSHideModalMethod, id);
+        await Task.Delay(500);
 
         OnModalClosed?.Invoke();
         History.Save<OwnHistoryState>();
