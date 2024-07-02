@@ -1,0 +1,64 @@
+@page "/test/email-templates"
+@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Pages.Emails
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Email templates</MainHeader>
+
+<Form Model="@_form">
+    <FormBlock>
+        <FormSection
+            For="() => _model.Selected"
+            InputId="template"
+            IsLabelInsideInput="true"
+            HideValidationMessage="true"
+            Label="Template">
+            <InputSelect
+                Value="_model.Selected"
+                ValueExpression="@(() => _model.Selected)">
+                @foreach (var template in _model.Templates) {
+                    <option value="@template">@template.Name</option>
+                }
+            </InputSelect>
+        </FormSection>
+    </FormBlock>
+</Form>
+
+<MjmlHtmlPreview ComponentType="@(_model.Selected.ComponentType)"/>
+
+@code {
+    private Model _model = null!;
+    private FormModel _form = null!;
+
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        _form = new(ComponentIdGenerator);
+        var templates = new List<EmailTemplateModel> {
+            new() {
+                Name = "Email verification",
+                ComponentType = typeof(EmailVerificationPreview),
+            },
+        };
+        _model = new Model {
+            Selected = templates.First(),
+            Templates = templates,
+        };
+    }
+
+    public class Model {
+        public required EmailTemplateModel Selected { get; init; }
+        public required IReadOnlyCollection<EmailTemplateModel> Templates { get; init; }
+    }
+
+    public record EmailTemplateModel {
+        public required string Name { get; init; }
+        public required Type ComponentType { get; init; }
+    }
+
+    public sealed class FormModel : FormModel<FormModel> {
+        public FormModel(ComponentIdGenerator? componentIdGenerator)
+            : base("email-templates", componentIdGenerator)
+        { }
+    }
+}
