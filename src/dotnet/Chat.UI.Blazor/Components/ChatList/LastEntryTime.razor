@@ -1,0 +1,19 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var timestamp = "";
+    if (LastEntry != null) {
+        timestamp = DateTimeConverter.ToLocalTime(LastEntry.BeginsAt).ToShortTimeString();
+    }
+}
+
+<div class="last-entry-time">
+    @timestamp
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private MomentClockSet Clocks => Hub.Clocks();
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+
+    [Parameter] public ChatEntry? LastEntry { get; set; }
+}

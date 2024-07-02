@@ -32,11 +32,12 @@ else {
                 <div class="c-description">
                     <span class="c-title">
                         <ContactSearchHighlighter Chat="@chatState.Chat"/>
+                        <span class="c-title-incut"></span>
                     </span>
                     @if (lastTextEntry != null) {
                         <div class="c-last-message">
                             @if (chatState.Chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
-                                <span>
+                                <span class="c-name">
                                     <AuthorName AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
                                 </span>
                             }

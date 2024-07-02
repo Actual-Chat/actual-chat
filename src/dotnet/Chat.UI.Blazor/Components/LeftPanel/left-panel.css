@@ -75,7 +75,7 @@
     @apply border-0;
     @apply overflow-hidden;
 }
-.left-panel-content-header .c-title {
+.left-panel-content-header > .c-content > .c-title {
     @apply flex-1;
     @apply text-01 text-lg font-medium;
     @apply truncate;
