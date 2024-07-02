@@ -597,7 +597,7 @@ public partial class ChatAudioUI
                 await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(true);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-                await modalRef.Close();
+                modalRef.Close();
             }
         }).ConfigureAwait(false);
     }
