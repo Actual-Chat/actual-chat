@@ -1,10 +1,13 @@
 ﻿@using ActualChat.UI.Blazor.Components.Internal
 @namespace ActualChat.UI.Blazor.Components
-@inherits FusionComponentBase
-
+@{
+    var cls = Ref.Options.OverlayClass;
+    if (!Class.IsNullOrEmpty())
+        cls += " " + Class;
+}
 <div
     id="@Ref.Id.Value"
-    class="@Ref.Options.OverlayClass"
+    class="@cls"
     @onclick="OnBackgroundClick">
 
     <FocusTrap @ref="@_focusTrap" IsActive="@(Ref.Options.UseFocusTrap ?? false)">
@@ -12,7 +15,7 @@
             <div class="modal-content">
                 <ErrorBarrier Name="Modal">
                     <CascadingValue Value="this">
-                        @Content
+                        @Ref.ChildContent
                     </CascadingValue>
                 </ErrorBarrier>
             </div>
