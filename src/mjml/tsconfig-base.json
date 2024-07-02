@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "jsx": "react",
+    "lib": ["esnext"],
+    "allowJs": true,
+
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noUncheckedIndexedAccess": true,
+    "strict": true,
+
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "downlevelIteration": true,
+    "noFallthroughCasesInSwitch": true,
+    "useUnknownInCatchVariables": false,
+    "useDefineForClassFields": false,
+    "resolveJsonModule": true
+  },
+
+  "include": ["src/**/*", "src/**/*.json"],
+  "exclude": ["node_modules", "dist"]
+}
