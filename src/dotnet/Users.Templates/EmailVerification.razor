@@ -1,25 +1,177 @@
-@using Mjml.Net
+@using ActualChat.Mjml.Blazor.Components;
+@using ActualChat.Mjml.Blazor.Enums
 @namespace ActualChat.Users.Templates
 
+<Mjml>
+    <MjmlHead>
+        <MjmlStyle Inline="MjmlStyleInline.Inline">
+            .gradient-background {
+                background-color: #0036A3;
+                background-image: radial-gradient(circle at 50% 120%, #FF3880 0%, #0036A3 100%);
+            }
 
-@((MarkupString)_html)
+            .grey-text a {
+                color: #A0A0A0;
+                font-size: 12px;
+                font-weight: 400;
+                font-family: 'Arial', serif;
+                line-height: 14px;
+            }
+
+            @@supports (background-clip: text) {
+                .gradient-text {
+                    background-image: linear-gradient(179.66deg, #2970FF -128.11%, #FF3880 196.01%);
+                    background-clip: text;
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    -moz-background-clip: text;
+                    -moz-text-fill-color: transparent;
+                }
+            }
+
+            .content-border {
+                background-color: #F7F7FC;
+                border-radius: 16px;
+            }
+        </MjmlStyle>
+    </MjmlHead>
+    <MjmlBody>
+        <MjmlWrapper
+            CssClass="gradient-background"
+            FullWidth="MjmlWrapperFullWidth.FullWidth"
+            Padding="0px 16px 40px 16px">
+            <MjmlSection Padding="15px 0px 5px 0px">
+                <MjmlColumn>
+                    <MjmlTable
+                        Width="161px"
+                        Align="MjmlTableAlign.Center">
+                        <tr>
+                            <td width="30px"
+                                height="40px">
+                                <img width="30px"
+                                     src="https://actual.chat/dist/images/emails/ac-icon-light.png"
+                                     alt=""/>
+                            </td>
+                            <td width="10px"/>
+                            <td width="121px">
+                                <img width="121px"
+                                     src="https://actual.chat/dist/images/emails/ac-title-light.png"
+                                     alt=""/>
+                            </td>
+                        </tr>
+                    </MjmlTable>
+                </MjmlColumn>
+            </MjmlSection>
+            <MjmlSection CssClass="content-border">
+                <MjmlColumn>
+                    <MjmlImage
+                        Align="MjmlImageAlign.Center"
+                        Width="221px"
+                        Src="https://actual.chat/dist/images/emails/email-cat.png">
+                    </MjmlImage>
+                    <MjmlText
+                        Align="MjmlTextAlign.Center"
+                        FontFamily="Arial"
+                        CssClass="gradient-text"
+                        FontSize="28px"
+                        FontWeight="600"
+                        LineHeight="30px"
+                        Color="#AE00CA">
+                        Your email verification code
+                    </MjmlText>
+                    <MjmlText
+                        Align="MjmlTextAlign.Center"
+                        FontFamily="Arial"
+                        FontSize="14px"
+                        FontWeight="400"
+                        LineHeight="20px"
+                        color="#1C1C1C">
+                        Please enter your verification code in Actual Chat app when prompted:
+                    </MjmlText>
+                    <MjmlText
+                        Align="MjmlTextAlign.Center"
+                        FontFamily="Arial"
+                        FontSize="28px"
+                        FontWeight="700"
+                        LetterSpacing="10px"
+                        LineHeight="30px"
+                        color="#1C1C1C">
+                        @Token
+                    </MjmlText>
+                    <MjmlText
+                        Align="MjmlTextAlign.Center"
+                        FontSize="14px"
+                        FontWeight="400"
+                        LineHeight="20px"
+                        FontFamily="Arial"
+                        Color="#1C1C1C">
+                        If you didn`t request a code, you can ignore this email. To protect your account, don`t forward
+                        this email or give this code to anyone.
+                    </MjmlText>
+                    <MjmlDivider
+                        BorderWidth="1px"
+                        BorderColor="#D3D3D3"/>
+                    <MjmlTable
+                        Width="292px"
+                        Align="MjmlTableAlign.Center">
+                        <tr>
+                            <td width="136px">
+                                <a href="https://apps.apple.com/us/app/actual-chat/id6450874551">
+                                    <img width="136px"
+                                         height="40px"
+                                         src="https://actual.chat/dist/images/emails/get-ios.png"
+                                         alt=""/>
+                                </a>
+                            </td>
+                            <td width="20px"/>
+                            <td width="136px">
+                                <a href="https://play.google.com/store/apps/details?id=chat.actual.app">
+                                    <img width="136px"
+                                         height="40px"
+                                         src="https://actual.chat/dist/images/emails/get-android.png"
+                                         alt=""/>
+                                </a>
+                            </td>
+                        </tr>
+                    </MjmlTable>
+                    <MjmlTable
+                        Width="220px"
+                        Align="MjmlTableAlign.Center"
+                        CssClass="grey-text">
+                        <tr>
+                            <td>
+                                <a href="https://actual.chat/docs/privacy">Privacy Policy</a>
+                            </td>
+                            <td width="10px">
+                            </td>
+                            <td>
+                                <a href="https://actual.chat/docs/terms">Terms and Conditions</a>
+                            </td>
+                        </tr>
+                    </MjmlTable>
+                    <MjmlText
+                        Align="MjmlTextAlign.Center"
+                        FontSize="12px"
+                        FontWeight="400"
+                        FontFamily="Arial"
+                        LineHeight="14px"
+                        Color="#A0A0A0">
+                        2024 Actual chat, LLC, All Rights Reserved
+                    </MjmlText>
+                    <MjmlText Align="MjmlTextAlign.Center">
+                        <a href="https://github.com/Actual-Chat/">
+                            <img width="30px"
+                                 height="28px"
+                                 src="https://actual.chat/dist/images/emails/github.png"
+                                 alt=""/>
+                        </a>
+                    </MjmlText>
+                </MjmlColumn>
+            </MjmlSection>
+        </MjmlWrapper>
+    </MjmlBody>
+</Mjml>
 
 @code {
-    private string _html = "";
-
-    [Parameter, EditorRequired]
-    public string Token { get; set; } = null!;
-
-    protected override void OnParametersSet() {
-        var renderer = new MjmlRenderer();
-        var reader = new StreamReader(Template.EmailVerification.GetStream());
-        var template = reader.ReadToEnd();
-        var mjml = template.Replace("{{TOKEN}}", Token);
-        var mjmlOptions = new MjmlOptions {
-            Minify = true,
-            Beautify = false,
-        };
-        var renderResult = renderer.Render(mjml, mjmlOptions);
-        _html = renderResult.Html;
-    }
+    [Parameter, EditorRequired] public string Token { get; set; } = null!;
 }
