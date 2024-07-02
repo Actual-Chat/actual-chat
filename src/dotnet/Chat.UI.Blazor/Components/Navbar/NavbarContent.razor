@@ -57,6 +57,9 @@
                 <NavbarItem ReplaceOnPrefix="/test/" Url="/test/maui">Maui</NavbarItem>
             }
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/system">System</NavbarItem>
+            @if (HostInfo.HostKind != HostKind.MauiApp && HostInfo.IsDevelopmentInstance) {
+                <NavbarItem ReplaceOnPrefix="/test/" Url="/test/email-templates">Email templates</NavbarItem>
+            }
         }
     </div>
 </div>

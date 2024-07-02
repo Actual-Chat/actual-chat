@@ -46,6 +46,7 @@
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
         img-src 'self'
+                    https://actual.chat
                     https://*.actual.chat
                     https://*.local.actual.chat
                     https://*.dev.actual.chat
@@ -60,7 +61,11 @@
                     https://*.dev.actual.chat
                     https://*.stg.actual.chat
                     blob: data:;
-        style-src 'self' 'unsafe-inline';
+        style-src 'self'
+                    'unsafe-inline'
+                    https://fonts.googleapis.com;
+        font-src 'self'
+                    https://fonts.gstatic.com;
         frame-src https://www.youtube.com/;
         object-src 'none';
         script-src 'self'
