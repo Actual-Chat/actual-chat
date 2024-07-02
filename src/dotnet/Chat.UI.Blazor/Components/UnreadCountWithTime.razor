@@ -3,13 +3,7 @@
 @implements IDisposable
 @{
     _lastRenderTime = Clock.Now;
-    if (Value == 0 && !HasMentions)
-        return;
 
-    var timestamp = "";
-    if (LastEntry != null) {
-        timestamp = DateTimeConverter.ToLocalTime(LastEntry.BeginsAt).ToShortTimeString();
-    }
     var text = HasMentions ? "@" : Value == 0 ? "" : Value.FormatK();
     var isMuted = NotificationMode switch {
         ChatNotificationMode.ImportantOnly => !HasMentions,
@@ -23,9 +17,13 @@
 
 <div class="message-counter-with-time">
     @if (!HideLastEntryTime) {
-        <div class="text-xs mr-1">@timestamp</div>
+        <LastEntryTime LastEntry="@LastEntry"/>
     }
-    <Badge Class="@cssClass" Color="@bgColor" Click="@Click">@text</Badge>
+    @if (Value != 0 || HasMentions) {
+        <Badge Class="@cssClass" Color="@bgColor" Click="@Click">@text</Badge>
+    } else {
+        <div class="counter-badge-incut"></div>
+    }
 </div>
 
 
