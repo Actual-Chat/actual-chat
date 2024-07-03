@@ -12,6 +12,8 @@ internal sealed class ChatContentArranger(
     IChatsBackend chatsBackend
 ) : IChatContentArranger
 {
+    public int MaxEntriesPerDocument { get; init; } = 3;
+
     public async IAsyncEnumerable<SourceEntries> ArrangeAsync(
         IReadOnlyCollection<ChatEntry> bufferedEntries,
         IReadOnlyCollection<ChatSlice> tailDocuments,
@@ -19,27 +21,36 @@ internal sealed class ChatContentArranger(
     {
         // TODO: for now we just group buffered messages by three into a document
         // but in future we want to select document depending on the content
-        var tailEntryIds = tailDocuments
-            .Where(doc => doc.Metadata.ChatEntries.Length < 3)
-            .Take(1)
-            .SelectMany(doc => doc.Metadata.ChatEntries)
-            .Select(e => e.Id);
-        var tailEntries = new List<ChatEntry>(
-            await LoadByIdsAsync(tailEntryIds, cancellationToken).ConfigureAwait(false));
+        List<ChatEntry>? tailEntries = null;
         foreach (var entry in bufferedEntries) {
+            if (string.IsNullOrWhiteSpace(entry.Content)) {
+                if (tailEntries?.Count > 0) {
+                    yield return new SourceEntries(null, null, tailEntries);
+                    tailEntries = [];
+                }
+                continue;
+            }
+            tailEntries ??= [.. await LoadTailEntries(tailDocuments, cancellationToken).ConfigureAwait(false)];
             tailEntries.Add(entry);
-            if (tailEntries.Count == 3) {
-                yield return new SourceEntries(null, null, [.. tailEntries]);
-                tailEntries.Clear();
+            if (tailEntries.Count == MaxEntriesPerDocument) {
+                yield return new SourceEntries(null, null, tailEntries);
+                tailEntries = [];
             }
         }
 
-        if (tailEntries.Count > 0) {
+        if (tailEntries?.Count > 0) {
             yield return new SourceEntries(null, null, tailEntries);
         }
     }
 
-    private ValueTask<IReadOnlyList<ChatEntry>> LoadByIdsAsync(IEnumerable<ChatEntryId> entryIds, CancellationToken cancellationToken)
-        => chatsBackend.GetEntries(entryIds, true, cancellationToken);
-
+    private async ValueTask<IReadOnlyList<ChatEntry>> LoadTailEntries(
+        IEnumerable<ChatSlice> tailDocuments, CancellationToken cancellationToken)
+    {
+        var tailEntryIds = tailDocuments
+            .Where(doc => doc.Metadata.ChatEntries.Length < MaxEntriesPerDocument)
+            .Take(1)
+            .SelectMany(doc => doc.Metadata.ChatEntries)
+            .Select(e => e.Id);
+        return await chatsBackend.GetEntries(tailEntryIds, true, cancellationToken).ConfigureAwait(false);
+    }
 }
