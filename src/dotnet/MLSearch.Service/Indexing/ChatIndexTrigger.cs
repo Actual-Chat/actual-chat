@@ -9,7 +9,7 @@ namespace ActualChat.MLSearch.Indexing;
 // event handling while the event will be marked as complete.
 // This means: At most once logic.
 
-internal class ChatIndexTrigger(ICommander commander, IChatIndexFilter chatIndexFilter, IWorkerPool<MLSearch_TriggerChatIndexing, ChatId, ChatId> workerPool)
+internal class ChatIndexTrigger(ICommander commander, IWorkerPool<MLSearch_TriggerChatIndexing, ChatId, ChatId> workerPool)
     : IChatIndexTrigger, IComputeService
 {
     // ReSharper disable once UnusedMember.Global
@@ -26,10 +26,6 @@ internal class ChatIndexTrigger(ICommander commander, IChatIndexFilter chatIndex
     // [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        bool shouldBeIndexed = await chatIndexFilter.ChatShouldBeIndexed(eventCommand.Entry.ChatId, cancellationToken).ConfigureAwait(false);
-        if (!shouldBeIndexed)
-            return;
-        // A normal conversation.
         var e = new MLSearch_TriggerChatIndexing(eventCommand.Entry.ChatId);
         await commander.Call(e, cancellationToken).ConfigureAwait(false);
     }

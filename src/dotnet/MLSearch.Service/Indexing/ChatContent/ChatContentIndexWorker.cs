@@ -11,7 +11,6 @@ internal sealed class ChatContentIndexWorker(
     IChatContentUpdateLoader chatUpdateLoader,
     ICursorStates<ChatContentCursor> cursorStates,
     IChatContentIndexerFactory indexerFactory,
-    IChatIndexFilter chatIndexFilter,
     ICommander commander
 ) : IChatContentIndexWorker
 {
@@ -19,10 +18,6 @@ internal sealed class ChatContentIndexWorker(
     {
         var eventCount = 0;
         var chatId = job.Id;
-
-        bool shouldBeIndexed = await chatIndexFilter.ChatShouldBeIndexed(chatId, cancellationToken).ConfigureAwait(false);
-        if (!shouldBeIndexed)
-            return;
 
         var cursor = await cursorStates.LoadAsync(chatId, cancellationToken).ConfigureAwait(false) ?? new(0, 0);
 

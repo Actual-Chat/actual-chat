@@ -61,7 +61,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             .AddWorkerPoolDependencies();
 
         // -- Register indexing common components --
-        services.AddSingleton<IChatIndexFilter, ChatIndexFilter>();
         services.AddSingleton<IChatContentUpdateLoader>(static services
             => services.CreateInstanceWith<ChatContentUpdateLoader>(
                 100 // the size of a single batch of updates to load from db
