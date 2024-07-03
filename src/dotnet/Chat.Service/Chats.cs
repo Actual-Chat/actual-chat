@@ -781,6 +781,16 @@ public class Chats(IServiceProvider services) : IChats
         var publishContactsCmd = new ContactsBackend_PublishCopiedChat(newChatId);
         await Commander.Call(publishContactsCmd, true, cancellationToken).ConfigureAwait(false);
 
+        if (sourceChat is { IsArchived: false }) {
+            var archiveChatCmd = new Chats_Change(session,
+                sourceChat.Id,
+                null,
+                Change.Update(new ChatDiff {
+                    IsArchived = true,
+                }));
+            await Commander.Call(archiveChatCmd, true, cancellationToken).ConfigureAwait(false);
+        }
+
         if (chatCopyState != null && !chatCopyState.IsPublished) {
             var publishCopiedChatCmd = new ChatsBackend_ChangeChatCopyState(chatCopyState.Id,
                 chatCopyState.Version,

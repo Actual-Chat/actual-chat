@@ -150,11 +150,28 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (chatId.IsPeerChat(out var peerChatId)) // We don't use actual roles to determine rules in this case
             return await GetPeerChatRules(peerChatId, principalId, cancellationToken).ConfigureAwait(false);
 
-        if (chatId.IsPlaceChat && !chatId.PlaceChatId.IsRoot)
-            return await GetPlaceChatRules(chatId.PlaceChatId, principalId, cancellationToken).ConfigureAwait(false);
+        AuthorRules chatRules;
+        if (chatId is { IsPlaceChat: true, PlaceChatId.IsRoot: false })
+            chatRules = await GetPlaceChatRules(chatId.PlaceChatId, principalId, cancellationToken).ConfigureAwait(false);
+        else
+            // Group chat or Root place chat
+            chatRules = await GetRulesRaw(chatId, principalId, cancellationToken).ConfigureAwait(false);
 
-        // Group chat or Root place chat
-        return await GetRulesRaw(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        if (chatRules.Permissions != default) {
+            var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (chat == null)
+                return AuthorRules.None(chatId);
+
+            if (chat.IsArchived) {
+                if (!chatRules.IsOwner())
+                    return AuthorRules.None(chatId);
+
+                return chatRules with {
+                    Permissions = chatRules.Permissions & ~ChatPermissions.Write // Do not allow to write on archived chat
+                };
+            }
+        }
+        return chatRules;
     }
 
     // [ComputeMethod]
@@ -605,6 +622,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             }
             else if (chatKind != ChatKind.Peer)
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid Change.Kind.");
+
+            if (update.IsArchived.HasValue)
+                throw new ArgumentOutOfRangeException(nameof(command), "Invalid Change.IsArchived.");
 
             chat = new Chat(chatId) {
                 CreatedAt = Clocks.SystemClock.Now,

@@ -37,6 +37,7 @@ public sealed partial record Chat(
     [DataMember, MemoryPackOrder(9)] public bool AllowAnonymousAuthors { get; init; }
     [DataMember, MemoryPackOrder(10)] public MediaId MediaId { get; init; }
     [DataMember, MemoryPackOrder(14)] public Symbol SystemTag { get; init; }
+    [DataMember, MemoryPackOrder(15)] public bool IsArchived { get; init; }
 
     // Populated only on front-end
     [DataMember, MemoryPackOrder(11)] public AuthorRules Rules { get; init; } = null!;
@@ -76,4 +77,5 @@ public sealed partial record ChatDiff : RecordDiff
     [DataMember, MemoryPackOrder(8)] public MediaId? MediaId { get; init; }
     [DataMember, MemoryPackOrder(10)] public Symbol? SystemTag { get; init; }
     [DataMember, MemoryPackOrder(11)] public PlaceId? PlaceId { get; init; }
+    [DataMember, MemoryPackOrder(12)] public bool? IsArchived { get; init; }
 }

@@ -537,6 +537,13 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             var command = new ContactsBackend_RemoveChatContacts(chat.Id);
             await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
         }
+        else if (changeKind == ChangeKind.Update) {
+            if (chat.IsArchived && oldChat?.IsArchived != true) {
+                // Chat has been archived, remove contacts to it.
+                var command = new ContactsBackend_RemoveChatContacts(chat.Id);
+                await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
     [EventHandler]
