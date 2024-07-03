@@ -44,7 +44,7 @@ public class ChatContentArrangerTests(ITestOutputHelper @out) : TestBase(@out)
         var entries = GetEntries(_messages).ToList();
         var emptyEntryIds = new HashSet<ChatEntryId>(
             from e in entries
-            where string.IsNullOrEmpty(e.Content)
+            where string.IsNullOrWhiteSpace(e.Content)
             select e.Id);
         var contentArranger = new ChatContentArranger(Mock.Of<IChatsBackend>()) {
             MaxEntriesPerDocument = maxEntriesPerDocument,
