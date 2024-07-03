@@ -12,9 +12,9 @@ public class FirebaseMessagingClient(
     private FirebaseMessaging FirebaseMessaging { get; } = firebaseMessaging;
     private ICommander Commander { get; } = commander;
     private ILogger Log { get; } = log;
-    private ILogger? DebugLog => !UrlMapper.IsActualChat ? Log : null;
+    private ILogger? DebugLog => Log;
 
-    public async Task SendMessage(Notification notification, IReadOnlyCollection<Symbol> deviceIds, CancellationToken cancellationToken)
+    public async Task SendMessage(Notification notification, IReadOnlyCollection<Symbol> deviceIds, bool? enableAnalytics, CancellationToken cancellationToken)
     {
         var (notificationId, _) = notification;
         var kind = notification.Kind;
@@ -68,7 +68,7 @@ public class FirebaseMessagingClient(
                 },
                 Priority = Priority.High,
                 // CollapseKey = default, /* We don't use collapsible messages */
-                TimeToLive = TimeSpan.FromMinutes(180),
+                TimeToLive = TimeSpan.FromDays(10),
             },
             Apns = new ApnsConfig {
                 Aps = new Aps {
@@ -97,14 +97,14 @@ public class FirebaseMessagingClient(
                 },
             },
         };
-        if (isDev)
+        if (isDev || enableAnalytics.GetValueOrDefault())
             multicastMessage.Android.FcmOptions = new AndroidFcmOptions {
                 AnalyticsLabel = "dev_test" // Add label to see data messages statistics in Message delivery reports.
             };
         var batchResponse = await FirebaseMessaging
             .SendEachForMulticastAsync(multicastMessage, cancellationToken)
             .ConfigureAwait(false);
-        if (isDev) {
+        if (DebugLog != null) {
             var messageIds = string.Join(", ",
                 batchResponse.Responses.Select(c =>
                     c.IsSuccess
@@ -112,7 +112,7 @@ public class FirebaseMessagingClient(
                         : c.Exception.MessagingErrorCode.HasValue
                             ? "errCode=" + c.Exception.MessagingErrorCode
                             : c.Exception.Message));
-            DebugLog?.LogInformation("Sent {Successfully}/{Total} messages. Result: '{MessageIds}'",
+            DebugLog.LogInformation("Sent {Successfully}/{Total} messages. Result: '{MessageIds}'",
                 batchResponse.SuccessCount, batchResponse.Responses.Count, messageIds);
         }
 
