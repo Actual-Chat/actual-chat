@@ -17,7 +17,7 @@
     };
 }
 
-@if (!m.IsSearchApplied && m.EnableIncompleteUI) {
+@if (!m.IsSearchApplied) {
     <div class="recent-contacts">
         @foreach (var plug in plugs) {
             var cls = $"c-author {plug.Value}";
@@ -30,6 +30,8 @@
     <Divider Class="mx-1 my-1.5"/>
     <RecentlyViewed/>
 } else {
+    // TODO: need search by messages and discover
+    @* <CollapsedFoundContactList Title="Chats & Places"/> *@
     <FoundContactList/>
 }
 
@@ -41,22 +43,19 @@
 
     private SearchUI SearchUI => Hub.SearchUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
-    private Features Features => Hub.Features();
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = new Model(
                 ChatListUI.GetCountWhenLoading(_kind),
-                false,
-                true),
+                false),
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var ownChatCount = await ChatListUI.GetCount(_kind).ConfigureAwait(false);
         var isSearchApplied = await SearchUI.IsSearchModeOn(cancellationToken);
-        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
-        return new(ownChatCount, isSearchApplied, enableIncompleteUI);
+        return new(ownChatCount, isSearchApplied);
     }
 
     protected override bool ShouldRender()
@@ -66,7 +65,5 @@
 
     public record struct Model(
         int OwnChatCount,
-        bool IsSearchApplied = false,
-        bool IsLoading = false,
-        bool EnableIncompleteUI = false);
+        bool IsSearchApplied = false);
 }
