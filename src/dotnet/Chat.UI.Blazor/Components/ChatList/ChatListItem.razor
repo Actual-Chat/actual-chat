@@ -13,7 +13,10 @@
     var hasButtons = isWide || isActiveChatList || isListeningOrRecording;
     var lastTextEntry = chatInfo.LastTextEntry;
     var audioState = chatState.AudioState;
-    var attributes = ListKind == ChatListKind.All && IsFirstItem ? FirstItemAttributes : NoneAttributes;
+    var attributes = ListKind == ChatListKind.All && m.IsFirstItem
+        ? FirstItemAttributes
+        : NoneAttributes;
+    _renderedModel = m;
 }
 
 <NavbarItem
@@ -94,7 +97,7 @@
         </div>
     </Ending>
 </NavbarItem>
-@if (IsLastItemInBlock) {
+@if (m.IsLastItemInBlock) {
     <Divider Class="mx-1 my-1.5"/>
 }
 
@@ -110,6 +113,7 @@
     private static readonly Dictionary<string, object> NoneAttributes = new();
 
     private ILogger? _log;
+    private Model? _renderedModel;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ChatUI ChatUI => Hub.ChatUI;
@@ -140,6 +144,18 @@
     //     base.OnParametersSet();
     // }
 
+    protected override bool ShouldRender() {
+        if (_renderedModel == null)
+            return true;
+
+        var m = State.LastNonErrorValue;
+        var isTheSame = m.ChatInfo == _renderedModel.ChatInfo
+            && m.ChatState == _renderedModel.ChatState
+            && m.IsLastItemInBlock == _renderedModel.IsLastItemInBlock
+            && m.IsFirstItem == _renderedModel.IsFirstItem;
+        return !isTheSame;
+    }
+
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options {
@@ -157,6 +173,8 @@
         var chatInfo = ChatInfo;
         var chatTitle = chatInfo.Chat.Title;
         var chatId = chatInfo.Chat.Id;
+        var isLastItemInBlock = IsLastItemInBlock;
+        var isFirstItem = IsFirstItem;
         DebugLog?.LogDebug("-> ComputeState: {ListKind} #{ChatTitle}", listKind, chatTitle);
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
         if (chatState == null) {
@@ -166,6 +184,9 @@
         DebugLog?.LogDebug("<- ComputeState: {ListKind} #{ChatTitle}, OK, ChatId={ChatId}", ListKind, chatTitle, chatId);
         return new() {
             ChatState = chatState,
+            ChatInfo = chatInfo,
+            IsLastItemInBlock = isLastItemInBlock,
+            IsFirstItem = isFirstItem,
         };
     }
 
@@ -175,5 +196,8 @@
         public static readonly Model None = new() { ChatState = ChatState.None };
 
         public ChatState ChatState { get; init; } = ChatState.None;
+        public ChatInfo ChatInfo { get; init; } = ChatInfo.None;
+        public bool IsLastItemInBlock { get; init; }
+        public bool IsFirstItem { get; init; }
     }
 }

@@ -70,7 +70,16 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
         var hasVeryFirstItem = range.Start == 0;
         var hasVeryLastItem = range.End >= chatCount;
 
-        return new VirtualListData<ChatListItemModel>(tiles) {
+        // use single tile as multiple tiles don't provide benefits for randomly changed list
+        var resultItems = tiles
+            .SelectMany(t => t.Items)
+            .ToList();
+        var resultTile = new VirtualListTile<ChatListItemModel>("0", resultItems);
+        var resultTiles = new List<VirtualListTile<ChatListItemModel>>();
+        if (resultItems.Count > 0)
+            resultTiles.Add(resultTile);
+
+        return new VirtualListData<ChatListItemModel>(resultTiles) {
             Index = renderedData.Index + 1,
             BeforeCount = range.Start,
             AfterCount = (chatCount - range.End).Clamp(0, chatCount),
