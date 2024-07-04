@@ -27,11 +27,9 @@ public class VirtualListTestService : IComputeService
         if (!query.IsNone) {
             var queryRange = query.KeyRange;
             start = int.Parse(queryRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
-            if (query.ExpandStartBy > 0)
-                start -= (int)query.ExpandStartBy;
+            start += query.MoveRange.Start;
             end = int.Parse(queryRange.End, NumberStyles.Integer, CultureInfo.InvariantCulture);
-            if (query.ExpandEndBy > 0)
-                end += (int)query.ExpandEndBy;
+            end += query.MoveRange.End;
         }
 
         start = Math.Max(range.Start, start);

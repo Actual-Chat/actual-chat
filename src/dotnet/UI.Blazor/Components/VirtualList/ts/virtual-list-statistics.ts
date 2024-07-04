@@ -6,7 +6,7 @@ const MaxItemSize: number = 240;
 const ItemCountResetThreshold: number = 1000;
 const ItemCountResetValue: number = 900;
 const MinResponseFulfillmentRatio: number = 0.25;
-const MaxResponseFulfillmentRatio: number = 1;
+const MaxResponseFulfillmentRatio: number = 2;
 const ResponseExpectedCountSumResetThreshold: number = 1000;
 const ResponseExpectedCountSumResetValue: number = 800;
 
@@ -37,7 +37,9 @@ export class VirtualListStatistics {
         size /= countAs;
         this._itemSizeSum += size;
         this._itemCount += countAs;
-        if (this._itemCount < ItemCountResetThreshold) return;
+        if (this._itemCount < ItemCountResetThreshold)
+            return;
+
         this._itemSizeSum *= ItemCountResetValue / this._itemCount;
         this._itemCount = ItemCountResetValue;
     }

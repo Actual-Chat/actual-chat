@@ -12,19 +12,7 @@
     var containerClass = !hasJsComponentCreated
         ? "hide"
         : "";
-
-    var startExpansion = Query.IsNone
-        ? 0
-        : data.Tiles
-            .SelectMany(t => t.Items)
-            .TakeWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.Start) < 0)
-            .Sum(i => i.CountAs);
-    var endExpansion = Query.IsNone
-        ? 0
-        : data.Tiles
-            .SelectMany(t => t.Items)
-            .SkipWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.End) <= 0)
-            .Sum(i => i.CountAs);
+    
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
         Query = Query,
@@ -32,10 +20,6 @@
         Count = data.Tiles.Sum(t => t.Items.Sum(i => i.CountAs)),
         BeforeCount = Data.BeforeCount,
         AfterCount = Data.AfterCount,
-        RequestedStartExpansion = data.RequestedStartExpansion,
-        RequestedEndExpansion = data.RequestedEndExpansion,
-        StartExpansion = startExpansion,
-        EndExpansion = endExpansion,
         HasVeryFirstItem = data.HasVeryFirstItem,
         HasVeryLastItem = data.HasVeryLastItem,
         ScrollToKey = data.ScrollToKey,

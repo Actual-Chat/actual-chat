@@ -1,5 +1,4 @@
 import { debounce, PromiseSource, PromiseSourceWithTimeout, serialize, throttle } from 'promises';
-import { clamp } from 'math';
 import { NumberRange, Range } from './ts/range';
 import { InertialScroll } from './ts/inertial-scroll';
 import { VirtualListEdge } from './ts/virtual-list-edge';
@@ -193,10 +192,10 @@ export class VirtualList {
             beforeCount: null,
             afterCount: null,
             count: 0,
-            requestedStartExpansion: null,
-            requestedEndExpansion: null,
-            startExpansion: 0,
-            endExpansion: 0,
+            // requestedStartExpansion: null,
+            // requestedEndExpansion: null,
+            // startExpansion: 0,
+            // endExpansion: 0,
             hasVeryFirstItem: false,
             hasVeryLastItem: false,
 
@@ -368,6 +367,7 @@ export class VirtualList {
                     const hasRemoved = this._unmeasuredItems.delete(key);
                     itemsWereMeasured ||= hasRemoved;
                     item.size = size;
+                    this._statistics.addItem(item.size, item.countAs);
                 }
             }
             else {
@@ -384,6 +384,7 @@ export class VirtualList {
                     if (item && item.size < 0) {
                         const itemRect = itemRef.getBoundingClientRect();
                         item.size = itemRect.height;
+                        this._statistics.addItem(item.size, item.countAs);
                     }
                     const hasRemoved = this._unmeasuredItems.delete(key);
                     itemsWereMeasured ||= hasRemoved;
@@ -595,54 +596,9 @@ export class VirtualList {
 
         let spacerSize = this._defaultSpacerSize;
         let endSpacerSize = this._defaultSpacerSize;
-        // const totalCount = rs.beforeCount + rs.afterCount + rs.count;
         if (rs.beforeCount !== null && rs.afterCount !== null) {
-            // count of same-size items is provided - let's adjust spacers size to avoid scrollbar jumps
-            // const totalSize = totalCount * this._statistics.itemSize;
-            // const renderedSize = rs.count * this._statistics.itemSize;
             spacerSize = rs.beforeCount * this._statistics.itemSize;
             endSpacerSize = rs.afterCount * this._statistics.itemSize;
-
-
-            // if (this._defaultEdge === VirtualListEdge.End) {
-                // const fullRange = new NumberRange(-totalSize, 0);
-                // const itemRange = fullRange.intersectWith(this._itemRange ?? new NumberRange(-renderedSize, 0));
-                // const viewport = fullRange.intersectWith(this._viewport ?? this._lastViewport ?? new NumberRange(-MinViewPortSize, 0));
-                // if (rs.query.isNone) {
-                //     if (!this._spacerSize || !this._endSpacerSize) {
-                //         // first renders - initialize spacers
-                //
-                //     }
-                //     else {
-                //         // keep existing spacers
-                //         spacerSize = null;
-                //         endSpacerSize = null;
-                //     }
-                // }
-                // if (itemRange.intersectWith(viewport).isEmpty) {
-                //     const midPoint = (viewport.end + viewport.start) / 2;
-                //     const renderedEnd = midPoint + renderedSize / 2;
-                //     endSpacerSize = renderedEnd < 0
-                //         ? -renderedEnd
-                //         : 0;
-                //     spacerSize = totalSize - renderedSize - endSpacerSize;
-                // }
-                // else {
-                //     rs.query.virtualRange
-                // }
-            // }
-            // else {
-            //     const itemRange = this._itemRange ?? new NumberRange(0, renderedSize);
-            //     const viewport = this._viewport ?? this._lastViewport ?? new NumberRange(0, MinViewPortSize);
-            //     if (itemRange.intersectWith(viewport).isEmpty) {
-            //
-            //     }
-            //     else {
-            //
-            //     }
-            // }
-
-            // viewport
         }
         else if (!rs.keyRange?.start) {
             // no data loaded yet
@@ -670,11 +626,8 @@ export class VirtualList {
                 fastRaf({ write: () => this.forceReflow() });
 
             // Update statistics
-            const ratio = this._statistics.responseFulfillmentRatio;
-            if (rs.requestedStartExpansion > 0 && !rs.hasVeryFirstItem)
-                this._statistics.addResponse(rs.startExpansion, rs.requestedStartExpansion * ratio);
-            if (rs.requestedEndExpansion > 0 && !rs.hasVeryLastItem)
-                this._statistics.addResponse(rs.endExpansion, rs.requestedEndExpansion * ratio);
+            if (!rs.query.isNone && rs.query.expectedCount)
+                this._statistics.addResponse(rs.count, rs.query.expectedCount);
 
             const scrollToItemRef = this.getItemRef(rs.scrollToKey);
             if (scrollToItemRef != null) {
@@ -801,9 +754,9 @@ export class VirtualList {
 
         if (!viewport && this.fullRange) {
             // fallback viewport calculation
-            const viewportHeight = this._ref.clientHeight - this._endAnchorRef.getBoundingClientRect().height;
-            const scrollHeight = this._ref.scrollHeight;
-            const scrollTop = this._ref.scrollTop + scrollHeight - viewportHeight;
+            const anchorHeight = this._endAnchorRef.getBoundingClientRect().height;
+            const viewportHeight = this._ref.clientHeight - anchorHeight;
+            const scrollTop = this._ref.scrollTop;
             const clientViewport = new NumberRange(scrollTop, scrollTop + viewportHeight);
             const fullRange = this.fullRange;
             if (fullRange != null) {
@@ -1222,7 +1175,13 @@ export class VirtualList {
             if (!cornerStoneItem.range) {
                 cornerStoneItemIndex = orderedItems.length - 1;
                 cornerStoneItem = orderedItems[cornerStoneItemIndex];
-                cornerStoneItem.range = new NumberRange(-cornerStoneItem.size, 0);
+                // try to reuse coords of previously rendered items
+                if (!this._lastQuery.isNone) {
+                    const { virtualRange } = this._lastQuery;
+                    cornerStoneItem.range = new NumberRange(virtualRange.end-cornerStoneItem.size, virtualRange.end);
+                }
+                else
+                    cornerStoneItem.range = new NumberRange(-cornerStoneItem.size, 0);
             }
 
         }
@@ -1234,7 +1193,13 @@ export class VirtualList {
             if (!cornerStoneItem.range) {
                 cornerStoneItemIndex = 0;
                 cornerStoneItem = orderedItems[cornerStoneItemIndex];
-                cornerStoneItem.range = new NumberRange(0, cornerStoneItem.size);
+                // try to reuse coords of previously rendered items
+                if (!this._lastQuery.isNone) {
+                    const { virtualRange } = this._lastQuery;
+                    cornerStoneItem.range = new NumberRange(virtualRange.start, virtualRange.start + cornerStoneItem.size);
+                }
+                else
+                    cornerStoneItem.range = new NumberRange(0, cornerStoneItem.size);
             }
         }
 
@@ -1313,7 +1278,7 @@ export class VirtualList {
         if (itemRange.contains(query.virtualRange))
             return false;
 
-        if (query.expandStartBy == 0 && query.expandEndBy == 0)
+        if (query.moveRange.start === 0 && query.moveRange.end === 0)
             return false;
 
         const viewportSize = viewport.size;
@@ -1323,17 +1288,16 @@ export class VirtualList {
 
         const isLoadingStart = Math.abs(commonRange.start - queryRange.start) > viewportSize;  // we are loading more than a viewport at the start edge
         const isLoadingEnd = Math.abs(queryRange.end - commonRange.end) > viewportSize; // we are loading more than a viewport at the end edge
-        const isViewportCloseToStart =  !this._renderState.hasVeryFirstItem && Math.abs(viewport.start - itemRange.start) < viewportSize / 2; // viewport is close to the start edge and there are items above
-        const isViewportCloseToEnd =  !this._renderState.hasVeryLastItem && Math.abs(itemRange.end - viewport.end) < viewportSize / 2; // viewport is close to the end edge and there are items bellow
+        const isViewportCloseToStart =  !this._renderState.hasVeryFirstItem && Math.abs(viewport.start - itemRange.start) < viewportSize; // viewport is close to the start edge and there are items above
+        const isViewportCloseToEnd =  !this._renderState.hasVeryLastItem && Math.abs(itemRange.end - viewport.end) < viewportSize; // viewport is close to the end edge and there are items bellow
         const isNearSkeletonAndLoadingSomeData = this._isNearSkeleton && (commonRange.start > queryRange.start || queryRange.end > commonRange.end); // the viewport is near skeletons and we are loading some more
+
         const mustExpand =
-            isLoadingStart && !this._renderState.hasVeryLastItem
-            || isLoadingEnd
-            || isViewportCloseToStart
-            || isViewportCloseToEnd
+            isLoadingStart && isViewportCloseToStart
+            || isLoadingEnd && isViewportCloseToEnd
             || isNearSkeletonAndLoadingSomeData && this._renderState.renderIndex > 1; // and not the very first render with data
         // NOTE(AY): The condition below checks just one side
-        const mustContract = Math.abs(itemRange.end - commonRange.end) > viewportSize * 2;
+        const mustContract = Math.abs(itemRange.end - commonRange.end) > viewportSize;
         return mustExpand || mustContract;
     }
 
@@ -1352,9 +1316,9 @@ export class VirtualList {
         }
 
         const viewportSize = viewport.size;
-        const lastQuerySide = this._lastQuery.expandStartBy == 0 && this._lastQuery.expandEndBy == 0
+        const lastQuerySide = this._lastQuery.moveRange.size === 0
             ? 'none'
-            : this._lastQuery.expandStartBy == 0
+            : this._lastQuery.moveRange.start >= 0 && this._lastQuery.moveRange.end >= 0
                 ? 'end'
                 : 'start';
         const alreadyLoadedFromStart = Math.abs(alreadyLoaded.start - viewport.start);
@@ -1366,7 +1330,7 @@ export class VirtualList {
         let loadEnd = viewport.end + loadZoneSize;
 
         switch (lastQuerySide) {
-            case "none":
+            case 'none':
                 // check whether we need to load from the start first
                 if (alreadyLoadedFromStart < loadZoneTrigger) {
                     if (!rs.hasVeryFirstItem)
@@ -1377,11 +1341,13 @@ export class VirtualList {
                         loadEnd = viewport.end + loadZoneSize; // extend from the end
                 }
                 break;
-            case "end":
+            case 'end':
                 // check whether we need to continue loading from the end
                 if (alreadyLoadedTillEnd < loadZoneTrigger) {
-                    if (!rs.hasVeryLastItem)
-                        loadEnd = viewport.end + loadZoneSize;
+                    if (!rs.hasVeryLastItem) {
+                        loadEnd = viewport.end + loadZoneSize * 3;
+                        loadStart = viewport.start;
+                    }
                 }
                 else if (alreadyLoadedFromStart < viewportSize / 3) { // smaller than half of viewport to change load direction
                     debugLog?.log('getDataQuery: previous direction was _end_', viewport, alreadyLoaded, loadZoneSize);
@@ -1391,11 +1357,13 @@ export class VirtualList {
                         return this._lastQuery;
                 }
                 break;
-            case "start":
+            case 'start':
                 // check whether we need to continue loading from the start
                 if (alreadyLoadedFromStart < loadZoneTrigger) {
-                    if (!rs.hasVeryFirstItem)
-                        loadStart = viewport.start - loadZoneSize;
+                    if (!rs.hasVeryFirstItem) {
+                        loadStart = viewport.start - loadZoneSize * 3;
+                        loadEnd = viewport.end;
+                    }
                 }
                 else if (alreadyLoadedTillEnd < viewportSize / 3) { // smaller than 1/3 of viewport to change load direction
                     debugLog?.log('getDataQuery: previous direction was _start_', viewport, alreadyLoaded, loadZoneSize);
@@ -1442,24 +1410,26 @@ export class VirtualList {
                 break;
         }
 
-        const firstItem = items[startIndex] ?? items[0];
-        const lastItem = items[endIndex] ?? items[items.length - 1];
+        const firstItem = items[startIndex]
+            ?? items[0].range.start > loadZone.end
+                ? items[0]
+                : items[items.length - 1];
+        const lastItem = items[endIndex] ?? firstItem;
+        const moveRangeStart = Math.ceil((loadZone.start - firstItem.range.start) / itemSize / responseFulfillmentRatio);
+        const moveRangeEnd = Math.ceil((loadZone.end - lastItem.range.end) / itemSize / responseFulfillmentRatio);
+        const moveRange = new NumberRange(moveRangeStart, moveRangeEnd);
         const startGap = Math.max(0, firstItem.range.start - loadZone.start);
         const endGap = Math.max(0, loadZone.end - lastItem.range.end);
         // skip queries that load few more items - we prefer to load more - if not close of the skeletons
-        const smallGap = loadZoneSize * 0.5;
-        const isFirstItemInViewport = !rs.hasVeryFirstItem && firstItem.range.end > viewport.start;
+        const smallGap = viewportSize * 0.5;
+        const isFirstItemInViewport = !rs.hasVeryFirstItem && firstItem.range.end >= viewport.start;
         const isLastItemInViewport = !rs.hasVeryLastItem && lastItem.range.start <= viewport.end;
         if (startGap < smallGap  && endGap < smallGap && firstItem.range.start && !isFirstItemInViewport && !isLastItemInViewport)
             return this._lastQuery;
 
-        const maxExpandBy = this._maxExpand;
-        const expandStartBy = clamp(Math.ceil(startGap / itemSize / responseFulfillmentRatio), 0, maxExpandBy);
-        const expandEndBy = clamp(Math.ceil(endGap / itemSize / responseFulfillmentRatio), 0, maxExpandBy);
         const keyRange = new Range(firstItem.key, lastItem.key);
-        const query = new VirtualListDataQuery(keyRange, loadZone);
-        query.expandStartBy = expandStartBy;
-        query.expandEndBy = expandEndBy;
+        const query = new VirtualListDataQuery(keyRange, loadZone, moveRange);
+        query.expectedCount = Math.ceil(loadZone.size / this._statistics.itemSize);
         return query;
     }
 }

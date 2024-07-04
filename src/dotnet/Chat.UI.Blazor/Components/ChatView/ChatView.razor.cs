@@ -373,8 +373,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     HasVeryFirstItem = true,
                     HasVeryLastItem = true,
                     ScrollToKey = null,
-                    RequestedStartExpansion = null,
-                    RequestedEndExpansion = null,
                     NavigationState = nav ?? renderedData.NavigationState,
                     ItemVisibilityState = itemVisibility,
                 };
@@ -403,12 +401,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
             ScrollToKey = navEntry != null && mustScrollToEntry ? navEntry.LocalId.Format() : null,
-            RequestedStartExpansion = query.IsNone
-                ? null
-                : query.ExpandStartBy,
-            RequestedEndExpansion = query.IsNone
-                ? null
-                : query.ExpandEndBy,
             NavigationState = nav ?? renderedData.NavigationState,
             ItemVisibilityState = itemVisibility,
         };
@@ -480,7 +472,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             // No query, but there is old data -> retaining it
             (false, true) => new Range<long>(firstItem!.Entry.LocalId, lastItem!.Entry.LocalId),
             // Query is there, so data is irrelevant
-            _ => query.KeyRange.ToLongRange().Expand(new Range<long>(query.ExpandStartBy, query.ExpandEndBy)),
+            _ => query.KeyRange.ToLongRange(true).Move(query.MoveRange),
         };
 
         // If we are scrolling somewhere, let's extend the range to scrollAnchor & nearby entries.

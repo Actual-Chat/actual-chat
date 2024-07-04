@@ -1,3 +1,5 @@
+import { clamp } from 'math';
+
 export class Range<T> {
     constructor(
         public start: T,
@@ -43,15 +45,15 @@ export class NumberRange extends Range<number> {
     }
 
     public fitInto(fitRange: NumberRange): NumberRange | null {
-        const epsilon = 10;
-        if (this.size > fitRange.size + epsilon)
+        const epsilon = 20;
+        const fitSize = fitRange.size;
+        if (this.size > fitSize + epsilon)
             return fitRange;
-        if (this.end > fitRange.size + epsilon)
-            return null;
 
+        const endOffset = clamp(fitSize - this.end, 0, fitSize);
+        const startOffset = clamp(fitSize - this.start, 0, fitSize);
         return new NumberRange(
-            fitRange.start + this.start,
-            fitRange.start + this.end
-        );
+            fitRange.end - startOffset,
+            fitRange.end - endOffset);
     }
 }

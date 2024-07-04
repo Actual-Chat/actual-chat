@@ -28,7 +28,7 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
             // No query, but there is old data -> retaining it
             (false, true) => new Range<int>(firstItem!.Position, lastItem.Position),
             // Query is there, so data is irrelevant
-            _ => query.KeyRange.ToIntRange().Expand(new Range<int>(query.ExpandStartBy, query.ExpandEndBy)),
+            _ => query.KeyRange.ToIntRange().Move(query.MoveRange),
         };
         range = range
             .IntersectWith(new Range<int>(0, chatCount))
@@ -50,12 +50,6 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
             AfterCount = (chatCount - range.End).Clamp(0, chatCount),
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
-            RequestedStartExpansion = query.IsNone
-                ? null
-                : query.ExpandStartBy,
-            RequestedEndExpansion = query.IsNone
-                ? null
-                : query.ExpandEndBy,
         };
     }
 

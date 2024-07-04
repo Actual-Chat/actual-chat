@@ -142,14 +142,10 @@ public class AppNonScopedServiceStarter
     {
         Warmup(new VirtualListRenderState {
             RenderIndex = 1,
-            Query = new VirtualListDataQuery(new Range<string>("1", "2")),
+            Query = new VirtualListDataQuery(new Range<string>("1", "2"), new Range<double>(), new Range<int>()),
             KeyRange = new Range<string>("1", "2"),
             BeforeCount = 1,
             AfterCount = 1,
-            RequestedStartExpansion = 1,
-            RequestedEndExpansion = 1,
-            StartExpansion = 1,
-            EndExpansion = 1,
             HasVeryFirstItem = true,
             HasVeryLastItem = true,
             ScrollToKey = "1",
