@@ -10,10 +10,6 @@ public sealed class VirtualListRenderState
     public int? BeforeCount { get; init; }
     public int? AfterCount { get; init; }
     public int Count { get; init; }
-    public int? RequestedStartExpansion { get; init; }
-    public int? RequestedEndExpansion { get; init; }
-    public int StartExpansion { get; init; }
-    public int EndExpansion { get; init; }
 
     public bool HasVeryFirstItem { get; init; }
     public bool HasVeryLastItem { get; init; }

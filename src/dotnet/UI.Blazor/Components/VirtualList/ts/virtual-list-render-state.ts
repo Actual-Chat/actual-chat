@@ -9,10 +9,10 @@ export interface VirtualListRenderState {
     beforeCount: number | null;
     afterCount: number | null;
     count: number;
-    requestedStartExpansion?: number;
-    requestedEndExpansion?: number;
-    startExpansion: number;
-    endExpansion: number;
+    // requestedStartExpansion?: number;
+    // requestedEndExpansion?: number;
+    // startExpansion: number;
+    // endExpansion: number;
     hasVeryFirstItem: boolean;
     hasVeryLastItem: boolean;
 

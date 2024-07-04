@@ -20,8 +20,6 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListTile<TItem>>
     public int Index { get; init; }
     public int? BeforeCount { get; init; }
     public int? AfterCount { get; init; }
-    public int? RequestedStartExpansion { get; init; }
-    public int? RequestedEndExpansion { get; init; }
     public bool HasVeryFirstItem { get; init; }
     public bool HasVeryLastItem { get; init; }
     public string? ScrollToKey { get; init; }
@@ -52,9 +50,7 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListTile<TItem>>
     }
 
     public bool IsSimilarTo(VirtualListData<TItem> other)
-        => RequestedStartExpansion == other.RequestedStartExpansion
-            && RequestedEndExpansion == other.RequestedEndExpansion
-            && HasVeryFirstItem == other.HasVeryFirstItem
+        => HasVeryFirstItem == other.HasVeryFirstItem
             && HasVeryLastItem == other.HasVeryLastItem
             && ScrollToKey == other.ScrollToKey
             && Tiles.SequenceEqual(other.Tiles);

@@ -1,22 +1,38 @@
+using System.Text.RegularExpressions;
+
 namespace ActualChat.Mathematics;
 
 public static partial class RangeExt
 {
+    [GeneratedRegex("^\\d+")]
+    private static partial Regex FirstDigitsRegexFactory();
+    private static readonly Regex FirstDigitsRegex = FirstDigitsRegexFactory();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Range<long> Move(this Range<long> range, long startOffset, long endOffset)
         => new (range.Start + startOffset, range.End + endOffset);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Range<long> Move(this Range<long> range, Range<int> moveTo)
+        => new (range.Start + moveTo.Start, range.End + moveTo.End);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Range<long> MoveStart(this Range<long> range, long moveStartBy)
         => new (range.Start + moveStartBy, range.End);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Range<long> WithStart(this Range<long> range, long newStart)
         => new (newStart, range.End);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Range<long> MoveEnd(this Range<long> range, long moveEndBy)
         => new (range.Start, range.End + moveEndBy);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Range<long> Expand(this Range<long> range, Range<long> expandBy)
         => new (range.Start - expandBy.Start, range.End + expandBy.End);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Range<long> Clamp(this Range<long> range, Range<long> clampBy)
         => new (Math.Clamp(range.Start, clampBy.Start, clampBy.End), Math.Clamp(range.End, clampBy.Start, clampBy.End));
 
@@ -68,8 +84,25 @@ public static partial class RangeExt
         return range;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Range<long> ToLongRange(this Range<string> range)
         => new (
             long.Parse(range.Start, NumberStyles.Integer, CultureInfo.InvariantCulture),
             long.Parse(range.End, NumberStyles.Integer, CultureInfo.InvariantCulture));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Range<long> ToLongRange(this Range<string> range, bool useFirstDigits)
+    {
+        if (!useFirstDigits)
+            return range.ToLongRange();
+
+        var startMatch = FirstDigitsRegex.Match(range.Start);
+        var endMatch = FirstDigitsRegex.Match(range.End);
+        if (!startMatch.Success || !endMatch.Success)
+            throw StandardError.Constraint($"Unable to parse digit prefix. Range={range}.");
+
+        return new Range<long>(
+            long.Parse(startMatch.Value, NumberStyles.Integer, CultureInfo.InvariantCulture),
+            long.Parse(endMatch.Value, NumberStyles.Integer, CultureInfo.InvariantCulture));
+    }
 }
