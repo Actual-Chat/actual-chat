@@ -135,14 +135,6 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply text-2xl;
 }
 
-body.hoverable .edit-settings-modal .item-leave-group.tile-item:hover {
-    @apply bg-menuitem-hover-warning;
-}
-.edit-settings-modal .item-leave-group .tile-item-icon,
-.edit-settings-modal .item-leave-group .tile-item-body-content {
-    @apply text-danger;
-}
-
 .chat-type-tile-item .tile-item-right {
     @apply text-headline-1 text-primary;
 }
