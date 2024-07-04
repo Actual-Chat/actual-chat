@@ -132,6 +132,13 @@ body.hoverable .tile:hover {
 .tile-item.clickable span {
     @apply cursor-pointer;
 }
+body.hoverable .tile-item.item-danger:hover {
+    @apply bg-menuitem-hover-warning;
+}
+.tile-item.item-danger .tile-item-icon,
+.tile-item.item-danger .tile-item-body-content {
+    @apply text-danger;
+}
 .settings-tab .tile-item label {
     cursor: inherit;
 }

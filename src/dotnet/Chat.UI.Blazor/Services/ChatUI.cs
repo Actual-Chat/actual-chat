@@ -312,6 +312,17 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, "place",
             m => _ = DeleteOrLeavePlaceInternal(placeId, false, () => Task.CompletedTask, m)));
 
+    public void ArchiveChat(Chat chat)
+    {
+        var warning = $"You are going to archive chat '{chat.Title}'. Nobody will be able to access it except owners, who can still access it with direct link.";
+        _ = ModalUI.Show(new ConfirmModal.Model(true,
+            warning,
+            () => _ = ArchiveChatInternal(chat.Id)) {
+            Title = "Archive chat",
+            ConfirmButtonText = "Archive"
+        });
+    }
+
     // Helpers
 
     // This method fixes provided ChatId w/ PeerChatId.FixOwnerId, which replaces
@@ -655,6 +666,14 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             return;
         if (isSelectedPlace)
             NavbarUI.SelectGroup(NavbarGroupIds.Chats, true);
+    }
+
+    private async Task ArchiveChatInternal(ChatId chatId)
+    {
+        var archiveCommand = new Chats_Change(Session, chatId, null, Change.Update(new ChatDiff {
+            IsArchived = true
+        }));
+        await UICommander.Call(archiveCommand).ConfigureAwait(true);
     }
 
     private async Task NavigateToVisibleChat(PlaceId preferredPlaceId)
