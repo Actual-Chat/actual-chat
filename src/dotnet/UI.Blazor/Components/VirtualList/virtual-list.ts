@@ -1295,7 +1295,7 @@ export class VirtualList {
         const mustExpand =
             isLoadingStart && isViewportCloseToStart
             || isLoadingEnd && isViewportCloseToEnd
-            || isNearSkeletonAndLoadingSomeData && this._renderState.renderIndex > 1; // and not the very first render with data
+            || isNearSkeletonAndLoadingSomeData;
         // NOTE(AY): The condition below checks just one side
         const mustContract = Math.abs(itemRange.end - commonRange.end) > viewportSize;
         return mustExpand || mustContract;
