@@ -2,7 +2,7 @@ using OpenSearch.Net;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Serializer.Converters;
 
-public class OscTypeConverter<T>(IOpenSearchSerializer builtInSerializer, IMemoryStreamFactory memoryStreamFactory)
+internal class OscTypeConverter<T>(IOpenSearchSerializer builtInSerializer, IMemoryStreamFactory memoryStreamFactory)
     : JsonConverter<T>
 {
     private static readonly Type targetType = typeof(T);
