@@ -261,6 +261,7 @@ body.hoverable .chat-header-title:hover {
     @apply flex-x gap-x-2 items-center;
 }
 .chat-welcome-block .c-chat-title {
+    @apply truncate;
     @apply text-01 text-headline-6;
 }
 .chat-welcome-block .c-content {

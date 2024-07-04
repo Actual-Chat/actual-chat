@@ -46,27 +46,23 @@
                         <ChatsTab/>
                     </div>
                 </Tab>
-                @if (enableIncompleteUI) {
-                    <Tab @key="@("threads")" Id="Threads" Title="Threads" Order="1">
-                        <ToBeDone/>
-                    </Tab>
-                    <Tab @key="@("tags")" Id="tags" Title="Tags" Order="2">
-                        <ToBeDone/>
-                    </Tab>
-                    <Tab @key="@("media")" Id="media" Title="Media" Order="3">
-                        <ToBeDone/>
-                    </Tab>
-                }
+                <Tab @key="@("threads")" Id="Threads" Title="Threads" Order="1">
+                    <ToBeDone/>
+                </Tab>
+                <Tab @key="@("tags")" Id="tags" Title="Tags" Order="2">
+                    <ToBeDone/>
+                </Tab>
+                <Tab @key="@("media")" Id="media" Title="Media" Order="3">
+                    <ToBeDone/>
+                </Tab>
             </TabPanel>
 
-            @if (enableIncompleteUI) {
-                <div class="ai-btn">
-                    <Button Class="btn-primary" Click="@OpenRightSearchPanel">
-                        <i class="icon-ai-search"></i>
-                        Open AI Search
-                    </Button>
-                </div>
-            }
+            <div class="ai-btn">
+                <Button Class="btn-primary" Click="@OpenRightSearchPanel">
+                    <i class="icon-ai-search"></i>
+                    Open AI Search
+                </Button>
+            </div>
         </div>
     }
 </div>
