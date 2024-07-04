@@ -211,12 +211,16 @@
         if (chat == null || !chat.Rules.CanEditProperties())
             return new ComputedModel { Chat = chat };
 
-        var invites = await Hub.Invites.ListChatInvites(Session, chatId, cancellationToken);
-        var threshold = Hub.Clocks().SystemClock.Now - TimeSpan.FromDays(3);
-        var activeInvites = invites
-            .Where(c => c.ExpiresOn > threshold)
-            .OrderByDescending(c => c.ExpiresOn)
-            .ToList();
+        List<Invite> activeInvites;
+        if (chat.CanInvite()) {
+            var invites = await Hub.Invites.ListChatInvites(Session, chatId, cancellationToken);
+            var threshold = Hub.Clocks().SystemClock.Now - TimeSpan.FromDays(3);
+            activeInvites = invites
+                .Where(c => c.ExpiresOn > threshold)
+                .OrderByDescending(c => c.ExpiresOn)
+                .ToList();
+        } else
+            activeInvites = [];
         var link = Links.Chat(chatId).ToDisplayUrl(Hub.UrlMapper());
         var allowEditIsTemplate = await Hub.Features().Get<Features_EnableTemplateChatUI, bool>(cancellationToken);
         var isPublic = chat.IsPublic;

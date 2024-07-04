@@ -53,7 +53,7 @@ public sealed partial record Chat(
         // => Rules.CanInvite() && !HasSingleAuthor && !Id.IsPeerChat(out _) &&;
         // But since we can't manage other roles than Owner yet,
         // we let only Owners to invite people to chat.
-        => Rules.IsOwner() && !HasSingleAuthor && !Id.IsPeerChat(out _);
+        => Rules.IsOwner() && Rules.CanInvite() && !HasSingleAuthor && !Id.IsPeerChat(out _);
 
     public bool IsPublicPlaceChat()
         => Kind == ChatKind.Place && !Id.PlaceChatId.IsRoot && IsPublic;
