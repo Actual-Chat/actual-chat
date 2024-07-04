@@ -38,7 +38,6 @@ export class VirtualList {
     private readonly _defaultSpacerSize: number;
     private readonly _expandTriggerMultiplier: number;
     private readonly _expandMultiplier: number;
-    private readonly _maxExpand: number;
     private readonly _spacerRef: HTMLElement;
     private readonly _endSpacerRef: HTMLElement;
     private readonly _renderIndexRef: HTMLElement;
@@ -95,9 +94,8 @@ export class VirtualList {
         spacerSize: number,
         expandTriggerMultiplier: number,
         expandMultiplier: number,
-        maxExpand: number,
     ) {
-        return new VirtualList(ref, backendRef, identity, defaultEdge, spacerSize, expandTriggerMultiplier, expandMultiplier, maxExpand);
+        return new VirtualList(ref, backendRef, identity, defaultEdge, spacerSize, expandTriggerMultiplier, expandMultiplier);
     }
 
     public constructor(
@@ -108,7 +106,6 @@ export class VirtualList {
         spacerSize: number,
         expandTriggerMultiplier: number,
         expandMultiplier: number,
-        maxExpand: number,
     ) {
         if (debugLog) {
             debugLog?.log(`constructor`);
@@ -123,7 +120,6 @@ export class VirtualList {
         this._defaultSpacerSize = spacerSize;
         this._expandTriggerMultiplier = expandTriggerMultiplier;
         this._expandMultiplier = expandMultiplier;
-        this._maxExpand = maxExpand;
 
         this._isDisposed = false;
         this._abortController = new AbortController();

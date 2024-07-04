@@ -267,25 +267,25 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
             .ConfigureAwait(false);
 
         var states = await items
-            .Select(item => ChatUI.GetState(item.ChatId, false, cancellationToken))
+            .Select(item => ChatUI.Get(item.ChatId, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
 
         var result = new List<ChatListItemModel>();
         for (var i = 0; i < states.Length; i++) {
-            var chatState = states[i];
-            if (chatState == null)
+            var chatInfo = states[i];
+            if (chatInfo == null)
                 continue;
 
             var isLastItemInBlock = false;
-            if (chatState.Contact.IsPinned && i < states.Length - 1) {
+            if (chatInfo.Contact.IsPinned && i < states.Length - 1) {
                 // tile range is larger than pinned chat limit
                 var nextChatState = states[i + 1];
                 if (nextChatState != null)
                     isLastItemInBlock = !nextChatState.Contact.IsPinned;
             }
             var isFirstItem = i == 0 && indexTile.Start == 0;
-            result.Add(new ChatListItemModel(indexTile.Start + i, chatState, isLastItemInBlock, isFirstItem));
+            result.Add(new ChatListItemModel(indexTile.Start + i, chatInfo, isLastItemInBlock, isFirstItem));
         }
 
         return new VirtualListTile<ChatListItemModel>(longRange, result);

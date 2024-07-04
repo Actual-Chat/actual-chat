@@ -27,8 +27,8 @@
             <div class="c-title" data-tooltip="Chats where you are listening or recording right now">Active Chats</div>
 
             <div class="chat-list chat-list-active">
-                @foreach(var chatState in m.Chats) {
-                    <ChatListItem ListKind="@Kind" ChatState="@chatState"/>
+                @foreach(var chatInfo in m.Chats) {
+                    <ChatListItem ListKind="@Kind" ChatInfo="@chatInfo"/>
                 }
             </div>
         </div>
@@ -39,14 +39,13 @@
             DataSource="@this"
             ExpandTriggerMultiplier="0.5"
             ExpandMultiplier="0.7"
-            MaxExpandBy="25"
             SkeletonCount="50"
             KeyComparer="@LongAsStringKeyComparer.Default"
             >
             <Item>
                 <ChatListItem
                     ListKind="@Kind"
-                    ChatState="@context.ChatState"
+                    ChatInfo="@context.ChatInfo"
                     IsLastItemInBlock="@context.IsLastItemInBlock"
                     IsFirstItem="@context.IsFirstItem"/>
             </Item>
@@ -88,7 +87,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new (ImmutableList<ChatState>.Empty, false, true),
+            InitialValue = new (ImmutableList<ChatInfo>.Empty, false, true),
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
@@ -96,11 +95,11 @@
         var chatListKind = Kind;
 
         DebugLog?.LogDebug("-> ComputeState: {List}", chatListKind);
-        var chats = new List<ChatState>() as IReadOnlyList<ChatState>;
+        var chats = new List<ChatInfo>() as IReadOnlyList<ChatInfo>;
         if (Kind == ChatListKind.Active) {
             var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
             chats = (await activeChats
-                    .Select(ac => ChatUI.GetState(ac.ChatId, false, cancellationToken))
+                    .Select(ac => ChatUI.Get(ac.ChatId, cancellationToken))
                     .Collect()
                     .ConfigureAwait(false))
                 .SkipNullItems()
@@ -125,7 +124,7 @@
     // Nested types
 
     public record struct Model(
-        IReadOnlyList<ChatState> Chats,
+        IReadOnlyList<ChatInfo> Chats,
         bool IsSearchModeOn = false,
         bool IsLoading = false);
 }

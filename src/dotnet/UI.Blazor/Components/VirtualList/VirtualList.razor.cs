@@ -44,7 +44,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     [Parameter] public VirtualListEdge DefaultEdge { get; set; }
     [Parameter] public double ExpandTriggerMultiplier { get; set; } = 1;
     [Parameter] public double ExpandMultiplier { get; set; } = 1.5;
-    [Parameter] public int MaxExpandBy { get; set; } = 120;
     [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.Ordinal;
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
     // trigger StateHasChanged on parent component.
@@ -107,8 +106,8 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
                 DefaultEdge,
                 SpacerSize,
                 ExpandTriggerMultiplier,
-                ExpandMultiplier,
-                MaxExpandBy);
+                ExpandMultiplier
+                );
         }
     }
 

@@ -62,7 +62,7 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
             // scroll to the selected chat on first render
             var selectedItem = tiles
                 .SelectMany(t => t.Items)
-                .FirstOrDefault(it => it.ChatState.Chat.Id == selectedChatId);
+                .FirstOrDefault(it => it.ChatInfo.Chat.Id == selectedChatId);
             if (selectedItem != null)
                 scrollToKey = selectedItem.Key;
         }
