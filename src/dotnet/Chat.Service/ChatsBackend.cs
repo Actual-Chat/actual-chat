@@ -166,8 +166,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 if (!chatRules.IsOwner())
                     return AuthorRules.None(chatId);
 
+                var permissionsToExclude = ChatPermissions.Write
+                    | ChatPermissions.Join
+                    | ChatPermissions.Invite
+                    | ChatPermissions.EditMembers;
                 return chatRules with {
-                    Permissions = chatRules.Permissions & ~ChatPermissions.Write // Do not allow to write on archived chat
+                    Permissions = chatRules.Permissions & ~permissionsToExclude // Do not allow to write/join on archived chat
                 };
             }
         }
