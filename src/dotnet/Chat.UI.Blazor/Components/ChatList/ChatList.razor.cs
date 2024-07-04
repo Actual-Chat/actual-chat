@@ -6,6 +6,7 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
 {
     public static readonly TileStack<int> ChatTileStack = Constants.Chat.ChatTileStack;
     public static readonly int LoadLimit = ChatTileStack.Layers[1].TileSize; // 20
+    public static readonly int HalfLoadLimit = LoadLimit / 2;
 
     public async Task<VirtualListData<ChatListItemModel>> GetData(
         ComputedState<VirtualListData<ChatListItemModel>> state,
@@ -13,7 +14,12 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
         VirtualListData<ChatListItemModel> renderedData,
         CancellationToken cancellationToken)
     {
+        var selectedChatId = ChatUI.SelectedChatId.Value;
+        var selectedChatIndex = ChatListUI.IndexOf(selectedChatId);
         var chatCount = await ChatListUI.GetCount(Kind).ConfigureAwait(false);
+        if (chatCount == 0)
+            return VirtualListData<ChatListItemModel>.None;
+
         var firstItem = renderedData.FirstItem;
         var lastItem = renderedData.LastItem;
         var range = (!query.IsNone, firstItem != null) switch {
@@ -30,6 +36,16 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
             // Query is there, so data is irrelevant
             _ => query.KeyRange.ToIntRange().Move(query.MoveRange),
         };
+        if (query.IsNone && renderedData.IsNone && !range.Contains(selectedChatIndex)) {
+            // move range to the selected chat for the first render
+            var scrollAnchorRange = new Range<int>(
+                selectedChatIndex - HalfLoadLimit,
+                selectedChatIndex + HalfLoadLimit);
+            range = scrollAnchorRange.Overlaps(range)
+                ? range.MinMaxWith(scrollAnchorRange)
+                : scrollAnchorRange;
+        }
+
         range = range
             .IntersectWith(new Range<int>(0, chatCount))
             .ExpandToTiles(ChatTileStack.FirstLayer);
@@ -41,6 +57,16 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
                 tiles.Add(tile);
         }
 
+        var scrollToKey = null as string;
+        if (query.IsNone && renderedData.IsNone) {
+            // scroll to the selected chat on first render
+            var selectedItem = tiles
+                .SelectMany(t => t.Items)
+                .FirstOrDefault(it => it.ChatState.Chat.Id == selectedChatId);
+            if (selectedItem != null)
+                scrollToKey = selectedItem.Key;
+        }
+
         var hasVeryFirstItem = range.Start == 0;
         var hasVeryLastItem = range.End >= chatCount;
 
@@ -50,6 +76,7 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
             AfterCount = (chatCount - range.End).Clamp(0, chatCount),
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
+            ScrollToKey = scrollToKey,
         };
     }
 

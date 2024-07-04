@@ -100,6 +100,9 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         }
     }
 
+    public int IndexOf(ChatId chatId)
+        => _allItems.IndexOf(chatId);
+
     // In fact, this is compute method, we just don't need one here, coz it routes the call further
     public Task<IReadOnlyList<ChatInfo>> List(ChatListKind listKind, CancellationToken cancellationToken = default)
         => listKind switch {
