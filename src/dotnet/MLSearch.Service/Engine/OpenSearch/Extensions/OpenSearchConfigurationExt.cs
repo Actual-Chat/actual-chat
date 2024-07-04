@@ -4,6 +4,7 @@ using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
+using ActualChat.MLSearch.Engine.OpenSearch.Serializer;
 using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.MLSearch.Module;
 using Microsoft.Extensions.Configuration;

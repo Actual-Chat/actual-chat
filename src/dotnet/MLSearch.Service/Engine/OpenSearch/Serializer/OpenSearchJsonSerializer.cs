@@ -1,9 +1,13 @@
+using System.Text;
 using OpenSearch.Client;
 using OpenSearch.Net;
 
-namespace ActualChat.MLSearch.Engine.OpenSearch.Configuration;
+namespace ActualChat.MLSearch.Engine.OpenSearch.Serializer;
 internal sealed class OpenSearchJsonSerializer : IOpenSearchSerializer
 {
+    internal const int DefaultBufferSize = 1024;
+    internal static readonly Encoding ExpectedEncoding = new UTF8Encoding(false);
+
     private IOpenSearchSerializer _builtin;
     private IConnectionSettingsValues _settings;
     private readonly JsonSerializerOptions serializerOptions;
