@@ -11,15 +11,15 @@
         ? "item anchor"
         : "item";
     @if (item.CountAs != 1) {
-        <li id="@item.Key.Value"
-            @key="@item.Key"
+        <li id="@item.Key"
+            @key="@item.RenderKey"
             class="@itemCls"
             data-count-as="@item.CountAs.Format()">
             @Item(item)
         </li>
     } else {
-        <li id="@item.Key.Value"
-            @key="@item.Key"
+        <li id="@item.Key"
+            @key="@item.RenderKey"
             class="@itemCls">
             @Item(item)
         </li>

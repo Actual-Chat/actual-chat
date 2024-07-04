@@ -2,6 +2,7 @@ namespace ActualChat.UI.Blazor.Components;
 
 public interface IVirtualListItem
 {
-    Symbol Key { get; }
+    string Key { get; }
+    string RenderKey => Key;
     int CountAs { get; }
 }
