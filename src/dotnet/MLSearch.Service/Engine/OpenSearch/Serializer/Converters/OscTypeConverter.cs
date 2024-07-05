@@ -19,7 +19,7 @@ internal class OscTypeConverter<T>(IOpenSearchSerializer builtInSerializer, IMem
 
         var docOptions = new JsonDocumentOptions {
             AllowTrailingCommas = true,
-            CommentHandling = JsonCommentHandling.Allow,
+            CommentHandling = JsonCommentHandling.Skip,
         };
         using var jsonDoc = JsonDocument.Parse(ms, docOptions);
         jsonDoc.WriteTo(writer);
