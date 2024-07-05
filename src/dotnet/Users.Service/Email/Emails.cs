@@ -3,6 +3,7 @@ using ActualChat.Users.Db;
 using ActualChat.Users.Module;
 using ActualLab.Fusion.EntityFramework;
 using ActualChat.Users.Templates;
+using Mjml.Net;
 
 namespace ActualChat.Users.Email;
 
@@ -35,14 +36,20 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
         var parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {
             { nameof(EmailVerification.Token), sTotp },
         };
-        var renderer = new BlazorRenderer();
-        await using var _ = renderer.ConfigureAwait(false);
-        var html = await renderer.RenderComponent<EmailVerification>(parameters).ConfigureAwait(false);
+        var blazorRenderer = new BlazorRenderer();
+        await using var _ = blazorRenderer.ConfigureAwait(false);
+        var mjml = await blazorRenderer.RenderComponent<EmailVerification>(parameters).ConfigureAwait(false);
+        var mjmlRenderer = new MjmlRenderer();
+        var mjmlOptions = new MjmlOptions {
+            Minify = true,
+            Beautify = false,
+        };
+        var renderResult = mjmlRenderer.Render(mjml, mjmlOptions);
         await EmailSender.Send(
                 "",
                 email,
                 "Actual Chat: email verification",
-                html,
+                renderResult.Html,
                 cancellationToken)
             .ConfigureAwait(false);
         return expiresAt;
