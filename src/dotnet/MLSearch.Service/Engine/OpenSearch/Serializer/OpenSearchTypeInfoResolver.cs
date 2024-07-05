@@ -4,11 +4,11 @@ using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Serializer;
 
-public class ConnectionSettingsAwareContractResolver : DefaultJsonTypeInfoResolver
+public class OpenSearchTypeInfoResolver : DefaultJsonTypeInfoResolver
 {
     protected IConnectionSettingsValues ConnectionSettings { get; }
 
-    public ConnectionSettingsAwareContractResolver(IConnectionSettingsValues connectionSettings)
+    public OpenSearchTypeInfoResolver(IConnectionSettingsValues connectionSettings)
     {
         ArgumentNullException.ThrowIfNull(connectionSettings);
         ConnectionSettings = connectionSettings;
@@ -37,13 +37,6 @@ public class ConnectionSettingsAwareContractResolver : DefaultJsonTypeInfoResolv
     private static bool ShouldSerializeQueryContainers(object o, object? value)
         => o is not null && value is IEnumerable<QueryContainer> queryContainers
             && queryContainers.Any(q => (q as IQueryContainer)?.IsWritable ?? false);
-
-    // TODO: Apply name inferer either via modifier or via naming policy
-    // protected override string ResolvePropertyName(string fieldName) =>
-    //     ConnectionSettings.DefaultFieldNameInferrer != null
-    //         ? ConnectionSettings.DefaultFieldNameInferrer(fieldName)
-    //         : base.ResolvePropertyName(fieldName);
-
 
     private void PropertyOverrideModifier(JsonTypeInfo typeInfo)
     {
