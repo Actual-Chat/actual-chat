@@ -1,31 +1,32 @@
-using System.Text;
 using ActualChat.MLSearch.Engine.OpenSearch.Serializer.Converters;
 using OpenSearch.Client;
 using OpenSearch.Net;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Serializer;
-internal sealed class OpenSearchJsonSerializer : IOpenSearchSerializer, IPropertyMappingProvider
+
+internal sealed class OpenSearchJsonSerializer(
+    IOpenSearchSerializer builtin,
+    IConnectionSettingsValues settings,
+    Func<JsonSerializerOptions>? jsonSerializerOptionsFactory = null
+    ) : IOpenSearchSerializer, IPropertyMappingProvider
 {
     private class CustomNamingPolicy(Func<string, string> nameInferer) : JsonNamingPolicy
     {
         public override string ConvertName(string name) => nameInferer.Invoke(name);
     }
 
-    internal const int DefaultBufferSize = 1024;
-    internal static readonly Encoding ExpectedEncoding = new UTF8Encoding(false);
+    private (JsonSerializerOptions Compact, JsonSerializerOptions Indented)? _serializerOptions;
+    private JsonSerializerOptions SerializerOptions => (_serializerOptions ??= CreateOptions()).Compact;
+    private JsonSerializerOptions IndentedSerializerOptions => (_serializerOptions ??= CreateOptions()).Indented;
 
-    private readonly JsonSerializerOptions serializerOptions;
-    private readonly JsonSerializerOptions indentedSerializerOptions;
-
-    public OpenSearchJsonSerializer(
-        IOpenSearchSerializer builtin,
-        IConnectionSettingsValues settings,
-        Func<JsonSerializerOptions>? jsonSerializerOptionsFactory = null
-    )
+    private (JsonSerializerOptions, JsonSerializerOptions) CreateOptions()
     {
         var namingPolicy = settings.DefaultFieldNameInferrer is null
             ? null
             : new CustomNamingPolicy(settings.DefaultFieldNameInferrer);
+
+        var typeResolver = new OpenSearchTypeInfoResolver(settings);
+
         var memoryStreamFactory = settings.MemoryStreamFactory;
         var systemConverters = new JsonConverter[] {
             new JoinFieldConverter(builtin, memoryStreamFactory),
@@ -44,15 +45,14 @@ internal sealed class OpenSearchJsonSerializer : IOpenSearchSerializer, IPropert
             new TimeSpanConverter(),
         };
 
-        serializerOptions = CreateOptions(false);
-        indentedSerializerOptions = CreateOptions(true);
+        return (Create(false), Create(true));
 
-        JsonSerializerOptions CreateOptions(bool writeIndented)
+        JsonSerializerOptions Create(bool writeIndented)
         {
             var options = jsonSerializerOptionsFactory?.Invoke() ?? new JsonSerializerOptions() {
                 AllowTrailingCommas = true,
             };
-            options.TypeInfoResolver = new OpenSearchTypeInfoResolver(settings);
+            options.TypeInfoResolver = typeResolver;
             options.Converters.AddRange(systemConverters);
             if (namingPolicy is not null) {
                 options.PropertyNamingPolicy = namingPolicy;
@@ -63,25 +63,25 @@ internal sealed class OpenSearchJsonSerializer : IOpenSearchSerializer, IPropert
         }
     }
 
-    public object Deserialize(Type type, Stream stream) => JsonSerializer.Deserialize(stream, type, serializerOptions)!;
+    public object Deserialize(Type type, Stream stream) => JsonSerializer.Deserialize(stream, type, SerializerOptions)!;
 
-    public T Deserialize<T>(Stream stream) => JsonSerializer.Deserialize<T>(stream, serializerOptions)!;
+    public T Deserialize<T>(Stream stream) => JsonSerializer.Deserialize<T>(stream, SerializerOptions)!;
 
     public async Task<object> DeserializeAsync(Type type, Stream stream, CancellationToken cancellationToken = default)
-        => (await JsonSerializer.DeserializeAsync(stream, type, serializerOptions, cancellationToken).ConfigureAwait(false))!;
+        => (await JsonSerializer.DeserializeAsync(stream, type, SerializerOptions, cancellationToken).ConfigureAwait(false))!;
 
     public async Task<T> DeserializeAsync<T>(Stream stream, CancellationToken cancellationToken = default)
-        => (await JsonSerializer.DeserializeAsync<T>(stream, serializerOptions, cancellationToken).ConfigureAwait(false))!;
+        => (await JsonSerializer.DeserializeAsync<T>(stream, SerializerOptions, cancellationToken).ConfigureAwait(false))!;
 
     public void Serialize<T>(T data, Stream stream, SerializationFormatting formatting = SerializationFormatting.None)
     {
-        var options = formatting == SerializationFormatting.Indented ? indentedSerializerOptions : serializerOptions;
+        var options = formatting == SerializationFormatting.Indented ? IndentedSerializerOptions : SerializerOptions;
         JsonSerializer.Serialize(stream, data, options);
     }
 
     public async Task SerializeAsync<T>(T data, Stream stream, SerializationFormatting formatting = SerializationFormatting.None, CancellationToken cancellationToken = default)
     {
-        var options = formatting == SerializationFormatting.Indented ? indentedSerializerOptions : serializerOptions;
+        var options = formatting == SerializationFormatting.Indented ? IndentedSerializerOptions : SerializerOptions;
         await JsonSerializer.SerializeAsync(stream, data, options, cancellationToken).ConfigureAwait(false);
     }
 
