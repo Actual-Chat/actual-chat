@@ -15,8 +15,8 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
         CancellationToken cancellationToken)
     {
         var selectedChatId = ChatUI.SelectedChatId.Value;
-        var selectedChatIndex = ChatListUI.IndexOf(selectedChatId);
-        var chatCount = await ChatListUI.GetCount(Kind).ConfigureAwait(false);
+        var selectedChatIndex = await ChatListUI.IndexOf(selectedChatId, cancellationToken).ConfigureAwait(false);
+        var chatCount = await ChatListUI.GetCount(selectedChatId.PlaceId, cancellationToken).ConfigureAwait(false);
         if (chatCount == 0)
             return VirtualListData<ChatListItemModel>.None;
 
@@ -52,7 +52,7 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
         var indexTiles = ChatTileStack.FirstLayer.GetCoveringTiles(range);
         var tiles = new List<VirtualListTile<ChatListItemModel>>();
         foreach (var indexTile in indexTiles) {
-            var tile = await ChatListUI.GetTile(indexTile, cancellationToken).ConfigureAwait(false);
+            var tile = await ChatListUI.GetTile(selectedChatId.PlaceId, indexTile, cancellationToken).ConfigureAwait(false);
             if (tile.Items.Count > 0)
                 tiles.Add(tile);
         }

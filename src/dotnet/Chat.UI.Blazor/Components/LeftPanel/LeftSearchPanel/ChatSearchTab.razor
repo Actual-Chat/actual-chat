@@ -19,7 +19,6 @@
 
 @code {
     private Model _rendered;
-    private ChatListKind _kind = ChatListKind.All;
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
 
@@ -28,14 +27,15 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new Model(
-                ChatListUI.GetCountWhenLoading(_kind),
+            InitialValue = new(
+                ChatListUI.GetCountWhenLoading(ChatListKind.All),
                 false),
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var ownChatCount = await ChatListUI.GetCount(_kind).ConfigureAwait(false);
+        var selectedChatId = Hub.ChatUI.SelectedChatId.Value;
+        var ownChatCount = await ChatListUI.GetCount(selectedChatId.PlaceId, cancellationToken).ConfigureAwait(false);
         var isSearchApplied = await SearchUI.IsSearchModeOn(cancellationToken);
         return new(ownChatCount, isSearchApplied);
     }
