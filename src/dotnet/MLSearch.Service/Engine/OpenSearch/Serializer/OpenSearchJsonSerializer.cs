@@ -10,6 +10,9 @@ internal sealed class OpenSearchJsonSerializer(
     Func<JsonSerializerOptions>? jsonSerializerOptionsFactory = null
     ) : IOpenSearchSerializer, IPropertyMappingProvider
 {
+    public static IOpenSearchSerializer Default(IOpenSearchSerializer builtin, IConnectionSettingsValues values)
+        => new OpenSearchJsonSerializer(builtin, values);
+
     private class CustomNamingPolicy(Func<string, string> nameInferer) : JsonNamingPolicy
     {
         public override string ConvertName(string name) => nameInferer.Invoke(name);
