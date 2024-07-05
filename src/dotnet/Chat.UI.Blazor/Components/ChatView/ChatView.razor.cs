@@ -3,6 +3,7 @@ using ActualChat.Chat.UI.Blazor.Events;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 using ActualLab.Diagnostics;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
@@ -30,6 +31,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private ChatUIHub Hub => _hub ??= ChatContext.Hub;
     private Session Session => Hub.Session();
+    private ICommander Commander => Hub.Commander();
     private Chat Chat => ChatContext.Chat;
     private ChatUI ChatUI => Hub.ChatUI;
     private IChats Chats => Hub.Chats;
@@ -81,6 +83,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 .Log(LogLevel.Debug, Log)
                 .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
                 .RunIsolated(DisposeToken);
+            UpdateGroupChatUsageList();
         }
         catch {
             _whenInitializedSource.TrySetCanceled();
@@ -565,6 +568,20 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var range = new Range<long>(minEntryLid, minEntryLid + 20 * IdTileStack.MinTileSize)
             .IntersectWith(chatIdRange);
         return await entryReader.GetFirst(range, cancellationToken).ConfigureAwait(false);
+    }
+
+    private void UpdateGroupChatUsageList()
+    {
+        var chatId = Chat.Id;
+        if (chatId.Kind == ChatKind.Peer)
+            return;
+
+        _ = BackgroundTask.Run(async () => {
+                var command = new ChatUsages_RegisterUsage(Session, ChatUsageListKind.ViewedGroupChats, chatId);
+                await Commander.Call(command, default);
+            },
+            ex => Log.LogDebug(ex, "Failed to register view group chat"),
+            default);
     }
 
     // Nested types

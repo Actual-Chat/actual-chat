@@ -22,6 +22,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     private IInvites? _invites;
     private IContacts? _contacts;
     private IUserPresences? _userPresences;
+    private IChatUsages? _chatUsages;
     private ChatActivity? _chatActivity;
     private ChatUI? _chatUI;
     private ActiveChatsUI? _activeChatsUI;
@@ -56,6 +57,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     public IInvites Invites => _invites ??= Services.GetRequiredService<IInvites>();
     public IContacts Contacts => _contacts ??= Services.GetRequiredService<IContacts>();
     public IUserPresences UserPresences => _userPresences ??= Services.GetRequiredService<IUserPresences>();
+    public IChatUsages ChatUsages => _chatUsages ??= Services.GetRequiredService<IChatUsages>();
     public ChatActivity ChatActivity => _chatActivity ??= Services.GetRequiredService<ChatActivity>();
     public ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
     public ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
