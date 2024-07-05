@@ -38,8 +38,9 @@ internal static class OpenSearchConfigurationExt
         services.AddSingleton<IOpenSearchClient>(s => {
             var openSearchSettings = s.GetRequiredService<IOptions<OpenSearchSettings>>().Value;
             var connectionSettings = new ConnectionSettings(
-                new SingleNodeConnectionPool(new Uri(openSearchSettings.ClusterUri)),
-                sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
+                    new SingleNodeConnectionPool(new Uri(openSearchSettings.ClusterUri)),
+                    sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings))
+                .DefaultFieldNameInferrer(JsonNamingPolicy.CamelCase.ConvertName);
             return new OpenSearchClient(connectionSettings);
         });
 

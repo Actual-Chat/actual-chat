@@ -6,18 +6,6 @@ internal class OscTypeConverter<T>(IOpenSearchSerializer builtInSerializer, IMem
     : JsonConverter<T>
 {
     private static readonly Type targetType = typeof(T);
-    // private static readonly HashSet<Type> OscTypesThatCanAppearInSource = new HashSet<Type>
-    // {
-    //     typeof(JoinField),
-    //     typeof(QueryContainer),
-    //     typeof(CompletionField),
-    //     typeof(Attachment),
-    //     typeof(ILazyDocument),
-    //     typeof(LazyDocument),
-    //     typeof(GeoCoordinate),
-    //     typeof(GeoLocation),
-    //     typeof(CartesianPoint),
-    // };
 
     public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
     {
