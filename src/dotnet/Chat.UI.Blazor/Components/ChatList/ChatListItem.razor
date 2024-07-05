@@ -10,6 +10,10 @@
     var chatState = m.ChatState;
     var chat = chatState.Chat;
     var chatInfo = chatState.Info;
+    var isWide = ScreenSize.IsWide();
+    var isActiveChatList = ListKind == ChatListKind.Active;
+    var isListeningOrRecording = chatState.IsListening || chatState.IsRecording;
+    var hasButtons = isWide || isActiveChatList || isListeningOrRecording;
     var lastTextEntry = chatInfo.LastTextEntry;
     var audioState = chatState.AudioState;
 }
@@ -32,7 +36,10 @@ else {
                 <div class="c-description">
                     <span class="c-chat-title">
                         <ContactSearchHighlighter Chat="@chatState.Chat"/>
-                        <span class="c-title-incut"></span>
+                        <span class="c-incut"></span>
+                        @if (lastTextEntry != null && hasButtons && !isListeningOrRecording) {
+                            <LastEntryTime LastEntry="@lastTextEntry"/>
+                        }
                     </span>
                     @if (lastTextEntry != null) {
                         <div class="c-last-message">
@@ -49,6 +56,13 @@ else {
                                     @chatInfo.LastTextEntryText
                                 </span>
                             }
+                            <div class="c-incut"></div>
+                            @if (hasButtons && !isListeningOrRecording) {
+                                <UnreadCount
+                                    Value="@chatState.Info.UnreadCount"
+                                    NotificationMode="@chatState.Info.UserSettings.NotificationMode"
+                                    HasMentions="chatState.Info.HasUnreadMentions"/>
+                            }
                         </div>
                     }
                 </div>
@@ -56,20 +70,14 @@ else {
         </ChildContent>
         <Ending>
             @{
-                var isWide = ScreenSize.IsWide();
-                var isActiveChatList = ListKind == ChatListKind.Active;
-                var isListeningOrRecording = chatState.IsListening || chatState.IsRecording;
-                var hasButtons = isWide || isActiveChatList || isListeningOrRecording;
                 var hasMenu = !isActiveChatList && isWide;
                 var isHoverable = isWide && !isActiveChatList && !isListeningOrRecording;
             }
-            <UnreadCountWithTime
-                Value="@chatState.Info.UnreadCount"
-                LastEntry="@chatState.Info.LastTextEntry"
-                HideLastEntryTime="@isListeningOrRecording"
-                NotificationMode="@chatState.Info.UserSettings.NotificationMode"
-                HasMentions="chatState.Info.HasUnreadMentions"/>
             <div class="@(isHoverable ? "hoverable" : "") slot">
+                <UnreadCount
+                    Value="@chatState.Info.UnreadCount"
+                    NotificationMode="@chatState.Info.UserSettings.NotificationMode"
+                    HasMentions="chatState.Info.HasUnreadMentions"/>
                 @if (hasButtons) {
                     @if (chatState.IsRecording) {
                         <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="blackout"/>
