@@ -495,7 +495,6 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
                 [authorId],
                 [.. entries], startOffset, endOffset,
                 [], [], [], [],
-                false,
                 "en-US",
                 DateTime.Now.AddMinutes(doc)
             );

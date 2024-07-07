@@ -99,7 +99,6 @@ internal class ChatContentMapper(
             Reactions: reactions.MoveToImmutable(),
             Attachments: attachments.MoveToImmutable(),
             // TODO:
-            IsPublic: true,
             Language: null,
             // TODO:
             Timestamp: timestamp

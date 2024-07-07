@@ -162,7 +162,6 @@ internal sealed class ClusterSetupActions(
             var mentionsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Mentions));
             var reactionsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Reactions));
             var attachmentsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Attachments));
-            var isPublicField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.IsPublic));
             var languageField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Language));
             var timestampField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Timestamp));
             var chatIdField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ChatId));
@@ -219,7 +218,6 @@ internal sealed class ClusterSetupActions(
                                             "{{attachmentSummaryField}}": { "type": "text" }
                                         }
                                     },
-                                    "{{isPublicField}}": { "type": "boolean" },
                                     "{{languageField}}": { "type": "keyword" },
                                     "{{timestampField}}": { "type": "date" }
                                 }

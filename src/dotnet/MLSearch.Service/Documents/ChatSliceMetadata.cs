@@ -22,7 +22,6 @@ internal readonly record struct ChatSliceMetadata(
     ImmutableArray<PrincipalId> Reactions,
     // Attachments to document's source messages
     ImmutableArray<ChatSliceAttachment> Attachments,
-    bool IsPublic,
     string? Language,
     DateTime Timestamp
 )
