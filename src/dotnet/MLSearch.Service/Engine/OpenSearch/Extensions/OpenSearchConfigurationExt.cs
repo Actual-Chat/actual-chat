@@ -39,7 +39,9 @@ internal static class OpenSearchConfigurationExt
             var openSearchSettings = s.GetRequiredService<IOptions<OpenSearchSettings>>().Value;
             var connectionSettings = new ConnectionSettings(
                     new SingleNodeConnectionPool(new Uri(openSearchSettings.ClusterUri)),
-                    sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings))
+                    sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings, typeInfoModifiers: [
+                        ChatsTypeInfoModifier.Modify,
+                    ]))
                 .DefaultFieldNameInferrer(JsonNamingPolicy.CamelCase.ConvertName);
             return new OpenSearchClient(connectionSettings);
         });

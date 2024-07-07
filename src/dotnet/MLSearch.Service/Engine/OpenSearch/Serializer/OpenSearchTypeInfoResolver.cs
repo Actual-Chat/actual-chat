@@ -8,7 +8,7 @@ public class OpenSearchTypeInfoResolver : DefaultJsonTypeInfoResolver
 {
     protected IConnectionSettingsValues ConnectionSettings { get; }
 
-    public OpenSearchTypeInfoResolver(IConnectionSettingsValues connectionSettings)
+    public OpenSearchTypeInfoResolver(IConnectionSettingsValues connectionSettings, Action<JsonTypeInfo>[]? typeInfoModifiers = null)
     {
         ArgumentNullException.ThrowIfNull(connectionSettings);
         ConnectionSettings = connectionSettings;
@@ -16,6 +16,7 @@ public class OpenSearchTypeInfoResolver : DefaultJsonTypeInfoResolver
         Modifiers.AddRange([
             ShouldSerializeModifier,
             PropertyOverrideModifier,
+            .. typeInfoModifiers ?? [],
         ]);
     }
 
