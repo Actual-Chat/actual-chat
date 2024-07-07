@@ -96,6 +96,10 @@ internal sealed class ChatContentIndexer(
 
     public async ValueTask ApplyAsync(ChatEntry entry, CancellationToken cancellationToken)
     {
+        if (chatId != entry.ChatId) {
+            throw new InvalidOperationException($"Can't apply entry {entry.Id} as it doesn't belong to chat {chatId}");
+        }
+
         if (_buffer.Contains(entry)) {
             // We can assume there is no entry presence in index or other output buffers
             if (entry.IsRemoved) {

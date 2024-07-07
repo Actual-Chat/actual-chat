@@ -9,6 +9,32 @@ namespace ActualChat.MLSearch.UnitTests.Indexing.ChatContent;
 public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
+    public async Task ApplyMethodThrowsOnEntryFromAnotherChat()
+    {
+        var chatId = new ChatId(Generate.Option);
+        var otherChatId = new ChatId(Generate.Option);
+
+        var chats = Mock.Of<IChatsBackend>();
+        var docLoader = new Mock<IChatContentDocumentLoader>();
+        docLoader
+            .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        var docMapper = Mock.Of<IChatContentMapper>();
+        var sink = Mock.Of<ISink<ChatSlice, string>>();
+        var contentArranger = Mock.Of<IChatContentArranger>();
+
+        var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper, contentArranger, sink);
+
+        var otherChatEntryId = new ChatEntryId(otherChatId, ChatEntryKind.Text, 2, AssumeValid.Option);
+        var otherChatEntry = new ChatEntry(otherChatEntryId) {
+            Content = "Some irrelevant message.",
+        };
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await contentIndexer.ApplyAsync(otherChatEntry, CancellationToken.None)
+        );
+    }
+
+    [Fact]
     public async Task ApplyingCreateEventPutsEventIntoInternalBuffer()
     {
         var chats = Mock.Of<IChatsBackend>();
