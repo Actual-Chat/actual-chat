@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization.Metadata;
 using ActualChat.MLSearch.Engine.OpenSearch.Serializer.Converters;
 using OpenSearch.Client;
 using OpenSearch.Net;
@@ -7,8 +8,9 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Serializer;
 internal sealed class OpenSearchJsonSerializer(
     IOpenSearchSerializer builtin,
     IConnectionSettingsValues settings,
-    Func<JsonSerializerOptions>? jsonSerializerOptionsFactory = null
-    ) : IOpenSearchSerializer, IPropertyMappingProvider
+    Func<JsonSerializerOptions>? jsonSerializerOptionsFactory = null,
+    Action<JsonTypeInfo>[]? typeInfoModifiers = null
+) : IOpenSearchSerializer, IPropertyMappingProvider
 {
     public static IOpenSearchSerializer Default(IOpenSearchSerializer builtin, IConnectionSettingsValues values)
         => new OpenSearchJsonSerializer(builtin, values);
@@ -28,7 +30,7 @@ internal sealed class OpenSearchJsonSerializer(
             ? null
             : new CustomNamingPolicy(settings.DefaultFieldNameInferrer);
 
-        var typeResolver = new OpenSearchTypeInfoResolver(settings);
+        var typeResolver = new OpenSearchTypeInfoResolver(settings, typeInfoModifiers);
 
         var memoryStreamFactory = settings.MemoryStreamFactory;
         var systemConverters = new JsonConverter[] {
