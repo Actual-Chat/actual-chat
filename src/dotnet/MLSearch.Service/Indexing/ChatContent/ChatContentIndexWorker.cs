@@ -26,7 +26,7 @@ internal sealed class ChatContentIndexWorker(
 
         var cursor = await cursorStates.LoadAsync(chatId, cancellationToken).ConfigureAwait(false) ?? new(0, 0);
 
-        var indexer = indexerFactory.Create();
+        var indexer = indexerFactory.Create(chatId);
         await indexer.InitAsync(cursor, cancellationToken).ConfigureAwait(false);
 
         await foreach (var entry in GetUpdatedEntriesAsync(chatId, cursor, cancellationToken).ConfigureAwait(false)) {

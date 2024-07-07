@@ -7,6 +7,7 @@ namespace ActualChat.MLSearch.Indexing.ChatContent;
 internal interface IChatContentDocumentLoader
 {
     Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(
+        ChatId chatId,
         ChatContentCursor cursor,
         int tailSetSize,
         CancellationToken cancellationToken = default);
@@ -21,6 +22,12 @@ internal class ChatContentDocumentLoader(
     OpenSearchNamingPolicy namingPolicy
     ): IChatContentDocumentLoader
 {
+    private readonly string _chatIdField = string.Join('.',
+        new[] {
+            nameof(ChatSlice.Metadata),
+            nameof(ChatSliceMetadata.ChatId),
+        }.Select(namingPolicy.ConvertName));
+
     private readonly string _chatEntryLocalIdField = string.Join('.',
         new[] {
             nameof(ChatSlice.Metadata),
@@ -36,10 +43,11 @@ internal class ChatContentDocumentLoader(
         }.Select(namingPolicy.ConvertName));
 
     public async Task<IReadOnlyCollection<ChatSlice>> LoadTailAsync(
-        ChatContentCursor cursor, int tailSetSize, CancellationToken cancellationToken = default)
+        ChatId chatId, ChatContentCursor cursor, int tailSetSize, CancellationToken cancellationToken = default)
     {
         var query = new SearchQuery {
             MetadataFilters = [
+                new EqualityFilter<string>(_chatIdField, chatId),
                 new Int64RangeFilter(_chatEntryLocalIdField, null, new RangeBound<long>(cursor.LastEntryLocalId, true)),
             ],
             SortStatements = [

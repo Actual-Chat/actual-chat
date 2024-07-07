@@ -29,6 +29,9 @@ public class ChatContentIndexerFactoryTests(ITestOutputHelper @out) : TestBase(@
 
         var factory = new ChatContentIndexerFactory(serviceProvider.Object);
 
-        Assert.NotNull(factory.Create());
+        var chatId = new ChatId(Generate.Option);
+        var indexer = factory.Create(chatId);
+        Assert.NotNull(indexer);
+        Assert.Equal(chatId, indexer.ChatId);
     }
 }

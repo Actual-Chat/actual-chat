@@ -40,6 +40,7 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
         // Emulate loading tail documents
         docLoader
             .Setup(x => x.LoadTailAsync(
+                It.IsAny<ChatId>(),
                 It.IsAny<ChatContentCursor>(),
                 It.IsAny<int>(),
                 It.IsAny<CancellationToken>()))
@@ -95,7 +96,7 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
             );
 
         var maxTailSetSize = NewContent.Length / 2;
-        var contentIndexer = new ChatContentIndexer(chats, docLoader.Object, docMapper.Object, contentArranger.Object, sink.Object) {
+        var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper.Object, contentArranger.Object, sink.Object) {
             MaxTailSetSize = maxTailSetSize,
         };
 
@@ -155,6 +156,7 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
         Assert.Empty(contentIndexer.OutUpdates);
 
         docLoader.Verify(x => x.LoadTailAsync(
+            It.Is<ChatId>(id => id == chatId),
             It.IsAny<ChatContentCursor>(),
             It.IsAny<int>(),
             It.IsAny<CancellationToken>()), Times.Once);

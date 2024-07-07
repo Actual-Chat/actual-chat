@@ -31,6 +31,11 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
                 nameof(ChatSliceMetadata.ChatEntries),
                 nameof(ChatSliceEntry.Id),
             }.Select(namingPolicy.ConvertName));
+        var expectedChatIdFieldName = string.Join('.',
+            new[] {
+                nameof(ChatSlice.Metadata),
+                nameof(ChatSliceMetadata.ChatId),
+            }.Select(namingPolicy.ConvertName));
         var expectedLocalIdFieldName = string.Join('.',
             new[] {
                 nameof(ChatSlice.Metadata),
@@ -41,15 +46,20 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
         var searchEngine = new Mock<ISearchEngine<ChatSlice>>();
         var isIdFieldNameExpected = default(bool?);
         var isLocalIdFieldNameExpected = default(bool?);
+        var isChatIdFieldNameExpected = default(bool?);
         searchEngine
             .Setup(x => x.Find(It.IsAny<SearchQuery>(), It.IsAny<CancellationToken>()))
             .Returns<SearchQuery, CancellationToken>((q, _) => {
-                if (q.MetadataFilters.First() is Int64RangeFilter rangeFilter) {
+                if (q.MetadataFilters.Where(f => f is Int64RangeFilter).SingleOrDefault() is Int64RangeFilter rangeFilter) {
                     isLocalIdFieldNameExpected ??= true;
                     isLocalIdFieldNameExpected &= expectedLocalIdFieldName.Equals(rangeFilter.FieldName, StringComparison.Ordinal);
                     isLocalIdFieldNameExpected &= expectedLocalIdFieldName.Equals(q.SortStatements?[0].Field, StringComparison.Ordinal);
                 }
-                else if (q.MetadataFilters.First() is OrFilter orFilter) {
+                if (q.MetadataFilters.Where(f => f is EqualityFilter<string>).SingleOrDefault() is EqualityFilter<string> chatIdFilter) {
+                    isChatIdFieldNameExpected ??= true;
+                    isChatIdFieldNameExpected &= expectedChatIdFieldName.Equals(chatIdFilter.FieldName, StringComparison.Ordinal);
+                }
+                if (q.MetadataFilters.Where(f => f is OrFilter).SingleOrDefault() is OrFilter orFilter) {
                     isIdFieldNameExpected ??= true;
                     isIdFieldNameExpected &= orFilter.Filters.Cast<EqualityFilter<ChatEntryId>>().All(
                         f => expectedIdFieldName.Equals(f.FieldName, StringComparison.Ordinal));
@@ -62,16 +72,18 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
         var cursor = new ChatContentCursor(0, 0);
         var chatId = new ChatId(Generate.Option);
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 101, AssumeValid.Option);
-        _ = await documentLoader.LoadTailAsync(cursor, 5);
+        _ = await documentLoader.LoadTailAsync(chatId, cursor, 5);
         _ = await documentLoader.LoadByEntryIdsAsync([chatEntryId]);
         Assert.True(isIdFieldNameExpected);
         Assert.True(isLocalIdFieldNameExpected);
+        Assert.True(isChatIdFieldNameExpected);
     }
 
     [Fact]
     public async Task LoadTailMethodProperlyCallsSearchEngine()
     {
         const int tailSetSize = 333;
+        const long lastLocalId = 9999;
         var namingPolicy = ResolveNamingPolicy(NamingPolicy.CamelCase);
         var resultDocuments = CreateSearchResults();
         var searchEngine = new Mock<ISearchEngine<ChatSlice>>();
@@ -82,14 +94,24 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
             });
         var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy);
 
+        var chatId = new ChatId(Generate.Option);
+        var cursor = new ChatContentCursor(0, lastLocalId);
         var ctSource = new CancellationTokenSource();
-        var cursor = new ChatContentCursor(0, 0);
-        var results = await documentLoader.LoadTailAsync(cursor, tailSetSize, ctSource.Token);
+        var results = await documentLoader.LoadTailAsync(chatId, cursor, tailSetSize, ctSource.Token);
         Assert.Equal(resultDocuments.Select(rankedDoc => rankedDoc.Document), results);
 
         searchEngine.Verify(x => x.Find(
             It.Is<SearchQuery>(x => x.Limit == tailSetSize
-                && x.MetadataFilters.Single() is Int64RangeFilter
+                && x.MetadataFilters
+                    .Where(f => f is EqualityFilter<string>)
+                    .Cast<EqualityFilter<string>>()
+                    .Where(f => f.Value.Equals(chatId, StringComparison.Ordinal))
+                    .Single() != null
+                && x.MetadataFilters
+                    .Where(f => f is Int64RangeFilter)
+                    .Cast<Int64RangeFilter>()
+                    .Where(f => !f.From.HasValue && f.To.HasValue && f.To.Value.Value == lastLocalId && f.To.Value.Include)
+                    .Single() != null
                 && x.SortStatements![0].SortOrder == QuerySortOrder.Descenging),
             It.Is<CancellationToken>(x => x == ctSource.Token)
         ));
@@ -107,7 +129,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
         var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy);
 
         var cursor = new ChatContentCursor(0, 0);
-        await Assert.ThrowsAsync<UniqueException>(() => documentLoader.LoadTailAsync(cursor, 5));
+        await Assert.ThrowsAsync<UniqueException>(() => documentLoader.LoadTailAsync(ChatId.None, cursor, 5));
     }
 
     [Fact]
