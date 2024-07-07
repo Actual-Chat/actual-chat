@@ -5,12 +5,14 @@ namespace ActualChat.MLSearch.Indexing.ChatContent;
 
 internal interface IChatContentIndexer
 {
+    ChatId ChatId { get; }
     Task InitAsync(ChatContentCursor cursor, CancellationToken cancellationToken);
     ValueTask ApplyAsync(ChatEntry entry, CancellationToken cancellationToken);
     Task<ChatContentCursor> FlushAsync(CancellationToken cancellationToken);
 }
 
 internal sealed class ChatContentIndexer(
+    ChatId chatId,
     IChatsBackend chatsBackend,
     IChatContentDocumentLoader documentLoader,
     IChatContentMapper documentMapper,
@@ -80,10 +82,12 @@ internal sealed class ChatContentIndexer(
 
     public int MaxTailSetSize { get; init; } = 5;
 
+    public ChatId ChatId => chatId;
+
     public async Task InitAsync(ChatContentCursor cursor, CancellationToken cancellationToken)
     {
         _cursor = cursor;
-        var tailDocuments = await documentLoader.LoadTailAsync(cursor, MaxTailSetSize, cancellationToken)
+        var tailDocuments = await documentLoader.LoadTailAsync(chatId, cursor, MaxTailSetSize, cancellationToken)
             .ConfigureAwait(false);
         foreach (var document in tailDocuments) {
             _tailDocs.Add(document.Id, document);
