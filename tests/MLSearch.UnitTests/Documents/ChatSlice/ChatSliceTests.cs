@@ -27,7 +27,6 @@ public class IndexedDocumentTests(ITestOutputHelper @out): TestBase(@out)
             [PrincipalId.None],
             [new (chatEntryId1, 1, 1), new (chatEntryId2, 2, 1)], startOffset, endOffset,
             [], [], [], [],
-            false,
             "en-US",
             DateTime.Now
         );

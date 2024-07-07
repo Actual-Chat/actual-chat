@@ -68,7 +68,6 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
                     [authorId],
                     [new ChatSliceEntry(id, 1, 1)], null, null,
                     [], [], [], [],
-                    false,
                     "en-US",
                     DateTime.Now.AddDays(-(i/2))
                 );

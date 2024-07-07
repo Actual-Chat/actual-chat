@@ -27,7 +27,6 @@ internal static class ChatContentTestHelpers
                     [authorId],
                     [new ChatSliceEntry(id, 1, 1)], null, null,
                     [], [], [], [],
-                    false,
                     "en-US",
                     DateTime.Now.AddMinutes(-i)
                 );
@@ -49,7 +48,6 @@ internal static class ChatContentTestHelpers
                     [authorId],
                     [.. entries.Entries.Select(e => new ChatSliceEntry(e.Id, e.LocalId, e.Version))], entries.StartOffset, entries.EndOffset,
                     [], [], [], [],
-                    false,
                     "en-US",
                     DateTime.Now
                 );

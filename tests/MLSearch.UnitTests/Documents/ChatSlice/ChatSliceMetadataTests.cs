@@ -16,7 +16,6 @@ public class ChatSliceMetadataTests(ITestOutputHelper @out) : TestBase(@out)
         Assert.True(emptyMetadata.Mentions.IsDefault);
         Assert.True(emptyMetadata.Reactions.IsDefault);
         Assert.True(emptyMetadata.Attachments.IsDefault);
-        Assert.False(emptyMetadata.IsPublic);
         Assert.Null(emptyMetadata.Language);
         Assert.Equal(default, emptyMetadata.Timestamp);
 
@@ -47,7 +46,7 @@ public class ChatSliceMetadataTests(ITestOutputHelper @out) : TestBase(@out)
         var metadata = new ChatSliceMetadata(
             authors, chatEntries, startOffset, endOffset,
             replyToEntries, mentions, reactions, attachments,
-            true, lang, timestamp
+            lang, timestamp
         );
 
         Assert.Equal(authors, metadata.Authors);
@@ -58,7 +57,6 @@ public class ChatSliceMetadataTests(ITestOutputHelper @out) : TestBase(@out)
         Assert.Equal(mentions, metadata.Mentions);
         Assert.Equal(reactions, metadata.Reactions);
         Assert.Equal(attachments, metadata.Attachments);
-        Assert.True(metadata.IsPublic);
         Assert.Equal(lang, metadata.Language);
         Assert.Equal(timestamp, metadata.Timestamp);
     }
@@ -93,7 +91,6 @@ public class ChatSliceMetadataTests(ITestOutputHelper @out) : TestBase(@out)
             [PrincipalId.None],
             [new (chatEntryId, 1, 1)], null, null,
             [], [], [], [],
-            false,
             "en-US",
             DateTime.Now
         );
