@@ -125,12 +125,14 @@
 }
 .right-chat-panel .tab-panel .tab {
     @apply h-full;
-    @apply overflow-y-auto custom-scrollbar;
+    @apply overflow-hidden;
 }
 .tab-panel > .tab > .author-list-tab {
     @apply flex-y;
     @apply h-full;
     @apply p-2;
+    @apply need-gutter;
+    @apply overflow-y-auto custom-scrollbar;
 }
 .author-list-tab .avatar-badge {
     @apply h-12;

@@ -9,7 +9,7 @@
 }
 .c-contact-list {
     @apply flex-y grow;
-    @apply overflow-y-auto custom-scrollbar-outside;
+    @apply overflow-y-auto custom-scrollbar;
 }
 .c-contact-list > .c-item {
     @apply flex-x items-center gap-x-1;

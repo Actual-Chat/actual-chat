@@ -1,7 +1,9 @@
 /* List */
 .contact-selector-list {
     @apply flex-y grow;
+    @apply px-2;
     @apply overflow-y-auto custom-scrollbar;
+    @apply need-gutter;
 }
 
 /* List item */

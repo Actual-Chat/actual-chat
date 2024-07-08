@@ -102,6 +102,7 @@ body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
 }
 .chat-list.chat-list-all {
     @apply flex-1 p-2;
+    @apply need-gutter;
 }
 .chat-list.chat-list-skeleton {
     @apply flex-1 px-2;
