@@ -11,16 +11,14 @@
     } else if (_canUseWebShare) {
         var textAndLink = Request.GetShareTextAndLink(UrlMapper);
         var link = Request.GetShareLink(UrlMapper);
-        <button class="btn btn-modal"
+        <Button Class="btn-modal"
                 data-share-title="@Request.Text"
                 data-share-text="@textAndLink"
                 data-share-link="@link"
                 >
-            <div class="btn-content" tabindex="-1">
-                <i class="icon-share-more text-2xl"></i>
-                <span>Share Externally</span>
-            </div>
-        </button>
+            <Icon><i class="icon-share-more text-2xl"></i></Icon>
+            <Title>Share Externally</Title>
+        </Button>
     } else {
         var text = Request.HasLink() ? "Copy link" : "Copy to clipboard";
         <CopyTrigger Tooltip="Copy" CopyText="@Request.GetShareTextAndLink(UrlMapper)">

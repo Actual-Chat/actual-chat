@@ -5,7 +5,7 @@
 
 .edit-settings-modal.modal-frame {
     @apply px-0;
-    @apply gap-y-0;
+    @apply md:gap-y-0;
 }
 
 .edit-settings-modal .no-padding-header-decorator {

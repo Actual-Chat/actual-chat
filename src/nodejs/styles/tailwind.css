@@ -259,4 +259,14 @@
     .always-white {
         @apply text-[var(--white)];
     }
+
+    /* Scrollbar gutter */
+
+    @media (min-width: 820px) {
+        .need-gutter {
+            @apply px-0;
+            scrollbar-gutter: stable both-edges;
+        }
+    }
+
 }
