@@ -52,12 +52,13 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         _searchUI.Text.Value = "one";
 
         // assert
-        var foundContacts = await GetSearchResults(expectedFriends.Length.Clamp(0, 5)
-            + expectedStrangers.Length.Clamp(0, 5)
-            + expectedJoinedGroups.Length.Clamp(0, 5)
-            + expectedOtherGroups.Length.Clamp(0, 5)
-            + expectedJoinedPlaces.Length.Clamp(0, 5)
-            + expectedOtherPlaces.Length.Clamp(0, 5));
+        var foundContacts = await GetSearchResults(
+            expectedFriends.Length.Clamp(0, Constants.Search.ContactSearchDefaultPageSize)
+            + expectedStrangers.Length.Clamp(0, Constants.Search.ContactSearchDefaultPageSize)
+            + expectedJoinedGroups.Length.Clamp(0, Constants.Search.ContactSearchDefaultPageSize)
+            + expectedOtherGroups.Length.Clamp(0, Constants.Search.ContactSearchDefaultPageSize)
+            + expectedJoinedPlaces.Length.Clamp(0, Constants.Search.ContactSearchDefaultPageSize)
+            + expectedOtherPlaces.Length.Clamp(0, Constants.Search.ContactSearchDefaultPageSize));
         var expected = bob
             .BuildFoundContacts(expectedFriends)
             .ToList();
@@ -181,7 +182,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
                 results = await _searchUI.GetContactSearchResults();
                 results.Should().HaveCount(expectedCount);
             },
-            TimeSpan.FromSeconds(30));
+            TimeSpan.FromSeconds(10));
         return results.ToList();
     }
 }
