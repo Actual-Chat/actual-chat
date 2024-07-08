@@ -15,6 +15,12 @@ public sealed partial record SystemEntry : IUnionRecord<SystemEntryOption?>
         init => Option ??= value;
     }
 
+    [DataMember, MemoryPackOrder(1)]
+    public NotifyMembersOption? NotifyMembers {
+        get => Option as NotifyMembersOption;
+        init => Option ??= value;
+    }
+
     public static implicit operator SystemEntry(SystemEntryOption option) => new() { Option = option };
 }
 
@@ -48,5 +54,30 @@ public sealed partial record MembersChangedOption : SystemEntryOption
         return new MarkupSeq(
             new MentionMarkup(authorMentionId, authorName),
             new PlainTextMarkup($" has {verb} the chat."));
+    }
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record NotifyMembersOption : SystemEntryOption
+{
+    [DataMember, MemoryPackOrder(0)] public AuthorId AuthorId { get; init; }
+    [DataMember, MemoryPackOrder(1)] public string AuthorName { get; init; } = "";
+
+    public NotifyMembersOption() { }
+
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    public NotifyMembersOption(AuthorId authorId, string authorName)
+    {
+        AuthorId = authorId;
+        AuthorName = authorName;
+    }
+
+    public override Markup ToMarkup()
+    {
+        var authorMentionId = new MentionId(AuthorId, AssumeValid.Option);
+        var authorName = AuthorName.NullIfEmpty() ?? "Someone";
+        return new MarkupSeq(
+            new MentionMarkup(authorMentionId, authorName),
+            new PlainTextMarkup(" asked for attention."));
     }
 }

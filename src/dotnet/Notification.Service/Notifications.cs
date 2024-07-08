@@ -62,11 +62,27 @@ public class Notifications(IServiceProvider services) : INotifications
         Notifications_NotifyMembers command, CancellationToken cancellationToken)
     {
         var (session, chatId) = command;
-        _ = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
-        var idRange = await Chats.GetIdRange(session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var notifyCommand = new NotificationsBackend_NotifyMembers(account.Id, chatId, idRange.End - 1);
+        var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        var author = chat.Rules.Author.Require();
+        chat.Rules.Require(ChatPermissions.Write);
+        var account = chat.Rules.Account;
+
+        var entryId = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
+        var changeEntry = new ChatsBackend_ChangeEntry(
+            entryId,
+            null,
+            Change.Create(new ChatEntryDiff {
+                AuthorId = GetWalleId(author.ChatId),
+                SystemEntry = (SystemEntry)new NotifyMembersOption(author.Id, author.ToString()),
+            }));
+
+        var textEntry = await Commander.Call(changeEntry, true, cancellationToken).ConfigureAwait(false);
+
+        var notifyCommand = new NotificationsBackend_NotifyMembers(account.Id, chatId, textEntry.LocalId - 1);
         await Commander.Run(notifyCommand, cancellationToken).ConfigureAwait(false);
+
+        static AuthorId GetWalleId(ChatId chatId)
+            => new(chatId, Constants.User.Walle.AuthorLocalId, AssumeValid.Option);
     }
 
     // Private methods
