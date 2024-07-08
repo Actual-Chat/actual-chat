@@ -26,6 +26,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     private ChatContactIndexer ChatContactIndexer { get; } = services.GetRequiredService<ChatContactIndexer>();
     private OpenSearchConfigurator OpenSearchConfigurator { get; } = services.GetRequiredService<OpenSearchConfigurator>();
     private IQueues Queues { get; } = services.Queues();
+    private ILogger? DebugLog => Constants.DebugMode.OpenSearchRequest ? Log : null;
 
     [ComputeMethod]
     protected virtual async Task<ApiSet<string>> GetIndicesForEntrySearch(UserId userId, CancellationToken cancellationToken)
@@ -137,7 +138,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
                             .Highlight(h => h.Fields(f
                                 => f.Field(x => x.FullName)
                                     .PreTags(HighlightsConverter.PreTag)
-                                    .PostTags(HighlightsConverter.PostTag))),
+                                    .PostTags(HighlightsConverter.PostTag)))
+                            .Log(OpenSearchClient, DebugLog, "People search request"),
                     cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
@@ -197,7 +199,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
                             .Highlight(h => h.Fields(f
                                 => f.Field(x => x.Title)
                                     .PreTags(HighlightsConverter.PreTag)
-                                    .PostTags(HighlightsConverter.PostTag))),
+                                    .PostTags(HighlightsConverter.PostTag)))
+                            .Log(OpenSearchClient, DebugLog, "Group search request"),
                     cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
@@ -248,7 +251,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
                             .Highlight(h => h.Fields(f
                                 => f.Field(x => x.Title)
                                     .PreTags(HighlightsConverter.PreTag)
-                                    .PostTags(HighlightsConverter.PostTag))),
+                                    .PostTags(HighlightsConverter.PostTag)))
+                            .Log(OpenSearchClient, DebugLog, "Place search request"),
                     cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
@@ -500,7 +504,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
                     .From(skip)
                     .Size(limit)
                     .Query(q => q.MatchPhrasePrefix(p => p.Query(criteria).Field(x => x.Content)))
-                    .IgnoreUnavailable(),
+                    .IgnoreUnavailable()
+                    .Log(OpenSearchClient, DebugLog, "Entry search request"),
                 cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);

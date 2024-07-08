@@ -56,6 +56,9 @@ public static partial class Constants
         public static readonly bool TranscriberGoogle = false;
         public static readonly bool TranscriptStreamProxy = false;
 
+        // Search
+        public static readonly bool OpenSearchRequest = false;
+
         // Database
         public static readonly bool Npgsql = false;
 
