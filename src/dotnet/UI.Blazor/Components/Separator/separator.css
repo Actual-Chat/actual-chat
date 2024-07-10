@@ -8,7 +8,7 @@
     @apply text-xs font-medium;
 }
 
-.separator-dot {
+.dot-separator {
     @apply w-[0.15rem] h-[0.15rem];
     @apply rounded-full;
     @apply bg-[var(--text-03)];

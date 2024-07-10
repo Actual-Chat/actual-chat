@@ -2,21 +2,21 @@
 @inherits ComputedStateComponent<ChatMemberCounter.Model>
 @{
     var m = State.Value;
-    if (m.MembersCount == 0)
+    if (m.MemberCount == 0)
         return;
 }
 
-@if (m.MembersCount > 0) {
+@if (m.MemberCount > 0) {
     <div class="chat-member-counter">
         <div class="c-text">
             <span>
-                @($"{GetCountString(m.MembersCount)} {"member".Pluralize(m.MembersCount)}")
+                @($"{GetCountString(m.MemberCount)} {"member".Pluralize(m.MemberCount)}")
             </span>
             @if (m.OnlineCount > 0) {
                 @($", {GetCountString(m.OnlineCount)} online")
             }
         </div>
-        <SeparatorDot/>
+        <DotSeparator/>
     </div>
 }
 
@@ -40,13 +40,13 @@
         var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken);
 
         var authorPresences = await allAuthorIds
-            .Select(async authorId => await Authors.GetPresence(Session, chatId, authorId, cancellationToken).ConfigureAwait(false))
+            .Select(authorId => Authors.GetPresence(Session, chatId, authorId, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
 
         var onlineCount = authorPresences.Count(presence => presence is Presence.Away or Presence.Online or Presence.Recording);
         return new() {
-            MembersCount = allAuthorIds.Count,
+            MemberCount = allAuthorIds.Count,
             OnlineCount = onlineCount,
         };
     }
@@ -68,7 +68,7 @@
     public sealed record Model {
         public static readonly Model Loading = new();
 
-        public int MembersCount { get; init; }
+        public int MemberCount { get; init; }
         public int OnlineCount { get; init; }
     }
 }
