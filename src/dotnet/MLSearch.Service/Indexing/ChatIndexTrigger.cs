@@ -1,4 +1,4 @@
-using ActualChat.Chat;
+
 using ActualChat.Chat.Events;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 
@@ -9,7 +9,7 @@ namespace ActualChat.MLSearch.Indexing;
 // event handling while the event will be marked as complete.
 // This means: At most once logic.
 
-internal class ChatIndexTrigger(ICommander commander, IWorkerPool<MLSearch_TriggerChatIndexing, ChatId, ChatId> workerPool)
+internal class ChatIndexTrigger(ICommander commander, IWorkerPool<MLSearch_TriggerChatIndexing, (ChatId, IndexingKind), ChatId> workerPool)
     : IChatIndexTrigger, IComputeService
 {
     // ReSharper disable once UnusedMember.Global
@@ -26,7 +26,15 @@ internal class ChatIndexTrigger(ICommander commander, IWorkerPool<MLSearch_Trigg
     // [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        var e = new MLSearch_TriggerChatIndexing(eventCommand.Entry.ChatId);
+        var e = new MLSearch_TriggerChatIndexing(eventCommand.Entry.ChatId, IndexingKind.ChatContent);
+        await commander.Call(e, cancellationToken).ConfigureAwait(false);
+    }
+
+    // ReSharper disable once UnusedMember.Global
+    // [EventHandler]
+    public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        var e = new MLSearch_TriggerChatIndexing(eventCommand.Chat.Id, IndexingKind.ChatInfo);
         await commander.Call(e, cancellationToken).ConfigureAwait(false);
     }
 }

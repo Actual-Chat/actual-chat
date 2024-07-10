@@ -18,9 +18,13 @@ internal sealed class ChatContentIndexWorker(
     public async Task ExecuteAsync(MLSearch_TriggerChatIndexing job, CancellationToken cancellationToken)
     {
         var eventCount = 0;
-        var chatId = job.Id;
+        var chatId = job.ChatId;
 
         await chatInfoIndexer.IndexAsync(chatId, cancellationToken).ConfigureAwait(false);
+
+        if (job.IndexingKind == IndexingKind.ChatInfo) {
+            return;
+        }
 
         var cursor = await cursorStates.LoadAsync(chatId, cancellationToken).ConfigureAwait(false) ?? new(0, 0);
 
@@ -43,7 +47,7 @@ internal sealed class ChatContentIndexWorker(
             await commander.Call(job, cancellationToken).ConfigureAwait(false);
         }
         else if (!cancellationToken.IsCancellationRequested) {
-            var completionNotification = new MLSearch_TriggerChatIndexingCompletion(job.Id);
+            var completionNotification = new MLSearch_TriggerChatIndexingCompletion(chatId);
             await commander.Call(completionNotification, cancellationToken).ConfigureAwait(false);
         }
         return;

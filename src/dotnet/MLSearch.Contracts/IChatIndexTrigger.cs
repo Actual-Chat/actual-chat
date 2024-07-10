@@ -4,33 +4,52 @@ using MemoryPack;
 
 namespace ActualChat.MLSearch;
 
+public enum IndexingKind
+{
+    ChatContent = 0,
+    ChatInfo = 1,
+}
+
 /// <summary>
-/// This command is what passes event from an app code
-/// into the correct shard.
+/// This command carries request of indexing for the chat with the
+/// specified <paramref name="ChatId"/>.
 /// </summary>
-/// <param name="Id">Identifier of a chat to start indexing.</param>
+/// <remarks>
+/// <paramref name="ChatId"/> serves as a shard key so command delivered
+/// into the correct shard.
+/// </remarks>
+/// <param name="ChatId">Identifier of a chat to start content indexing.</param>
+/// <param name="IndexingKind">Identifyes type of content to be indexed.</param>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record MLSearch_TriggerChatIndexing(
-    [property: DataMember, MemoryPackOrder(0)] ChatId Id
-) : IBackendCommand, IHasId<ChatId>, IHasShardKey<ChatId>, ICommand<Unit>
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] IndexingKind IndexingKind
+) : IBackendCommand, IHasId<(ChatId, IndexingKind)>, IHasShardKey<ChatId>, ICommand<Unit>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => Id;
+    public (ChatId, IndexingKind) Id => (ChatId, IndexingKind);
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => ChatId;
 }
 
 /// <summary>
 /// This command carries cancellation request from the app code to the correct shard
 /// </summary>
-/// <param name="Id">Identifier of a job to be cancelled.</param>
+/// <param name="ChatId">Identifier of a job to be cancelled.</param>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record MLSearch_CancelChatIndexing(
-    [property: DataMember, MemoryPackOrder(0)] ChatId Id
-) : IBackendCommand, IHasId<ChatId>, IHasShardKey<ChatId>, ICommand<Unit>
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] IndexingKind IndexingKind
+) : IBackendCommand, IHasId<(ChatId, IndexingKind)>, IHasShardKey<ChatId>, ICommand<Unit>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => Id;
+    public (ChatId, IndexingKind) Id => (ChatId, IndexingKind);
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => ChatId;
 }
 
 /// <summary>

@@ -151,7 +151,7 @@ internal sealed class ChatIndexInitializerShard(
 
         static async Task ScheduleChatIndexing(ChatId chatId, ICommander commander, CancellationToken cancellationToken)
         {
-            var job = new MLSearch_TriggerChatIndexing(chatId);
+            var job = new MLSearch_TriggerChatIndexing(chatId, IndexingKind.ChatContent);
             await commander.Call(job, cancellationToken).ConfigureAwait(false);
         }
     }

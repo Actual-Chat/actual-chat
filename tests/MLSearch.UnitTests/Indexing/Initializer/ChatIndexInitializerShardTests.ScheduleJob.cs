@@ -167,7 +167,7 @@ public partial class ChatIndexInitializerShardTests
         await ChatIndexInitializerShard.ScheduleIndexingJobAsync(
             chatInfo, state, _scheduleJobRetrySettings, commander.Object, clock, log, CancellationToken.None);
 
-        Assert.True(observedCommand is MLSearch_TriggerChatIndexing { Id: var observedChatId } && chatId == observedChatId);
+        Assert.True(observedCommand is MLSearch_TriggerChatIndexing { ChatId: var observedChatId } && chatId == observedChatId);
     }
 
     private static Mock<ICommander> MockCommander(Func<CommandContext, CancellationToken, Task>? action = null)
