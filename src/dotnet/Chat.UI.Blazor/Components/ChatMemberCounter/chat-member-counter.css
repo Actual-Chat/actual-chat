@@ -5,8 +5,3 @@
     @apply flex-x items-center;
     @apply text-caption-6 text-03;
 }
-.chat-member-counter > .c-dot {
-    @apply w-1 h-1;
-    @apply rounded-full;
-    @apply bg-06;
-}

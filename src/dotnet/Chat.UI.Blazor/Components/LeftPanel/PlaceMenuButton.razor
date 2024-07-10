@@ -14,7 +14,7 @@
     </div>
     <div class="c-bottom">
         <span>@m.MembersCount @("Member".Pluralize(m.MembersCount))</span>
-        <span class="c-dot"></span>
+        <SeparatorDot/>
         <span>@(m.Place.IsPublic ? "Public" : "Private")</span>
     </div>
 </div>

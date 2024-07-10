@@ -29,7 +29,7 @@
     private IAuthors Authors => ChatContext.Hub.Authors;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
-    [Parameter] public bool Colorful { get; set; } = true;
+    [Parameter] public bool IsColorful { get; set; } = true;
     [Parameter] public bool ShowLockIcon { get; set; } = true;
     [Parameter] public bool ShowLastSeen { get; set; }
 
@@ -49,7 +49,7 @@
                     ? "Place\u00A0chat"
                     : "Public"
                 : "Private";
-            if (Colorful) {
+            if (IsColorful) {
                 badgeClass = "public";
             }
             return new() {
@@ -82,7 +82,7 @@
             Presence.Recording => "Online",
             _ => "",
         };
-        if (Colorful) {
+        if (IsColorful) {
             badgeClass = presence switch {
                 Presence.Offline => "offline",
                 Presence.Away => "away",
