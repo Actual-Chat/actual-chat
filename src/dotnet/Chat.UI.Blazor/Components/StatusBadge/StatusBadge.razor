@@ -5,10 +5,22 @@
 }
 
 <span class="status-badge @m.BadgeClass">
-    @if (Chat is { Kind: ChatKind.Group or ChatKind.Place, IsPublic: false } && ShowLockIcon) {
-        <i class="icon-lock text-sm"></i>
+    @switch (Chat) {
+        case { Kind: ChatKind.Group or ChatKind.Place, IsPublic: false } when ShowLockIcon:
+            <i class="icon-lock text-sm"></i>
+            @m.Status
+            break;
+        case { Kind: ChatKind.Group or ChatKind.Place, IsPublic: true }:
+            <i class="icon-globe text-sm"></i>
+            @m.Status
+            break;
+        case { Kind: ChatKind.Peer } when ShowLastSeen:
+            <AuthorPresenceText AuthorSid="@m.AuthorSid"/>
+            break;
+        case { Kind: ChatKind.Peer }:
+            @m.Status
+            break;
     }
-    @m.Status
 </span>
 
 @code {
@@ -19,6 +31,7 @@
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter] public bool Colorful { get; set; } = true;
     [Parameter] public bool ShowLockIcon { get; set; } = true;
+    [Parameter] public bool ShowLastSeen { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -82,6 +95,7 @@
         return new() {
             Status = status,
             BadgeClass = badgeClass,
+            AuthorSid = anotherAuthorId,
         };
     }
 
@@ -92,5 +106,6 @@
 
         public string Status { get; init; } = "";
         public string BadgeClass { get; init; } = "";
+        public string AuthorSid { get; init; } = "";
     }
 }

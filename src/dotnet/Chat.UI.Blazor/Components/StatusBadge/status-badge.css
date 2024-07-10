@@ -29,7 +29,7 @@
     @apply bg-status-online-badge;
 }
 
-.chat-header-center > .chat-header-title > .status-badge {
+.chat-header-center > .chat-header-title > .c-info > .status-badge {
     @apply p-0;
     @apply text-caption-6 text-03;
 }

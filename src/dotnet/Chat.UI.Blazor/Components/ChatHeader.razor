@@ -26,7 +26,14 @@
             }
             <div class="chat-header-title">
                 <div class="c-title">@chat.Title</div>
-                <StatusBadge ChatContext="@ChatContext" Colorful="@false"/>
+                <div class="c-info">
+                    @if (chat.Rules.CanJoin()) {
+                        @if (!chat.Id.IsPeerChat(out _)) {
+                            <ChatMemberCounter ChatContext="@ChatContext"/>
+                        }
+                    }
+                    <StatusBadge ChatContext="@ChatContext" Colorful="@false" ShowLastSeen="true"/>
+                </div>
             </div>
             <div class="c-activities-container">
                 <ChatActivities @key="@chat.Id.Value" Chat="@chat"/>
