@@ -90,7 +90,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 5000 // max number of updates to process in a single run
             )
         );
-        services.AddWorkerPool<IChatContentIndexWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>(
+        services.AddWorkerPool<IChatContentIndexWorker, MLSearch_TriggerChatIndexing, (ChatId, IndexingKind), ChatId>(
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
 
