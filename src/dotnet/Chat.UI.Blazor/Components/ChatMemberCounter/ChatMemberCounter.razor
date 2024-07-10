@@ -1,0 +1,66 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<(int, int)>
+@{
+    var m = State.Value;
+    if (m.Item1 == 0)
+        return;
+    var members = m.Item1;
+    var online = m.Item2;
+}
+
+@if (members > 0) {
+    <div class="chat-member-counter">
+        <div class="c-text">
+            <span>
+                @($"{GetCount(members)} {"member".Pluralize(members)}")
+            </span>
+            @if (online > 0) {
+                @($", {GetCount(online)} online")
+            }
+        </div>
+        <span class="c-dot"></span>
+    </div>
+}
+
+@code {
+    private Chat Chat => ChatContext.Chat;
+    private Session Session => ChatContext.Hub.Session();
+    private IAuthors Authors => ChatContext.Hub.Authors;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override ComputedState<(int, int)>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<(int, int)>.Options() {
+                InitialValue = (0, 0),
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<(int, int)> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat.Id;
+        var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken);
+
+        var authorPresences = await allAuthorIds
+            .Select(async authorId => await Authors.GetPresence(Session, chatId, authorId, cancellationToken).ConfigureAwait(false))
+            .Collect(256)
+            .ConfigureAwait(false);
+
+        var onlineCount = authorPresences.Count(presence => presence is Presence.Away or Presence.Online or Presence.Recording);
+        return (allAuthorIds.Count(), onlineCount);
+    }
+
+    private string GetCount(int memberCount) {
+        decimal count;
+        switch (memberCount) {
+            case < 1000:
+                return $"{memberCount}";
+            case < 1000000:
+                count = Math.Round(memberCount / 1000m, 1, MidpointRounding.AwayFromZero);
+                return $"{count}K";
+            default:
+                count = Math.Round(memberCount / 1000000m, 1, MidpointRounding.AwayFromZero);
+                return $"{count}M";
+        }
+    }
+}
