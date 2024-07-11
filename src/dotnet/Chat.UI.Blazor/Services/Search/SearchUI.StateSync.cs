@@ -50,18 +50,29 @@ public partial class SearchUI
         if (isSearchModeOn) {
             var searchResultMap = await FindContacts(criteria, cancellationToken).ConfigureAwait(false);
             foundContacts = new List<FoundContact>(searchResultMap.Sum(x => x.Value.Count));
-            foreach (var scope in Scopes) {
-                if (!searchResultMap.TryGetValue(scope, out var searchResults) || searchResults.Count == 0)
-                    continue;
+            var expandableScopes =
+                searchResultMap.Where(x => x.Value.Count >= Constants.Search.ContactSearchDefaultPageSize)
+                    .Select(x => x.Key.Scope)
+                    .Distinct()
+                    .ToHashSet();
 
-                for (int i = 0; i < searchResults.Count; i++) {
-                    var searchResult = searchResults[i];
-                    foundContacts.Add(new FoundContact(searchResult, scope, i == 0, i == searchResults.Count - 1));
+            foreach (var scope in Scopes) {
+                var own = searchResultMap.GetValueOrDefault(new (scope, true));
+                var other = searchResultMap.GetValueOrDefault(new (scope, false));
+                var scopeResults = own.Concat(other).ToList();
+                for (int i = 0; i < scopeResults.Count; i++) {
+                    var searchResult = scopeResults[i];
+                    foundContacts.Add(new (searchResult,
+                        scope,
+                        i == 0,
+                        i == scopeResults.Count - 1,
+                        own.Count >= Constants.Search.ContactSearchDefaultPageSize
+                        || other.Count >= Constants.Search.ContactSearchDefaultPageSize));
                 }
             }
         }
         else
-            foundContacts = new List<FoundContact>();
+            foundContacts = [];
         _cached = new Cached(criteria, foundContacts);
         using (Invalidation.Begin()) {
             _ = GetContactSearchResults();
@@ -69,7 +80,7 @@ public partial class SearchUI
         }
     }
 
-    private async Task<Dictionary<ContactSearchScope, IReadOnlyList<ContactSearchResult>>> FindContacts(
+    private async Task<Dictionary<SubgroupKey, ApiArray<ContactSearchResult>>> FindContacts(
         Criteria criteria,
         CancellationToken cancellationToken)
     {
@@ -80,21 +91,19 @@ public partial class SearchUI
         var scopes = criteria.PlaceId.IsNone
             ? Scopes
             : Scopes.Where(x => x is not ContactSearchScope.Places);
-        var subgroups = scopes.SelectMany(x => new SubgroupKey[] { new (x, true), new (x, false) }).ToArray();
+        var subgroups = ToSubgroups(scopes);
         var allSearchResults = await subgroups.Select(Find)
             .CollectResults()
             .ConfigureAwait(false);
-        var resultByScope = new Dictionary<ContactSearchScope, IReadOnlyList<ContactSearchResult>>();
-        for (var i = 0; i < subgroups.Length; i++) {
-            var (scope, _) = subgroups[i];
-            var (searchResults, error) = allSearchResults[i];
-            if (error is null)
-                resultByScope[scope] = resultByScope.GetValueOrDefault(scope, []).Concat(searchResults.Hits).ToList();
-        }
-        return resultByScope;
+        return subgroups.Zip(allSearchResults)
+            .Where(x => x.Second.HasValue)
+            .ToDictionary(x => x.First, x => x.Second.Value.Hits);
 
         Task<ContactSearchResultPage> Find(SubgroupKey key)
             // TODO: reuse cached data for scope
             => Search.FindContacts(session, criteria.ToQuery(key), cancellationToken);
     }
+
+    private static SubgroupKey[] ToSubgroups(IEnumerable<ContactSearchScope> scopes)
+        => scopes.SelectMany(x => new SubgroupKey[] { new (x, true), new (x, false) }).ToArray();
 }

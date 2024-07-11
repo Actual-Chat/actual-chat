@@ -35,7 +35,7 @@ else {
                 <ChatIcon Chat="chatState.Chat" ShowPresence="@true"/>
                 <div class="c-description">
                     <span class="c-chat-title">
-                        <ContactSearchHighlighter Chat="@chatState.Chat"/>
+                        <span>@chat.Title</span>
                         <span class="c-incut"></span>
                         @if (lastTextEntry != null && hasButtons && !isListeningOrRecording) {
                             <LastEntryTime LastEntry="@lastTextEntry"/>

@@ -130,15 +130,12 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         var linkedUserIds = ownContactIds.Select(x => x.ChatId.PeerChatId.UserIds.OtherThan(userId)).ToList();
         var searchResponse =
             await OpenSearchClient.SearchAsync<IndexedUserContact>(s
-                        => s.Index(IndexNames.PublicUserIndexName)
+                        => s.Index(IndexNames.UserIndexName)
                             .From(query.Skip)
                             .Size(query.Limit)
                             .Query(qq => qq.Bool(ConfigureQueryDescriptor))
                             .IgnoreUnavailable()
-                            .Highlight(h => h.Fields(f
-                                => f.Field(x => x.FullName)
-                                    .PreTags(HighlightsConverter.PreTag)
-                                    .PostTags(HighlightsConverter.PostTag)))
+                            .Highlight(h => h.Fields(f => f.Field(x => x.FullName)))
                             .Log(OpenSearchClient, DebugLog, "People search request"),
                     cancellationToken)
                 .Assert(Log)
@@ -157,7 +154,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
                             m
                                 => m.Fields(x => x.FullName, x => x.FirstName, x => x.SecondName)
                                     .Query(query.Criteria)
-                                    .Type(TextQueryType.PhrasePrefix)),
+                                    .Type(TextQueryType.PhrasePrefix)
+                                    .Operator(Operator.Or)),
                     query.Own
                         ? q => q.Terms(m => m.Field(x => x.Id).Terms(linkedUserIds))
                         : null,
@@ -196,10 +194,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
                             .Size(query.Limit)
                             .Query(qq => qq.Bool(ConfigureQueryDescriptor))
                             .IgnoreUnavailable()
-                            .Highlight(h => h.Fields(f
-                                => f.Field(x => x.Title)
-                                    .PreTags(HighlightsConverter.PreTag)
-                                    .PostTags(HighlightsConverter.PostTag)))
+                            .Highlight(h => h.Fields(f => f.Field(x => x.Title)))
                             .Log(OpenSearchClient, DebugLog, "Group search request"),
                     cancellationToken)
                 .Assert(Log)
@@ -248,10 +243,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
                             .Size(query.Limit)
                             .Query(qq => qq.Bool(ConfigureQueryDescriptor))
                             .IgnoreUnavailable()
-                            .Highlight(h => h.Fields(f
-                                => f.Field(x => x.Title)
-                                    .PreTags(HighlightsConverter.PreTag)
-                                    .PostTags(HighlightsConverter.PostTag)))
+                            .Highlight(h => h.Fields(f => f.Field(x => x.Title)))
                             .Log(OpenSearchClient, DebugLog, "Place search request"),
                     cancellationToken)
                 .Assert(Log)
@@ -322,13 +314,15 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             return;
         }
 
-        if (command.Deleted.IsEmpty && command.Updated.IsEmpty)
+        var updated = command.Updated;
+        var deleted = command.Deleted;
+        if (deleted.IsEmpty && updated.IsEmpty)
             return;
 
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
-        await IndexUserContacts(command.Updated, command.Deleted, cancellationToken).ConfigureAwait(false);
+        await IndexUserContacts(updated, deleted, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -366,7 +360,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         var chats = await chatIds.Select(x => ChatsBackend.Get(x, cancellationToken)).Collect().ConfigureAwait(false);
         var indices = new List<IndexName>();
         if (command.RefreshUsers)
-            indices.Add(IndexNames.PublicUserIndexName);
+            indices.Add(IndexNames.UserIndexName);
         if (command.RefreshChats)
             indices.Add(IndexNames.ChatIndexName);
         indices.AddRange(chats.SkipNullItems().Select(IndexNames.GetIndexName).Distinct());
@@ -470,8 +464,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         CancellationToken cancellationToken)
         => OpenSearchClient
             .BulkAsync(r => r
-                    .IndexMany(updated, (op, _) => op.Index(IndexNames.PublicUserIndexName))
-                    .DeleteMany(deleted, (op, _) => op.Index(IndexNames.PublicUserIndexName)),
+                    .IndexMany(updated, (op, _) => op.Index(IndexNames.UserIndexName))
+                    .DeleteMany(deleted, (op, _) => op.Index(IndexNames.UserIndexName)),
                 cancellationToken)
             .Assert(Log);
 

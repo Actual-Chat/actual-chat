@@ -3,10 +3,11 @@
 @inherits ComputedStateComponent<IReadOnlyList<FoundContact>>
 @{
     var foundContacts = State.ValueOrDefault;
-    if (foundContacts == null) {
+    if (foundContacts == null)
         // TODO: loading view
         return;
-    }
+
+    var canExpandOrCollapse = foundContacts.Count >= Constants.Search.ContactSearchDefaultPageSize;
 }
 
 <div class="chat-list own-chats-list">
@@ -14,6 +15,7 @@
         @if (foundContact.IsFirstInGroup) {
             <SearchResultGroupHeader
                 Title="@foundContact.Scope.ToString()"
+                CanExpandOrCollapse="canExpandOrCollapse"
                 Expand="@(() => OnExpand(foundContact.Scope))"
                 Collapse="@(() => OnCollapse(foundContact.Scope))"/>
         }
@@ -21,7 +23,9 @@
         if (contactKey.IsNullOrEmpty())
             continue;
 
-        <FoundContactView @key="@contactKey" Item="@foundContact"/>
+        <FoundChat @key="@contactKey"
+                   ChatId="foundContact.SearchResult.ContactId.ChatId"
+                   SearchMatch="foundContact.SearchResult.SearchMatch"/>
         @if (foundContact.IsLastInGroup) {
             <Divider Class="mx-1 my-1.5"/>
         }

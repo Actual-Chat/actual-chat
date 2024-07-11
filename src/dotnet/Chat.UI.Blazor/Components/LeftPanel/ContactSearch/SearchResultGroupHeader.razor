@@ -1,14 +1,16 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
     var btnText = _isExpanded ? "Show less" : "Show more";
+    var isExpandedCls = _isExpanded ? "expanded" : "";
 }
 
-<div class="search-result-group-header">
+<div class="search-result-group-header @isExpandedCls">
     <div class="c-title">
         @Title
     </div>
     <Button Class="show-more-btn btn-transparent unhovered btn-sm" Click="@OnClick">
-        @btnText
+        <i class="icon-chevron-up c-arrow"></i>
+        <span class="c-text">@btnText</span>
     </Button>
 </div>
 
@@ -16,6 +18,7 @@
     private bool _isExpanded;
 
     [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public bool CanExpandOrCollapse { get; set; }
     [Parameter] public EventCallback Expand { get; set; }
     [Parameter] public EventCallback Collapse { get; set; }
 

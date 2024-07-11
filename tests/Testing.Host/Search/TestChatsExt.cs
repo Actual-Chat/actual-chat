@@ -146,6 +146,16 @@ public static class TestChatsExt
             chats.JoinedPrivatePlace2JoinedPrivateChat2(),
         ]);
 
+    public static IEnumerable<Chat.Chat> JoinedPrivatePlace1JoinedChats(
+        this IReadOnlyDictionary<TestChatKey, Chat.Chat> chats)
+        => chats.Where(x => x.Key is { PlaceKey: { Index: 0, IsPublic: false, MustJoin: true }, MustJoin: true })
+            .Select(x => x.Value);
+
+    public static IEnumerable<Chat.Chat> JoinedPublicPlace1JoinedChats(
+        this IReadOnlyDictionary<TestChatKey, Chat.Chat> chats)
+        => chats.Where(x => x.Key is { PlaceKey: { Index: 0, IsPublic: true, MustJoin: true }, MustJoin: true })
+            .Select(x => x.Value);
+
     public static IEnumerable<Chat.Chat> OtherPublicGroups1(this IReadOnlyDictionary<TestChatKey, Chat.Chat> chats) => [
         chats.OtherPublicChat1(),
         chats.OtherPublicPlace1OtherPublicChat1(),

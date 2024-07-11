@@ -22,7 +22,7 @@
     @apply z-10;
     @apply hidden flex-y;
     @apply h-full;
-    @apply p-2;
+    @apply py-2;
     @apply overflow-hidden;
     @apply bg-03;
     @apply opacity-0;
@@ -117,85 +117,6 @@ body.hoverable .left-search-panel.chat-search .c-ai-btn.search-btn.btn-round:hov
 .left-search-panel.chat-search .tab-panel .btn-group {
     @apply gap-x-4;
     @apply py-0 px-2;
-}
-.left-search-panel.chat-search .recent-contacts {
-    @apply flex-none flex-x gap-x-1;
-    @apply mt-2;
-    @apply overflow-y-hidden;
-    @apply custom-scrollbar-hide;
-}
-.left-search-panel.chat-search .recent-contacts:first-child,
-.left-search-panel.chat-search .recent-contacts:last-child {
-    @apply px-1;
-}
-.recent-contacts .c-plug {
-    @apply flex-y items-center justify-center;
-    @apply min-w-20;
-    @apply truncate;
-}
-.recent-contacts .c-plug > .c-author {
-    @apply w-10 h-10;
-    @apply rounded-full;
-}
-.recent-contacts .c-plug > .c-name {
-    @apply w-full;
-    @apply text-center;
-    @apply text-caption-6;
-    @apply truncate;
-}
-
-.left-search-panel.chat-search .recently-viewed {
-    @apply flex-y gap-y-2;
-}
-.left-search-panel.chat-search .c-header {
-    @apply flex-x items-center;
-    @apply px-2;
-}
-.left-search-panel.chat-search .recently-viewed .c-header .c-title,
-.left-search-panel.chat-search .chat-list .c-header .c-title {
-    @apply flex-1;
-    @apply text-caption-1 text-02;
-}
-.left-search-panel.chat-search .recently-viewed .c-header .btn-h,
-.left-search-panel.chat-search .chat-list .c-header .btn-h {
-    @apply flex-none;
-    @apply text-02;
-}
-.left-search-panel.chat-search .recently-viewed .c-header .btn-h i {
-    @apply text-xl text-02;
-}
-.left-search-panel.chat-search .recently-viewed .c-message-list {
-    @apply flex-y gap-y-0.5;
-    @apply px-2;
-}
-.left-search-panel.chat-search .recently-viewed .c-message-list > .c-item {
-    @apply flex-x items-center gap-x-2;
-    @apply p-1;
-    @apply rounded-lg;
-}
-.left-search-panel.chat-search .recently-viewed .c-message-list > .c-item:hover {
-    @apply bg-hover;
-}
-.left-search-panel.chat-search .recently-viewed .c-message-list > .c-item > .c-author {
-    @apply flex-none;
-    @apply h-10 w-10;
-    @apply rounded-full;
-}
-.left-search-panel.chat-search .recently-viewed .c-message-list > .c-item > .c-center {
-    @apply flex-1 flex-y gap-y-1;
-    @apply truncate;
-}
-.left-search-panel.chat-search .recently-viewed .c-message-list > .c-item > .c-center > .c-name {
-    @apply text-headline-1 text-02;
-    @apply truncate;
-}
-.left-search-panel.chat-search .recently-viewed .c-message-list > .c-item > .c-center > .c-last-message {
-    @apply text-xs text-03;
-    @apply truncate;
-}
-.left-search-panel.chat-search .recently-viewed .c-message-list > .c-item > .c-ending {
-    @apply flex-none flex-y items-end gap-y-1;
-    @apply text-xs text-03;
 }
 
 .left-search-panel.chat-search .tab-panel {

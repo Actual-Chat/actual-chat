@@ -105,7 +105,7 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
 
     private Task EnsureContactIndicesUnsafe(CancellationToken cancellationToken)
         => Task.WhenAll(
-            EnsureContactIndex(IndexNames.PublicUserIndexName,
+            EnsureContactIndex(IndexNames.UserIndexName,
                 ConfigureUserContactIndex,
                 cancellationToken),
             EnsureContactIndex(IndexNames.ChatIndexName,
@@ -144,19 +144,19 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
 
     private ICreateIndexRequest ConfigureUserContactIndex(CreateIndexDescriptor index)
         => index.Map<IndexedUserContact>(m
-            => m.Properties(p
-                => p.Keyword(x => x.Name(e => e.Id))
-                    .Text(x => x.Name(e => e.FullName))
-                    .Text(x => x.Name(e => e.FirstName))
-                    .Text(x => x.Name(e => e.SecondName))
-                    .Text(x => x.Name(o => o.PlaceIds))))
+            => m.Properties(pp
+                => pp.Keyword(p => p.Name(x => x.Id))
+                    .Text(p => p.Name(x => x.FullName))
+                    .Text(p => p.Name(x => x.FirstName))
+                    .Text(p => p.Name(x => x.SecondName))
+                    .Keyword(x => x.Name(o => o.PlaceIds))))
             .Settings(s => s.RefreshInterval(Settings.RefreshInterval));
 
     private ICreateIndexRequest ConfigureChatContactIndex(CreateIndexDescriptor index)
         => index.Map<IndexedChatContact>(m
-            => m.Properties(p
-                => p.Keyword(x => x.Name(e => e.Id))
-                    .Keyword(x => x.Name(e => e.PlaceId))
-                    .Text(x => x.Name(e => e.Title))))
+            => m.Properties(pp
+                => pp.Keyword(p => p.Name(x => x.Id))
+                    .Keyword(p => p.Name(x => x.PlaceId))
+                    .Text(p => p.Name(x => x.Title))))
             .Settings(s => s.RefreshInterval(Settings.RefreshInterval));
 }

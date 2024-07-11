@@ -1,5 +1,4 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.Chat.UI.Blazor.Module
 @inherits ComputedStateComponent<bool>
 @{
     var enableIncompleteUI = State.Value;
@@ -43,7 +42,7 @@
 
                 <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
                     <div class="c-container">
-                        <ChatsTab/>
+                        <ChatSearchTab/>
                     </div>
                 </Tab>
                 <Tab @key="@("threads")" Id="Threads" Title="Threads" Order="1">

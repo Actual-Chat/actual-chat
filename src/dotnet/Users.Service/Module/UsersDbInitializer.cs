@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ActualChat.Db;
 using ActualChat.Users.Db;
 using Microsoft.Toolkit.HighPerformance;
@@ -10,8 +11,10 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
     {
         await EnsureAdminExists(cancellationToken).ConfigureAwait(false);
         await EnsureMLSearchBotExists(cancellationToken).ConfigureAwait(false);
-        if (HostInfo is { IsDevelopmentInstance: true, IsTested: false }) 
+        if (HostInfo is { IsDevelopmentInstance: true, IsTested: false }) {
             await EnsureTestBotsExist(cancellationToken).ConfigureAwait(false);
+            await EnsureTestUsersExist(cancellationToken).ConfigureAwait(false);
+        }
 
     }
 
@@ -27,13 +30,13 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
             return;
 
         Log.LogInformation($"Creating {name} user...");
-        await AddInternalAccount(userId, name, cancellationToken).ConfigureAwait(false);
+        await AddInternalAccount(new (userId, name), cancellationToken).ConfigureAwait(false);
     }
 
     private async Task EnsureMLSearchBotExists(CancellationToken cancellationToken)
     => await EnsureUserExists(
-            Constants.User.MLSearchBot.UserId, 
-            Constants.User.MLSearchBot.Name, 
+            Constants.User.MLSearchBot.UserId,
+            Constants.User.MLSearchBot.Name,
             cancellationToken
         )
         .ConfigureAwait(false);
@@ -51,22 +54,76 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
                 var id = new UserId($"testbot{i}");
                 var name = $"Robo {RandomNameGenerator.Default.Generate()}";
                 Log.LogInformation("+ {UserId}: {UserName}", id, name);
-                return await AddInternalAccount(id, name, cancellationToken).ConfigureAwait(false);
+                return await AddInternalAccount(new (id, name), cancellationToken).ConfigureAwait(false);
             })
             .Collect()
             .ConfigureAwait(false);
         Log.LogInformation("Created {Count} test bots", accounts.Length);
     }
 
+    private async Task EnsureTestUsersExist(CancellationToken cancellationToken)
+    {
+        var account = await GetInternalAccount(new UserId("alberte"), cancellationToken).ConfigureAwait(false);
+        if (account != null)
+            return;
+
+        // TODO: test user icons
+        InternalUserInfo[] testUsers = [
+            new (new ("alberte"),
+                "",
+                "Albert",
+                "Einstein",
+                "1-2345678901",
+                "albert.einstein@actual.chat"),
+            new (new ("spongebob"),
+                "",
+                "SpongeBob",
+                "SquarePants ",
+                "1-2345678902",
+                "spongebob@actual.chat"),
+            new (new ("pelepele"),
+                "pele",
+                "Edson Arantes",
+                "do Nascimento ",
+                "1-2345678903",
+                "pele@actual.chat",
+                "Pelé"),
+            new (new ("jalalrumi"),
+                "rumi",
+                "Jalāl al-Dīn Muḥammad",
+                "Rumi",
+                "1-2345678904",
+                "rumi@actual.chat",
+                "Jalāl al-Dīn Muḥammad Rūmī جلال‌الدین محمّد رومی"),
+            new (new ("ntesla"),
+                "tesla",
+                "Nikola",
+                "Tesla ",
+                "1-2345678905",
+                "nikola.tesla@actual.chat",
+                "Nikola Tesla"),
+        ];
+        Log.LogInformation("Creating test users...");
+        var accounts = await testUsers
+            .Select(async x => {
+                Log.LogInformation("+ {UserId}: {UserName}", x.Id, x.UserName);
+                return await AddInternalAccount(x, cancellationToken).ConfigureAwait(false);
+            })
+            .Collect()
+            .ConfigureAwait(false);
+        Log.LogInformation("Created {Count} test users", accounts.Length);
+    }
+
     private async Task<AccountFull?> GetInternalAccount(UserId userId, CancellationToken cancellationToken)
     {
         var accountsBackend = Services.GetRequiredService<IAccountsBackend>();
-        var account = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        return account;
+        return await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<AccountFull> AddInternalAccount(UserId userId, string name, CancellationToken cancellationToken)
+    private async Task<AccountFull> AddInternalAccount(InternalUserInfo userInfo, CancellationToken cancellationToken)
     {
+        var userId = userInfo.Id;
+        var username = userInfo.UserNameOrDefault;
         var commander = Services.Commander();
         var accountsBackend = Services.GetRequiredService<IAccountsBackend>();
 
@@ -75,7 +132,15 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
 
         // Create & sign in the user
         var session = Session.New();
-        var user = new User(userId, name).WithIdentity(userIdentity);
+        var user = new User(userId, username).WithIdentity(userIdentity);
+        if (!userInfo.FirstName.IsNullOrEmpty())
+            user = user.WithClaim(ClaimTypes.GivenName, userInfo.FirstName);
+        if (!userInfo.LastName.IsNullOrEmpty())
+            user = user.WithClaim(ClaimTypes.Surname, userInfo.LastName);
+        if (!userInfo.Phone.IsNullOrEmpty())
+            user = user.WithPhone(new (userInfo.Phone));
+        if (!userInfo.Email.IsNullOrEmpty())
+            user = user.WithClaim(ClaimTypes.Email, userInfo.Email);
         var signInCommand = new AuthBackend_SignIn(session, user, userIdentity);
         await commander.Call(signInCommand, cancellationToken).ConfigureAwait(false);
 
@@ -91,13 +156,13 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         account.Require(isAdmin ? AccountFull.MustBeAdmin : AccountFull.MustBeActive);
 
         // Create avatar
-        var avatarBio = isAdmin ? "Admin" : $"I'm just a {name} test bot";
+        var avatarBio = isAdmin ? "Admin" : $"I'm just a {username} test bot";
         var avatarPicture = isAdmin
             ? Constants.User.Admin.Picture
             : $"https://api.dicebear.com/7.x/bottts/svg?seed={userId.Value.GetDjb2HashCode()}";
         var changeAvatarCommand = new Avatars_Change(session, Symbol.Empty, null, new Change<AvatarFull> {
             Create = new AvatarFull(account.Id) {
-                Name = name,
+                Name = userInfo.AvatarNameOrDefault,
                 Bio = avatarBio,
                 PictureUrl = avatarPicture,
             },
@@ -122,5 +187,18 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
             throw StandardError.Internal("Wrong avatar ID.");
 
         return account;
+    }
+
+    private sealed record InternalUserInfo(
+        UserId Id,
+        string UserName = "",
+        string FirstName = "",
+        string LastName = "",
+        string Phone = "",
+        string Email = "",
+        string AvatarName = "")
+    {
+        public string UserNameOrDefault => !UserName.IsNullOrEmpty() ? UserName : $"{FirstName.ToLowerInvariant()}_{LastName.ToLowerInvariant()}";
+        public string AvatarNameOrDefault => AvatarName.NullIfEmpty() ?? $"{FirstName} {LastName}".Trim().NullIfEmpty() ?? UserNameOrDefault;
     }
 }

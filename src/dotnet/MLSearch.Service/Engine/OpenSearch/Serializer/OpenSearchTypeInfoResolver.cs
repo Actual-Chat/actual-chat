@@ -21,14 +21,11 @@ public class OpenSearchTypeInfoResolver : DefaultJsonTypeInfoResolver
 
     private static void ShouldSerializeModifier(JsonTypeInfo typeInfo)
     {
-        foreach (var property in typeInfo.Properties) {
-            if (property.PropertyType == typeof(QueryContainer)) {
+        foreach (var property in typeInfo.Properties)
+            if (property.PropertyType == typeof(QueryContainer))
                 property.ShouldSerialize = ShouldSerializeQueryContainer;
-            }
-            else if (typeof(IEnumerable<QueryContainer>).IsAssignableFrom(property.PropertyType)) {
+            else if (typeof(IEnumerable<QueryContainer>).IsAssignableFrom(property.PropertyType))
                 property.ShouldSerialize = ShouldSerializeQueryContainers;
-            }
-        }
     }
 
     private static bool ShouldSerializeQueryContainer(object o, object? value)
@@ -42,21 +39,18 @@ public class OpenSearchTypeInfoResolver : DefaultJsonTypeInfoResolver
     {
         foreach (var property in typeInfo.Properties) {
             var member = property.AttributeProvider as MemberInfo;
-            if (member is null || !ConnectionSettings.PropertyMappings.TryGetValue(member, out var propertyMapping)) {
+            if (member is null || !ConnectionSettings.PropertyMappings.TryGetValue(member, out var propertyMapping))
                 propertyMapping = OpenSearchPropertyAttributeBase.From(member);
-            }
 
             var serializerMapping = member is null ? null : ConnectionSettings.PropertyMappingProvider?.CreatePropertyMapping(member);
 
             var nameOverride = propertyMapping?.Name ?? serializerMapping?.Name;
-            if (!string.IsNullOrWhiteSpace(nameOverride)) {
+            if (!string.IsNullOrWhiteSpace(nameOverride))
                 property.Name = nameOverride;
-            }
 
             var overrideIgnore = propertyMapping?.Ignore ?? serializerMapping?.Ignore;
-            if (overrideIgnore.HasValue) {
+            if (overrideIgnore.HasValue && overrideIgnore.Value)
                 property.ShouldSerialize = (_, _) => false;
-            }
         }
     }
 }

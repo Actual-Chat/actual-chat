@@ -1,0 +1,14 @@
+.found-contact-list .c-content {
+    @apply flex-y gap-y-1;
+}
+.found-contact-list > .c-list-header {
+    @apply flex-x items-center gap-x-2;
+    @apply h-8;
+}
+.found-contact-list > .c-list-header > .c-title {
+    @apply flex-1;
+    @apply text-caption-1 text-03;
+}
+.found-contact-list > .c-list-header > .expand-btn {
+    @apply text-caption-1 text-03;
+}

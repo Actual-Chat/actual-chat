@@ -1,0 +1,21 @@
+.recently-viewed-groups {
+    @apply flex-y gap-y-2;
+}
+.recently-viewed-groups .c-header {
+    @apply px-4;
+}
+.recently-viewed-groups .c-header .c-title {
+    @apply flex-1;
+    @apply text-caption-1 text-02;
+}
+.recently-viewed-groups .c-header .btn-h {
+    @apply flex-none;
+    @apply text-02;
+}
+.recently-viewed-groups .c-header .btn-h i {
+    @apply text-xl text-02;
+}
+.recently-viewed-groups .chat-list {
+    @apply flex-y gap-y-0.5;
+    @apply px-2;
+}
