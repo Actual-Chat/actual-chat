@@ -11,5 +11,7 @@ public static class AssertionOptionsExt
 
     public static EquivalencyAssertionOptions<FoundContact> ExcludingBorders(
         this EquivalencyAssertionOptions<FoundContact> options)
-        => options.Excluding(x => x.IsFirstInGroup).Excluding(x => x.IsLastInGroup);
+        => options.Excluding(x => x.IsFirstInGroup)
+            .Excluding(x => x.IsLastInGroup)
+            .Excluding(x => x.CanScopeBeExpanded);
 }

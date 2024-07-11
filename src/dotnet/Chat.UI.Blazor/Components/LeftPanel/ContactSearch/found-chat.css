@@ -1,0 +1,10 @@
+.found-chat {
+    @apply flex-x;
+    @apply overflow-hidden truncate;
+}
+.found-chat .c-container {
+    @apply flex-x;
+}
+.found-chat .c-container .c-description {
+    @apply flex-y;
+}

@@ -1,34 +1,16 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using SearchUI = ActualChat.Chat.UI.Blazor.Services.SearchUI
-@inherits ComputedStateComponent<ChatsTab.Model>
+@inherits ComputedStateComponent<ChatSearchTab.Model>
 
 @{
     var m = _rendered = State.Value;
     if (m is { OwnChatCount: 0, IsSearchApplied: false })
         return;
-
-    var plugs = new Dictionary<string, string>() {
-        {"GuildensternGuildenstern", "bg-red-200"},
-        {"OpheliaOpheliaOphelia", "bg-green-200"},
-        {"Hamlet", "bg-blue-200"},
-        {"Polonius", "bg-yellow-200"},
-        {"Guildenstern", "bg-red-200"},
-        {"Ophelia", "bg-green-200"},
-    };
 }
 
 @if (!m.IsSearchApplied) {
-    <div class="recent-contacts">
-        @foreach (var plug in plugs) {
-            var cls = $"c-author {plug.Value}";
-            <div class="c-plug">
-                <div class="@cls"></div>
-                <div class="c-name">@plug.Key</div>
-            </div>
-        }
-    </div>
-    <Divider Class="mx-1 my-1.5"/>
-    <RecentlyViewed/>
+    <RecentlyContactedPeople/>
+    <RecentlyViewedGroups/>
 } else {
     // TODO: need search by messages and discover
     @* <CollapsedFoundContactList Title="Chats & Places"/> *@

@@ -27,7 +27,9 @@
             if (contactKey.IsNullOrEmpty())
                 continue;
 
-            <FoundContactView @key="@contactKey" Item="@contact"/>
+            <FoundChat @key="@contactKey"
+                       ChatId="contact.SearchResult.ContactId.ChatId"
+                       SearchMatch="contact.SearchResult.SearchMatch"/>
         }
     </div>
 </div>

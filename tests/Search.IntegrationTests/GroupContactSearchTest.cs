@@ -64,6 +64,40 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
     }
 
     [Fact]
+    public async Task ShouldFindGroupsInPlaceByPrefix()
+    {
+        // arrange
+        var bob = await _tester.SignInAsUniqueBob();
+        await _tester.SignInAsAlice();
+        var places = await _tester.CreatePlaceContacts(bob);
+        var chats = await _tester.CreateGroupContacts(bob, places);
+
+        // act
+        var updates = IndexedContactUtil.BuildChatContacts(places.Values, chats.Values.ToArray());
+        await _commander.Call(new SearchBackend_ChatContactBulkIndex(updates, []));
+        await _commander.Call(new SearchBackend_Refresh(refreshChats: true));
+        await _tester.SignIn(bob);
+
+        // assert
+        var searchResults = await _tester.FindGroups("ch", true, places.JoinedPrivatePlace1().Id);
+        searchResults.Should().BeEquivalentTo(bob.BuildSearchResults(chats.JoinedPrivatePlace1JoinedChats().ToArray()), o => o.ExcludingSearchMatch());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPrivatePlace1JoinedPrivateChat2(), [(50, 54)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPrivatePlace1JoinedPublicChat1(), [(49, 53)]), o => o.ExcludingRank());
+
+        searchResults = await _tester.FindGroups("ch", false, places.JoinedPrivatePlace1().Id);
+        searchResults.Should().BeEmpty("private groups are not visible while public groups are 'joined' automatically");
+
+        // assert
+        searchResults = await _tester.FindGroups("ch", true, places.JoinedPublicPlace1().Id);
+        searchResults.Should().BeEquivalentTo(bob.BuildSearchResults(chats.JoinedPublicPlace1JoinedChats().ToArray()), o => o.ExcludingSearchMatch());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPrivateChat2(), [(49, 53)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPublicChat1(), [(48, 52)]), o => o.ExcludingRank());
+
+        searchResults = await _tester.FindGroups("ch", false, places.JoinedPublicPlace1().Id);
+        searchResults.Should().BeEmpty("private groups are not visible while public groups are 'joined' automatically");
+    }
+
+    [Fact]
     public async Task ShouldFindUpdatedGroups()
     {
         // arrange

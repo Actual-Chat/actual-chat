@@ -1,3 +1,5 @@
+using ActualChat.Chat;
+using ActualChat.Search;
 using ActualChat.Users;
 
 namespace ActualChat.Testing.Host;
@@ -58,4 +60,23 @@ public static class TestPeopleExt
     public static IEnumerable<AccountFull> Strangers(
         this IReadOnlyDictionary<TestUserKey, AccountFull> people)
         => people.Where(x => !x.Key.IsExistingContact).Select(x => x.Value);
+
+    public static IEnumerable<IndexedUserContact> ToIndexedUserContacts(
+        this IReadOnlyDictionary<TestUserKey, AccountFull> people,
+        IReadOnlyDictionary<TestPlaceKey, Place> places)
+    {
+        return people.Select(x => x.Value.ToIndexedUserContact(GetPlaces(x)));
+
+        PlaceId[] GetPlaces(KeyValuePair<TestUserKey, AccountFull> pair)
+        {
+            if (pair.Key.PlaceKey is null)
+                return [];
+
+            var place = places.GetValueOrDefault(pair.Key.PlaceKey);
+            if (place == null)
+                return [];
+
+            return [place.Id];
+        }
+    }
 }

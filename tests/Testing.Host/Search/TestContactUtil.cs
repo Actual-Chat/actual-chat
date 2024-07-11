@@ -1,6 +1,6 @@
 using ActualChat.Chat;
 using ActualChat.Users;
-using ITestChatMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestChatKey, ActualChat.Chat.Chat>;
+using ITestGroupChatMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestChatKey, ActualChat.Chat.Chat>;
 using ITestPlaceMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestPlaceKey, ActualChat.Chat.Place>;
 using ITestUserMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestUserKey, ActualChat.Users.AccountFull>;
 
@@ -26,7 +26,7 @@ public static class TestContactUtil
         return places;
     }
 
-    public static async Task<ITestChatMap> CreateGroupContacts(this IWebTester tester, AccountFull contactOwner, ITestPlaceMap places, int nonPlaceChatIndexCount = 2, int placeChatIndexCount = 2)
+    public static async Task<ITestGroupChatMap> CreateGroupContacts(this IWebTester tester, AccountFull contactOwner, ITestPlaceMap places, int nonPlaceChatIndexCount = 2, int placeChatIndexCount = 2)
     {
         var chats = new Dictionary<TestChatKey, Chat.Chat>();
         await GenerateChats(null, nonPlaceChatIndexCount, null);

@@ -5,7 +5,7 @@ namespace ActualChat.Search;
 public sealed class IndexNames
 {
     public const string EntryIndexVersion = "v2";
-    public const string UserIndexVersion = "v3";
+    public const string UserIndexVersion = "v4";
     public const string ChatIndexVersion = "v3";
 
     public string IndexPrefix { get; init; } = ""; // for testing purpose only
@@ -15,7 +15,7 @@ public sealed class IndexNames
     private string EntryIndexNamePrefix => $"{CommonIndexNamePrefix}entries-{EntryIndexVersion}";
     public string EntryIndexTemplateName => EntryIndexNamePrefix.Trim('-');
     public string EntryIndexPattern => $"{EntryIndexNamePrefix}*";
-    public string PublicUserIndexName => $"{CommonIndexNamePrefix}users-{UserIndexVersion}";
+    public string UserIndexName => $"{CommonIndexNamePrefix}users-{UserIndexVersion}";
     public string ChatIndexName => $"{CommonIndexNamePrefix}chats-{ChatIndexVersion}";
 
     public IndexName GetIndexName(Chat.Chat chat)

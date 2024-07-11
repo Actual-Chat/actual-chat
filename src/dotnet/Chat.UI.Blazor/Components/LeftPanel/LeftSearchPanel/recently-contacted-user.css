@@ -1,0 +1,16 @@
+.recently-contacted-user .c-contact {
+    @apply flex-y items-center justify-center;
+    @apply min-w-20;
+    @apply truncate;
+    @apply cursor-pointer;
+}
+.recently-contacted-user .c-contact > .c-author {
+    @apply w-10 h-10;
+    @apply rounded-full;
+}
+.recently-contacted-user .c-contact > .c-name {
+    @apply max-w-20;
+    @apply text-center;
+    @apply text-caption-6;
+    @apply truncate;
+}
