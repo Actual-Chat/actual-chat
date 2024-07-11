@@ -7,7 +7,7 @@ namespace ActualChat.App.Maui;
 
 public static class AndroidLifecycleLogger
 {
-    private static readonly Tracer Tracer = Tracer.Default[nameof(AndroidLifecycleLogger)];
+    private static readonly ILogger Log = StaticLog.For(typeof(AndroidLifecycleLogger));
 
     public static void Activate(IAndroidLifecycleBuilder android)
     {
@@ -42,5 +42,6 @@ public static class AndroidLifecycleLogger
         => Trace();
 
     private static void Trace([CallerMemberName] string label = "")
-        => Tracer.Point(label);
+    // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+        => Log.LogInformation(label);
 }
