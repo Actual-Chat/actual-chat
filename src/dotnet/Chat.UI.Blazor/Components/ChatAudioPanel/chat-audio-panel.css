@@ -140,7 +140,7 @@ body.narrow .chat-audio-panel .recorder-wrapper {
     @apply drop-shadow-lg;
 }
 body.narrow .chat-audio-panel .btn.btn-round .btn-content {
-    @apply min-h-12 max-h-12 min-w-12 max-w-12;
+    @apply min-h-18 max-h-18 min-w-18 max-w-18;
 }
 body.narrow .chat-audio-panel .language-button:active,
 body.narrow .chat-audio-panel .playback-wrapper:active,

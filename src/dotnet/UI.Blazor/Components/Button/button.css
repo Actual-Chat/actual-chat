@@ -45,7 +45,7 @@ body.device-ios * {
 }
 .btn > .btn-content {
     @apply flex-x self-center items-center justify-center gap-x-2;
-    @apply w-full;
+    @apply w-full h-full;
 }
 .btn > .btn-content i {
     @apply flex-none;

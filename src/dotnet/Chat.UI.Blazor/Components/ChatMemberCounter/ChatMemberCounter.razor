@@ -4,19 +4,37 @@
     var m = State.Value;
     if (m.MemberCount == 0)
         return;
+
+    RenderFragment RenderMemberCount() {
+        if (!ScreenSize.IsNarrow()) {
+            return @<div class="c-text">
+                       @if (m.OnlineCount > 0) {
+                           <span>@($"{GetCountString(m.OnlineCount)} online")</span>
+                           <span class="member-separator"></span>
+                       }
+                       @($"{GetCountString(m.MemberCount)} {"member".Pluralize(m.MemberCount)}")
+
+                   </div>;
+        }
+        return @<div class="c-text">
+                   @if (m.OnlineCount > 0) {
+                       <span class="online-dot"></span>
+                       <span>@($"{GetCountString(m.OnlineCount)}")</span>
+                       <span class="member-separator"></span>
+                   }
+                   <span>
+                       @($"{GetCountString(m.MemberCount)} {"member".Pluralize(m.MemberCount)}")
+                   </span>
+               </div>;
+    }
 }
 
 @if (m.MemberCount > 0) {
     <div class="chat-member-counter">
-        <div class="c-text">
-            <span>
-                @($"{GetCountString(m.MemberCount)} {"member".Pluralize(m.MemberCount)}")
-            </span>
-            @if (m.OnlineCount > 0) {
-                @($", {GetCountString(m.OnlineCount)} online")
-            }
-        </div>
-        <DotSeparator/>
+        @RenderMemberCount()
+        @if (!ScreenSize.IsNarrow()) {
+            <DotSeparator/>
+        }
     </div>
 }
 
@@ -24,6 +42,8 @@
     private Chat Chat => ChatContext.Chat;
     private Session Session => ChatContext.Hub.Session();
     private IAuthors Authors => ChatContext.Hub.Authors;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
@@ -44,7 +64,7 @@
             .Collect()
             .ConfigureAwait(false);
 
-        var onlineCount = authorPresences.Count(presence => presence is Presence.Away or Presence.Online or Presence.Recording);
+        var onlineCount = authorPresences.Count(presence => presence is Presence.Online or Presence.Recording);
         return new() {
             MemberCount = allAuthorIds.Count,
             OnlineCount = onlineCount,
