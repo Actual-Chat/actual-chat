@@ -51,25 +51,37 @@ public class AndroidLogAccessor : IMauiLogAccessor
         string cmdArgs = "";
         var cancellationTokenSource = new CancellationTokenSource();
         var cancellationToken = cancellationTokenSource.Token;
-        cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(10));
+        cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(20));
         try {
             var pid = System.Environment.ProcessId;
-            var tagFilter = MauiSettings.IsDevApp ? "dev\\.actual\\.chat" : "actual\\.chat";
-            var regexFilter = $"{pid}|{tagFilter}";
+            var pidFilter = pid.ToString(CultureInfo.InvariantCulture);
+            var tagFilter = MauiDiagnostics.LogTag;
+            var bufferFilter = "--------- beginning of";
 
             cmdArgs = "-v threadtime -d"
-                + $" --regex=\"{regexFilter}\""
-                + $" -T \"{logStartThreshold:MM-dd HH:mm:ss}.0\""
-                + $" -f \"{filePath}\"";
+                + $" -T \"{logStartThreshold:MM-dd HH:mm:ss}.0\"";
 
             process = new Process {
                 StartInfo = new ProcessStartInfo(logcatCmd) {
                     Arguments = cmdArgs,
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
                 },
             };
             process.Start();
-            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-            return true;
+            using var processOutput = process.StandardOutput;
+            var outputFile = new StreamWriter(filePath);
+            await using (outputFile.ConfigureAwait(false)) {
+                while (!processOutput.EndOfStream) {
+                    string? line = await processOutput.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                    if (line.IsNullOrEmpty())
+                        continue;
+
+                    if (line.Contains(tagFilter) || line.Contains(pidFilter) || line.StartsWith(bufferFilter, StringComparison.Ordinal))
+                        await outputFile.WriteLineAsync(line).ConfigureAwait(false);
+                }
+                return true;
+            }
         }
         catch (Exception e) {
             _log.LogWarning(e, "Failed to dump logs to file '{FilePath}'. Executing command: '{Command} {Arguments}'",
