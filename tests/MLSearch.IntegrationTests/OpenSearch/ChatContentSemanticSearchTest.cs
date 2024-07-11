@@ -1,3 +1,4 @@
+using System.Text;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
@@ -7,6 +8,7 @@ using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.IntegrationTests.Collections;
 using ActualChat.Testing.Host;
 using OpenSearch.Client;
+using OpenSearch.Net;
 using AppHostFixture = ActualChat.MLSearch.IntegrationTests.Collections.AppHostFixture;
 
 namespace ActualChat.MLSearch.IntegrationTests.OpenSearch;
@@ -144,5 +146,70 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         Assert.NotNull(AppHost.Services.GetService<IChatContentIndexerFactory>());
 
         Assert.NotNull(AppHost.Services.GetService<IChatContentIndexWorker>());
+    }
+
+    [Fact]
+    public void ChatSliceSerializesAndDeserializesProperly()
+    {
+        var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
+
+        const int localEntryId = 111;
+        var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
+        var chatId = new ChatId(Generate.Option);
+        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, localEntryId, AssumeValid.Option);
+
+        var metadata = new ChatSliceMetadata(
+            [authorId],
+            [new ChatSliceEntry(chatEntryId, localEntryId, 1)], null, null,
+            [], [], [], [],
+            "en-US",
+            DateTime.Now
+        );
+        var text = "Serialize Me";
+        var document = new ChatSlice(metadata, text);
+
+        var serializer = client.SourceSerializer;
+        var jsonString = Serialize(document, serializer);
+        Assert.Contains(ChatInfoToChatSliceRelation.Name, jsonString, StringComparison.Ordinal);
+        Assert.Contains(ChatInfoToChatSliceRelation.ChatSliceName, jsonString, StringComparison.Ordinal);
+        Assert.Contains("_routing", jsonString, StringComparison.Ordinal);
+
+        var deserializedDocument = Deserialize<ChatSlice>(jsonString, serializer);
+        Assert.Equivalent(document, deserializedDocument);
+        Assert.Equal(jsonString, Serialize(deserializedDocument, serializer));
+    }
+
+    [Fact]
+    public void ChatInfoSerializesAndDeserializesProperly()
+    {
+        var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
+
+        var chatId = new ChatId(Generate.Option);
+        var document = new ChatInfo(chatId, true, true);
+
+        var serializer = client.SourceSerializer;
+        var jsonString = Serialize(document, serializer);
+        Assert.Contains(ChatInfoToChatSliceRelation.Name, jsonString, StringComparison.Ordinal);
+        Assert.Contains(ChatInfoToChatSliceRelation.ChatInfoName, jsonString, StringComparison.Ordinal);
+
+        var deserializedDocument = Deserialize<ChatInfo>(jsonString, serializer);
+        Assert.Equivalent(document, deserializedDocument);
+        Assert.Equal(jsonString, Serialize(deserializedDocument, serializer));
+    }
+
+    private string Serialize<TDoc>(TDoc document, IOpenSearchSerializer serializer)
+    {
+        using var stream = new MemoryStream();
+        serializer.Serialize(document, stream);
+        stream.Position = 0;
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    private TDoc Deserialize<TDoc>(string jsonString, IOpenSearchSerializer serializer)
+    {
+        var encoding = new UTF8Encoding(false);
+        using var stream = new MemoryStream(encoding.GetBytes(jsonString));
+        return serializer.Deserialize<TDoc>(stream);
     }
 }

@@ -42,7 +42,9 @@ internal static class OpenSearchConfigurationExt
                     sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings, typeInfoModifiers: [
                         ChatsTypeInfoModifier.Modify,
                     ]))
-                .DefaultFieldNameInferrer(JsonNamingPolicy.CamelCase.ConvertName);
+                .DefaultFieldNameInferrer(JsonNamingPolicy.CamelCase.ConvertName)
+                .DefaultMappingFor<ChatInfo>(map => map.RelationName(ChatInfoToChatSliceRelation.ChatInfoName))
+                .DefaultMappingFor<ChatSlice>(map => map.RelationName(ChatInfoToChatSliceRelation.ChatSliceName));
             return new OpenSearchClient(connectionSettings);
         });
 

@@ -234,6 +234,12 @@ internal sealed class ClusterSetupActions(
                                     "name": "hnsw",
                                     "parameters": {}
                                 }
+                            },
+                            "{{ChatInfoToChatSliceRelation.Name}}": {
+                                "type": "join",
+                                "relations": {
+                                    "{{ChatInfoToChatSliceRelation.ChatInfoName}}": "{{ChatInfoToChatSliceRelation.ChatSliceName}}"
+                                }
                             }
                         }
                     }
