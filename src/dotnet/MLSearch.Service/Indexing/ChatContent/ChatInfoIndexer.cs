@@ -21,7 +21,7 @@ internal sealed class ChatInfoIndexer(
             throw StandardError.NotFound<Chat.Chat>($"The chat {chatId} is not found.");
         }
         var chatInfo = new ChatInfo(
-            Id: chat.Id,
+            ChatId: chat.Id,
             IsPublic: chat.IsPublic,
             IsBotChat: chat.SystemTag.Equals(Constants.Chat.SystemTags.Bot)
         );
