@@ -59,7 +59,8 @@ public class ChatAttentionService
         if (_isInitialized)
             return;
 
-        ScheduleAlarm(true, null, TimeSpan.FromSeconds(30));
+        _ = Task.Delay(TimeSpan.FromSeconds(30))
+            .ContinueWith(_ => DoJob(null), TaskScheduler.FromCurrentSynchronizationContext());
         _isInitialized = true;
     }
 
