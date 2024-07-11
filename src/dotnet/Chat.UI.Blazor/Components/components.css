@@ -154,10 +154,16 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply line-clamp-1;
     @apply no-highlight;
 }
-.chat-header-center > .chat-header-title > .c-title {
-    @apply flex-1;
+.chat-header-center > .chat-header-title > .c-title-wrapper {
+    @apply flex-x items-center gap-x-1;
+}
+.chat-header-center > .chat-header-title > .c-title-wrapper > .c-title {
     @apply text-01 font-medium;
     @apply truncate;
+}
+.chat-header-center > .chat-header-title > .c-title-wrapper > .title-icon {
+    @apply text-sm text-03;
+    @apply leading-4;
 }
 .chat-header-center > .chat-header-title > .c-info {
     @apply flex-none flex-x items-center gap-x-1;

@@ -2,6 +2,16 @@
     @apply flex-x items-center gap-x-1;
 }
 .chat-member-counter > .c-text {
-    @apply flex-x items-center;
+    @apply flex-x items-center gap-x-0.5;
     @apply text-caption-6 text-03;
+}
+.chat-member-counter .member-separator {
+    @apply w-px h-3;
+    @apply mx-0.5;
+    @apply bg-[var(--text-03)];
+}
+.chat-member-counter .online-dot {
+    @apply w-1 h-1;
+    @apply rounded-full;
+    @apply bg-online;
 }
