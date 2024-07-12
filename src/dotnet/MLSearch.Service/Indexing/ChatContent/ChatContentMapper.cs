@@ -72,7 +72,7 @@ internal class ChatContentMapper(
         }));
 
         // -- Timestamp
-        var timestamp = sourceEntries.Entries.Select(e => e.BeginsAt).First();
+        var contentTimestamp = sourceEntries.Entries.Select(e => e.BeginsAt).First();
 
         // -- Content
         var content = sourceEntries.Entries
@@ -100,8 +100,7 @@ internal class ChatContentMapper(
             Attachments: attachments.MoveToImmutable(),
             // TODO:
             Language: null,
-            // TODO:
-            Timestamp: timestamp
+            ContentTimestamp: contentTimestamp
         );
         return new ChatSlice(metadata, content.ToString());
     }

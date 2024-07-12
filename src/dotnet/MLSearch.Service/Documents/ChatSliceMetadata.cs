@@ -23,7 +23,7 @@ internal readonly record struct ChatSliceMetadata(
     // Attachments to document's source messages
     ImmutableArray<ChatSliceAttachment> Attachments,
     string? Language,
-    DateTime Timestamp
+    DateTime ContentTimestamp
 )
 {
     public ChatId ChatId => ChatEntries.IsDefaultOrEmpty ? ChatId.None : ChatEntries[0].Id.ChatId;
