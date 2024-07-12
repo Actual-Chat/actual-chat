@@ -123,7 +123,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
     private async Task<AccountFull> AddInternalAccount(InternalUserInfo userInfo, CancellationToken cancellationToken)
     {
         var userId = userInfo.Id;
-        var username = userInfo.UserNameOrDefault;
+        var userName = userInfo.UserNameOrDefault;
         var commander = Services.Commander();
         var accountsBackend = Services.GetRequiredService<IAccountsBackend>();
 
@@ -132,7 +132,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
 
         // Create & sign in the user
         var session = Session.New();
-        var user = new User(userId, username).WithIdentity(userIdentity);
+        var user = new User(userId, userName).WithIdentity(userIdentity);
         if (!userInfo.FirstName.IsNullOrEmpty())
             user = user.WithClaim(ClaimTypes.GivenName, userInfo.FirstName);
         if (!userInfo.LastName.IsNullOrEmpty())
@@ -156,7 +156,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         account.Require(isAdmin ? AccountFull.MustBeAdmin : AccountFull.MustBeActive);
 
         // Create avatar
-        var avatarBio = isAdmin ? "Admin" : $"I'm just a {username} test bot";
+        var avatarBio = isAdmin ? "Admin" : $"I'm just a {userName} test bot";
         var avatarPicture = isAdmin
             ? Constants.User.Admin.Picture
             : $"https://api.dicebear.com/7.x/bottts/svg?seed={userId.Value.GetDjb2HashCode()}";
