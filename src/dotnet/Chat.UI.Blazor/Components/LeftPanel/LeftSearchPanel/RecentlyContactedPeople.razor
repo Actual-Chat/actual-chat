@@ -17,6 +17,7 @@
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private IChatUsages ChatUsages => Hub.ChatUsages;
     private IChats Chats => Hub.Chats;
+    private Session Session => Hub.Session();
 
     protected override ComputedState<IReadOnlyList<Chat>>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -26,7 +27,7 @@
             });
 
     protected override async Task<IReadOnlyList<Chat>> ComputeState(CancellationToken cancellationToken) {
-        var session = Hub.Session();
+        var session = Session;
         var recentIds = await ChatUsages.GetRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, cancellationToken).ConfigureAwait(false);
         var chats = await recentIds.Select(id => Chats.Get(session, id, cancellationToken)).Collect().ConfigureAwait(false);
         return chats.SkipNullItems().ToList();
