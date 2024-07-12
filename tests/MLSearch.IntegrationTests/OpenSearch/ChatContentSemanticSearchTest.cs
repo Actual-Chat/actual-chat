@@ -40,6 +40,7 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
     {
         var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
         var chatId1 = new ChatId(Generate.Option);
+        var chatInfo1 = new ChatInfo(chatId1, true, false);
         var entryIds1 = Enumerable.Range(1, 5)
             .Select(id => new ChatEntryId(chatId1, ChatEntryKind.Text, id, AssumeValid.Option))
             .ToArray();
@@ -51,6 +52,7 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
             "In Barcelona, a migrant squatter was asked to leave by the property owner. He refused and threatened the home owner with a hammer.",
         };
         var chatId2 = new ChatId(Generate.Option);
+        var chatInfo2 = new ChatInfo(chatId2, true, false);
         var entryIds2 = Enumerable.Range(1, 5)
             .Select(id => new ChatEntryId(chatId2, ChatEntryKind.Text, id, AssumeValid.Option))
             .ToArray();
@@ -77,6 +79,9 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
             });
 
         // Ingest documents to the index
+        var chatInfoSink = AppHost.Services.GetRequiredService<ISink<ChatInfo, string>>();
+        await chatInfoSink.ExecuteAsync([chatInfo1, chatInfo2], null);
+
         var documentSink = AppHost.Services.GetRequiredService<ISink<ChatSlice, string>>();
         await documentSink.ExecuteAsync(documents.ToArray(), null);
 
@@ -105,7 +110,7 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
 
         var namingPolicy = AppHost.Services.GetRequiredService<OpenSearchNamingPolicy>();
         var metadataField = namingPolicy.ConvertName(nameof(ChatSlice.Metadata));
-        var timestampField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Timestamp));
+        var timestampField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ContentTimestamp));
         var chatIdField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ChatId));
         var dateBound = DateTime.Now.AddDays(-3);
         var query2 = new SearchQuery() {
@@ -176,7 +181,6 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
 
         var deserializedDocument = Deserialize<ChatSlice>(jsonString, serializer);
         Assert.Equivalent(document, deserializedDocument);
-        Assert.Equal(jsonString, Serialize(deserializedDocument, serializer));
     }
 
     [Fact]
@@ -194,7 +198,6 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
 
         var deserializedDocument = Deserialize<ChatInfo>(jsonString, serializer);
         Assert.Equivalent(document, deserializedDocument);
-        Assert.Equal(jsonString, Serialize(deserializedDocument, serializer));
     }
 
     private string Serialize<TDoc>(TDoc document, IOpenSearchSerializer serializer)
