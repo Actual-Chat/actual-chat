@@ -81,7 +81,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     public virtual async Task<int> GetCount(PlaceId placeId, CancellationToken cancellationToken)
     {
         var listView = await ActiveChatListView.Use(cancellationToken).ConfigureAwait(false);
-        if (listView == null)
+        if (listView == null || listView.PlaceId != placeId)
             return 0;
 
         var settings = await listView.GetSettings(cancellationToken).ConfigureAwait(false);
