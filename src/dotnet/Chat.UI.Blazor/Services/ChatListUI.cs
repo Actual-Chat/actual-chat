@@ -93,7 +93,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     public virtual async Task<int> IndexOf(ChatId chatId, CancellationToken cancellationToken)
     {
         var listView = await ActiveChatListView.Use(cancellationToken).ConfigureAwait(false);
-        if (listView == null)
+        if (listView == null || listView.PlaceId != chatId.PlaceId)
             return -1;
 
         var settings = await listView.GetSettings(cancellationToken).ConfigureAwait(false);
