@@ -668,10 +668,13 @@ export class VirtualList {
                 }
             }
             else if (this._pivots.length) {
-                await this.restoreScrollPosition(startedAt);
+                // restore scroll position to the last pivot if total count is unknown
+                if (rs.beforeCount === null && rs.afterCount === null) {
+                    await this.restoreScrollPosition(startedAt);
 
-                // ensure scroll position and size are recalculated
-                await fastWriteRaf();
+                    // ensure scroll position and size are recalculated
+                    await fastWriteRaf();
+                }
             }
             else {
                 if (rs.renderIndex <= 2)
@@ -711,45 +714,8 @@ export class VirtualList {
 
         await fastReadRaf();
 
-        const viewportSize = this._ref.clientHeight;
-        const prevViewportSize = this._viewport?.size ?? Number.MAX_SAFE_INTEGER;
-        const rangeStarts = new Array<number>();
-        const rangeEnds = new Array<number>();
-        if (this._visibleItems.size == 0) {
-            this.updateVisibleItems();
-        }
-        const visibleItems = this._visibleItems;
-        for (const key of visibleItems.values()) {
-            const item = this._items.get(key);
-            if (!item) {
-                debugLog?.log('updateViewport: can not find item by visible key:', key)
-                continue;
-            }
-            if (item.isMeasured) {
-                rangeStarts.push(item.range.start);
-                rangeEnds.push(item.range.end);
-            }
-            else {
-                if (this.ensureItemRangeCalculated()) {
-                    return await this.updateViewport();
-                }
-            }
-        }
-
         let viewport: NumberRange | null = null;
-        if (this.fullRange && rangeStarts.length !== 0) {
-            const viewportEnd = Math.max(...rangeEnds);
-            viewport = new NumberRange(viewportEnd - viewportSize, viewportEnd);
-        }
-
-        if (viewport && viewport.size > prevViewportSize + MinViewPortSize) {
-            // probably we have invalid visible items that provide wrong viewport size
-            this.updateVisibleItems();
-            viewport = null;
-        }
-
-        if (!viewport && this.fullRange) {
-            // fallback viewport calculation
+        if (this.fullRange) {
             const anchorHeight = this._endAnchorRef.getBoundingClientRect().height;
             const viewportHeight = this._ref.clientHeight - anchorHeight;
             const scrollTop = this._ref.scrollTop;
@@ -1157,36 +1123,77 @@ export class VirtualList {
             return false;
 
         const orderedItems = this._orderedItems;
+        const itemOrder = new Map<string, number>();
+        const viewport = this._viewport || this._lastViewport;
+        const visibleItems = this._visibleItems;
         let cornerStoneItemIndex = 0;
         let cornerStoneItem = orderedItems[0];
 
-        // find rightmost measured item if the default edge is `End` and leftmost otherwise
+        for (let i = 0; i < orderedItems.length; i++) {
+            const item = orderedItems[i];
+            itemOrder.set(item.key, i);
+        }
+
         if (this._defaultEdge === VirtualListEdge.End) {
+            // find rightmost measured item if the default edge is `End`
             cornerStoneItemIndex = orderedItems.length - 1;
             cornerStoneItem = orderedItems[cornerStoneItemIndex];
             while (cornerStoneItemIndex > 0 && !cornerStoneItem.isMeasured)
                 cornerStoneItem = orderedItems[--cornerStoneItemIndex];
 
-            // reset ranges and recalculate from cornerstone item
             if (!cornerStoneItem.range) {
+                if (viewport && visibleItems.size > 0) {
+                    // use last visible item as cornerstone
+                    const lastItem = [...visibleItems]
+                        .map(it => itemOrder.get(it))
+                        .map(i => ({i:i, item:orderedItems[i]}))
+                        .reduce((a, b) =>  (a && a.i > b.i) ? a : b);
+                    if (lastItem?.item) {
+                        cornerStoneItemIndex = lastItem.i;
+                        cornerStoneItem = lastItem.item;
+                        cornerStoneItem.range = new NumberRange(
+                            viewport.end - cornerStoneItem.size,
+                            viewport.end);
+                    }
+                }
+            }
+            if (!cornerStoneItem.range) {
+                // reset ranges and recalculate from cornerstone item
                 cornerStoneItemIndex = orderedItems.length - 1;
                 cornerStoneItem = orderedItems[cornerStoneItemIndex];
                 // try to reuse coords of previously rendered items
                 if (!this._lastQuery.isNone) {
                     const { virtualRange } = this._lastQuery;
-                    cornerStoneItem.range = new NumberRange(virtualRange.end-cornerStoneItem.size, virtualRange.end);
-                }
-                else
+                    cornerStoneItem.range = new NumberRange(
+                        virtualRange.end - cornerStoneItem.size,
+                        virtualRange.end);
+                } else
                     cornerStoneItem.range = new NumberRange(-cornerStoneItem.size, 0);
             }
-
         }
         else {
+            // find leftmost measured item if the default edge is `Start`
             while (cornerStoneItemIndex < orderedItems.length - 1 && !cornerStoneItem.isMeasured)
                 cornerStoneItem = orderedItems[++cornerStoneItemIndex];
 
-            // reset ranges and recalculate from cornerstone item
             if (!cornerStoneItem.range) {
+                if (viewport && visibleItems.size > 0) {
+                    // use first visible item as cornerstone
+                    const firstItem = [...visibleItems]
+                        .map(it => itemOrder.get(it))
+                        .map(i => ({i:i, item:orderedItems[i]}))
+                        .reduce((a, b) =>  (a && a.i > b.i) ? b : a);
+                    if (firstItem?.item) {
+                        cornerStoneItemIndex = firstItem.i;
+                        cornerStoneItem = firstItem.item;
+                        cornerStoneItem.range = new NumberRange(
+                            viewport.start,
+                            viewport.start + cornerStoneItem.size);
+                    }
+                }
+            }
+            if (!cornerStoneItem.range) {
+                // reset ranges and recalculate from cornerstone item
                 cornerStoneItemIndex = 0;
                 cornerStoneItem = orderedItems[cornerStoneItemIndex];
                 // try to reuse coords of previously rendered items
@@ -1262,6 +1269,7 @@ export class VirtualList {
         const itemRange = this._itemRange;
         const queryRange = query.virtualRange;
         const viewport = this._viewport;
+        const rs = this._renderState;
         if (!itemRange || !queryRange)
             return false;
 
@@ -1282,16 +1290,18 @@ export class VirtualList {
         if (commonRange.isEmpty)
             return true;
 
-        const isLoadingStart = Math.abs(commonRange.start - queryRange.start) > viewportSize;  // we are loading more than a viewport at the start edge
-        const isLoadingEnd = Math.abs(queryRange.end - commonRange.end) > viewportSize; // we are loading more than a viewport at the end edge
-        const isViewportCloseToStart =  !this._renderState.hasVeryFirstItem && Math.abs(viewport.start - itemRange.start) < viewportSize; // viewport is close to the start edge and there are items above
-        const isViewportCloseToEnd =  !this._renderState.hasVeryLastItem && Math.abs(itemRange.end - viewport.end) < viewportSize; // viewport is close to the end edge and there are items bellow
-        const isNearSkeletonAndLoadingSomeData = this._isNearSkeleton && (commonRange.start > queryRange.start || queryRange.end > commonRange.end); // the viewport is near skeletons and we are loading some more
+        const isLoadingStart = Math.abs(commonRange.start - queryRange.start) > viewportSize / 2;  // we are loading more than half of viewport at the start edge
+        const isLoadingEnd = Math.abs(queryRange.end - commonRange.end) > viewportSize / 2; // we are loading more than half of viewport at the end edge
+        const isViewportCloseToStart =  !rs.hasVeryFirstItem && Math.abs(viewport.start - itemRange.start) < viewportSize; // viewport is close to the start edge and there are items above
+        const isViewportCloseToEnd =  !rs.hasVeryLastItem && Math.abs(itemRange.end - viewport.end) < viewportSize; // viewport is close to the end edge and there are items bellow
+        const isEdgeItemInViewport = viewport.contains(itemRange.start) || viewport.contains(itemRange.end);
+        const isNotEnoughItemsToFulfillViewport = viewport.intersectWith(itemRange).size < viewportSize * 0.9;
 
         const mustExpand =
             isLoadingStart && isViewportCloseToStart
             || isLoadingEnd && isViewportCloseToEnd
-            || isNearSkeletonAndLoadingSomeData;
+            || isEdgeItemInViewport
+            || isNotEnoughItemsToFulfillViewport;
         // NOTE(AY): The condition below checks just one side
         const mustContract = Math.abs(itemRange.end - commonRange.end) > viewportSize;
         return mustExpand || mustContract;
