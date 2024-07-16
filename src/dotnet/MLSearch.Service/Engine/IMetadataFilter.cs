@@ -1,19 +1,35 @@
 
+using ActualChat.MLSearch.Documents;
+
 namespace ActualChat.MLSearch.Engine;
 
-internal interface IMetadataFilter
+internal interface IQueryFilter
 {
     void Apply(IQueryBuilder queryBuilder);
 }
 
-internal sealed class OrFilter(IEnumerable<IMetadataFilter> filters) : IMetadataFilter
+internal sealed class FreeTextFilter<TDocument>(string text) : IQueryFilter
+    where TDocument : class
 {
-    public IEnumerable<IMetadataFilter> Filters { get; } = filters;
+    public string Text { get; } = text;
+    public void Apply(IQueryBuilder queryBuilder) => queryBuilder.ApplyFreeTextFilter(this);
+}
+
+internal sealed class KeywordFilter<TDocument>(IReadOnlyCollection<string> keywords) : IQueryFilter
+    where TDocument : class, IHasText
+{
+    public IReadOnlyCollection<string> Keywords { get; } = keywords;
+    public void Apply(IQueryBuilder queryBuilder) => queryBuilder.ApplyKeywordFilter(this);
+}
+
+internal sealed class OrFilter(IEnumerable<IQueryFilter> filters) : IQueryFilter
+{
+    public IEnumerable<IQueryFilter> Filters { get; } = filters;
 
     public void Apply(IQueryBuilder queryBuilder) => queryBuilder.ApplyOrFilter(this);
 }
 
-internal sealed class EqualityFilter<TValue>(string fieldName, TValue value) : IMetadataFilter
+internal sealed class EqualityFilter<TValue>(string fieldName, TValue value) : IQueryFilter
 {
     public string FieldName { get; } = fieldName;
     public TValue Value { get; } = value;
@@ -22,7 +38,7 @@ internal sealed class EqualityFilter<TValue>(string fieldName, TValue value) : I
 }
 
 internal abstract class RangeFilter<TValue>(string fieldName, RangeBound<TValue>? from, RangeBound<TValue>? to)
-    : IMetadataFilter
+    : IQueryFilter
     where TValue: struct
 {
     public string FieldName { get; } = fieldName;

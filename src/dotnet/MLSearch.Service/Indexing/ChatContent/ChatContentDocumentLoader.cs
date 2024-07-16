@@ -46,7 +46,7 @@ internal class ChatContentDocumentLoader(
         ChatId chatId, ChatContentCursor cursor, int tailSetSize, CancellationToken cancellationToken = default)
     {
         var query = new SearchQuery {
-            MetadataFilters = [
+            Filters = [
                 new EqualityFilter<string>(_chatIdField, chatId),
                 new Int64RangeFilter(_chatEntryLocalIdField, null, new RangeBound<long>(cursor.LastEntryLocalId, true)),
             ],
@@ -69,7 +69,7 @@ internal class ChatContentDocumentLoader(
             select new EqualityFilter<ChatEntryId>(_chatEntryIdField, id);
 
         var query = new SearchQuery {
-            MetadataFilters = [new OrFilter(filters)],
+            Filters = [new OrFilter(filters)],
         };
         var result = await searchEngine.Find(query, cancellationToken).ConfigureAwait(false);
         return result.Documents.Select(doc => doc.Document).ToList().AsReadOnly();

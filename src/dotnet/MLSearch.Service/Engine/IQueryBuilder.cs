@@ -1,3 +1,5 @@
+using ActualChat.MLSearch.Documents;
+
 namespace ActualChat.MLSearch.Engine;
 
 internal interface IQueryBuilder
@@ -8,4 +10,8 @@ internal interface IQueryBuilder
     void ApplyRangeFilter(Int32RangeFilter rangeFilter);
     void ApplyRangeFilter(Int64RangeFilter rangeFilter);
     void ApplyRangeFilter(DateRangeFilter rangeFilter);
+    void ApplyKeywordFilter<TDocument>(KeywordFilter<TDocument> keywordFilter)
+        where TDocument : class, IHasText;
+    void ApplyFreeTextFilter<TDocument>(FreeTextFilter<TDocument> freeTextFilter)
+        where TDocument : class;
 }

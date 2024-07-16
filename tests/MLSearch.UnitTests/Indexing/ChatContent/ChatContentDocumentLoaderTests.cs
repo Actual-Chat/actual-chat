@@ -50,16 +50,16 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
         searchEngine
             .Setup(x => x.Find(It.IsAny<SearchQuery>(), It.IsAny<CancellationToken>()))
             .Returns<SearchQuery, CancellationToken>((q, _) => {
-                if (q.MetadataFilters.Where(f => f is Int64RangeFilter).SingleOrDefault() is Int64RangeFilter rangeFilter) {
+                if (q.Filters.Where(f => f is Int64RangeFilter).SingleOrDefault() is Int64RangeFilter rangeFilter) {
                     isLocalIdFieldNameExpected ??= true;
                     isLocalIdFieldNameExpected &= expectedLocalIdFieldName.Equals(rangeFilter.FieldName, StringComparison.Ordinal);
                     isLocalIdFieldNameExpected &= expectedLocalIdFieldName.Equals(q.SortStatements?[0].Field, StringComparison.Ordinal);
                 }
-                if (q.MetadataFilters.Where(f => f is EqualityFilter<string>).SingleOrDefault() is EqualityFilter<string> chatIdFilter) {
+                if (q.Filters.Where(f => f is EqualityFilter<string>).SingleOrDefault() is EqualityFilter<string> chatIdFilter) {
                     isChatIdFieldNameExpected ??= true;
                     isChatIdFieldNameExpected &= expectedChatIdFieldName.Equals(chatIdFilter.FieldName, StringComparison.Ordinal);
                 }
-                if (q.MetadataFilters.Where(f => f is OrFilter).SingleOrDefault() is OrFilter orFilter) {
+                if (q.Filters.Where(f => f is OrFilter).SingleOrDefault() is OrFilter orFilter) {
                     isIdFieldNameExpected ??= true;
                     isIdFieldNameExpected &= orFilter.Filters.Cast<EqualityFilter<ChatEntryId>>().All(
                         f => expectedIdFieldName.Equals(f.FieldName, StringComparison.Ordinal));
@@ -102,12 +102,12 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
 
         searchEngine.Verify(x => x.Find(
             It.Is<SearchQuery>(x => x.Limit == tailSetSize
-                && x.MetadataFilters
+                && x.Filters
                     .Where(f => f is EqualityFilter<string>)
                     .Cast<EqualityFilter<string>>()
                     .Where(f => f.Value.Equals(chatId, StringComparison.Ordinal))
                     .Single() != null
-                && x.MetadataFilters
+                && x.Filters
                     .Where(f => f is Int64RangeFilter)
                     .Cast<Int64RangeFilter>()
                     .Where(f => !f.From.HasValue && f.To.HasValue && f.To.Value.Value == lastLocalId && f.To.Value.Include)
@@ -152,7 +152,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
         Assert.Equal(resultDocuments.Select(rankedDoc => rankedDoc.Document), results);
 
         searchEngine.Verify(x => x.Find(
-            It.Is<SearchQuery>(x => x.MetadataFilters.Single() is OrFilter),
+            It.Is<SearchQuery>(x => x.Filters.Single() is OrFilter),
             It.Is<CancellationToken>(x => x == ctSource.Token)
         ));
     }
