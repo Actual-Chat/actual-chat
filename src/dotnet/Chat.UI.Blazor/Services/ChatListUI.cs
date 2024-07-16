@@ -12,7 +12,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     private static readonly TimeSpan MinNotificationInterval = TimeSpan.FromSeconds(5);
 
     private readonly MutableState<bool> _isSelectedChatUnlisted;
-    private readonly MutableState<ChatListView?> _activeChatListView;
+    private readonly ConcurrentDictionary<PlaceId, ChatListView> _chatListViews = new ();
 
     private bool _isFirstLoad = true;
     private ComputedState<Trimmed<int>>? _unreadChatCount;
@@ -35,17 +35,15 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     private Moment CpuNow => Clocks.CpuClock.Now;
 
-    public IState<ChatListView?> ActiveChatListView => _activeChatListView;
+    // public IState<ChatListView?> ActiveChatListView => _activeChatListView;
 
     public ChatListUI(ChatUIHub hub) : base(hub)
     {
         var type = GetType();
-        // _loadLimit = StateFactory.NewMutable(Constants.Contacts.MinLoadLimit,
-            // StateCategories.Get(type, nameof(_loadLimit)));
         _isSelectedChatUnlisted = StateFactory.NewMutable(false,
             StateCategories.Get(type, nameof(_isSelectedChatUnlisted)));
-        _activeChatListView = StateFactory.NewMutable((ChatListView?)null,
-            StateCategories.Get(type, nameof(ActiveChatListView)));
+        // _activeChatListView = StateFactory.NewMutable((ChatListView?)null,
+        //     StateCategories.Get(type, nameof(ActiveChatListView)));
     }
 
     void INotifyInitialized.Initialized()
@@ -61,12 +59,11 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         this.Start();
     }
 
-    public ChatListView ActivateChatList(PlaceId placeId)
-    {
-        if (_activeChatListView.Value == null || _activeChatListView.Value.PlaceId != placeId)
-            _activeChatListView.Value = new ChatListView(placeId, CreateSettingsState(placeId));
-        return _activeChatListView.Value;
-    }
+    public ChatListView GetChatListView()
+        => GetChatListView(ChatUI.SelectedPlaceId.Value);
+
+    public ChatListView GetChatListView(PlaceId placeId)
+        => _chatListViews.GetOrAdd(placeId, pid => new ChatListView(placeId, CreateSettingsState(placeId)));
 
 #pragma warning disable CA1822 // Can be static
     public int GetCountWhenLoading(ChatListKind listKind)
@@ -80,24 +77,18 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     [ComputeMethod]
     public virtual async Task<int> GetCount(PlaceId placeId, CancellationToken cancellationToken)
     {
-        var listView = await ActiveChatListView.Use(cancellationToken).ConfigureAwait(false);
-        if (listView == null || listView.PlaceId != placeId)
-            return 0;
-
+        var listView = GetChatListView(placeId);
         var settings = await listView.GetSettings(cancellationToken).ConfigureAwait(false);
         var chatById = await ListAllUnordered(placeId, settings.Filter, cancellationToken).ConfigureAwait(false);
         return chatById.Count;
     }
 
     [ComputeMethod]
-    public virtual async Task<int> IndexOf(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<int> IndexOf(PlaceId placeId, ChatId chatId, CancellationToken cancellationToken)
     {
-        var listView = await ActiveChatListView.Use(cancellationToken).ConfigureAwait(false);
-        if (listView == null || listView.PlaceId != chatId.PlaceId)
-            return -1;
-
+        var listView = GetChatListView(placeId);
         var settings = await listView.GetSettings(cancellationToken).ConfigureAwait(false);
-        var items = await ListAll(chatId.PlaceId, settings, cancellationToken).ConfigureAwait(false);
+        var items = await ListAll(placeId, settings, cancellationToken).ConfigureAwait(false);
         var index = -1;
         for (int i = 0; i < items.Count; i++) {
             var item = items[i];
@@ -229,10 +220,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     public virtual async Task<VirtualListTile<ChatListItemModel>> GetTile(PlaceId placeId, Tile<int> indexTile, CancellationToken cancellationToken)
     {
         var longRange = indexTile.Range.AsLongRange();
-        var listView = await ActiveChatListView.Use(cancellationToken).ConfigureAwait(false);
-        if (listView == null)
-            return VirtualListTile<ChatListItemModel>.Empty;
-
+        var listView = GetChatListView(placeId);
         var settings = await listView.GetSettings(cancellationToken).ConfigureAwait(false);
         var chatInfos = await ListAll(placeId, settings, cancellationToken).ConfigureAwait(false);
         var chatInfoTile = chatInfos

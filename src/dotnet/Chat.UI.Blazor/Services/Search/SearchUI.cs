@@ -47,17 +47,15 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         => Task.FromResult(_cached.FoundContacts);
 
     [ComputeMethod]
-    protected virtual async Task<Criteria>
-        GetCriteria(CancellationToken cancellationToken)
+    protected virtual async Task<Criteria> GetCriteria(CancellationToken cancellationToken)
     {
         var text = await Text.Use(cancellationToken).ConfigureAwait(false);
         if (text.IsNullOrEmpty())
             return Criteria.None;
 
         var extendedLimits = await ExtendedLimits.Use(cancellationToken).ConfigureAwait(false);
-
-        var chatListView = await ChatListUI.ActiveChatListView.Use(cancellationToken).ConfigureAwait(false);
-        return new (text, chatListView?.PlaceId ?? PlaceId.None, extendedLimits);
+        var chatListView = ChatListUI.GetChatListView();
+        return new (text, chatListView.PlaceId, extendedLimits);
     }
 
     public async Task ShowMore(ContactSearchScope scope, CancellationToken cancellationToken = default)

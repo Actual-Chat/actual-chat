@@ -43,12 +43,12 @@
                 }
             </ChildContent>
             <TabContent>
-                <ChatList Kind="ChatListKind.All"/>
+                <ChatList PlaceId="@PlaceId" Kind="ChatListKind.All"/>
             </TabContent>
         </TabPanel>
     </div>
     <div class="c-active-chats">
-        <ChatList Kind="ChatListKind.Active" />
+        <ChatList PlaceId="@PlaceId" Kind="ChatListKind.Active" />
     </div>
 </div>
 
@@ -69,7 +69,7 @@
 
     protected override async Task OnParametersSetAsync() {
         var oldChatListView = _chatListView;
-        _chatListView = ChatListUI.ActivateChatList(PlaceId);
+        _chatListView = ChatListUI.GetChatListView(PlaceId);
         await _chatListView.WhenReady; // NOTE(DF): Re-render after ChatListView became ready (settings are loaded) to select tab with current filter id.
         if (_chatListView != oldChatListView)
             _updateSelectedTab = true;

@@ -87,6 +87,16 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         BlazorRef = null!;
     }
 
+    public async ValueTask Reset()
+    {
+        RenderIndex = 0;
+        Query = VirtualListDataQuery.None;
+        LastData = Data;
+        LastReportedItemVisibility = VirtualListItemVisibility.Empty;
+        StateHasChanged();
+        await JSRef.InvokeVoidAsync("reset");
+    }
+
     protected override bool ShouldRender()
         => !ReferenceEquals(Data, LastData) // Data changed
             || RenderIndex == 0 // OR very first sync render without data loaded
@@ -122,11 +132,12 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {
         var query = Query;
-        var lastData = LastData;
+        // Use None after reset() call
+        var lastData = LastData.Index >= RenderIndex ? VirtualListData<TItem>.None : LastData;
         VirtualListData<TItem> data;
         var computed = Computed.GetCurrent();
         try {
-            data = await DataSource.GetData(State, query, lastData, cancellationToken).ConfigureAwait(false);
+            data = await DataSource.GetData(query, lastData, cancellationToken).ConfigureAwait(false);
             if (computed is IComputedImpl impl)
                 if (impl.Used.Any(ci => ci.IsInvalidated()))
                     return lastData; // current computed is already invalidated - so it will be recalculated shortly

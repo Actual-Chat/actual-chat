@@ -9,13 +9,13 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
     public static readonly int HalfLoadLimit = LoadLimit / 2;
 
     public async Task<VirtualListData<ChatListItemModel>> GetData(
-        ComputedState<VirtualListData<ChatListItemModel>> state,
         VirtualListDataQuery query,
         VirtualListData<ChatListItemModel> renderedData,
         CancellationToken cancellationToken)
     {
         var selectedChatId = ChatUI.SelectedChatId.Value;
-        var selectedChatIndex = await ChatListUI.IndexOf(selectedChatId, cancellationToken).ConfigureAwait(false);
+        var selectedPlaceId = await ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
+        var selectedChatIndex = await ChatListUI.IndexOf(selectedPlaceId, selectedChatId, cancellationToken).ConfigureAwait(false);
         var chatCount = await ChatListUI.GetCount(selectedChatId.PlaceId, cancellationToken).ConfigureAwait(false);
         if (chatCount == 0)
             return VirtualListData<ChatListItemModel>.None;

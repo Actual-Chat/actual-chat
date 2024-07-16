@@ -35,6 +35,7 @@
     } else {
         @* ChatListKind.All *@
         <VirtualList
+            @ref="_virtualListRef"
             Class="chat-list chat-list-all"
             DataSource="@this"
             ExpandTriggerMultiplier="0.5"
@@ -57,6 +58,7 @@
 }
 
 @code {
+    private VirtualList<ChatListItemModel>? _virtualListRef = null;
     private Model _rendered;
     private ILogger? _log;
     private bool _resetScrollPositionRequested;
@@ -71,9 +73,8 @@
     private ILogger Log => _log ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
 
-    // private ElementReference AllChatListRef { get; set; }
-
     [Parameter, EditorRequired] public ChatListKind Kind { get; set; }
+    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
 
     protected override void OnInitialized() {
         DebugLog?.LogDebug("Initialized: {List}", Kind);
@@ -82,6 +83,7 @@
 
     protected override void OnParametersSet() {
         DebugLog?.LogDebug("OnParametersSet: {List}", Kind);
+        _ = _virtualListRef?.Reset();
         base.OnParametersSet();
     }
 
@@ -109,16 +111,6 @@
         var isSearchModeOn = await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false);
         DebugLog?.LogDebug("<- ComputeState: {List}. IsSearchModeOn={IsSearchModeOn}", chatListKind, isSearchModeOn);
         return new (chats, isSearchModeOn);
-    }
-
-    // protected override bool ShouldRender()
-    //     => State.HasError || State.Value != _rendered;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        // if (_resetScrollPositionRequested) {
-        //     await AllChatListRef.ScrollToTop();
-        //     _resetScrollPositionRequested = false;
-        // }
     }
 
     // Nested types
