@@ -14,4 +14,5 @@ internal interface IQueryBuilder
         where TDocument : class, IHasText;
     void ApplyFreeTextFilter<TDocument>(FreeTextFilter<TDocument> freeTextFilter)
         where TDocument : class;
+    void ApplyChatFilter(ChatFilter chatFilter);
 }
