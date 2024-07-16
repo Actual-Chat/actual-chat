@@ -1,4 +1,5 @@
 using ActualChat.MLSearch.Documents;
+using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch;
@@ -7,33 +8,33 @@ internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings)
 {
     private const string EmbeddingFieldName = "event_dense_embedding";
 
-    private List<QueryContainer> _metadataFilters = [];
+    private List<QueryContainer> _queryFilters = [];
     private readonly List<QueryContainer> _queries = [];
     private readonly HashSet<string> _keywords = [];
 
     void IQueryBuilder.ApplyOrFilter(OrFilter orFilter)
     {
-        var oldMetadataFilters = _metadataFilters;
-        _metadataFilters = [];
+        var oldMetadataFilters = _queryFilters;
+        _queryFilters = [];
 
         foreach (var filter in orFilter.Filters) {
             filter.Apply(this);
         }
 
         oldMetadataFilters.Add(new QueryContainerDescriptor<ChatSlice>()
-            .Bool(boolQuery => boolQuery.Should(_metadataFilters.ToArray())));
-        _metadataFilters = oldMetadataFilters;
+            .Bool(boolQuery => boolQuery.Should(_queryFilters.ToArray())));
+        _queryFilters = oldMetadataFilters;
     }
 
     void IQueryBuilder.ApplyEqualityFilter<TValue>(EqualityFilter<TValue> equalityFilter)
-        => _metadataFilters.Add(new QueryContainerDescriptor<ChatSlice>()
+        => _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
             .Term(query => query.Field(equalityFilter.FieldName).Value(equalityFilter.Value))
         );
 
     void IQueryBuilder.ApplyRangeFilter(DoubleRangeFilter rangeFilter)
     {
         if (rangeFilter.From.HasValue || rangeFilter.To.HasValue) {
-            _metadataFilters.Add(new QueryContainerDescriptor<ChatSlice>()
+            _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
                 .Range(query => {
                     query = query.Field(rangeFilter.FieldName);
                     if (rangeFilter.From is { Value: var fromBound, Include: var isFromIncluded}) {
@@ -62,7 +63,7 @@ internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings)
     private void ApplyRangeFilter(Int64RangeFilter rangeFilter)
     {
         if (rangeFilter.From.HasValue || rangeFilter.To.HasValue) {
-            _metadataFilters.Add(new QueryContainerDescriptor<ChatSlice>()
+            _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
                 .LongRange(query => {
                     query = query.Field(rangeFilter.FieldName);
                     if (rangeFilter.From is { Value: var fromBound, Include: var isFromIncluded}) {
@@ -83,7 +84,7 @@ internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings)
     void IQueryBuilder.ApplyRangeFilter(DateRangeFilter rangeFilter)
     {
         if (rangeFilter.From.HasValue || rangeFilter.To.HasValue) {
-            _metadataFilters.Add(new QueryContainerDescriptor<ChatSlice>()
+            _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
                 .DateRange(query => {
                     query = query.Field(rangeFilter.FieldName);
                     if (rangeFilter.From is { Value: var fromBound, Include: var isFromIncluded}) {
@@ -113,7 +114,7 @@ internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings)
                 .Size(searchQuery.Limit);
         }
 
-        _metadataFilters.Clear();
+        _queryFilters.Clear();
         _queries.Clear();
         _keywords.Clear();
 
@@ -123,7 +124,7 @@ internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings)
 
         return queryRoot.Query(query => query
             .Bool(boolQuery => boolQuery
-                .Filter(_metadataFilters.ToArray())
+                .Filter(_queryFilters.ToArray())
                 .Should(_queries.ToArray())))
             .Sort(SortSelector)
             .Size(searchQuery.Limit);
@@ -177,5 +178,62 @@ internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings)
                     }
                     """))
                 .Script(script => script.Source("_score * 1.5"))));
+    }
+
+    void IQueryBuilder.ApplyChatFilter(ChatFilter chatFilter)
+    {
+        var isPublic = ToBoolTermValue(chatFilter.PublicChatInclusion);
+        var isBotChat = ToBoolTermValue(chatFilter.SearchBotChatInclusion);
+
+        if (isPublic.HasValue || isBotChat.HasValue) {
+            _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
+                .HasParent<ChatInfo>(parent => parent
+                    .ParentType(ChatInfoToChatSliceRelation.ChatInfoName)
+                    .Query(query => query.Bool(parentQuery => parentQuery.Filter([
+                            q => isPublic.HasValue ? q.Term(t => t.IsPublic, isPublic.Value) : q,
+                            q => isBotChat.HasValue ? q.Term(t => t.IsBotChat, isBotChat.Value) : q,
+                        ])))
+                ));
+        }
+        // if (isPublic.HasValue || isBotChat.HasValue) {
+        //     _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
+        //         .HasParent<ChatInfo>(parent => parent
+        //             .ParentType(ChatInfoToChatSliceRelation.ChatInfoName)
+        //             .Query(query => query.Bool(parentQuery => {
+        //                 List<Func<QueryContainerDescriptor<ChatInfo>, QueryContainer>> filters = isPublic.HasValue
+        //                     ? [q => q.Term(t => t.IsPublic, isPublic.Value)]
+        //                     : [];
+
+        //                 if (isBotChat.HasValue) {
+        //                     filters.Add(q => q.Term(t => t.IsBotChat, isBotChat.Value));
+        //                 }
+        //                 return parentQuery.Filter(filters);
+        //             }))
+        //         ));
+        // }
+
+        // if (isPublic.HasValue) {
+        //     _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
+        //         .HasParent<ChatInfo>(parent => parent
+        //             .ParentType(ChatInfoToChatSliceRelation.ChatInfoName)
+        //             .Query(query => query.Term(t => t.IsPublic, isPublic.Value))
+        //     ));
+        // }
+
+        // if (isBotChat.HasValue) {
+        //     var isBotChatValue = chatFilter.SearchBotChatInclusion == InclusionMode.IncludeStrictly;
+        //     _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
+        //         .HasParent<ChatInfo>(parent => parent
+        //             .ParentType(ChatInfoToChatSliceRelation.ChatInfoName)
+        //             .Query(query => query.Term(t => t.IsBotChat, isBotChat.Value))
+        //     ));
+        // }
+
+        return;
+
+        // NOTE: InclusionMode.Include means no filter required
+        static bool? ToBoolTermValue(InclusionMode inclusionMode) => inclusionMode != InclusionMode.Include
+            ? inclusionMode == InclusionMode.IncludeStrictly
+            : default(bool?);
     }
 }
