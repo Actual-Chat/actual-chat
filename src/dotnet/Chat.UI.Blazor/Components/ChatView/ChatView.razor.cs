@@ -249,7 +249,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     // - Return messages around an anchor message we are navigating to
     // If the message data is the same it should return same instances of data tiles to reduce re-rendering
     async Task<VirtualListData<ChatMessage>> IVirtualListDataSource<ChatMessage>.GetData(
-        ComputedState<VirtualListData<ChatMessage>> state,
         VirtualListDataQuery query,
         VirtualListData<ChatMessage> renderedData,
         CancellationToken cancellationToken)
@@ -271,8 +270,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // but don't want to delay rapid updates.
         // We don't need delays when data is being requested by the client code - e.g. when query isn't None
         if (query.IsNone && renderedData.Index > 2) {
-            var lastData = state.ValueOrDefault ?? VirtualListData<ChatMessage>.None;
-            var lastComputedAt = lastData.IsNone ? startedAt : lastData.ComputedAt;
+            var lastComputedAt = renderedData.IsNone ? startedAt : renderedData.ComputedAt;
             var isFastUpdate = startedAt - lastComputedAt <= FastUpdateRecency;
             var delay = startedAt + (isFastUpdate ? FastUpdateDelay : SlowUpdateDelay) - CpuTimestamp.Now;
             if (delay > TimeSpan.FromMilliseconds(10))

@@ -212,6 +212,8 @@
     <!-- CA2007: Consider calling ConfigureAwait on the awaited task -->
     <!-- TODO: Re-enable CA2007 when issue is fixed https://github.com/dotnet/roslyn-analyzers/issues/5712 -->
     <NoWarn>$(NoWarn);CA2007</NoWarn>
+    <!-- Found markup element with unexpected name 'XXX'. If this is intended to be a component, add a @using directive for its namespace. -->
+    <WarningsAsErrors>$(WarningsAsErrors);RZ10012</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(DeterministicSourcePaths)' =='true'">

@@ -188,10 +188,6 @@ export class VirtualList {
             beforeCount: null,
             afterCount: null,
             count: 0,
-            // requestedStartExpansion: null,
-            // requestedEndExpansion: null,
-            // startExpansion: 0,
-            // endExpansion: 0,
             hasVeryFirstItem: false,
             hasVeryLastItem: false,
 
@@ -225,7 +221,9 @@ export class VirtualList {
         this.onItemSetChange([], this._itemSetChangeObserver);
     };
 
+    /** Called by blazor */
     public dispose() {
+        debugLog?.log(`dispose()`);
         this._isDisposed = true;
         this._abortController.abort();
         this._itemSetChangeObserver.disconnect();
@@ -236,6 +234,32 @@ export class VirtualList {
         this._whenRequestDataCompleted?.resolve(undefined);
         clearInterval(this._safetyTimerHandle);
         this._ref.removeEventListener('scroll', this.onScroll);
+    }
+
+    /** Called by blazor */
+    public reset() {
+        debugLog?.log(`reset()`);
+        this._lastViewport = null;
+        this._viewport = null;
+        this._lastQueryTime = null;
+        this._stickyEdge = null;
+        this._query = VirtualListDataQuery.None;
+        this._lastQuery = VirtualListDataQuery.None;
+        this._items.clear();
+        this._orderedItems = [];
+        this._pivots = [];
+        this._renderState = {
+            renderIndex: -1,
+            query: VirtualListDataQuery.None,
+            keyRange: new Range<string>('',''),
+            beforeCount: null,
+            afterCount: null,
+            count: 0,
+            hasVeryFirstItem: false,
+            hasVeryLastItem: false,
+
+            scrollToKey: null,
+        };
     }
 
     private get isRendering(): boolean {

@@ -31,5 +31,5 @@
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     private void OnClick(ChatListOrder order)
-        => ChatListUI.ActiveChatListView.Value?.SetOrder(order);
+        => ChatListUI.GetChatListView().SetOrder(order);
 }

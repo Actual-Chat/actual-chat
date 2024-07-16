@@ -191,7 +191,7 @@ public partial class ChatUI
         finally {
             _whenActivePlaceRestored.TrySetResult();
             await Hub.Dispatcher.InvokeAsync(() => {
-                    ChatListUI.ActivateChatList(SelectedPlaceId.Value);
+                    ChatListUI.GetChatListView(SelectedPlaceId.Value);
                 })
                 .ConfigureAwait(false);
         }
