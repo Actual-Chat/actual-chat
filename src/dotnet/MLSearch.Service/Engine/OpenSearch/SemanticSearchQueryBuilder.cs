@@ -160,7 +160,7 @@ internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings)
         }
     }
 
-    void IQueryBuilder.ApplyFreeTextFilter<TDocument>(FreeTextFilter<TDocument> freeTextFilter)
+    void IQueryBuilder.ApplySemanticFilter<TDocument>(SemanticFilter<TDocument> semanticFilter)
         where TDocument : class
     {
         _queries.Add(new QueryContainerDescriptor<TDocument>()
@@ -170,7 +170,7 @@ internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings)
                     {
                         "neural": {
                             "{{EmbeddingFieldName}}": {
-                                "query_text": "{{freeTextFilter.Text}}",
+                                "query_text": "{{semanticFilter.Text}}",
                                 "model_id": "{{settings.ModelId}}",
                                 "k": 100
                             }

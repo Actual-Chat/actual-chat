@@ -106,7 +106,7 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         var query1 = new SearchQuery() {
             Filters = [
                 new KeywordFilter<ChatSlice>(["command"]),
-                new FreeTextFilter<ChatSlice>("Tools for mobile development"),
+                new SemanticFilter<ChatSlice>("Tools for mobile development"),
             ],
         };
         var queryResult1 = await searchEngine.Find(query1, CancellationToken.None);
@@ -120,7 +120,7 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         var query2 = new SearchQuery() {
             Filters = [
                 new DateRangeFilter($"{metadataField}.{timestampField}", new RangeBound<DateTime>(dateBound, true), null),
-                new FreeTextFilter<ChatSlice>("Search engines and technologies"),
+                new SemanticFilter<ChatSlice>("Search engines and technologies"),
             ],
         };
 
@@ -132,7 +132,7 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
             Filters = [
                 new DateRangeFilter($"{metadataField}.{timestampField}", new RangeBound<DateTime>(dateBound, true), null),
                 new EqualityFilter<ChatId>($"{metadataField}.{chatIdField}", chatId1),
-                new FreeTextFilter<ChatSlice>("Search engines and technologies"),
+                new SemanticFilter<ChatSlice>("Search engines and technologies"),
             ],
         };
         var queryResult3 = await searchEngine.Find(query3, CancellationToken.None);

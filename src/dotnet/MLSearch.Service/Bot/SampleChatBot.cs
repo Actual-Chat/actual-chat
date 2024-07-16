@@ -38,7 +38,7 @@ internal class SampleChatBot(ICommander commander, UrlMapper urlMapper, IChatsBa
                     PublicChatInclusion = InclusionMode.IncludeStrictly,
                     SearchBotChatInclusion = InclusionMode.Exclude,
                 },
-                new FreeTextFilter<ChatSlice>(lastUpdatedDocument.Content),
+                new SemanticFilter<ChatSlice>(lastUpdatedDocument.Content),
             ],
         };
         var searchResult = await searchEngine.Find(query, cancellationToken).ConfigureAwait(false);
