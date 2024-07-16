@@ -26,6 +26,8 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
         var deleteByQueryResponse = await client.DeleteByQueryAsync<object>(d => d
             .Index(IndexNames.MLTestIndexPattern)
+            .Refresh(true)
+            .WaitForCompletion(true)
             .Query(query => query.Script(
                 scriptQuery => scriptQuery.Script(
                     script => script.Source("true")
