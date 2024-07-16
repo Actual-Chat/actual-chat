@@ -1,32 +1,33 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
-    var text = _status switch {
+    var text = Status switch {
         MessageStatus.Sending => "sending",
         MessageStatus.Unread => "unread",
         _ => "",
     };
 
     RenderFragment RenderIcon() {
-        @if (_status == MessageStatus.Sending) {
+        @if (Status == MessageStatus.Sending) {
             return @<i class="icon-clock"></i>;
         }
         return @<span class="sending-circle"></span>;
     }
 }
 
-<div class="chat-message-sending-status">
+<span class="chat-message-sending-status">
     <span>
         @text
     </span>
-    @if (_status is MessageStatus.Sending or MessageStatus.Unread) {
+    @if (Status is MessageStatus.Sending or MessageStatus.Unread) {
         @RenderIcon()
     }
-</div>
+</span>
 
 @code {
-    private MessageStatus _status = MessageStatus.Sending;
+    [Parameter]
+    public MessageStatus Status { get; set; }
 
-    enum MessageStatus {
+    public enum MessageStatus {
         Default,
         Sending,
         Unread,

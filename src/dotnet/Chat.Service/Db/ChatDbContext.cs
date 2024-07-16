@@ -18,6 +18,7 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
     public DbSet<DbAuthorRole> AuthorRoles { get; protected set; } = null!;
     public DbSet<DbChatCopyState> ChatCopyStates { get; protected set; } = null!;
     public DbSet<DbPlace> Places { get; protected set; } = null!;
+    public DbSet<DbReadPositionsStat> ReadPositionsStats { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -78,6 +79,11 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         var chatCopyState = model.Entity<DbChatCopyState>();
         chatCopyState.Property(e => e.Id).UseCollation("C");
         chatCopyState.Property(e => e.SourceChatId).UseCollation("C");
+
+        var readPositionsStat = model.Entity<DbReadPositionsStat>();
+        readPositionsStat.Property(e => e.ChatId).UseCollation("C");
+        readPositionsStat.Property(e => e.Top1UserId).UseCollation("C");
+        readPositionsStat.Property(e => e.Top2UserId).UseCollation("C");
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");

@@ -50,6 +50,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; } = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
     private IDbEntityResolver<string, DbChatCopyState> DbChatCopyStateResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChatCopyState>>();
+    private IDbEntityResolver<string, DbReadPositionsStat> DbReadPositionsStatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbReadPositionsStat>>();
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
     private OtelMetrics Metrics { get; } = services.Metrics();
@@ -379,6 +380,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 return chat.Id;
         }
         return ChatId.None;
+    }
+
+    //[ComputeMethod]
+    public virtual async Task<ReadPositionsStatBackend?> GetReadPositionsStat(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var dbReadPositionsStat = await DbReadPositionsStatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (dbReadPositionsStat == null)
+            return null;
+
+        return new ReadPositionsStatBackend(chatId, dbReadPositionsStat.StartTrackingEntryLid, dbReadPositionsStat.GetTopReadPositions());
     }
 
     [ComputeMethod]
@@ -1341,6 +1352,87 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return chatCopyState;
+    }
+
+    public virtual async Task OnUpdateReadPositionsStat(
+        ChatsBackend_UpdateReadPositionsStat command,
+        CancellationToken cancellationToken)
+    {
+        var chatId = command.ChatId;
+        var context = CommandContext.GetCurrent();
+
+        if (Invalidation.IsActive) {
+            if (context.Operation.Items.GetOrDefault<bool>())
+                _ = GetReadPositionsStat(chatId, default);
+            return;
+        }
+
+        var userId = command.UserId;
+        var positionId = command.PositionId;
+
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+        var dbReadPositionsStat = await dbContext.ReadPositionsStats.ForUpdate()
+            .FirstOrDefaultAsync(c => c.ChatId == chatId, cancellationToken)
+            .ConfigureAwait(false);
+
+        var hasChanges = false;
+        if (dbReadPositionsStat != null) {
+            if (dbReadPositionsStat.StartTrackingEntryLid <= positionId) {
+                var items = dbReadPositionsStat.GetTopReadPositions().ToList();
+                if (items.Count == 0) {
+                    items.Add(new UserReadPosition(userId, positionId));
+                    hasChanges = true;
+                }
+                else {
+                    if (items.Count == 1 || items[^1].EntryLid < positionId) {
+                        var index = items.FindIndex(c => c.UserId == userId);
+                        if (index >= 0) {
+                            if (items[index].EntryLid < positionId) {
+                                items[index] = new UserReadPosition(userId, positionId);
+                                hasChanges = true;
+                            }
+                        }
+                        else {
+                            items.Add(new UserReadPosition(userId, positionId));
+                            hasChanges = true;
+                        }
+                    }
+                }
+                if (hasChanges) {
+                    items = items
+                        .OrderByDescending(c => c.EntryLid)
+                        .ThenBy(c => c.UserId)
+                        .Take(2)
+                        .ToList();
+                    var top1 = items[0];
+                    var top2 = items.Count > 1 ? items[1] : new UserReadPosition(UserId.None, 0);
+                    dbReadPositionsStat.Version = VersionGenerator.NextVersion(dbReadPositionsStat.Version);
+                    dbReadPositionsStat.Top1UserId = top1.UserId;
+                    dbReadPositionsStat.Top1EntryLid = top1.EntryLid;
+                    dbReadPositionsStat.Top2UserId = top2.UserId;
+                    dbReadPositionsStat.Top2EntryLid = top2.EntryLid;
+                }
+            }
+        }
+        else {
+            var idRange = await GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
+            var lastEntryId = idRange.End - 1; // Start tracking positions stat since this entry
+            var shouldTrackPosition = positionId >= lastEntryId;
+            dbContext.Add(new DbReadPositionsStat {
+                ChatId = chatId,
+                Version = VersionGenerator.NextVersion(),
+                StartTrackingEntryLid = lastEntryId,
+                Top1UserId = shouldTrackPosition ? userId : "",
+                Top1EntryLid = shouldTrackPosition ? positionId : 0
+            });
+            hasChanges = true;
+        }
+
+        if (hasChanges) {
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            context.Operation.Items.Set(true);
+        }
     }
 
     // Event handlers

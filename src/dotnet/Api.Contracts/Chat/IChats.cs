@@ -54,6 +54,9 @@ public interface IChats : IComputeService
     [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<ChatId> GetForwardChatReplacement(Session session, ChatId sourceChatId, CancellationToken cancellationToken);
 
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
+    Task<ReadPositionsStat> GetReadPositionsStat(Session session, ChatId chatId, CancellationToken cancellationToken);
+
     // Non-compute methods
 
     Task<ChatEntry?> FindNext(
