@@ -8,6 +8,8 @@ internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings)
     private const string EmbeddingFieldName = "event_dense_embedding";
 
     private List<QueryContainer> _metadataFilters = [];
+    private readonly List<QueryContainer> _queries = [];
+    private readonly HashSet<string> _keywords = [];
 
     void IQueryBuilder.ApplyOrFilter(OrFilter orFilter)
     {
@@ -105,47 +107,24 @@ internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings)
             .Index(settings.IndexName)
             .Source(src => src.Excludes(excl => excl.Field(EmbeddingFieldName)));
 
-        if (searchQuery.IsUnfiltered()) {
+        if (searchQuery.Filters is null || searchQuery.Filters.Length == 0) {
             return queryRoot
                 .Sort(SortSelector)
                 .Size(searchQuery.Limit);
         }
 
         _metadataFilters.Clear();
-        foreach (var metadataFiler in searchQuery.MetadataFilters ?? Enumerable.Empty<IMetadataFilter>()) {
-            metadataFiler.Apply(this);
-        }
-        var queries = searchQuery.FreeTextFilter is null
-            ? new List<QueryContainer>()
-            : [ new QueryContainerDescriptor<ChatSlice>()
-                .ScriptScore(scoredQuery => scoredQuery
-                    .Query(q => q.Raw(
-                        $$"""
-                          {
-                              "neural": {
-                                  "{{EmbeddingFieldName}}": {
-                                      "query_text": "{{searchQuery.FreeTextFilter}}",
-                                      "model_id": "{{settings.ModelId}}",
-                                      "k": 100
-                                  }
-                              }
-                          }
-                          """))
-                    .Script(script => script.Source("_score * 1.5"))),
-            ];
+        _queries.Clear();
+        _keywords.Clear();
 
-        foreach (var keyword in searchQuery.Keywords ?? Enumerable.Empty<string>()) {
-            queries.Add(new QueryContainerDescriptor<ChatSlice>()
-                .ScriptScore(scoredQuery => scoredQuery
-                    .Query(q => q.Match(m => m.Field(f => f.Text).Query(keyword)))
-                    .Script(script => script.Source("_score * 1.7")))
-            );
+        foreach (var filter in searchQuery.Filters ?? Enumerable.Empty<IQueryFilter>()) {
+            filter.Apply(this);
         }
 
         return queryRoot.Query(query => query
             .Bool(boolQuery => boolQuery
                 .Filter(_metadataFilters.ToArray())
-                .Should(queries.ToArray())))
+                .Should(_queries.ToArray())))
             .Sort(SortSelector)
             .Size(searchQuery.Limit);
 
@@ -163,5 +142,40 @@ internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings)
             }
             return ss;
         }
+    }
+
+    void IQueryBuilder.ApplyKeywordFilter<TDocument>(KeywordFilter<TDocument> keywordFilter)
+        where TDocument : class
+    {
+        foreach (var keyword in keywordFilter.Keywords ?? Enumerable.Empty<string>()) {
+            if (!_keywords.Add(keyword)) {
+                continue;
+            }
+            _queries.Add(new QueryContainerDescriptor<TDocument>()
+                .ScriptScore(scoredQuery => scoredQuery
+                    .Query(q => q.Match(m => m.Field(f => f.Text).Query(keyword)))
+                    .Script(script => script.Source("_score * 1.7")))
+            );
+        }
+    }
+
+    void IQueryBuilder.ApplyFreeTextFilter<TDocument>(FreeTextFilter<TDocument> freeTextFilter)
+        where TDocument : class
+    {
+        _queries.Add(new QueryContainerDescriptor<TDocument>()
+            .ScriptScore(scoredQuery => scoredQuery
+                .Query(q => q.Raw(
+                    $$"""
+                    {
+                        "neural": {
+                            "{{EmbeddingFieldName}}": {
+                                "query_text": "{{freeTextFilter.Text}}",
+                                "model_id": "{{settings.ModelId}}",
+                                "k": 100
+                            }
+                        }
+                    }
+                    """))
+                .Script(script => script.Source("_score * 1.5"))));
     }
 }

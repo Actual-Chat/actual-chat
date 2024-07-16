@@ -33,8 +33,7 @@ internal class SampleChatBot(ICommander commander, UrlMapper urlMapper, IChatsBa
 
         // TODO: constrain with permissions
         var query = new SearchQuery() {
-            MetadataFilters = [],
-            FreeTextFilter = lastUpdatedDocument.Content,
+            Filters = [new FreeTextFilter<ChatSlice>(lastUpdatedDocument.Content)],
         };
         var searchResult = await searchEngine.Find(query, cancellationToken).ConfigureAwait(false);
         var documents = searchResult.Documents;
