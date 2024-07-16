@@ -1,5 +1,5 @@
 .chat-message-sending-status {
-    @apply flex-x items-center gap-x-1;
+    @apply inline-flex flex-row items-center gap-x-1;
     @apply text-xs text-03;
 }
 .chat-message-sending-status i {

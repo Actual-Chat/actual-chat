@@ -98,6 +98,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
             // DbPlace
             db.AddEntityResolver<string, DbPlace>();
+
+            // DbReadPositionsStat
+            db.AddEntityResolver<string, DbReadPositionsStat>();
         });
     }
 }
