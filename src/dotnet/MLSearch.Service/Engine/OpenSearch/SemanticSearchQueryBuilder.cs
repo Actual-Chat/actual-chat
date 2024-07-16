@@ -195,39 +195,6 @@ internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings)
                         ])))
                 ));
         }
-        // if (isPublic.HasValue || isBotChat.HasValue) {
-        //     _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
-        //         .HasParent<ChatInfo>(parent => parent
-        //             .ParentType(ChatInfoToChatSliceRelation.ChatInfoName)
-        //             .Query(query => query.Bool(parentQuery => {
-        //                 List<Func<QueryContainerDescriptor<ChatInfo>, QueryContainer>> filters = isPublic.HasValue
-        //                     ? [q => q.Term(t => t.IsPublic, isPublic.Value)]
-        //                     : [];
-
-        //                 if (isBotChat.HasValue) {
-        //                     filters.Add(q => q.Term(t => t.IsBotChat, isBotChat.Value));
-        //                 }
-        //                 return parentQuery.Filter(filters);
-        //             }))
-        //         ));
-        // }
-
-        // if (isPublic.HasValue) {
-        //     _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
-        //         .HasParent<ChatInfo>(parent => parent
-        //             .ParentType(ChatInfoToChatSliceRelation.ChatInfoName)
-        //             .Query(query => query.Term(t => t.IsPublic, isPublic.Value))
-        //     ));
-        // }
-
-        // if (isBotChat.HasValue) {
-        //     var isBotChatValue = chatFilter.SearchBotChatInclusion == InclusionMode.IncludeStrictly;
-        //     _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
-        //         .HasParent<ChatInfo>(parent => parent
-        //             .ParentType(ChatInfoToChatSliceRelation.ChatInfoName)
-        //             .Query(query => query.Term(t => t.IsBotChat, isBotChat.Value))
-        //     ));
-        // }
 
         return;
 
