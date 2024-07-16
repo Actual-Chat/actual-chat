@@ -12,7 +12,7 @@ internal interface IQueryBuilder
     void ApplyRangeFilter(DateRangeFilter rangeFilter);
     void ApplyKeywordFilter<TDocument>(KeywordFilter<TDocument> keywordFilter)
         where TDocument : class, IHasText;
-    void ApplyFreeTextFilter<TDocument>(FreeTextFilter<TDocument> freeTextFilter)
+    void ApplySemanticFilter<TDocument>(SemanticFilter<TDocument> semanticFilter)
         where TDocument : class;
     void ApplyChatFilter(ChatFilter chatFilter);
 }

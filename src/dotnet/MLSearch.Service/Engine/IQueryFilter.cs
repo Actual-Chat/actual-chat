@@ -8,11 +8,11 @@ internal interface IQueryFilter
     void Apply(IQueryBuilder queryBuilder);
 }
 
-internal sealed class FreeTextFilter<TDocument>(string text) : IQueryFilter
+internal sealed class SemanticFilter<TDocument>(string text) : IQueryFilter
     where TDocument : class
 {
     public string Text { get; } = text;
-    public void Apply(IQueryBuilder queryBuilder) => queryBuilder.ApplyFreeTextFilter(this);
+    public void Apply(IQueryBuilder queryBuilder) => queryBuilder.ApplySemanticFilter(this);
 }
 
 internal sealed class KeywordFilter<TDocument>(IReadOnlyCollection<string> keywords) : IQueryFilter
