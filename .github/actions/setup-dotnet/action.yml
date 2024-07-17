@@ -40,4 +40,4 @@ runs:
       shell: bash
       if: ${{ inputs.restore == 'true' }}
       # wasm-tools is required by restore, but restore-workloads is too heavy for that
-      run: dotnet workload install wasm-tools # --from-rollback-file https://maui.blob.core.windows.net/metadata/rollbacks/8.0.6.json && ./run-build.cmd restore
+      run: dotnet workload install wasm-tools && ./run-build.cmd restore # --from-rollback-file https://maui.blob.core.windows.net/metadata/rollbacks/8.0.6.json && ./run-build.cmd restore
