@@ -74,6 +74,7 @@
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
 
+    private Session Session => Hub.Session();
     private PanelsUI PanelsUI => Hub.PanelsUI;
     private SearchUI SearchUI => Hub.SearchUI;
     private Features Features => Hub.Features();
@@ -111,30 +112,21 @@
         => _inputRef?.Clear() ?? default;
 
     private async Task OnAISearchClicked() {
-        var createSearchChatResult = await CreateSearchChat().ConfigureAwait(true);
-        if (!createSearchChatResult.HasValue)
+        var chatIdOpt = await CreateSearchChat();
+        if (!chatIdOpt.HasValue)
             return;
 
-        var searchChatId = createSearchChatResult.Value;
-        // TODO: This is not right. Couldn't find the right way to go in the codebase.
-        // Note: Using the Hub.Nav.NavigateTo does not reset the left panel.
+        var searchChatId = chatIdOpt.Value;
         Hub.NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
-        PanelsUI.Left.SetSearchMode(false);
         if (ScreenSize.IsNarrow())
-            PanelsUI.Left.SetIsVisible(false);
-
+            PanelsUI.HidePanels();
         await History.NavigateTo(Links.Chat(searchChatId));
     }
 
     private async Task<ChatId?> CreateSearchChat() {
-        var searchChatTitle = "Search";
-        var session = Hub.Session();
-        var createSearchChatCommand = new MLSearch_CreateChat(session, searchChatTitle, default);
-        var (searchChat, createSearchChatError) = await UICommander.Run(
-            createSearchChatCommand,
-            CancellationToken.None
-        );
-        if (createSearchChatError != null)
+        var createSearchChatCommand = new MLSearch_CreateChat(Session, "Search", default);
+        var (searchChat, error) = await UICommander.Run(createSearchChatCommand);
+        if (error != null)
             return null;
 
         return searchChat.Id;

@@ -1,7 +1,5 @@
 using MemoryPack;
 
-using MLSearchChatId = ActualChat.ChatId;
-
 namespace ActualChat.MLSearch;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
