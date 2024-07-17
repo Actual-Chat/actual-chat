@@ -23,7 +23,7 @@
 @import './Components/DateVisor/date-visor.css';
 @import './Components/Discover/discover.css';
 @import './Components/ForwardMessage/forward-message-modal.css';
-@import './Components/HIstoricalPlaybackSubHeader/historical-playback-subheader.css';
+@import './Components/HistoricalPlaybackSubHeader/historical-playback-subheader.css';
 @import './Components/AddMember/add-member-modal.css';
 @import './Components/MarkupEditor/markup-editor.css';
 @import './Components/MarkupParts/markup-parts.css';
