@@ -5,6 +5,7 @@
 }
 
 <ReconnectBanner/>
+<TalkingMembersBanner ChatContext="@ChatContext"/>
 @foreach (var banner in m.Banners.Take(MaxCount)) {
     @banner.View
 }

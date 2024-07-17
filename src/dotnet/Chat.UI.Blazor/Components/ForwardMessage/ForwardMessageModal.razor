@@ -12,7 +12,6 @@
     HasCloseButton="true"
     NarrowViewSettings="_viewSettings">
     <Body>
-    <FormBlock Class="with-contact-list">
         <ContactSelector
             @ref="@_contactSelectorRef"
             ExcludeChatIds="@ModalModel.ExcludedChatIds"
@@ -26,7 +25,6 @@
             <ContactSelectorPlacePicker/>
             <ContactSelectorListView/>
         </ContactSelector>
-    </FormBlock>
     </Body>
     <Buttons>
         <Button

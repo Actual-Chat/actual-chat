@@ -19,6 +19,8 @@ module.exports = {
   content: dirs,
   safelist: [
     // Used by in Avatar sizes and skeletons
+    'w-6',
+    'w-8',
     'w-9',
     'w-10',
     'w-11',
@@ -33,6 +35,8 @@ module.exports = {
     'w-32',
     'w-36',
     'w-40',
+    'h-6',
+    'h-8',
     'h-9',
     'h-10',
     'h-11',
@@ -1487,6 +1491,7 @@ module.exports = {
       shadow: 'box-shadow',
       transform: 'transform',
       width: 'width',
+      height: 'height',
     },
     transitionTimingFunction: {
       DEFAULT: 'cubic-bezier(0.4, 0, 0.2, 1)',

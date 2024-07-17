@@ -45,3 +45,19 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
 .banner.add-members-banner .banner-buttons .btn-h i {
     @apply text-06;
 }
+
+.talking-members-banner.banner {
+    @apply pr-3;
+}
+.talking-members-banner.banner .talking-banner-btn.btn {
+    @apply min-h-8 h-8;
+    @apply px-3;
+    @apply text-base;
+}
+.talking-members-banner .author-circle-group {
+    @apply pr-0 md:pr-3;
+}
+.talking-members-banner .author-circle-group-item {
+    @apply mr-0 md:-mr-2;
+    @apply border border-bg-02 rounded-full;
+}
