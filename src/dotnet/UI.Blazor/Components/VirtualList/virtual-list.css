@@ -3,7 +3,6 @@
     overflow-y: scroll;
     -ms-overflow-style: none;
     scrollbar-width: none;
-    will-change: scroll-position;
     /* TODO: remove if everything is OK */
     /*animation-name: scroller-overflow-hack;*/
     animation-fill-mode: forwards;
@@ -49,6 +48,12 @@
     @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
     list-style-type: none;
     overflow-anchor: none;
+}
+.chat-list.virtual-list > ul.c-virtual-container {
+    @apply gap-y-0.5;
+}
+.chat-list.virtual-list > .c-end-anchor {
+    @apply hidden;
 }
 
 .virtual-list > ul.c-virtual-container.hide {
