@@ -4,9 +4,6 @@
     var m = State.Value;
     if (ReferenceEquals(m, Model.None))
         return;
-
-    if (!ScreenSize.IsNarrow())
-        return;
 }
 
 <Banner IsVisible="@m.IsVisible" Severity="BannerSeverity.Default" Class="talking-members-banner subheader">
@@ -29,18 +26,17 @@
 </Banner>
 
 @code {
-    private Session Session => ChatContext.Hub.Session();
     private Chat Chat => ChatContext.Chat;
-    private AccountUI AccountUI => ChatContext.Hub.AccountUI;
-    private UICommander UICommander => ChatContext.Hub.UICommander();
-    private ChatActivity ChatActivity => ChatContext.Hub.ChatActivity;
-    private ChatAudioUI ChatAudioUI => ChatContext.Hub.ChatAudioUI;
+    private ChatUIHub Hub => ChatContext.Hub;
+    private Session Session => Hub.Session();
+    private AccountUI AccountUI => Hub.AccountUI;
+    private UICommander UICommander => Hub.UICommander();
+    private ChatActivity ChatActivity => Hub.ChatActivity;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
     private IChatStreamingActivity? ChatRecordingActivity { get; set; }
     private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
     private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };
-
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
