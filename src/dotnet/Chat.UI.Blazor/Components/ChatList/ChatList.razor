@@ -35,6 +35,7 @@
     } else {
         @* ChatListKind.All *@
         <VirtualList
+            @key="PlaceId.Value"
             @ref="_virtualListRef"
             Class="chat-list chat-list-all"
             DataSource="@this"
