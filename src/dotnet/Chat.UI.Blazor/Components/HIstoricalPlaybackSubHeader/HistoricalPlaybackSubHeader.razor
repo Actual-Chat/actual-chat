@@ -1,18 +1,18 @@
 @inherits ComputedStateComponent<HistoricalPlaybackSubHeader.Model>
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.MediaPlayback
 @using Timer = System.Timers.Timer;
-@using System.Timers
 @{
     var m = State.Value;
     if (ReferenceEquals(m, Model.NotPlaying))
         return;
+
+    var size = ScreenSize.IsNarrow() ? SquareSize.Size8 : SquareSize.Size6;
 }
 
-<div class="historical-playback-sub-header">
-    <div class="historical-playback-sub-header-content">
-        <div class="c-control-buttons">
+<div class="historical-playback-subheader">
+    <div class="c-content">
+        <div class="c-buttons">
             @if (ScreenSize.IsWide()) {
                 <ButtonRound Title="Backward" Click="@OnBackward" Class="btn-xs btn-transparent hover-primary-icon">
                     <i class="icon-rewind-left-fill text-2xl"></i>
@@ -37,14 +37,14 @@
             }
         </div>
 
-        <div class="flex-auto flex-y">
+        <div class="c-info">
             @if (m.ShowChatTitle) {
-                <div class="c-chat-title truncate whitespace-nowrap">
-                    <a href="@Links.Chat(m.ChatId)" class="cursor-pointer hover:underline">@m.ChatTitle</a>
+                <div class="c-title">
+                    <a href="@Links.Chat(m.ChatId)">@m.ChatTitle</a>
                 </div>
             }
             @if (ScreenSize.IsWide()) {
-                <div class="c-text truncate whitespace-nowrap">
+                <div class="c-text">
                     @if (m.PlayingAt is { } playingAt) {
                         var localTime = DateTimeConverter.ToLocalTime(playingAt);
                         var absoluteTime = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
@@ -59,9 +59,9 @@
         </div>
 
         <AuthorCircleGroup
-            Class="historical-playback-active-authors-panel"
+            Class="c-authors"
             MaxIconCount="4"
-            Size="SquareSize.Size6"
+            Size="@size"
             AuthorSids="@m.AuthorSids" />
 
         @* Speed Selector *@

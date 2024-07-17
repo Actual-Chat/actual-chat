@@ -1,0 +1,42 @@
+.historical-playback-subheader {
+    @apply relative z-10;
+    @apply hidden;
+    @apply h-0;
+    @apply py-1 pl-3 pr-4 md:pl-4;
+    @apply bg-01;
+    @apply text-02;
+    @apply border-b border-separator;
+    @apply duration-150;
+    transition-behavior: allow-discrete;
+    transition-property: display, height;
+}
+.historical-playback-subheader:has(.c-content) {
+    @apply flex-x;
+    @apply h-12;
+    @starting-style {
+        height: 0;
+    }
+}
+.historical-playback-subheader > .c-content {
+    @apply flex-1 flex-x justify-between items-center gap-x-2;
+}
+.historical-playback-subheader > .c-content > .c-buttons {
+    @apply flex-none flex-x gap-x-1;
+}
+.historical-playback-subheader > .c-content > .c-info {
+    @apply flex-auto flex-y;
+}
+.historical-playback-subheader > .c-content > .c-info > .c-title {
+    @apply truncate;
+    @apply font-semibold;
+}
+.historical-playback-subheader > .c-content > .c-info > .c-title a {
+    @apply cursor-pointer hover:underline;
+}
+.historical-playback-subheader > .c-content > .c-info > .c-text {
+    @apply truncate;
+    @apply font-light;
+}
+.historical-playback-subheader > .c-content > .c-info > .c-text > .c-moment {
+    @apply font-normal;
+}

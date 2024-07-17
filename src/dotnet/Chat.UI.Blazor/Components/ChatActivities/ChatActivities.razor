@@ -2,12 +2,13 @@
 @inherits ComputedStateComponent<ChatActivities.Model>
 @{
     var m = State.Value;
+    var size = ScreenSize.IsNarrow() ? SquareSize.Size8 : SquareSize.Size6;
 }
 
 <AuthorCircleGroup
     Class="chat-activity-panel"
     MaxIconCount="@MaxIconCount"
-    Size="SquareSize.Size6"
+    Size="@size"
     AuthorSids="@m.RecordingAuthorSids" />
 
 @code {
@@ -16,6 +17,8 @@
     private ChatActivity ChatActivity => Hub.ChatActivity;
 
     private IChatStreamingActivity? ChatRecordingActivity { get; set; }
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public int MaxIconCount { get; set; } = 5;

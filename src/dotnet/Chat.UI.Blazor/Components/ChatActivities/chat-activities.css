@@ -1,0 +1,3 @@
+.chat-activity-panel {
+    @apply gap-x-2 md:gap-x-0;
+}

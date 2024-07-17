@@ -48,9 +48,11 @@
                     }
                 </div>
             </div>
-            <div class="c-activities-container">
-                <ChatActivities @key="@chat.Id.Value" Chat="@chat"/>
-            </div>
+            @if (!ScreenSize.IsNarrow()) {
+                <div class="c-activities-container">
+                    <ChatActivities @key="@chat.Id.Value" Chat="@chat"/>
+                </div>
+            }
         }
     </div>
     @if (!chat.Id.IsNone) {
