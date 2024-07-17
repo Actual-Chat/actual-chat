@@ -107,8 +107,6 @@
         => Services.GetRequiredService<ReloadUI>().Reload();
 
     private void OnNavbarSelectedGroupChanged(object? s, EventArgs e) {
-        if (PanelsUI.Left.IsSearchMode)
-            PanelsUI.Left.ToggleSearchMode();
         if (NavbarUI.IsPinnedChatSelected(out _))
             PanelsUI.HidePanels();
     }

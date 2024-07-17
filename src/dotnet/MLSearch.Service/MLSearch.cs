@@ -1,5 +1,4 @@
-﻿using System.Reflection.Metadata.Ecma335;
-using ActualChat.Chat;
+﻿using ActualChat.Chat;
 
 namespace ActualChat.MLSearch;
 
@@ -15,39 +14,30 @@ internal class MLSearchImpl (ICommander commander): IMLSearch
         // Note: Quick workaround to make a chat owned by a bot.
         // Promote ownership instead of creating it by the bot from the start.
         // Reason: not sure how to create a session for a bot.
-        Symbol SystemBotTag = Constants.Chat.SystemTags.Bot;
         var chatChange = Change.Create<ChatDiff> (new() {
             IsPublic = false,
             Title = command.Title,
             Kind = ChatKind.Group,
             MediaId = command.MediaId,
-            AllowGuestAuthors = null,
-            AllowAnonymousAuthors = null,
-            IsTemplate = null,
-            TemplateId = Option<ChatId?>.None,
-            TemplatedForUserId = Option<UserId?>.None,
-            SystemTag = SystemBotTag,
+            SystemTag = Constants.Chat.SystemTags.Bot,
         });
         var chatChangeCommand = new Chats_Change(command.Session, ChatId.None, null, chatChange);
         var chat = await commander.Call(
-            chatChangeCommand, 
-            isOutermost: true, 
+            chatChangeCommand,
+            isOutermost: true,
             cancellationToken: cancellationToken
         ).ConfigureAwait(false);
         // ---
-        UserId mlBotUserId = Constants.User.MLSearchBot.UserId;
         var upsertCommand = new AuthorsBackend_Upsert(
-            chat.Id, default, mlBotUserId, null,
-            new AuthorDiff() {
-                IsAnonymous = false,
-                HasLeft = false,
-                AvatarId = null,
-            }
+            chat.Id,
+            default,
+            Constants.User.MLSearchBot.UserId,
+            null,
+            new AuthorDiff()
         );
         var botAuthor = await commander.Call(upsertCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
-        // ---
         var promoteCommand = new Authors_PromoteToOwner(command.Session, botAuthor.Id);
-        var __promoteResult = await commander.Call(promoteCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
+        _ = await commander.Call(promoteCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
         return new MLSearchChat(chat.Id);
     }
 }
