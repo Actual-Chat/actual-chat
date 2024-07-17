@@ -16,7 +16,6 @@ runs:
     - name: Install dotnet 8.0 SDK
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0'
         dotnet-quality: 'ga'
 
     - name: Use cached dependencies
