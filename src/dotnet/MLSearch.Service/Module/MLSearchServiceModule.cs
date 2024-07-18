@@ -33,9 +33,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.HostKind.IsServer()) {
-            return; // Server-side only module
-        }
         if (!Settings.IsEnabled) {
             _log.LogInformation("MLSearch functionality is disabled, skipping service registrations");
             return;
