@@ -43,7 +43,7 @@
                 }
             </ChildContent>
             <TabContent>
-                <ChatList PlaceId="@PlaceId" Kind="ChatListKind.All"/>
+                <ChatList @key="@PlaceId.Value" PlaceId="@PlaceId" Kind="ChatListKind.All"/>
             </TabContent>
         </TabPanel>
     </div>
