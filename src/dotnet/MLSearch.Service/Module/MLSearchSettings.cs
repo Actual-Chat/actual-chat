@@ -13,6 +13,8 @@ public sealed class MLSearchSettings
     public bool IsInitialIndexingDisabled { get; set; }
     public string Db { get; set; } = "";
     public string Redis { get; set; } = "";
+
+    public MLIntegrations? Integrations {get; set;}
 }
 
 public sealed class OpenSearchSettings

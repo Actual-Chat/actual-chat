@@ -16,7 +16,7 @@
 
 @if (ReferenceEquals(chat, SpecialChat.Unavailable) && m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
      <RenderIntoSlot Name="MainLeftDrawer">
-         <LeftPanel IsSkeletonWidePanel="@true">
+         <LeftPanel IsSkeletonWidePanel="@false">
              <WidePanelBottomContent>
                  <SendJoinPlaceRequestWidget/>
              </WidePanelBottomContent>

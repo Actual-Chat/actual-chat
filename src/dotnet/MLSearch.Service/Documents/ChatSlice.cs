@@ -1,11 +1,11 @@
 namespace ActualChat.MLSearch.Documents;
 
-internal interface IHasText
+public interface IHasText
 {
     string Text { get; }
 }
 
-internal sealed record ChatSlice(ChatSliceMetadata Metadata, string Text): IHasId<string>, IHasText
+public sealed record ChatSlice(ChatSliceMetadata Metadata, string Text): IHasId<string>, IHasText
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string Id => Metadata.ChatEntries.IsDefaultOrEmpty

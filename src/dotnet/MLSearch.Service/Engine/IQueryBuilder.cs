@@ -2,7 +2,7 @@ using ActualChat.MLSearch.Documents;
 
 namespace ActualChat.MLSearch.Engine;
 
-internal interface IQueryBuilder
+public interface IQueryBuilder
 {
     void ApplyOrFilter(OrFilter orFilter);
     void ApplyEqualityFilter<TValue>(EqualityFilter<TValue> equalityFilter);
