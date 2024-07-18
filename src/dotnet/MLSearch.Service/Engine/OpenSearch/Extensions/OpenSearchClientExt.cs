@@ -122,10 +122,11 @@ internal static class OpenSearchClientExt
         );
     }
 
-    public static async Task<string> ToJsonAsync(
-        this ISearchRequest searchRequest,
+    public static async Task<string> ToJsonAsync<TRequest>(
+        this TRequest searchRequest,
         IOpenSearchClient openSearch,
         CancellationToken cancellationToken)
+        where TRequest : IRequest
     {
         var serializableRequest = PostData.Serializable(searchRequest);
         serializableRequest.DisableDirectStreaming = false;

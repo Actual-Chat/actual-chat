@@ -133,10 +133,14 @@ internal sealed class ChatContentIndexer(
                 ? await BuildDocumentAsync(sourceEntries, cancellationToken).ConfigureAwait(false)
                 : null;
 
+            // Check for the empty content in the new doc.
+            // If empty we should delete document instead of updating it.
+            var isEmptyContent = string.IsNullOrWhiteSpace(newDoc?.Text);
+
             // Now we have existing documents and new documents
             // So delete all existing documents where there is no corresponding new one
             foreach (var docId in existingDocuments.Select(doc => doc.Id)) {
-                var isDeleted = newDoc?.Id.Equals(docId, StringComparison.Ordinal) != true;
+                var isDeleted = isEmptyContent || newDoc?.Id.Equals(docId, StringComparison.Ordinal) != true;
                 if (isDeleted) {
                     _tailDocs.Remove(docId);
                     _outUpdates.Remove(docId);
@@ -144,7 +148,7 @@ internal sealed class ChatContentIndexer(
                 }
             }
             // Add new document to output buffer and update caches
-            if (newDoc != null) {
+            if (!isEmptyContent && newDoc != null) {
                 _outUpdates[newDoc.Id] = newDoc;
                 if (_tailDocs.ContainsKey(newDoc.Id)) {
                     _tailDocs[newDoc.Id] = newDoc;

@@ -155,8 +155,10 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
     public async Task UpdatingDocumentUpdatesTailAndOutputBuffer()
     {
         var tailDocuments = ChatContentTestHelpers.CreateDocuments();
-        var updatedDoc = tailDocuments[tailDocuments.Length / 2];
-        var updatedEntryId = updatedDoc.Metadata.ChatEntries.Single().Id;
+        var indexDocs = tailDocuments.ToDictionary(doc => doc.Id);
+        var updatedDocId = tailDocuments[tailDocuments.Length / 2].Id;
+        var updatedEntryId = tailDocuments[tailDocuments.Length / 2].Metadata.ChatEntries.Single().Id;
+
         var chats = new Mock<IChatsBackend>();
         // There must be no calls to GetTile, as updatedDoc contains single entry,
         // so there is no need of loading anything
@@ -179,9 +181,13 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
         // On update, we get the document from index by entry id
         docLoader
             .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([updatedDoc]);
+            .Returns<IEnumerable<ChatEntryId>, CancellationToken>(
+                (entryIds, _) => {
+                    var doc = indexDocs.Values.Single(doc => doc.Metadata.ChatEntries.Any(entry => entryIds.Contains(entry.Id)));
+                    return Task.FromResult<IReadOnlyCollection<ChatSlice>>([doc]);
+                });
 
-        var docMapper = ChatContentTestHelpers.MockDocMapper(doc => updatedDoc = doc);
+        var docMapper = ChatContentTestHelpers.MockDocMapper(doc => indexDocs[doc.Id] = doc);
 
         var sink = Mock.Of<ISink<ChatSlice, string>>();
         var contentArranger = Mock.Of<IChatContentArranger>();
@@ -195,7 +201,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
 
         var updatedContents = new[] {
             "I don't know why I'm doing this.",
-            "I hope it won't break."
+            "I hope it won't break.",
         };
         var version = 1;
         foreach (var content in updatedContents) {
@@ -204,11 +210,30 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
             };
             await contentIndexer.ApplyAsync(updatedEntry, CancellationToken.None);
 
-            Assert.Same(updatedDoc, contentIndexer.TailDocs[updatedDoc!.Id]);
-            Assert.Same(updatedDoc, contentIndexer.OutUpdates[updatedDoc!.Id]);
+            Assert.Same(indexDocs[updatedDocId], contentIndexer.TailDocs[updatedDocId]);
+            Assert.Same(indexDocs[updatedDocId], contentIndexer.OutUpdates[updatedDocId]);
 
             var expectedNextCursor = new ChatContentCursor(updatedEntry);
             Assert.Equal(expectedNextCursor, contentIndexer.NextCursor);
+        }
+
+        var emptyContents = new[] {
+            "    \r\n",
+            "     ",
+            "",
+            null,
+        };
+
+        foreach (var (doc, emptyContent) in tailDocuments.Zip(emptyContents)) {
+            var entryId = doc.Metadata.ChatEntries.Single().Id;
+            var updatedEntry = new ChatEntry(entryId, ++version) {
+                Content = emptyContent!,
+            };
+            await contentIndexer.ApplyAsync(updatedEntry, CancellationToken.None);
+
+            Assert.False(contentIndexer.TailDocs.ContainsKey(doc.Id));
+            Assert.False(contentIndexer.OutUpdates.ContainsKey(doc.Id));
+            Assert.True(contentIndexer.OutRemoves.Contains(doc.Id));
         }
 
         chats.Verify(x => x.GetTile(

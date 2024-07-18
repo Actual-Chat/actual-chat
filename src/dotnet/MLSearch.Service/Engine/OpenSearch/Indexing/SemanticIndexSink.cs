@@ -71,7 +71,7 @@ internal sealed class SemanticIndexSink<TDocument> : ISink<TDocument, string>, I
                                 .Index(IndexSettings.IndexName)
                                 .Id(document.Id)
                     )
-                    .DeleteMany(deletedDocuments, (op, _) => op.Index(IndexSettings.IndexName)),
+                    .DeleteMany<TDocument>(deletedDocuments, (op, _) => op.Index(IndexSettings.IndexName)),
                 cancellationToken
             ).ConfigureAwait(false);
         _log.LogErrors(result);
