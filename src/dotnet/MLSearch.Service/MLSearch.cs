@@ -2,7 +2,7 @@
 
 namespace ActualChat.MLSearch;
 
-internal class MLSearchImpl (ICommander commander): IMLSearch
+public class MLSearchImpl (ICommander commander): IMLSearch
 {
     public virtual async Task<MLSearchChat> OnCreate(MLSearch_CreateChat command, CancellationToken cancellationToken)
     {

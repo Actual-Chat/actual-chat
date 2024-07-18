@@ -74,8 +74,5 @@ public sealed class ApiClientModule(IServiceProvider moduleServices)
         fusion.AddClient<IPhones>();
         fusion.AddClient<IEmails>();
         fusion.AddClient<ITimeZones>();
-
-        // MLSearch
-        fusion.AddClient<IMLSearch>();
     }
 }
