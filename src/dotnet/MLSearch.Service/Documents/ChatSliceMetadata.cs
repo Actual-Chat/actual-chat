@@ -3,7 +3,7 @@ namespace ActualChat.MLSearch.Documents;
 
 [StructLayout(LayoutKind.Auto)]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor]
-internal readonly record struct ChatSliceMetadata(
+public readonly record struct ChatSliceMetadata(
     // A list of users who authored messages included into document content.
     ImmutableArray<PrincipalId> Authors,
     // Ordered list of all involved chat entry ids.

@@ -3,7 +3,7 @@ namespace ActualChat.MLSearch.Engine;
 /// <summary>
 /// This enum must be considered in conjunction with some entity type we want to qeery for.
 /// </summary>
-internal enum InclusionMode
+public enum InclusionMode
 {
     /// <summary>
     /// <see cref="Include"/> is a default value.
@@ -20,7 +20,7 @@ internal enum InclusionMode
     Exclude,
 }
 
-internal sealed class ChatFilter: IQueryFilter
+public sealed class ChatFilter: IQueryFilter
 {
     // TODO: Think about better API for this filters.
     // We probably shoud get rid of the InclusionMode as it looks confusing.

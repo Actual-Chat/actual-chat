@@ -1,6 +1,6 @@
 namespace ActualChat.MLSearch.Engine;
 
-internal record struct RankedDocument<TDocument>(double? Rank, TDocument Document)
+public record struct RankedDocument<TDocument>(double? Rank, TDocument Document)
     : ICanBeNone<RankedDocument<TDocument>>
     where TDocument : class
 {
