@@ -692,13 +692,10 @@ export class VirtualList {
                 }
             }
             else if (this._pivots.length) {
-                // restore scroll position to the last pivot if total count is unknown
-                if (rs.beforeCount === null && rs.afterCount === null) {
-                    await this.restoreScrollPosition(startedAt);
+                await this.restoreScrollPosition(startedAt);
 
-                    // ensure scroll position and size are recalculated
-                    await fastWriteRaf();
-                }
+                // ensure scroll position and size are recalculated
+                await fastWriteRaf();
             }
             else {
                 if (rs.renderIndex <= 2)
@@ -1376,7 +1373,7 @@ export class VirtualList {
                 if (alreadyLoadedTillEnd < loadZoneTrigger) {
                     if (!rs.hasVeryLastItem) {
                         loadEnd = viewport.end + loadZoneSize * 3;
-                        loadStart = viewport.start;
+                        loadStart = viewport.start - viewportSize / 2;
                     }
                 }
                 else if (alreadyLoadedFromStart < viewportSize / 3) { // smaller than half of viewport to change load direction
@@ -1392,7 +1389,7 @@ export class VirtualList {
                 if (alreadyLoadedFromStart < loadZoneTrigger) {
                     if (!rs.hasVeryFirstItem) {
                         loadStart = viewport.start - loadZoneSize * 3;
-                        loadEnd = viewport.end;
+                        loadEnd = viewport.end + viewportSize / 2;
                     }
                 }
                 else if (alreadyLoadedTillEnd < viewportSize / 3) { // smaller than 1/3 of viewport to change load direction

@@ -157,6 +157,7 @@
                 InitialValue = new () {
                     AudioState = ChatAudioState.None,
                 },
+                UpdateDelayer = FixedDelayer.NextTick,
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
 

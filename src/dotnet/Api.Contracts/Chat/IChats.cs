@@ -13,7 +13,7 @@ public interface IChats : IComputeService
         ChatId chatId,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(MinCacheDuration = 60, InvalidationDelay = 0.8), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
+    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
     Task<ChatNews> GetNews(
         Session session,
         ChatId chatId,

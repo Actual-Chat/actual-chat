@@ -137,6 +137,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         ChatListSettings settings,
         CancellationToken cancellationToken = default)
     {
+        DebugLog?.LogDebug("-> ListAll (PlaceId={PlaceId})", placeId);
         if (await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false)) {
             var searchResults = await SearchUI.GetContactSearchResults().ConfigureAwait(false);
             var foundChats = await searchResults.Select(x => ChatUI.Get(x.SearchResult.ContactId.ChatId, cancellationToken))
@@ -145,6 +146,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
             return foundChats.SkipNullItems().ToList();
         }
         var chatById = await ListAllUnordered(placeId, settings.Filter, cancellationToken).ConfigureAwait(false);
+        DebugLog?.LogDebug("<- ListAll (PlaceId={PlaceId})", placeId);
         return chatById.Values.OrderBy(settings.Order, ChatListPreOrder.ChatList).ToList();
     }
 
