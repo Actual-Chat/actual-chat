@@ -75,7 +75,10 @@ You can add your own targets (as C# code) to `./build/Program.cs`, which is actu
 
 It's also useful to have an [alias](https://github.com/vchirikov/dotfiles/blob/7f280e9287ceba6fd508577fb0665fc19e4d9b29/Microsoft.PowerShell_profile.ps1#L231-L249) to run build system (to run commands like `bs watch`).
 
-There are some shortcuts in `*.cmd` files, you can use them too.  
+There are some shortcuts in `*.cmd` files, you can use them too.
+
+Possible issues:
+- If you use Windows, project build could break with a message about some resource related to `AdamE.Firebase.iOS.Analytics` package is not found. The issue is because of well-known default 260 characters limitation on the path length. Fortunately, there is a [workaround](https://github.com/AdamEssenmacher/GoogleApisForiOSComponents?tab=readme-ov-file#long-path-issue-workarounds) to make it working.
 
 ## Accessing Web App
 
