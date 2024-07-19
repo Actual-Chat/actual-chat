@@ -3,6 +3,9 @@ namespace ActualChat.UI.Blazor.Components;
 public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListTile<TItem>> tiles)
     where TItem : class, IVirtualListItem
 {
+    private static readonly EqualityComparer<VirtualListTile<TItem>> TileComparer = EqualityComparer<VirtualListTile<TItem>>
+        .Create(Equals);
+
     public static readonly VirtualListData<TItem> None = new(Array.Empty<VirtualListTile<TItem>>());
 
     public bool IsNone
@@ -53,5 +56,18 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListTile<TItem>>
         => HasVeryFirstItem == other.HasVeryFirstItem
             && HasVeryLastItem == other.HasVeryLastItem
             && ScrollToKey == other.ScrollToKey
-            && Tiles.SequenceEqual(other.Tiles);
+            && Tiles.SequenceEqual(other.Tiles, TileComparer);
+
+    private static bool Equals(VirtualListTile<TItem>? x, VirtualListTile<TItem>? y)
+    {
+        if (ReferenceEquals(x, y))
+            return true;
+
+        if (x is null || y is null)
+            return false;
+
+        return x.Key == y.Key
+            && x.Items.Count == y.Items.Count
+            && x.Items.SequenceEqual(y.Items);
+    }
 }

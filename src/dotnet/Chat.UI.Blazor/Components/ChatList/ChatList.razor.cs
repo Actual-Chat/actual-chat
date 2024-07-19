@@ -50,19 +50,19 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
             .IntersectWith(new Range<int>(0, chatCount))
             .ExpandToTiles(ChatTileStack.FirstLayer);
         var indexTiles = ChatTileStack.FirstLayer.GetCoveringTiles(range);
-        var tiles = new List<VirtualListTile<ChatListItemModel>>();
+        var resultItems = new List<ChatListItemModel>();
         foreach (var indexTile in indexTiles) {
             var tile = await ChatListUI.GetTile(selectedPlaceId, indexTile, cancellationToken).ConfigureAwait(false);
-            if (tile.Items.Count > 0)
-                tiles.Add(tile);
+            if (tile.Items.Count <= 0)
+                continue;
+
+            resultItems.AddRange(tile.Items);
         }
 
         var scrollToKey = null as string;
         if (query.IsNone && renderedData.IsNone) {
             // scroll to the selected chat on first render
-            var selectedItem = tiles
-                .SelectMany(t => t.Items)
-                .FirstOrDefault(it => it.ChatInfo.Chat.Id == selectedChatId);
+            var selectedItem = resultItems.FirstOrDefault(it => it.Chat.Id == selectedChatId);
             if (selectedItem != null)
                 scrollToKey = selectedItem.Key;
         }
@@ -71,15 +71,13 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
         var hasVeryLastItem = range.End >= chatCount;
 
         // use single tile as multiple tiles don't provide benefits for randomly changed list
-        var resultItems = tiles
-            .SelectMany(t => t.Items)
-            .ToList();
         var resultTile = new VirtualListTile<ChatListItemModel>("0", resultItems);
         var resultTiles = new List<VirtualListTile<ChatListItemModel>>();
         if (resultItems.Count > 0)
             resultTiles.Add(resultTile);
 
-        return new VirtualListData<ChatListItemModel>(resultTiles) {
+        // Console.WriteLine(Computed.Current.DebugDump());
+        var result = new VirtualListData<ChatListItemModel>(resultTiles) {
             Index = renderedData.Index + 1,
             BeforeCount = range.Start,
             AfterCount = (chatCount - range.End).Clamp(0, chatCount),
@@ -87,6 +85,11 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
             HasVeryLastItem = hasVeryLastItem,
             ScrollToKey = scrollToKey,
         };
+
+        // do not return new instance if data is the same to prevent re-renders
+        return result.IsSimilarTo(renderedData)
+            ? renderedData
+            : result;
     }
 
     public void Dispose()
