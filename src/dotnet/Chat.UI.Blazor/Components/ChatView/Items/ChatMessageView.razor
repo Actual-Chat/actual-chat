@@ -355,7 +355,7 @@
             return false;
 
         var authors = await Authors.ListAuthorIds(Session, chat.Id, cancellationToken).ConfigureAwait(false);
-        if (authors.Count < 1)
+        if (authors.Count < 2)
             return false; // It seems the current user is the only member in the chat hence it has no sense to check unread status.
 
         return true;
