@@ -562,12 +562,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private void UpdateGroupChatUsageList()
     {
-        var chatId = Chat.Id;
-        if (chatId.Kind == ChatKind.Peer)
+        var chat = Chat;
+        if (chat.Id.Kind == ChatKind.Peer)
             return;
 
+        var isAiSearchChat = chat.SystemTag == Constants.Chat.SystemTags.Bot;
+        var listKind = isAiSearchChat ? ChatUsageListKind.SearchChats : ChatUsageListKind.ViewedGroupChats;
+
         _ = BackgroundTask.Run(async () => {
-                var command = new ChatUsages_RegisterUsage(Session, ChatUsageListKind.ViewedGroupChats, chatId);
+                var command = new ChatUsages_RegisterUsage(Session, listKind, chat.Id);
                 await Commander.Call(command, default);
             },
             ex => Log.LogDebug(ex, "Failed to register view group chat"),

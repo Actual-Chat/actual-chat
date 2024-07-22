@@ -685,7 +685,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     new AuthorDiff {
                         IsAnonymous = chat.AllowAnonymousAuthors
                     });
-                var author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+                var author = await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
 
                 if (chat.HasSingleAuthor) {
                     var createCustomRoleCmd = new RolesBackend_Change(chatId, default, null, new() {

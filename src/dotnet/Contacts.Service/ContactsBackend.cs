@@ -576,6 +576,15 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (contact.IsStored() == !author.HasLeft)
             return; // No need to make any changes
 
+        if (chatId.Kind == ChatKind.Group && !author.HasLeft) {
+            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (chat is null)
+                Log.LogWarning("Can't get chat with id '{ChatId}' on changing author '{Author}', old author: '{OldAuthor}'",
+                    chatId, author, oldAuthor);
+            else if (chat.SystemTag == Constants.Chat.SystemTags.Bot)
+                return; // Do not create contacts for ML Search chats
+        }
+
         var change = author.HasLeft
             ? new Change<Contact> { Remove = true }
             : new Change<Contact> { Create = new Contact(contactId) };

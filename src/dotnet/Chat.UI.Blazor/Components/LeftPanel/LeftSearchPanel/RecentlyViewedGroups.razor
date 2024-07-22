@@ -9,7 +9,7 @@
 
 <div class="recently-viewed-groups">
     <div class="c-header">
-        <div class="c-title">Recently viewed</div>
+        <div class="c-title">@Title</div>
     </div>
     <div class="chat-list">
         @foreach (var chatInfo in chats) {
@@ -25,6 +25,9 @@
     private IChats Chats => Hub.Chats;
     private ChatUI ChatUI => Hub.ChatUI;
 
+    [Parameter] public string Title { get; set; } = "Recently viewed";
+    [Parameter] public ChatUsageListKind ListKind { get; set; } = ChatUsageListKind.ViewedGroupChats;
+
     protected override ComputedState<IReadOnlyList<ChatInfo>>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<IReadOnlyList<ChatInfo>>.Options() {
@@ -34,7 +37,7 @@
 
     protected override async Task<IReadOnlyList<ChatInfo>> ComputeState(CancellationToken cancellationToken) {
         var session = Hub.Session();
-        var recentIds = await ChatUsages.GetRecencyList(session, ChatUsageListKind.ViewedGroupChats, cancellationToken).ConfigureAwait(false);
+        var recentIds = await ChatUsages.GetRecencyList(session, ListKind, cancellationToken).ConfigureAwait(false);
         var chats = await recentIds.Select(id => ChatUI.Get(id, cancellationToken)).Collect().ConfigureAwait(false);
         return chats.SkipNullItems().ToList();
     }
