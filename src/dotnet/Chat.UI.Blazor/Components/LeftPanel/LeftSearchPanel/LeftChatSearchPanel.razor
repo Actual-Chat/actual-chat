@@ -46,13 +46,20 @@
                         <ChatSearchTab/>
                     </div>
                 </Tab>
-                <Tab @key="@("threads")" Id="Threads" Title="Threads" Order="1">
+                <Tab @key="@("ai-search")" Id="ai-search" Title="Search" Order="1">
+                    <div class="c-container">
+                        <RecentlyViewedGroups
+                            Title="Recent searches"
+                            ListKind="@ChatUsageListKind.SearchChats"/>
+                    </div>
+                </Tab>
+                <Tab @key="@("threads")" Id="Threads" Title="Threads" Order="2">
                     <ToBeDone/>
                 </Tab>
-                <Tab @key="@("tags")" Id="tags" Title="Tags" Order="2">
+                <Tab @key="@("tags")" Id="tags" Title="Tags" Order="3">
                     <ToBeDone/>
                 </Tab>
-                <Tab @key="@("media")" Id="media" Title="Media" Order="3">
+                <Tab @key="@("media")" Id="media" Title="Media" Order="4">
                     <ToBeDone/>
                 </Tab>
             </TabPanel>
