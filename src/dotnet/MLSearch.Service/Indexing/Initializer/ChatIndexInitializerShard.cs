@@ -1,3 +1,4 @@
+using ActualChat.Queues;
 using ActualLab.Resilience;
 
 namespace ActualChat.MLSearch.Indexing.Initializer;
@@ -10,7 +11,7 @@ internal interface IChatIndexInitializerShard
 
 internal sealed class ChatIndexInitializerShard(
     IMomentClock clock,
-    ICommander commander,
+    IQueues queues,
     IInfiniteChatSequence chatSequence,
     ICursorStates<ChatIndexInitializerShard.Cursor> cursorStates,
     ILogger<ChatIndexInitializerShard> log
@@ -47,7 +48,7 @@ internal sealed class ChatIndexInitializerShard(
     // # Delegates
     public delegate ValueTask ScheduleJobHandler(
         ChatInfo chatInfo, SharedState state, RetrySettings retrySettings,
-        ICommander commander,
+        IQueues queues,
         IMomentClock clock,
         ILogger log,
         CancellationToken cancellationToken);
@@ -123,13 +124,13 @@ internal sealed class ChatIndexInitializerShard(
 
     // ## Schedule jobs
     private ValueTask ScheduleJobForChatAsync(ChatInfo chatInfo, SharedState state, CancellationToken cancellationToken)
-        => OnScheduleJob(chatInfo, state, ScheduleJobRetrySettings, commander, clock, log, cancellationToken);
+        => OnScheduleJob(chatInfo, state, ScheduleJobRetrySettings, queues, clock, log, cancellationToken);
 
     public static async ValueTask ScheduleIndexingJobAsync(
         ChatInfo chatInfo,
         SharedState state,
         RetrySettings retrySettings,
-        ICommander commander,
+        IQueues queues,
         IMomentClock clock,
         ILogger log,
         CancellationToken cancellationToken)
@@ -138,7 +139,7 @@ internal sealed class ChatIndexInitializerShard(
 
         var (chatId, version) = chatInfo;
 
-        await AsyncChain.From(ct => ScheduleChatIndexing(chatId, commander, ct))
+        await AsyncChain.From(ct => ScheduleChatIndexing(chatId, queues, ct))
                 .WithTransiencyResolver(retrySettings.TransiencyResolver)
                 .Log(LogLevel.Debug, log)
                 .Retry(retrySettings.RetryDelaySeq, retrySettings.AttemptCount, clock, log)
@@ -149,10 +150,10 @@ internal sealed class ChatIndexInitializerShard(
 
         return;
 
-        static async Task ScheduleChatIndexing(ChatId chatId, ICommander commander, CancellationToken cancellationToken)
+        static async Task ScheduleChatIndexing(ChatId chatId, IQueues queues, CancellationToken cancellationToken)
         {
             var job = new MLSearch_TriggerChatIndexing(chatId, IndexingKind.ChatContent);
-            await commander.Call(job, cancellationToken).ConfigureAwait(false);
+            await queues.Enqueue(job, cancellationToken).ConfigureAwait(false);
         }
     }
 

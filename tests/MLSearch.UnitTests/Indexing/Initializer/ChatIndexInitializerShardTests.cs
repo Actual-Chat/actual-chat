@@ -1,6 +1,7 @@
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.Performance;
+using ActualChat.Queues;
 using ActualLab.Resilience;
 
 namespace ActualChat.MLSearch.UnitTests.Indexing.Initializer;
@@ -58,13 +59,13 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
             .Setup(x => x.LoadAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns<long, CancellationToken>((_, ct) => GetChatsAsync(ct));
 
-        var commander = Mock.Of<ICommander>();
+        var queues = Mock.Of<IQueues>();
         var cursorStates = Mock.Of<ICursorStates<ChatIndexInitializerShard.Cursor>>();
         var log = Mock.Of<ILogger<ChatIndexInitializerShard>>();
 
         var initializerShard = new ChatIndexInitializerShard(
             clock.Object,
-            commander,
+            queues,
             infiniteChatSequence.Object,
             cursorStates,
             log
@@ -103,7 +104,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
                 It.Is<ChatIndexInitializerShard.ChatInfo>(x => x.ChatId == chatToIndexId && x.Version == chatToIndexVersion),
                 It.Is<ChatIndexInitializerShard.SharedState>(x => states.Add(x) || true),
                 It.Is<ChatIndexInitializerShard.RetrySettings>(x => x.AttemptCount == scheduleJobRetrySettings.AttemptCount),
-                It.Is<ICommander>(x => x == commander),
+                It.Is<IQueues>(x => x == queues),
                 It.Is<IMomentClock>(x => x == clock.Object),
                 It.Is<ILogger>(x => x == log),
                 It.Is<CancellationToken>(x => x == cancellationSource.Token)));
@@ -136,7 +137,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
 
         var initializerShard = new ChatIndexInitializerShard(
             Mock.Of<IMomentClock>(),
-            Mock.Of<ICommander>(),
+            Mock.Of<IQueues>(),
             infiniteChatSequence.Object,
             Mock.Of<ICursorStates<ChatIndexInitializerShard.Cursor>>(),
             Mock.Of<ILogger<ChatIndexInitializerShard>>()
@@ -182,7 +183,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
             ChatIndexInitializerShard.ChatInfo,
             ChatIndexInitializerShard.SharedState,
             ChatIndexInitializerShard.RetrySettings,
-            ICommander,
+            IQueues,
             IMomentClock,
             ILogger,
             CancellationToken,
@@ -194,7 +195,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
                 It.IsAny<ChatIndexInitializerShard.ChatInfo>(),
                 It.IsAny<ChatIndexInitializerShard.SharedState>(),
                 It.IsAny<ChatIndexInitializerShard.RetrySettings>(),
-                It.IsAny<ICommander>(),
+                It.IsAny<IQueues>(),
                 It.IsAny<IMomentClock>(),
                 It.IsAny<ILogger>(),
                 It.IsAny<CancellationToken>()))
