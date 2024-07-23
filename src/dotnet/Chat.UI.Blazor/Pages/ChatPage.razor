@@ -81,21 +81,23 @@
     [Inject] protected ChatUIHub Hub { get; init; } = null!;
     private Features Features => Hub.Features();
     protected Session Session => Hub.Session();
+    protected HostInfo HostInfo => Hub.HostInfo();
     protected IChats Chats => Hub.Chats;
     protected IPlaces Places => Hub.Places;
     protected IAccounts Accounts => Hub.Accounts;
     protected IAvatars Avatars => Hub.Avatars;
     protected ChatUI ChatUI => Hub.ChatUI;
+    protected ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     protected AccountUI AccountUI => Hub.AccountUI;
     protected PanelsUI PanelsUI => Hub.PanelsUI;
     protected BrowserInfo BrowserInfo => Hub.BrowserInfo;
     protected UICommander UICommander => Hub.UICommander();
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
+    protected ILogger Log => _log ??= Hub.LogFor(GetType());
 
     [Parameter] public string? ChatSid { get; set; }
 
     protected override void OnInitialized() {
-        Services.GetRequiredService<ChatAudioUI>().Enable();
+        ChatAudioUI.Enable();
         // We need to call SelectChat() before ComputeState starts working,
         // coz ComputeState relies on ChatUI.SelectedChatId, which is set there.
         _ = SelectChat(ChatSid);
@@ -119,7 +121,7 @@
         // and moreover, we want to make sure ComputeState gets invalidated
         // specifically when SelectedChatId changes (vs when ChatSid changes).
 
-        var hostInfo = Services.HostInfo();
+        var hostInfo = HostInfo;
         var chatSid = ChatSid;
 
         await ChatUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
