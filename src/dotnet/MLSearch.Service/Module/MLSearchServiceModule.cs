@@ -31,6 +31,7 @@ using OpenSearch.Net;
 using Microsoft.AspNetCore.Authentication;
 using ActualChat.Module;
 using Microsoft.AspNetCore.Builder;
+using ActualChat.MLSearch.Bot.Tools.Context;
 // Note: Temporary disabled. Will be re-enabled with OpenAPI PR
 // using Swashbuckle.AspNetCore.SwaggerGen;
 
@@ -141,21 +142,24 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             this.Settings.Integrations = new MLIntegrations();
         }
         X509Certificate2 signingCertificate = new X509Certificate2(x509);
-        var pubkey1 = signingCertificate.GetECDsaPublicKey();
-        if (this.Settings.Integrations.Pubkeys == null) {
-            this.Settings.Integrations.Pubkeys = new Dictionary<string, ECDsa>();
-        }
-        this.Settings.Integrations.Pubkeys.Add("chat-bot", pubkey1!);
-
-       
+        //var pubkey = signingCertificate.GetECDsaPublicKey();
         var privateKey = signingCertificate.GetECDsaPrivateKey();
         var securityKey = new ECDsaSecurityKey(privateKey);
         var signingCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha384);
-        services.AddSingleton<IBotConversationHandler>(services => 
-            services.CreateInstanceWith<ExternalChatBotConversationHandler>(
-                signingCredentials
-            )
-        );
+
+        // This is a workaround. Read notes above the ConversationToolsController class
+        services.Configure<BotToolsContextHandlerOptions>(e => {
+            e.Audience = "bot-tools.actual.chat";
+            e.Issuer = "integrations.actual.chat";
+            e.SigningCredentials = signingCredentials;
+            e.ContextLifetime = TimeSpan.FromMinutes(5);
+        });
+        services.AddSingleton<IBotToolsContextHandler>(services => {
+            var options = services.GetRequiredService<IOptionsMonitor<BotToolsContextHandlerOptions>>();
+            return services.CreateInstanceWith<BotToolsContextHandler>(options);
+        });
+
+        services.AddSingleton<IBotConversationHandler, ExternalChatBotConversationHandler>();
         services.AddSingleton<IChatBotWorker>(static services
             => services.CreateInstanceWith<ChatBotWorker>(
             )
@@ -169,96 +173,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         rpcHost.AddApiOrLocal<IMLSearch, MLSearchImpl>();
 
 
-        // -- Register Swagger endpoint (OpenAPI) --
-        // Note: This is temporary disabled. Will be re-enabled in a separate PR.
-        /*
-        services.AddEndpointsApiExplorer();
-        services.AddSwaggerGen(c => {
-            c.IncludeXmlComments(
-                Path.Combine(
-                    AppContext.BaseDirectory,
-                    $"{Assembly.GetExecutingAssembly().GetName().Name}.xml"
-                )
-            );
-            c.DocInclusionPredicate((docName, apiDesc) => {
-                if (!apiDesc.TryGetMethodInfo(out MethodInfo methodInfo)) return false;
 
-                var isBotTool = methodInfo.DeclaringType
-                    .GetCustomAttributes(true)
-                    .OfType<BotToolsAttribute>()
-                    .Any();
-                return isBotTool;
-            });
-            c.SwaggerDoc("bot-tools-v1", new OpenApiInfo { Title = "Bot Tools API - V1", Version = "v1"});
-        });
-        */
-
-        
-        /*
-        // -- Register JWT Authentication scheme --
-        // TODO: Might be worth to discuss the integration part.
-        var knownIntegrations = new Dictionary<string, ECDsa>();
-        if (this.Settings.Integrations != null) {
-            foreach (var (integration, pubkey) in this.Settings.Integrations.Pubkeys) {
-                knownIntegrations.Add(integration, pubkey);
-            }
-        }
-        // --
-        
-        
-        
-        foreach (var (inegration, pubkey) in knownIntegrations) {
-            authentication.AddJwtBearer(options => {
-                options.RequireHttpsMetadata = false;
-                options.SaveToken = false;
-                options.Audience = "integrations.actual.chat";
-                options.TokenValidationParameters = new TokenValidationParameters {
-                    ValidateAudience = true,
-                    ValidateIssuer = true,
-                    ValidIssuer = inegration,
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new ECDsaSecurityKey(pubkey),
-                    RequireExpirationTime = true,
-                    ValidateLifetime = true,
-                    ClockSkew = TimeSpan.FromMinutes(3),
-                    RequireSignedTokens = true,
-                };
-            });
-        }
-        */
-        /*
-        var authentication = services.AddAuthentication(AuthSchemes.BotAuthenticationScheme);
-        authentication.AddScheme<BotAuthenticationSchemeOptions, BotAuthSchemeHandler>(
-            AuthSchemes.BotAuthenticationScheme, e => {
-                e.SigningCredentials = signingCredentials;
-            }
-        );
-
-        services.AddAuthorization(options => {
-            options.AddPolicy(BotConversationPolicy.Name, e => 
-                BotConversationPolicy.Configure(e)
-                    .AddAuthenticationSchemes(AuthSchemes.BotAuthenticationScheme)
-                    .Build()
-            );
-        });
-        services.AddAuthorization(options => {
-            options.AddPolicy(BotToolsPolicy.Name, policy => 
-                policy
-                    .RequireAuthenticatedUser()
-                    .AddAuthenticationSchemes(AuthSchemes.BotAuthenticationScheme)
-                    .Build()
-            );
-        });
-        */
-        
-        // This is a workaround. Read notes above the ConversationToolsController class
-        services.Configure<BotAuthenticationSchemeOptions>(e=>{
-            e.SigningCredentials = signingCredentials;
-        });
-        services.AddSingleton<BotAuthSchemeHandler>(services => {
-            var options = services.GetRequiredService<IOptionsMonitor<BotAuthenticationSchemeOptions>>();
-            return services.CreateInstanceWith<BotAuthSchemeHandler>(options);
-        });
 
         // services.AddAuthorization();
         // Controllers, etc.

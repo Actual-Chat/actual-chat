@@ -8,29 +8,37 @@ using Microsoft.AspNetCore.Mvc;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Documents;
 using ActualChat.Chat;
+using ActualChat.MLSearch.Bot.Tools.Context;
 
 namespace ActualChat.MLSearch.Bot.Tools;
 
-internal static class BotToolsPolicy {
-    public const string Name = "BotTool";
-}
-
-
 [BotTools]
 [ApiController, Route("api/bot/search")]
-//[Authorize(Policy = BotToolsPolicy.Name)]
-internal sealed class SearchToolsController(UrlMapper urlMapper, IChatsBackend chats, ISearchEngine<ChatSlice> searchEngine) : ControllerBase
+internal sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine, IBotToolsContextHandler botToolsContext) : ControllerBase
 {
-    [HttpPost("public-chat-text")]
-    public async Task<ActionResult<List<RankedDocument<ChatSlice>>>> PublicChatsText([FromBody]string text, CancellationToken cancellationToken)
+    public sealed class SearchQueryRequest {
+        public const int MaxLimit = 3;
+        public required string Text { get; init; }
+        public required int Limit { get; init; }
+
+    }
+    [HttpPost("public-chat-only-text")]
+    public async Task<ActionResult<List<RankedDocument<ChatSlice>>>> PublicChatsText([FromBody]SearchQueryRequest search, CancellationToken cancellationToken)
     {
-        // TODO: constrain with permissions
-        // NOTE: Do not allow this code into prod without permission constrains added.
+        var limit = search.Limit;
+        // Add limit constraints.
+        if (limit < 1) {
+            limit = 1;
+        }
+        if (limit > SearchQueryRequest.MaxLimit) {
+            limit = SearchQueryRequest.MaxLimit;
+        }
         var query = new SearchQuery() {
             Filters = [
-                new SemanticFilter<ChatSlice>(text),
-                new KeywordFilter<ChatSlice>(text.Split())
+                new SemanticFilter<ChatSlice>(search.Text),
+                new KeywordFilter<ChatSlice>(search.Text.Split())
             ],
+            Limit = limit
         };
         var searchResult = await searchEngine.Find(query, cancellationToken).ConfigureAwait(false);
         var documents = searchResult.Documents;
@@ -40,9 +48,31 @@ internal sealed class SearchToolsController(UrlMapper urlMapper, IChatsBackend c
     }
 
     [HttpPost("private-chat-text")]
-    public async Task<ActionResult<string>> PrivateChatsText([FromBody]string text, CancellationToken cancellationToken)
+    public async Task<ActionResult<List<RankedDocument<ChatSlice>>>> PrivateChatsText([FromBody]SearchQueryRequest search, CancellationToken cancellationToken)
     {
-        var user = this.HttpContext.User;
-        return JsonSerializer.Serialize(user);
+        var context = botToolsContext.GetContext(Request);
+        if (!context.IsValid) {
+            throw new UnauthorizedAccessException();
+        }
+        var limit = search.Limit;
+        // Add limit constraints.
+        if (limit < 1) {
+            limit = 1;
+        }
+        if (limit > SearchQueryRequest.MaxLimit) {
+            limit = SearchQueryRequest.MaxLimit;
+        }
+        var query = new SearchQuery() {
+            Filters = [
+                new SemanticFilter<ChatSlice>(search.Text),
+                new KeywordFilter<ChatSlice>(search.Text.Split())
+            ],
+            Limit = limit
+        };
+        var searchResult = await searchEngine.Find(query, cancellationToken).ConfigureAwait(false);
+        var documents = searchResult.Documents;
+        // TODO: Error handling
+        
+        return documents.Select(e=>e).ToList();
     }
 }
