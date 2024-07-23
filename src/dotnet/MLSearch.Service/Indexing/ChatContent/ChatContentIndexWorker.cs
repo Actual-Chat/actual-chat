@@ -1,5 +1,6 @@
 using ActualChat.Chat;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
+using ActualChat.Queues;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;
 
@@ -12,7 +13,7 @@ internal sealed class ChatContentIndexWorker(
     ICursorStates<ChatContentCursor> cursorStates,
     IChatInfoIndexer chatInfoIndexer,
     IChatContentIndexerFactory indexerFactory,
-    ICommander commander
+    IQueues queues
 ) : IChatContentIndexWorker
 {
     public async Task ExecuteAsync(MLSearch_TriggerChatIndexing job, CancellationToken cancellationToken)
@@ -44,11 +45,11 @@ internal sealed class ChatContentIndexWorker(
         await FlushAsync().ConfigureAwait(false);
 
         if (eventCount==maxEventCount) {
-            await commander.Call(job, cancellationToken).ConfigureAwait(false);
+            await queues.Enqueue(job, cancellationToken).ConfigureAwait(false);
         }
         else if (!cancellationToken.IsCancellationRequested) {
             var completionNotification = new MLSearch_TriggerChatIndexingCompletion(chatId);
-            await commander.Call(completionNotification, cancellationToken).ConfigureAwait(false);
+            await queues.Enqueue(completionNotification, cancellationToken).ConfigureAwait(false);
         }
         return;
 

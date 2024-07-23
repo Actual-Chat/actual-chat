@@ -2,11 +2,12 @@
 using ActualChat.Chat;
 using ActualChat.Chat.Events;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
+using ActualChat.Queues;
 
 namespace ActualChat.MLSearch.Bot;
 
-internal class ChatBotConversationTrigger(ICommander commander, IChatsBackend chats, IWorkerPool<MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId> workerPool)
-    : IChatBotConversationTrigger, IComputeService
+internal class ChatBotConversationTrigger(IQueues queues, IChatsBackend chats, IWorkerPool<MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId> workerPool)
+    : IChatBotConversationTrigger
 {
     // ReSharper disable once UnusedMember.Global
     // [CommandHandler]
@@ -32,6 +33,6 @@ internal class ChatBotConversationTrigger(ICommander commander, IChatsBackend ch
         */
         // User is writing or changing something.
         var e = new MLSearch_TriggerContinueConversationWithBot(eventCommand.Entry.ChatId);
-        await commander.Call(e, cancellationToken).ConfigureAwait(false);
+        await queues.Enqueue(e, cancellationToken).ConfigureAwait(false);
     }
 }
