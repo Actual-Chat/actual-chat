@@ -6,7 +6,7 @@
 
     var timestamp = "";
     if (LastEntry != null) {
-        var time = DateTimeConverter.ToLocalTime(DateTime.Now);
+        var time = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now);
         var entryTime = DateTimeConverter.ToLocalTime(LastEntry.BeginsAt);
         var inYear = time.Year - entryTime.Year == 0;
         var delta = (time.Date - entryTime.Date).Days;
