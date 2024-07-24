@@ -1,8 +1,14 @@
+using ActualChat.Notification;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Rpc;
 using Android.App;
 using AndroidX.Core.App;
 using Firebase.Analytics;
 using Firebase.Messaging;
+using OpenTelemetry.Resources;
+using Serilog;
+using DeviceType = ActualChat.Notification.DeviceType;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace ActualChat.App.Maui;
 
@@ -38,6 +44,17 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     public override void OnNewToken(string token)
     {
         Log.LogDebug("OnNewToken: '{Token}'", token);
+        if (TryGetScopedServices(out var services)) {
+            var session = services.GetService<Session>();
+            var rpcHub = services.GetService<RpcHub>();
+            var commander = services.GetService<ICommander>();
+            if (session != null && rpcHub != null && commander != null)
+                _ = Task.Run(async () => {
+                    await rpcHub.WhenClientPeerConnected().ConfigureAwait(false);
+                    var command = new Notifications_RegisterDevice(session, token, DeviceType.AndroidApp);
+                    await commander.Call(command, default).ConfigureAwait(false);
+                });
+        }
         base.OnNewToken(token);
     }
 
