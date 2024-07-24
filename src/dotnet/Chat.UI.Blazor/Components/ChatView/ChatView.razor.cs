@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using ActualChat.Chat.UI.Blazor.Events;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Kvas;
@@ -139,25 +138,33 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (DisposeToken.IsCancellationRequested)
             return;
 
-        var uri = History.Uri;
-        var fragment = new LocalUrl(uri).ToAbsolute(Hub.UrlMapper()).ToUri().Fragment.TrimStart('#');
-        if (!NumberExt.TryParsePositiveLong(fragment, out var entryId) || entryId <= 0)
+        var sUri = History.Uri;
+        var uri = new LocalUrl(sUri).ToAbsolute(Hub.UrlMapper()).ToUri();
+        if (uri.Query.IsNullOrEmpty())
             return;
 
-        var uriWithoutFragment = Regex.Replace(uri, "#.*$", "");
+        var sEntryId = uri.GetQueryCollection().Get(Links.ChatEntryLidQueryParameterName);
+        if (sEntryId.IsNullOrEmpty())
+            return;
+
+        if (!NumberExt.TryParsePositiveLong(sEntryId, out var entryId) || entryId <= 0)
+            return;
+
+        var uriWithoutMsgId = uri.DropQueryItem(Links.ChatEntryLidQueryParameterName).PathAndQuery;
+
         var cts = new CancellationTokenSource();
         var cancellationToken = cts.Token;
         _ = ForegroundTask.Run(async () => {
                 try {
                     await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
-                    _ = History.NavigateTo(uriWithoutFragment, true);
+                    _ = History.NavigateTo(uriWithoutMsgId, true);
                 }
                 finally {
                     cts.CancelAndDisposeSilently();
                 }
             },
             CancellationToken.None);
-        History.CancelWhen(cts, x => !OrdinalEquals(x.Uri, uri));
+        History.CancelWhen(cts, x => !OrdinalEquals(x.Uri, sUri));
         await NavigateTo(entryId, true);
     }
 
@@ -329,7 +336,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var shownReadyEntryLid = _shownReadEntryLid.Value;
-        var renderedTiles = renderedData.Tiles.ToDictionary(t => t.Key);
+        var renderedTiles = renderedData.Tiles.ToDictionary(t => t.Key, StringComparer.Ordinal);
         var tiles = new List<VirtualListTile<ChatMessage>>();
         foreach (var idTile in idTiles) {
             var lastReadEntryLid = shownReadyEntryLid;
@@ -404,7 +411,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         };
 
         // do not return new instance if data is the same to prevent re-renders
-        return result.IsSimilarTo(renderedData)
+        return !mustScrollToEntry && result.IsSimilarTo(renderedData)
             ? renderedData
             : result;
     }
