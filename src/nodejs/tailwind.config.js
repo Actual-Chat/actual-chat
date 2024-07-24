@@ -436,7 +436,7 @@ module.exports = {
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
       'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
-      'highlight': 'highlight 1s ease-in-out forwards',
+      'highlight': 'highlight 1.5s ease-in-out forwards',
       'loud-show': 'loud-show 150ms ease-in-out',
       'loud-show-text-mode': 'loud-show-text-mode 150ms ease-in-out',
       'loud-hide': 'loud-hide 150ms ease-in-out',
@@ -1141,7 +1141,7 @@ module.exports = {
               'border-left': '2px solid var(--replied-message-border)',
           },
           '99%': {
-              'background': '',
+              'background': 'transparent',
               'border-left': '2px solid transparent',
           },
       },

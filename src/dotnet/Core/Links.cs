@@ -2,6 +2,8 @@ namespace ActualChat;
 
 public static class Links
 {
+    public const string ChatEntryLidQueryParameterName = "n";
+
     public static readonly LocalUrl Home = default;
     public static readonly LocalUrl Docs = "/docs";
     public static readonly LocalUrl NotFound = "/404";
@@ -10,16 +12,16 @@ public static class Links
     public static LocalUrl Chat(ChatEntryId entryId)
         => entryId.IsNone
             ? "/chat"
-            : $"/chat/{entryId.ChatId.Value}#{entryId.LocalId.Format()}";
+            : $"/chat/{entryId.ChatId.Value}"  + ChatEntryQuery(entryId.LocalId);
 
     public static LocalUrl Chat(ChatId chatId, long? entryId = null)
         => entryId is { } vEntryId and > 0
-            ? $"/chat/{chatId.Value}#{vEntryId.Format()}"
+            ? $"/chat/{chatId.Value}" + ChatEntryQuery(vEntryId)
             : $"/chat/{chatId.Value}";
 
     public static LocalUrl EmbeddedChat(ChatId chatId, long? entryId = null)
         => entryId is { } vEntryId and > 0
-            ? $"/embedded/{chatId.Value}#{vEntryId.Format()}"
+            ? $"/embedded/{chatId.Value}" + ChatEntryQuery(vEntryId)
             : $"/embedded/{chatId.Value}";
 
     public static LocalUrl User(UserId userId)
@@ -33,6 +35,9 @@ public static class Links
 
     public static LocalUrl AutoClose(string flowOrActionName)
         => "/fusion/close?flow=" + flowOrActionName.UrlEncode();
+
+    private static string ChatEntryQuery(long entryLid)
+        => $"?{ChatEntryLidQueryParameterName}={entryLid.Format()}";
 
     public static class Apps
     {
