@@ -4,7 +4,7 @@ namespace ActualChat;
 
 public static partial class LocalUrlExt
 {
-    [GeneratedRegex(@"^\/chat\/(?<chatId>[a-z0-9-]+)(?<parameters>\?[^#]*)?#(?<hash>.*)?")]
+    [GeneratedRegex(@"^\/chat\/(?<chatId>[a-zA-Z0-9-]+)(?<parameters>\?([^#]*))?(#(?<hash>.*))?")]
     private static partial Regex IsChatRegexFactory();
 
     private static readonly Regex IsChatRegex = IsChatRegexFactory();
@@ -31,10 +31,23 @@ public static partial class LocalUrlExt
     public static bool IsChat(this LocalUrl url, out ChatId chatId, out long entryLid)
     {
         entryLid = 0;
-        if (!url.IsChat(out chatId, out _, out var hash))
+        if (!url.IsChat(out chatId, out var parameters, out _))
             return false;
 
-        _ = NumberExt.TryParsePositiveLong(hash, out entryLid);
+        _ = TryParseEntryLidFromQuery(parameters, out entryLid);
+        return true;
+    }
+
+    public static bool IsChatCompat(this LocalUrl url, out ChatId chatId, out long entryLid)
+    {
+        // Checks if it's a link to chat entry in old and new formats
+        entryLid = 0;
+        if (!url.IsChat(out chatId, out var parameters, out var hash))
+            return false;
+
+        _ = TryParseEntryLidFromQuery(parameters, out entryLid);
+        if (entryLid == 0 && !hash.IsNullOrEmpty())
+            _ = NumberExt.TryParsePositiveLong(hash, out entryLid);
         return true;
     }
 
@@ -63,4 +76,18 @@ public static partial class LocalUrlExt
 
     public static bool IsPrivateChatInvite(this LocalUrl url)
         => url.Value.OrdinalStartsWith("/join/");
+
+    private static bool TryParseEntryLidFromQuery(string parameters, out long entryLid)
+    {
+        entryLid = 0;
+        if (parameters.IsNullOrEmpty())
+            return false;
+
+        var query = UriExt.GetQueryCollection(parameters);
+        var sEntryId = query.Get(Links.ChatEntryLidQueryParameterName);
+        if (sEntryId.IsNullOrEmpty())
+            return false;
+
+        return NumberExt.TryParsePositiveLong(sEntryId, out entryLid);
+    }
 }

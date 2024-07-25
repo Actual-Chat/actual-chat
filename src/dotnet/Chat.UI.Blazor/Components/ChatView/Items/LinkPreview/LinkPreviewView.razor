@@ -1,41 +1,71 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Media
 @using ILinkPreviews = ActualChat.Media.IMediaLinkPreviews
-@using LinkPreview = ActualChat.Media.LinkPreview
-@using System.Drawing
+@using LinkPreview = ActualChat.Media.LinkPreview;
 @inherits ComputedStateComponent<LinkPreviewView.Model>
 @{
     var m = State.Value;
-    var preview = Entry.LinkPreview;
-    if (Entry.LinkPreviewMode == LinkPreviewMode.None || preview == null || preview.IsEmpty)
+    @if (ReferenceEquals(m, Model.None))
         return;
 
+    var preview = m.Preview;
+    var uri = m.Uri;
     var imageUrl = GetImageUrl(preview.PreviewMedia);
-    Uri.TryCreate(preview.Url, UriKind.Absolute, out var uri);
     var compactCls = preview.PreviewMedia != null ? "" : "compact";
-    var isOurLink = uri != null && uri.ToString().StartsWith($"{UrlMapper.BaseUrl}");
+}
 
+@if (m.LocalLink is { CanRender:true }) {
+    <LocalLinkPreview Data="@m.LocalLink"/>
+} else {
+    <a class="link-preview unfocusable @compactCls" href="@uri" target="_blank">
+        @RenderMedia()
+        <div class="c-info">
+            @RenderInfo()
+            <span class="c-domain">@uri.Host</span>
+        </div>
+        <div class="incut"></div>
+    </a>
+}
+
+<div class="link-buttons">
+    <CopyTrigger Tooltip="@uri.ToString()" CopyText="@uri.ToString()">
+        <ButtonRound Class="btn-xs">
+            <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
+            <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
+        </ButtonRound>
+    </CopyTrigger>
+    @if (m.LocalLink is null) {
+        <ButtonRound
+            Tooltip="Forward"
+            Class="btn-xs"
+            Click="@(() => SelectionUI.Forward(Entry.Id))">
+            <i class="icon-share"></i>
+        </ButtonRound>
+    }
+</div>
+
+@{
     RenderFragment RenderMedia() {
         if (preview.PreviewMedia != null) {
             if (preview.IsYouTubeVideo) {
                 return @<div
-                    class="c-thumbnail c-video"
-                    @onclick="@OnVideoClick">
-                   <image-skeleton
-                       class="c-skeleton"
-                       src="@imageUrl"/>
-                   <div class="c-overlay">
-                       <i class="c-play icon-play-fill"></i>
-                   </div>
-               </div>;
+                            class="c-thumbnail c-video"
+                            @onclick="@OnVideoClick">
+                    <image-skeleton
+                        class="c-skeleton"
+                        src="@imageUrl"/>
+                    <div class="c-overlay">
+                        <i class="c-play icon-play-fill"></i>
+                    </div>
+                </div>;
             }
             return @<image-skeleton
-                class="c-thumbnail"
-                src="@imageUrl"/>;
-            }
+                        class="c-thumbnail"
+                        src="@imageUrl"/>;
+        }
         return @<div class="c-icon">
-            <i class="icon-link-2"></i>
-        </div>;
+                   <i class="icon-link-2"></i>
+               </div>;
     }
 
     RenderFragment RenderInfo() =>
@@ -45,53 +75,7 @@
                 <div class="c-description">@preview.Description</div>
             }
         </div>;
-
-    RenderFragment RenderForward() =>
-        @<ButtonRound
-             Tooltip="Forward"
-             Class="btn-xs"
-             Click="@(() => SelectionUI.Forward(Entry.Id))">
-            <i class="icon-share"></i>
-        </ButtonRound>;
-
 }
-
-@if (isOurLink && !ReferenceEquals(m, Model.None) && m is { Entry: not null, Chat: not null }) {
-    <OurLinkPreview Model="@m"/>
-} else {
-    @if (uri != null) {
-        <a class="link-preview unfocusable @compactCls" href="@uri" target="_blank">
-            @RenderMedia()
-            <div class="c-info">
-                @RenderInfo()
-                <span class="c-domain">@uri.Host</span>
-            </div>
-            <div class="incut"></div>
-        </a>
-    } else {
-        <div class="link-preview @compactCls">
-            @RenderMedia()
-            <div class="c-info">
-                @RenderInfo()
-            </div>
-            <div class="incut"></div>
-        </div>
-    }
-}
-
-<div class="link-buttons">
-    @if (uri != null) {
-        <CopyTrigger Tooltip="@uri.ToString()" CopyText="@uri.ToString()">
-            <ButtonRound Class="btn-xs">
-                <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
-                <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
-            </ButtonRound>
-        </CopyTrigger>
-    }
-    @if (!isOurLink) {
-        @RenderForward()
-    }
-</div>
 
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -99,7 +83,6 @@
     private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
     private ILinkPreviews MediaLinkPreviews => Hub.MediaLinkPreviews;
     private UrlMapper UrlMapper => Hub.UrlMapper();
-    private ICommander Commander => Hub.Commander();
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private IChats Chats => Hub.Chats;
     private IPlaces Places => Hub.Places;
@@ -120,9 +103,8 @@
         return UrlMapper.ImagePreviewUrl(imageUrl, width, height);
     }
 
-    private void OnVideoClick() {
+    private void OnVideoClick() =>
         _ = VisualMediaViewerUI.Show("", Entry);
-    }
 
     private (int? Width, int Height) GetImageMaxSize() {
         const int sizeMultiplier = 2; // reduced images look blurry
@@ -147,54 +129,47 @@
         });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (Entry.LinkPreview == null)
+        var chatEntry = Entry;
+        var linkPreview = chatEntry.LinkPreview;
+        if (chatEntry.LinkPreviewMode == LinkPreviewMode.None || linkPreview == null || linkPreview.IsEmpty)
             return Model.None;
 
-        Uri.TryCreate(Entry.LinkPreview.Url, UriKind.Absolute, out var uri);
+        Uri.TryCreate(linkPreview.Url, UriKind.Absolute, out var uri);
         if (uri == null)
             return Model.None;
 
-        var localUri = uri.LocalPath;
-        var localUrl = localUri.Replace(UrlMapper.BaseUrl, "");
+        var localUrlOpt = LocalUrl.FromAbsolute(linkPreview.Url, UrlMapper);
+        if (localUrlOpt == null)
+            return new Model { ChatEntry = chatEntry, Uri = uri };
 
-        if (!localUrl.StartsWith(Links.Chats))
-            return Model.None;
+        var localLinkModel = await ComputeLocalLinkModel(localUrlOpt.Value, cancellationToken);
+        return new Model { ChatEntry = chatEntry, Uri = uri, LocalLink = localLinkModel };
+    }
 
-        var chatIdString = localUrl.Replace($"{Links.Chats}/", "");
-        var uriFragment = uri.Fragment;
-
-        var chatId = ChatId.ParseOrNone(chatIdString);
-        if (chatId == ChatId.None)
-            return Model.None;
-
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return Model.None;
-
-        var entryLocalIdString = uriFragment.Replace("#", "");
-        if (!long.TryParse(entryLocalIdString, out var parsedEntryLocalId))
-            return Model.None;
-
-        var textEntryId = new TextEntryId(chatId, parsedEntryLocalId, AssumeValid.Option);
-        var entry = await Chats.GetEntry(Session, textEntryId, cancellationToken).ConfigureAwait(false);
-        if (entry == null)
-            return Model.None;
-
-        var authorId = entry.AuthorId;
-        var author = await Authors.Get(Session, entry.ChatId, authorId, cancellationToken).ConfigureAwait(false);
-
-        Place? place = null;
-        var placeId = chat.Id.PlaceChatId.PlaceId;
-        if (!placeId.IsNone)
-            place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
-
-        return new () {
-            Uri = uri,
-            Entry = entry,
-            Author = author,
-            Chat = chat,
-            Place = place,
-        };
+    private async Task<LocalLinkPreview.Model> ComputeLocalLinkModel(LocalUrl localUrl, CancellationToken cancellationToken)
+    {
+        var localLinkModel = new LocalLinkPreview.Model(localUrl);
+        if (localUrl.IsChatCompat(out var chatId, out var entryLid) && entryLid > 0) {
+            // Chat message link
+            var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+            if (chat is not null) {
+                localLinkModel = localLinkModel with { Chat = chat };
+                var textEntryId = new TextEntryId(chatId, entryLid, AssumeValid.Option);
+                var entry = await Chats.GetEntry(Session, textEntryId, cancellationToken).ConfigureAwait(false);
+                localLinkModel = localLinkModel with { Entry = entry };
+                if (entry is not null) {
+                    var authorId = entry.AuthorId;
+                    var author = await Authors.Get(Session, entry.ChatId, authorId, cancellationToken).ConfigureAwait(false);
+                    localLinkModel = localLinkModel with { Author = author };
+                }
+            }
+            var placeId = chatId.PlaceChatId.PlaceId;
+            if (!placeId.IsNone) {
+                var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+                localLinkModel = localLinkModel with { Place = place };
+            }
+        }
+        return localLinkModel;
     }
 
     // Nested types
@@ -202,10 +177,9 @@
     public sealed record Model {
         public static readonly Model None = new();
 
+        public ChatEntry ChatEntry { get; init; } = null!;
+        public LinkPreview Preview => ChatEntry.LinkPreview!;
         public Uri Uri { get; init; } = null!;
-        public ChatEntry? Entry { get; init; }
-        public Author? Author { get; init; }
-        public Chat? Chat { get; init; }
-        public Place? Place { get; init; }
+        public LocalLinkPreview.Model? LocalLink { get; init; }
     }
 }

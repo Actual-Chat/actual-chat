@@ -10,7 +10,7 @@ body.narrow .link-preview {
     @apply flex-y items-start;
     @apply h-60;
 }
-body.narrow .link-preview.our-link:not(.place-link) {
+body.narrow .link-preview.local-link:not(.place-link) {
     @apply flex-x;
     @apply h-full;
 }
@@ -160,26 +160,26 @@ body.narrow .link-preview.compact .incut {
 }
 
 /* Our Link Preview */
-.link-preview.our-link {
+.link-preview.local-link {
     @apply items-start;
     @apply h-full;
 }
-.link-preview.our-link .c-chat-icon {
+.link-preview.local-link .c-chat-icon {
     @apply p-2 pr-0;
 }
-.link-preview.our-link .c-info {
+.link-preview.local-link .c-info {
     @apply gap-y-0.5;
 }
-.link-preview.our-link:not(.place-link) .c-info {
+.link-preview.local-link:not(.place-link) .c-info {
     @apply pl-0 pt-1 pr-2 pb-1 md:pb-4;
 }
-.link-preview.our-link .c-description {
+.link-preview.local-link .c-description {
     @apply line-clamp-2 md:line-clamp-3;
 }
-.link-preview.our-link:not(.place-link) .c-domain {
+.link-preview.local-link:not(.place-link) .c-domain {
     @apply pt-4;
 }
-.our-link .image-wrapper {
+.local-link .image-wrapper {
     @apply h-34;
     @apply min-w-full;
     @apply md:min-w-34 md:max-w-34;
