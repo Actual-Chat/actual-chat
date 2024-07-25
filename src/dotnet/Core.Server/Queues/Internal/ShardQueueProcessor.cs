@@ -113,17 +113,25 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
             };
             await processTask.ConfigureAwait(false);
             await MarkCompleted(shardIndex, message, queuedCommand, cancellationToken).ConfigureAwait(false);
+            activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Completed);
         }
         catch (Exception e) {
             if (e.GetBaseException() is PostponeException pe) {
+                activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
+                activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Postponed);
                 DebugLog?.LogDebug(e, "Queued {Kind} postponed: {Command}", kind, queuedCommand);
                 await MarkPostponed(shardIndex, message, queuedCommand, pe.Delay, cancellationToken).ConfigureAwait(false);
                 return;
             }
             Log.LogError(e, "[{ShardIndex}]: Queued {Kind} failed: {Command}", shardIndex, kind, queuedCommand);
             await MarkFailed(shardIndex, message, queuedCommand, e, cancellationToken).ConfigureAwait(false);
-            if (e.IsCancellationOf(cancellationToken))
+            if (e.IsCancellationOf(cancellationToken)) {
+                activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
+                activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Canceled);
                 throw;
+            }
+            activity?.SetStatus(ActivityStatusCode.Error, e.Message);
+            activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Failed);
         }
         finally {
             InterlockedExt.ExchangeIfGreater(ref _lastCommandCompletedAt, Clock.Now.EpochOffsetTicks);
