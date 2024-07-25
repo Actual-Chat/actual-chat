@@ -11,11 +11,11 @@
 <div class="related-chat-entry" @onclick="@OnQuoteClick">
     @if (Kind == RelatedEntryKind.Reply) {
         <div class="c-content">
-            <div class="flex justify-center w-8">
+            <div class="c-icon">
                 <i class="icon-reply text-xl @colorCls"></i>
             </div>
-            <div class="flex-1 flex-y md:flex-x overflow-hidden">
-                <div class="flex-x">
+            <div class="c-center">
+                <div class="c-author">
                     <AuthorName AuthorSid="@entry.AuthorId" Class="@authorNameCls"/>
                     <span class="@colorCls @fontCls avatar-name">:&nbsp</span>
                 </div>
@@ -25,11 +25,11 @@
         </div>
     } else {
         <div class="c-content">
-            <div class="flex justify-center w-8">
+            <div class="c-icon">
                 <i class="icon-edit text-2xl text-03"></i>
             </div>
-            <div class="flex-1 flex-x overflow-hidden">
-                <div class="quote-text truncate font-medium">@_text</div>
+            <div class="c-center">
+                <div class="quote-text font-medium">@_text</div>
             </div>
             <RenderSlot Name="QuoteCloseButton"/>
         </div>

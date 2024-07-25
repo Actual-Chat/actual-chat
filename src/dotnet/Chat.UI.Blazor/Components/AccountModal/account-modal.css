@@ -152,3 +152,19 @@ body.hoverable .author-modal .tile:hover {
 .tile-item.anonymous-chat-toggle.tile-selected:hover {
     @apply bg-selected;
 }
+
+.author-modal .tile-wrapper {
+    @apply flex-y gap-y-2;
+}
+.author-modal .tile-wrapper > .c-incut {
+    @apply flex-1;
+    @apply min-h-16;
+}
+.author-modal .tile-wrapper > .c-incut > .c-info {
+    @apply flex-x items-start gap-x-2;
+    @apply px-4 py-2;
+    @apply leading-3;
+    @apply rounded-xl;
+    @apply bg-[var(--sienna-50-20)];
+    @apply text-caption-6 font-normal text-03;
+}

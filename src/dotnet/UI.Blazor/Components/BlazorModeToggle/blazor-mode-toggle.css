@@ -1,9 +1,16 @@
 .blazor-mode-toggle {
-    @apply flex-x overflow-hidden;
-    @apply rounded-full outline-none bg-01 my-1 border border-separator;
+    @apply flex-x;
+    @apply my-1;
+    @apply overflow-hidden;
+    @apply rounded-full border border-separator;
+    @apply outline-none;
+    @apply bg-01;
 }
 .blazor-mode-toggle .btn.btn-square {
-    @apply text-01 rounded-none min-w-0 p-0 m-0;
+    @apply min-w-0;
+    @apply p-0 m-0;
+    @apply rounded-none;
+    @apply text-01;
 }
 .blazor-mode-toggle .btn.btn-square.is-active,
 .blazor-mode-toggle .btn.btn-square.is-active * {
@@ -11,7 +18,8 @@
 }
 .blazor-mode-toggle .btn.btn-square .btn-content,
 .blazor-mode-toggle .btn.btn-square:disabled .btn-content {
-    @apply p-0 m-0 !bg-02;
+    @apply p-0 m-0;
+    @apply !bg-02;
 }
 .blazor-mode-toggle .btn.btn-square .btn-content-inner {
     @apply text-xs;
@@ -23,12 +31,16 @@
     @apply mr-1;
 }
 .blazor-mode-toggle .btn.btn-square .btn-content {
-    @apply bg-round subpixel-antialiased rounded-none;
+    @apply rounded-none;
+    @apply subpixel-antialiased;
+    @apply bg-round;
 }
 .blazor-mode-toggle .btn.btn-square:disabled .btn-content,
 body.hoverable .blazor-mode-toggle .btn.btn-square:disabled:hover .btn-content {
-    @apply bg-round opacity-80;
+    @apply opacity-80;
+    @apply bg-round;
 }
 body.hoverable .blazor-mode-toggle .btn.btn-square:hover:not(:disabled) .btn-content {
-    @apply bg-hover underline;
+    @apply bg-hover;
+    @apply underline;
 }

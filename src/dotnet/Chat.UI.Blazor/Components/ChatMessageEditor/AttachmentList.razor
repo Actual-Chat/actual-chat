@@ -34,7 +34,7 @@
                 }
                 var uploadStyle = $"width: {progress}%;";
                 <li class="attachment-wrapper">
-                    <div class="flex-y relative">
+                    <div class="c-content">
                         <div class="attachment-item">
                             <ButtonSquare Click="@(() => OnRemoveClick(attachment))" Class="remove-attachment-btn btn-danger btn-sm">
                                 <i class="icon-trash03 text-2xl font-thin"></i>
@@ -46,7 +46,7 @@
                                     <source src="@attachment.Url#t=0.5" />
                                 </video>
                             } else {
-                                <div class="flex items-center justify-center p-3">
+                                <div class="c-file">
                                     <img draggable="false" src="/dist/images/attachment.svg" alt="File attachment" class="h-12">
                                 </div>
                             }
