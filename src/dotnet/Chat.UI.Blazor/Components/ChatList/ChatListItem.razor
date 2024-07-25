@@ -4,7 +4,7 @@
 @{
     DebugLog?.LogDebug("Rendered: {ListKind} #{ChatTitle}, ChatId='{ChatId}'", ListKind, Chat.Title, Chat.Id);
     var m = State.Value;
-    var chat = Chat;
+    var chat = m.Chat ?? Chat;
     var isWide = ScreenSize.IsWide();
     var isActiveChatList = ListKind == ChatListKind.Active;
     var audioState = m.AudioState;
@@ -179,6 +179,7 @@
         }
         DebugLog?.LogDebug("<- ComputeState: {ListKind} #{ChatTitle}, OK, ChatId={ChatId}", ListKind, chatTitle, chatId);
         return new() {
+            Chat = chatState.Chat,
             AudioState = chatState.AudioState,
             NotificationMode = chatState.Info.UserSettings.NotificationMode,
             IsSelected = chatState.IsSelected,
@@ -196,6 +197,7 @@
     public sealed record Model {
         public static readonly Model None = new() { AudioState = ChatAudioState.None };
 
+        public Chat? Chat { get; init; }
         public string LastTextEntryText { get; init; } = "";
         public ChatEntry? LastTextEntry { get; init; }
         public ChatAudioState AudioState { get; init; }
