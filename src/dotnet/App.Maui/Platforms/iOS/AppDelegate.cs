@@ -1,10 +1,13 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.Notification;
+using ActualChat.Security;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Rpc;
 using CoreSpotlight;
 using Firebase.CloudMessaging;
 using Foundation;
 using UIKit;
+using DeviceType = ActualChat.Notification.DeviceType;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace ActualChat.App.Maui;
@@ -55,17 +58,24 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
         // Monitor token generation: To be notified whenever the token is updated.
         var token = fcmToken;
         Log.LogDebug("OnNewToken: '{Token}'", token);
-        if (!TryGetScopedServices(out var services))
+        var appServices = IPlatformApplication.Current?.Services;
+        if (appServices == null)
             return;
 
-        var session = services.GetService<Session>();
-        var rpcHub = services.GetService<RpcHub>();
-        var commander = services.GetService<ICommander>();
-        if (session != null && rpcHub != null && commander != null)
+        var rpcHub = appServices.GetService<RpcHub>();
+        var commander = appServices.GetService<ICommander>();
+        var mauiSession = appServices.GetService<MauiSession>();
+        var sessionResolver = appServices.GetRequiredService<TrueSessionResolver>();
+        if (mauiSession != null && rpcHub != null && commander != null)
             _ = Task.Run(async () => {
                 await rpcHub.WhenClientPeerConnected().ConfigureAwait(false);
-                var command = new Notifications_RegisterDevice(session, token, Notification.DeviceType.iOSApp);
-                await commander.Call(command, default).ConfigureAwait(false);
+                await mauiSession.Acquire().ConfigureAwait(false);
+                if (!sessionResolver.HasSession)
+                    return;
+
+                var session = sessionResolver.Session;
+                var command = new Notifications_RegisterDevice(session, token, DeviceType.iOSApp);
+                await commander.Call(command, CancellationToken.None).ConfigureAwait(false);
             });
     }
 
