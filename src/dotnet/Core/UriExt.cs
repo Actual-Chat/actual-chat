@@ -11,7 +11,10 @@ public static class UriExt
             : uri.AbsoluteUri[..uri.AbsoluteUri.OrdinalLastIndexOf(uri.Fragment)];
 
     public static NameValueCollection GetQueryCollection(this Uri uri)
-        => HttpUtility.ParseQueryString(uri.Query);
+        => GetQueryCollection(uri.Query);
+
+    public static NameValueCollection GetQueryCollection(string query)
+        => HttpUtility.ParseQueryString(query);
 
     public static Uri DropQueryItem(this Uri uri, string key)
     {
