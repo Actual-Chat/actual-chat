@@ -15,5 +15,7 @@
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
     <PackageReference Include="NATS.Net" />
     <PackageReference Include="SixLabors.ImageSharp" />
+    <PackageReference Include="OpenTelemetry.Api" />
+    <PackageReference Include="OpenTelemetry.Api.ProviderBuilderExtensions" />
   </ItemGroup>
 </Project>
