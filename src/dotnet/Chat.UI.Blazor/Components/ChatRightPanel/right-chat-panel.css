@@ -131,7 +131,6 @@
     @apply flex-y;
     @apply h-full;
     @apply p-2;
-    @apply need-gutter;
     @apply overflow-y-auto custom-scrollbar;
 }
 .author-list-tab .avatar-badge {

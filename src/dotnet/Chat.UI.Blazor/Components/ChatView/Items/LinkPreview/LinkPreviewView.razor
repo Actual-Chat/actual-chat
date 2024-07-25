@@ -2,19 +2,22 @@
 @using ActualChat.Media
 @using ILinkPreviews = ActualChat.Media.IMediaLinkPreviews
 @using LinkPreview = ActualChat.Media.LinkPreview
-@inherits FusionComponentBase
+@using System.Drawing
+@inherits ComputedStateComponent<LinkPreviewView.Model>
 @{
-    var m = Entry.LinkPreview;
-    if (Entry.LinkPreviewMode == LinkPreviewMode.None || m == null || m.IsEmpty)
+    var m = State.Value;
+    var preview = Entry.LinkPreview;
+    if (Entry.LinkPreviewMode == LinkPreviewMode.None || preview == null || preview.IsEmpty)
         return;
 
-    var imageUrl = GetImageUrl(m.PreviewMedia);
-    Uri.TryCreate(m.Url, UriKind.Absolute, out var uri);
-    var compactCls = m.PreviewMedia != null ? "" : "compact";
+    var imageUrl = GetImageUrl(preview.PreviewMedia);
+    Uri.TryCreate(preview.Url, UriKind.Absolute, out var uri);
+    var compactCls = preview.PreviewMedia != null ? "" : "compact";
+    var isOurLink = uri != null && uri.ToString().StartsWith($"{UrlMapper.BaseUrl}");
 
     RenderFragment RenderMedia() {
-        if (m.PreviewMedia != null) {
-            if (m.IsYouTubeVideo) {
+        if (preview.PreviewMedia != null) {
+            if (preview.IsYouTubeVideo) {
                 return @<div
                     class="c-thumbnail c-video"
                     @onclick="@OnVideoClick">
@@ -37,9 +40,9 @@
 
     RenderFragment RenderInfo() =>
         @<div>
-            <span class="c-title">@m.Title</span>
-            @if (!m.Description.IsNullOrEmpty()) {
-                <div class="c-description">@m.Description</div>
+            <span class="c-title">@preview.Title</span>
+            @if (!preview.Description.IsNullOrEmpty()) {
+                <div class="c-description">@preview.Description</div>
             }
         </div>;
 
@@ -53,23 +56,27 @@
 
 }
 
-@if (uri != null) {
-    <a class="link-preview unfocusable @compactCls" href="@uri" target="_blank">
-        @RenderMedia()
-        <div class="c-info">
-            @RenderInfo()
-            <span class="c-domain">@uri.Host</span>
-        </div>
-        <div class="incut"></div>
-    </a>
+@if (isOurLink && !ReferenceEquals(m, Model.None) && m is { Entry: not null, Chat: not null }) {
+    <OurLinkPreview Model="@m"/>
 } else {
-    <div class="link-preview @compactCls">
-        @RenderMedia()
-        <div class="c-info">
-            @RenderInfo()
+    @if (uri != null) {
+        <a class="link-preview unfocusable @compactCls" href="@uri" target="_blank">
+            @RenderMedia()
+            <div class="c-info">
+                @RenderInfo()
+                <span class="c-domain">@uri.Host</span>
+            </div>
+            <div class="incut"></div>
+        </a>
+    } else {
+        <div class="link-preview @compactCls">
+            @RenderMedia()
+            <div class="c-info">
+                @RenderInfo()
+            </div>
+            <div class="incut"></div>
         </div>
-        <div class="incut"></div>
-    </div>
+    }
 }
 
 <div class="link-buttons">
@@ -81,7 +88,9 @@
             </ButtonRound>
         </CopyTrigger>
     }
-    @RenderForward()
+    @if (!isOurLink) {
+        @RenderForward()
+    }
 </div>
 
 @code {
@@ -92,6 +101,10 @@
     private UrlMapper UrlMapper => Hub.UrlMapper();
     private ICommander Commander => Hub.Commander();
     private SelectionUI SelectionUI => Hub.SelectionUI;
+    private IChats Chats => Hub.Chats;
+    private IPlaces Places => Hub.Places;
+    private IAuthors Authors => Hub.Authors;
+    private Session Session => Hub.Session();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -124,5 +137,75 @@
             default:
                 return (0, 0);
         }
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+        static t => new ComputedState<Model>.Options() {
+            InitialValue = Model.None,
+            Category = ComputedStateComponent.GetStateCategory(t),
+        });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (Entry.LinkPreview == null)
+            return Model.None;
+
+        Uri.TryCreate(Entry.LinkPreview.Url, UriKind.Absolute, out var uri);
+        if (uri == null)
+            return Model.None;
+
+        var localUri = uri.LocalPath;
+        var localUrl = localUri.Replace(UrlMapper.BaseUrl, "");
+
+        if (!localUrl.StartsWith(Links.Chats))
+            return Model.None;
+
+        var chatIdString = localUrl.Replace($"{Links.Chats}/", "");
+        var uriFragment = uri.Fragment;
+
+        var chatId = ChatId.ParseOrNone(chatIdString);
+        if (chatId == ChatId.None)
+            return Model.None;
+
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return Model.None;
+
+        var entryLocalIdString = uriFragment.Replace("#", "");
+        if (!long.TryParse(entryLocalIdString, out var parsedEntryLocalId))
+            return Model.None;
+
+        var textEntryId = new TextEntryId(chatId, parsedEntryLocalId, AssumeValid.Option);
+        var entry = await Chats.GetEntry(Session, textEntryId, cancellationToken).ConfigureAwait(false);
+        if (entry == null)
+            return Model.None;
+
+        var authorId = entry.AuthorId;
+        var author = await Authors.Get(Session, entry.ChatId, authorId, cancellationToken).ConfigureAwait(false);
+
+        Place? place = null;
+        var placeId = chat.Id.PlaceChatId.PlaceId;
+        if (!placeId.IsNone)
+            place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+
+        return new () {
+            Uri = uri,
+            Entry = entry,
+            Author = author,
+            Chat = chat,
+            Place = place,
+        };
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public Uri Uri { get; init; } = null!;
+        public ChatEntry? Entry { get; init; }
+        public Author? Author { get; init; }
+        public Chat? Chat { get; init; }
+        public Place? Place { get; init; }
     }
 }
