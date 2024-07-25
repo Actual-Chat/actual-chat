@@ -139,24 +139,17 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return;
 
         var sUri = History.Uri;
-        var uri = new LocalUrl(sUri).ToAbsolute(Hub.UrlMapper()).ToUri();
-        if (uri.Query.IsNullOrEmpty())
+        var localUrl = new LocalUrl(sUri);
+        if (!localUrl.IsChat(out _, out long entryId) || entryId <= 0)
             return;
-
-        var sEntryId = uri.GetQueryCollection().Get(Links.ChatEntryLidQueryParameterName);
-        if (sEntryId.IsNullOrEmpty())
-            return;
-
-        if (!NumberExt.TryParsePositiveLong(sEntryId, out var entryId) || entryId <= 0)
-            return;
-
-        var uriWithoutMsgId = uri.DropQueryItem(Links.ChatEntryLidQueryParameterName).PathAndQuery;
 
         var cts = new CancellationTokenSource();
         var cancellationToken = cts.Token;
         _ = ForegroundTask.Run(async () => {
                 try {
                     await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
+                    var uri = localUrl.ToAbsolute(Hub.UrlMapper()).ToUri();
+                    var uriWithoutMsgId = uri.DropQueryItem(Links.ChatEntryLidQueryParameterName).PathAndQuery;
                     _ = History.NavigateTo(uriWithoutMsgId, true);
                 }
                 finally {
