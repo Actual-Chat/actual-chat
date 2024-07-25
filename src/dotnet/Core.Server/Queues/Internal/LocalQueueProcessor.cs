@@ -86,17 +86,25 @@ public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQue
             // This call takes care of reprocessing
             await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
             await MarkCompleted(queuedCommand, cancellationToken).ConfigureAwait(false);
+            activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Completed);
         }
         catch (Exception e) {
             if (e.GetBaseException() is PostponeException pe) {
+                activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
+                activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Postponed);
                 DebugLog?.LogDebug(e, "Queued {Kind} postponed: {Command}", kind, queuedCommand);
                 await MarkPostponed(queuedCommand, pe.Delay, cancellationToken).ConfigureAwait(false);
                 return;
             }
             Log.LogError(e, "Queued {Kind} failed: {Command}", kind, queuedCommand);
             await MarkFailed(queuedCommand, e, cancellationToken).ConfigureAwait(false);
-            if (cancellationToken.IsCancellationRequested)
+            if (cancellationToken.IsCancellationRequested) {
+                activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
+                activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Canceled);
                 throw;
+            }
+            activity?.SetStatus(ActivityStatusCode.Error, e.Message);
+            activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Failed);
         }
         finally {
             InterlockedExt.ExchangeIfGreater(ref _lastCommandCompletedAt, Clock.Now.EpochOffsetTicks);
