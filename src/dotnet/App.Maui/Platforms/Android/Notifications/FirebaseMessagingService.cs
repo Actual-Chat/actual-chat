@@ -1,4 +1,7 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.Notification;
+using ActualChat.Notification.UI.Blazor;
+using ActualChat.Security;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Rpc;
 using Android.App;
@@ -44,15 +47,22 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     public override void OnNewToken(string token)
     {
         Log.LogDebug("OnNewToken: '{Token}'", token);
-        if (TryGetScopedServices(out var services)) {
-            var session = services.GetService<Session>();
-            var rpcHub = services.GetService<RpcHub>();
-            var commander = services.GetService<ICommander>();
-            if (session != null && rpcHub != null && commander != null)
+        var appServices = IPlatformApplication.Current?.Services;
+        if (appServices != null) {
+            var rpcHub = appServices.GetService<RpcHub>();
+            var commander = appServices.GetService<ICommander>();
+            var mauiSession = appServices.GetService<MauiSession>();
+            var sessionResolver = appServices.GetRequiredService<TrueSessionResolver>();
+            if (mauiSession != null && rpcHub != null && commander != null)
                 _ = Task.Run(async () => {
                     await rpcHub.WhenClientPeerConnected().ConfigureAwait(false);
+                    await mauiSession.Acquire().ConfigureAwait(false);
+                    if (!sessionResolver.HasSession)
+                        return;
+
+                    var session = sessionResolver.Session;
                     var command = new Notifications_RegisterDevice(session, token, DeviceType.AndroidApp);
-                    await commander.Call(command, default).ConfigureAwait(false);
+                    await commander.Call(command, CancellationToken.None).ConfigureAwait(false);
                 });
         }
         base.OnNewToken(token);
