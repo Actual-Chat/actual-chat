@@ -1584,6 +1584,7 @@ module.exports = {
     lineClamp: {
       1: '1',
       2: '2',
+      3: '3',
     }
   },
   variantOrder: [

@@ -263,10 +263,8 @@
 .form-block.with-contact-list > div {
     @apply px-4;
 }
-.form-block.with-contact-list > .contact-selector-list {
-    @apply px-2 md:px-0;
-}
 .form-block.with-contact-list > .contact-selector-list,
 .form-block.with-contact-list > .c-contact-list {
     @apply w-full;
+    @apply px-2;
 }

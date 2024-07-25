@@ -10,6 +10,10 @@ body.narrow .link-preview {
     @apply flex-y items-start;
     @apply h-60;
 }
+body.narrow .link-preview.our-link:not(.place-link) {
+    @apply flex-x;
+    @apply h-full;
+}
 .link-preview:not(:has(.c-thumbnail)) {
     @apply h-20 md:h-20;
 }
@@ -45,6 +49,7 @@ body.narrow .link-preview.compact .c-info {
 
 /* thumbnail */
 .link-preview .c-thumbnail {
+    @apply flex-none;
     @apply w-full md:max-w-34 lg:max-w-60;
     @apply h-40 md:h-34;
 }
@@ -88,6 +93,10 @@ body.narrow .link-preview.compact .c-icon > i {
     @apply text-caption-1 md:text-headline-1 leading-4 text-primary;
     @apply line-clamp-1;
 }
+.link-preview .c-name {
+    @apply text-caption-6 md:text-caption-1 text-primary;
+    @apply line-clamp-1;
+}
 .link-preview .c-description {
     @apply text-caption-2 text-02;
     @apply line-clamp-1;
@@ -117,7 +126,7 @@ body.narrow .message-link-preview:not(:has(.compact)) .c-domain {
 
 /* Link Buttons */
 .message-link-preview .link-buttons {
-    @apply absolute bottom-3 right-1;
+    @apply absolute bottom-3 right-2;
     @apply flex-x items-center gap-x-1;
     @apply h-fit;
 }
@@ -148,4 +157,31 @@ body.hoverable .message-link-preview .link-buttons .btn.btn-round:hover i {
 body.narrow .link-preview.compact .incut {
     @apply flex-none;
     @apply w-15 h-12;
+}
+
+/* Our Link Preview */
+.link-preview.our-link {
+    @apply items-start;
+    @apply h-full;
+}
+.link-preview.our-link .c-chat-icon {
+    @apply p-2 pr-0;
+}
+.link-preview.our-link .c-info {
+    @apply gap-y-0.5;
+}
+.link-preview.our-link:not(.place-link) .c-info {
+    @apply pl-0 pt-1 pr-2 pb-1 md:pb-4;
+}
+.link-preview.our-link .c-description {
+    @apply line-clamp-2 md:line-clamp-3;
+}
+.link-preview.our-link:not(.place-link) .c-domain {
+    @apply pt-4;
+}
+.our-link .image-wrapper {
+    @apply h-34;
+    @apply min-w-full;
+    @apply md:min-w-34 md:max-w-34;
+    @apply lg:min-w-60 lg:max-w-60;
 }

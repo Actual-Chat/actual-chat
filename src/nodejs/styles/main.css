@@ -142,6 +142,11 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply bg-transparent;
     @apply transition-height;
 }
+body.narrow .layout-subheader > div:nth-last-child(2) {
+    @apply rounded-b-2xl;
+    @apply overflow-hidden;
+    @apply shadow-lg;
+}
 
 .layout-body {
     @apply flex-1 flex-y flex-nowrap;
