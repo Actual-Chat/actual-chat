@@ -16,7 +16,7 @@
              data-editor-focus="true"
              @onmouseover="@(_ => Selection = mention)"
              @onclick="@(_ => Manager.SelectMention(mention))">
-            <div class="flex-x gap-x-2 px-4 items-center h-9">
+            <div class="c-content">
                 @if (mention.MentionId.Kind == PrincipalKind.Author) {
                     <AuthorCircle
                         @key="@mention.MentionId.AuthorId"
@@ -26,7 +26,7 @@
                     var pictureUrl = UrlMapper.PicturePreview128Url(mention.Picture);
                     <image-skeleton class="flex-none w-7 h-7 rounded-full" src="@pictureUrl"/>
                 }
-                <div class="flex-auto text-ellipsis whitespace-nowrap overflow-hidden text-headline-1 text-02">
+                <div class="c-center">
                     <SearchMatchHighlighter Match="@mention.SearchMatch"/>
                 </div>
             </div>

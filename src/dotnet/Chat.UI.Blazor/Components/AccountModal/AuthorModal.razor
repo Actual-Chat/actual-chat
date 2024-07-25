@@ -78,17 +78,17 @@
                 }
 
                 @if (m.EnableIncompleteUI) {
-                    <div class="tile-wrapper flex-y gap-y-2">
-                        <div class="c-incut flex-1 min-h-16">
-                            @if (toggleValue) {
-                                <div class="c-info flex-x items-start gap-x-2 bg-[var(--sienna-50-20)] rounded-xl text-caption-6 font-normal text-03 leading-3 px-4 py-2">
-                                    <i class="icon-alert-triangle text-lg text-warning"></i>
-                                    <span>
-                                        Anonymous chats hide user identities and don't transmit or record your voice, though still
-                                        show real - time transcription. And you can reveal you real identity there at any moment.
-                                    </span>
-                                </div>
-                            }
+                    <div class="tile-wrapper">
+                        <div class="c-incut">
+                        @if (toggleValue) {
+                            <div class="c-info">
+                                <i class="icon-alert-triangle text-lg text-warning"></i>
+                                <span>
+                                    Anonymous chats hide user identities and don't transmit or record your voice, though still
+                                    show real - time transcription. And you can reveal you real identity there at any moment.
+                                </span>
+                            </div>
+                        }
                         </div>
 
                         <TileItem Click="@OnChatTypeChanged" Class="@tileCls">
