@@ -40,10 +40,6 @@
     "javascript",
     "typescript"
   ],
-  "eslint.packageManager": "npm",
-  "cSpell.enableFiletypes": [
-    "aspnetcorerazor"
-  ],
   "dotnet.unitTestDebuggingOptions": {
     "allowFastEvaluate": true,
     "enableStepFiltering": true,
