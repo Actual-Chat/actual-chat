@@ -25,6 +25,9 @@ public class NotificationViewActionHandler
         if (intent is null || !OrdinalEquals(NotificationHelper.NotificationViewAction, intent.Action))
             return;
 
+        if (intent.IsFromHistory())
+            return;
+
         if (intent.Data is null)
             return;
 
