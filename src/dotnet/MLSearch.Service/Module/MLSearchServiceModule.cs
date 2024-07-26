@@ -131,35 +131,41 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // -- Register ML bot --
 //        const string ConversationBotServiceGroup = "ML Chat Bot";
         rpcHost.AddBackend<IChatBotConversationTrigger, ChatBotConversationTrigger>();
+        if (Settings.Integrations != null){
+            var x509 = X509Certificate2.CreateFromPemFile(
+                Settings.Integrations.CertPemFilePath,
+                Settings.Integrations.KeyPemFilePath
+            );
+            X509Certificate2 signingCertificate = new X509Certificate2(x509);
+            var privateKey = signingCertificate.GetECDsaPrivateKey();
+            var securityKey = new ECDsaSecurityKey(privateKey);
+            var signingCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha384);
 
-        var x509 = X509Certificate2.CreateFromPemFile(
-            "/Users/andreykurochkin/Documents/Projects/work/actual.chat/actual-chat/example.com.crt",
-            "/Users/andreykurochkin/Documents/Projects/work/actual.chat/actual-chat/example.com.key"
-            //"/Users/andreykurochkin/Documents/Projects/work/actual.chat/actual-chat/sample.cert.pem"
-            //,"/Users/andreykurochkin/Documents/Projects/work/actual.chat/actual-chat/sample.ecdsa"
-        );
-        if (this.Settings.Integrations == null) {
-            this.Settings.Integrations = new MLIntegrations();
+            // This is a workaround. Read notes above the ConversationToolsController class
+            services.Configure<BotToolsContextHandlerOptions>(e => {
+                // TODO: remove hardcoded.
+                e.Audience = "bot-tools.actual.chat";
+                e.Issuer = "integrations.actual.chat";
+                e.SigningCredentials = signingCredentials;
+                e.ContextLifetime = TimeSpan.FromMinutes(5);
+            });
+            services.AddSingleton<IBotToolsContextHandler>(services => {
+                var options = services.GetRequiredService<IOptionsMonitor<BotToolsContextHandlerOptions>>();
+                return services.CreateInstanceWith<BotToolsContextHandler>(options);
+            });
+            var isBotEnabled = 
+                Settings.IsEnabled 
+                && Settings.Integrations.Bot != null 
+                && Settings.Integrations.Bot.IsEnabled
+                && Settings.Integrations.Bot.WebHookUri != null;
+            if (isBotEnabled) {
+                services.Configure<ExternalChatbotSettings>( e => {
+                    e.IsEnabled = true;
+                    e.WebHookUri = Settings!.Integrations!.Bot!.WebHookUri!;
+                });
+                services.AddSingleton<IBotConversationHandler, ExternalChatBotConversationHandler>();
+            }
         }
-        X509Certificate2 signingCertificate = new X509Certificate2(x509);
-        //var pubkey = signingCertificate.GetECDsaPublicKey();
-        var privateKey = signingCertificate.GetECDsaPrivateKey();
-        var securityKey = new ECDsaSecurityKey(privateKey);
-        var signingCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha384);
-
-        // This is a workaround. Read notes above the ConversationToolsController class
-        services.Configure<BotToolsContextHandlerOptions>(e => {
-            e.Audience = "bot-tools.actual.chat";
-            e.Issuer = "integrations.actual.chat";
-            e.SigningCredentials = signingCredentials;
-            e.ContextLifetime = TimeSpan.FromMinutes(5);
-        });
-        services.AddSingleton<IBotToolsContextHandler>(services => {
-            var options = services.GetRequiredService<IOptionsMonitor<BotToolsContextHandlerOptions>>();
-            return services.CreateInstanceWith<BotToolsContextHandler>(options);
-        });
-
-        services.AddSingleton<IBotConversationHandler, ExternalChatBotConversationHandler>();
         services.AddSingleton<IChatBotWorker>(static services
             => services.CreateInstanceWith<ChatBotWorker>(
             )

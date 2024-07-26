@@ -16,12 +16,13 @@ namespace ActualChat.MLSearch.Bot.Tools;
 
 [BotTools]
 [ApiController]
-[Route("api/bot/conversation-tools")]
+[Route("api/bot/conversation")]
 public sealed class ConversationToolsController(ICommander commander, IBotToolsContextHandler botToolsContext): ControllerBase
 {
     public sealed class Reply {
         public required string Text {get; init;}
     }
+
     [HttpPost("reply")]
     public async Task ReplyAction([FromBody]Reply reply, CancellationToken cancellationToken) {
         var context = botToolsContext.GetContext(Request);

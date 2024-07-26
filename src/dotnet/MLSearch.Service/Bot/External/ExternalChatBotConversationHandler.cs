@@ -13,9 +13,18 @@ using ActualChat.MLSearch.Bot.Tools;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization.Metadata;
 using ActualChat.MLSearch.Bot.Tools.Context;
+using Microsoft.Extensions.Options;
+using System.ComponentModel.DataAnnotations;
 
 namespace ActualChat.MLSearch.Bot.External;
 
+public sealed class ExternalChatbotSettings {
+    public bool IsEnabled { get; set; }
+    
+    [Required]
+    public required Uri WebHookUri { get; set; }
+    
+}
 
 /**
     A handler for incoming messages from a user.
@@ -25,7 +34,7 @@ namespace ActualChat.MLSearch.Bot.External;
     in asyncronous mode. That means that it will use the JWT token provided to 
     send messages to a user through the internal API. 
 **/
-internal class ExternalChatBotConversationHandler(IBotToolsContextHandler botToolsContextHandler, ICommander commander, UrlMapper urlMapper, IChatsBackend chats, ISearchEngine<ChatSlice> searchEngine)
+internal class ExternalChatBotConversationHandler(IOptions<ExternalChatbotSettings> settings, IBotToolsContextHandler botToolsContextHandler)
     : IBotConversationHandler, IComputeService
 {
     public async Task ExecuteAsync(
@@ -33,6 +42,10 @@ internal class ExternalChatBotConversationHandler(IBotToolsContextHandler botToo
         IReadOnlyCollection<ChatEntryId>? deletedDocuments,
         CancellationToken cancellationToken = default)
     {
+        var currentSettings = settings.Value;
+        if (!currentSettings.IsEnabled) {
+            return;
+        }
         if (updatedDocuments == null) {
             return;
         }
@@ -45,16 +58,27 @@ internal class ExternalChatBotConversationHandler(IBotToolsContextHandler botToo
         AuthorId botId = new(chatId, Constants.User.MLSearchBot.AuthorLocalId, AssumeValid.Option);
         if (lastUpdatedDocument.AuthorId == botId)
             return;
-        ///
+        if (lastUpdatedDocument.Kind != ChatEntryKind.Text) {
+            // Can't react on anything besides text yet.
+            return;
+        }
+        
+        /// Minimal WebHook implementation.
         
         HttpClient client = new HttpClient();
         
-        var url = "https://local.actual.chat/api/bot/conversation-tools/reply";
+        var url = currentSettings.WebHookUri;
 
         HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, url);
         
+        // Note: 
+        // The outmost "input" is part of the /invoke method of the langserve.
+        // There are also "kwargs" and "config" parts available.
+        // The inner <input> structure must be syncronized with the prompt used on the bot side.
         requestMessage.Content = JsonContent.Create(new {
-            text = "fpp"            
+            input = new {
+                input = lastUpdatedDocument.Content,
+            }
         });
         botToolsContextHandler.SetContext(requestMessage, conversationId: chatId);
         HttpResponseMessage response = client.SendAsync(requestMessage, cancellationToken).GetAwaiter().GetResult();

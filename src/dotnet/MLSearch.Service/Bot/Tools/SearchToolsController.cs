@@ -22,7 +22,7 @@ internal sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngin
         public required int Limit { get; init; }
 
     }
-    [HttpPost("public-chat-only-text")]
+    [HttpPost("public-chats")]
     public async Task<ActionResult<List<RankedDocument<ChatSlice>>>> PublicChatsText([FromBody]SearchQueryRequest search, CancellationToken cancellationToken)
     {
         var limit = search.Limit;
@@ -36,7 +36,11 @@ internal sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngin
         var query = new SearchQuery() {
             Filters = [
                 new SemanticFilter<ChatSlice>(search.Text),
-                new KeywordFilter<ChatSlice>(search.Text.Split())
+                new KeywordFilter<ChatSlice>(search.Text.Split()),
+                new ChatFilter() {
+                    PublicChatInclusion = InclusionMode.IncludeStrictly,
+                    SearchBotChatInclusion = InclusionMode.Exclude,
+                }
             ],
             Limit = limit
         };
@@ -47,7 +51,7 @@ internal sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngin
         return documents.Select(e=>e).ToList();
     }
 
-    [HttpPost("private-chat-text")]
+    [HttpPost("my-chats")]
     public async Task<ActionResult<List<RankedDocument<ChatSlice>>>> PrivateChatsText([FromBody]SearchQueryRequest search, CancellationToken cancellationToken)
     {
         var context = botToolsContext.GetContext(Request);
@@ -65,7 +69,11 @@ internal sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngin
         var query = new SearchQuery() {
             Filters = [
                 new SemanticFilter<ChatSlice>(search.Text),
-                new KeywordFilter<ChatSlice>(search.Text.Split())
+                new KeywordFilter<ChatSlice>(search.Text.Split()),
+                new ChatFilter() {
+                    PublicChatInclusion = InclusionMode.Include,
+                    SearchBotChatInclusion = InclusionMode.Exclude,
+                }
             ],
             Limit = limit
         };
