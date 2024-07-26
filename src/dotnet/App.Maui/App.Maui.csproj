@@ -318,6 +318,9 @@
 
     <!-- Required by https://github.com/AdamEssenmacher/GoogleApisForiOSComponents?tab=readme-ov-file#firebase-crashlytics -->
     <_ExportSymbolsExplicitly>false</_ExportSymbolsExplicitly>
+
+    <!--  TODO: can be removed after migrating to 9.0  -->
+    <DynamicCodeSupport>true</DynamicCodeSupport>
   </PropertyGroup>
 
   <!-- iOS: Debug configuration -->
