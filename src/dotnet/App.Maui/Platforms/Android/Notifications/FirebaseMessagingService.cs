@@ -51,16 +51,11 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         if (appServices != null) {
             var rpcHub = appServices.GetService<RpcHub>();
             var commander = appServices.GetService<ICommander>();
-            var mauiSession = appServices.GetService<MauiSession>();
             var sessionResolver = appServices.GetRequiredService<TrueSessionResolver>();
-            if (mauiSession != null && rpcHub != null && commander != null)
+            if (rpcHub != null && commander != null)
                 _ = Task.Run(async () => {
                     await rpcHub.WhenClientPeerConnected().ConfigureAwait(false);
-                    await mauiSession.Acquire().ConfigureAwait(false);
-                    if (!sessionResolver.HasSession)
-                        return;
-
-                    var session = sessionResolver.Session;
+                    var session = await sessionResolver.GetSession().ConfigureAwait(false);
                     var command = new Notifications_RegisterDevice(session, token, DeviceType.AndroidApp);
                     await commander.Call(command, CancellationToken.None).ConfigureAwait(false);
                 });
