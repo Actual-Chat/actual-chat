@@ -32,16 +32,16 @@ from langchain_core.runnables.utils import Input, Output
 class RuntimeConfigurableAgentExecutor(Runnable):
     """A custom runnable that will be used by the agent executor."""
 
-    def __init__(self, *, agent, tools):
+    def __init__(self, *, agent, tools_factory):
         """Initialize the runnable."""
         super().__init__()
         self.agent = agent
-        self.tools = tools
+        self.tools_factory = tools_factory
 
     def invoke(self, input: Input, config: Optional[RunnableConfig] = None) -> Output:
         executor = AgentExecutor(
             agent = _into_configured_agent(self.agent, config),
-            tools = self.tools,
+            tools = self.tools_factory(config),
         )
         return executor.invoke(input, config)
 
@@ -60,7 +60,7 @@ class RuntimeConfigurableAgentExecutor(Runnable):
         # is being used as a context later in the iterator
         executor = AgentExecutor(
             agent = _into_configured_agent(self.agent, config),
-            tools = self.tools,
+            tools = self.tools_factory(config),
         )
 
         async for output in executor.astream(input, config=config, **kwargs):

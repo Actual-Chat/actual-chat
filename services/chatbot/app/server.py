@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 from . import chain
 from . import prompts
 from . import utils
+from . import tools
 
 from langfuse import Langfuse
 
@@ -78,6 +79,16 @@ def _add_tracing(
     ])
     return config
 
+
+assert(tools.TOOLS_AUTH_FORWARD_CONTEXT is not None)
+
+def _add_tools_auth_context(
+    config: Dict[str, Any],
+    request: Request
+) -> Dict[str, Any]:
+    config[tools.TOOLS_AUTH_FORWARD_CONTEXT] = request.headers.get("Authorization", None)
+    return config
+
 @app.get("/")
 async def redirect_root_to_docs():
     return RedirectResponse("/docs")
@@ -93,7 +104,9 @@ _set_prompt = prompts.set_per_request(langfuse, dynamic_prompt = dynamic_prompt)
 
 def _per_request_config(config, request):
     config = _add_tracing(config, request)
+    config = _add_tools_auth_context(config, request)
     return _set_prompt(config, request)
+
 
 # Edit this to add the chain you want to add
 add_routes(

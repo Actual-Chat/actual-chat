@@ -60,15 +60,14 @@ def get_by_session_id(session_id: str) -> BaseChatMessageHistory:
 
 
 def create(*, claude_api_key, prompt):
-    tools = all_tools()
     llm = ChatAnthropic(
         model = 'claude-2',
         anthropic_api_key = claude_api_key
     )
-    agent_runnable = create_xml_agent(llm, tools, prompt)
+    agent_runnable = create_xml_agent(llm, all_tools(config=None), prompt)
     agent_executor = RuntimeConfigurableAgentExecutor(
         agent = agent_runnable,
-        tools = tools
+        tools_factory = all_tools
     )
     return (
         agent_executor.with_types(
