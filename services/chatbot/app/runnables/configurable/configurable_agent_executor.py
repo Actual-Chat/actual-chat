@@ -39,9 +39,10 @@ class RuntimeConfigurableAgentExecutor(Runnable):
         self.tools_factory = tools_factory
 
     def invoke(self, input: Input, config: Optional[RunnableConfig] = None) -> Output:
+        tools = self.tools_factory(config)
         executor = AgentExecutor(
             agent = _into_configured_agent(self.agent, config),
-            tools = self.tools_factory(config),
+            tools = tools,
         )
         return executor.invoke(input, config)
 

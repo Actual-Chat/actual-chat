@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives import serialization
 TOOLS_AUTH_FORWARD_CONTEXT = "forward-auth-context"
 
 class _Tools(object):
-    REPLY = "http://local.actual.chat/api/bot/conversation/reply"
+    REPLY = "https://local.actual.chat/api/bot/conversation/reply"
 
 def all(config):
     if (config is None):
@@ -26,9 +26,10 @@ def all(config):
         result = requests.post(
             _Tools.REPLY,
             json = {
-                "Text": message
+                "text": message
             },
-            headers = headers
+            headers = headers,
+            verify = False # TODO: think again if needed.
         )
         return
 
