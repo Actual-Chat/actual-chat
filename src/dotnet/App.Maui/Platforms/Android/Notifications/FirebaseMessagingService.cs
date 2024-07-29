@@ -48,18 +48,9 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     {
         Log.LogDebug("OnNewToken: '{Token}'", token);
         var appServices = IPlatformApplication.Current?.Services;
-        if (appServices != null) {
-            var rpcHub = appServices.GetService<RpcHub>();
-            var commander = appServices.GetService<ICommander>();
-            var sessionResolver = appServices.GetRequiredService<TrueSessionResolver>();
-            if (rpcHub != null && commander != null)
-                _ = Task.Run(async () => {
-                    await rpcHub.WhenClientPeerConnected().ConfigureAwait(false);
-                    var session = await sessionResolver.GetSession().ConfigureAwait(false);
-                    var command = new Notifications_RegisterDevice(session, token, DeviceType.AndroidApp);
-                    await commander.Call(command, CancellationToken.None).ConfigureAwait(false);
-                });
-        }
+        var mauiNotifications = appServices?.GetService<MauiNotifications>();
+        if (mauiNotifications != null )
+            _ = Task.Run(() => mauiNotifications.RefreshNotificationToken(token, DeviceType.AndroidApp, CancellationToken.None));
         base.OnNewToken(token);
     }
 

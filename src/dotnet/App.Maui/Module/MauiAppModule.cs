@@ -47,6 +47,9 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         if (!HostInfo.HostKind.IsServerOrWasmApp())
             services.AddScoped<IAnalyticsUI>(_ => new MauiAnalyticsUI());
 
+        // Notifications
+        services.AddSingleton<MauiNotifications>(c => new MauiNotifications(c));
+
         // ClientComputedCache
         var appCacheDir = new FilePath(FileSystem.CacheDirectory);
         services.AddSingleton(_ => new SQLiteClientComputedCache.Options() {
