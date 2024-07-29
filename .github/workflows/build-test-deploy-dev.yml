@@ -585,14 +585,14 @@ jobs:
       - name: Prepare GoogleServices file for DEV
         if: ${{env.IS_DEV_MAUI == 'true'}}
         run: |-
-          tee src/dotnet/App.Maui/Platforms/iOS/GoogleService-Info.plist.dev <<EOF
+          tee src/dotnet/App.Maui/Platforms/iOS/GoogleService-Info.plist.dev src/dotnet/App.Maui/GoogleService-Info.plist <<EOF
           ${{ secrets.GOOGLE_SERVICES_PLIST_DEV }}
           EOF
 
       - name: Prepare GoogleServices file for PROD
         if: ${{ env.IS_DEV_MAUI == 'false' }}
         run: |-
-          tee src/dotnet/App.Maui/Platforms/iOS/GoogleService-Info.plist.prod <<EOF
+          tee src/dotnet/App.Maui/Platforms/iOS/GoogleService-Info.plist.prod src/dotnet/App.Maui/GoogleService-Info.plist <<EOF
           ${{ secrets.GOOGLE_SERVICES_PLIST_PROD }}
           EOF
 
