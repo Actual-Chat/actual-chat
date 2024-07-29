@@ -61,7 +61,8 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
         var appServices = IPlatformApplication.Current?.Services;
         var mauiNotifications = appServices?.GetService<MauiNotifications>();
         if (mauiNotifications != null )
-            _ = Task.Run(() => mauiNotifications.RefreshNotificationToken(token, DeviceType.iOSApp, CancellationToken.None));
+            _ = BackgroundTask.Run(() => mauiNotifications.RefreshNotificationToken(token, DeviceType.iOSApp, CancellationToken.None),
+                Log, "DidReceiveRegistrationToken failed.");
     }
 
     // Private methods
