@@ -1,0 +1,18 @@
+@using ActualChat.Mjml.Blazor.Components
+@namespace ActualChat.Users.Templates
+
+<MjmlButton
+    Href="@Link"
+    Width="280px"
+    BackgroundColor="@(WithGradient ? "linear-gradient(179.66deg, #2970FF -128.11%, #FF3880 196.01%)" : "#FFF")"
+    Color="@(WithGradient ? "#FFF" : "#000")"
+    Border="1px solid #E8E8E8"
+    BorderRadius="32px">
+    @ChildContent
+</MjmlButton>
+
+@code {
+    [Parameter, EditorRequired] public string Link { get; set; } = null!;
+    [Parameter] public bool WithGradient { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

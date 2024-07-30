@@ -1,0 +1,37 @@
+@using ActualChat.Mjml.Blazor.Components
+@using ActualChat.Mjml.Blazor.Enums
+@namespace ActualChat.Users.Templates
+
+<MjmlSection
+    Padding="5px 10px"
+    FullWidth="MjmlSectionFullWidth.FullWidth">
+    <MjmlColumn
+        CssClass="message-border">
+        <MjmlText
+            Padding="10px"
+            FontWeight="500"
+            FontSize="16px">
+            @Chat.FirstUnreadChatEntry.AuthorName
+            <span style="color: #A0A0A0; font-size: 12px;">
+                @Chat.FirstUnreadChatEntry.At
+            </span>
+        </MjmlText>
+        <MjmlText
+            Padding="0 10px 10px 10px"
+            FontWeight="300"
+            Color="#1C1C1C"
+            FontSize="16px">
+            @Chat.FirstUnreadChatEntry.Text
+        </MjmlText>
+        @if (Chat.UnreadCount > 0) {
+            <DigestButton
+                Link="@Chat.Link">
+                Open @Chat.UnreadCount new from @Chat.Name
+            </DigestButton>
+        }
+    </MjmlColumn>
+</MjmlSection>
+
+@code {
+    [Parameter, EditorRequired] public DigestParameters.DigestChat Chat { get; set; } = null!;
+}
