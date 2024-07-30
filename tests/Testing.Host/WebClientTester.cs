@@ -1,6 +1,7 @@
 using ActualChat.App.Server;
 using ActualChat.Chat;
 using ActualChat.Hosting;
+using ActualChat.Notification;
 using ActualChat.Search;
 using ActualChat.UI;
 using ActualChat.UI.Blazor.App;
@@ -21,6 +22,7 @@ public interface IWebTester : IDisposable, IAsyncDisposable
     IPlaces Places { get; }
     ISearch Search { get; }
     IAuthBackend AuthBackend { get; }
+    INotificationsBackend NotificationsBackend { get; }
     Session Session { get; }
     UrlMapper UrlMapper { get; }
     ITestOutputHelper Out { get; }
@@ -46,6 +48,7 @@ public class WebClientTester : IWebClientTester
     public IPlaces Places => AppServices.GetRequiredService<IPlaces>();
     public ISearch Search => AppServices.GetRequiredService<ISearch>();
     public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
+    public INotificationsBackend NotificationsBackend  => AppServices.GetRequiredService<INotificationsBackend>();
     public Session Session { get; }
     public UrlMapper UrlMapper => AppServices.UrlMapper();
     public ITestOutputHelper Out { get; }

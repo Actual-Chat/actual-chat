@@ -307,7 +307,8 @@ public class Chats(IServiceProvider services) : IChats
                             ThumbnailMediaId = x.ThumbnailMediaId,
                         })
                         .ToApiArray());
-                await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+                var createdAttachments = await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+                textEntry = textEntry with { Attachments = createdAttachments };
             }
         }
 

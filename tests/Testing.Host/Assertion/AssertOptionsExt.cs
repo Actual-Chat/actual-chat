@@ -30,4 +30,8 @@ public static class AssertOptionsExt
     public static EquivalencyAssertionOptions<ContactSearchResult> ExcludingSearchMatch(
         this EquivalencyAssertionOptions<ContactSearchResult> options)
         => options.Excluding(x => x.SearchMatch);
+
+    public static EquivalencyAssertionOptions<Notification.Notification> Text(
+        this EquivalencyAssertionOptions<Notification.Notification> options)
+        => options.Including(x => x.Title).Including(x => x.Content);
 }

@@ -110,21 +110,10 @@ public static class ChatMarkupHubExt
                 firstFile = x;
         var fileCount = attachments.Count - imageCount - videoCount;
 
-        var imageText = imageCount switch {
-            0 => "",
-            1 => "an image",
-            _ => $"{imageCount.Format()} images",
-        };
-        var videoText = videoCount switch {
-            0 => "",
-            1 => "a video",
-            _ => $"{videoCount.Format()} videos",
-        };
-        var fileText = fileCount switch {
-            0 => "",
-            1 => firstFile!.Media.FileName,
-            _ => $"{fileCount.Format()} files",
-        };
+        var imageText = GetImageText();
+        var videoText = GetVideoText();
+        var fileText = GetFileText();
+
         var text = (imageText.Length, videoText.Length, fileText.Length) switch {
             (0, 0, _) => fileText,
             (0, _, 0) => videoText,
@@ -134,6 +123,28 @@ public static class ChatMarkupHubExt
             (0, _, _) => ZString.Concat(videoText, " and ", fileText),
             _ => ZString.Concat(imageText, ", ", videoText, ", and ", fileText),
         };
-        return new PlainTextMarkup(ZString.Concat("Sent ", text));
+        var preamble = consumer is MarkupConsumer.ReactionNotification ? "your " : "Sent ";
+        return new PlainTextMarkup(ZString.Concat(preamble, text));
+
+        string GetImageText()
+            => imageCount switch {
+                0 => "",
+                1 => consumer is MarkupConsumer.ReactionNotification ? "image" : "an image",
+                _ => $"{imageCount.Format()} images",
+            };
+
+        string GetVideoText()
+            => videoCount switch {
+                0 => "",
+                1 => consumer is MarkupConsumer.ReactionNotification ? "video" : "a video",
+                _ => $"{videoCount.Format()} videos",
+            };
+
+        string GetFileText()
+            => fileCount switch {
+                0 => "",
+                1 => firstFile!.Media.FileName,
+                _ => $"{fileCount.Format()} files",
+            };
     }
 }

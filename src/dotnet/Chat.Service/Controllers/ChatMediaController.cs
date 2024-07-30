@@ -1,11 +1,7 @@
-using System.Text;
-using ActualChat.Hashing;
-using ActualChat.Media;
 using ActualChat.Security;
 using ActualChat.Uploads;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Mvc;
-using SixLabors.ImageSharp;
 
 namespace ActualChat.Chat.Controllers;
 
@@ -13,10 +9,9 @@ namespace ActualChat.Chat.Controllers;
 public sealed class ChatMediaController(IServiceProvider services) : ControllerBase
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
-    private IContentSaver ContentSaver { get; } = services.GetRequiredService<IContentSaver>();
+    private MediaStorage MediaStorage { get; } = services.GetRequiredService<MediaStorage>();
     private IReadOnlyCollection<IUploadProcessor> UploadProcessors { get; }
         = services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
-    private ICommander Commander { get; } = services.Commander();
 
     [HttpPost("{chatId}/upload")]
     [RequestSizeLimit(Constants.Attachments.FileSizeLimit * 2)]
@@ -52,37 +47,16 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
             formFile.Length,
             () => Task.FromResult(formFile.OpenReadStream()));
         using var processedFile = await UploadProcessors.Process(uploadedFile, cancellationToken).ConfigureAwait(false);
-        var media = await SaveMedia(chatId, processedFile.File, processedFile.Size, cancellationToken).ConfigureAwait(false);
+        var media = await MediaStorage.Save(chatId, processedFile.File, processedFile.Size, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
         if (processedFile.Thumbnail == null)
             return Ok(new MediaContent(media.Id, media.ContentId));
 
-        var thumbnailMedia = await SaveMedia(chatId, processedFile.Thumbnail, processedFile.Size, cancellationToken).ConfigureAwait(false);
+        var thumbnailMedia = await MediaStorage
+            .Save(chatId, processedFile.Thumbnail, processedFile.Size, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
         return Ok(new MediaContent(media.Id, media.ContentId, thumbnailMedia.Id, thumbnailMedia.ContentId));
-    }
-
-    private async Task<Media.Media> SaveMedia(ChatId chatId, UploadedFile file, Size? size, CancellationToken cancellationToken)
-    {
-        var mediaId = new MediaId(chatId, Generate.Option);
-        var media = new Media.Media(mediaId) {
-            ContentId = mediaId.ContentId(Path.GetExtension(file.FileName)),
-            FileName = file.FileName,
-            Length = file.Length,
-            ContentType = file.ContentType,
-            Width = size?.Width ?? 0,
-            Height = size?.Height ?? 0,
-        };
-        var stream = await file.Open().ConfigureAwait(false);
-        await using (stream.ConfigureAwait(false)) {
-            var content = new Content(media.ContentId, file.ContentType, stream);
-            await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
-        }
-
-        var changeCommand = new MediaBackend_Change(
-            mediaId,
-            new Change<Media.Media> {
-                Create = media,
-            });
-        await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
-        return media;
     }
 }
