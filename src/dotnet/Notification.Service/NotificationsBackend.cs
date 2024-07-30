@@ -384,7 +384,9 @@ public class NotificationsBackend(IServiceProvider services)
             return;
 
         var (text, _) = await GetText(entry, MarkupConsumer.ReactionNotification, cancellationToken).ConfigureAwait(false);
-        text = $"{reaction.EmojiId} to \"{text}\"";
+        if (!entry.Content.IsNullOrEmpty())
+            text = $"\"{text}\"";
+        text = $"{reaction.EmojiId} to {text}";
         var userIds = new[] { author.UserId };
         var similarityKey = entry.ChatId;
         await EnqueueMessageRelatedNotifications(

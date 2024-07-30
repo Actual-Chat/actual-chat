@@ -157,7 +157,8 @@ public class ReactionsBackend(IServiceProvider services)
                 Change.Update(new ChatEntryDiff {
                     HasReactions = hasReactions,
                 }));
-            entry = await Commander.Call(changeEntryCommand, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(changeEntryCommand, cancellationToken).ConfigureAwait(false);
+            entry = entry with { HasReactions = hasReactions }; // preserving Attachments
         }
     }
 }
