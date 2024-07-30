@@ -156,24 +156,6 @@ body.hoverable .chat-settings-container .tile-item:hover {
 .edit-settings-modal.edit-members .dialog-body > * {
     @apply mt-3;
 }
-.edit-settings-modal.edit-members .list {
-    @apply overflow-y-auto custom-scrollbar;
-}
-.edit-settings-modal.edit-members .list > li {
-    @apply flex-x;
-    @apply min-h-12;
-}
-.edit-settings-modal.edit-members .list > li .menu {
-    @apply flex items-center justify-center;
-    @apply min-w-4;
-}
-.edit-settings-modal.edit-members .list .avatar-badge {
-    @apply flex-1;
-    @apply overflow-x-hidden;
-}
-.edit-settings-modal.edit-members .list .avatar-badge .c-status {
-    @apply text-03 text-xs leading-3.5;
-}
 
 .edit-settings-modal.edit-members .tile-item {
     @apply shrink-0; /* prevents shrinking tile item when list overflows */
@@ -264,4 +246,25 @@ body.narrow .chat-settings-header > .c-top::after {
     @apply w-full;
     @apply line-clamp-1;
     @apply text-headline-7 text-01;
+}
+
+/* Members list */
+.members-list {
+    @apply overflow-y-auto;
+    scrollbar-width: none;
+}
+.members-list > li {
+    @apply flex-x;
+    @apply min-h-12;
+}
+.members-list > li .menu {
+    @apply flex items-center justify-center;
+    @apply min-w-4;
+}
+.members-list .avatar-badge {
+    @apply flex-1;
+    @apply overflow-x-hidden;
+}
+.members-list .avatar-badge .c-status {
+    @apply text-03 text-xs leading-3.5;
 }

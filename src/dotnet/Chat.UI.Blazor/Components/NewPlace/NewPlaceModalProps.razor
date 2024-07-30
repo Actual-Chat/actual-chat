@@ -28,6 +28,18 @@
                 Autofocus="false"
                 Autocomplete="false"/>
         </FormSection>
+        <FormSection
+            For="() => _form.Description"
+            Label="Description"
+            InputId="@_form.DescriptionId"
+            IsLabelInsideInput="true"
+            Class="!mt-0 grow">
+            <TextBox
+                @bind-Value="@_form.Description"
+                Id="@_form.DescriptionId"
+                Autofocus="false"
+                Autocomplete="false"/>
+        </FormSection>
     </FormBlock>
     <FormBlock Title="Place type" Class="with-input-radio">
         <InputRadioGroup Name="place_type" DisplayName="Place type" @bind-Value="_form.IsPublic">
@@ -108,6 +120,7 @@
             var createPlaceCommand = new Places_Change(session, default, default, new Change<PlaceDiff>() {
                 Create = new PlaceDiff {
                     Title = _form.Title,
+                    Description = _form.Description,
                     IsPublic = _form.IsPublic,
                     MediaId = _form.Picture?.MediaContent?.MediaId,
                 }
@@ -120,9 +133,11 @@
             place.Require();
 
             // Create default chat. Later we should add place templates.
+            var description = $"Welcome chat for {place.Title}";
             var createChatCommand = new Chats_Change(session, default, null, new() {
                 Create = new ChatDiff {
                     Title = "Welcome",
+                    Description = description,
                     Kind = null,
                     IsPublic = true,
                     MediaId = _form.Picture?.MediaContent?.MediaId,
@@ -142,17 +157,20 @@
         [Required, MinLength(1)]
         public string Title { get; set; } = "";
 
+        public string Description { get; set; } = "";
         public Picture? Picture { get; set; }
         public bool IsPublic { get; set; }
 
         public string FormId { get; }
         public string TitleId { get; }
+        public string DescriptionId { get; }
         public string IsPublicTrueFormId { get; }
         public string IsPublicFalseFormId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
             TitleId = $"{FormId}-title";
+            DescriptionId = $"{FormId}-description";
             var isPublicFormId = $"{FormId}-is-public";
             IsPublicTrueFormId = isPublicFormId + "-true";
             IsPublicFalseFormId = isPublicFormId + "-false";

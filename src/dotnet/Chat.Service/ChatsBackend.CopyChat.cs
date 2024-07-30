@@ -199,6 +199,7 @@ public partial class ChatsBackend
         }
         else {
             dbChat.Title = chat.Title;
+            dbChat.Description = chat.Description;
             dbChat.IsPublic = chat.IsPublic;
             dbChat.MediaId = chat.MediaId;
             dbChat.Version = chat.Version;

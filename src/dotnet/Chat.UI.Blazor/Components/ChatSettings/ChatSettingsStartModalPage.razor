@@ -72,6 +72,13 @@
                 Placeholder="Chat title*"
                 ClearButton="true"/>
         </FormSection>
+        <FormSection Class="field-chat-title" For="() => _form.Description" InputId="@_form.DescriptionId" IsLabelInsideInput="true" Label="Chat description">
+            <TextBox
+                @bind-Value="@_form.Description"
+                Id="@_form.DescriptionId"
+                Placeholder="This chat about..."
+                ClearButton="true"/>
+        </FormSection>
     </FormBlock>
 
     <div class="chat-settings-container">
@@ -178,6 +185,7 @@
         var chat = await Hub.Chats.Get(Session, ChatId, default).Require();
         _form = new FormModel(ComponentIdGenerator) {
             Title = chat.Title,
+            Description = chat.Description,
             Picture = chat.Picture?.ToPicture(),
             ImageUploadUrl = $"/api/chat-media/{chat.Id}/upload",
         };
@@ -255,6 +263,7 @@
         var chat = await Chats.Get(Session, ChatId, default).Require();
         var newChat = chat with {
             Title = _form!.Title,
+            Description = _form!.Description,
             MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
         };
         var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
@@ -269,15 +278,18 @@
         [Required, MinLength(1)]
         public string Title { get; set; } = "";
 
+        public string Description { get; set; } = "";
         public Picture? Picture { get; set; }
         public string ImageUploadUrl { get; init; } = "";
 
         public string FormId { get; }
         public string TitleId { get; }
+        public string DescriptionId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
             TitleId = $"{FormId}-title";
+            DescriptionId = $"{FormId}-description";
         }
     }
 
