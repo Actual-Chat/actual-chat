@@ -1,5 +1,6 @@
 @page "/test/email-templates"
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.Users
 @namespace ActualChat.UI.Blazor.Pages.Emails
 
 <RequireAccount MustBeAdmin="true"/>
@@ -8,29 +9,39 @@
 <Form Model="@_form">
     <FormBlock>
         <FormSection
-            For="() => _model.Selected"
+            For="() => _model.SelectedTemplate"
             InputId="template"
             IsLabelInsideInput="true"
             HideValidationMessage="true"
             Label="Template">
             <InputSelect
-                Value="_model.Selected"
-                ValueExpression="@(() => _model.Selected)">
+                Value="_model.SelectedTemplateName"
+                ValueExpression="@(() => _model.SelectedTemplateName)"
+                ValueChanged="@((string value) => OnSelectedTemplateChanged(value))">
                 @foreach (var template in _model.Templates) {
-                    <option value="@template">@template.Name</option>
+                    <option value="@template.Name">@template.Name</option>
                 }
             </InputSelect>
         </FormSection>
     </FormBlock>
 </Form>
 
-<MjmlHtmlPreview ComponentType="@(_model.Selected.ComponentType)"/>
+@if (_model.SelectedTemplate is null)
+    return;
+
+@if (_model.SelectedTemplate.Name == "Digest") {
+    <Button Click="SendDigest">Send Digest</Button>
+}
+
+<MjmlHtmlPreview ComponentType="@(_model.SelectedTemplate.ComponentType)"/>
 
 @code {
     private Model _model = null!;
     private FormModel _form = null!;
 
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
 
     protected override void OnInitialized() {
         _form = new(ComponentIdGenerator);
@@ -39,15 +50,41 @@
                 Name = "Email verification",
                 ComponentType = typeof(EmailVerificationPreview),
             },
+            new() {
+                Name = "Digest",
+                ComponentType = typeof(DigestPreview),
+            },
         };
+
+        var selectedTemplate = templates.Last();
         _model = new Model {
-            Selected = templates.First(),
+            SelectedTemplateName = selectedTemplate.Name,
+            SelectedTemplate = selectedTemplate,
             Templates = templates,
         };
     }
 
+    private void OnSelectedTemplateChanged(string name) {
+        _model.SelectedTemplateName = name;
+        _model.SelectedTemplate = _model.Templates.FirstOrDefault(x => string.Equals(x.Name, name, StringComparison.Ordinal));
+    }
+
+    private async Task SendDigest() {
+        var session = Hub.Session();
+        var account = await Accounts.GetOwn(session, CancellationToken.None).ConfigureAwait(false);
+        var sendDigestCommand = new Emails_SendDigest(account.Id);
+        var commander = Hub.UICommander();
+        var (_, error) = await commander.Run(sendDigestCommand, CancellationToken.None).ConfigureAwait(false);
+        if (error is not null) {
+            Hub.ToastUI.Show($"Error: {error.Message}", ToastDismissDelay.Long);
+        } else {
+            Hub.ToastUI.Show("Digest has been sent", ToastDismissDelay.Short);
+        }
+    }
+
     public class Model {
-        public required EmailTemplateModel Selected { get; init; }
+        public required string SelectedTemplateName { get; set; }
+        public required EmailTemplateModel? SelectedTemplate { get; set; }
         public required IReadOnlyCollection<EmailTemplateModel> Templates { get; init; }
     }
 
