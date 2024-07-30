@@ -45,6 +45,7 @@
 @import './Components/Onboarding/onboarding-modal.css';
 @import './Components/Onboarding/line-progress.css';
 @import './Components/Onboarding/round-progress.css';
+@import './Components/PlaceInfo/place-info.css';
 @import './Components/Reactions/reaction-select.css';
 @import './Components/RecordingSubHeader/recording-sub-header.css';
 @import './Components/ChatRightPanel/right-chat-panel.css';

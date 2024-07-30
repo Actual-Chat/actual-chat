@@ -19,6 +19,7 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [ConcurrencyCheck] public long Version { get; set; }
 
     public string Title { get; set; } = "";
+    public string Description { get; set; } = "";
     public string MediaId { get; set; } = "";
     public string BackgroundMediaId { get; set; } = "";
 
@@ -33,6 +34,7 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public Place ToModel()
         => new(new PlaceId(Id), Version) {
             Title = Title,
+            Description = Description,
             CreatedAt = CreatedAt,
             IsPublic = IsPublic,
             MediaId = new MediaId(MediaId),
@@ -48,6 +50,7 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Id = id;
         Version = model.Version;
         Title = model.Title;
+        Description = model.Description;
         CreatedAt = model.CreatedAt;
         IsPublic = model.IsPublic;
         MediaId = model.MediaId;

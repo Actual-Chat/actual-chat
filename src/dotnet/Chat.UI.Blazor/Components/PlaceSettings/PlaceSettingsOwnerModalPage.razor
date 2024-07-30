@@ -75,11 +75,18 @@
     <FormBlock>
         <DataAnnotationsValidator/>
 
-        <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true" Label="Chat title">
+        <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true" Label="Place title">
             <TextBox
                 @bind-Value="@_form.Title"
                 Id="@_form.TitleId"
-                Placeholder="Chat title*"
+                Placeholder="Place title*"
+                ClearButton="true"/>
+        </FormSection>
+        <FormSection Class="field-chat-title" For="() => _form.Description" InputId="@_form.DescriptionId" IsLabelInsideInput="true" Label="Place description">
+            <TextBox
+                @bind-Value="@_form.Description"
+                Id="@_form.DescriptionId"
+                Placeholder="Few words"
                 ClearButton="true"/>
         </FormSection>
     </FormBlock>
@@ -167,6 +174,7 @@
         var place = await Places.Get(Session, PlaceId, default).Require();
         _form = new FormModel(ComponentIdGenerator) {
             Title = place.Title,
+            Description = place.Description,
             Picture = place.Picture?.ToPicture(),
             Background = place.Background?.ToPicture(),
             ImageUploadUrl = $"/api/chat-media/{place.Id.ToRootChatId()}/upload",
@@ -229,6 +237,7 @@
         var place = await Places.Get(Session, PlaceId, default).Require();
         var newPlace = place with {
             Title = _form!.Title,
+            Description = _form!.Description,
             MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
             BackgroundMediaId = _form.Background?.MediaContent?.MediaId ?? MediaId.None,
         };
@@ -252,18 +261,21 @@
         [Required, MinLength(1)]
         public string Title { get; set; } = "";
 
+        public string Description { get; set; } = "";
         public Picture? Picture { get; set; }
         public Picture? Background { get; set; }
         public string ImageUploadUrl { get; init; } = "";
 
         public string FormId { get; }
         public string TitleId { get; }
+        public string DescriptionId { get; }
         public string PictureFormId { get; }
         public string BackgroundFormId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("edit-place-form");
             TitleId = $"{FormId}-title";
+            DescriptionId = $"{FormId}-description";
             PictureFormId = $"{FormId}-picture";
             BackgroundFormId = $"{FormId}-background";
         }

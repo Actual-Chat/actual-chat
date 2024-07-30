@@ -19,6 +19,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [ConcurrencyCheck] public long Version { get; set; }
 
     public string Title { get; set; } = "";
+    public string Description { get; set; } = "";
     public ChatKind Kind { get; set; }
     [Obsolete("2023.03: Use MediaId instead.")]
     public string Picture { get; set; } = "";
@@ -44,6 +45,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public Chat ToModel()
         => new(new ChatId(Id), Version) {
             Title = Title,
+            Description = Description,
             CreatedAt = CreatedAt,
             IsTemplate = IsTemplate,
             TemplateId = TemplateId.IsNullOrEmpty()
@@ -71,6 +73,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Id = id;
         Version = model.Version;
         Title = model.Title;
+        Description = model.Description;
         CreatedAt = model.CreatedAt;
         IsTemplate = model.IsTemplate;
         TemplateId = model.TemplateId;

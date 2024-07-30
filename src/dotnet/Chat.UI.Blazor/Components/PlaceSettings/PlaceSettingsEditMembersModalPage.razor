@@ -19,7 +19,7 @@
     MaxLength="@Constants.Chat.MaxSearchFilterLength"
     TextChanged="@OnFilter"/>
 
-<div class="list">
+<div class="members-list">
     @foreach (var authorId in m.AuthorIds) {
         var isOwn = m.IsOwn(authorId);
         var isOwner = m.IsOwner(authorId);
