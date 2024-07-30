@@ -150,6 +150,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // Emails
         rpcHost.AddApi<IEmails, Emails>();
+        rpcHost.AddBackend<IEmailsBackend, EmailsBackend>();
 
         // Phones
         rpcHost.AddApi<IPhones, Phones>();
