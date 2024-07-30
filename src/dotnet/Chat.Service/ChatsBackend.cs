@@ -985,11 +985,21 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (changeKind == ChangeKind.Create)
             Metrics.MessageCount.Add(1);
 
+        if (change.IsCreate(out var create) && create.Attachments is { Count: > 0 } attachments) {
+            var createAttachmentsCmd = new ChatsBackend_CreateAttachments(attachments.Select((x, i) => new TextEntryAttachment {
+                    EntryId = chatEntryId.ToTextEntryId(),
+                    Index = i,
+                    MediaId = x.MediaId,
+                    ThumbnailMediaId = x.ThumbnailMediaId,
+                })
+                .ToApiArray());
+            var createdAttachments = await Commander.Call(createAttachmentsCmd, cancellationToken).ConfigureAwait(false);
+            entry = entry with { Attachments = createdAttachments };
+        }
+
         // Let's enqueue the TextEntryChangedEvent
         var authorId = entry.AuthorId;
         var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
-
-        // Raise events
         context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind, oldEntry));
         return entry;
 
@@ -1087,7 +1097,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var dbAttachments = new List<DbTextEntryAttachment>();
         foreach (var attachment in attachments) {
-
             var dbChatEntry = await dbContext.ChatEntries.Get(entryId, cancellationToken)
                 .Require()
                 .ConfigureAwait(false);
