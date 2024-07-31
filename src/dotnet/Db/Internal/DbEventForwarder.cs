@@ -1,8 +1,11 @@
+using ActualChat.Db.Module;
 using ActualChat.Queues;
 using ActualLab.CommandR.Operations;
 using ActualLab.Fusion.EntityFramework.Operations;
 using ActualLab.Resilience;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
 
 namespace ActualChat.Db;
 
@@ -10,6 +13,8 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
     : DbEventProcessor<TDbContext>(services)
     where TDbContext : DbContext
 {
+    private readonly string ProcessActivityName =
+        $"{nameof(Process)}@{nameof(DbEventForwarder<TDbContext>)}<{typeof(TDbContext).Name}>";
     private IQueues Queues { get; } = services.Queues();
 
     public override async Task Process(OperationEvent operationEvent, CancellationToken cancellationToken)
@@ -24,22 +29,50 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
 
         // Forwards everything to Queues
         switch (value) {
-        case ICommand command:
-            Log.LogInformation("-> {CommandType}: {Info}", command.GetType().GetName(), info);
-            try {
-                await Queues.Enqueue(command, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-                throw new RetryRequiredException("Queues.Enqueue failed, retry required.", e);
+        case ICommand command: {
+                using var activity = DbModuleInstrumentation.ActivitySource
+                    .StartActivity(ProcessActivityName, ActivityKind.Internal);
+
+                Log.LogInformation("-> {CommandType}: {Info}", command.GetType().GetName(), info);
+                try {
+                    await Queues.Enqueue(command, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception e) when (e.IsCancellationOf(cancellationToken)) {
+                    activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
+                    throw;
+                }
+                catch (Exception e) {
+                    activity?.SetStatus(ActivityStatusCode.Error, e.Message);
+                    throw new RetryRequiredException("Queues.Enqueue failed, retry required.", e);
+                }
             }
             break;
-        case QueuedCommand queuedCommand:
-            Log.LogInformation("-> {CommandType}: {Info}", queuedCommand.UntypedCommand.GetType().GetName(), info);
-            try {
-                await Queues.Enqueue(queuedCommand, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-                throw new RetryRequiredException("Queues.Enqueue failed, retry required.", e);
+        case QueuedCommand queuedCommand: {
+                ActivityContext senderContext = default;
+                IEnumerable<ActivityLink>? links = null;
+                var propagationContext = Propagators.DefaultTextMapPropagator
+                    .Extract(default, queuedCommand.Headers, static (headers, name) => headers.TryGetValue(name, out var value) ? value : []);
+                if (propagationContext != default) {
+                    senderContext = propagationContext.ActivityContext;
+                    Baggage.Current = propagationContext.Baggage;
+                    links = [new ActivityLink(senderContext)];
+                }
+
+                using var activity = DbModuleInstrumentation.ActivitySource
+                    .StartActivity(ProcessActivityName, ActivityKind.Consumer, senderContext, links: links);
+
+                Log.LogInformation("-> {CommandType}: {Info}", queuedCommand.UntypedCommand.GetType().GetName(), info);
+                try {
+                    await Queues.Enqueue(queuedCommand, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception e) when (e.IsCancellationOf(cancellationToken)) {
+                    activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
+                    throw;
+                }
+                catch (Exception e) {
+                    activity?.SetStatus(ActivityStatusCode.Error, e.Message);
+                    throw new RetryRequiredException("Queues.Enqueue failed, retry required.", e);
+                }
             }
             break;
         default:

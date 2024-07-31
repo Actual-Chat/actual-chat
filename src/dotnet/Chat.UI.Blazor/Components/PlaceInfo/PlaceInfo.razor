@@ -1,0 +1,175 @@
+@using ActualChat.Media
+@using ActualChat.Contacts
+@inherits ComputedStateComponent<PlaceInfo.Model>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
+
+    if (m.Place == null)
+        return;
+
+    var isPublic = m.Place.IsPublic;
+}
+
+<div class="place-info-wrapper">
+    <div class="place-info">
+        <div class="c-top">
+            <div class="pic-wrapper">
+                @{
+                    var picture = m.Place.Background ?? m.Place.Picture;
+                    var isBlurred = m.Place.Background == null;
+                }
+                <Pic
+                    Picture="@picture.ToPicture()"
+                    Size="@SquareSize.SizeFull"
+                    IsSquare="@true"
+                    IsBlurred="@isBlurred"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@m.Place.Id.Value"/>
+            </div>
+            <div class="c-incut h-5"></div>
+            <div class="c-subheader">
+                <Pic
+                    Class="place-avatar"
+                    Picture="@m.Place.Picture.ToPicture()"
+                    Size="@SquareSize.Size16"
+                    IsSquare="@true"
+                    IsBlurred="@false"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@m.Place.Id.Value"/>
+
+                <div class="c-buttons">
+                    <ButtonRound Class="btn-sm join-btn" ContentClass="gap-x-2">
+                        <i class="icon-person-add text-xl"></i>
+                        <span>Join</span>
+                    </ButtonRound>
+                    <ButtonRound Class="btn-sm">
+                        <i class="icon-message-ellipse text-xl"></i>
+                    </ButtonRound>
+                    <ButtonRound Class="btn-sm">
+                        <i class="icon-more-vertical text-xl"></i>
+                    </ButtonRound>
+                </div>
+            </div>
+        </div>
+        <div class="c-center">
+            <div class="c-title">
+                @m.Place.Title
+            </div>
+            <div class="c-info">
+                <span>@m.MembersCount @("Member".Pluralize(m.MembersCount))</span>
+                <DotSeparator/>
+                <span>@(isPublic ? "Public" : "Private")</span>
+                @if (isPublic) {
+                    <i class="icon-globe"></i>
+                } else {
+                    <i class="icon-lock"></i>
+                }
+            </div>
+            @if (!string.IsNullOrEmpty(m.Place.Description)) {
+                <div class="c-description">
+                    @m.Place.Description
+                </div>
+            } else if (m.EnableIncompleteUI) {
+                <div class="c-description">
+                    (Seen only for developers) Five generations, one family. We understand family because we are family. This is the family which has led
+                    SC Johnson for generations and these are their stories.
+                </div>
+            }
+            @if (m.EnableIncompleteUI) {
+                <div class="c-incut"></div>
+                <div class="c-follow-info">
+                    <div class="c-followers">
+                        <span>1264</span>
+                        <span class="c-text">Followers</span>
+                    </div>
+                    <div class="c-following">
+                        <span>147</span>
+                        <span class="c-text">Following</span>
+                    </div>
+                    <div class="c-followed-by">
+                        <div class="flex-x items-center">
+                            <span class="z-20 flex-none w-4 h-4 rounded-full bg-primary"></span>
+                            <span class="z-10 flex-none w-4 h-4 -ml-2 rounded-full bg-danger"></span>
+                            <span class="flex-none w-4 h-4 -ml-2 rounded-full bg-online"></span>
+                        </div>
+                        <span>Followed by Jack Black, Margo White and 25 others</span>
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="c-bottom">
+            <TabPanel
+                @key="@m.Place.Id.Value"
+                TabsClass="left-panel-tabs wide-left-panel-tabs"
+                BottomHill="true">
+
+                <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
+                    <ChatList @key="@m.Place.Id.Value" PlaceId="@m.Place.Id" Kind="ChatListKind.All" />
+                </Tab>
+                <Tab @key="@("members")" Id="members" Title="Members" Order="1">
+                    <PlaceInfoMembersTab Data="@m"/>
+                </Tab>
+            </TabPanel>
+        </div>
+    </div>
+</div>
+
+@code {
+    private TabPanel _tabPanel = null!;
+
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private IContacts Contacts => Hub.Contacts;
+    private IPlaces Places => Hub.Places;
+    private IChats Chats => Hub.Chats;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private Features Features => Hub.Features();
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+
+    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var placeId = PlaceId;
+        var place = await Hub.Places.Get(Hub.Session(), placeId, default).Require().ConfigureAwait(false);
+        var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
+        var ownerIds = await Places.ListOwnerIds(Session, placeId, cancellationToken).ConfigureAwait(false);
+        var ownAuthor = await Places.GetOwn(Session, placeId, cancellationToken).ConfigureAwait(false);
+
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        return new() {
+            Place = place,
+            AuthorIds = allAuthorIds,
+            OwnerIds = ownerIds,
+            OwnAuthorId = ownAuthor!.Id,
+            MembersCount = allAuthorIds.Count,
+            EnableIncompleteUI = enableIncompleteUI,
+        };
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model Loading = new();
+
+        public Place? Place { get; init; }
+        public int MembersCount { get; init; }
+        public ApiArray<AuthorId> AuthorIds { get; init; }
+        public ApiArray<AuthorId> OwnerIds { get; init; }
+        public AuthorId OwnAuthorId { get; init; }
+        public bool EnableIncompleteUI { get; init; }
+
+        public bool IsOwner(AuthorId authorId)
+            => OwnerIds.Contains(authorId);
+        public bool IsOwn(AuthorId authorId)
+            => OwnAuthorId.Equals(authorId);
+    }
+}

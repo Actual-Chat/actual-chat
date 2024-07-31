@@ -52,9 +52,13 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         try {
             Serialize(buffer, queuedCommand);
             var subjectName = GetSubjectName(shardIndex, Queues.GetTopic(queuedCommand.UntypedCommand));
+            var headers = queuedCommand.Headers is null
+                ? null
+                : new NatsHeaders(queuedCommand.Headers.ToDictionary(StringComparer.Ordinal));
             var response = await context.PublishAsync(subjectName,
                     buffer,
                     opts: new NatsJSPubOpts { MsgId = queuedCommand.Id.ToString() },
+                    headers: headers,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
             if (response.Error is { } error) {
@@ -307,7 +311,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
         var id = new Ulid(dataSpan[1..17]);
         var command = Serializer.Read<ICommand>(dataMemory[17..]);
-        return QueuedCommand.NewUntyped(command, id);
+        return QueuedCommand.NewUntyped(command, id, message.Headers?.AsReadOnly());
     }
 
     private static void Serialize(ArrayPoolBuffer<byte> buffer, QueuedCommand queuedCommand)

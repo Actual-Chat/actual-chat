@@ -259,4 +259,8 @@
     .always-white {
         @apply text-[var(--white)];
     }
+
+    .wrap-anywhere {
+        overflow-wrap: anywhere;
+    }
 }

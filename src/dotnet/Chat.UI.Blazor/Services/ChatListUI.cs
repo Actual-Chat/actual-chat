@@ -79,6 +79,10 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     {
         var listView = GetChatListView(placeId);
         var settings = await listView.GetSettings(cancellationToken).ConfigureAwait(false);
+        if (await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false)) {
+            var searchResults = await SearchUI.GetContactSearchResults().ConfigureAwait(false);
+            return searchResults.Count;
+        }
         var chatById = await ListAllUnordered(placeId, settings.Filter, cancellationToken).ConfigureAwait(false);
         return chatById.Count;
     }

@@ -1,0 +1,107 @@
+.page-with-header-and-footer .layout-body-wrapper > .c-container:has(.place-info) .layout-footer {
+    @apply hidden;
+}
+
+.place-info-wrapper {
+    @apply flex justify-center;
+    @apply h-screen;
+    @apply overflow-hidden;
+    @apply bg-04;
+}
+.place-info {
+    @apply flex-y;
+    @apply w-160;
+}
+.place-info > div {
+    @apply bg-01;
+}
+.place-info > .c-top {
+    @apply relative;
+    @apply h-52;
+}
+.place-info > .c-top > .pic-wrapper {
+    @apply relative;
+    @apply h-full;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+}
+.place-info > .c-top > .c-subheader {
+    @apply absolute -bottom-5 z-10;
+    @apply flex-x items-end justify-end gap-x-3;
+    @apply w-full;
+    @apply px-4;
+}
+.place-info > .c-top > .c-subheader > .pic.place-avatar {
+    @apply rounded-xl overflow-hidden;
+    @apply border-2 border-bg-01;
+}
+.place-info > .c-top > .c-subheader > .c-buttons {
+    @apply flex-1 flex-x items-end justify-end gap-x-3;
+}
+.place-info > .c-top > .c-subheader > .c-buttons .btn.btn-round {
+    @apply bg-[var(--round-right-panel)];
+    @apply text-primary;
+    @apply shadow-sm shadow-shadow-main;
+}
+.place-info > .c-top > .c-subheader > .c-buttons .btn.btn-round.join-btn {
+    @apply w-fit;
+    @apply px-4;
+}
+
+.place-info > .c-center {
+    @apply flex-y;
+    @apply p-4 pt-8;
+}
+.place-info > .c-center > .c-title {
+    @apply mb-1;
+    @apply text-headline-7 text-01;
+}
+.place-info > .c-center > .c-info {
+    @apply flex-x items-center gap-x-1;
+    @apply text-caption-6 text-03;
+}
+.place-info > .c-center > .c-description {
+    @apply mt-2;
+    @apply text-text-1 text-01;
+    @apply line-clamp-3;
+}
+
+.place-info > .c-center > .c-incut {
+    @apply h-4;
+}
+
+.place-info > .c-center > .c-follow-info {
+    @apply flex-x items-center gap-x-4;
+    @apply text-01 text-caption-4;
+}
+.place-info > .c-center > .c-follow-info > div {
+    @apply flex-x items-center gap-x-1;
+}
+.place-info > .c-center > .c-follow-info .c-text {
+    @apply text-03;
+}
+
+.place-info > .c-bottom {
+    @apply h-full;
+    @apply px-2;
+    @apply overflow-auto;
+}
+.place-info > .c-bottom .tab-panel {
+    @apply h-full;
+}
+.place-info > .c-bottom .tab-panel .tab {
+    @apply h-full;
+    @apply overflow-auto;
+    scrollbar-width: none;
+}
+
+.place-info .members-list {
+    @apply p-4;
+}
+
+.place-info-wide-left-panel {
+    @apply flex-y;
+    @apply w-80;
+    @apply p-4;
+    @apply bg-03;
+}
