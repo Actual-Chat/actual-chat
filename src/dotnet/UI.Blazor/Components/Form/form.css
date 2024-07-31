@@ -257,6 +257,7 @@
 }
 
 .form-block.with-contact-list {
+    @apply h-full;
     @apply p-0;
     @apply overflow-hidden;
 }
