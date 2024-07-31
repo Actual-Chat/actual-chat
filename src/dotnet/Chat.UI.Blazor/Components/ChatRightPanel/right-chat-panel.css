@@ -91,7 +91,7 @@
     @apply flex-x;
     @apply text-caption-6 text-03;
 }
-.right-chat-panel > .c-header > .c-bottom > .c-bio {
+.right-chat-panel > .c-header > .c-bottom > .c-chat-description {
     @apply w-full max-h-16;
     @apply text-caption-6 text-03;
 }

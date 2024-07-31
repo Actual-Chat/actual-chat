@@ -5,9 +5,10 @@
 }
 
 <ReconnectBanner/>
-@if (ScreenSize.IsNarrow()) {
-    <TalkingMembersBanner ChatContext="@ChatContext"/>
-}
+@* TODO: need to update (Andrey Y) *@
+@* @if (ScreenSize.IsNarrow()) { *@
+@*     <TalkingMembersBanner ChatContext="@ChatContext"/> *@
+@* } *@
 @foreach (var banner in m.Banners.Take(MaxCount)) {
     @banner.View
 }
