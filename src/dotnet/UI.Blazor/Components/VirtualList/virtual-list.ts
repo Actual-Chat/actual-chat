@@ -621,13 +621,22 @@ export class VirtualList {
             endSpacerSize = rs.afterCount * this._statistics.itemSize;
         }
         else if (!rs.keyRange?.start) {
-            // no data loaded yet
-            spacerSize = 1000;
+            if (rs.renderIndex <= 2) {
+                // no data loaded yet
+                spacerSize = 1000;
+                endSpacerSize = 0;
+            }
+            else {
+                // empty result list
+                spacerSize = 0;
+                endSpacerSize = 0;
+            }
         }
         else {
             if (rs.hasVeryFirstItem)
                 spacerSize = 0;
             if (rs.hasVeryLastItem)
+                
                 endSpacerSize = 0;
         }
         this._spacerRef.style.height = `${spacerSize}px`;
