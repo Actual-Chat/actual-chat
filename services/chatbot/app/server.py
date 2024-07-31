@@ -86,7 +86,9 @@ def _add_tools_auth_context(
     config: Dict[str, Any],
     request: Request
 ) -> Dict[str, Any]:
-    config[tools.TOOLS_AUTH_FORWARD_CONTEXT] = request.headers.get("Authorization", None)
+    configurable = config.get("configurable", {})
+    configurable[tools.TOOLS_AUTH_FORWARD_CONTEXT] = request.headers.get("Authorization", None)
+    config["configurable"] = configurable
     return config
 
 def _extract_thread_id(

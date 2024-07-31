@@ -76,9 +76,7 @@ internal class ExternalChatBotConversationHandler(IOptions<ExternalChatbotSettin
         // There are also "kwargs" and "config" parts available.
         // The inner <input> structure must be syncronized with the prompt used on the bot side.
         requestMessage.Content = JsonContent.Create(new {
-            input = new {
-                input = lastUpdatedDocument.Content,
-            }
+            input = lastUpdatedDocument.Content
         });
         botToolsContextHandler.SetContext(requestMessage, conversationId: chatId);
         HttpResponseMessage response = client.SendAsync(requestMessage, cancellationToken).GetAwaiter().GetResult();

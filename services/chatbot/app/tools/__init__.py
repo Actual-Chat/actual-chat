@@ -26,6 +26,7 @@ def reply(
     """
     if (config is None):
         config = {}
+    config = config.get("configurable", {})
     auth_context = config.get(TOOLS_AUTH_FORWARD_CONTEXT, None)
     headers = {
         "Authorization": auth_context
