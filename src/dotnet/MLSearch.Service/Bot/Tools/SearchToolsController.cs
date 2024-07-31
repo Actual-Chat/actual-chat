@@ -14,19 +14,20 @@ namespace ActualChat.MLSearch.Bot.Tools;
 
 
 [BotTools]
-[ApiController, Route("api/bot/search")]
-internal sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine, IBotToolsContextHandler botToolsContext) : ControllerBase
+[ApiController]
+[Route("api/bot/search")]
+public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine, IBotToolsContextHandler botToolsContext) : ControllerBase
 {
     public sealed class SearchQueryRequest {
         public const int MaxLimit = 3;
         public required string Text { get; init; }
-        public int Limit { get; set; } = 1;
+        public int? Limit { get; set; } = 1;
 
     }
     [HttpPost("public-chats")]
     public async Task<ActionResult<List<RankedDocument<ChatSlice>>>> PublicChatsText([FromBody]SearchQueryRequest search, CancellationToken cancellationToken)
     {
-        var limit = search.Limit;
+        var limit = search.Limit.GetValueOrDefault(1);
         // Add limit constraints.
         if (limit < 1) {
             limit = 1;
