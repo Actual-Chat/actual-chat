@@ -3,6 +3,6 @@
     @apply pr-3;
 }
 .author-circle-group-item {
-    @apply -mr-2;
+    @apply -mr-3;
     @apply border border-bg-02 rounded-full;
 }

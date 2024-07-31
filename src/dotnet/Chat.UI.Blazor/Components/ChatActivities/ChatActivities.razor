@@ -2,7 +2,9 @@
 @inherits ComputedStateComponent<ChatActivities.Model>
 @{
     var m = State.Value;
-    var size = ScreenSize.IsNarrow() ? SquareSize.Size8 : SquareSize.Size6;
+    // TODO: change var size after TalkingMembersBanner update (Andrey Y)
+    // var size = ScreenSize.IsNarrow() ? SquareSize.Size8 : SquareSize.Size6;
+    var size = SquareSize.Size6;
 }
 
 <AuthorCircleGroup

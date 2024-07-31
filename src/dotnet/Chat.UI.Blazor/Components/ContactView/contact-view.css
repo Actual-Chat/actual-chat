@@ -6,6 +6,7 @@
     @apply text-headline-1 text-02 truncate;
 }
 .contact-view-last-text {
+    @apply flex-x gap-x-0.5;
     @apply text-xs text-03 truncate;
 }
 .contact-view-last-text-author {
