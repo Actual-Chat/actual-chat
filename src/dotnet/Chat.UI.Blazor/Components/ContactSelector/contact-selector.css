@@ -26,7 +26,7 @@
     @apply mx-4 px-0.5;
     @apply overflow-y-auto custom-scrollbar;
     @apply border-separator;
-    @apply bg-01;
+    @apply bg-modal;
 }
 .contact-selector-badges:has(.c-contact) {
     @apply pt-2;
