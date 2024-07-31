@@ -1,18 +1,29 @@
-from langchain.tools import BaseTool, StructuredTool, tool
-
+from langchain_core.tools import tool
+from langchain_core.runnables.config import RunnableConfig
 from datetime import date as _date
 from datetime import datetime
-# import jwt
 import requests
-import os
-from cryptography.hazmat.primitives import serialization
 
 TOOLS_AUTH_FORWARD_CONTEXT = "forward-auth-context"
 
 class _Tools(object):
     REPLY = "https://local.actual.chat/api/bot/conversation/reply"
 
-def all(config):
+@tool(parse_docstring=True)
+def reply(
+    message: str,
+    # Note: This is a cool new feature in the tools:
+    # it is possible to pass configs now and it works out of the box.
+    # Config arg should not be added to docstring,
+    # as we don't want it to be included in the function
+    # signature attached to the LLM.
+    config: RunnableConfig
+):
+    """Send a message to the user.
+
+    Args:
+        message: A message to send.
+    """
     if (config is None):
         config = {}
     auth_context = config.get(TOOLS_AUTH_FORWARD_CONTEXT, None)
@@ -20,17 +31,16 @@ def all(config):
         "Authorization": auth_context
     }
 
-    @tool
-    def reply(message:str):
-        """Send a message to the user."""
-        result = requests.post(
-            _Tools.REPLY,
-            json = {
-                "text": message
-            },
-            headers = headers,
-            verify = False # TODO: think again if needed.
-        )
-        return
+    result = requests.post(
+        _Tools.REPLY,
+        json = {
+            "text": message
+        },
+        headers = headers,
+        verify = False # TODO: think again if needed.
+    )
+    return
 
+
+def all():
     return [reply]

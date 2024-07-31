@@ -89,13 +89,26 @@ def _add_tools_auth_context(
     config[tools.TOOLS_AUTH_FORWARD_CONTEXT] = request.headers.get("Authorization", None)
     return config
 
+def _extract_thread_id(
+    config: Dict[str, Any],
+    request: Request
+) -> Dict[str, Any]:
+    # TODO: Validate JWT token
+    # TODO: Extract conversation id from the JWT token
+    configurable = config.get("configurable", {})
+    configurable["thread_id"] = "1"
+    config["configurable"] = configurable
+    return config
+
+
+
 @app.get("/")
 async def redirect_root_to_docs():
     return RedirectResponse("/docs")
 
 
 dynamic_prompt = prompts.create_dynamic_prompt(langfuse)
-(the_chain, dynamic_prompt) = chain.create(
+the_chain = chain.create(
     claude_api_key = os.getenv("CLAUDE_API_KEY"),
     prompt = dynamic_prompt
 )
@@ -105,6 +118,7 @@ _set_prompt = prompts.set_per_request(langfuse, dynamic_prompt = dynamic_prompt)
 def _per_request_config(config, request):
     config = _add_tracing(config, request)
     config = _add_tools_auth_context(config, request)
+    config = _extract_thread_id(config, request)
     return _set_prompt(config, request)
 
 

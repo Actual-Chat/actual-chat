@@ -1,2 +1,1 @@
 from .runtime_alternatives import RunnableConfigurableRuntimeAlternatives
-from .configurable_agent_executor import RuntimeConfigurableAgentExecutor
