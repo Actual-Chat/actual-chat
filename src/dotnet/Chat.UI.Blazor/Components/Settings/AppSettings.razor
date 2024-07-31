@@ -6,6 +6,12 @@
     var status = m.IsAnalyticsEnabled
         ? "Gathering statistics"
         : "Turned off";
+    var experimentalStatus = m.IsExperimentalFeatureEnabled
+        ? "Turned on"
+        : "Turned off";
+    var incompleteUIStatus = m.IsIncompleteUIEnabled
+        ? "Turned on"
+        : "Turned off";
 }
 
 @if (NativeAppSettings != null) {
@@ -29,6 +35,34 @@
     </p>
 </Tile>
 
+@if (m.IsAdmin) {
+    <TileTopic Topic="Alpha testing"/>
+    <Tile class="alpha-testing">
+        <TileItem Click="@OnExperimentalFeatureEnabledClick">
+            <Icon><i class="icon-info text-2xl"></i></Icon>
+            <Content>Enable experimental features</Content>
+            <Caption>@experimentalStatus</Caption>
+            <Right>
+                <Toggle IsChecked="@m.IsExperimentalFeatureEnabled"/>
+            </Right>
+        </TileItem>
+        <p class="c-description">
+            Enables experimental features
+        </p>
+        <TileItem Click="@OnIncompleteUIEnabledClick">
+            <Icon><i class="icon-info text-2xl"></i></Icon>
+            <Content>Show incomplete UI</Content>
+            <Caption>@incompleteUIStatus</Caption>
+            <Right>
+                <Toggle IsChecked="@m.IsIncompleteUIEnabled"/>
+            </Right>
+        </TileItem>
+        <p class="c-description">
+            Enables incomplete UI
+        </p>
+    </Tile>
+}
+
 <TileTopic Topic="Walk-through"/>
 <Button
     Class="add-avatar-btn"
@@ -47,7 +81,6 @@
     </Button>
 }
 
-
 @code {
     private INativeAppSettings? NativeAppSettings { get; set; }
 
@@ -64,14 +97,13 @@
         NativeAppSettings = Hub.GetService<INativeAppSettings>();
     }
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        return new(){ InitialValue = Model.None };
-    }
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await AccountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
         var account = Hub.AccountUI.OwnAccount.Value;
-        return new (settings.IsAnalyticsEnabled ?? false, account.IsAdmin);
+        return new(settings.IsAnalyticsEnabled ?? false, settings.IsExperimentalFeatureEnabled ?? false, settings.IsIncompleteUIEnabled ?? false, account.IsAdmin);
     }
 
     private async Task OnRestartWalkThrough() {
@@ -86,15 +118,24 @@
 
     private async Task OnAnalyticsEnabledClick() {
         var isAnalyticsEnabled = !State.Value.IsAnalyticsEnabled;
-        var settings = await AccountSettings.GetUserAppSettings(CancellationToken.None);
-        settings = settings with { IsAnalyticsEnabled = isAnalyticsEnabled };
-        await AccountSettings.SetUserAppSettings(settings, CancellationToken.None);
+        await UpdateSettings(x => x with { IsAnalyticsEnabled = isAnalyticsEnabled });
         await AnalyticsUI.UpdateAnalyticsState(isAnalyticsEnabled, CancellationToken.None);
+    }
+
+    private Task OnExperimentalFeatureEnabledClick()
+        => UpdateSettings(x => x with { IsExperimentalFeatureEnabled = !State.Value.IsExperimentalFeatureEnabled });
+
+    private Task OnIncompleteUIEnabledClick()
+        => UpdateSettings(x => x with { IsIncompleteUIEnabled = !State.Value.IsIncompleteUIEnabled });
+
+    private async Task UpdateSettings(Func<UserAppSettings, UserAppSettings> update, CancellationToken cancellationToken = default) {
+        var settings = await AccountSettings.GetUserAppSettings(cancellationToken);
+        await AccountSettings.SetUserAppSettings(update(settings), cancellationToken);
     }
 
     // Nested types
 
-    public record Model(bool IsAnalyticsEnabled, bool IsAdmin) {
-        public static readonly Model None = new(false, false);
+    public record Model(bool IsAnalyticsEnabled, bool IsExperimentalFeatureEnabled, bool IsIncompleteUIEnabled, bool IsAdmin) {
+        public static readonly Model None = new(false, false, false, false);
     }
 }
