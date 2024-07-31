@@ -40,7 +40,6 @@
     private FormModel _form = null!;
 
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private UIHub Hub { get; init; } = null!;
 
     protected override void OnInitialized() {
@@ -71,7 +70,7 @@
 
     private async Task SendDigest() {
         var session = Hub.Session();
-        var account = await Accounts.GetOwn(session, CancellationToken.None).ConfigureAwait(false);
+        var account = await Hub.Accounts.GetOwn(session, CancellationToken.None).ConfigureAwait(false);
         var sendDigestCommand = new Emails_SendDigest(account.Id);
         var commander = Hub.UICommander();
         var (_, error) = await commander.Run(sendDigestCommand, CancellationToken.None).ConfigureAwait(false);
