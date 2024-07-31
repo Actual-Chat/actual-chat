@@ -10,24 +10,6 @@
     Placeholder="@SearchBoxPlaceholder"
     MaxLength="@Constants.Chat.MaxSearchFilterLength"
     TextChanged="@OnFilter"/>
-<div class="contact-selector-badges">
-    @foreach (var userId in _selectedUserIds.Value) {
-        var contact = AllContacts.FirstOrDefault(c => c.Account.Id.Equals(userId));
-        if (contact == null)
-            continue;
-
-        var account = contact.Account;
-        <div class="contact-selector-badges-contact" @onclick="() => Remove(contact)">
-            <div class="contact-selector-badges-remove-contact-icon">
-                <i class="icon-close"></i>
-            </div>
-            <AccountCircle UserSid="@userId" Size="@SquareSize.Size6" />
-            <div class="contact-selector-badges-title">
-                @account.Avatar.Name
-            </div>
-        </div>
-    }
-</div>
 <div class="c-contact-list">
     @foreach (var contact in FilteredContacts) {
         <div class="c-item"
@@ -49,6 +31,26 @@
                     Change="@(_ => OnContactClick(contact))"/>
             }
         </div>
+    }
+</div>
+
+<div class="contact-selector-badges">
+    @foreach (var userId in _selectedUserIds.Value) {
+        var contact = AllContacts.FirstOrDefault(c => c.Account.Id.Equals(userId));
+        if (contact == null)
+            continue;
+
+        var account = contact.Account;
+        <div class="c-contact" @onclick="() => Remove(contact)">
+            <div class="c-remove">
+                <i class="icon-close c-close"></i>
+                <span class="c-text">Remove</span>
+            </div>
+            <AccountCircle UserSid="@userId" Size="@SquareSize.Size5"/>
+            <div class="c-name">
+                @account.Avatar.Name
+            </div>
+    </div>
     }
 </div>
 

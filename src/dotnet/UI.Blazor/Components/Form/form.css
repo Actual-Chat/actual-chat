@@ -260,7 +260,7 @@
     @apply p-0;
     @apply overflow-hidden;
 }
-.form-block.with-contact-list > div {
+.form-block.with-contact-list > div:not(.contact-selector-badges) {
     @apply px-4;
 }
 .form-block.with-contact-list > .contact-selector-list,
