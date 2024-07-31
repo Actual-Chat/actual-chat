@@ -5,15 +5,19 @@ from typing_extensions import TypedDict
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, START, END, MessagesState
 from langgraph.checkpoint import MemorySaver
+from langchain_core.runnables.config import RunnableConfig
 from langgraph.prebuilt import ToolNode
+from langgraph.prebuilt import InjectedState
 from langgraph.graph.message import add_messages
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.runnables import RunnableLambda
+from langchain_core.tools import tool
 
 import pydantic
 assert(pydantic.VERSION.startswith("2."))
 from .tools import all as all_tools
+from .tools import _reply as reply
 from . import utils
 
 
@@ -29,12 +33,22 @@ class State(TypedDict):
 def user_input(input: str) -> MessagesState:
     return {"messages": [HumanMessage(content=input)]}
 
-def should_continue(state: MessagesState) -> Literal["tools", "__end__"]:
+def should_continue(state: MessagesState) -> Literal["tools", "final_answer"]:
     messages = state["messages"]
     last_message = messages[-1]
     if last_message.tool_calls:
         return "tools"
-    return "__end__"
+    return "final_answer"
+
+def final_answer(state: MessagesState, config: RunnableConfig):
+    """Sends a final answer to the user.
+    """
+    messages = state["messages"]
+    last_message = messages[-1]
+    if last_message.content is None or last_message.content.strip() == "":
+        return {"messages":[]}
+    reply(last_message.content, config)
+    return {"messages":[]}
 
 
 def create(*, claude_api_key, prompt):
@@ -56,12 +70,14 @@ def create(*, claude_api_key, prompt):
 
     graph_builder.add_node("agent", call_model)
     graph_builder.add_node("tools", tool_node)
+    graph_builder.add_node("final_answer", final_answer)
     graph_builder.add_edge(START, "agent")
     graph_builder.add_conditional_edges(
         "agent",
         should_continue,
     )
     graph_builder.add_edge("tools", "agent")
+    graph_builder.add_edge("final_answer", END)
 
     graph = graph_builder.compile(
         checkpointer = memory

@@ -26,6 +26,9 @@ def reply(
     Args:
         message: A message to send.
     """
+    return _reply(message, config)
+
+def _reply(message, config):
     if (config is None):
         config = {}
     config = config.get("configurable", {})

@@ -12,6 +12,7 @@ using ActualChat.MLSearch.Bot.Tools.Context;
 
 namespace ActualChat.MLSearch.Bot.Tools;
 
+
 [BotTools]
 [ApiController, Route("api/bot/search")]
 internal sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine, IBotToolsContextHandler botToolsContext) : ControllerBase
@@ -19,7 +20,7 @@ internal sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngin
     public sealed class SearchQueryRequest {
         public const int MaxLimit = 3;
         public required string Text { get; init; }
-        public required int Limit { get; init; }
+        public int Limit { get; set; } = 1;
 
     }
     [HttpPost("public-chats")]
