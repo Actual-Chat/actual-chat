@@ -19,7 +19,7 @@
             Placeholder="Search"
             ShowSpinner="true"
             MaxLength="@Constants.Chat.MaxSearchFilterLength"
-            TextChanged="@_onSearchBoxTextChanged"/>
+            TextChanged="@OnSearchBoxTextChanged"/>
         <div class="c-icon">
             @if (m.Place.Background != null) {
                 <Pic
@@ -64,7 +64,6 @@
 
 @code {
     private ChatSearchBox? _searchBoxRef = null;
-    private EventCallback<string> _onSearchBoxTextChanged;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
