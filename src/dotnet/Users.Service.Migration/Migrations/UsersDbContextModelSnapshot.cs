@@ -99,6 +99,9 @@ namespace ActualChat.Users.Migrations
                         .HasDatabaseName("ix_accounts_username_normalized")
                         .HasFilter("username_normalized is not null");
 
+                    b.HasIndex("Id", "TimeZone")
+                        .HasDatabaseName("ix_accounts_id_time_zone");
+
                     b.HasIndex("Version", "Id")
                         .HasDatabaseName("ix_accounts_version_id");
 
@@ -182,6 +185,39 @@ namespace ActualChat.Users.Migrations
                         .HasName("pk_chat_positions");
 
                     b.ToTable("chat_positions");
+                });
+
+            modelBuilder.Entity("ActualChat.Users.Db.DbChatUsage", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<DateTime>("AccessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("accessed_at");
+
+                    b.Property<string>("ChatId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("chat_id")
+                        .UseCollation("C");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("user_id")
+                        .UseCollation("C");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_usages");
+
+                    b.ToTable("chat_usages");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbKvasEntry", b =>
@@ -317,9 +353,13 @@ namespace ActualChat.Users.Migrations
                         .HasColumnName("user_id")
                         .UseCollation("C");
 
-                    b.Property<DateTime>("OnlineCheckInAt")
+                    b.Property<DateTime>("CheckInAt")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("online_check_in_at");
+                        .HasColumnName("check_in_at");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
 
                     b.HasKey("UserId")
                         .HasName("pk_presences");

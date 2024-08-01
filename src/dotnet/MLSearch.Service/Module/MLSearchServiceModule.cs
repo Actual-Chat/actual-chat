@@ -17,8 +17,12 @@ using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.Redis.Module;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+// Note: Temporary disabled. Will be re-enabled with OpenAPI PR
+// using Microsoft.OpenApi.Models;
 using OpenSearch.Client;
 using OpenSearch.Net;
+// Note: Temporary disabled. Will be re-enabled with OpenAPI PR
+// using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace ActualChat.MLSearch.Module;
 
@@ -29,9 +33,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.HostKind.IsServer()) {
-            return; // Server-side only module
-        }
         if (!Settings.IsEnabled) {
             _log.LogInformation("MLSearch functionality is disabled, skipping service registrations");
             return;
@@ -70,10 +71,15 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         services.AddSingleton<IChatContentDocumentLoader, ChatContentDocumentLoader>();
         services.AddSingleton<IChatContentMapper, ChatContentMapper>();
+        services.AddSingleton<IChatContentArranger, ChatContentArranger>();
 
         services.AddSingleton<ISink<ChatSlice, string>>(static services
             => services.CreateInstanceWith<SemanticIndexSink<ChatSlice>>(IndexNames.ChatContent));
+        // Note: This is correct. ChatInfo must be indexed into the same index as ChatSlice for Join field to work
+        services.AddSingleton<ISink<ChatInfo, string>>(static services
+            => services.CreateInstanceWith<SemanticIndexSink<ChatInfo>>(IndexNames.ChatContent));
 
+        services.AddSingleton<IChatInfoIndexer, ChatInfoIndexer>();
         services.AddSingleton<IChatContentIndexerFactory, ChatContentIndexerFactory>();
         services.AddSingleton<IChatContentIndexWorker>(static services
             => services.CreateInstanceWith<ChatContentIndexWorker>(
@@ -81,7 +87,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 5000 // max number of updates to process in a single run
             )
         );
-        services.AddWorkerPool<IChatContentIndexWorker, MLSearch_TriggerChatIndexing, ChatId, ChatId>(
+        services.AddWorkerPool<IChatContentIndexWorker, MLSearch_TriggerChatIndexing, (ChatId, IndexingKind), ChatId>(
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
 
@@ -93,6 +99,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             rpcHost.AddBackend<IChatIndexInitializerTrigger, ChatIndexInitializerTrigger>();
             services.AddSingleton<ICursorStates<ChatIndexInitializerShard.Cursor>>(static services
                 => services.CreateInstanceWith<CursorStates<ChatIndexInitializerShard.Cursor>>(IndexNames.ChatCursor));
+            services.AddSingleton<IInfiniteChatSequence, InfiniteChatSequence>();
             services.AddSingleton<IChatIndexInitializerShard, ChatIndexInitializerShard>();
             services.AddSingleton(static services
                 => services.CreateInstanceWith<ChatIndexInitializer>(
@@ -113,5 +120,34 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddWorkerPool<IChatBotWorker, MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId>(
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
+        // -- Register Controllers --
+        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
+        // -- Register IMLSearchHanders --
+        rpcHost.AddApiOrLocal<IMLSearch, MLSearchImpl>();
+
+
+        // -- Register Swagger endpoint (OpenAPI) --
+        // Note: This is temporary disabled. Will be re-enabled in a separate PR.
+        /*
+        services.AddEndpointsApiExplorer();
+        services.AddSwaggerGen(c => {
+            c.IncludeXmlComments(
+                Path.Combine(
+                    AppContext.BaseDirectory,
+                    $"{Assembly.GetExecutingAssembly().GetName().Name}.xml"
+                )
+            );
+            c.DocInclusionPredicate((docName, apiDesc) => {
+                if (!apiDesc.TryGetMethodInfo(out MethodInfo methodInfo)) return false;
+
+                var isBotTool = methodInfo.DeclaringType
+                    .GetCustomAttributes(true)
+                    .OfType<BotToolsAttribute>()
+                    .Any();
+                return isBotTool;
+            });
+            c.SwaggerDoc("bot-tools-v1", new OpenApiInfo { Title = "Bot Tools API - V1", Version = "v1"});
+        });
+        */
     }
 }

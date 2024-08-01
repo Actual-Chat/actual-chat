@@ -19,6 +19,9 @@ public sealed partial record MLSearch_TriggerContinueConversationWithBot (
     public ChatId ShardKey => Id;
 }
 
+// Note: This interface implementation is tightly coupled with the IMLSearch interface.
+// Reason: MLSearch_CreateChat implememtation dictates how OnTextEntryChangedEvent is handled.
+// TODO: Move IMLSearch back into the MLSearch project.
 public interface IChatBotConversationTrigger: IComputeService, IBackendService
 {
     [EventHandler]

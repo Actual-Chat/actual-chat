@@ -13,7 +13,7 @@ public interface IChats : IComputeService
         ChatId chatId,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(MinCacheDuration = 60, InvalidationDelay = 0.8), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
+    [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
     Task<ChatNews> GetNews(
         Session session,
         ChatId chatId,
@@ -53,6 +53,9 @@ public interface IChats : IComputeService
 
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
     Task<ChatId> GetForwardChatReplacement(Session session, ChatId sourceChatId, CancellationToken cancellationToken);
+
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
+    Task<ReadPositionsStat> GetReadPositionsStat(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     // Non-compute methods
 

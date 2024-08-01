@@ -1,0 +1,32 @@
+@{
+    var getLogFileAction = MauiLogAccessor.GetLogFile;
+}
+
+@if (getLogFileAction != null) {
+    <TileItem Click="@OnGetLogFileClick">
+        <Icon>
+            <i class="icon-file-text"></i>
+        </Icon>
+        <Content>
+            @MauiLogAccessor.ActionName
+        </Content>
+    </TileItem>
+}
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private ToastUI ToastUI => Hub.ToastUI;
+    private UICommander UICommander => Hub.UICommander();
+
+    [Parameter, EditorRequired] public IMauiLogAccessor MauiLogAccessor { get; set; } = null!;
+
+    private async Task OnGetLogFileClick() {
+        var getLogFileTask = MauiLogAccessor.GetLogFile!.Invoke();
+        var successfully = await getLogFileTask.ConfigureAwait(true);
+        if (successfully)
+            ToastUI.Show("Got log file successfully.", "icon-checkmark-circle-2", ToastDismissDelay.Short);
+        else
+            UICommander.ShowError(StandardError.Constraint("Failed to get log file."));
+    }
+}

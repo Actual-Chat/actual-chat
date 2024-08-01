@@ -39,7 +39,7 @@
     var title = type == GuideType.Unknown
         ? "Troubleshoot recording issues"
         : "Microphone access guide";
-    var buttonTitle = RecordingPermissionRequester?.CanRequest ?? false
+    var buttonTitle = RecordingPermissionRequester.CanRequest
         ? "Settings"
         : "OK";
 }
@@ -48,7 +48,7 @@
     Class="guide-modal"
     Title=@title
     HasCloseButton="true"
-    NarrowViewSettings="@DialogFrameNarrowViewSettings.SubmitButton(OnOkClick, buttonTitle)">
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.SubmitButton(OnClick, buttonTitle)">
     <Body>
 
     <FormBlock>
@@ -85,7 +85,7 @@
     </FormBlock>
     </Body>
     <Buttons>
-        <Button Class="btn-modal" Click="OnOkClick">
+        <Button Class="btn-modal" Click="OnClick">
             @buttonTitle
         </Button>
     </Buttons>
@@ -101,8 +101,11 @@
 
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private void OnOkClick()
-        => Modal.Close();
+    private async Task OnClick() {
+        if (RecordingPermissionRequester.CanRequest)
+            await RecordingPermissionRequester.TryRequest();
+        Modal.Close();
+    }
 
     public sealed record Model(GuideType? TestGuideType = null, bool IsUnknown = false);
 }

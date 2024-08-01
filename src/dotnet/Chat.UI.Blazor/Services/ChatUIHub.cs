@@ -22,6 +22,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     private IInvites? _invites;
     private IContacts? _contacts;
     private IUserPresences? _userPresences;
+    private IChatUsages? _chatUsages;
     private ChatActivity? _chatActivity;
     private ChatUI? _chatUI;
     private ActiveChatsUI? _activeChatsUI;
@@ -33,6 +34,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     private NotificationUI? _notificationUI;
     private LanguageUI? _languageUI;
     private EditMembersUI? _editMembersUI;
+    private SearchUI? _searchUI;
     private ChatPlayers? _chatPlayers;
     private AudioSettings? _audioSettings;
     private AudioRecorder? _audioRecorder;
@@ -55,6 +57,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     public IInvites Invites => _invites ??= Services.GetRequiredService<IInvites>();
     public IContacts Contacts => _contacts ??= Services.GetRequiredService<IContacts>();
     public IUserPresences UserPresences => _userPresences ??= Services.GetRequiredService<IUserPresences>();
+    public IChatUsages ChatUsages => _chatUsages ??= Services.GetRequiredService<IChatUsages>();
     public ChatActivity ChatActivity => _chatActivity ??= Services.GetRequiredService<ChatActivity>();
     public ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
     public ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
@@ -66,6 +69,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     public NotificationUI NotificationUI => _notificationUI ??= Services.GetRequiredService<NotificationUI>();
     public LanguageUI LanguageUI => _languageUI ??= Services.GetRequiredService<LanguageUI>();
     public EditMembersUI EditMembersUI => _editMembersUI ??= Services.GetRequiredService<EditMembersUI>();
+    public SearchUI SearchUI => _searchUI ??= Services.GetRequiredService<SearchUI>();
     public ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
     public AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
     public AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();

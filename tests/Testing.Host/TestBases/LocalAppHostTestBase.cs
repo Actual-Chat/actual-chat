@@ -1,3 +1,5 @@
+using ActualChat.Testing.Host.Assertion;
+
 namespace ActualChat.Testing.Host;
 
 public abstract class LocalAppHostTestBase(
@@ -14,7 +16,10 @@ public abstract class LocalAppHostTestBase(
     { }
 
     protected override async Task InitializeAsync()
-        => AppHost = await NewAppHost();
+    {
+        ActualFluentFormatters.Use();
+        AppHost = await NewAppHost();
+    }
 
     protected override Task DisposeAsync()
     {

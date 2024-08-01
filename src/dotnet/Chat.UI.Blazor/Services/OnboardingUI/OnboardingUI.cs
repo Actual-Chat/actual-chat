@@ -108,4 +108,10 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
         }
         return _localSettings.Value.HasUncompletedSteps;
     }
+
+    public void ResetSettings()
+    {
+        _userSettings.Value = new UserOnboardingSettings();
+        _localSettings.Value = new LocalOnboardingSettings();
+    }
 }

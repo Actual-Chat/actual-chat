@@ -1,5 +1,4 @@
-@using ActualChat.Users
-@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using ActualChat.Comparison
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatList.Model>
 @{
@@ -8,11 +7,7 @@
     _rendered = m;
     if (Kind == ChatListKind.All && searchModeTriggered)
         _resetScrollPositionRequested = true;
-    DebugLog?.LogDebug("Rendered: {List}, ChatCount={ChatCount}", Kind, m.ChatCount);
-    if (m is { ChatCount: 0, IsSearchModeOn: false })
-        return;
-
-    var chatIndexes = Enumerable.Range(0, m.ChatCount).ToList();
+    DebugLog?.LogDebug("Rendered: {List}", Kind);
 }
 
 @if (m.IsLoading) {
@@ -21,7 +16,7 @@
     </div>
 } else {
     @if (Kind == ChatListKind.Active) {
-        if (m.ChatCount == 0)
+        if (m.Chats.Count == 0)
             return;
 
         <div class="c-delimiter"></div>
@@ -32,22 +27,38 @@
             <div class="c-title" data-tooltip="Chats where you are listening or recording right now">Active Chats</div>
 
             <div class="chat-list chat-list-active">
-                @for (var i = 0; i < m.ChatCount; i++) {
-                    <ChatListItem ListKind="@Kind" Index="@i"/>
+                @foreach(var chat in m.Chats) {
+                    <ChatListItem ListKind="@Kind" Chat="@chat"/>
                 }
             </div>
         </div>
     } else {
         @* ChatListKind.All *@
-        <div @ref="AllChatListRef" class="chat-list chat-list-all">
-            <Virtualize Items="@chatIndexes" Context="i">
-                <ChatListItem ListKind="@Kind" Index="@i"/>
-            </Virtualize>
-        </div>
+        <VirtualList
+            @ref="_virtualListRef"
+            Class="chat-list chat-list-all"
+            DataSource="@this"
+            ExpandTriggerMultiplier="0.5"
+            ExpandMultiplier="0.7"
+            SkeletonCount="50"
+            KeyComparer="@LongAsStringKeyComparer.Default"
+            >
+            <Item>
+                <ChatListItem
+                    ListKind="@Kind"
+                    Chat="@context.Chat"
+                    IsLastItemInBlock="@context.IsLastItemInBlock"
+                    IsFirstItem="@context.IsFirstItem"/>
+            </Item>
+            <Skeleton>
+                <ChatListItemSkeleton />
+            </Skeleton>
+        </VirtualList>
     }
 }
 
 @code {
+    private VirtualList<ChatListItemModel>? _virtualListRef = null;
     private Model _rendered;
     private ILogger? _log;
     private bool _resetScrollPositionRequested;
@@ -55,14 +66,16 @@
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
     private ChatUI ChatUI => Hub.ChatUI;
+    private IChats Chats => Hub.Chats;
     private ChatListUI ChatListUI => Hub.ChatListUI;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private SearchUI SearchUI => Hub.SearchUI;
+    private FontSizeUI FontSizeUI => Hub.FontSizeUI;
     private ILogger Log => _log ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
 
-    private ElementReference AllChatListRef { get; set; }
-
     [Parameter, EditorRequired] public ChatListKind Kind { get; set; }
+    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
 
     protected override void OnInitialized() {
         DebugLog?.LogDebug("Initialized: {List}", Kind);
@@ -71,12 +84,13 @@
 
     protected override void OnParametersSet() {
         DebugLog?.LogDebug("OnParametersSet: {List}", Kind);
+        _ = _virtualListRef?.Reset();
         base.OnParametersSet();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new (ChatListUI.GetCountWhenLoading(Kind), false, true),
+            InitialValue = new (ImmutableList<Chat>.Empty, false, true),
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
@@ -84,26 +98,26 @@
         var chatListKind = Kind;
 
         DebugLog?.LogDebug("-> ComputeState: {List}", chatListKind);
-        var chatCount = await ChatListUI.GetCount(chatListKind).ConfigureAwait(false);
-        var isSearchModeOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
-        DebugLog?.LogDebug("<- ComputeState: {List}. Count={Count}, IsSearchModeOn={IsSearchModeOn}", chatListKind, chatCount, isSearchModeOn);
-        return new (chatCount, isSearchModeOn);
-    }
-
-    protected override bool ShouldRender()
-        => State.HasError || State.Value != _rendered;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (_resetScrollPositionRequested) {
-            await AllChatListRef.ScrollToTop();
-            _resetScrollPositionRequested = false;
+        IReadOnlyList<Chat> chats = new List<Chat>();
+        if (Kind == ChatListKind.Active) {
+            var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
+            chats = (await activeChats
+                    .Select(ac => Chats.Get(Session, ac.ChatId, cancellationToken))
+                    .Collect()
+                    .ConfigureAwait(false))
+                .SkipNullItems()
+                .ToList();
         }
+
+        var isSearchModeOn = await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false);
+        DebugLog?.LogDebug("<- ComputeState: {List}. IsSearchModeOn={IsSearchModeOn}", chatListKind, isSearchModeOn);
+        return new (chats, isSearchModeOn);
     }
 
     // Nested types
 
     public record struct Model(
-        int ChatCount,
+        IReadOnlyList<Chat> Chats,
         bool IsSearchModeOn = false,
         bool IsLoading = false);
 }

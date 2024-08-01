@@ -1,3 +1,5 @@
+using ActualChat.Testing.Host.Assertion;
+
 namespace ActualChat.Testing.Host;
 
 public abstract class SharedAppHostTestBase<TAppHostFixture>(
@@ -16,6 +18,7 @@ public abstract class SharedAppHostTestBase<TAppHostFixture>(
 
     protected override Task InitializeAsync()
     {
+        ActualFluentFormatters.Use();
         _originalAppHostOutput = AppHost.Output;
         AppHost.Output = Out;
         return base.InitializeAsync();

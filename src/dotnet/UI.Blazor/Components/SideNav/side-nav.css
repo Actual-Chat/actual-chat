@@ -9,6 +9,10 @@
     will-change: custom; /* Ensures its own composition layer */
 }
 
+body.device-ios .side-nav {
+    @apply ios-height;
+}
+
 .side-nav.animated {
     @apply transition-transform duration-200 ease-out;
 }
@@ -24,7 +28,16 @@
 
 /* Left SideNav */
 .side-nav.side-nav-left {
+    @apply flex-none flex-y;
+    @apply md:w-110;
+}
+.page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .side-nav.side-nav-left {
     @apply md:w-1/2 lg:w-110;
+    @apply md:transition-width md:duration-200;
+}
+.page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="closed"]) > .side-nav.side-nav-left {
+    @apply md:w-110;
+    @apply md:transition-width md:duration-200;
 }
 body.wide .side-nav.side-nav-left[data-side-nav="closed"] {
     @apply hidden;
@@ -39,10 +52,16 @@ body.narrow .side-nav.side-nav-left[data-side-nav="closed"]:has(.wide-left-skele
 
 /* Right SideNav */
 .side-nav.side-nav-right {
-    @apply md:w-1/2 lg:w-90;
+    @apply flex-none flex-y;
+    @apply md:w-90;
 }
-body.wide .side-nav.side-nav-right[data-side-nav="closed"] {
-    @apply hidden;
+.side-nav.side-nav-right[data-side-nav="open"] {
+    @apply md:w-1/2 lg:w-90;
+    @apply md:transition-width md:duration-200;
+}
+.side-nav.side-nav-right[data-side-nav="closed"] {
+    @apply md:w-0;
+    @apply md:transition-width md:duration-200;
 }
 body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
     transform: translate3d(100%, 0, 0);

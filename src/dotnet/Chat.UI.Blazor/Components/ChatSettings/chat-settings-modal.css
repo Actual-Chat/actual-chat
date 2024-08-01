@@ -5,11 +5,22 @@
 
 .edit-settings-modal.modal-frame {
     @apply px-0;
-    @apply gap-y-0;
+    @apply md:gap-y-0;
 }
 
 .edit-settings-modal .no-padding-header-decorator {
     @apply mx-0;
+}
+.edit-settings-modal:has(.chat-settings-header) .modal-header-interactive {
+    @apply absolute inset-0 z-50;
+    @apply border-none;
+    @apply bg-transparent;
+}
+.edit-settings-modal:has(.chat-settings-header) .modal-header-interactive .btn-h {
+    @apply text-viewer-header-text;
+}
+.edit-settings-modal:has(.chat-settings-header) .modal-header-interactive .modal-title {
+    @apply text-viewer-header-text;
 }
 
 .edit-chat-settings-modal .dialog-body {
@@ -20,6 +31,22 @@
 .edit-chat-settings-modal .chat-settings-container,
 .edit-place-settings-modal .chat-settings-container {
     @apply px-2;
+}
+
+.edit-place-settings-modal .dialog-body {
+    scrollbar-width: none;
+}
+
+.edit-place-settings-modal .c-panel-content,
+.edit-place-settings-modal .c-panel-content .c-panel-tabs {
+    @apply flex-y;
+    @apply overflow-y-hidden;
+}
+.edit-place-settings-modal .c-panel-content .c-panel-tabs .tab-panel {
+    @apply h-full;
+}
+.edit-place-settings-modal .c-panel-content .c-panel-tabs .tab-panel .tab {
+    @apply overflow-y-auto custom-scrollbar;
 }
 
 .edit-settings-modal .form-block:not(:first-of-type) {
@@ -37,9 +64,6 @@
     @apply max-w-none;
 }
 
-.edit-settings-modal .form-block {
-    @apply px-4;
-}
 .edit-settings-modal .form-block.with-input-radio {
     @apply px-2;
 }
@@ -111,14 +135,6 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply text-2xl;
 }
 
-body.hoverable .edit-settings-modal .item-leave-group.tile-item:hover {
-    @apply bg-menuitem-hover-warning;
-}
-.edit-settings-modal .item-leave-group .tile-item-icon,
-.edit-settings-modal .item-leave-group .tile-item-body-content {
-    @apply text-danger;
-}
-
 .chat-type-tile-item .tile-item-right {
     @apply text-headline-1 text-primary;
 }
@@ -140,31 +156,13 @@ body.hoverable .edit-settings-modal .item-leave-group.tile-item:hover {
 .edit-settings-modal.edit-members .dialog-body > * {
     @apply mt-3;
 }
-.edit-settings-modal.edit-members .list {
-    @apply overflow-y-auto custom-scrollbar;
-}
-.edit-settings-modal.edit-members .list > li {
-    @apply flex-x;
-    @apply min-h-12;
-}
-.edit-settings-modal.edit-members .list > li .menu {
-    @apply flex items-center justify-center;
-    @apply min-w-4;
-}
-.edit-settings-modal.edit-members .list .avatar-badge {
-    @apply flex-1;
-    @apply overflow-x-hidden;
-}
-.edit-settings-modal.edit-members .list .avatar-badge .c-status {
-    @apply text-03 text-xs leading-3.5;
-}
 
 .edit-settings-modal.edit-members .tile-item {
     @apply shrink-0; /* prevents shrinking tile item when list overflows */
 }
 
 .edit-settings-modal .pic.pic-square {
-    @apply rounded-xl overflow-hidden;
+    @apply overflow-hidden;
 }
 
 /* Edit member menu */
@@ -195,25 +193,8 @@ body.hoverable .edit-settings-modal .item-leave-group.tile-item:hover {
     @apply whitespace-normal;
 }
 
-.copy-chat-to-place-modal .c-chat-list {
-    @apply flex-y justify-center gap-y-1;
-}
-.copy-chat-to-place-modal .c-chat-list .c-chat {
-    @apply flex-x items-center gap-x-2;
-    @apply px-2 py-1;
-    @apply rounded-lg;
-    @apply overflow-hidden;
-}
-.copy-chat-to-place-modal .c-chat-list .c-chat .c-chat-title {
-    @apply line-clamp-1;
-    @apply text-headline-1 text-01;
-}
-body.hoverable .copy-chat-to-place-modal .c-chat-list .c-chat:hover {
-    @apply bg-hover;
-    @apply cursor-pointer;
-}
-
-.form-block.chat-settings-header {
+.form-block.chat-settings-header,
+.chat-settings-header {
     @apply relative;
     @apply flex-y items-center gap-x-4;
     @apply min-h-32;
@@ -226,8 +207,13 @@ body.hoverable .copy-chat-to-place-modal .c-chat-list .c-chat:hover {
     @apply rounded-b-xl;
     @apply overflow-hidden;
 }
+body.narrow .chat-settings-header > .c-top::after {
+    @apply absolute z-10 inset-0;
+    content: '';
+    background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
+}
 .chat-settings-header > .c-center {
-    @apply absolute top-17 z-20;
+    @apply absolute top-18 z-20;
     @apply flex-x;
     @apply h-16 w-full;
     @apply px-4;
@@ -246,4 +232,39 @@ body.hoverable .copy-chat-to-place-modal .c-chat-list .c-chat:hover {
     @apply w-full;
     @apply px-4 pt-10;
     @apply bg-transparent;
+}
+
+.edit-settings-modal .chat-settings-header.place .c-center .pic.pic-square {
+    @apply rounded-2xl;
+    @apply border-2 border-bg-01;
+}
+.chat-settings-subheader {
+    @apply flex-x items-center gap-x-2;
+    @apply p-4;
+}
+.chat-settings-subheader > .c-title {
+    @apply w-full;
+    @apply line-clamp-1;
+    @apply text-headline-7 text-01;
+}
+
+/* Members list */
+.members-list {
+    @apply overflow-y-auto;
+    scrollbar-width: none;
+}
+.members-list > li {
+    @apply flex-x;
+    @apply min-h-12;
+}
+.members-list > li .menu {
+    @apply flex items-center justify-center;
+    @apply min-w-4;
+}
+.members-list .avatar-badge {
+    @apply flex-1;
+    @apply overflow-x-hidden;
+}
+.members-list .avatar-badge .c-status {
+    @apply text-03 text-xs leading-3.5;
 }

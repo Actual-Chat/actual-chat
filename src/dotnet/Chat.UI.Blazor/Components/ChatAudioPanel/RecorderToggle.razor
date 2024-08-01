@@ -44,6 +44,8 @@
             Class="record-off-btn"
             Click="@OnClick"
             MustKeepAwake="true"
+            Tooltip="Start recording"
+            TooltipPosition="FloatingPosition.Top"
             @onmouseup="@OnPointerUp"
             @ontouchend="@OnPointerUp"
             @ontouchcancel="@OnPointerUp"
@@ -65,7 +67,7 @@
 } else {
     <div class="recorder-wrapper mic-disabled">
         <ButtonRound
-            Class="mic-disabled w-14 h-14"
+            Class="mic-disabled"
             Click="@OnClick">
             <i class="icon-mic-off text-2xl text-06"></i>
         </ButtonRound>

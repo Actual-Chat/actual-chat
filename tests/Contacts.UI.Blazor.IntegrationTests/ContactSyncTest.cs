@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Security;
-using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
+using ActualChat.Testing.Host.Assertion;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;
 using ActualLab.Generators;
@@ -54,8 +54,11 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
         await _tester.SignOut();
     }
 
-    protected override Task DisposeAsync()
-        => _tester.DisposeSilentlyAsync().AsTask();
+    protected override async Task DisposeAsync()
+    {
+        await _tester.DisposeSilentlyAsync();
+        await base.DisposeAsync();
+    }
 
     [Fact(Skip = "TODO(FC): Fix for CI")]
     public async Task ShouldAddAndUpdate()

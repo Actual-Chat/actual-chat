@@ -163,6 +163,10 @@
                         <CascadingValue Value="@entry" IsFixed="true">
                             <MarkupView Markup="@_markup"/>
                         </CascadingValue>
+                        @if (m.IsUnreadMessage) {
+                            <span class="mr-1"> </span> @* Delimiter *@
+                            <ChatMessageSendingStatus Status="@ChatMessageSendingStatus.MessageStatus.Unread" />
+                        }
                     </p>
                 }
             </div>
@@ -198,21 +202,25 @@
     private ChatMessage? _lastMessage;
     private EventCallback<AuthorId> _onClickCallback;
     private ILogger? _log;
+    private bool _hasBeenRead;
 
     // Shortcuts
     private ChatEntry Entry => Message.Entry;
-    private ChatId ChatId => Message.Entry.ChatId;
-    private Session Session => ChatContext.Hub.Session();
-    private History History => ChatContext.Hub.History;
-    private IAuthors Authors => ChatContext.Hub.Authors;
-    private IChats Chats => ChatContext.Hub.Chats;
-    private ChatUI ChatUI => ChatContext.Hub.ChatUI;
-    private AuthorUI AuthorUI => ChatContext.Hub.AuthorUI;
-    private ShareUI ShareUI => ChatContext.Hub.ShareUI;
-    private ModalUI ModalUI => ChatContext.Hub.ModalUI;
-    private DateTimeConverter DateTimeConverter => ChatContext.Hub.DateTimeConverter;
+    private ChatUIHub Hub => ChatContext.Hub;
+    private ChatId ChatId => Entry.ChatId;
+    private Session Session => Hub.Session();
+    private History History => Hub.History;
+    private IAuthors Authors => Hub.Authors;
+    private IChats Chats => Hub.Chats;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private AuthorUI AuthorUI => Hub.AuthorUI;
+    private SelectionUI SelectionUI => Hub.SelectionUI;
+    private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private ShareUI ShareUI => Hub.ShareUI;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
-    private ILogger Log => _log ??= ChatContext.Hub.LogFor(GetType());
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;
@@ -243,9 +251,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         var initialValue = Model.None;
-        var ownAuthorComputed = Computed.GetExisting(() => Authors.GetOwn(Session, ChatId, default));
-        var ownAuthor = ownAuthorComputed?.IsConsistent() == true &&  ownAuthorComputed.HasValue ? ownAuthorComputed.Value : null;
-        var ownAuthorId = ownAuthor?.Id ?? AuthorId.None;
+        var ownAuthorId = OwnAuthorId;
         var repliedEntry = Entry.RepliedEntryLocalId != null ? ChatEntry.Loading : null;
         if (!ownAuthorId.IsNone || repliedEntry != null)
             initialValue = new() {
@@ -262,15 +268,14 @@
         var entry = Entry;
         var chatId = ChatId;
         var chatMessage = Message;
-
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var ownAuthorId = ownAuthor?.Id ?? AuthorId.None;
+        var ownAuthor = OwnAuthor;
+        var ownAuthorId = OwnAuthor?.Id ?? AuthorId.None;
 
         var markup = await _markupTask.ConfigureAwait(false);
         var repliedEntry = await GetRepliedEntry(cancellationToken).ConfigureAwait(false);
         var hasAnyMentions = HasAnyMentions(markup);
         var isOwnAuthorMentioned = IsMentioned(markup, repliedEntry, ownAuthorId, hasAnyMentions);
-        var relatedChatEntry = await ChatContext.Hub.ChatEditorUI.RelatedChatEntry.Use(cancellationToken).ConfigureAwait(false);
+        var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(cancellationToken).ConfigureAwait(false);
         var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, Id: var repliedEntryId } && repliedEntryId == entry.Id;
         var isHighlighted = entry.Id == await ChatUI.HighlightedEntryId.Use(cancellationToken).ConfigureAwait(false);
         Chat? forwardedChat = null;
@@ -290,7 +295,8 @@
         }
         var forwardedAuthor = await GetForwardedAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
         var forwardedPeerAuthor = await GetForwardedPeerAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
-        var selectedChatEntries = await ChatContext.Hub.SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
+        var selectedChatEntries = await SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
+        var isUnreadMessage = await IsUnreadMessage(entry, ownAuthorId, cancellationToken);
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,
@@ -302,6 +308,7 @@
             ForwardedChatEntryId = forwardedChatEntryId,
             ForwardedAuthor = forwardedAuthor,
             ForwardedPeerAuthor = forwardedPeerAuthor,
+            IsUnreadMessage = isUnreadMessage
         };
         return result.Equals(_rendered) ? _rendered! : result;
 
@@ -314,6 +321,44 @@
             var repliedEntry1 = await Chats.GetEntry(Session, repliedEntryId1, cancellationToken1).ConfigureAwait(false) ?? ChatEntry.Removed(repliedEntryId1);
             return repliedEntry1;
         }
+    }
+
+    private async Task<bool> IsUnreadMessage(ChatEntry entry, AuthorId ownAuthorId, CancellationToken cancellationToken) {
+        if (_hasBeenRead)
+            return false;
+
+        var isOwnMessage = !ownAuthorId.IsNone && ownAuthorId == entry.AuthorId;
+        if (!isOwnMessage)
+            return false;
+
+        if (!await ChatSupportsUnreadStatus(cancellationToken).ConfigureAwait(false))
+            return false;
+
+        var readPositionsStat = await Chats.GetReadPositionsStat(Session, entry.ChatId, cancellationToken).ConfigureAwait(false);
+        var canCalculateHasRead = readPositionsStat.CanCalculateHasReadByAnotherAuthor(entry);
+        // Do not show `Unread` label for old messages (before the feature was introduced)
+        // until we have at least more or less good enough read positions stat.
+        if (!canCalculateHasRead)
+            return false;
+
+        var hasBeenRead = readPositionsStat.HasReadByAnotherAuthor(entry, ownAuthorId);
+        if (hasBeenRead)
+            _hasBeenRead = true; // Remember that message has been read, so we don't need to recalculate it on next ComputeState cycle.
+        return !hasBeenRead;
+    }
+
+    private async Task<bool> ChatSupportsUnreadStatus(CancellationToken cancellationToken) {
+        // NOTE(DF): move this check to ChatContext to share among all message views.
+        // ChatContext and Chat can be considered as immutable and used from any thread.
+        var chat = ChatContext.Chat;
+        if (chat.HasSingleAuthor)
+            return false;
+
+        var authors = await Authors.ListAuthorIds(Session, chat.Id, cancellationToken).ConfigureAwait(false);
+        if (authors.Count < 2)
+            return false; // It seems the current user is the only member in the chat hence it has no sense to check unread status.
+
+        return true;
     }
 
     private void OnQuoteClick()
@@ -334,6 +379,12 @@
 
     private bool HasAnyMentions(Markup markup)
         => MarkupValidator.ContainsAnyMention.IsValid(markup);
+
+    private AuthorId OwnAuthorId
+        => OwnAuthor?.Id ?? AuthorId.None;
+
+    private AuthorFull? OwnAuthor
+        => ChatContext.Chat.Rules.Author;
 
     private bool IsMentioned(Markup markup,
         ChatEntry? repliedEntry,
@@ -432,5 +483,6 @@
         public ChatEntryId ForwardedChatEntryId { get; init; }
         public Author? ForwardedAuthor { get; init; }
         public Author? ForwardedPeerAuthor { get; init; }
+        public bool IsUnreadMessage { get; init; }
     }
 }

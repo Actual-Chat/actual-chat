@@ -113,29 +113,48 @@ body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
 }
 .chat-list .navbar-item-content > .c-container {
     @apply flex-1 flex-x items-center gap-x-2;
+    @apply overflow-hidden;
 }
 .chat-list .navbar-item-content > .c-container > .c-description {
-    @apply grid justify-start items-start gap-y-1;
+    @apply flex-1 flex-y items-start justify-start gap-y-1;
+    @apply overflow-hidden;
 }
 .chat-list .navbar-item-content > .c-container.skeleton > .c-description {
     @apply flex-1;
     justify-content: normal;
 }
-.chat-list .navbar-item-content > .c-container > .c-description > .c-title {
-    @apply truncate;
+.chat-list .navbar-item-content > .c-container > .c-description > .c-chat-title {
+    @apply flex-x items-center gap-x-1;
+    @apply w-full;
+    @apply overflow-hidden;
     @apply text-headline-1 text-02;
 }
+.chat-list .navbar-item-content > .c-container > .c-description > .c-chat-title > .c-timestamp {
+    @apply flex-none flex;
+    @apply text-xs text-03;
+}
+body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-description > .c-chat-title > .c-timestamp {
+    @apply hidden;
+}
+.chat-list .navbar-item-content > .c-container > .c-description > .c-chat-title > div:first-child,
+.chat-list .navbar-item-content > .c-container > .c-description > .c-chat-title > span:first-child {
+    @apply truncate;
+}
+.chat-list .navbar-item-content > .c-container > .c-description .c-incut {
+    @apply flex-1;
+}
 .chat-list .navbar-item-content > .c-container > .c-description > .c-last-message {
-    @apply flex-x gap-x-1;
+    @apply flex-x items-end gap-x-1;
+    @apply w-full h-4.5;
     @apply truncate;
     @apply text-xs text-03;
 }
-.chat-list .navbar-item-content > .c-container.skeleton > .c-description > .c-title > .c-skeleton,
+.chat-list .navbar-item-content > .c-container.skeleton > .c-description > .c-chat-title > .c-skeleton,
 .chat-list .navbar-item-content > .c-container.skeleton > .c-description > .c-last-message > .c-skeleton {
     @apply rounded-md;
     @apply bg-skeleton;
 }
-.chat-list .navbar-item-content .c-last-message .avatar-name {
+.chat-list .navbar-item-content .c-last-message .c-name {
     @apply text-xs text-02 font-medium;
 }
 .chat-list .navbar-item-content .c-last-message .c-text {
@@ -173,7 +192,7 @@ body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {
     @apply hidden;
 }
 .navbar-item .message-counter-badge {
-    @apply self-end;
+    @apply mx-0;
     @apply text-primary-title;
 }
 body.hoverable .navbar-item:hover .message-counter-badge {
@@ -211,4 +230,17 @@ body.hoverable .chat-list .navbar-item:hover .navbar-item-ending .slot.hoverable
 .sort-menu .ac-menu-item:hover .ac-menu-text,
 .sort-menu .ac-menu-item:hover .ac-menu-icon > i {
     @apply text-primary;
+}
+
+.last-entry-time {
+    @apply flex-none flex;
+    @apply text-xs text-03 font-normal;
+}
+body.hoverable .navbar-item:hover .last-entry-time {
+    @apply hidden;
+}
+
+body.hoverable .navbar-item:hover > .c-container > .c-description .last-entry-time,
+body.hoverable .navbar-item:hover > .c-container > .c-description .message-counter-badge {
+    @apply hidden;
 }

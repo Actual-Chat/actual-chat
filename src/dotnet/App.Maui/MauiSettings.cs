@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.Hosting;
 
 namespace ActualChat.App.Maui;
@@ -10,7 +11,9 @@ public static class MauiSettings
 #else
     public const bool IsDevApp = false;
 #endif
-    public const string Host = IsDevApp ? "dev.actual.chat" : "actual.chat";
+    public const string DefaultHost = IsDevApp ? "dev.actual.chat" : "actual.chat";
+    public static readonly string Host;
+    public static bool HostIsOverriden => !OrdinalIgnoreCaseEquals(Host, DefaultHost);
     public static readonly Uri BaseUri;
     public static readonly string BaseUrl;
     public static readonly AppKind AppKind;
@@ -18,6 +21,7 @@ public static class MauiSettings
 
     static MauiSettings()
     {
+        Host = GetHostOverride() ?? DefaultHost;
         BaseUrl = "https://" + Host + "/";
         BaseUri = BaseUrl.ToUri();
 
@@ -33,6 +37,9 @@ public static class MauiSettings
         AppKind = AppKind.Unknown;
 #endif
     }
+
+    private static string? GetHostOverride()
+        => MauiHostSwitcher.GetHostOverride()?.Host;
 
     // Nested types
 

@@ -32,9 +32,19 @@ public partial class History
         Dispatcher.AssertAccess();
         await WhenNavigationCompletedOrTimeout().ConfigureAwait(true);
 
-        var fixedUri = new LocalUrl(uri).Value;
+        var localUrl = new LocalUrl(uri);
+        var fixedUriLogLevel = LogLevel.Warning;
+        if (localUrl.IsChat(out var chatId, out var query, out var hash)
+            && !hash.IsNullOrEmpty()
+            && query.IsNullOrEmpty()
+            && NumberExt.TryParsePositiveLong(hash, out var entryId)) {
+            // NOTE(DF): converts message links of old format to new format
+            localUrl = Links.Chat(chatId, entryId);
+            fixedUriLogLevel = LogLevel.Information;
+        }
+        var fixedUri = localUrl.Value;
         if (!OrdinalEquals(uri, fixedUri)) {
-            Log.LogWarning("NavigateTo: {Uri} is fixed to {FixedUri}", uri, fixedUri);
+            Log.Log(fixedUriLogLevel, "NavigateTo: {Uri} is fixed to {FixedUri}", uri, fixedUri);
             uri = fixedUri;
         }
 

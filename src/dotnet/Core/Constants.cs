@@ -11,6 +11,13 @@ public static partial class Constants
         public static readonly Version Version = Version.Parse(StringVersion);
     }
 
+    public static class Hosts
+    {
+        public const string ActualChat = "actual.chat";
+        public const string DevActualChat = "dev.actual.chat";
+        public const string LocalActualChat = "local.actual.chat";
+    }
+
     public static class Chat
     {
         public static readonly ChatId DefaultChatId = ChatId.Group("the-actual-one");
@@ -23,6 +30,7 @@ public static partial class Constants
         public static readonly TileStack<long> ServerIdTileStack = TileStacks.Long5To1K;
         public static readonly TileStack<long> ReaderIdTileStack = TileStacks.Long5To80;
         public static readonly TileStack<long> ViewIdTileStack = TileStacks.Long5To20;
+        public static readonly TileStack<int> ChatTileStack = TileStacks.Int5To20;
         public static readonly TileStack<Moment> TimeTileStack = TileStacks.Moment3MTo6Y;
         public static readonly TimeSpan MaxEntryDuration = TimeTileStack.MinTileSize.EpochOffset; // 3 minutes, though it can be any
         public const int MaxSearchFilterLength = 100;
@@ -32,11 +40,20 @@ public static partial class Constants
         public static class SystemTags
         {
             public static readonly Symbol Notes = "notes";
+            // Not used!
             public static readonly Symbol Family = "family";
+            // Not used!
             public static readonly Symbol Friends = "friends";
+            // Not used!
             public static readonly Symbol ClassmatesAlumni = "classmates-alumni";
+            // Not used!
             public static readonly Symbol Coworkers = "coworkers";
             public static readonly Symbol Welcome = "welcome";
+            public static readonly Symbol Bot = "ml-bot";
+            public static class Rules {
+                private static readonly Symbol[] allowMultiplePerUser = new []{ SystemTags.Bot, SystemTags.Welcome };
+                public static bool MustBeUniquePerUser(Symbol systemTag) => !allowMultiplePerUser.Any(e => e == systemTag);
+            }
         }
     }
 
@@ -168,27 +185,23 @@ public static partial class Constants
 
     public static class Notification
     {
-        public static class ChannelIds
-        {
-            // TODO: create more channels and groups
-            // to provide to user more fine-grained control over notifications.
-            public const string Default = "fcm_default_channel";
-        }
-
         public static class MessageDataKeys
         {
             public const string NotificationId = "notificationId";
             public const string ChatId = "chatId";
             public const string ChatEntryId = "chatEntryId";
+            public const string LastEntryLocalId = "lastEntryLocalId";
             public const string Icon = "icon";
+            public const string Kind = "kind";
             public const string Link = "link";
             public const string Tag = "tag";
             public const string Title = "title";
             public const string Body = "body";
             public const string ImageUrl = "imageUrl";
+            public const string Timestamp = "timestamp";
 
             public static readonly string[] ValidKeys = {
-                Body, ChatId, ChatEntryId, Icon, ImageUrl, Link, NotificationId, Tag, Title
+                Body, ChatId, ChatEntryId, LastEntryLocalId, Icon, ImageUrl, Kind, Link, NotificationId, Tag, Title, Timestamp
             };
 
             public static bool IsValidKey(string key)
@@ -215,10 +228,17 @@ public static partial class Constants
     public static class Search
     {
         public const int PageSizeLimit = 50;
+        public const int ContactSearchDefaultPageSize = 3;
+        public const int ContactSearchExtendedPageSize = 30;
     }
 
     public static class Invalidation
     {
         public static readonly TimeSpan Delay = TimeSpan.FromSeconds(0.5);
+    }
+
+    public static class Preferences
+    {
+        public const string EnableAnalytics = "analytics";
     }
 }

@@ -1,0 +1,35 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<IReadOnlyList<Chat>>
+@{
+    var chats = State.ValueOrDefault ?? [];
+    if (chats.Count == 0)
+        return;
+}
+
+<div class="recently-contacted-people">
+    @foreach (var chat in chats) {
+        <RecentlyContactedUser Chat="chat"/>
+    }
+</div>
+<Divider Class="mx-4 my-1.5"/>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private IChatUsages ChatUsages => Hub.ChatUsages;
+    private IChats Chats => Hub.Chats;
+    private Session Session => Hub.Session();
+
+    protected override ComputedState<IReadOnlyList<Chat>>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<IReadOnlyList<Chat>>.Options() {
+                InitialValue = [],
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<IReadOnlyList<Chat>> ComputeState(CancellationToken cancellationToken) {
+        var session = Session;
+        var recentIds = await ChatUsages.GetRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, cancellationToken).ConfigureAwait(false);
+        var chats = await recentIds.Select(id => Chats.Get(session, id, cancellationToken)).Collect().ConfigureAwait(false);
+        return chats.SkipNullItems().ToList();
+    }
+}

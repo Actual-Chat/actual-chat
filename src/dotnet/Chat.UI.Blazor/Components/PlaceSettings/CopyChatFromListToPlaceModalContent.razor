@@ -46,7 +46,6 @@
             .SkipNullItems()
             .Where(c => c.Kind == ContactKind.Chat
                         && c.PlaceId == PlaceId.None
-                        && c.Chat is { IsPublic: true, HasSingleAuthor: false }
                         && (c.Chat.Rules.Permissions & ChatPermissions.Write) != 0
                         && (c.Chat.Rules.Permissions & ChatPermissions.Owner) != 0)
             .ToList<Contact?>();

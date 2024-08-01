@@ -2,8 +2,6 @@
 @inherits ComputedStateComponent<AuthorPresenceText.Model>
 @{
     var m = State.Value;
-    if (m == Model.None)
-        return;
 }
 
 <PresenceText Presence="@m.Presence" LastCheckIn="@m.LastCheckIn" />

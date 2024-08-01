@@ -7,7 +7,7 @@ public sealed class ChatMessage(ChatEntry entry) : IVirtualListItem, IEquatable<
 {
     private Symbol? _key;
 
-    public Symbol Key => _key ??= GetKey();
+    public string Key => _key ??= GetKey();
 
     public ChatEntry Entry { get; } = entry;
     public ChatMessageReplacementKind ReplacementKind { get; init; }

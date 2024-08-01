@@ -6,7 +6,6 @@ using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Media;
-using ActualChat.Queues;
 using ActualChat.Users;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
@@ -34,6 +33,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IMediaBackend? _mediaBackend;
     private ILinkPreviewsBackend? _linkPreviewsBackend;
     private IInvitesBackend? _invitesBackend;
+    private IPlacesBackend? _placesBackend;
     private IServerKvasBackend? _serverKvasBackend;
 
     private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
@@ -42,6 +42,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IMediaBackend MediaBackend => _mediaBackend ??= Services.GetRequiredService<IMediaBackend>();
     private ILinkPreviewsBackend LinkPreviewsBackend => _linkPreviewsBackend ??= Services.GetRequiredService<ILinkPreviewsBackend>();
     private IInvitesBackend InvitesBackend => _invitesBackend ??= Services.GetRequiredService<IInvitesBackend>();
+    private IPlacesBackend PlacesBackend => _placesBackend ??= Services.GetRequiredService<IPlacesBackend>();
     private IServerKvasBackend ServerKvasBackend => _serverKvasBackend ??= Services.GetRequiredService<IServerKvasBackend>();
 
     private HostInfo HostInfo { get; } = services.HostInfo();
@@ -49,6 +50,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; } = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
     private IDbEntityResolver<string, DbChatCopyState> DbChatCopyStateResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChatCopyState>>();
+    private IDbEntityResolver<string, DbReadPositionsStat> DbReadPositionsStatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbReadPositionsStat>>();
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
     private OtelMetrics Metrics { get; } = services.Metrics();
@@ -122,6 +124,24 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return sChatIds.Select(x => new ChatId(x)).Where(x => !x.IsPlaceRootChat).ToApiArray();
     }
 
+    // Non-compute methods
+    public virtual async Task<ApiArray<ChatId>> ListPlaceChatIds(PlaceId placeId, CancellationToken cancellationToken)
+    {
+        if (placeId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(placeId));
+
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var idPrefix = PlaceChatId.IdPrefix + placeId.Value;
+        var sChatIds = await dbContext.Chats
+            .Where(c => c.Id.StartsWith(idPrefix))
+            .Select(c => c.Id)
+            .OrderBy(c => c)
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        return sChatIds.Select(x => new ChatId(x)).Where(x => !x.IsPlaceRootChat).ToApiArray();
+    }
+
     // [ComputeMethod]
     public virtual async Task<AuthorRules> GetRules(
         ChatId chatId,
@@ -131,11 +151,32 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (chatId.IsPeerChat(out var peerChatId)) // We don't use actual roles to determine rules in this case
             return await GetPeerChatRules(peerChatId, principalId, cancellationToken).ConfigureAwait(false);
 
-        if (chatId.IsPlaceChat && !chatId.PlaceChatId.IsRoot)
-            return await GetPlaceChatRules(chatId.PlaceChatId, principalId, cancellationToken).ConfigureAwait(false);
+        AuthorRules chatRules;
+        if (chatId is { IsPlaceChat: true, PlaceChatId.IsRoot: false })
+            chatRules = await GetPlaceChatRules(chatId.PlaceChatId, principalId, cancellationToken).ConfigureAwait(false);
+        else
+            // Group chat or Root place chat
+            chatRules = await GetRulesRaw(chatId, principalId, cancellationToken).ConfigureAwait(false);
 
-        // Group chat or Root place chat
-        return await GetRulesRaw(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        if (chatRules.Permissions != default) {
+            var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (chat == null)
+                return AuthorRules.None(chatId);
+
+            if (chat.IsArchived) {
+                if (!chatRules.IsOwner())
+                    return AuthorRules.None(chatId);
+
+                var permissionsToExclude = ChatPermissions.Write
+                    | ChatPermissions.Join
+                    | ChatPermissions.Invite
+                    | ChatPermissions.EditMembers;
+                return chatRules with {
+                    Permissions = chatRules.Permissions & ~permissionsToExclude // Do not allow to write/join on archived chat
+                };
+            }
+        }
+        return chatRules;
     }
 
     // [ComputeMethod]
@@ -341,6 +382,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return ChatId.None;
     }
 
+    //[ComputeMethod]
+    public virtual async Task<ReadPositionsStatBackend?> GetReadPositionsStat(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var dbReadPositionsStat = await DbReadPositionsStatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (dbReadPositionsStat == null)
+            return null;
+
+        return new ReadPositionsStatBackend(chatId, dbReadPositionsStat.StartTrackingEntryLid, dbReadPositionsStat.GetTopReadPositions());
+    }
+
     [ComputeMethod]
     protected virtual async Task<ApiArray<TextEntryAttachment>> GetEntryAttachments(TextEntryId entryId, CancellationToken cancellationToken)
     {
@@ -430,38 +481,25 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
-        var dbChats = await dbContext.Chats
-            .Where(x => x.Version >= minVersion
-                && x.Version <= maxVersion
-                && !Constants.Chat.SystemChatSids.Contains(x.Id))
+
+#pragma warning disable CA1309 // Use ordinal string comparison
+
+        var chatsQuery = lastId.IsNone
+            ? dbContext.Chats.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
+            : dbContext.Chats.Where(x => (x.Version > minVersion && x.Version <= maxVersion)
+                || (x.Version==minVersion && string.Compare(x.Id, lastId.Value) > 0));
+
+#pragma warning restore CA1309 // Use ordinal string comparison
+
+        return await chatsQuery
+            .Where(x => !Constants.Chat.SystemChatSids.Contains(x.Id))
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
             .Take(limit)
-            .ToListAsync(cancellationToken)
+            .AsAsyncEnumerable()
+            .Select(x => x.ToModel())
+            .ToApiArrayAsync(cancellationToken)
             .ConfigureAwait(false);
-        if (dbChats.Count == 0)
-            return ApiArray<Chat>.Empty;
-
-        var chats = dbChats.ConvertAll(x => x.ToModel());
-        if (lastId.IsNone)
-            // no chats created at minCreatedAt that we need to skip
-            return chats.ToApiArray();
-
-        var lastIdIndex = GetLastIndex();
-        return lastIdIndex < 0 ? chats.ToApiArray() : chats[(lastIdIndex + 1)..].ToApiArray();
-
-        int GetLastIndex()
-        {
-            for (int i = 0; i < chats.Count; i++) {
-                var chat = chats[i];
-                if (chat.Version > minVersion)
-                    return -1;
-
-                if (chat.Id == lastId)
-                    return i;
-            }
-            return -1;
-        }
     }
 
     // Not a [ComputeMethod]!
@@ -593,12 +631,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     else
                         chatId = new PlaceChatId(placeId, Generate.Option);
                 }
-                else
+                else if (!chatId.IsPlaceRootChat)
                     throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
                 update.ValidateForPlaceChat();
             }
             else if (chatKind != ChatKind.Peer)
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid Change.Kind.");
+
+            if (update.IsArchived.HasValue)
+                throw new ArgumentOutOfRangeException(nameof(command), "Invalid Change.IsArchived.");
 
             chat = new Chat(chatId) {
                 CreatedAt = Clocks.SystemClock.Now,
@@ -606,7 +647,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             chat = ApplyDiff(chat, update);
             dbChat = new DbChat(chat);
             if (!dbChat.SystemTag.IsNullOrEmpty()
-                && !OrdinalEquals(dbChat.SystemTag, Constants.Chat.SystemTags.Welcome)) {
+                && Constants.Chat.SystemTags.Rules.MustBeUniquePerUser(dbChat.SystemTag)) {
                 // Only group chats can have system tags
                 ownerId.Require("Command.OwnerId");
                 // Chats with system tags should be unique per user except Welcome chat.
@@ -644,7 +685,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     new AuthorDiff {
                         IsAnonymous = chat.AllowAnonymousAuthors
                     });
-                var author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+                var author = await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
 
                 if (chat.HasSingleAuthor) {
                     var createCustomRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
@@ -867,6 +908,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         change.RequireValid();
         ChatEntry entry;
+        ChatEntry? oldEntry;
         var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using (var __ = dbContext.ConfigureAwait(false)) {
             var dbEntry = chatEntryId.IsNone
@@ -875,7 +917,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     // ReSharper disable once AccessToModifiedClosure
                     .FirstOrDefaultAsync(c => c.Id == chatEntryId, cancellationToken)
                     .ConfigureAwait(false);
-            var oldEntry = dbEntry?.ToModel();
+            oldEntry = dbEntry?.ToModel();
 
             if (chatId.IsPeerChat(out var peerChatId))
                 _ = await EnsureExists(peerChatId, cancellationToken).ConfigureAwait(false);
@@ -943,12 +985,22 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (changeKind == ChangeKind.Create)
             Metrics.MessageCount.Add(1);
 
+        if (change.IsCreate(out var create) && create.Attachments is { Count: > 0 } attachments) {
+            var createAttachmentsCmd = new ChatsBackend_CreateAttachments(attachments.Select((x, i) => new TextEntryAttachment {
+                    EntryId = chatEntryId.ToTextEntryId(),
+                    Index = i,
+                    MediaId = x.MediaId,
+                    ThumbnailMediaId = x.ThumbnailMediaId,
+                })
+                .ToApiArray());
+            var createdAttachments = await Commander.Call(createAttachmentsCmd, cancellationToken).ConfigureAwait(false);
+            entry = entry with { Attachments = createdAttachments };
+        }
+
         // Let's enqueue the TextEntryChangedEvent
         var authorId = entry.AuthorId;
         var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
-
-        // Raise events
-        context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind));
+        context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind, oldEntry));
         return entry;
 
         ChatEntry ApplyDiff(ChatEntry originalEntry, ChatEntryDiff? diff, bool isUpdate)
@@ -1045,7 +1097,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var dbAttachments = new List<DbTextEntryAttachment>();
         foreach (var attachment in attachments) {
-
             var dbChatEntry = await dbContext.ChatEntries.Get(entryId, cancellationToken)
                 .Require()
                 .ConfigureAwait(false);
@@ -1312,6 +1363,87 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return chatCopyState;
     }
 
+    public virtual async Task OnUpdateReadPositionsStat(
+        ChatsBackend_UpdateReadPositionsStat command,
+        CancellationToken cancellationToken)
+    {
+        var chatId = command.ChatId;
+        var context = CommandContext.GetCurrent();
+
+        if (Invalidation.IsActive) {
+            if (context.Operation.Items.GetOrDefault<bool>())
+                _ = GetReadPositionsStat(chatId, default);
+            return;
+        }
+
+        var userId = command.UserId;
+        var positionId = command.PositionId;
+
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+        var dbReadPositionsStat = await dbContext.ReadPositionsStats.ForUpdate()
+            .FirstOrDefaultAsync(c => c.ChatId == chatId, cancellationToken)
+            .ConfigureAwait(false);
+
+        var hasChanges = false;
+        if (dbReadPositionsStat != null) {
+            if (dbReadPositionsStat.StartTrackingEntryLid <= positionId) {
+                var items = dbReadPositionsStat.GetTopReadPositions().ToList();
+                if (items.Count == 0) {
+                    items.Add(new UserReadPosition(userId, positionId));
+                    hasChanges = true;
+                }
+                else {
+                    if (items.Count == 1 || items[^1].EntryLid < positionId) {
+                        var index = items.FindIndex(c => c.UserId == userId);
+                        if (index >= 0) {
+                            if (items[index].EntryLid < positionId) {
+                                items[index] = new UserReadPosition(userId, positionId);
+                                hasChanges = true;
+                            }
+                        }
+                        else {
+                            items.Add(new UserReadPosition(userId, positionId));
+                            hasChanges = true;
+                        }
+                    }
+                }
+                if (hasChanges) {
+                    items = items
+                        .OrderByDescending(c => c.EntryLid)
+                        .ThenBy(c => c.UserId)
+                        .Take(2)
+                        .ToList();
+                    var top1 = items[0];
+                    var top2 = items.Count > 1 ? items[1] : new UserReadPosition(UserId.None, 0);
+                    dbReadPositionsStat.Version = VersionGenerator.NextVersion(dbReadPositionsStat.Version);
+                    dbReadPositionsStat.Top1UserId = top1.UserId;
+                    dbReadPositionsStat.Top1EntryLid = top1.EntryLid;
+                    dbReadPositionsStat.Top2UserId = top2.UserId;
+                    dbReadPositionsStat.Top2EntryLid = top2.EntryLid;
+                }
+            }
+        }
+        else {
+            var idRange = await GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
+            var lastEntryId = idRange.End - 1; // Start tracking positions stat since this entry
+            var shouldTrackPosition = positionId >= lastEntryId;
+            dbContext.Add(new DbReadPositionsStat {
+                ChatId = chatId,
+                Version = VersionGenerator.NextVersion(),
+                StartTrackingEntryLid = lastEntryId,
+                Top1UserId = shouldTrackPosition ? userId : "",
+                Top1EntryLid = shouldTrackPosition ? positionId : 0
+            });
+            hasChanges = true;
+        }
+
+        if (hasChanges) {
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            context.Operation.Items.Set(true);
+        }
+    }
+
     // Event handlers
 
     [EventHandler]
@@ -1414,6 +1546,31 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             }));
 
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    [EventHandler]
+    public virtual async Task OnPlaceRemoved(PlaceChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var (place, oldPlace, kind) = eventCommand;
+        if (kind != ChangeKind.Remove)
+            return;
+
+        var placeId = oldPlace.Require().Id;
+        var chatIds = await ListPlaceChatIds(placeId, cancellationToken).ConfigureAwait(false);
+        foreach (var chatId in chatIds) {
+            var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (chat != null && OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag)) {
+                var resetChatTagCommand = new ChatsBackend_Change(chatId, null, new Change<ChatDiff> {
+                    Update = new ChatDiff { SystemTag = Symbol.Empty }
+                });
+                await Commander.Call(resetChatTagCommand, false, cancellationToken).ConfigureAwait(false);
+            }
+            var deleteChatCommand = new ChatsBackend_Change(chatId, null, new Change<ChatDiff> { Remove = true });
+            await Commander.Call(deleteChatCommand, false, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     // Protected methods
@@ -1547,32 +1704,42 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (chat == null)
             return AuthorRules.None(chatId);
 
+        var place = await PlacesBackend.Get(placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+        if (place == null)
+            return AuthorRules.None(chatId);
+
         var rootChatId = placeChatId.PlaceId.ToRootChatId();
-        if (!principalId.IsUser(out var userId) && principalId.IsAuthor(out var authorId)) {
-            var rootAuthorId = new AuthorId(rootChatId, authorId.LocalId, AssumeValid.Option);
-            var rootAuthor = await AuthorsBackend.Get(rootChatId, rootAuthorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
-            userId = rootAuthor?.UserId ?? default;
+        PrincipalId rootChatPrincipalId;
+        if (principalId.IsUser(out _))
+            rootChatPrincipalId = principalId;
+        else if (principalId.IsAuthor(out var pAuthorId))
+            rootChatPrincipalId = new PrincipalId(new AuthorId(rootChatId, pAuthorId.LocalId, AssumeValid.Option), AssumeValid.Option);
+        else
+            throw StandardError.Internal("Can't remap principal id for root chat");
+
+        var rootChatRules = await GetRules(rootChatId, rootChatPrincipalId, cancellationToken).ConfigureAwait(false);
+        if (!rootChatRules.CanRead())
+            return AuthorRules.None(chatId);
+
+        var account = rootChatRules.Account;
+        if (account.IsNone)
+            return AuthorRules.None(chatId);
+
+        var isPlaceMember = rootChatRules.Author is { HasLeft: false };
+        var directRules = await GetRulesRaw(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        if (!isPlaceMember) {
+            if (chat.IsPublic && directRules.CanRead())
+                return new AuthorRules(chat.Id, directRules.Author, account, ChatPermissions.Read);
+            return AuthorRules.None(chatId);
         }
 
-        if (userId.IsNone)
-            return AuthorRules.None(chatId);
-
-        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        if (account == null)
-            return AuthorRules.None(chatId);
-
-        var rootChatPrincipalId = new PrincipalId(account.Id, AssumeValid.Option);
-        var rootChatRules = await GetRules(rootChatId, rootChatPrincipalId, cancellationToken).ConfigureAwait(false);
         if (chat.IsPublic) {
             var author = await AuthorsBackend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
             var permissions = rootChatRules.Permissions & ~ChatPermissions.Leave; // Do not allow to leave public chat on a place
             return new AuthorRules(chat.Id, author, account, permissions);
         }
 
-        if (!rootChatRules.CanRead())
-            return AuthorRules.None(chatId);
-
-        return await GetRulesRaw(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        return directRules;
     }
 
     // Private / internal methods

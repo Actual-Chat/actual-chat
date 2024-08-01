@@ -10,7 +10,9 @@ public interface IContactsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ApiArray<ContactId>> ListIdsForEntrySearch(UserId userId, CancellationToken cancellationToken);
     [ComputeMethod]
-    public Task<ApiArray<ContactId>> ListIdsForContactSearch(UserId userId, CancellationToken cancellationToken);
+    public Task<ApiArray<ContactId>> ListIdsForGroupContactSearch(UserId userId, PlaceId? placeId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    public Task<ApiArray<ContactId>> ListIdsForUserContactSearch(UserId userId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<ContactId>> ListIds(UserId ownerId, PlaceId placeId, CancellationToken cancellationToken);
     [ComputeMethod]

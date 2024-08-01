@@ -26,7 +26,7 @@ public static partial class Constants
         public static readonly bool MarkupParser = false;
         public static readonly bool ServerFusionMonitor = false; // Applies only to dev server
         public static readonly bool DisableStaticFileCaching = false; // Applies only to dev server
-        public static readonly bool RemoteComputedCache = true;
+        public static readonly bool RemoteComputedCache = false;
         public static readonly bool MeshLocks = false;
         public static readonly bool ShardWorker = false;
         public static readonly bool QueueProcessor = false;
@@ -55,6 +55,9 @@ public static partial class Constants
         public static readonly bool TranscriberAny = false;
         public static readonly bool TranscriberGoogle = false;
         public static readonly bool TranscriptStreamProxy = false;
+
+        // Search
+        public static readonly bool OpenSearchRequest = false;
 
         // Database
         public static readonly bool Npgsql = false;

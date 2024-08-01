@@ -24,4 +24,8 @@
     <None Update="testsettings*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="TestImages/*"/>
+  </ItemGroup>
+
 </Project>

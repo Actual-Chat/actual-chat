@@ -1,0 +1,116 @@
+@using ActualChat.Contacts
+@using ActualChat.Media
+@using ActualChat.Chat.UI.Blazor.Events
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<LeftPanelPlaceContentHeader.Model>
+@{
+    var m = State.Value;
+    if (m.Place == null)
+        return;
+}
+
+<OnUIEvent TEvent="@SelectedChatChangedEvent" Handler="@OnSelectedChatChangedEvent" />
+<div class="left-panel-content-header place">
+    <div class="c-content">
+        <ChatSearchBox
+            @ref="_searchBoxRef"
+            IsCollapsed="true"
+            ShowClose="true"
+            Placeholder="Search"
+            ShowSpinner="true"
+            MaxLength="@Constants.Chat.MaxSearchFilterLength"
+            TextChanged="@OnSearchBoxTextChanged"/>
+        <div class="c-icon">
+            @if (m.Place.Background != null) {
+                <Pic
+                    Title="@m.Place.Title"
+                    Picture="@m.Place.Background.ToPicture()"
+                    Size="@SquareSize.SizeFull"
+                    IsSquare="@true"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@m.Place.Id.Value"/>
+            } else {
+                <Pic
+                    Title="@m.Place.Title"
+                    Picture="@m.Place.Picture.ToPicture()"
+                    Size="@SquareSize.SizeFull"
+                    IsSquare="@true"
+                    IsBlurred="@true"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@m.Place.Id.Value"/>
+            }
+        </div>
+    </div>
+    @if (m.IsMember || m.Place.IsPublic) {
+        <div class="c-info">
+        @if (ReferenceEquals(m, Model.Loading)) {
+            <place-menu-button-skeleton/>
+        } else {
+            <PlaceMenuButton PlaceId="@m.Place.Id"/>
+            @if (m.IsMember) {
+                <div class="c-right">
+                    <ButtonRound Class="place-plus-btn btn-sm btn-transparent unhovered"
+                                 data-menu="@(MenuRef.New<LeftPanelPlaceMenu>(m.Place.Id).ToString())"
+                                 data-menu-trigger="@MenuTrigger.Primary"
+                                 data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
+                        <i class="icon-more-vertical text-2xl"></i>
+                    </ButtonRound>
+                </div>
+            }
+        }
+    </div>
+    }
+</div>
+
+@code {
+    private ChatSearchBox? _searchBoxRef = null;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
+
+    private NavbarUI NavbarUI => Hub.NavbarUI;
+    private SearchUI SearchUI => Hub.SearchUI;
+    private IContacts Contacts => Hub.Contacts;
+    private Session Session => Hub.Session();
+
+    [Parameter, EditorRequired] public Place Place { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Loading,
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var place = Place;
+        var placeId = Place.Id;
+
+        var places = await Contacts.ListPlaceIds(Session, default).ConfigureAwait(false);
+        var isMember = places.Contains(placeId);
+
+        return new() {
+            Place = place,
+            IsMember = isMember,
+        };
+    }
+
+    private void OnSearchBoxTextChanged(string text)
+        => SearchUI.Text.Value = text;
+
+    private async Task OnSelectedChatChangedEvent(SelectedChatChangedEvent @event, CancellationToken cancellationToken) {
+        if (_searchBoxRef != null)
+            await _searchBoxRef.Cancel();
+        if (!string.IsNullOrEmpty(SearchUI.Text.Value))
+            SearchUI.Text.Value = string.Empty;
+        State.Invalidate();
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model Loading = new();
+
+        public Place? Place { get; init; }
+        public bool IsMember { get; init; }
+    }
+}

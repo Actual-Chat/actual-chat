@@ -4,18 +4,17 @@ namespace ActualChat.Search;
 
 [StructLayout(LayoutKind.Auto)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public readonly partial record struct SearchMatch(
+public partial record  SearchMatch(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] string Text,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] double Rank,
     SearchMatchPart[] Parts)
 {
     public static readonly SearchMatch Empty = New("");
-
     private readonly SearchMatchPart[]? _parts = Parts;
 
     [DataMember(Order = 2), MemoryPackOrder(2)]
     public SearchMatchPart[] Parts {
-        get => _parts ?? Array.Empty<SearchMatchPart>();
+        get => _parts ?? [];
         init => _parts = value;
     }
 
@@ -35,8 +34,11 @@ public readonly partial record struct SearchMatch(
         }
     }
 
+    [IgnoreDataMember, MemoryPackIgnore]
+    public bool IsEmpty => this == Empty;
+
     public static SearchMatch New(string? text)
-        => new(text ?? "", 0, Array.Empty<SearchMatchPart>());
+        => new(text ?? "", 0, []);
 
     public override string ToString()
     {

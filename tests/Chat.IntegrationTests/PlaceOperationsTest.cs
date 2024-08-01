@@ -776,6 +776,56 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         }
     }
 
+    [Fact]
+    public async Task UserShouldBeAbleToRejoinPlacePrivateChatOnlyAfterRejoingPlace()
+    {
+        var appHost = AppHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var session1 = tester.Session;
+        await tester.SignInAsBob();
+
+        var commander1 = tester.Commander;
+        var chats = tester.ScopedAppServices.GetRequiredService<IChats>();
+        var invites = tester.ScopedAppServices.GetRequiredService<IInvites>();
+
+        var place = await CreatePlace(commander1, session1, true);
+        var chat = await CreateChat(commander1, session1, place.Id, false);
+        var invite = await invites.GetOrGenerateChatInvite(session1, chat.Id, default).Require();
+
+        await using var tester2 = appHost.NewBlazorTester(Out);
+        var session2 = tester2.Session;
+        await tester2.SignInAsAlice();
+        var commander2 = tester2.Commander;
+        var accounts2 = tester2.ScopedAppServices.GetRequiredService<IAccounts>();
+        var user2 = await accounts2.GetOwn(session2, default);
+
+        await commander1.Call(new Places_Invite(session1, place.Id, [user2.Id]));
+        var placeFromUser2Perspective = await tester2.Places.Get(session2, place.Id, default).Require();
+        var user2PlaceMember = placeFromUser2Perspective.Rules.Author.Require();
+
+        var placeMembers = await tester.Places.ListAuthorIds(session1, place.Id, default);
+        placeMembers.Should().HaveCount(2).And.Contain(user2PlaceMember.Id);
+
+        await tester2.JoinChat(chat.Id, invite.Id);
+
+        await commander2.Call(new Places_Leave(session2, place.Id));
+
+        var chatRules = await chats.GetRules(session2, chat.Id, default);
+
+        var canJoin = chatRules.CanJoin();
+        canJoin.Should().BeFalse();
+
+        await commander1.Call(new Places_Invite(session1, place.Id, [user2.Id]));
+
+        await commander2.Call(new Invites_Use(session2, invite.Id), true);
+
+        await ComputedTest.When(async ct => {
+            chatRules = await chats.GetRules(session2, chat.Id, ct);
+            canJoin = chatRules.CanJoin();
+            canJoin.Should().BeTrue();
+        });
+    }
+
     private static async Task<(Place, Chat)> CreatePlaceWithDefaultChat(
         ICommander commander,
         Session session,

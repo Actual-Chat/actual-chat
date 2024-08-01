@@ -91,7 +91,7 @@
     @apply flex-x;
     @apply text-caption-6 text-03;
 }
-.right-chat-panel > .c-header > .c-bottom > .c-bio {
+.right-chat-panel > .c-header > .c-bottom > .c-chat-description {
     @apply w-full max-h-16;
     @apply text-caption-6 text-03;
 }
@@ -99,7 +99,7 @@
     @apply px-1;
 }
 .right-chat-panel > .c-header > .c-center {
-    @apply absolute top-17 z-20;
+    @apply absolute top-18 z-20;
     @apply flex-x;
     @apply h-16 w-full;
     @apply px-4;
@@ -125,12 +125,13 @@
 }
 .right-chat-panel .tab-panel .tab {
     @apply h-full;
-    @apply overflow-y-auto custom-scrollbar;
+    @apply overflow-hidden;
 }
 .tab-panel > .tab > .author-list-tab {
     @apply flex-y;
     @apply h-full;
     @apply p-2;
+    @apply overflow-y-auto custom-scrollbar;
 }
 .author-list-tab .avatar-badge {
     @apply h-12;

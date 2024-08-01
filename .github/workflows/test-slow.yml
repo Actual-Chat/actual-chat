@@ -181,7 +181,7 @@ jobs:
           ./run-build.cmd slow-tests --configuration Debug
 
       - name: Report slow test results
-        uses: phoenix-actions/test-reporting@v13
+        uses: phoenix-actions/test-reporting@v15
         if: success() || failure()    # run this step even if previous step failed
         with:
           name: Slow tests results     # Name of the check run which will be created

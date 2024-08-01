@@ -1,6 +1,7 @@
 /* List */
 .contact-selector-list {
     @apply flex-y grow;
+    @apply px-2;
     @apply overflow-y-auto custom-scrollbar;
 }
 
@@ -19,38 +20,51 @@
 
 /* List item badges */
 .contact-selector-badges {
-    @apply flex-x flex-wrap;
-    @apply gap-x-2;
+    @apply flex-none flex-x flex-wrap;
+    @apply gap-1;
+    @apply max-h-40 md:max-h-32;
+    @apply mx-4 px-0.5;
+    @apply overflow-y-auto custom-scrollbar;
+    @apply border-separator;
+    @apply bg-modal;
 }
-.contact-selector-badges-contact {
-    @apply flex-none flex-x items-center;
-    @apply my-0.5 bg-03;
-    @apply rounded-full;
+.contact-selector-badges:has(.c-contact) {
+    @apply pt-2;
+    @apply border-t;
 }
-.contact-selector-badges-contact,
-.contact-selector-badges-contact * {
+.contact-selector-badges > .c-contact {
+    @apply relative;
+    @apply flex-1 flex-x items-center;
+    @apply min-w-28 max-w-1/2;
+    @apply px-0.5;
+    @apply rounded-full border border-separator;
+    @apply overflow-hidden;
+    @apply bg-01;
+}
+.contact-selector-badges > .c-contact,
+.contact-selector-badges > .c-contact * {
     @apply cursor-pointer;
 }
-.contact-selector-badges-remove-contact-icon {
-    @apply hidden items-center;
-    @apply rounded-full;
-    @apply w-6 h-6;
-    @apply bg-transparent;
+.contact-selector-badges > .c-contact > .c-remove {
+    @apply absolute inset-0 z-10;
+    @apply hidden items-center justify-start gap-x-2;
+    @apply px-2;
+    @apply bg-danger;
+    @apply text-white;
 }
-.contact-selector-badges-remove-contact-icon > i {
-    @apply text-04 text-2xl pl-1;
+.contact-selector-badges > .c-contact > .c-remove > i {
+    @apply text-base leading-4;
 }
-.contact-selector-badges-title {
-    @apply px-1 max-w-36 truncate;
+.contact-selector-badges > .c-contact > .c-remove > .c-text {
+    @apply text-caption-1;
 }
-body.hoverable .contact-selector-badges-contact:hover {
-    @apply bg-danger text-04;
+.contact-selector-badges > .c-contact > .c-name {
+    @apply px-1;
+    @apply truncate;
+    @apply text-caption-1;
 }
-body.hoverable .contact-selector-badges-contact:hover .contact-selector-badges-remove-contact-icon {
+body.hoverable .contact-selector-badges > .c-contact:hover .c-remove {
     @apply flex;
-}
-body.hoverable .contact-selector-badges-contact:hover .avatar-circle {
-    @apply hidden;
 }
 
 /* Place picker */

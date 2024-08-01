@@ -6,12 +6,13 @@ export interface VirtualListRenderState {
 
     query: VirtualListDataQuery;
     keyRange: Range<string>;
-    spacerSize: number;
-    endSpacerSize: number;
-    requestedStartExpansion?: number;
-    requestedEndExpansion?: number;
-    startExpansion: number;
-    endExpansion: number;
+    beforeCount: number | null;
+    afterCount: number | null;
+    count: number;
+    // requestedStartExpansion?: number;
+    // requestedEndExpansion?: number;
+    // startExpansion: number;
+    // endExpansion: number;
     hasVeryFirstItem: boolean;
     hasVeryLastItem: boolean;
 

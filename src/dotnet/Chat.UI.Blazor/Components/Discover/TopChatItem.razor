@@ -1,0 +1,32 @@
+<div class="top-chat-item">
+    <div class="c-avatar @AvatarColor"></div>
+    <div class="c-info">
+        <div class="c-title">
+            @Title
+        </div>
+        <div class="c-description">
+            <span>
+                @Description
+            </span>
+        </div>
+        <div class="c-bottom">
+            <div class="online-counter">
+                <span class="c-circle"></span>
+                <span class="c-text">
+                    @OnlineCount
+                </span>
+            </div>
+            <div class="members-counter">
+                @MembersCount members
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string AvatarColor { get; set; } = "bg-[var(--magenta-80)]";
+    [Parameter] public string Title { get; set; } = "Actual Chat";
+    [Parameter] public string Description { get; set; } = "A passionate gamer who spends";
+    [Parameter] public int OnlineCount { get; set; } = 24;
+    [Parameter] public int MembersCount { get; set; } = 248;
+}

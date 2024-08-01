@@ -1,0 +1,249 @@
+.discover-layout {
+    @apply flex-1 flex-y;
+}
+.discover-layout .layout-body {
+    scrollbar-width: none;
+}
+
+/* Header */
+.discover-header {
+    @apply ordinary-header;
+    @apply px-4;
+    @apply text-01 text-headline-7;
+    @apply border-b border-separator;
+}
+.discover-header .c-title {
+    @apply flex-1;
+}
+.discover-header .c-ending {
+    @apply flex-none flex-x items-center gap-x-2;
+    @apply text-03;
+}
+
+/* Footer */
+.discover-footer {
+    @apply flex-x items-center;
+    @apply h-16;
+    @apply px-4;
+    @apply bg-02;
+}
+/* Left Panel */
+.discover-left {
+    @apply flex-x;
+}
+.discover-left .c-wide {
+    @apply flex-y;
+    @apply w-80;
+    @apply px-4;
+    @apply bg-03;
+}
+.discover-left .c-wide > .c-header {
+    @apply ordinary-header;
+    @apply px-0;
+}
+.discover-left .c-wide > .c-header > span {
+    @apply text-headline-7;
+}
+.discover-left .c-wide > .c-header .discover-search .search-icon {
+    @apply hidden;
+}
+.discover-left .c-wide > .c-header .discover-search input {
+    @apply pl-4;
+}
+.discover-left .c-wide > .c-content {
+    @apply flex-y gap-y-2;
+    @apply py-2;
+    @apply overflow-auto;
+    scrollbar-width: none;
+}
+.discover-left .c-wide .creation-buttons {
+    @apply flex-x gap-x-2 justify-between;
+}
+.creation-btn {
+    @apply flex;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+    @apply bg-01;
+    @apply text-primary text-caption-3;
+    @apply cursor-pointer;
+}
+.creation-btn > .c-content {
+    @apply flex-y items-center;
+    @apply py-2 px-3;
+}
+.btn.start-tour-btn {
+    @apply bg-[var(--blue-70)];
+}
+
+.discover-left .c-wide .c-navbar {
+    @apply flex-y;
+}
+.discover-left .c-wide .navbar-item .navbar-item-content {
+    @apply items-center gap-x-4;
+}
+.discover-left .c-wide .navbar-item .c-title {
+    @apply text-headline-1;
+}
+.discover-left .c-wide .navbar-item i,
+.discover-left .c-wide .navbar-item .c-title i {
+    @apply text-03;
+}
+
+.top-container,
+.top-container > .c-content {
+    @apply flex-y gap-y-2;
+}
+
+/* Center */
+.discover-center {
+    @apply flex-y;
+    @apply w-full;
+}
+.discover-center .message-content {
+    @apply flex-none;
+}
+.discover-center .c-circle {
+    @apply w-9 h-9;
+    @apply rounded-full;
+    @apply overflow-hidden;
+    @apply bg-[var(--orange-80)];
+}
+.discover-center .message-info {
+    @apply flex-1 flex-x gap-x-2;
+}
+.discover-center .message-info > .c-reactions {
+    @apply flex-1 flex-x gap-x-2;
+}
+.discover-center .c-reaction {
+    @apply flex-x items-center gap-x-2;
+    @apply h-6;
+    @apply px-2;
+    @apply rounded-full border border-primary;
+}
+.discover-center .c-reaction img {
+    @apply w-4;
+}
+.discover-center .c-reaction i,
+.discover-center .c-views i {
+    @apply text-03;
+}
+.discover-center .reaction-text {
+    @apply text-caption-1 text-01;
+}
+.discover-center .message-info > .c-views {
+    @apply flex-none flex-x items-center gap-x-2;
+}
+.discover-center .separator {
+    @apply h-px;
+    @apply bg-separator;
+}
+
+/* Right Panel */
+.discover-right {
+    @apply flex-y;
+    @apply w-90;
+    @apply p-4;
+    @apply bg-03;
+}
+.welcome-message {
+    @apply flex-y gap-y-2;
+    @apply p-4;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+    @apply bg-01;
+    @apply text-text-1 text-01;
+}
+.welcome-message > .c-title {
+    @apply text-headline-1;
+}
+.welcome-message .c-chat-link {
+    @apply text-primary;
+    @apply cursor-pointer;
+}
+
+/* Top Container */
+.top-container .c-header {
+    @apply flex-x items-center;
+    @apply p-0;
+}
+.top-container .c-header .c-title {
+    @apply flex-1 flex items-center;
+    @apply text-01 text-headline-1;
+}
+.show-more-btn.btn {
+    @apply px-0;
+}
+
+/* Chat Item & Place Item */
+.top-chat-item {
+    @apply flex-x items-center gap-x-4;
+    @apply px-3 py-2;
+    @apply rounded-xl;
+    @apply bg-01;
+    @apply cursor-pointer;
+}
+.top-chat-item > .c-avatar {
+    @apply w-10 h-10;
+    @apply rounded-full;
+}
+.top-chat-item > .c-info {
+    @apply flex-1 flex-y gap-y-1;
+}
+.top-chat-item > .c-info > .c-title,
+.top-place-item > .c-info > .c-title {
+    @apply text-headline-1 text-01;
+}
+.top-chat-item > .c-info > .c-description,
+.top-place-item > .c-info > .c-description {
+    @apply flex-1;
+}
+.top-chat-item > .c-info > .c-description span {
+    @apply line-clamp-1;
+    @apply text-01 text-caption-6;
+}
+.top-chat-item > .c-info > .c-bottom,
+.top-place-item > .c-info > .c-bottom {
+    @apply flex-none flex-x items-center;
+}
+.top-chat-item > .c-info > .c-bottom > .online-counter,
+.top-place-item > .c-info > .c-bottom > .online-counter {
+    @apply flex-1 flex-x items-center gap-x-1;
+}
+.top-chat-item > .c-info > .c-bottom > .online-counter > .c-circle,
+.top-place-item > .c-info > .c-bottom > .online-counter > .c-circle {
+    @apply flex-none;
+    @apply w-2 h-2;
+    @apply rounded-full;
+    @apply bg-online;
+}
+.top-chat-item > .c-info > .c-bottom > .online-counter > .c-text,
+.top-place-item > .c-info > .c-bottom > .online-counter > .c-text {
+    @apply text-caption-6 text-03;
+}
+.top-chat-item > .c-info > .c-bottom > .members-counter,
+.top-place-item > .c-info > .c-bottom > .members-counter {
+    @apply flex-none flex-x items-center gap-x-1;
+    @apply text-caption-6 text-03;
+}
+
+.top-place-item {
+    @apply flex-x items-center;
+    @apply h-26;
+    @apply overflow-hidden;
+    @apply rounded-xl;
+    @apply bg-01;
+    @apply cursor-pointer;
+}
+.top-place-item > .c-avatar {
+    @apply flex-none;
+    @apply h-26 w-26;
+}
+.top-place-item > .c-info {
+    @apply flex-1 flex-y gap-y-1;
+    @apply h-full;
+    @apply p-4;
+}
+.top-place-item > .c-info > .c-description span {
+    @apply line-clamp-2;
+    @apply text-01 text-caption-6;
+}

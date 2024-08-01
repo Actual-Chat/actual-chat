@@ -41,6 +41,9 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
     [Parameter] public int SkeletonCount { get; set; } = 10;
     [Parameter] public double SpacerSize { get; set; } = 200;
+    [Parameter] public VirtualListEdge DefaultEdge { get; set; }
+    [Parameter] public double ExpandTriggerMultiplier { get; set; } = 1;
+    [Parameter] public double ExpandMultiplier { get; set; } = 1.5;
     [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.Ordinal;
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
     // trigger StateHasChanged on parent component.
@@ -84,6 +87,16 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         BlazorRef = null!;
     }
 
+    public async ValueTask Reset()
+    {
+        RenderIndex = 0;
+        Query = VirtualListDataQuery.None;
+        LastData = Data;
+        LastReportedItemVisibility = VirtualListItemVisibility.Empty;
+        StateHasChanged();
+        await JSRef.InvokeVoidAsync("reset");
+    }
+
     protected override bool ShouldRender()
         => !ReferenceEquals(Data, LastData) // Data changed
             || RenderIndex == 0 // OR very first sync render without data loaded
@@ -96,7 +109,15 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(VirtualList.JSCreateMethod, Ref, BlazorRef, Identity);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(VirtualList.JSCreateMethod,
+                Ref,
+                BlazorRef,
+                Identity,
+                DefaultEdge,
+                SpacerSize,
+                ExpandTriggerMultiplier,
+                ExpandMultiplier
+                );
         }
     }
 
@@ -111,13 +132,14 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {
         var query = Query;
-        var lastData = LastData;
+        // Use None after reset() call
+        var lastData = LastData.Index >= RenderIndex ? VirtualListData<TItem>.None : LastData;
         VirtualListData<TItem> data;
         var computed = Computed.GetCurrent();
         try {
-            data = await DataSource.GetData(State, query, lastData, cancellationToken).ConfigureAwait(false);
+            data = await DataSource.GetData(query, lastData, cancellationToken).ConfigureAwait(false);
             if (ComputedImpl.GetDependencies(computed).Any(d => d.IsInvalidated()))
-                return lastData; // current computed is already invalidated - so it will be recalculated shortly
+                return lastData; // Current computed is already invalidated, so no reason to waste our time re-rendering right now
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "DataSource.Invoke(query) failed on query = {Query}", query);

@@ -1,3 +1,4 @@
+using System.Text;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
@@ -7,6 +8,7 @@ using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.IntegrationTests.Collections;
 using ActualChat.Testing.Host;
 using OpenSearch.Client;
+using OpenSearch.Net;
 using AppHostFixture = ActualChat.MLSearch.IntegrationTests.Collections.AppHostFixture;
 
 namespace ActualChat.MLSearch.IntegrationTests.OpenSearch;
@@ -24,6 +26,8 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
         var deleteByQueryResponse = await client.DeleteByQueryAsync<object>(d => d
             .Index(IndexNames.MLTestIndexPattern)
+            .Refresh(true)
+            .WaitForCompletion(true)
             .Query(query => query.Script(
                 scriptQuery => scriptQuery.Script(
                     script => script.Source("true")
@@ -38,6 +42,7 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
     {
         var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
         var chatId1 = new ChatId(Generate.Option);
+        var chatInfo1 = new ChatInfo(chatId1, true, false);
         var entryIds1 = Enumerable.Range(1, 5)
             .Select(id => new ChatEntryId(chatId1, ChatEntryKind.Text, id, AssumeValid.Option))
             .ToArray();
@@ -49,6 +54,7 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
             "In Barcelona, a migrant squatter was asked to leave by the property owner. He refused and threatened the home owner with a hammer.",
         };
         var chatId2 = new ChatId(Generate.Option);
+        var chatInfo2 = new ChatInfo(chatId2, true, false);
         var entryIds2 = Enumerable.Range(1, 5)
             .Select(id => new ChatEntryId(chatId2, ChatEntryKind.Text, id, AssumeValid.Option))
             .ToArray();
@@ -68,7 +74,6 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
                     [authorId],
                     [new ChatSliceEntry(id, 1, 1)], null, null,
                     [], [], [], [],
-                    false,
                     "en-US",
                     DateTime.Now.AddDays(-(i/2))
                 );
@@ -76,6 +81,9 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
             });
 
         // Ingest documents to the index
+        var chatInfoSink = AppHost.Services.GetRequiredService<ISink<ChatInfo, string>>();
+        await chatInfoSink.ExecuteAsync([chatInfo1, chatInfo2], null);
+
         var documentSink = AppHost.Services.GetRequiredService<ISink<ChatSlice, string>>();
         await documentSink.ExecuteAsync(documents.ToArray(), null);
 
@@ -96,22 +104,24 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         var searchEngine = AppHost.Services.GetRequiredService<ISearchEngine<ChatSlice>>();
 
         var query1 = new SearchQuery() {
-            Keywords = ["command"],
-            FreeTextFilter = "Tools for mobile development",
+            Filters = [
+                new KeywordFilter<ChatSlice>(["command"]),
+                new SemanticFilter<ChatSlice>("Tools for mobile development"),
+            ],
         };
         var queryResult1 = await searchEngine.Find(query1, CancellationToken.None);
         Assert.True(queryResult1.Documents.Count > 0);
 
         var namingPolicy = AppHost.Services.GetRequiredService<OpenSearchNamingPolicy>();
         var metadataField = namingPolicy.ConvertName(nameof(ChatSlice.Metadata));
-        var timestampField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Timestamp));
+        var timestampField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ContentTimestamp));
         var chatIdField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ChatId));
         var dateBound = DateTime.Now.AddDays(-3);
         var query2 = new SearchQuery() {
-            MetadataFilters = [
+            Filters = [
                 new DateRangeFilter($"{metadataField}.{timestampField}", new RangeBound<DateTime>(dateBound, true), null),
+                new SemanticFilter<ChatSlice>("Search engines and technologies"),
             ],
-            FreeTextFilter = "Search engines and technologies",
         };
 
         var queryResult2 = await searchEngine.Find(query2, CancellationToken.None);
@@ -119,11 +129,11 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         Assert.True(query2Count > 0);
 
         var query3 = new SearchQuery() {
-            MetadataFilters = [
+            Filters = [
                 new DateRangeFilter($"{metadataField}.{timestampField}", new RangeBound<DateTime>(dateBound, true), null),
                 new EqualityFilter<ChatId>($"{metadataField}.{chatIdField}", chatId1),
+                new SemanticFilter<ChatSlice>("Search engines and technologies"),
             ],
-            FreeTextFilter = "Search engines and technologies",
         };
         var queryResult3 = await searchEngine.Find(query3, CancellationToken.None);
         var query3Count = queryResult3.Documents.Count;
@@ -145,5 +155,68 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         Assert.NotNull(AppHost.Services.GetService<IChatContentIndexerFactory>());
 
         Assert.NotNull(AppHost.Services.GetService<IChatContentIndexWorker>());
+    }
+
+    [Fact]
+    public void ChatSliceSerializesAndDeserializesProperly()
+    {
+        var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
+
+        const int localEntryId = 111;
+        var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
+        var chatId = new ChatId(Generate.Option);
+        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, localEntryId, AssumeValid.Option);
+
+        var metadata = new ChatSliceMetadata(
+            [authorId],
+            [new ChatSliceEntry(chatEntryId, localEntryId, 1)], null, null,
+            [], [], [], [],
+            "en-US",
+            DateTime.Now
+        );
+        var text = "Serialize Me";
+        var document = new ChatSlice(metadata, text);
+
+        var serializer = client.SourceSerializer;
+        var jsonString = Serialize(document, serializer);
+        Assert.Contains(ChatInfoToChatSliceRelation.Name, jsonString, StringComparison.Ordinal);
+        Assert.Contains(ChatInfoToChatSliceRelation.ChatSliceName, jsonString, StringComparison.Ordinal);
+        Assert.Contains("_routing", jsonString, StringComparison.Ordinal);
+
+        var deserializedDocument = Deserialize<ChatSlice>(jsonString, serializer);
+        Assert.Equivalent(document, deserializedDocument);
+    }
+
+    [Fact]
+    public void ChatInfoSerializesAndDeserializesProperly()
+    {
+        var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
+
+        var chatId = new ChatId(Generate.Option);
+        var document = new ChatInfo(chatId, true, true);
+
+        var serializer = client.SourceSerializer;
+        var jsonString = Serialize(document, serializer);
+        Assert.Contains(ChatInfoToChatSliceRelation.Name, jsonString, StringComparison.Ordinal);
+        Assert.Contains(ChatInfoToChatSliceRelation.ChatInfoName, jsonString, StringComparison.Ordinal);
+
+        var deserializedDocument = Deserialize<ChatInfo>(jsonString, serializer);
+        Assert.Equivalent(document, deserializedDocument);
+    }
+
+    private string Serialize<TDoc>(TDoc document, IOpenSearchSerializer serializer)
+    {
+        using var stream = new MemoryStream();
+        serializer.Serialize(document, stream);
+        stream.Position = 0;
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    private TDoc Deserialize<TDoc>(string jsonString, IOpenSearchSerializer serializer)
+    {
+        var encoding = new UTF8Encoding(false);
+        using var stream = new MemoryStream(encoding.GetBytes(jsonString));
+        return serializer.Deserialize<TDoc>(stream);
     }
 }

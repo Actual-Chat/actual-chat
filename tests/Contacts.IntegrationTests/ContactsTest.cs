@@ -1,8 +1,5 @@
-using ActualChat.Performance;
-using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
-using ActualLab.Generators;
 
 namespace ActualChat.Contacts.IntegrationTests;
 
@@ -15,63 +12,60 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
     private IContactsBackend _contactsBackend = null!;
     private IAccounts _accounts = null!;
 
-    protected override Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         _tester = AppHost.NewWebClientTester(Out);
         _contacts = AppHost.Services.GetRequiredService<IContacts>();
         _contactsBackend = AppHost.Services.GetRequiredService<IContactsBackend>();
         _accounts = _tester.AppServices.GetRequiredService<IAccounts>();
-
-        FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
-        return Task.CompletedTask;
     }
 
     protected override async Task DisposeAsync()
     {
-        foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
-            FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
-        await _tester.DisposeAsync().AsTask();
+        await _tester.DisposeSilentlyAsync();
+        await base.DisposeAsync();
     }
 
     [Fact]
     public async Task ShouldListNotOwnedChats()
     {
         // arrange
-        var bob = await _tester.SignInAsBob(RandomStringGenerator.Default.Next());
+        var bob = await _tester.SignInAsUniqueBob();
         await _tester.SignInAsAlice();
         // non-place
         var (publicChatId, publicChatInviteId) = await _tester.CreateChat(true);
         var (privateChatId, privateChatInviteId) = await _tester.CreateChat(false);
 
         // public place
-        var (publicPlaceId, _) = await _tester.CreatePlace(true);
+        var publicPlace = await _tester.CreatePlace(true);
         var (publicPlacePublicChatId, publicPlacePublicChatInviteId) = await _tester.CreateChat(x => x with {
             IsPublic = true,
             Kind = null,
-            PlaceId = publicPlaceId,
+            PlaceId = publicPlace.Id,
         });
         var (publicPlacePrivateChatId, publicPlacePrivateChatInviteId) = await _tester.CreateChat(x => x with {
             IsPublic = false,
             Kind = null,
-            PlaceId = publicPlaceId,
+            PlaceId = publicPlace.Id,
         });
 
         // private place
-        var (privatePlaceId, _) = await _tester.CreatePlace(false);
+        var privatePlace = await _tester.CreatePlace(false);
         var (privatePlacePublicChatId, privatePlacePublicChatInviteId) = await _tester.CreateChat(x => x with {
             IsPublic = true,
             Kind = null,
-            PlaceId = privatePlaceId,
+            PlaceId = privatePlace.Id,
         });
         var (privatePlacePrivateChatId, privatePlacePrivateChatInviteId) = await _tester.CreateChat(x => x with {
             IsPublic = false,
             Kind = null,
-            PlaceId = privatePlaceId,
+            PlaceId = privatePlace.Id,
         });
 
         // act
-        await _tester.InviteToPlace(publicPlaceId, bob.Id);
-        await _tester.InviteToPlace(privatePlaceId, bob.Id);
+        await _tester.InviteToPlace(publicPlace.Id, bob.Id);
+        await _tester.InviteToPlace(privatePlace.Id, bob.Id);
         await _tester.SignIn(bob.User);
         await _tester.JoinChat(publicChatId, publicChatInviteId);
         await _tester.JoinChat(privateChatId, privateChatInviteId);
@@ -98,10 +92,10 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
             var contactIds = await ListIds(PlaceId.None, ct);
             contactIds.Should().BeEquivalentTo(expectedNonPlaceChatIds);
 
-            contactIds = await ListIds(publicPlaceId, ct);
+            contactIds = await ListIds(publicPlace.Id, ct);
             contactIds.Should().BeEquivalentTo(expectedPublicPlaceChatIds);
 
-            contactIds = await ListIds(privatePlaceId, ct);
+            contactIds = await ListIds(privatePlace.Id, ct);
             contactIds.Should().BeEquivalentTo(expectedPrivatePlaceChatIds);
 
             contactIds = await ListIdsForEntrySearch(ct);
@@ -110,19 +104,9 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
                     new ContactId(bob.Id, publicChatId),
                     new ContactId(bob.Id, privateChatId),
                     new ContactId(bob.Id, publicPlacePrivateChatId),
-                    new ContactId(bob.Id, publicPlaceId.ToRootChatId()),
+                    new ContactId(bob.Id, publicPlace.Id.ToRootChatId()),
                     new ContactId(bob.Id, privatePlacePrivateChatId),
-                    new ContactId(bob.Id, privatePlaceId.ToRootChatId()),
-                });
-
-            contactIds = await ListIdsForContactSearch(ct);
-            contactIds.Should()
-                .BeEquivalentTo(new[] {
-                    new ContactId(bob.Id, privateChatId),
-                    new ContactId(bob.Id, publicPlacePrivateChatId),
-                    new ContactId(bob.Id, privatePlacePublicChatId),
-                    new ContactId(bob.Id, privatePlacePrivateChatId),
-                    new ContactId(bob.Id, privatePlaceId.ToRootChatId()),
+                    new ContactId(bob.Id, privatePlace.Id.ToRootChatId()),
                 });
         }, TimeSpan.FromSeconds(10));
     }
@@ -131,7 +115,7 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task ShouldListOwnedChats()
     {
         // arrange
-        var bob = await _tester.SignInAsBob(RandomStringGenerator.Default.Next());
+        var bob = await _tester.SignInAsUniqueBob();
 
         // act
         // non-place
@@ -139,29 +123,29 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
         var (privateChatId, _) = await _tester.CreateChat(false);
 
         // public place
-        var (publicPlaceId, _) = await _tester.CreatePlace(true);
+        var publicPlace = await _tester.CreatePlace(true);
         var (publicPlacePublicChatId, _) = await _tester.CreateChat(x => x with {
             IsPublic = true,
             Kind = null,
-            PlaceId = publicPlaceId,
+            PlaceId = publicPlace.Id,
         });
         var (publicPlacePrivateChatId, _) = await _tester.CreateChat(x => x with {
             IsPublic = false,
             Kind = null,
-            PlaceId = publicPlaceId,
+            PlaceId = publicPlace.Id,
         });
 
         // private place
-        var (privatePlaceId, _) = await _tester.CreatePlace(false);
+        var privatePlace = await _tester.CreatePlace(false);
         var (privatePlacePublicChatId, _) = await _tester.CreateChat(x => x with {
             IsPublic = true,
             Kind = null,
-            PlaceId = privatePlaceId,
+            PlaceId = privatePlace.Id,
         });
         var (privatePlacePrivateChatId, _) = await _tester.CreateChat(x => x with {
             IsPublic = false,
             Kind = null,
-            PlaceId = privatePlaceId,
+            PlaceId = privatePlace.Id,
         });
 
         // act, assert
@@ -181,31 +165,22 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
             var contactIds = await ListIds(PlaceId.None, ct);
             contactIds.Should().BeEquivalentTo(expectedNonPlaceChatIds);
 
-            contactIds = await ListIds(publicPlaceId, ct);
+            contactIds = await ListIds(publicPlace.Id, ct);
             contactIds.Should().BeEquivalentTo(expectedPublicPlaceChatIds);
 
-            contactIds = await ListIds(privatePlaceId, ct);
+            contactIds = await ListIds(privatePlace.Id, ct);
             contactIds.Should().BeEquivalentTo(expectedPrivatePlaceChatIds);
 
+            // TODO: move to ContactsBackendTest
             contactIds = await ListIdsForEntrySearch(ct);
             contactIds.Should()
                 .BeEquivalentTo(new[] {
                     new ContactId(bob.Id, publicChatId),
                     new ContactId(bob.Id, privateChatId),
                     new ContactId(bob.Id, publicPlacePrivateChatId),
-                    new ContactId(bob.Id, publicPlaceId.ToRootChatId()),
+                    new ContactId(bob.Id, publicPlace.Id.ToRootChatId()),
                     new ContactId(bob.Id, privatePlacePrivateChatId),
-                    new ContactId(bob.Id, privatePlaceId.ToRootChatId()),
-                });
-
-            contactIds = await ListIdsForContactSearch(ct);
-            contactIds.Should()
-                .Contain(new[] {
-                    new ContactId(bob.Id, privateChatId),
-                    new ContactId(bob.Id, publicPlacePrivateChatId),
-                    new ContactId(bob.Id, privatePlacePublicChatId),
-                    new ContactId(bob.Id, privatePlacePrivateChatId),
-                    new ContactId(bob.Id, privatePlaceId.ToRootChatId()),
+                    new ContactId(bob.Id, privatePlace.Id.ToRootChatId()),
                 });
         }, TimeSpan.FromSeconds(10));
     }
@@ -220,13 +195,6 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
     {
         var account = await _accounts.GetOwn(_tester.Session, cancellationToken);
         var contactIds = await _contactsBackend.ListIdsForEntrySearch(account.Id, cancellationToken);
-        return contactIds.Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId)).OrderBy(x => x.Id).ToList();
-    }
-
-    private async Task<List<ContactId>> ListIdsForContactSearch(CancellationToken cancellationToken = default)
-    {
-        var account = await _accounts.GetOwn(_tester.Session, cancellationToken);
-        var contactIds = await _contactsBackend.ListIdsForContactSearch(account.Id, cancellationToken);
         return contactIds.Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId)).OrderBy(x => x.Id).ToList();
     }
 }

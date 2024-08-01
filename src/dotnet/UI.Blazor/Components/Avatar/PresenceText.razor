@@ -4,16 +4,23 @@
 @switch (Presence)
 {
     case Presence.Online:
-        @("online")
+        @("Online")
         break;
     case Presence.Recording:
-        @("speaking...")
+        @("Speaking...")
         break;
     case Presence.Away or Presence.Offline:
         @if (LastCheckIn != null) {
-            @("last seen ")<LiveTimeDeltaText Moment="@LastCheckIn" NullText=""/>
+            @("Last seen ")<LiveTimeDeltaText Moment="@LastCheckIn" NullText=""/>
+        } else {
+            @("Offline")
         }
         break;
+    case Presence.Unknown:
+    default:
+        @("...")
+        break;
+
 }
 
 @code {

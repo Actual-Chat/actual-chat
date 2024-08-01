@@ -87,8 +87,11 @@ export class AudioPlayerTestPage {
         const chunk = new Uint8Array(buffer,28, 125);
 
         console.log('Starting decoder test...');
-        for (let i = 0; i < 20000; i++) {
-            decoder.decode(chunk);
+        for (let j = 0; j < 10; j++) {
+            for (let i = 0; i < 2000; i++) {
+                decoder.decode(chunk);
+            }
+            decoder.reset();
         }
         console.log('Decoder test completed.');
         decoder.delete();

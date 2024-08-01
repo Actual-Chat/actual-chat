@@ -1,8 +1,8 @@
-using System.Text.RegularExpressions;
 using ActualChat.Chat.UI.Blazor.Events;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 using ActualLab.Diagnostics;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
@@ -30,6 +30,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private ChatUIHub Hub => _hub ??= ChatContext.Hub;
     private Session Session => Hub.Session();
+    private ICommander Commander => Hub.Commander();
     private Chat Chat => ChatContext.Chat;
     private ChatUI ChatUI => Hub.ChatUI;
     private IChats Chats => Hub.Chats;
@@ -81,6 +82,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 .Log(LogLevel.Debug, Log)
                 .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
                 .RunIsolated(DisposeToken);
+            UpdateGroupChatUsageList();
         }
         catch {
             _whenInitializedSource.TrySetCanceled();
@@ -136,25 +138,26 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (DisposeToken.IsCancellationRequested)
             return;
 
-        var uri = History.Uri;
-        var fragment = new LocalUrl(uri).ToAbsolute(Hub.UrlMapper()).ToUri().Fragment.TrimStart('#');
-        if (!NumberExt.TryParsePositiveLong(fragment, out var entryId) || entryId <= 0)
+        var sUri = History.Uri;
+        var localUrl = new LocalUrl(sUri);
+        if (!localUrl.IsChat(out _, out long entryId) || entryId <= 0)
             return;
 
-        var uriWithoutFragment = Regex.Replace(uri, "#.*$", "");
         var cts = new CancellationTokenSource();
         var cancellationToken = cts.Token;
         _ = ForegroundTask.Run(async () => {
                 try {
                     await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
-                    _ = History.NavigateTo(uriWithoutFragment, true);
+                    var uri = localUrl.ToAbsolute(Hub.UrlMapper()).ToUri();
+                    var uriWithoutMsgId = uri.DropQueryItem(Links.ChatEntryLidQueryParameterName).PathAndQuery;
+                    _ = History.NavigateTo(uriWithoutMsgId, true);
                 }
                 finally {
                     cts.CancelAndDisposeSilently();
                 }
             },
             CancellationToken.None);
-        History.CancelWhen(cts, x => !OrdinalEquals(x.Uri, uri));
+        History.CancelWhen(cts, x => !OrdinalEquals(x.Uri, sUri));
         await NavigateTo(entryId, true);
     }
 
@@ -246,7 +249,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     // - Return messages around an anchor message we are navigating to
     // If the message data is the same it should return same instances of data tiles to reduce re-rendering
     async Task<VirtualListData<ChatMessage>> IVirtualListDataSource<ChatMessage>.GetData(
-        ComputedState<VirtualListData<ChatMessage>> state,
         VirtualListDataQuery query,
         VirtualListData<ChatMessage> renderedData,
         CancellationToken cancellationToken)
@@ -268,8 +270,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // but don't want to delay rapid updates.
         // We don't need delays when data is being requested by the client code - e.g. when query isn't None
         if (query.IsNone && renderedData.Index > 2) {
-            var lastData = state.ValueOrDefault ?? VirtualListData<ChatMessage>.None;
-            var lastComputedAt = lastData.IsNone ? startedAt : lastData.ComputedAt;
+            var lastComputedAt = renderedData.IsNone ? startedAt : renderedData.ComputedAt;
             var isFastUpdate = startedAt - lastComputedAt <= FastUpdateRecency;
             var delay = startedAt + (isFastUpdate ? FastUpdateDelay : SlowUpdateDelay) - CpuTimestamp.Now;
             if (delay > TimeSpan.FromMilliseconds(10))
@@ -328,6 +329,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var shownReadyEntryLid = _shownReadEntryLid.Value;
+        var renderedTiles = renderedData.Tiles.ToDictionary(t => t.Key, StringComparer.Ordinal);
         var tiles = new List<VirtualListTile<ChatMessage>>();
         foreach (var idTile in idTiles) {
             var lastReadEntryLid = shownReadyEntryLid;
@@ -343,7 +345,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (tile.Items.Count == 0)
                 continue;
 
-            tiles.Add(tile);
+            if (renderedTiles.TryGetValue(tile.Key, out var renderedTile)) {
+                var tileToAdd = ReferenceEquals(tile, renderedTile) || renderedTile.Items.SequenceEqual(tile.Items)
+                    ? renderedTile
+                    : tile;
+                tiles.Add(tileToAdd);
+            }
+            else
+                tiles.Add(tile);
             prevMessage = tile.Items[^1];
 #if false
         // Uncomment for debugging:
@@ -362,8 +371,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     HasVeryFirstItem = true,
                     HasVeryLastItem = true,
                     ScrollToKey = null,
-                    RequestedStartExpansion = null,
-                    RequestedEndExpansion = null,
                     NavigationState = nav ?? renderedData.NavigationState,
                     ItemVisibilityState = itemVisibility,
                 };
@@ -387,22 +394,19 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             else if (nav.MustHighlight)
                 ChatUI.HighlightEntry(navEntry.Id, navigate: false);
         }
-
         var result = new VirtualListData<ChatMessage>(tiles) {
             Index = renderedData.Index + 1,
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
             ScrollToKey = navEntry != null && mustScrollToEntry ? navEntry.LocalId.Format() : null,
-            RequestedStartExpansion = query.IsNone
-                ? null
-                : query.ExpandStartBy,
-            RequestedEndExpansion = query.IsNone
-                ? null
-                : query.ExpandEndBy,
             NavigationState = nav ?? renderedData.NavigationState,
             ItemVisibilityState = itemVisibility,
         };
-        return result;
+
+        // do not return new instance if data is the same to prevent re-renders
+        return !mustScrollToEntry && result.IsSimilarTo(renderedData)
+            ? renderedData
+            : result;
     }
 
     private static Tile<long>[] GetIdTilesToLoad(Range<long> idRangeToLoad, Range<long> chatIdRange)
@@ -466,7 +470,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             // No query, but there is old data -> retaining it
             (false, true) => new Range<long>(firstItem!.Entry.LocalId, lastItem!.Entry.LocalId),
             // Query is there, so data is irrelevant
-            _ => query.KeyRange.ToLongRange().Expand(new Range<long>(query.ExpandStartBy, query.ExpandEndBy)),
+            _ => query.KeyRange.ToLongRange(true).Move(query.MoveRange),
         };
 
         // If we are scrolling somewhere, let's extend the range to scrollAnchor & nearby entries.
@@ -554,6 +558,23 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var range = new Range<long>(minEntryLid, minEntryLid + 20 * IdTileStack.MinTileSize)
             .IntersectWith(chatIdRange);
         return await entryReader.GetFirst(range, cancellationToken).ConfigureAwait(false);
+    }
+
+    private void UpdateGroupChatUsageList()
+    {
+        var chat = Chat;
+        if (chat.Id.Kind == ChatKind.Peer)
+            return;
+
+        var isAiSearchChat = chat.SystemTag == Constants.Chat.SystemTags.Bot;
+        var listKind = isAiSearchChat ? ChatUsageListKind.SearchChats : ChatUsageListKind.ViewedGroupChats;
+
+        _ = BackgroundTask.Run(async () => {
+                var command = new ChatUsages_RegisterUsage(Session, listKind, chat.Id);
+                await Commander.Call(command, default);
+            },
+            ex => Log.LogDebug(ex, "Failed to register view group chat"),
+            default);
     }
 
     // Nested types

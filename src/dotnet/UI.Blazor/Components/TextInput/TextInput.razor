@@ -11,7 +11,8 @@
     placeholder="@Placeholder"
     maxlength="@MaxLength"
     tabindex="@TabIndex"
-    @onkeyup="@OnKeyUp"/>
+    @onkeyup="@OnKeyUp"
+    @onfocus="@OnFocus"/>
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.TextInput.create";
@@ -33,6 +34,7 @@
     [Parameter] public string TabIndex { get; set; } = "";
     [Parameter] public EventCallback<string> TextChanged { get; set; }
     [Parameter] public EventCallback<KeyboardEventArgs> KeyUp { get; set; }
+    [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TextInput))]
     public TextInput() { }

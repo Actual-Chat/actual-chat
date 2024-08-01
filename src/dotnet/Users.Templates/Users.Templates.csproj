@@ -2,14 +2,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
+    <ProjectReference Include="..\Mjml.Blazor\Mjml.Blazor.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Mjml.Net" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="EmailVerification.mjml" />
   </ItemGroup>
 
 </Project>

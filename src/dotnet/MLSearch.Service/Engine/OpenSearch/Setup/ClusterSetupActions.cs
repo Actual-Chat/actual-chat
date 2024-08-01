@@ -26,31 +26,35 @@ internal sealed class ClusterSetupActions(
     Tracer baseTracer
 ) : IClusterSetupActions
 {
-     private readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
+    private const string TimestampFieldName = "timestamp";
+    private readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
 
-    public async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(string modelGroup, CancellationToken cancellationToken)
+    public async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(string modelGroupName, CancellationToken cancellationToken)
     {
         using var _1 = _tracer.Region();
         // Read model group latest state
         var modelGroupResponse = await openSearch.RunAsync(
                 $$"""
-                  POST /_plugins/_ml/model_groups/_search
-                  {
-                      "query": {
-                          "match": {
-                              "name": "{{modelGroup}}"
-                          }
-                      },
-                      "sort": [{
-                          "_seq_no": { "order": "desc" }
-                      }],
-                      "size": 1
-                  }
-                  """,
+                POST /_plugins/_ml/model_groups/_search
+                {
+                    "query": {
+                        "match": {
+                            "name": "{{modelGroupName}}"
+                        }
+                    },
+                    "sort": [{
+                        "_seq_no": { "order": "desc" }
+                    }],
+                    "size": 1
+                }
+                """,
                 cancellationToken
             )
             .ConfigureAwait(false);
-        var modelGroupId = modelGroupResponse.FirstHit().Get<string>("_id");
+        var modelGroup = modelGroupResponse
+            .AssertSuccess()
+            .FirstHit();
+        var modelGroupId = modelGroup.Get<string>("_id");
         if (modelGroupId.IsNullOrEmpty()) {
             throw new InvalidOperationException(
                 "Failed to retrieve model group id."
@@ -75,7 +79,9 @@ internal sealed class ClusterSetupActions(
                 cancellationToken
             )
             .ConfigureAwait(false);
-        var model = modelResponse.FirstHit();
+        var model = modelResponse
+            .AssertSuccess()
+            .FirstHit();
         var modelId = model.Get<string>("_id");
         if (modelId.IsNullOrEmpty()) {
             throw new InvalidOperationException(
@@ -88,9 +94,14 @@ internal sealed class ClusterSetupActions(
             );
 
         // Ensure model is deployed.
-        var modelState = modelSource.Get<string>("model_state");
+        if (!modelSource.TryGetValue("model_state", out var modelStateObj)) {
+            throw new InvalidOperationException("model_state field is not found");
+        }
+        var modelState = (string) modelStateObj;
         if (!string.Equals(modelState, "DEPLOYED", StringComparison.Ordinal)) {
-            throw new InvalidOperationException(
+            modelState = string.IsNullOrEmpty(modelState) ? "<Empty>" : modelState;
+            // Throw standard external error as it is transient
+            throw StandardError.External(
                 $"Invalid model state. Expecting deployed model, but was {modelState}."
             );
         }
@@ -139,8 +150,10 @@ internal sealed class ClusterSetupActions(
         var isSearchIndexExists = await IsIndexExistsAsync(indexName, cancellationToken).ConfigureAwait(false);
         if (!isSearchIndexExists) {
             // Calculate field names
+            // ChatInfo fields
+            var isPublicField = namingPolicy.ConvertName(nameof(ChatInfo.IsPublic));
+            var isBotChatField = namingPolicy.ConvertName(nameof(ChatInfo.IsBotChat));
             // ChatSlice fields
-            var idField = namingPolicy.ConvertName(nameof(ChatSlice.Id));
             var metadataField = namingPolicy.ConvertName(nameof(ChatSlice.Metadata));
             var textField = namingPolicy.ConvertName(nameof(ChatSlice.Text));
             // ChatSliceMetadata fields
@@ -152,9 +165,8 @@ internal sealed class ClusterSetupActions(
             var mentionsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Mentions));
             var reactionsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Reactions));
             var attachmentsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Attachments));
-            var isPublicField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.IsPublic));
             var languageField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Language));
-            var timestampField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Timestamp));
+            var contentTimestampField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ContentTimestamp));
             var chatIdField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ChatId));
             var placeIdField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.PlaceId));
             // ChatSliceEntry fields
@@ -180,9 +192,17 @@ internal sealed class ClusterSetupActions(
                             ]
                         },
                         "properties": {
-                            "{{idField}}": {
-                                "type": "keyword"
+                            "{{ChatInfoToChatSliceRelation.Name}}": {
+                                "type": "join",
+                                "relations": {
+                                    "{{ChatInfoToChatSliceRelation.ChatInfoName}}": "{{ChatInfoToChatSliceRelation.ChatSliceName}}"
+                                }
                             },
+                            "{{TimestampFieldName}}": { "type": "date" },
+
+                            "{{isPublicField}}": { "type": "boolean" },
+                            "{{isBotChatField}}": { "type": "boolean" },
+
                             "{{metadataField}}": {
                                 "type": "object",
                                 "properties": {
@@ -209,9 +229,8 @@ internal sealed class ClusterSetupActions(
                                             "{{attachmentSummaryField}}": { "type": "text" }
                                         }
                                     },
-                                    "{{isPublicField}}": { "type": "boolean" },
                                     "{{languageField}}": { "type": "keyword" },
-                                    "{{timestampField}}": { "type": "date" }
+                                    "{{contentTimestampField}}": { "type": "date" }
                                 }
                             },
                             "{{textField}}": {
@@ -233,12 +252,7 @@ internal sealed class ClusterSetupActions(
                 """,
                 cancellationToken
             ).ConfigureAwait(false);
-            if (!searchIndexResult.Success) {
-                throw new InvalidOperationException(
-                    $"Failed to update '{IndexNames.ChatContent}'search index",
-                    searchIndexResult.OriginalException
-                );
-            }
+            searchIndexResult.AssertSuccess();
         }
     }
 
@@ -264,12 +278,7 @@ internal sealed class ClusterSetupActions(
                 """,
                 cancellationToken
             ).ConfigureAwait(false);
-            if (!chatsCursorIndexResult.Success) {
-                throw new InvalidOperationException(
-                    "Failed to update chats cursor index",
-                    chatsCursorIndexResult.OriginalException
-                );
-            }
+            chatsCursorIndexResult.AssertSuccess();
         }
     }
 
@@ -309,12 +318,7 @@ internal sealed class ClusterSetupActions(
                 """,
                 cancellationToken
             ).ConfigureAwait(false);
-            if (!ingestCursorIndexResult.Success) {
-                throw new InvalidOperationException(
-                    "Failed to update ingest cursor index.",
-                    ingestCursorIndexResult.OriginalException
-                );
-            }
+            ingestCursorIndexResult.AssertSuccess();
         }
     }
 
@@ -329,24 +333,27 @@ internal sealed class ClusterSetupActions(
                 PUT /_ingest/pipeline/{{pipelineName}}
                 {
                     "description": "Autogenerated pipeline",
-                    "processors": [{
-                        "text_embedding": {
-                            "model_id": "{{modelId}}",
-                            "field_map": {
-                                "{{textField}}": "event_dense_embedding"
+                    "processors": [
+                        {
+                            "script": {
+                                "lang": "painless",
+                                "source": "ctx.{{TimestampFieldName}} = new Date();"
+                            }
+                        },
+                        {
+                            "text_embedding": {
+                                "model_id": "{{modelId}}",
+                                "field_map": {
+                                    "{{textField}}": "event_dense_embedding"
+                                }
                             }
                         }
-                    }]
+                    ]
                 }
                 """,
                 cancellationToken
             ).ConfigureAwait(false);
-            if (!ingestResult.Success) {
-                throw new InvalidOperationException(
-                    $"Failed to update '{IndexNames.ChatContent}' ingest pipeline",
-                    ingestResult.OriginalException
-                );
-            }
+            ingestResult.AssertSuccess();
         }
     }
 
@@ -369,7 +376,7 @@ internal sealed class ClusterSetupActions(
             )
             .ConfigureAwait(false);
         isIngestPipelineExistsResult.AssertSuccess(allowNotFound: true);
-        return isIngestPipelineExistsResult.Pipelines.Any();
+        return isIngestPipelineExistsResult.Pipelines.ContainsKey(pipelineName);
     }
 
     public async Task<bool> IsIndexExistsAsync(string indexName, CancellationToken cancellationToken)

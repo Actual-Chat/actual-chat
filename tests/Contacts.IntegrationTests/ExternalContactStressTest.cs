@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Security.Claims;
 using ActualChat.Performance;
-using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -19,23 +18,20 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     private IAccounts _accounts = null!;
     private IContacts _contacts = null!;
 
-    protected override Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         _tester = AppHost.NewWebClientTester(Out);
         var services = AppHost.Services;
         _accounts = services.GetRequiredService<IAccounts>();
         _contacts = services.GetRequiredService<IContacts>();
         _commander = services.Commander();
-
-        FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
-        return Task.CompletedTask;
     }
 
     protected override async Task DisposeAsync()
     {
-        foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
-            FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
-        await _tester.DisposeAsync().AsTask();
+        await _tester.DisposeSilentlyAsync();
+        await base.DisposeAsync();
     }
 
     [Theory(Skip = "flaky, must be fixed")]

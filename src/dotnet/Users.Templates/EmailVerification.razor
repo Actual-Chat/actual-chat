@@ -1,25 +1,54 @@
-@using Mjml.Net
+@using ActualChat.Mjml.Blazor.Components;
+@using ActualChat.Mjml.Blazor.Enums
 @namespace ActualChat.Users.Templates
 
-
-@((MarkupString)_html)
+<EmailBody>
+    <MjmlImage
+        Align="MjmlImageAlign.Center"
+        Width="221px"
+        Src="https://actual.chat/dist/images/emails/email-cat.png">
+    </MjmlImage>
+    <MjmlText
+        Align="MjmlTextAlign.Center"
+        FontFamily="Arial"
+        CssClass="gradient-text"
+        FontSize="28px"
+        FontWeight="600"
+        LineHeight="30px"
+        Color="#AE00CA">
+        Your email verification code
+    </MjmlText>
+    <MjmlText
+        Align="MjmlTextAlign.Center"
+        FontFamily="Arial"
+        FontSize="14px"
+        FontWeight="400"
+        LineHeight="20px"
+        color="#1C1C1C">
+        Please enter your verification code in Actual Chat app when prompted:
+    </MjmlText>
+    <MjmlText
+        Align="MjmlTextAlign.Center"
+        FontFamily="Arial"
+        FontSize="28px"
+        FontWeight="700"
+        LetterSpacing="10px"
+        LineHeight="30px"
+        color="#1C1C1C">
+        @Token
+    </MjmlText>
+    <MjmlText
+        Align="MjmlTextAlign.Center"
+        FontSize="14px"
+        FontWeight="400"
+        LineHeight="20px"
+        FontFamily="Arial"
+        Color="#1C1C1C">
+        If you didn`t request a code, you can ignore this email. To protect your account, don`t forward
+        this email or give this code to anyone.
+    </MjmlText>
+</EmailBody>
 
 @code {
-    private string _html = "";
-
-    [Parameter, EditorRequired]
-    public string Token { get; set; } = null!;
-
-    protected override void OnParametersSet() {
-        var renderer = new MjmlRenderer();
-        var reader = new StreamReader(Template.EmailVerification.GetStream());
-        var template = reader.ReadToEnd();
-        var mjml = template.Replace("{{TOKEN}}", Token);
-        var mjmlOptions = new MjmlOptions {
-            Minify = true,
-            Beautify = false,
-        };
-        var renderResult = renderer.Render(mjml, mjmlOptions);
-        _html = renderResult.Html;
-    }
+    [Parameter, EditorRequired] public string Token { get; set; } = null!;
 }

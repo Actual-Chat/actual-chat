@@ -5,7 +5,10 @@ using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Maui.LifecycleEvents;
+using Plugin.Firebase.Analytics;
 using Plugin.Firebase.CloudMessaging;
+using Plugin.Firebase.Core.Platforms.iOS;
+using Plugin.Firebase.Crashlytics;
 
 namespace ActualChat.App.Maui;
 
@@ -14,9 +17,12 @@ public static partial class MauiProgram
     private static partial void AddPlatformServices(this IServiceCollection services)
     {
         services.AddSingleton(CrossFirebaseCloudMessaging.Current);
-        services.AddScoped<PushNotifications>(c => new PushNotifications(c.UIHub()));
-        services.AddTransient<IDeviceTokenRetriever>(c => c.GetRequiredService<PushNotifications>());
-        services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<PushNotifications>());
+        services.AddSingleton(CrossFirebaseAnalytics.Current);
+        services.AddSingleton(CrossFirebaseCrashlytics.Current);
+
+        services.AddScoped<IosPushNotifications>(c => new IosPushNotifications(c.UIHub()));
+        services.AddTransient<IDeviceTokenRetriever>(c => c.GetRequiredService<IosPushNotifications>());
+        services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<IosPushNotifications>());
         services.AddScoped<IRecordingPermissionRequester>(_ => new IosRecordingPermissionRequester());
         services.AddScoped(c => new NativeAppleAuth(c));
         services.AddScoped<TuneUI>(c => new IosTuneUI(c));
@@ -31,7 +37,15 @@ public static partial class MauiProgram
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddiOS(ios => ios.FinishedLaunching((app, options) => {
-            PushNotifications.Initialize(app, options);
+            // Prevents null ref for Windows+iPhone, see:
+            // - https://github.com/xamarin/GoogleApisForiOSComponents/issues/577
+
+#if !HOTRESTART
+            CrossFirebase.Initialize();
+            var isAnalyticsEnabled = Preferences.Default.Get(Constants.Preferences.EnableAnalytics, false);
+            CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isAnalyticsEnabled;
+            FirebaseCloudMessagingImplementation.Initialize();
+#endif
             return false;
         }));
 }

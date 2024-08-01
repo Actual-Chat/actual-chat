@@ -1,0 +1,28 @@
+@using ActualChat.Users.Templates
+@using global::Mjml.Net
+@namespace ActualChat.UI.Blazor.Pages.Emails
+
+<iframe
+    srcdoc="@_html"
+    style="width: 100%; height: 100%;">
+</iframe>
+
+@code {
+    private string _html = "";
+
+    [Parameter, EditorRequired]
+    public Type ComponentType { get; set; } = null!;
+
+    protected override async Task OnParametersSetAsync() {
+        var blazorRenderer = new BlazorRenderer();
+        await using var _ = blazorRenderer.ConfigureAwait(false);
+        var mjml = await blazorRenderer.RenderComponent(ComponentType).ConfigureAwait(false);
+        var mjmlRenderer = new MjmlRenderer();
+        var mjmlOptions = new MjmlOptions {
+            Minify = true,
+            Beautify = false,
+        };
+        var renderResult = mjmlRenderer.Render(mjml, mjmlOptions);
+        _html = renderResult.Html;
+    }
+}

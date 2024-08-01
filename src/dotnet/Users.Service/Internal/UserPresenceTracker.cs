@@ -57,16 +57,16 @@ public class UserPresenceTracker : IAsyncDisposable
             _onPresenceChanged.Invoke(userId);
     }
 
-    public void OnAway(UserId userId)
+    // Private methods
+
+    private void OnAway(UserId userId)
         => _onPresenceChanged.Invoke(userId);
 
-    public void OnOffline(UserId userId)
+    private void OnOffline(UserId userId)
     {
         _checkIns.Remove(userId);
         _onPresenceChanged.Invoke(userId);
     }
-
-    // Private methods
 
     private static Presence ToPresence(CheckIn? lastCheckIn, Moment now)
     {

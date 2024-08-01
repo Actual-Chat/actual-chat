@@ -1,14 +1,16 @@
-﻿using ActualChat.Notification.Db;
+﻿using ActualChat.Chat;
 using ActualChat.Users;
-using Microsoft.EntityFrameworkCore;
-using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Notification;
 
-public class Notifications(IServiceProvider services) : DbServiceBase<NotificationDbContext>(services), INotifications
+public class Notifications(IServiceProvider services) : INotifications
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private INotificationsBackend Backend { get; } = services.GetRequiredService<INotificationsBackend>();
+    private IChats Chats { get; } = services.GetRequiredService<IChats>();
+
+    private MomentClockSet Clocks { get; } = services.Clocks();
+    private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
     public virtual async Task<Notification?> Get(
@@ -49,43 +51,38 @@ public class Notifications(IServiceProvider services) : DbServiceBase<Notificati
     public virtual async Task OnRegisterDevice(
         Notifications_RegisterDevice command, CancellationToken cancellationToken)
     {
-        // NOTE(AY): Add backend, implement IApiCommand
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            var device = context.Operation.Items.Get<DbDevice>();
-            var isNew = context.Operation.Items.GetOrDefault(false);
-            if (isNew && device != null)
-                _ = Backend.ListDevices(new UserId(device.UserId), default);
-            return;
-        }
-
         var (session, deviceId, deviceType) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var registerDeviceCommand = new NotificationsBackend_RegisterDevice(account.Id, deviceId, deviceType, session.Hash);
+        await Commander.Run(registerDeviceCommand, cancellationToken).ConfigureAwait(false);
+    }
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-        var existingDbDevice = await dbContext.Devices.ForUpdate()
-            .FirstOrDefaultAsync(d => d.Id == deviceId.Value, cancellationToken)
-            .ConfigureAwait(false);
+    // [CommandHandler]
+    public virtual async Task OnNotifyMembers(
+        Notifications_NotifyMembers command, CancellationToken cancellationToken)
+    {
+        var (session, chatId) = command;
+        var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        var author = chat.Rules.Author.Require();
+        chat.Rules.Require(ChatPermissions.Write);
+        var account = chat.Rules.Account;
 
-        var dbDevice = existingDbDevice;
-        if (dbDevice == null) {
-            dbDevice = new DbDevice {
-                Id = deviceId,
-                Type = deviceType,
-                UserId = account.Id,
-                Version = VersionGenerator.NextVersion(),
-                CreatedAt = Clocks.SystemClock.Now,
-            };
-            dbContext.Add(dbDevice);
-        }
-        else
-            dbDevice.AccessedAt = Clocks.SystemClock.Now;
+        var entryId = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
+        var changeEntry = new ChatsBackend_ChangeEntry(
+            entryId,
+            null,
+            Change.Create(new ChatEntryDiff {
+                AuthorId = GetWalleId(author.ChatId),
+                SystemEntry = (SystemEntry)new NotifyMembersOption(author.Id, author.ToString()),
+            }));
 
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.Set(dbDevice);
-        context.Operation.Items.Set(existingDbDevice == null);
+        var textEntry = await Commander.Call(changeEntry, true, cancellationToken).ConfigureAwait(false);
+
+        var notifyCommand = new NotificationsBackend_NotifyMembers(account.Id, chatId, textEntry.LocalId - 1);
+        await Commander.Run(notifyCommand, cancellationToken).ConfigureAwait(false);
+
+        static AuthorId GetWalleId(ChatId chatId)
+            => new(chatId, Constants.User.Walle.AuthorLocalId, AssumeValid.Option);
     }
 
     // Private methods

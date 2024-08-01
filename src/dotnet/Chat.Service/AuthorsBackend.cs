@@ -8,27 +8,17 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
+public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IAuthorsBackend
 {
     private IChatsBackend? _chatsBackend;
 
-    private IAccountsBackend AccountsBackend { get; }
-    private IAvatarsBackend AvatarsBackend { get; }
+    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
+    private IAvatarsBackend AvatarsBackend { get; } = services.GetRequiredService<IAvatarsBackend>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-    private IDbEntityResolver<string, DbAuthor> DbAuthorResolver { get; }
-    private IDbShardLocalIdGenerator<DbAuthor, string> DbAuthorLocalIdGenerator { get; }
-    private DiffEngine DiffEngine { get; }
-    private IRolesBackend RolesBackend { get; }
-
-    public AuthorsBackend(IServiceProvider services) : base(services)
-    {
-        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
-        DbAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbAuthor>>();
-        DbAuthorLocalIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbAuthor, string>>();
-        AvatarsBackend = services.GetRequiredService<IAvatarsBackend>();
-        DiffEngine = services.GetRequiredService<DiffEngine>();
-        RolesBackend = services.GetRequiredService<RolesBackend>();
-    }
+    private IDbEntityResolver<string, DbAuthor> DbAuthorResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbAuthor>>();
+    private IDbShardLocalIdGenerator<DbAuthor, string> DbAuthorLocalIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbAuthor, string>>();
+    private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
+    private IRolesBackend RolesBackend { get; } = services.GetRequiredService<RolesBackend>();
 
     // [ComputeMethod]
     public virtual async Task<AuthorFull?> Get(

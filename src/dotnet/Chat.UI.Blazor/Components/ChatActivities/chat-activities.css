@@ -1,0 +1,5 @@
+.chat-activity-panel {
+    /* TODO: change gap after TalkingMembersBanner update (Andrey Y) */
+    /*@apply gap-x-2 md:gap-x-0;*/
+    @apply gap-x-0;
+}

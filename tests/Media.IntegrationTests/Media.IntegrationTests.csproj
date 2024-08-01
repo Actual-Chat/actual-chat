@@ -3,9 +3,5 @@
   <ItemGroup>
     <ProjectReference Include="..\Testing.Host\Testing.Host.csproj" />
   </ItemGroup>
-  
-  <ItemGroup>
-    <EmbeddedResource Include="TestImages/*"/>
-  </ItemGroup>
 
 </Project>

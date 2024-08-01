@@ -64,6 +64,8 @@
 
     public override bool CanSkip => _isVerified is null or false;
 
+    public override string NextTitle => "Verify";
+
     public override bool IsCompleted {
         get {
             if (Account.HasVerifiedPhone())

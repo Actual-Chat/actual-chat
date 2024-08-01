@@ -37,6 +37,8 @@ public sealed partial record Chat(
     [DataMember, MemoryPackOrder(9)] public bool AllowAnonymousAuthors { get; init; }
     [DataMember, MemoryPackOrder(10)] public MediaId MediaId { get; init; }
     [DataMember, MemoryPackOrder(14)] public Symbol SystemTag { get; init; }
+    [DataMember, MemoryPackOrder(15)] public bool IsArchived { get; init; }
+    [DataMember, MemoryPackOrder(16)] public string Description { get; init; } = "";
 
     // Populated only on front-end
     [DataMember, MemoryPackOrder(11)] public AuthorRules Rules { get; init; } = null!;
@@ -52,7 +54,7 @@ public sealed partial record Chat(
         // => Rules.CanInvite() && !HasSingleAuthor && !Id.IsPeerChat(out _) &&;
         // But since we can't manage other roles than Owner yet,
         // we let only Owners to invite people to chat.
-        => Rules.IsOwner() && !HasSingleAuthor && !Id.IsPeerChat(out _);
+        => Rules.IsOwner() && Rules.CanInvite() && !HasSingleAuthor && !Id.IsPeerChat(out _);
 
     public bool IsPublicPlaceChat()
         => Kind == ChatKind.Place && !Id.PlaceChatId.IsRoot && IsPublic;
@@ -76,4 +78,6 @@ public sealed partial record ChatDiff : RecordDiff
     [DataMember, MemoryPackOrder(8)] public MediaId? MediaId { get; init; }
     [DataMember, MemoryPackOrder(10)] public Symbol? SystemTag { get; init; }
     [DataMember, MemoryPackOrder(11)] public PlaceId? PlaceId { get; init; }
+    [DataMember, MemoryPackOrder(12)] public bool? IsArchived { get; init; }
+    [DataMember, MemoryPackOrder(13)] public string? Description { get; init; }
 }

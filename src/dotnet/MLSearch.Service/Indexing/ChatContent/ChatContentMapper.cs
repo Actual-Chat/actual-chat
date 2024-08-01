@@ -5,14 +5,14 @@ using ActualChat.MLSearch.Documents;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;
 
-internal interface IChatContentMapper: IDocumentMapper<SourceEntries, IReadOnlyCollection<ChatSlice>>;
+internal interface IChatContentMapper: IDocumentMapper<SourceEntries, ChatSlice>;
 
 internal class ChatContentMapper(
     IMarkupParser markupParser,
     IReactionsBackend reactionsBackend
 ) : IChatContentMapper
 {
-    public async ValueTask<IReadOnlyCollection<ChatSlice>> MapAsync(SourceEntries sourceEntries, CancellationToken cancellationToken = default)
+    public async ValueTask<ChatSlice> MapAsync(SourceEntries sourceEntries, CancellationToken cancellationToken = default)
     {
         // TODO: in the future we may want to split sourse sequence into several documents
         // but for now lets create just single ChatSlice
@@ -72,7 +72,7 @@ internal class ChatContentMapper(
         }));
 
         // -- Timestamp
-        var timestamp = sourceEntries.Entries.Select(e => e.BeginsAt).First();
+        var contentTimestamp = sourceEntries.Entries.Select(e => e.BeginsAt).First();
 
         // -- Content
         var content = sourceEntries.Entries
@@ -80,8 +80,8 @@ internal class ChatContentMapper(
                 var content = e.Content;
                 var (isFirst, isLast) = (i == 0, i == entryCount - 1);
                 if (isFirst || isLast) {
-                    var start = isFirst ? sourceEntries.StartOffset : 0;
-                    var end = (isLast ? sourceEntries.EndOffset : null) ?? content.Length;
+                    var start = (isFirst ? sourceEntries.StartOffset : default) ?? 0;
+                    var end = (isLast ? sourceEntries.EndOffset : default) ?? content.Length;
                     return content.Substring(start, end - start);
                 }
                 return content;
@@ -99,11 +99,9 @@ internal class ChatContentMapper(
             Reactions: reactions.MoveToImmutable(),
             Attachments: attachments.MoveToImmutable(),
             // TODO:
-            IsPublic: true,
             Language: null,
-            // TODO:
-            Timestamp: timestamp
+            ContentTimestamp: contentTimestamp
         );
-        return [new ChatSlice(metadata, content.ToString())];
+        return new ChatSlice(metadata, content.ToString());
     }
 }

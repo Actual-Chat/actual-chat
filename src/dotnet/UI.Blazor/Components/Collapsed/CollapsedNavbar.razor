@@ -1,0 +1,22 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<details class="main-collapsed" open="@(!IsCollapsed)">
+    <summary class="c-summary navbar-collapsed @SummaryClass">
+        <div class="c-title">
+            @SummaryContent
+        </div>
+        <div class="c-chevron">
+            <i class="icon-chevron-up"></i>
+        </div>
+    </summary>
+    @DetailsContent
+</details>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string SummaryClass { get; set; } = "";
+    [Parameter] public bool IsCollapsed { get; set; } = true;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? SummaryContent { get; set; }
+    [Parameter] public RenderFragment? DetailsContent { get; set; }
+}

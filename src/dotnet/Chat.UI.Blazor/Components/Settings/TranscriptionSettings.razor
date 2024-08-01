@@ -19,7 +19,7 @@
     <Form Model="@_formModel">
         <DataAnnotationsValidator/>
 
-        <FormBlock>
+        <FormBlock Class="languages-form">
             <FormSection
                 For="() => _formModel.PrimaryLanguageId"
                 InputId="@_formModel.PrimaryLanguageFormId"

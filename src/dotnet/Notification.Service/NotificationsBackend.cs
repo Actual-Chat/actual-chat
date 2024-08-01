@@ -1,13 +1,13 @@
 using ActualChat.Chat;
 using ActualChat.Chat.Events;
+using ActualChat.Db;
 using ActualChat.Notification.Db;
 using ActualChat.Queues;
 using ActualChat.Users;
-using ActualLab.Diagnostics;
+using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using ActualLab.Fusion.EntityFramework;
-using ActualLab.Versioning;
 
 namespace ActualChat.Notification;
 
@@ -23,6 +23,7 @@ public class NotificationsBackend(IServiceProvider services)
     });
 
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
+    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private IDbEntityResolver<string, DbNotification> DbNotificationResolver { get; }
@@ -35,7 +36,7 @@ public class NotificationsBackend(IServiceProvider services)
         = services.GetRequiredService<FirebaseMessagingClient>();
     private IQueues Queues { get; } = services.Queues();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
-    private ILogger? DebugLog => !UrlMapper.IsActualChat ? Log : null;
+    private ILogger? DebugLog => Log;
 
     // [ComputeMethod]
     public virtual async Task<Notification?> Get(
@@ -47,18 +48,8 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [ComputeMethod]
-    public virtual async Task<IReadOnlyList<Device>> ListDevices(UserId userId, CancellationToken cancellationToken)
-    {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var dbDevices = await dbContext.Devices
-            .Where(d => d.UserId == userId)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        var devices = dbDevices.Select(d => d.ToModel()).ToList();
-        return devices;
-    }
+    public virtual Task<IReadOnlyList<Device>> ListDevices(UserId userId, CancellationToken cancellationToken)
+        => ListDevices(userId, Symbol.Empty, cancellationToken);
 
     // [ComputeMethod]
     public virtual async Task<IReadOnlyList<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken)
@@ -110,7 +101,7 @@ public class NotificationsBackend(IServiceProvider services)
         var notification = command.Notification;
         var userId = notification.UserId.Require();
 
-        DebugLog?.LogInformation("-> OnNotify. EntryId={EntryId}, UserId={UserIdsCount}, NotificationId={NotificationId}",
+        DebugLog?.LogInformation("-> OnNotify. EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}",
             notification.EntryId, userId, notification.Id);
 
         var similar = await Get(notification.Id, cancellationToken).ConfigureAwait(false);
@@ -201,6 +192,51 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
+    public virtual async Task OnRegisterDevice(NotificationsBackend_RegisterDevice command, CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+
+        if (Invalidation.IsActive) {
+            var device = context.Operation.Items.Get<DbDevice>();
+            var isNew = context.Operation.Items.GetOrDefault(false);
+            if (isNew && device != null)
+                _ = ListDevices(new UserId(device.UserId), default);
+            return;
+        }
+
+        var (userId, deviceId, deviceType, sessionHash) = command;
+        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+        var existingDbDevice = await dbContext.Devices.ForUpdate()
+            .FirstOrDefaultAsync(d => d.Id == deviceId.Value, cancellationToken)
+            .ConfigureAwait(false);
+
+        var dbDevice = existingDbDevice;
+        if (dbDevice == null) {
+            dbDevice = new DbDevice {
+                Id = deviceId,
+                Type = deviceType,
+                UserId = userId,
+                SessionHash = sessionHash,
+                Version = VersionGenerator.NextVersion(),
+                CreatedAt = Clocks.SystemClock.Now,
+            };
+            dbContext.Add(dbDevice);
+        }
+        else {
+            dbDevice.AccessedAt = Clocks.SystemClock.Now;
+            if (dbDevice.Type == DeviceType.WebBrowser && deviceType != DeviceType.WebBrowser)
+                dbDevice.Type = deviceType; // Now maui app reports device type properly, lets update it.
+            if (dbDevice.SessionHash.IsNullOrEmpty() && !sessionHash.IsEmpty)
+                dbDevice.SessionHash = sessionHash;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        context.Operation.Items.Set(dbDevice);
+        context.Operation.Items.Set(existingDbDevice == null);
+    }
+
+    // [CommandHandler]
     public virtual async Task OnRemoveDevices(NotificationsBackend_RemoveDevices command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
@@ -252,9 +288,33 @@ public class NotificationsBackend(IServiceProvider services)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
-
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("Removed {Count} devices", removedDevicesCount);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnNotifyMembers(
+        NotificationsBackend_NotifyMembers command,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var (userId, chatId, lastEntryLocalId) = command;
+        var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
+
+        var author = await AuthorsBackend
+            .GetByUserId(chatId, userId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
+
+        var now = Clocks.CoarseSystemClock.Now;
+        var similarityKey = now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
+        var content = $"{author.Avatar.Name} asks for attention";
+        var lastEntryId = (ChatEntryId)new TextEntryId(chatId, lastEntryLocalId, AssumeValid.Option);
+        await EnqueueMessageRelatedNotifications(
+                chatId, lastEntryId, author, content, NotificationKind.GetAttention, similarityKey, userIds, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // Event handlers
@@ -265,7 +325,7 @@ public class NotificationsBackend(IServiceProvider services)
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (entry, author, changeKind) = eventCommand;
+        var (entry, author, changeKind, oldEntry) = eventCommand;
         if (entry.IsSystemEntry)
             return;
 
@@ -275,6 +335,9 @@ public class NotificationsBackend(IServiceProvider services)
                 return;
             // When transcribed message is being finalized, it's updated to IsStreaming = false.
             // At this moment we can notify chat users.
+            var hasFinalized = oldEntry is { IsStreaming: true } && !entry.IsStreaming;
+            if (!hasFinalized)
+                return;
         }
         else {
             if (changeKind != ChangeKind.Create)
@@ -302,7 +365,7 @@ public class NotificationsBackend(IServiceProvider services)
         var userIds = await ListSubscribedUserIds(entry.ChatId, cancellationToken).ConfigureAwait(false);
         var similarityKey = entry.ChatId;
         await EnqueueMessageRelatedNotifications(
-                entry, author, text, NotificationKind.Message, similarityKey, userIds, cancellationToken)
+                entry.ChatId, entry.Id, author, text, NotificationKind.Message, similarityKey, userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -321,12 +384,32 @@ public class NotificationsBackend(IServiceProvider services)
             return;
 
         var (text, _) = await GetText(entry, MarkupConsumer.ReactionNotification, cancellationToken).ConfigureAwait(false);
-        text = $"{reaction.EmojiId} to \"{text}\"";
+        if (!entry.Content.IsNullOrEmpty())
+            text = $"\"{text}\"";
+        text = $"{reaction.EmojiId} to {text}";
         var userIds = new[] { author.UserId };
         var similarityKey = entry.ChatId;
         await EnqueueMessageRelatedNotifications(
-                entry, reactionAuthor, text, NotificationKind.Reaction, similarityKey, userIds, cancellationToken)
+                entry.ChatId, entry.Id, reactionAuthor, text, NotificationKind.Reaction, similarityKey, userIds, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    [EventHandler]
+    public virtual async Task OnSignedOut(
+        UserSignedOutEvent eventCommand,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var sessionId = eventCommand.SessionId;
+        var session = new Session(sessionId);
+        var devices = await ListDevices(eventCommand.UserId, session.Hash, cancellationToken).ConfigureAwait(false);
+        if (devices.Count == 0)
+            return;
+
+        var command = new NotificationsBackend_RemoveDevices(devices.Select(c => c.DeviceId).ToApiArray());
+        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
     // Protected methods
@@ -345,16 +428,19 @@ public class NotificationsBackend(IServiceProvider services)
             return;
         }
 
+        var account = await AccountsBackend.Get(userId, cancellationToken1).ConfigureAwait(false);
+        var isAdmin = account is { IsAdmin: true };
         var deviceIds = devices.Select(d => d.DeviceId).ToList();
         DebugLog?.LogInformation("-> Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdsCount}",
             notification.EntryId, userId, notification.Id, deviceIds.Count);
-        await FirebaseMessagingClient.SendMessage(notification, deviceIds, cancellationToken1).ConfigureAwait(false);
+        await FirebaseMessagingClient.SendMessage(notification, deviceIds, isAdmin, cancellationToken1).ConfigureAwait(false);
         DebugLog?.LogInformation("<- Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdsCount}",
             notification.EntryId, userId, notification.Id, deviceIds.Count);
     }
 
     private async ValueTask EnqueueMessageRelatedNotifications(
-        ChatEntry entry,
+        ChatId chatId,
+        ChatEntryId? entryId,
         AuthorFull changeAuthor,
         string content,
         NotificationKind kind,
@@ -362,22 +448,29 @@ public class NotificationsBackend(IServiceProvider services)
         IReadOnlyCollection<UserId> userIds,
         CancellationToken cancellationToken)
     {
-        DebugLog?.LogInformation("-> EnqueueMessageRelatedNotifications. EntryId={EntryId}, Kind={Kind}, UserIds#={UserIdsCount}",
-            entry.Id, kind, userIds.Count);
+        DebugLog?.LogInformation("-> EnqueueMessageRelatedNotifications. ChatId={ChatId}, EntryId={EntryId}, Kind={Kind}, UserIds#={UserIdsCount}",
+            chatId, entryId, kind, userIds.Count);
 
-        var chat = await ChatsBackend.Get(entry.ChatId, cancellationToken).Require().ConfigureAwait(false);
+        if (entryId.HasValue && entryId.Value.ChatId != chatId)
+            throw new ArgumentOutOfRangeException(nameof(entryId), "entry.ChatId should match given chatId");
+
+        var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
         var title = GetTitle(chat, changeAuthor);
         var iconUrl = GetIconUrl(chat, changeAuthor);
         var now = Clocks.CoarseSystemClock.Now;
         var otherUserIds = changeAuthor.UserId.IsNone ? userIds : userIds.Where(uid => uid != changeAuthor.UserId);
 
         foreach (var otherUserId in otherUserIds) {
-            var presence = await UserPresences.Get(otherUserId, cancellationToken).ConfigureAwait(false);
-            // Do not send notifications to users who are online
-            if (presence is Presence.Online or Presence.Recording){
-                DebugLog?.LogInformation("EnqueueMessageRelatedNotifications. Skipping online user. EntryId={EntryId}, UserId={UserId}",
-                    entry.Id, otherUserId);
-                continue;
+            var checkPresence = kind != NotificationKind.GetAttention;
+            if (checkPresence) {
+                var presence = await UserPresences.Get(otherUserId, cancellationToken).ConfigureAwait(false);
+                // Do not send notifications to users who are online
+                if (presence is Presence.Online or Presence.Recording) {
+                    DebugLog?.LogInformation(
+                        "EnqueueMessageRelatedNotifications. Skipping online user. ChatId={ChatId}, EntryId={EntryId}, UserId={UserId}",
+                        chatId, entryId, otherUserId);
+                    continue;
+                }
             }
             var notificationId = new NotificationId(otherUserId, kind, similarityKey);
             var notification = new Notification(notificationId) {
@@ -385,8 +478,19 @@ public class NotificationsBackend(IServiceProvider services)
                 Content = content,
                 IconUrl = iconUrl,
                 SentAt = now,
-                ChatEntryNotification = new ChatEntryNotificationOption(entry.Id, changeAuthor.Id),
             };
+            if (kind == NotificationKind.GetAttention)
+                notification = notification with {
+                    GetAttentionNotification = new (chatId, changeAuthor.Id, entryId?.LocalId ?? 0),
+                };
+            else if (entryId.HasValue)
+                notification = notification with {
+                    ChatEntryNotification = new ChatEntryNotificationOption(entryId.Value, changeAuthor.Id),
+                };
+            else
+                notification = notification with {
+                    ChatNotification = new ChatNotificationOption(chatId),
+                };
             await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken).ConfigureAwait(false);
         }
     }
@@ -425,5 +529,19 @@ public class NotificationsBackend(IServiceProvider services)
             return Constants.Notification.ThrottleIntervals.Message;
 
         return null;
+    }
+
+    private async Task<IReadOnlyList<Device>> ListDevices(UserId userId, Symbol sessionHash, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbDevices = await dbContext.Devices
+            .Where(d => d.UserId == userId)
+            .WhereIf(d => d.SessionHash == sessionHash.Value, !sessionHash.IsEmpty)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var devices = dbDevices.Select(d => d.ToModel()).ToList();
+        return devices;
     }
 }

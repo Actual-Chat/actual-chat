@@ -1,0 +1,44 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<IReadOnlyList<ChatInfo>>
+
+@{
+    var chats = State.ValueOrDefault ?? [];
+    if (chats.Count == 0)
+        return;
+}
+
+<div class="recently-viewed-groups">
+    <div class="c-header">
+        <div class="c-title">@Title</div>
+    </div>
+    <div class="chat-list">
+        @foreach (var chatInfo in chats) {
+            // TODO: reuse ChatListItem???
+            <FoundChat @key="chatInfo.Id" ChatId="chatInfo.Id" />
+        }
+    </div>
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private IChatUsages ChatUsages => Hub.ChatUsages;
+    private IChats Chats => Hub.Chats;
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    [Parameter] public string Title { get; set; } = "Recently viewed";
+    [Parameter] public ChatUsageListKind ListKind { get; set; } = ChatUsageListKind.ViewedGroupChats;
+
+    protected override ComputedState<IReadOnlyList<ChatInfo>>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<IReadOnlyList<ChatInfo>>.Options() {
+                InitialValue = [],
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<IReadOnlyList<ChatInfo>> ComputeState(CancellationToken cancellationToken) {
+        var session = Hub.Session();
+        var recentIds = await ChatUsages.GetRecencyList(session, ListKind, cancellationToken).ConfigureAwait(false);
+        var chats = await recentIds.Select(id => ChatUI.Get(id, cancellationToken)).Collect().ConfigureAwait(false);
+        return chats.SkipNullItems().ToList();
+    }
+}

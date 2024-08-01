@@ -4,6 +4,10 @@
 @implements IAttachmentListBackend
 @implements IAsyncDisposable
 @namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var successUploads = _attachments.FindAll(x => x.Uploaded).Count;
+    var isSendButtonDisabled = _attachments.Count != successUploads;
+}
 
 <input @ref="FilePickerRef" type="file" hidden multiple/>
 
@@ -13,7 +17,7 @@
             <Button Class="attachment-list-btn btn-danger btn-transparent unhovered c-remove" Click="_ => Clear()">
                 Remove all
             </Button>
-            <Button Class="attachment-list-btn btn-primary btn-transparent unhovered c-send" Click="OnSendClick">
+            <Button Class="attachment-list-btn btn-primary btn-transparent unhovered c-send" Click="OnSendClick" IsDisabled="@isSendButtonDisabled">
                 Send @_attachments.Count @("file".Pluralize(_attachments.Count))
             </Button>
         </div>
@@ -30,7 +34,7 @@
                 }
                 var uploadStyle = $"width: {progress}%;";
                 <li class="attachment-wrapper">
-                    <div class="flex-y relative">
+                    <div class="c-content">
                         <div class="attachment-item">
                             <ButtonSquare Click="@(() => OnRemoveClick(attachment))" Class="remove-attachment-btn btn-danger btn-sm">
                                 <i class="icon-trash03 text-2xl font-thin"></i>
@@ -42,7 +46,7 @@
                                     <source src="@attachment.Url#t=0.5" />
                                 </video>
                             } else {
-                                <div class="flex items-center justify-center p-3">
+                                <div class="c-file">
                                     <img draggable="false" src="/dist/images/attachment.svg" alt="File attachment" class="h-12">
                                 </div>
                             }

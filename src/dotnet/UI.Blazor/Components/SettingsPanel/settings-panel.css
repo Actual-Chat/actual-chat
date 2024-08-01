@@ -42,6 +42,7 @@
 .settings-panel > .c-tabs .c-tab-items {
     @apply flex-1 flex-y overflow-x-hidden overflow-y-auto;
     @apply px-2 mb-1;
+    @apply custom-scrollbar;
 }
 .settings-panel > .c-tabs .c-tab-item {
     @apply flex-none flex-x;
@@ -78,6 +79,16 @@ body.hoverable .settings-panel > .c-tabs .c-tab-item:hover i {
     @apply flex-none flex-y justify-center;
     @apply h-10;
     @apply bg-03;
+}
+.settings-panel > .c-tabs .c-footer > .c-content {
+    @apply flex-none flex-x items-center justify-between gap-x-2;
+    @apply px-4;
+    @apply text-xxs;
+}
+.settings-panel > .c-tabs .c-footer > .c-content > .c-version {
+    @apply flex-1;
+    @apply truncate;
+    @apply text-03 font-medium;
 }
 
 /* Tab content */
@@ -130,6 +141,13 @@ body.hoverable .tile:hover {
 .tile-item.clickable,
 .tile-item.clickable span {
     @apply cursor-pointer;
+}
+body.hoverable .tile-item.item-danger:hover {
+    @apply bg-menuitem-hover-warning;
+}
+.tile-item.item-danger .tile-item-icon,
+.tile-item.item-danger .tile-item-body-content {
+    @apply text-danger;
 }
 .settings-tab .tile-item label {
     cursor: inherit;

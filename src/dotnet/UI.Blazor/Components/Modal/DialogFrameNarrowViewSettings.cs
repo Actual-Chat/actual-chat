@@ -56,12 +56,15 @@ public record DialogFrameNarrowViewSettings
     }
 
     public static DialogFrameNarrowViewSettings SubmitButton(Func<Task> callback, string submitButtonText = "")
+        => SubmitButton(DialogFramePosition.Stretch, callback, submitButtonText);
+
+    public static DialogFrameNarrowViewSettings SubmitButton(DialogFramePosition position, Func<Task> callback, string submitButtonText = "")
     {
         var eventCallback = callback.Target != null
             ? EventCallback.Factory.Create(callback.Target, callback)
             : new EventCallback(null, callback);
         return new DialogFrameNarrowViewSettings {
-            Position = DialogFramePosition.Stretch,
+            Position = position,
             SubmitClick = eventCallback,
             SubmitButtonText = submitButtonText,
         };

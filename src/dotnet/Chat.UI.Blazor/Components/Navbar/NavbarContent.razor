@@ -31,6 +31,8 @@
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-recorder">Audio Recorder</NavbarItem>
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/render-slot">Render Slot</NavbarItem>
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/ui-colors">UI Colors</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/place-info">Place Info</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/discover">Discover</NavbarItem>
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/error-barrier">Error Barrier</NavbarItem>
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/toasts">Toasts</NavbarItem>
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/dive-in-modal-test">Dive-in Modal</NavbarItem>
@@ -56,6 +58,9 @@
                 <NavbarItem ReplaceOnPrefix="/test/" Url="/test/maui">Maui</NavbarItem>
             }
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/system">System</NavbarItem>
+            @if (HostInfo.HostKind != HostKind.MauiApp && HostInfo.IsDevelopmentInstance) {
+                <NavbarItem ReplaceOnPrefix="/test/" Url="/test/email-templates">Email templates</NavbarItem>
+            }
         }
     </div>
 </div>

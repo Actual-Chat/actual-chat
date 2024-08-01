@@ -38,7 +38,6 @@
     public int? ContentSeed { get; set; } = null;
 
     public Task<VirtualListData<TestListItemRef>> GetData(
-        ComputedState<VirtualListData<TestListItemRef>> state,
         VirtualListDataQuery query,
         VirtualListData<TestListItemRef> renderedData,
         CancellationToken cancellationToken)

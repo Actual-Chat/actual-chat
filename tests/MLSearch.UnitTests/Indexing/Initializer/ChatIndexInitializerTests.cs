@@ -143,30 +143,18 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             .Setup(x => x.UseAsync(It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask)
             .Verifiable();
-        var logger = new Mock<ILogger<ChatIndexInitializer>>();
-        logger
-            .Setup(x => x.Log(
-                It.IsAny<LogLevel>(),
-                It.IsAny<EventId>(),
-                It.IsAny<It.IsAnyType>(),
-                It.IsAny<Exception?>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
-            .Verifiable();
+        var log = LogMock.Create<ChatIndexInitializer>();
         await using var initializer =
-            new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard.Object, coordinator, logger.Object);
+            new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard.Object, coordinator, log.Object);
 
         var cancellationToken = new CancellationTokenSource().Token;
         _ = initializer.OnRun(ActiveShardIndex, cancellationToken);
         shard.Verify(sh => sh.UseAsync(
                 It.Is<CancellationToken>(token => token == cancellationToken)
             ), Times.Once());
-        logger.Verify(log => log.Log(
-                It.Is<LogLevel>(lvl => lvl==LogLevel.Information),
-                It.IsAny<EventId>(),
-                It.IsAny<It.IsAnyType>(),
-                It.IsAny<Exception?>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()
-            ), Times.Once());
+        log.Verify(
+            LogMock.GetLogMethodExpression<ChatIndexInitializer>(LogLevel.Information),
+            Times.Once());
     }
 
     [Fact]

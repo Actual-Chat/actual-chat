@@ -1,4 +1,3 @@
-using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Chat.IntegrationTests;
@@ -10,17 +9,10 @@ public class ChatListingTest(ChatCollection.AppHostFixture fixture, ITestOutputH
     private WebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
     private IChatsBackend ChatsBackend { get; } = fixture.AppHost.Services.GetRequiredService<IChatsBackend>();
 
-    protected override Task InitializeAsync()
-    {
-        FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
-        return Task.CompletedTask;
-    }
-
     protected override async Task DisposeAsync()
     {
-        foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
-            FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
-        await Tester.DisposeAsync();
+        await Tester.DisposeSilentlyAsync();
+        await base.DisposeAsync();
     }
 
     [Theory]

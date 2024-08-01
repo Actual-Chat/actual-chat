@@ -8,7 +8,7 @@ import {
 } from 'promises';
 import { nextTickAsync } from 'timeout';
 import { firstValueFrom } from 'rxjs';
-import { AudioContextSource } from './audio-context-source';
+import { AudioContextSource, OverridenAudioContext } from './audio-context-source';
 import { Log } from 'logging';
 
 const { debugLog, errorLog } = Log.get('AudioContextRef');
@@ -16,8 +16,8 @@ const { debugLog, errorLog } = Log.get('AudioContextRef');
 let nextId = 1;
 
 export interface AudioContextRefOptions {
-    attach?: (context: AudioContext, destination: AudioNode) => Promise<void> | void,
-    detach?: (context: AudioContext) => Promise<void> | void,
+    attach?: (context: OverridenAudioContext) => Promise<void> | void,
+    detach?: (context: OverridenAudioContext) => Promise<void> | void,
     dispose?: () => Promise<void> | void,
     retryCount?: number,
 }
@@ -26,10 +26,10 @@ export type AudioContextRefState = 'running' | 'paused';
 
 export class AudioContextRef implements AsyncDisposable {
     private readonly name: string;
-    private readonly _whenFirstTimeReady = new PromiseSource<AudioContext>;
+    private readonly _whenFirstTimeReady = new PromiseSource<OverridenAudioContext>;
     private readonly whenRunning: Promise<void>;
     private readonly whenDisposeRequested = new PromiseSource<Cancelled>;
-    private context: AudioContext;
+    private context: OverridenAudioContext;
     private _state: AudioContextRefState = 'paused';
 
     public get state(): AudioContextRefState { return this._state; }
@@ -101,7 +101,7 @@ export class AudioContextRef implements AsyncDisposable {
                         lastContext = null;
                     }
                     debugLog?.log(`${this.name}: attach, context:`, Log.ref(this.context));
-                    await this.options.attach?.(this.context, this.source.destination);
+                    await this.options.attach?.(this.context);
                     lastContext = this.context;
                     this._whenFirstTimeReady.resolve(this.context);
                 }

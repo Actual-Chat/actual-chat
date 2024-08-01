@@ -81,6 +81,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             builder.HasIndex(a => a.UsernameNormalized)
                 .HasFilter("username_normalized is not null")
                 .IsUnique();
+            builder.HasIndex(a => new { a.Id, a.TimeZone });
         }
     }
 }

@@ -1,6 +1,6 @@
 services:
   opensearch-node:
-    image: opensearchproject/opensearch:2.12.0
+    image: opensearchproject/opensearch:${OPENSEARCH_VERSION:-2.15.0}
     container_name: opensearch-node
     environment:
       - node.name=opensearch-node
@@ -69,6 +69,8 @@ services:
     build:
       context: .
       dockerfile: opensearch-dashboard-no-security.dockerfile
+      args:
+        OPENSEARCH_VERSION: ${OPENSEARCH_VERSION:-2.15.0}
     container_name: opensearch-dashboards
     ports:
       - 5601:5601

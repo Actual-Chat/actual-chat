@@ -17,6 +17,8 @@
     <PackageReference Include="ActualLab.Fusion.EntityFramework.Npgsql" />
     <PackageReference Include="ActualLab.Fusion.EntityFramework.Redis" />
     <PackageReference Include="Ulid" />
+    <PackageReference Include="OpenTelemetry.Api" />
+    <PackageReference Include="OpenTelemetry.Api.ProviderBuilderExtensions" />
   </ItemGroup>
 
 </Project>

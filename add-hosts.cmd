@@ -77,7 +77,7 @@ trustCertificate() {
 }
 
 echo patching hosts...
-localIp=$(ifconfig | grep "inet " | grep -Fv 127.0.0.1 | awk '{print $2}')
+localIp=$(ifconfig | grep "inet " | grep -Fv 127.0.0.1 | awk '{print $2}' | head -1)
 [ -z "$localIp" ] && echo "Failed to detect local ip address" && exit 1
 updateHostsFile "$localIp" "local.actual.chat media.local.actual.chat cdn.local.actual.chat" "/etc/hosts"
 

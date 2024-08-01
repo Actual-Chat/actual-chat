@@ -22,9 +22,8 @@ internal readonly record struct ChatSliceMetadata(
     ImmutableArray<PrincipalId> Reactions,
     // Attachments to document's source messages
     ImmutableArray<ChatSliceAttachment> Attachments,
-    bool IsPublic,
     string? Language,
-    DateTime Timestamp
+    DateTime ContentTimestamp
 )
 {
     public ChatId ChatId => ChatEntries.IsDefaultOrEmpty ? ChatId.None : ChatEntries[0].Id.ChatId;

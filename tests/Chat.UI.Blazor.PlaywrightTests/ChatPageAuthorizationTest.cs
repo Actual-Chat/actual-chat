@@ -18,6 +18,7 @@ public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper
 
     protected override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         _testSettings = AppHost.Services.GetRequiredService<TestSettings>();
         _accounts = AppHost.Services.GetRequiredService<IAccounts>();
         _tester = AppHost.NewPlaywrightTester(Out);
@@ -25,8 +26,11 @@ public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
     }
 
-    protected override Task DisposeAsync()
-        => _tester.DisposeAsync().AsTask();
+    protected override async Task DisposeAsync()
+    {
+        await _tester.DisposeSilentlyAsync();
+        await base.DisposeAsync();
+    }
 
     [Fact]
     public async Task ShouldNotAuthorizeForInactiveUser()

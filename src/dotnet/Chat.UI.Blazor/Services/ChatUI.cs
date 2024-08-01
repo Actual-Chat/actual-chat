@@ -54,6 +54,8 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     public Task WhenLoaded => _selectedChatId.WhenRead;
     public Task WhenActivePlaceRestored => _whenActivePlaceRestored.Task;
 
+    public static event Action<(ChatId, long)> OnReadPositionUpdated = _ => { };
+
     public ChatUI(ChatUIHub hub) : base(hub)
     {
         NavbarUI = Hub.Services.GetRequiredService<NavbarUI>();
@@ -310,6 +312,17 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, "place",
             m => _ = DeleteOrLeavePlaceInternal(placeId, false, () => Task.CompletedTask, m)));
 
+    public void ArchiveChat(Chat chat)
+    {
+        var warning = $"You are going to archive chat '{chat.Title}'. Nobody will be able to access it except owners, who can still access it with direct link.";
+        _ = ModalUI.Show(new ConfirmModal.Model(true,
+            warning,
+            () => _ = ArchiveChatInternal(chat.Id)) {
+            Title = "Archive chat",
+            ConfirmButtonText = "Archive"
+        });
+    }
+
     // Helpers
 
     // This method fixes provided ChatId w/ PeerChatId.FixOwnerId, which replaces
@@ -355,14 +368,25 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         try {
             var result = new SyncedStateLease<ReadPosition>(lease);
             await result.WhenFirstTimeRead.WaitAsync(cancellationToken).ConfigureAwait(false);
+            InvokeReadPositionUpdated(result.State);
+            result.State.Updated += (s, k) => {
+                if (k == StateEventKind.Updated)
+                    InvokeReadPositionUpdated(s);
+            };
             return result;
         }
         catch {
             lease.Dispose();
             throw;
         }
-    }
 
+        static void InvokeReadPositionUpdated(IState<ReadPosition> state)
+        {
+            var chatId = state.Value.ChatId;
+            var entryLid = state.Value.EntryLid;
+            OnReadPositionUpdated.Invoke((chatId, entryLid));
+        }
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -427,18 +451,16 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         if (chatId.Kind == ChatKind.Peer &&
             !SelectedPlaceId.Value.IsNone &&
             OrdinalEquals(NavbarUI.SelectedGroupId, SelectedPlaceId.Value.GetNavbarGroupId())) {
-            var listView = ChatListUI.ActiveChatListView.Value;
+            var listView = ChatListUI.GetChatListView(SelectedPlaceId.Value);
             // When peer chat is selected in url, we should keep selected place nav group if the chat belongs to
             // place chat list.
-            if (listView != null && listView.PlaceId == SelectedPlaceId.Value) {
-                var settings = await listView.GetSettings().ConfigureAwait(false);
-                // Peer chat can be included in the chat list only within People and None filters.
-                if (settings.Filter == ChatListFilter.People || settings.Filter == ChatListFilter.None) {
-                    // Check if peer chat was shown for place chat list view
-                    var chats = await ChatListUI.ListPlaceMembers(SelectedPlaceId.Value, default).ConfigureAwait(false);
-                    if (chats.ContainsKey(chatId))
-                        return; // Keep selected group
-                }
+            var settings = await listView.GetSettings().ConfigureAwait(false);
+            // Peer chat can be included in the chat list only within People and None filters.
+            if (settings.Filter == ChatListFilter.People || settings.Filter == ChatListFilter.None) {
+                // Check if peer chat was shown for place chat list view
+                var chats = await ChatListUI.ListPlaceMembers(SelectedPlaceId.Value, default).ConfigureAwait(false);
+                if (chats.ContainsKey(chatId))
+                    return; // Keep selected group
             }
         }
 
@@ -635,13 +657,21 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         modal.Close();
         await onBeforeExecuteCommand().ConfigureAwait(true);
         var command = isDelete
-            ? (ICommand)new Places_Delete(Session, placeId)
+            ? (ICommand)new Places_Change(Session, placeId, null, Change.Remove<PlaceDiff>())
             : new Places_Leave(Session, placeId);
         var result = await UICommander.Run(command).ConfigureAwait(true);
         if (result.HasError)
             return;
         if (isSelectedPlace)
             NavbarUI.SelectGroup(NavbarGroupIds.Chats, true);
+    }
+
+    private async Task ArchiveChatInternal(ChatId chatId)
+    {
+        var archiveCommand = new Chats_Change(Session, chatId, null, Change.Update(new ChatDiff {
+            IsArchived = true
+        }));
+        await UICommander.Call(archiveCommand).ConfigureAwait(true);
     }
 
     private async Task NavigateToVisibleChat(PlaceId preferredPlaceId)

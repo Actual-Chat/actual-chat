@@ -1,8 +1,6 @@
 using ActualChat.Chat;
 using ActualChat.Chat.Events;
 using ActualChat.Contacts.Db;
-using ActualChat.Contacts.Module;
-using ActualChat.Db;
 using ActualChat.Mesh;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +24,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
     private IAuthorsBackend AuthorsBackend => _authorsBackend ??= Services.GetRequiredService<IAuthorsBackend>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
+    private IPlacesBackend PlacesBackend { get; } = services.GetRequiredService<IPlacesBackend>();
     private IExternalContactsBackend ExternalContactsBackend
         => _externalContactsBackend ??= Services.GetRequiredService<IExternalContactsBackend>();
     private IDbEntityResolver<string, DbContact> DbContactResolver { get; }
@@ -78,26 +77,29 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ContactId>> ListIdsForContactSearch(UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<ContactId>> ListIdsForGroupContactSearch(UserId userId, PlaceId? placeId, CancellationToken cancellationToken)
     {
-        var nonPlacePrivateChatContactIds = await ListIdsForSearch(userId, PlaceId.None, false, cancellationToken).ConfigureAwait(false);
+        if (placeId != null)
+            return await ListIds(userId, placeId.Value, cancellationToken).ConfigureAwait(false);
+
         var placeIds = await ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
-        var places = await GetPlaces().ConfigureAwait(false);
-        // for private place we also include public chats
-        var placeChatContactIds = await places.Select(x => ListIdsForSearch(userId, x.Id, !x.IsPublic, cancellationToken))
+        var contactIds = await placeIds.AddBefore(PlaceId.None)
+            .Select(id => ListIds(userId, id, cancellationToken))
             .Collect()
             .Flatten()
             .ConfigureAwait(false);
-        var privatePlaceRootChatContactIds = places.Where(x => !x.IsPublic).Select(x => new ContactId(userId, x.Id.ToRootChatId()));
-        return nonPlacePrivateChatContactIds.Concat(placeChatContactIds)
-            .Concat(privatePlaceRootChatContactIds)
+        return contactIds
+            .Where(x => x.ChatId is { Kind: ChatKind.Group or ChatKind.Place, IsPlaceRootChat: false })
             .ToApiArray();
+    }
 
-        async Task<Place[]> GetPlaces()
-        {
-            var allPlaces = await placeIds.Select(x => ChatsBackend.GetPlace(x, cancellationToken)).Collect().ConfigureAwait(false);
-            return allPlaces.SkipNullItems().ToArray();
-        }
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<ContactId>> ListIdsForUserContactSearch(
+        UserId userId,
+        CancellationToken cancellationToken)
+    {
+        var contactIds = await ListIds(userId, PlaceId.None, cancellationToken).ConfigureAwait(false);
+        return contactIds.Where(x => x.ChatId.Kind == ChatKind.Peer).ToApiArray();
     }
 
     [ComputeMethod]
@@ -535,6 +537,13 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             var command = new ContactsBackend_RemoveChatContacts(chat.Id);
             await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
         }
+        else if (changeKind == ChangeKind.Update) {
+            if (chat.IsArchived && oldChat?.IsArchived != true) {
+                // Chat has been archived, remove contacts to it.
+                var command = new ContactsBackend_RemoveChatContacts(chat.Id);
+                await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
     [EventHandler]
@@ -567,6 +576,15 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (contact.IsStored() == !author.HasLeft)
             return; // No need to make any changes
 
+        if (chatId.Kind == ChatKind.Group && !author.HasLeft) {
+            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (chat is null)
+                Log.LogWarning("Can't get chat with id '{ChatId}' on changing author '{Author}', old author: '{OldAuthor}'",
+                    chatId, author, oldAuthor);
+            else if (chat.SystemTag == Constants.Chat.SystemTags.Bot)
+                return; // Do not create contacts for ML Search chats
+        }
+
         var change = author.HasLeft
             ? new Change<Contact> { Remove = true }
             : new Change<Contact> { Create = new Contact(contactId) };
@@ -580,7 +598,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (_, author, changeKind) = eventCommand;
+        var (_, author, changeKind, _) = eventCommand;
         if (changeKind == ChangeKind.Remove)
             return;
 

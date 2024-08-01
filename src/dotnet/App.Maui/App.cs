@@ -1,5 +1,4 @@
 using ActualChat.UI.Blazor.Services;
-using Sentry;
 
 namespace ActualChat.App.Maui;
 
@@ -39,6 +38,13 @@ public class App : Application
     protected override void OnAppLinkRequestReceived(Uri uri)
     {
         Log.LogInformation("OnAppLinkRequestReceived: {Uri}", uri);
+        if (!OrdinalIgnoreCaseEquals(MauiSettings.Host, MauiSettings.DefaultHost)) {
+            // TODO(DF): to think if it's possible to handle it properly in host override mode.
+            Log.LogWarning("AppLinkRequest will be ignored because Host overriding is applied." +
+                " Default host is '{DefaultHost}', but actual host is '{Host}'",
+                MauiSettings.DefaultHost, MauiSettings.Host);
+            return;
+        }
         if (!OrdinalIgnoreCaseEquals(uri.Host, MauiSettings.Host))
             return;
 

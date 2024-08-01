@@ -123,6 +123,16 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description")
+                        .UseCollation("C");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_archived");
+
                     b.Property<bool>("IsPublic")
                         .HasColumnType("boolean")
                         .HasColumnName("is_public");
@@ -419,6 +429,58 @@ namespace ActualChat.Chat.Migrations
                     b.ToTable("mentions");
                 });
 
+            modelBuilder.Entity("ActualChat.Chat.Db.DbPlace", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BackgroundMediaId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("background_media_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description")
+                        .UseCollation("C");
+
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_public");
+
+                    b.Property<string>("MediaId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("media_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_places");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_places_created_at");
+
+                    b.HasIndex("Version", "Id")
+                        .HasDatabaseName("ix_places_version_id");
+
+                    b.ToTable("places");
+                });
+
             modelBuilder.Entity("ActualChat.Chat.Db.DbReaction", b =>
                 {
                     b.Property<string>("Id")
@@ -497,6 +559,48 @@ namespace ActualChat.Chat.Migrations
                         .HasDatabaseName("ix_reaction_summaries_entry_id");
 
                     b.ToTable("reaction_summaries");
+                });
+
+            modelBuilder.Entity("ActualChat.Chat.Db.DbReadPositionsStat", b =>
+                {
+                    b.Property<string>("ChatId")
+                        .HasColumnType("text")
+                        .HasColumnName("chat_id")
+                        .UseCollation("C");
+
+                    b.Property<long>("StartTrackingEntryLid")
+                        .HasColumnType("bigint")
+                        .HasColumnName("start_tracking_entry_lid");
+
+                    b.Property<long>("Top1EntryLid")
+                        .HasColumnType("bigint")
+                        .HasColumnName("top1_entry_lid");
+
+                    b.Property<string>("Top1UserId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("top1_user_id")
+                        .UseCollation("C");
+
+                    b.Property<long>("Top2EntryLid")
+                        .HasColumnType("bigint")
+                        .HasColumnName("top2_entry_lid");
+
+                    b.Property<string>("Top2UserId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("top2_user_id")
+                        .UseCollation("C");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("ChatId")
+                        .HasName("pk_read_positions_stat");
+
+                    b.ToTable("read_positions_stat");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbRole", b =>

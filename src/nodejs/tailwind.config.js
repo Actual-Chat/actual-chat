@@ -19,6 +19,8 @@ module.exports = {
   content: dirs,
   safelist: [
     // Used by in Avatar sizes and skeletons
+    'w-6',
+    'w-8',
     'w-9',
     'w-10',
     'w-11',
@@ -33,6 +35,8 @@ module.exports = {
     'w-32',
     'w-36',
     'w-40',
+    'h-6',
+    'h-8',
     'h-9',
     'h-10',
     'h-11',
@@ -196,14 +200,34 @@ module.exports = {
         'recorder-on-middle': 'var(--recorder-on-middle)',
         'audio-panel-button': 'var(--audio-panel-button)',
         'audio-panel-button-text': 'var(--audio-panel-button-text)',
+        'mobile-landscape-post-panel': 'var(--mobile-landscape-post-panel)',
+        'mobile-landscape-audio-panel-button': 'var(--mobile-landscape-audio-panel-button)',
+        'mobile-landscape-audio-panel-button-text': 'var(--mobile-landscape-audio-panel-button-text)',
+        'mobile-landscape-audio-panel-playback-on': 'var(--mobile-landscape-audio-panel-playback-on)',
+        'related-chat-entry': 'var(--related-chat-entry)',
+        'mobile-related-chat-entry': 'var(--mobile-related-chat-entry)',
+
+        'place-header-search': 'var(--place-header-search)',
+        'place-header-text': 'var(--place-header-text)',
+
         'tile': 'var(--tile)',
 
         // Download Banner
         'download-banner-left': 'var(--download-banner-left)',
         'download-banner-right': 'var(--download-banner-right)',
 
-        'viewer-header': 'var(--viewer-header)',
+        'viewer-header-text': 'var(--viewer-header-text)',
         'link-preview-icon': 'var(--link-preview-icon)',
+
+        // Status Badge
+        'status': 'var(--status)',
+        'status-badge': 'var(--status-badge)',
+        'status-online': 'var(--status-online)',
+        'status-online-badge': 'var(--status-online-badge)',
+        'status-away': 'var(--status-away)',
+        'status-away-badge': 'var(--status-away-badge)',
+        'status-offline': 'var(--status-offline)',
+        'status-offline-badge': 'var(--status-offline-badge)',
       },
       textColor: {
         '01': 'var(--text-01)',
@@ -357,6 +381,7 @@ module.exports = {
       32: '8rem',
       34: '8.5rem',
       36: '9rem',
+      38: '9.5rem',
       40: '10rem',
       44: '11rem',
       46: '11.5rem',
@@ -411,7 +436,7 @@ module.exports = {
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
       'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
-      'highlight': 'highlight 1s ease-in-out forwards',
+      'highlight': 'highlight 1.5s ease-in-out forwards',
       'loud-show': 'loud-show 150ms ease-in-out',
       'loud-show-text-mode': 'loud-show-text-mode 150ms ease-in-out',
       'loud-hide': 'loud-hide 150ms ease-in-out',
@@ -727,11 +752,11 @@ module.exports = {
       'headline-7': ['1.25rem', { lineHeight: '1.375rem', fontWeight: '500' }],
       'text-1': ['1rem', { lineHeight: '1.125rem', fontWeight: '400' }],
       'caption-1': ['0.875rem', { lineHeight: '1rem', fontWeight: '500' }],
-      'caption-2': ['0.85rem', { lineHeight: '0.875rem', fontWeight: '400' }],
-      'caption-3': ['0.85rem', { lineHeight: '0.875rem', fontWeight: '500' }],
+      'caption-2': ['0.85rem', { lineHeight: '1rem', fontWeight: '400' }],
+      'caption-3': ['0.85rem', { lineHeight: '1rem', fontWeight: '500' }],
       'caption-4': ['0.875rem', { lineHeight: '1rem', fontWeight: '400' }],
       'caption-6': ['0.75rem', { lineHeight: '0.875rem', fontWeight: '500' }],
-      'caption-7': ['0.85rem', { lineHeight: '0.875rem', fontWeight: '600' }],
+      'caption-7': ['0.85rem', { lineHeight: '1rem', fontWeight: '600' }],
     },
     fontWeight: {
       thin: '100',
@@ -1116,7 +1141,7 @@ module.exports = {
               'border-left': '2px solid var(--replied-message-border)',
           },
           '99%': {
-              'background': '',
+              'background': 'transparent',
               'border-left': '2px solid transparent',
           },
       },
@@ -1417,13 +1442,23 @@ module.exports = {
       'top-left': 'top left',
     },
     transitionDelay: {
+      DEFAULT: '150ms',
+      0: '0ms',
       75: '75ms',
       100: '100ms',
       150: '150ms',
       200: '200ms',
+      250: '250ms',
       300: '300ms',
+      350: '350ms',
+      400: '400ms',
+      450: '450ms',
       500: '500ms',
+      550: '550ms',
+      600: '600ms',
+      650: '650ms',
       700: '700ms',
+      750: '750ms',
       1000: '1000ms',
     },
     transitionDuration: {
@@ -1455,6 +1490,8 @@ module.exports = {
       opacity: 'opacity',
       shadow: 'box-shadow',
       transform: 'transform',
+      width: 'width',
+      height: 'height',
     },
     transitionTimingFunction: {
       DEFAULT: 'cubic-bezier(0.4, 0, 0.2, 1)',
@@ -1547,6 +1584,7 @@ module.exports = {
     lineClamp: {
       1: '1',
       2: '2',
+      3: '3',
     }
   },
   variantOrder: [

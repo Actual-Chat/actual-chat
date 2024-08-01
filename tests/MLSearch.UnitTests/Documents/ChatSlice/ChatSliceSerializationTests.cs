@@ -79,7 +79,7 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
         return new ChatSliceMetadata(
             [authorId], chatEntries, startOffset, endOffset,
             replyToEntries, mentions, reactions, attachments,
-            true, lang, timestamp
+            lang, timestamp
         );
     }
 }

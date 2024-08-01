@@ -17,10 +17,13 @@ public sealed partial record Place(
     [DataMember, MemoryPackOrder(3)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(4)] public bool IsPublic { get; init; }
     [DataMember, MemoryPackOrder(5)] public MediaId MediaId { get; init; }
+    [DataMember, MemoryPackOrder(6)] public MediaId BackgroundMediaId { get; init; }
+    [DataMember, MemoryPackOrder(7)] public string Description { get; init; } = "";
 
     // Populated only on front-end
     [DataMember, MemoryPackOrder(11)] public PlaceRules Rules { get; init; } = null!;
     [DataMember, MemoryPackOrder(12)] public Media.Media? Picture { get; init; }
+    [DataMember, MemoryPackOrder(13)] public Media.Media? Background { get; init; }
 
     // This record relies on referential equality
     public bool Equals(Place? other) => ReferenceEquals(this, other);
@@ -33,4 +36,6 @@ public sealed partial record PlaceDiff : RecordDiff
     [DataMember, MemoryPackOrder(0)] public string? Title { get; init; }
     [DataMember, MemoryPackOrder(2)] public bool? IsPublic { get; init; }
     [DataMember, MemoryPackOrder(8)] public MediaId? MediaId { get; init; }
+    [DataMember, MemoryPackOrder(9)] public MediaId? BackgroundMediaId { get; init; }
+    [DataMember, MemoryPackOrder(10)] public string? Description { get; init; }
 }

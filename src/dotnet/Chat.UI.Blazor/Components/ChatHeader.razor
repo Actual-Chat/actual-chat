@@ -25,12 +25,35 @@
                 <ChatIcon Chat="@chat"/>
             }
             <div class="chat-header-title">
-                <div class="c-title">@chat.Title</div>
-                <StatusBadge ChatContext="@ChatContext" Colorful="@false"/>
+                <div class="c-title-wrapper">
+                    <div class="c-title">
+                        @chat.Title
+                    </div>
+                    @if (ScreenSize.IsNarrow()) {
+                        @if (chat.IsPublic) {
+                            <i class="icon-globe title-icon"></i>
+                        } else {
+                            <i class="icon-lock title-icon"></i>
+                        }
+                    }
+                </div>
+                <div class="c-info">
+                    @if (chat.Rules.CanJoin()) {
+                        @if (!chat.Id.IsPeerChat(out _)) {
+                            <ChatMemberCounter ChatContext="@ChatContext"/>
+                        }
+                    }
+                    @if (!ScreenSize.IsNarrow()) {
+                        <StatusBadge ChatContext="@ChatContext" IsColorful="@false" ShowLastSeen="true"/>
+                    }
+                </div>
             </div>
-            <div class="c-activities-container">
-                <ChatActivities @key="@chat.Id.Value" Chat="@chat"/>
-            </div>
+            // TODO: uncomment after TalkingMembersBanner update (Andrey Y)
+            @* @if (!ScreenSize.IsNarrow()) { *@
+                <div class="c-activities-container">
+                    <ChatActivities @key="@chat.Id.Value" Chat="@chat"/>
+                </div>
+            // }
         }
     </div>
     @if (!chat.Id.IsNone) {

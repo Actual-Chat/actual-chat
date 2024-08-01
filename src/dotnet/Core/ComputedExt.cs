@@ -1,3 +1,4 @@
+using System.Text;
 using Cysharp.Text;
 using ActualLab.Fusion.Internal;
 using ActualLab.Fusion.Operations.Internal;
@@ -20,7 +21,7 @@ public static class ComputedExt
     private static readonly ConcurrentDictionary<(Type, string), PropertyInfo?> _propertyCache = new();
     private static readonly ConcurrentDictionary<(Type, string), FieldInfo?> _fieldCache = new();
 
-    public static string DebugDump(this Computed computed)
+    public static string DebugDump(this Computed computed, int maxDepth = 0)
     {
         var type = computed.GetType();
         var pFlags = GetProperty(type, "Flags")!;
@@ -30,10 +31,23 @@ public static class ComputedExt
         var flags = (ComputedFlags)pFlags.GetMethod!.Invoke(computed, Array.Empty<object?>())!;
         sb.Append("Computed: ").Append(computed).AppendLine();
         sb.Append("- Flags: ").Append(flags).AppendLine();
-        sb.AppendLine("- Dependencies:");
-        foreach (var d in ComputedImpl.GetDependencies(computed))
-            sb.Append("  - ").Append(d).AppendLine();
+        DumpDependencies(ComputedImpl.GetDependencies(computed), 0);
         return sb.ToStringAndRelease();
+
+        void DumpDependencies(Computed[] dependencies, int depth)
+        {
+            if (dependencies.Length == 0)
+                return;
+
+            if (depth > maxDepth)
+                return;
+
+            sb.Append(' ', depth * 2).AppendLine("- Dependencies:");
+            foreach (var d in dependencies.OrderBy(i => i.Input.HashCode)) {
+                sb.Append(' ', (depth + 1) * 2).Append("- ").Append(d).AppendLine();
+                DumpDependencies(ComputedImpl.GetDependencies(d), depth + 1);
+            }
+        }
     }
 
     private static PropertyInfo? GetProperty(Type type, string name)

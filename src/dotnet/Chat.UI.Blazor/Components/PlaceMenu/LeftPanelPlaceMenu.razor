@@ -1,0 +1,73 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits MenuBase
+
+<MenuEntry
+    Class="important-item"
+    Icon="icon-plus"
+    Text="New chat"
+    Click="OnCreateChatClick">
+</MenuEntry>
+@if (_isOwner) {
+    <MenuEntry
+        Icon="icon-cloud-upload"
+        Text="Copy chat into the Place"
+        Click="OnImportChatsClick">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-edit"
+        Text="Settings"
+        Click="OnPlaceSettingsClick">
+    </MenuEntry>
+}
+@if (_canLeave) {
+    <MenuEntrySeparator />
+    <MenuEntry
+        Class="warning-item"
+        Icon="icon-log-out"
+        Text="Leave place"
+        Click="OnPlaceLeaveClick">
+    </MenuEntry>
+}
+
+@code {
+    private PlaceId _placeId;
+    private bool _isOwner;
+    private bool _canLeave;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+
+    private Session Session => Hub.Session();
+    private IPlaces Places => Hub.Places;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is not [ var placeSid ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _placeId = new PlaceId(placeSid);
+        var session = Session;
+        var place = await Places.Get(session, _placeId, default).ConfigureAwait(false);
+        _isOwner = place?.Rules.IsOwner() ?? false;
+        var canLeave = place != null && place.Rules.CanLeave();
+        if (canLeave && _isOwner) {
+            var ownerIds = await Places.ListOwnerIds(session, _placeId, default).ConfigureAwait(false);
+            _canLeave = ownerIds.Any(id => id != place!.Rules.Author!.Id);
+        } else {
+            _canLeave = canLeave;
+        }
+    }
+
+    private void OnCreateChatClick()
+        => ModalUI.Show(new NewChatModal.Model(_placeId));
+
+    private void OnPlaceSettingsClick()
+        => _ = ModalUI.Show(new PlaceSettingsModal.Model(_placeId));
+
+    private void OnPlaceLeaveClick()
+        => ChatUI.LeavePlace(_placeId);
+
+    private void OnImportChatsClick()
+        => ModalUI.Show(new CopyChatFromListToPlaceModal.Model(_placeId));
+}

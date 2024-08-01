@@ -11,12 +11,12 @@ namespace ActualChat.MLSearch.UnitTests.Engine.OpenSearch.Setup;
 public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private readonly IndexNames _indexNames = new();
-    private readonly OpenSearchSettings _openSearchSettings = new OpenSearchSettings {
+    private readonly OpenSearchSettings _openSearchSettings = new() {
         ClusterUri = "some://uri",
-        ModelGroup = "setup-test-group"
+        ModelGroup = "setup-test-group",
     };
     private readonly ClusterSetupResult _setupResult = new(new EmbeddingModelProps(
-        "some-unuque-model-id", 1024, "{ some: 'json config'}"
+        "some-unique-model-id", 1024, "{ some: 'json config'}"
     ));
 
     [Fact]
@@ -34,7 +34,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public async Task InitializationChecksForAllOfRequiredOpenSearchEnitities()
+    public async Task InitializationChecksForAllOfRequiredOpenSearchEntities()
     {
         var meshLocks = MockMeshLocks();
         var setupActions = MockSetupActions(true);
@@ -87,7 +87,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
         // Verify no other checks were performed
         setupActions.VerifyNoOtherCalls();
 
-        // Verify there was no attempt to accuire some distributed lock
+        // Verify there was no attempt to acquire some distributed lock
         meshLocks.VerifyNoOtherCalls();
     }
 
@@ -169,7 +169,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
         // Verify all methods having setups are called
         setupActions.Verify();
 
-        // Verify there are no other calls except ones we setup
+        // Verify there are no other calls except ones we set up
         setupActions.VerifyNoOtherCalls();
     }
 
@@ -319,7 +319,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
                 It.IsAny<CancellationToken>()
             ))
             .Returns<string, string, MeshLockOptions, CancellationToken>((key, value, options, ct)
-                => Task.FromResult(new MeshLockHolder(Mock.Of<IMeshLocksBackend>(), "id", key, value, options)))
+                => Task.FromResult(new MeshLockHolder(Mock.Of<IMeshLocksBackend>(), "id", key, value, options, ct)))
             .Verifiable();
 
         return meshLocks;

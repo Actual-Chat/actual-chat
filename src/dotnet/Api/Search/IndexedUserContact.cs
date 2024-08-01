@@ -11,5 +11,6 @@ public sealed partial record IndexedUserContact : IRequirementTarget
     [DataMember, MemoryPackOrder(1)] public string FullName { get; init; } = "";
     [DataMember, MemoryPackOrder(2)] public string FirstName { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public string SecondName { get; init; } = "";
+    [DataMember, MemoryPackOrder(4)] public ApiArray<PlaceId> PlaceIds { get; init; }
     // TODO: store Version
 }

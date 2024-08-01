@@ -1,0 +1,12 @@
+@inherits LayoutComponentBase
+@layout BaseLayout
+
+<PageWithHeaderAndFooter Class="discover-layout">
+    <LeftDrawer><RenderSlot Name="MainLeftDrawer"/></LeftDrawer>
+    <Header><RenderSlot Name="MainHeader"/></Header>
+    <SubHeader><RenderStack Name="SubHeader"/></SubHeader>
+    <Footer><RenderSlot Name="MainFooter"/></Footer>
+    <SubFooter><RenderStack Name="SubFooter"/></SubFooter>
+    <Body>@Body</Body>
+    <RightDrawer><RenderSlot Name="MainRightDrawer"/></RightDrawer>
+</PageWithHeaderAndFooter>

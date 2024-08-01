@@ -217,6 +217,7 @@
     --black-10: #0000001A;
     --black-05: #0000000D;
     --black-50: #00000080;
+    --white-90: #FFFFFFE6;
     --white-50: #FFFFFF80;
     --white-40: #FFFFFF66;
     --white-30: #FFFFFF4D;
@@ -333,6 +334,12 @@
     --recorder-on-middle: var(--magenta-50);
     --audio-panel-button: var(--white);
     --audio-panel-button-text: var(--gray-40);
+    --mobile-landscape-post-panel: var(--gray-30);
+    --mobile-landscape-audio-panel-button: var(--gray-30);
+    --mobile-landscape-audio-panel-button-text: var(--gray-60);
+    --mobile-landscape-audio-panel-playback-on: var(--blue-10);
+    --related-chat-entry: var(--gray-95);
+    --mobile-related-chat-entry: var(--gray-30);
 
     /* Download Banner */
     --download-banner-left: var(--magenta-40);
@@ -393,7 +400,7 @@
     --bubble-btn-hover: var(--black-10);
     --reaction: var(--blue-50-20);
     --reaction-own: var(--blue-50-30);
-    --viewer-header: var(--black-50);
+    --viewer-header-text: var(--white-90);
     --left-side-logo: var(--black);
     --link-preview-icon: var(--blue-70);
     --place-header-search: var(--white-30);
@@ -548,6 +555,12 @@
     --recorder-on-middle: var(--magenta-50);
     --audio-panel-button: var(--ash-26);
     --audio-panel-button-text: var(--ash-70);
+    --mobile-landscape-post-panel: var(--ash-30);
+    --mobile-landscape-audio-panel-button: var(--ash-30);
+    --mobile-landscape-audio-panel-button-text: var(--ash-60);
+    --mobile-landscape-audio-panel-playback-on: var(--blue-10);
+    --related-chat-entry: var(--ash-22);
+    --mobile-related-chat-entry: var(--ash-22);
 
     /* Download Banner */
     --download-banner-left: var(--magenta-40);
@@ -609,7 +622,7 @@
     --bubble-btn-hover: var(--white-10);
     --reaction: var(--white-05);
     --reaction-own: var(--white-10);
-    --viewer-header: var(--white-10);
+    --viewer-header-text: var(--white-90);
     --left-side-logo: var(--white);
     --place-header-search: var(--ash-99-10);
     --place-header-text: var(--ash-99);
@@ -762,6 +775,12 @@
     --recorder-on-middle: var(--magenta-50);
     --audio-panel-button: var(--white);
     --audio-panel-button-text: var(--gray-40);
+    --mobile-landscape-post-panel: var(--gray-30);
+    --mobile-landscape-audio-panel-button: var(--gray-30);
+    --mobile-landscape-audio-panel-button-text: var(--gray-60);
+    --mobile-landscape-audio-panel-playback-on: var(--blue-10);
+    --related-chat-entry: var(--gray-95);
+    --mobile-related-chat-entry: var(--gray-30);
 
     /* Download Banner */
     --download-banner-left: var(--magenta-40);
@@ -822,7 +841,7 @@
     --bubble-btn-hover: var(--black-10);
     --reaction: var(--blue-50-20);
     --reaction-own: var(--blue-50-30);
-    --viewer-header: var(--black-50);
+    --viewer-header-text: var(--white-90);
     --left-side-logo: var(--black);
     --link-preview-icon: var(--blue-70);
     --place-header-search: var(--white-30);

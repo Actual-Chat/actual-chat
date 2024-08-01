@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using ActualChat.Performance;
-using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using ActualLab.Rpc;
@@ -24,23 +23,20 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
         .WithPhone(BobPhone)
         .WithClaim(ClaimTypes.Email, BobEmail);
 
-    protected override Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         _tester = AppHost.NewWebClientTester(Out);
         var services = AppHost.Services;
         _externalContacts = services.GetRequiredService<IExternalContacts>();
         services.GetRequiredService<IContacts>();
         _commander = services.Commander();
-
-        FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
-        return Task.CompletedTask;
     }
 
     protected override async Task DisposeAsync()
     {
-        foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
-            FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
-        await _tester.DisposeAsync().AsTask();
+        await _tester.DisposeSilentlyAsync();
+        await base.DisposeAsync();
     }
 
     [Fact]

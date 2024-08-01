@@ -1,0 +1,94 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<ChatMemberCounter.Model>
+@{
+    var m = State.Value;
+    if (m.MemberCount == 0)
+        return;
+
+    RenderFragment RenderMemberCount() {
+        if (!ScreenSize.IsNarrow()) {
+            return @<div class="c-text">
+                       @if (m.OnlineCount > 0) {
+                           <span>@($"{GetCountString(m.OnlineCount)} online")</span>
+                           <span class="member-separator"></span>
+                       }
+                       @($"{GetCountString(m.MemberCount)} {"member".Pluralize(m.MemberCount)}")
+
+                   </div>;
+        }
+        return @<div class="c-text">
+                   @if (m.OnlineCount > 0) {
+                       <span class="online-dot"></span>
+                       <span>@($"{GetCountString(m.OnlineCount)}")</span>
+                       <span class="member-separator"></span>
+                   }
+                   <span>
+                       @($"{GetCountString(m.MemberCount)} {"member".Pluralize(m.MemberCount)}")
+                   </span>
+               </div>;
+    }
+}
+
+@if (m.MemberCount > 0) {
+    <div class="chat-member-counter">
+        @RenderMemberCount()
+        @if (!ScreenSize.IsNarrow()) {
+            <DotSeparator/>
+        }
+    </div>
+}
+
+@code {
+    private Chat Chat => ChatContext.Chat;
+    private Session Session => ChatContext.Hub.Session();
+    private IAuthors Authors => ChatContext.Hub.Authors;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat.Id;
+        var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken);
+
+        var authorPresences = await allAuthorIds
+            .Select(authorId => Authors.GetPresence(Session, chatId, authorId, cancellationToken))
+            .Collect()
+            .ConfigureAwait(false);
+
+        var onlineCount = authorPresences.Count(presence => presence is Presence.Online or Presence.Recording);
+        return new() {
+            MemberCount = allAuthorIds.Count,
+            OnlineCount = onlineCount,
+        };
+    }
+
+    private string GetCountString(int memberCount) {
+        decimal count;
+        switch (memberCount) {
+            case < 1000:
+                return $"{memberCount}";
+            case < 1000000:
+                count = Math.Round(memberCount / 1000m, 1, MidpointRounding.AwayFromZero);
+                return $"{count}K";
+            default:
+                count = Math.Round(memberCount / 1000000m, 1, MidpointRounding.AwayFromZero);
+                return $"{count}M";
+        }
+    }
+
+    public sealed record Model {
+        public static readonly Model Loading = new();
+
+        public int MemberCount { get; init; }
+        public int OnlineCount { get; init; }
+    }
+}

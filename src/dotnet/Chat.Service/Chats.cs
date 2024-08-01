@@ -42,8 +42,16 @@ public class Chats(IServiceProvider services) : IChats
                 Picture = contact.Account.Avatar.Media,
             };
         }
-        else if (chat == null)
-            return null;
+        else {
+            if (chat == null)
+                return null;
+
+            if (chatId is { IsPlaceChat: true, IsPlaceRootChat: false }) {
+                var place = await Places.Get(session, chatId.PlaceId, cancellationToken).ConfigureAwait(false);
+                if (place == null)
+                    return null;
+            }
+        }
 
         var rules = await GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanRead())
@@ -150,6 +158,15 @@ public class Chats(IServiceProvider services) : IChats
 
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
         return chat?.Id ?? ChatId.None;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ReadPositionsStat> GetReadPositionsStat(Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Permissions.Require(ChatPermissions.Read);
+        // Stat is the same for all chat members, but we had to check read permissions first.
+        return await GetReadPositionsStatInternal(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // Not a [ComputeMethod]!
@@ -279,19 +296,6 @@ public class Chats(IServiceProvider services) : IChats
                     Attachments = attachments.IsEmpty ? null : attachments,
                 }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
-            textEntryId = textEntry.Id.ToTextEntryId();
-
-            if (attachments.Count > 0) {
-                var cmd = new ChatsBackend_CreateAttachments(
-                    attachments.Select((x, i) => new TextEntryAttachment {
-                            EntryId = textEntryId,
-                            Index = i,
-                            MediaId = x.MediaId,
-                            ThumbnailMediaId = x.ThumbnailMediaId,
-                        })
-                        .ToApiArray());
-                await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
-            }
         }
 
         return textEntry;
@@ -546,90 +550,6 @@ public class Chats(IServiceProvider services) : IChats
         return default;
     }
 
-    // Private methods
-
-    public virtual async Task<PrincipalId> GetOwnPrincipalId(
-        Session session, ChatId chatId,
-        CancellationToken cancellationToken)
-    {
-        var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (author != null)
-            return new PrincipalId(author.Id, AssumeValid.Option);
-
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        return new PrincipalId(account.Id, AssumeValid.Option);
-    }
-
-    private async Task RemoveTextEntry(
-        Session session,
-        Chat chat,
-        TextEntryId textEntryId,
-        Author author,
-        CancellationToken cancellationToken)
-    {
-        var textEntry = await this
-            .GetEntry(session, textEntryId, cancellationToken)
-            .Require(ChatEntry.MustNotBeRemoved)
-            .ConfigureAwait(false);
-
-        // Check constraints
-        if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner()))
-            throw StandardError.Unauthorized("You can remove only your own messages.");
-        if (textEntry.IsStreaming)
-            throw StandardError.Constraint("This entry is still recording, you'll be able to remove it later.");
-
-        await Remove(textEntryId).ConfigureAwait(false);
-        if (textEntry.AudioEntryId is { } localAudioEntryId) {
-            var audioEntryId = new ChatEntryId(chat.Id, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
-            await Remove(audioEntryId).ConfigureAwait(false);
-        }
-        return;
-
-        async Task Remove(ChatEntryId entryId1) {
-            var removeCommand = new ChatsBackend_ChangeEntry(entryId1, null, Change.Remove<ChatEntryDiff>());
-            await Commander.Call(removeCommand, true, cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    private async Task RestoreTextEntry(
-        Session session,
-        Chat chat,
-        TextEntryId textEntryId,
-        Author author,
-        CancellationToken cancellationToken)
-    {
-        var textEntry = await GetRemovedEntry(textEntryId).ConfigureAwait(false);
-
-        // Check constraints
-        if (textEntry == null)
-            return;
-
-        if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner()))
-            throw StandardError.Unauthorized("You can restore only your own messages.");
-
-        await Restore(textEntryId).ConfigureAwait(false);
-        if (textEntry.AudioEntryId is { } localAudioEntryId) {
-            var audioEntryId = new ChatEntryId(chat.Id, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
-            await Restore(audioEntryId).ConfigureAwait(false);
-        }
-        return;
-
-        async Task Restore(ChatEntryId entryId1) {
-            var restoreCommand = new ChatsBackend_ChangeEntry(
-                entryId1,
-                null,
-                Change.Update(new ChatEntryDiff {
-                    IsRemoved = false,
-                }));
-            await Commander.Call(restoreCommand, true, cancellationToken).ConfigureAwait(false);
-        }
-
-        async ValueTask<ChatEntry?> GetRemovedEntry(ChatEntryId entryId) {
-            await Get(session, chat.Id, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
-            return await Backend.GetRemovedEntry(entryId, cancellationToken).ConfigureAwait(false);
-        }
-    }
-
     // [CommandHandler]
     public virtual async Task<Chat_CopyChatResult> OnCopyChat(Chat_CopyChat command, CancellationToken cancellationToken)
     {
@@ -773,6 +693,16 @@ public class Chats(IServiceProvider services) : IChats
         var publishContactsCmd = new ContactsBackend_PublishCopiedChat(newChatId);
         await Commander.Call(publishContactsCmd, true, cancellationToken).ConfigureAwait(false);
 
+        if (sourceChat is { IsArchived: false }) {
+            var archiveChatCmd = new Chats_Change(session,
+                sourceChat.Id,
+                null,
+                Change.Update(new ChatDiff {
+                    IsArchived = true,
+                }));
+            await Commander.Call(archiveChatCmd, true, cancellationToken).ConfigureAwait(false);
+        }
+
         if (chatCopyState != null && !chatCopyState.IsPublished) {
             var publishCopiedChatCmd = new ChatsBackend_ChangeChatCopyState(chatCopyState.Id,
                 chatCopyState.Version,
@@ -780,6 +710,123 @@ public class Chats(IServiceProvider services) : IChats
                     IsPublished = true,
                 }));
             await Commander.Call(publishCopiedChatCmd, true, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    // Protected/internal methods
+
+    [ComputeMethod]
+    protected virtual async Task<ReadPositionsStat> GetReadPositionsStatInternal(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var statBackend = await Backend.GetReadPositionsStat(chatId, cancellationToken).ConfigureAwait(false);
+        if (statBackend == null)
+            return new ReadPositionsStat(chatId, long.MaxValue, ApiArray.Empty<AuthorReadPosition>());
+
+        var positions = statBackend.TopReadPositions;
+        var top2AuthorReadPositions = (await positions
+                .Select(async c => {
+                    var authorId = AuthorId.None;
+                    using (var _ = Computed.BeginIsolation()) {
+                        // Do not capture dependency, we just need an author id
+                        var author = await AuthorsBackend.GetByUserId(chatId,
+                                c.UserId,
+                                AuthorsBackend_GetAuthorOption.Full,
+                                cancellationToken)
+                            .ConfigureAwait(false);
+                        if (author != null)
+                            authorId = author.Id;
+                    }
+                    return (AuthorId: authorId, c.EntryLid);
+                })
+                .Collect()
+                .ConfigureAwait(false))
+            .Select(c => new AuthorReadPosition(c.AuthorId, c.EntryLid))
+            .ToApiArray();
+
+        return new ReadPositionsStat(chatId, statBackend.StartTrackingEntryLid, top2AuthorReadPositions);
+    }
+
+    // Private methods
+
+    public virtual async Task<PrincipalId> GetOwnPrincipalId(
+        Session session, ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (author != null)
+            return new PrincipalId(author.Id, AssumeValid.Option);
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return new PrincipalId(account.Id, AssumeValid.Option);
+    }
+
+    private async Task RemoveTextEntry(
+        Session session,
+        Chat chat,
+        TextEntryId textEntryId,
+        Author author,
+        CancellationToken cancellationToken)
+    {
+        var textEntry = await this
+            .GetEntry(session, textEntryId, cancellationToken)
+            .Require(ChatEntry.MustNotBeRemoved)
+            .ConfigureAwait(false);
+
+        // Check constraints
+        if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner()))
+            throw StandardError.Unauthorized("You can remove only your own messages.");
+        if (textEntry.IsStreaming)
+            throw StandardError.Constraint("This entry is still recording, you'll be able to remove it later.");
+
+        await Remove(textEntryId).ConfigureAwait(false);
+        if (textEntry.AudioEntryId is { } localAudioEntryId) {
+            var audioEntryId = new ChatEntryId(chat.Id, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
+            await Remove(audioEntryId).ConfigureAwait(false);
+        }
+        return;
+
+        async Task Remove(ChatEntryId entryId1) {
+            var removeCommand = new ChatsBackend_ChangeEntry(entryId1, null, Change.Remove<ChatEntryDiff>());
+            await Commander.Call(removeCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task RestoreTextEntry(
+        Session session,
+        Chat chat,
+        TextEntryId textEntryId,
+        Author author,
+        CancellationToken cancellationToken)
+    {
+        var textEntry = await GetRemovedEntry(textEntryId).ConfigureAwait(false);
+
+        // Check constraints
+        if (textEntry == null)
+            return;
+
+        if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner()))
+            throw StandardError.Unauthorized("You can restore only your own messages.");
+
+        await Restore(textEntryId).ConfigureAwait(false);
+        if (textEntry.AudioEntryId is { } localAudioEntryId) {
+            var audioEntryId = new ChatEntryId(chat.Id, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
+            await Restore(audioEntryId).ConfigureAwait(false);
+        }
+        return;
+
+        async Task Restore(ChatEntryId entryId1) {
+            var restoreCommand = new ChatsBackend_ChangeEntry(
+                entryId1,
+                null,
+                Change.Update(new ChatEntryDiff {
+                    IsRemoved = false,
+                }));
+            await Commander.Call(restoreCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+
+        async ValueTask<ChatEntry?> GetRemovedEntry(ChatEntryId entryId) {
+            await Get(session, chat.Id, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
+            return await Backend.GetRemovedEntry(entryId, cancellationToken).ConfigureAwait(false);
         }
     }
 }

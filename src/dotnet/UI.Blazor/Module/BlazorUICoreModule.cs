@@ -79,6 +79,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
             services.AddScoped<DateTimeConverter>(c => new ClientSizeDateTimeConverter(c)); // WASM
             services.AddHostedService(c => new ServerTimeSync(c));
         }
+        services.AddScoped(c => new FontSizeUI(c.UIHub()));
 
         // UI events
         services.AddScoped(c => new UIEventHub(c));
@@ -115,7 +116,6 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new ThemeUI(c.UIHub()));
         services.AddScoped(c => new VisualMediaViewerUI(c.UIHub()));
         fusion.AddService<AccountUI>(ServiceLifetime.Scoped);
-        fusion.AddService<SearchUI>(ServiceLifetime.Scoped);
 
         // Host-specific services
         services.AddScoped<IClientAuth>(c => new WebClientAuth(c));

@@ -4,7 +4,7 @@
 
 @{
     var m = State.Value;
-    var isPeerChat = Chat.Id.IsPeerChat(out _);
+    var isPeerChat = m.ChatId.IsPeerChat(out _);
     var hideMembers = false;
     if (!isPeerChat && m.AllAreAnonymous) {
         // Hide members in anonymous chat if there are less than 5 members.
@@ -48,7 +48,7 @@
             foreach (var (name, authorIds, isCollapsed) in groups) {
                 var title = $"{name} — {authorIds.Count}";
                 <Collapsed @key="@name" Title="@title" IsCollapsed="@isCollapsed">
-                    <Virtualize Items="@authorIds" Context="authorId">
+                    <Virtualize Items="@authorIds" Context="authorId" ItemSize="@m.ItemSize" OverscanCount="5">
                         <AuthorBadge
                             @key="@authorId"
                             AuthorSid="@authorId"
@@ -65,13 +65,18 @@
 @code {
     private EventCallback<AuthorId> _onClickCallback;
 
-    private Session Session => ChatContext.Hub.Session();
-    private Chat Chat => ChatContext.Chat;
-    private IRoles Roles => ChatContext.Hub.Roles;
-    private IAuthors Authors => ChatContext.Hub.Authors;
-    private AuthorUI AuthorUI => ChatContext.Hub.AuthorUI;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
+    private IPlaces Places => Hub.Places;
+    private IRoles Roles => Hub.Roles;
+    private IAuthors Authors => Hub.Authors;
+    private AuthorUI AuthorUI => Hub.AuthorUI;
+    private FontSizeUI FontSizeUI => Hub.FontSizeUI;
+
+    [Parameter] public ChatId ChatId { get; set; } = ChatId.None;
+    [Parameter] public PlaceId PlaceId { get; set; } = PlaceId.None;
 
     protected override void OnInitialized() {
         _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
@@ -87,13 +92,30 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = Chat.Id;
+        if (ChatId.IsNone && PlaceId.IsNone)
+            return Model.None;
 
-        // Code below doesn't use any component prop, so we can use .ConfigureAwait(false)
-        var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var ownerIds = !chatId.IsPeerChat(out _)
-            ? [..await Roles.ListOwnerIds(Session, chatId, cancellationToken).ConfigureAwait(false)]
-            : new HashSet<AuthorId>();
+        var chatId = ChatId.None;
+        var allAuthorIds = ApiArray<AuthorId>.Empty;
+        var ownerIds = new HashSet<AuthorId>();
+
+        if (!ChatId.IsNone) {
+            chatId = ChatId;
+            allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
+            ownerIds = !chatId.IsPeerChat(out _)
+                ? [..await Roles.ListOwnerIds(Session, chatId, cancellationToken).ConfigureAwait(false)]
+                : [];
+        } else if (!PlaceId.IsNone) {
+            var placeId = PlaceId;
+            chatId = placeId.ToRootChatId();
+            var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+            if (place == null)
+                return Model.None;
+
+            allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
+            ownerIds = [..await Places.ListOwnerIds(Session, place.Id, cancellationToken).ConfigureAwait(false)];
+        }
+
         var ownerAuthors = new List<AuthorInfo>();
         var onlineAuthors = new List<AuthorInfo>();
         var offlineAuthors = new List<AuthorInfo>();
@@ -140,9 +162,13 @@
         onlineAuthors.Sort(comparison);
         offlineAuthors.Sort(comparison);
         unreportedAuthors.Sort(comparison);
+        await FontSizeUI.FontSize.WhenFirstTimeRead;
+        var fontSize = FontSizeUI.GetFontSizePixels();
+        var itemSize = fontSize * 3;
 
         var allAreAnonymous = authorInfos.Length > 0 && authorInfos.All(c => c.isAnonymous);
         return new() {
+            ChatId = chatId,
             AllAuthorIds = allAuthorIds,
             OwnAuthorId = ownAuthor?.Id ?? AuthorId.None,
             OwnerAuthorIds = ownerAuthors.Select(c => c.Id).ToList(),
@@ -150,6 +176,7 @@
             OfflineAuthorIds = offlineAuthors.Select(c => c.Id).ToList(),
             UnreportedAuthorIds = unreportedAuthors.Select(c => c.Id).ToList(),
             AllAreAnonymous = allAreAnonymous,
+            ItemSize = itemSize,
         };
     }
 
@@ -161,6 +188,7 @@
     public sealed class Model {
         public static readonly Model None = new();
 
+        public ChatId ChatId { get; init; }
         public AuthorId OwnAuthorId { get; init; } = AuthorId.None;
         public IReadOnlyList<AuthorId> AllAuthorIds { get; init; } = [];
         public List<AuthorId> OwnerAuthorIds { get; init; } = [];
@@ -169,6 +197,7 @@
         public List<AuthorId> UnreportedAuthorIds { get; init; } = [];
         public bool AllAreAnonymous { get; init; }
         public bool IsOwner => !OwnAuthorId.IsNone && OwnerAuthorIds.Contains(OwnAuthorId);
+        public float ItemSize { get; init; } = 48;
     }
 
     public record struct AuthorInfo(AuthorId Id, string Name);

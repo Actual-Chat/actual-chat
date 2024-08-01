@@ -78,7 +78,7 @@ public static class TestAppHostFactory
                 services.AddSingleton<IBlobStorages, TempFolderBlobStorages>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
                 services.AddSingleton<IndexNames>(_ => new IndexNames {
-                    IndexPrefix = UniqueNames.Elastic("test"),
+                    IndexPrefix = UniqueNames.OpenSearch("test"),
                 });
             },
             ConfigureApp = (ctx, app) => options.ConfigureApp?.Invoke(ctx, app),

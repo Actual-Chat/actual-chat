@@ -72,10 +72,17 @@
                 Placeholder="Chat title*"
                 ClearButton="true"/>
         </FormSection>
+        <FormSection Class="field-chat-title" For="() => _form.Description" InputId="@_form.DescriptionId" IsLabelInsideInput="true" Label="Chat description">
+            <TextBox
+                @bind-Value="@_form.Description"
+                Id="@_form.DescriptionId"
+                Placeholder="This chat about..."
+                ClearButton="true"/>
+        </FormSection>
     </FormBlock>
 
     <div class="chat-settings-container">
-    <TileItem Click="OnManageChatTypeClick" Class="chat-type-tile-item">
+        <TileItem Click="OnManageChatTypeClick" Class="chat-type-tile-item">
             <Icon>
                 <i class="icon-key text-xl"></i>
             </Icon>
@@ -114,8 +121,15 @@
                 </TileItem>
             }
 
-            @if (m.IsOwner && m.Chat != null && !_isPlaceWelcomeChat) {
-                <TileItem Class="item-leave-group" Click="@(() => OnDeleteChatClick(m.Chat))">
+            @if (m is { IsOwner: true, Chat: not null } && !_isPlaceWelcomeChat) {
+                @if (m.IsAdmin || m.EnableIncompleteUI) {
+                    <TileItem Class="item-archive-chat item-danger" Click="@(() => OnArchiveChatClick(m.Chat))">
+                        <Icon><i class="icon-history"></i></Icon>
+                        <Content>Archive chat</Content>
+                    </TileItem>
+                }
+
+                <TileItem Class="item-leave-group item-danger" Click="@(() => OnDeleteChatClick(m.Chat))">
                     <Icon><i class="icon-log-out"></i></Icon>
                     <Content>Leave chat & delete</Content>
                 </TileItem>
@@ -139,6 +153,11 @@
     [Inject] private DiffEngine DiffEngine { get; init; } = null!;
 
     private Session Session => Hub.Session(); // Shortcut
+    private IChats Chats => Hub.Chats;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private AccountUI AccountUI => Hub.AccountUI;
+    private IAuthors Authors => Hub.Authors;
+    private Features Features => Hub.Features();
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -146,7 +165,7 @@
 
     protected override void OnInitialized() {
         ChatId = Context.GetTypedModel<ChatId>();
-        Context.SetTitle("Edit chat settings");
+        Context.SetTitle("Chat settings");
         if (ChatId.IsPeerChat(out _)) {
             throw StandardError.NotSupported("Peer chat is not supported.");
         }
@@ -166,6 +185,7 @@
         var chat = await Hub.Chats.Get(Session, ChatId, default).Require();
         _form = new FormModel(ComponentIdGenerator) {
             Title = chat.Title,
+            Description = chat.Description,
             Picture = chat.Picture?.ToPicture(),
             ImageUploadUrl = $"/api/chat-media/{chat.Id}/upload",
         };
@@ -186,15 +206,15 @@
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
 
-        var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null || !chat.Rules.CanEditProperties())
             return new() { Chat = chat };
 
-        var allAuthorIds = await Hub.Authors.ListAuthorIds(Session, chatId, cancellationToken);
+        var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken);
         var isPublic = chat.IsPublic;
         _placeId = chat.Id.PlaceChatId.PlaceId;
         var isPlace = !_placeId.IsNone;
-        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
         return new() {
             Chat = chat,
             IsOwner = chat.Rules.IsOwner(),
@@ -202,6 +222,7 @@
             IsPublic = isPublic,
             IsPlace = isPlace,
             EnableIncompleteUI = enableIncompleteUI,
+            IsAdmin = AccountUI.OwnAccount.Value.IsAdmin,
         };
     }
 
@@ -224,7 +245,10 @@
         => Context.StepIn(DiveInDialogPage.New<EditChatMembersModalPage>(ChatId));
 
     private void OnDeleteChatClick(Chat chat)
-        => Hub.ChatUI.DeleteChat(chat);
+        => ChatUI.DeleteChat(chat);
+
+    private void OnArchiveChatClick(Chat chat)
+        => ChatUI.ArchiveChat(chat);
 
     private async Task OnSubmit() {
         if (_formRef == null)
@@ -236,9 +260,10 @@
     }
 
     private async Task Save() {
-        var chat = await Hub.Chats.Get(Session, ChatId, default).Require();
+        var chat = await Chats.Get(Session, ChatId, default).Require();
         var newChat = chat with {
             Title = _form!.Title,
+            Description = _form!.Description,
             MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
         };
         var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
@@ -253,15 +278,18 @@
         [Required, MinLength(1)]
         public string Title { get; set; } = "";
 
+        public string Description { get; set; } = "";
         public Picture? Picture { get; set; }
         public string ImageUploadUrl { get; init; } = "";
 
         public string FormId { get; }
         public string TitleId { get; }
+        public string DescriptionId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
             TitleId = $"{FormId}-title";
+            DescriptionId = $"{FormId}-description";
         }
     }
 
@@ -274,5 +302,6 @@
         public bool IsPublic { get; init; }
         public bool IsPlace { get; init; }
         public bool EnableIncompleteUI { get; init; }
+        public bool IsAdmin { get; init; }
     }
 }

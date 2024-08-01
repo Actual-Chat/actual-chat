@@ -14,9 +14,10 @@ body {
     -webkit-touch-callout: none;
     overscroll-behavior-x: none; /* Disables navigate back/forward w/ swipe, doesn't work on Safari */
     width: 100%;
-    max-height: 100vh;
-    max-height: calc(var(--vh, 1vh) * 100);
-    transition: max-height 150ms ease-in;
+}
+
+body.device-ios {
+    @apply ios-height;
 }
 
 body.device-ios * {
@@ -119,6 +120,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 }
 
 .layout-header {
+    @apply z-50;
     @apply flex-none flex-y;
     @apply w-full;
     @apply overflow-hidden;
@@ -133,10 +135,17 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply md:hidden;
 }
 .layout-subheader {
-    @apply absolute flex-none flex-y top-14 z-10;
+    @apply absolute top-14 z-10;
+    @apply flex-none flex-y;
     @apply w-full;
     @apply overflow-visible;
-    @apply bg-01;
+    @apply bg-transparent;
+    @apply transition-height;
+}
+body.narrow .layout-subheader > div:nth-last-child(2) {
+    @apply rounded-b-2xl;
+    @apply overflow-hidden;
+    @apply shadow-lg;
 }
 
 .layout-body {
@@ -274,5 +283,14 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply min-w-full md:min-w-40;
 }
 .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .list-view-layout {
-    @apply sm:flex md:hidden lg:flex;
+    @apply sm:w-full md:w-0 lg:w-full;
+    @apply sm:opacity-100 md:opacity-0 lg:opacity-100;
+    @apply md:transition-width;
+    @apply md:duration-200;
+}
+.page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="closed"]) > .list-view-layout {
+    @apply w-full;
+    @apply sm:opacity-100 md:opacity-100 lg:opacity-100;
+    @apply md:transition-width;
+    @apply md:duration-200;
 }

@@ -6,7 +6,9 @@ using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Media;
+using ActualChat.MLSearch;
 using ActualChat.Notification;
+using ActualChat.Search;
 using ActualChat.Security;
 using ActualChat.Streaming;
 using ActualChat.Users;
@@ -38,6 +40,10 @@ public sealed class ApiClientModule(IServiceProvider moduleServices)
         fusion.AddClient<IReactions>();
         fusion.AddClient<IPlaces>();
 
+        // Search
+        fusion.AddClient<ISearch>();
+        fusion.AddClient<IMLSearch>();
+
         // Contacts
         fusion.AddClient<IContacts>();
         fusion.AddClient<IExternalContacts>();
@@ -63,6 +69,7 @@ public sealed class ApiClientModule(IServiceProvider moduleServices)
         fusion.AddClient<IAvatars>();
         fusion.AddClient<IUserPresences>();
         fusion.AddClient<IChatPositions>();
+        fusion.AddClient<IChatUsages>();
         fusion.AddClient<IPhoneAuth>();
         fusion.AddClient<IPhones>();
         fusion.AddClient<IEmails>();

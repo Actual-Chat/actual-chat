@@ -5,40 +5,90 @@ namespace ActualChat.MLSearch.Indexing.ChatContent;
 
 internal interface IChatContentIndexer
 {
+    ChatId ChatId { get; }
     Task InitAsync(ChatContentCursor cursor, CancellationToken cancellationToken);
     ValueTask ApplyAsync(ChatEntry entry, CancellationToken cancellationToken);
     Task<ChatContentCursor> FlushAsync(CancellationToken cancellationToken);
 }
 
 internal sealed class ChatContentIndexer(
+    ChatId chatId,
     IChatsBackend chatsBackend,
     IChatContentDocumentLoader documentLoader,
     IChatContentMapper documentMapper,
+    IChatContentArranger contentArranger,
     ISink<ChatSlice, string> sink
 ) : IChatContentIndexer
 {
     private enum ChatEventType
     {
-        None,
         Create,
         Update,
         Delete,
     }
 
-    private const int MaxTailSetSize = 5;
-    private ChatContentCursor _cursor = new(0, 0);
-    private ChatContentCursor _nextCursor = new(0, 0);
+    private class EntryBuffer : IReadOnlyCollection<ChatEntry>
+    {
+        private readonly LinkedList<ChatEntry> _entries = [];
+        private readonly Dictionary<ChatEntryId, LinkedListNode<ChatEntry>> _nodeMap = [];
 
-    private readonly Dictionary<string, ChatSlice> _tailDocs = new(StringComparer.Ordinal);
+        public int Count => _entries.Count;
+        public IEnumerator<ChatEntry> GetEnumerator() => _entries.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    private readonly List<ChatEntry> _buffer = [];
-    private readonly Dictionary<string, ChatSlice> _outUpdates = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _outRemoves = new(StringComparer.Ordinal);
+        public bool Contains(ChatEntry entry) => _nodeMap.ContainsKey(entry.Id);
+
+        public void AddOrUpdate(ChatEntry entry)
+        {
+            if (_nodeMap.TryGetValue(entry.Id, out var node)) {
+                node.Value = entry;
+                return;
+            }
+
+            node = new LinkedListNode<ChatEntry>(entry);
+            _nodeMap.Add(entry.Id, node);
+            _entries.AddLast(node);
+        }
+
+        public void Remove(ChatEntry entry)
+        {
+            if (_nodeMap.Remove(entry.Id, out var node)) {
+                _entries.Remove(node);
+            }
+        }
+
+        public void Clear()
+        {
+            _nodeMap.Clear();
+            _entries.Clear();
+        }
+    }
+
+    private ChatContentCursor _cursor = new (0, 0);
+    private ChatContentCursor _nextCursor = new (0, 0);
+
+    private readonly Dictionary<string, ChatSlice> _tailDocs = new (StringComparer.Ordinal);
+
+    private readonly EntryBuffer _buffer = [];
+    private readonly Dictionary<string, ChatSlice> _outUpdates = new (StringComparer.Ordinal);
+    private readonly HashSet<string> _outRemoves = new (StringComparer.Ordinal);
+
+    public ChatContentCursor Cursor => _cursor;
+    public ChatContentCursor NextCursor => _nextCursor;
+    public IReadOnlyDictionary<string, ChatSlice> TailDocs => _tailDocs;
+    public IReadOnlyCollection<ChatEntry> Buffer => _buffer;
+    public IReadOnlyDictionary<string, ChatSlice> OutUpdates => _outUpdates;
+    public IReadOnlySet<string> OutRemoves => _outRemoves;
+
+    public int MaxTailSetSize { get; init; } = 5;
+
+    public ChatId ChatId => chatId;
 
     public async Task InitAsync(ChatContentCursor cursor, CancellationToken cancellationToken)
     {
         _cursor = cursor;
-        var tailDocuments = await documentLoader.LoadTailAsync(cursor, cancellationToken).ConfigureAwait(false);
+        var tailDocuments = await documentLoader.LoadTailAsync(chatId, cursor, MaxTailSetSize, cancellationToken)
+            .ConfigureAwait(false);
         foreach (var document in tailDocuments) {
             _tailDocs.Add(document.Id, document);
         }
@@ -46,42 +96,59 @@ internal sealed class ChatContentIndexer(
 
     public async ValueTask ApplyAsync(ChatEntry entry, CancellationToken cancellationToken)
     {
-        var eventType = entry.IsRemoved ? ChatEventType.Delete
-            : entry.LocalId > _cursor.LastEntryLocalId ? ChatEventType.Create : ChatEventType.Update;
+        if (chatId != entry.ChatId) {
+            throw new InvalidOperationException($"Can't apply entry {entry.Id} as it doesn't belong to chat {chatId}");
+        }
 
+        if (_buffer.Contains(entry)) {
+            // We can assume there is no entry presence in index or other output buffers
+            if (entry.IsRemoved) {
+                _buffer.Remove(entry);
+                return;
+            }
+            _buffer.AddOrUpdate(entry);
+            return;
+        }
         // Lookup for the entry related documents
         var existingDocuments = await LookupDocumentsAsync(entry, cancellationToken).ConfigureAwait(false);
-        // Adjust event type
-        eventType = eventType switch {
-            ChatEventType.Create when existingDocuments.Count!=0 => ChatEventType.Update,
-            ChatEventType.Update when existingDocuments.Count==0 => ChatEventType.Create,
-            ChatEventType.Delete when existingDocuments.Count==0 => ChatEventType.None,
-            _ => eventType,
-        };
+        if (entry.IsRemoved && existingDocuments.Count == 0) {
+            // There is no existing docs, so we don't have to change anything.
+            return;
+        }
 
-        if (eventType==ChatEventType.Create) {
+        var eventType = entry.IsRemoved ? ChatEventType.Delete
+            : existingDocuments.Count == 0 ? ChatEventType.Create : ChatEventType.Update;
+
+        if (eventType == ChatEventType.Create) {
             // Buffer new entries until Flush
-            _buffer.Add(entry);
+            _buffer.AddOrUpdate(entry);
         }
         else {
             // Now for updates and removes load all corresponding entries (we have ids in docs)
-            var sourceEntries = await GetSourceEntriesAsync(entry, existingDocuments, cancellationToken).ConfigureAwait(false);
+            var sourceEntries = await GetSourceEntriesAsync(entry, existingDocuments, cancellationToken)
+                .ConfigureAwait(false);
 
             // Send source entries to build document(s)
-            var newDocuments = await BuildDocumentsAsync(sourceEntries, cancellationToken).ConfigureAwait(false);
+            var newDoc = sourceEntries.Entries.Count > 0
+                ? await BuildDocumentAsync(sourceEntries, cancellationToken).ConfigureAwait(false)
+                : null;
+
+            // Check for the empty content in the new doc.
+            // If empty we should delete document instead of updating it.
+            var isEmptyContent = string.IsNullOrWhiteSpace(newDoc?.Text);
 
             // Now we have existing documents and new documents
             // So delete all existing documents where there is no corresponding new one
             foreach (var docId in existingDocuments.Select(doc => doc.Id)) {
-                var isDeleted = !newDocuments.Any(newDoc => newDoc.Id.Equals(docId, StringComparison.Ordinal));
+                var isDeleted = isEmptyContent || newDoc?.Id.Equals(docId, StringComparison.Ordinal) != true;
                 if (isDeleted) {
                     _tailDocs.Remove(docId);
                     _outUpdates.Remove(docId);
                     _outRemoves.Add(docId);
                 }
             }
-            // Add new documents to output buffer and update caches
-            foreach (var newDoc in newDocuments) {
+            // Add new document to output buffer and update caches
+            if (!isEmptyContent && newDoc != null) {
                 _outUpdates[newDoc.Id] = newDoc;
                 if (_tailDocs.ContainsKey(newDoc.Id)) {
                     _tailDocs[newDoc.Id] = newDoc;
@@ -95,14 +162,12 @@ internal sealed class ChatContentIndexer(
     public async Task<ChatContentCursor> FlushAsync(CancellationToken cancellationToken)
     {
         // Process buffer & tail
-        await foreach (var entrySet in ArrangeBufferedEntriesAsync(_buffer, _tailDocs.Values, cancellationToken).ConfigureAwait(false)) {
-            var newDocuments = await BuildDocumentsAsync(entrySet, cancellationToken).ConfigureAwait(false);
-            foreach (var newDoc in newDocuments) {
-                // Append each new doc to the output
-                _outUpdates[newDoc.Id] = newDoc;
-                // Save new docs as potential tails for a future processing
-                _tailDocs[newDoc.Id] = newDoc;
-            }
+        await foreach (var entrySet in ArrangeBufferedEntriesAsync(cancellationToken).ConfigureAwait(false)) {
+            var newDoc = await BuildDocumentAsync(entrySet, cancellationToken).ConfigureAwait(false);
+            // Append each new doc to the output
+            _outUpdates[newDoc.Id] = newDoc;
+            // Save new docs as potential tails for a future processing
+            _tailDocs[newDoc.Id] = newDoc;
         }
         // Apply changes to the document index
         await sink.ExecuteAsync(_outUpdates.Values, _outRemoves, cancellationToken).ConfigureAwait(false);
@@ -120,57 +185,60 @@ internal sealed class ChatContentIndexer(
         foreach (var (tailDoc, _) in tailSet.UnorderedItems) {
             _tailDocs.Add(tailDoc.Id, tailDoc);
         }
+
+        // Update cursor value
+        _cursor = _nextCursor = _buffer.Select(e => new ChatContentCursor(e)).Append(_nextCursor).Max()!;
+
         // Clear output buffers
         _outUpdates.Clear();
         _outRemoves.Clear();
-        // Update cursor value
-        _cursor = _nextCursor = _buffer.Select(e => new ChatContentCursor(e)).Append(_nextCursor).Max()!;
+        _buffer.Clear();
+
         return _cursor;
     }
 
-    private async IAsyncEnumerable<SourceEntries> ArrangeBufferedEntriesAsync(
-        IReadOnlyList<ChatEntry> bufferedEntries,
-        IReadOnlyCollection<ChatSlice> tailDocuments,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        // TODO: for now we just group buffered messages by three into a document
-        // but in future we want to select document depending on the content
-        var tailEntryIds = tailDocuments
-            .Where(doc => doc.Metadata.ChatEntries.Length < 3)
-            .Take(1)
-            .SelectMany(doc => doc.Metadata.ChatEntries)
-            .Select(e => e.Id);
-        var tailEntries = new List<ChatEntry>(
-            await LoadByIdsAsync(tailEntryIds, cancellationToken).ConfigureAwait(false));
-        foreach (var entry in bufferedEntries) {
-            tailEntries.Add(entry);
-            if (tailEntries.Count == 3) {
-                yield return new SourceEntries(0, null, [.. tailEntries]);
-                tailEntries.Clear();
-            }
-        }
+    private IAsyncEnumerable<SourceEntries> ArrangeBufferedEntriesAsync(CancellationToken cancellationToken)
+        => contentArranger.ArrangeAsync(_buffer, _tailDocs.Values, cancellationToken);
 
-        if (tailEntries.Count > 0) {
-            yield return new SourceEntries(0, null, tailEntries);
-        }
-    }
-
-    private async Task<IReadOnlyList<ChatEntry>> LoadByIdsAsync(
+    private ValueTask<IReadOnlyList<ChatEntry>> LoadByIdsAsync(
         IEnumerable<ChatEntryId> entryIds,
-        CancellationToken cancellationToken) => await chatsBackend.GetEntries(entryIds, true, cancellationToken).ConfigureAwait(false);
+        CancellationToken cancellationToken)
+        => chatsBackend.GetEntries(entryIds, true, cancellationToken);
 
-    private async Task<IReadOnlyCollection<ChatSlice>> BuildDocumentsAsync(SourceEntries sourceEntries, CancellationToken cancellationToken)
+    private async Task<ChatSlice> BuildDocumentAsync(SourceEntries sourceEntries, CancellationToken cancellationToken)
         => await documentMapper.MapAsync(sourceEntries, cancellationToken).ConfigureAwait(false);
 
-    private async Task<SourceEntries> GetSourceEntriesAsync(ChatEntry entry, IReadOnlyCollection<ChatSlice> associatedDocuments, CancellationToken cancellationToken)
+    private async Task<SourceEntries> GetSourceEntriesAsync(
+        ChatEntry entry,
+        IReadOnlyCollection<ChatSlice> associatedDocuments,
+        CancellationToken cancellationToken)
     {
         var docs = new List<ChatSlice>(associatedDocuments);
         docs.Sort(CompareSlices);
 
-        var entries = await LoadByIdsAsync(docs.SelectMany(doc => doc.Metadata.ChatEntries).Select(e => e.Id), cancellationToken)
-            .ConfigureAwait(false);
+        var order = 0;
+        var entryOrder = new Dictionary<ChatEntryId, int>();
+        var entryIds = new List<ChatEntryId>();
+        foreach (var entryId in docs.SelectMany(doc => doc.Metadata.ChatEntries).Select(e => e.Id)) {
+            if (entryOrder.TryAdd(entryId, order)) {
+                if (entryId != entry.Id) {
+                    entryIds.Add(entryId);
+                }
+                order++;
+            }
+        }
+        var entries = (await LoadByIdsAsync(entryIds, cancellationToken).ConfigureAwait(false))
+            .Append(entry)
+            .Where(e => !e.IsRemoved)
+            .ToList();
+        entries.Sort((a, b) => entryOrder[a.Id].CompareTo(entryOrder[b.Id]));
 
-        return new SourceEntries(docs[0].Metadata.StartOffset ?? 0, docs[docs.Count-1].Metadata.EndOffset, entries);
+        var firstMeta = docs[0].Metadata;
+        var lastMeta = docs[^1].Metadata;
+        var startOffset = firstMeta.ChatEntries[0].Id == entry.Id ? default : firstMeta.StartOffset;
+        var endOffset = lastMeta.ChatEntries[^1].Id == entry.Id ? default : lastMeta.EndOffset;
+
+        return new SourceEntries(startOffset, endOffset, entries);
 
         int CompareSlices(ChatSlice a, ChatSlice b)
             => GetStartOffset(a, entry).CompareTo(GetStartOffset(b, entry));
@@ -182,6 +250,8 @@ internal sealed class ChatContentIndexer(
         }
     }
 
-    private async Task<IReadOnlyCollection<ChatSlice>> LookupDocumentsAsync(ChatEntry entry, CancellationToken cancellationToken)
+    private async Task<IReadOnlyCollection<ChatSlice>> LookupDocumentsAsync(
+        ChatEntry entry,
+        CancellationToken cancellationToken)
         => await documentLoader.LoadByEntryIdsAsync([entry.Id], cancellationToken).ConfigureAwait(false);
 }

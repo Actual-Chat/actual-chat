@@ -3,6 +3,9 @@ namespace ActualChat.UI.Blazor.Components;
 public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListTile<TItem>> tiles)
     where TItem : class, IVirtualListItem
 {
+    private static readonly EqualityComparer<VirtualListTile<TItem>> TileComparer = EqualityComparer<VirtualListTile<TItem>>
+        .Create(Equals);
+
     public static readonly VirtualListData<TItem> None = new(Array.Empty<VirtualListTile<TItem>>());
 
     public bool IsNone
@@ -18,8 +21,8 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListTile<TItem>>
 
     public IReadOnlyList<VirtualListTile<TItem>> Tiles { get; } = tiles;
     public int Index { get; init; }
-    public int? RequestedStartExpansion { get; init; }
-    public int? RequestedEndExpansion { get; init; }
+    public int? BeforeCount { get; init; }
+    public int? AfterCount { get; init; }
     public bool HasVeryFirstItem { get; init; }
     public bool HasVeryLastItem { get; init; }
     public string? ScrollToKey { get; init; }
@@ -47,5 +50,24 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListTile<TItem>>
                     yield return items[j];
             }
         }
+    }
+
+    public bool IsSimilarTo(VirtualListData<TItem> other)
+        => HasVeryFirstItem == other.HasVeryFirstItem
+            && HasVeryLastItem == other.HasVeryLastItem
+            && OrdinalEquals(ScrollToKey, other.ScrollToKey)
+            && Tiles.SequenceEqual(other.Tiles, TileComparer);
+
+    private static bool Equals(VirtualListTile<TItem>? x, VirtualListTile<TItem>? y)
+    {
+        if (ReferenceEquals(x, y))
+            return true;
+
+        if (x is null || y is null)
+            return false;
+
+        return OrdinalEquals(x.Key, y.Key)
+            && x.Items.Count == y.Items.Count
+            && x.Items.SequenceEqual(y.Items);
     }
 }

@@ -6,7 +6,7 @@
     [Inject] UIEventHub UIEventHub { get; init; } = null!;
 
     [Parameter, EditorRequired]
-    public UIEventHandler<TEvent> Handler { get; init; } = null!;
+    public UIEventHandler<TEvent> Handler { get; set; } = null!;
 
     protected override void OnInitialized()
         => UIEventHub.Subscribe(Handler);

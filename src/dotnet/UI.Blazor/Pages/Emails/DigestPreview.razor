@@ -1,0 +1,34 @@
+@using ActualChat.Users.Templates
+@namespace ActualChat.UI.Blazor.Pages.Emails
+
+@{
+    var parameters = new DigestParameters {
+        OtherUnreadCount = 12,
+        OtherUnreadLink = "https://actual.chat",
+        UnreadChats = [
+            new DigestParameters.DigestChat {
+                Name = "Kate Green",
+                Link = "https://actual.chat",
+                UnreadCount = 1,
+                FirstUnreadChatEntry = new DigestParameters.DigestChatEntry {
+                    At = "at 12:15",
+                    AuthorName = "Kate Green",
+                    Text = "My lord, I have remembrances of yours, that " +
+                           "I have longed long to re-deliver; I pray you, now receive them.",
+                },
+            },
+            new DigestParameters.DigestChat {
+                Name = "Max B.",
+                Link = "https://actual.chat",
+                UnreadCount = 10,
+                FirstUnreadChatEntry = new DigestParameters.DigestChatEntry {
+                    At = "yesterday at 14:22",
+                    AuthorName = "Max Black",
+                    Text = "My lord, I have remembrances of yours, that " +
+                           "I have longed long to re-deliver; I pray you, now receive them.",
+                },
+            },
+        ],
+    };
+}
+<Digest Parameters="parameters"/>

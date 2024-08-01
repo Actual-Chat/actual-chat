@@ -1,4 +1,3 @@
-using ActualChat.Contacts;
 using ActualChat.Streaming.UI.Blazor.Components;
 using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Services;
@@ -60,9 +59,6 @@ public partial class ChatAudioUI
             var removed = oldListeningChats.Except(newListeningChats);
             var changed = added.Concat(removed).ToList();
 
-            var oldAudioOn = oldRecordingChat != default || oldListeningChats.Count != 0;
-            var newAudioOn = newRecordingChat != default || newListeningChats.Count != 0;
-
             using (Invalidation.Begin()) {
                 if (newRecordingChat != oldRecordingChat) {
                     _ = GetRecordingChatId();
@@ -74,11 +70,7 @@ public partial class ChatAudioUI
                     foreach (var c in changed)
                         _ = GetState(c.ChatId);
                 }
-                if (oldAudioOn != newAudioOn)
-                    _ = IsAudioOn();
             }
-            if ((oldRecordingChat != default && newRecordingChat == default) || (newListeningChats.Count == 0 && oldListeningChats.Count > 0))
-                _audioStoppedAt.Value = CpuNow;
 
             oldRecordingChat = newRecordingChat;
             oldListeningChats = newListeningChats;

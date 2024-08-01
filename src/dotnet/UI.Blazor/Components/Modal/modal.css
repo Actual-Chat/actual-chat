@@ -6,7 +6,56 @@
     @apply top-0 left-0 h-full w-full;
     @apply overflow-x-hidden overflow-y-hidden;
     @apply outline-0;
+    @apply duration-300;
+    backdrop-filter: blur(2px) opacity(0.8);
     background-color: rgba(0,0,0,0.5);
+    transition-behavior: allow-discrete;
+    transition-property: display;
+    animation: modal-blur-on 300ms ease-in-out;
+}
+.modal-overlay.hide {
+    @apply flex;
+    background-color: rgba(0,0,0,0);
+    backdrop-filter: blur(0) opacity(1);
+    animation: modal-blur-off 300ms ease-in-out;
+}
+@keyframes modal-blur-on {
+    0% {
+        opacity: 0.8;
+        backdrop-filter: blur(0);
+        background-color: rgba(0,0,0,0);
+    }
+    33% {
+        opacity: 0.9;
+        backdrop-filter: blur(1px);
+        background-color: rgba(0,0,0,0.25);
+    }
+    67% {
+        opacity: 1;
+        backdrop-filter: blur(2px);
+        background-color: rgba(0,0,0,0.5);
+    }
+}
+@keyframes modal-blur-off {
+    0% {
+        opacity: 1;
+        backdrop-filter: blur(2px);
+        background-color: rgba(0,0,0,0.5);
+    }
+    33% {
+        opacity: 0.9;
+        backdrop-filter: blur(1px);
+        background-color: rgba(0,0,0,0.25);
+    }
+    67% {
+        opacity: 0.8;
+        backdrop-filter: blur(0);
+        background-color: rgba(0,0,0,0);
+    }
+}
+
+body.device-ios .modal-overlay {
+    @apply ios-height;
 }
 
 .modal-focus-trap {
@@ -30,12 +79,12 @@
 body.narrow .modal-frame.modal-md {
     @apply absolute bottom-0 left-0 right-0;
     @apply w-auto h-auto rounded-b-none;
-    min-height: 80vh;
+    height: 80vh;
 }
 body.narrow .modal-frame.modal-sm {
     @apply absolute;
     @apply left-4 right-4;
-    @apply min-h-fit;
+    @apply min-h-fit h-auto;
     @apply rounded-xl;
     max-height: 80vh;
     bottom: 4vh;
@@ -63,7 +112,7 @@ body.narrow .modal-frame.modal-xs .c-text {
 .narrow .narrow-view__modal__position-bottom {
     @apply absolute bottom-0 left-0 right-0;
     @apply w-auto h-auto rounded-b-none;
-    min-height: 80vh;
+    height: 80vh;
 }
 
 .narrow .narrow-view__modal__position-stretch {
@@ -89,38 +138,41 @@ body.narrow .modal-frame.modal-xs .c-text {
     @apply z-10;
     @apply overflow-hidden;
     @apply bg-modal text-03;
-    @apply rounded-lg border-modal border;
+    @apply rounded-lg;
     @apply md:shadow-modal-wide;
 }
+body.device-ios .modal-chrome {
+    @apply ios-height;
+}
 .modal-frame {
-    @apply hidden flex-y items-stretch gap-y-2 overflow-hidden;
+    @apply flex-y items-stretch gap-y-2 overflow-hidden;
     @apply max-h-screen h-full w-full md:h-auto md:w-modal;
     @apply pb-4;
     @apply rounded-lg;
     @apply font-medium;
     @apply md:shadow-modal-wide;
-    @apply opacity-0;
     @apply duration-300;
     transition-behavior: allow-discrete;
+    transition-property: opacity, display, transform;
 }
-.modal .modal-frame {
-    @apply flex;
+body.device-ios .modal-frame {
+    @apply ios-height;
+}
+.modal-overlay .modal-frame {
     @apply opacity-100;
+    transform: scale(1);
     @starting-style {
         opacity: 0;
+        transform: scale(0.8);
     }
 }
-
-.modal-frame .dialog-body {
-    @apply pt-4;
-}
-.modal-frame:has(.modal-header) .dialog-body,
-.modal-frame:has(.modal-header-interactive) .dialog-body {
-    @apply pt-0;
-}
-.modal-frame .dialog-body:has(.stepper) {
-    @apply pt-0;
-    @apply overflow-hidden;
+.modal-overlay.hide .modal-frame {
+    @apply opacity-0;
+    transform: scale(0.8);
+    @starting-style {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 .btn.btn-square.modal-close {
@@ -237,4 +289,23 @@ body.narrow .dialog-buttons {
 }
 .modal-overlay-fullscreen .modal-header {
     @apply hidden;
+}
+
+.dialog-body .c-chat-list {
+    @apply flex-y justify-center gap-y-1;
+    @apply px-2;
+}
+.dialog-body .c-chat-list .c-chat {
+    @apply flex-x items-center gap-x-2;
+    @apply px-2 py-1;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+}
+.dialog-body .c-chat-list .c-chat .c-chat-title {
+    @apply line-clamp-1;
+    @apply text-headline-1 text-01;
+}
+body.hoverable .dialog-body .c-chat-list .c-chat:hover {
+    @apply bg-hover;
+    @apply cursor-pointer;
 }

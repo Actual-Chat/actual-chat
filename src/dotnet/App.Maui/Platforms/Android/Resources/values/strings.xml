@@ -1,4 +1,5 @@
 <resources>
   <!-- Resource value should aligned with Constants.Notification.ChannelIds.Default -->
   <string name="default_notification_channel_id" translatable="false">fcm_default_channel</string>
+  <string name="com.google.firebase.crashlytics.mapping_file_id">none</string>
 </resources>

@@ -19,6 +19,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [ConcurrencyCheck] public long Version { get; set; }
 
     public string Title { get; set; } = "";
+    public string Description { get; set; } = "";
     public ChatKind Kind { get; set; }
     [Obsolete("2023.03: Use MediaId instead.")]
     public string Picture { get; set; } = "";
@@ -31,6 +32,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     // Permissions & Rules
     public bool IsPublic { get; set; }
+    public bool IsArchived { get; set; }
     public bool AllowGuestAuthors { get; set; }
     public bool AllowAnonymousAuthors { get; set; }
     public string? SystemTag { get; set; }
@@ -43,6 +45,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public Chat ToModel()
         => new(new ChatId(Id), Version) {
             Title = Title,
+            Description = Description,
             CreatedAt = CreatedAt,
             IsTemplate = IsTemplate,
             TemplateId = TemplateId.IsNullOrEmpty()
@@ -52,6 +55,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
                 ? null
                 : new UserId(TemplatedForUserId),
             IsPublic = IsPublic,
+            IsArchived = IsArchived,
             AllowGuestAuthors = AllowGuestAuthors,
             AllowAnonymousAuthors = AllowAnonymousAuthors,
             SystemTag = SystemTag.IsNullOrEmpty()
@@ -69,11 +73,13 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Id = id;
         Version = model.Version;
         Title = model.Title;
+        Description = model.Description;
         CreatedAt = model.CreatedAt;
         IsTemplate = model.IsTemplate;
         TemplateId = model.TemplateId;
         TemplatedForUserId = model.TemplatedForUserId;
         IsPublic = model.IsPublic;
+        IsArchived = model.IsArchived;
         AllowGuestAuthors = model.AllowGuestAuthors;
         AllowAnonymousAuthors = model.AllowAnonymousAuthors;
         SystemTag = model.SystemTag.IsEmpty

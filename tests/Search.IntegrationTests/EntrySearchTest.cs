@@ -1,4 +1,3 @@
-using ActualChat.Performance;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Search.IntegrationTests;
@@ -12,19 +11,25 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     private ISearchBackend _sut = null!;
     private ICommander _commander = null!;
 
-    protected override Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         _tester = AppHost.NewWebClientTester(Out);
         _sut = AppHost.Services.GetRequiredService<ISearchBackend>();
         _commander = AppHost.Services.Commander();
-        return Task.CompletedTask;
+    }
+
+    protected override async Task DisposeAsync()
+    {
+        await _tester.DisposeSilentlyAsync();
+        await base.DisposeAsync();
     }
 
     [Fact]
     public async Task ShouldAdd()
     {
         // arrange
-        await _tester.SignInAsBob();
+        await _tester.SignInAsUniqueBob();
         var chatId = await CreateChat();
 
         var updates = ApiArray.New(
@@ -51,11 +56,11 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     {
         // arrange
         var bob = await _tester.SignInAsBob();
-        var placeId = await CreatePlace("Bob's Place");
-        var publicChat1Id = await CreateChat(ChatKind.Group, "Public Group Chat 1", placeId);
-        var publicChat2Id = await CreateChat(ChatKind.Group, "Public Group Chat 1", placeId);
-        var privateChat1Id = await CreateChat(ChatKind.Group, "Private Group Chat 1", placeId);
-        var privateChat2Id = await CreateChat(ChatKind.Group, "Private Group Chat 1", placeId);
+        var place = await _tester.CreatePlace(false, "Bob's Place");
+        var publicChat1Id = await CreateChat(ChatKind.Group, "Public Group Chat 1", place.Id);
+        var publicChat2Id = await CreateChat(ChatKind.Group, "Public Group Chat 1", place.Id);
+        var privateChat1Id = await CreateChat(ChatKind.Group, "Private Group Chat 1", place.Id);
+        var privateChat2Id = await CreateChat(ChatKind.Group, "Private Group Chat 1", place.Id);
 
         var publicChat1Updates = ApiArray.New(
             BuildEntry(publicChat1Id, 1, "PublicChat1: Let's go outside"),
@@ -214,14 +219,6 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
             Kind = kind,
             Title = title,
             PlaceId = placeId,
-        });
-        return id;
-    }
-
-    private async Task<PlaceId> CreatePlace(string title = "some place")
-    {
-        var (id, _) = await _tester.CreatePlace(x => x with {
-            Title = title,
         });
         return id;
     }

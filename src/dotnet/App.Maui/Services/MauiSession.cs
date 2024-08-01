@@ -58,6 +58,22 @@ public sealed class MauiSession(IServiceProvider services)
         });
     }
 
+    public static Task RemoveStored()
+    {
+        using var _ = Tracer.Region();
+        var storage = SecureStorage.Default;
+        try {
+            if (storage.Remove(SessionStorageKey))
+                Log.LogInformation("Removed stored Session");
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to remove Session");
+            // Ignored, see:
+            // - https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
+        }
+        return Task.CompletedTask;
+    }
+
     private static async Task<Session?> Read()
     {
         using var _ = Tracer.Region();
@@ -87,7 +103,7 @@ public sealed class MauiSession(IServiceProvider services)
         bool isSaved;
         try {
             if (storage.Remove(SessionStorageKey))
-                Log.LogInformation("Removed stored Session");
+                Log.LogInformation("Removed stored Session before saving");
             await storage.SetAsync(SessionStorageKey, session.Id.Value).ConfigureAwait(false);
             isSaved = true;
         }

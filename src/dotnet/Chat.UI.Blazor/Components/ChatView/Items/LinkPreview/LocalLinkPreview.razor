@@ -1,0 +1,76 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Media
+@inherits FusionComponentBase
+@{
+    var m = Data;
+    if (!m.CanRender)
+        return;
+    var chat = m.Chat!;
+    var entry = m.Entry!;
+    var place = m.Place;
+    var author = m.Author;
+    var url = m.LocalUrl;
+    var cls = chat.Kind == ChatKind.Place ? "place-link" : "";
+}
+
+<div class="link-preview local-link unfocusable @cls">
+    @if (chat.Kind == ChatKind.Place) {
+        <div class="image-wrapper">
+            @{
+                var picture = place != null ? place.Background : chat.Picture;
+                var size = place != null ? SquareSize.SizeFull : SquareSize.Size24;
+                var avatarKey = place != null ? place.Id.Value : chat.Id.Value;
+            }
+            <Pic
+                Picture="@picture.ToPicture()"
+                Size="@size"
+                IsSquare="@true"
+                HideTitle="@true"
+                IsBlurred="@false"
+                AvatarKind="@AvatarKind.Marble"
+                AvatarKey="@avatarKey"/>
+        </div>
+    } else {
+        <div class="c-chat-icon">
+            <ChatIcon Chat="@chat" Size="SquareSize.Size8"/>
+        </div>
+    }
+    <div class="c-info">
+        <div class="c-top">
+            @if (author != null) {
+                <div class="c-author-header">
+                    <AuthorName AuthorSid="@author.Id" Class="chat-message-author-name"/>
+                    <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
+                </div>
+            }
+            <a class="c-description" href="@url" @onclick:preventDefault="true" @onclick="NavigateToUrl">@entry.Content</a>
+        </div>
+        <span class="c-domain">
+            in <a class="text-primary" href="@Links.Chat(chat.Id)" @onclick:preventDefault="true" @onclick="NavigateToChat">@chat.Title</a>
+        </span>
+    </div>
+    <div class="incut"></div>
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private History History => Hub.History;
+
+    [Parameter, EditorRequired] public Model Data { get; set; } = null!;
+
+    // Nested types
+
+    public sealed record Model(LocalUrl LocalUrl) {
+        public Chat? Chat { get; init; }
+        public ChatEntry? Entry { get; init; }
+        public Author? Author { get; init; }
+        public Place? Place { get; init; }
+        public bool CanRender => Chat is not null && Entry is not null;
+    }
+
+    private void NavigateToUrl()
+        => _ = History.NavigateTo(Data.LocalUrl);
+
+    private void NavigateToChat()
+        => _ = History.NavigateTo(Links.Chat(Data.Chat!.Id));
+}

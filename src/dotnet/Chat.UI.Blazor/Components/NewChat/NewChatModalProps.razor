@@ -25,7 +25,7 @@
 
         <FormSection
             For="() => _form.Title"
-            Label="Name"
+            Label="Title"
             InputId="@_form.TitleId"
             IsLabelInsideInput="true"
             Class="!mt-0 grow"
@@ -33,6 +33,18 @@
             <TextBox
                 @bind-Value="@_form.Title"
                 Id="@_form.TitleId"
+                Autofocus="false"
+                Autocomplete="false"/>
+        </FormSection>
+        <FormSection
+            For="() => _form.Description"
+            Label="Description"
+            InputId="@_form.DescriptionId"
+            IsLabelInsideInput="true"
+            Class="!mt-0 grow">
+            <TextBox
+                @bind-Value="@_form.Description"
+                Id="@_form.DescriptionId"
                 Autofocus="false"
                 Autocomplete="false"/>
         </FormSection>
@@ -159,6 +171,7 @@
             var command = new Chats_Change(Hub.Session(), default, null, new() {
                 Create = new ChatDiff {
                     Title = _form.Title,
+                    Description = _form.Description,
                     Kind = null,
                     IsPublic = _form.IsPublic,
                     MediaId = _form.Picture?.MediaContent?.MediaId,
@@ -182,6 +195,7 @@
         [Required, MinLength(1)]
         public string Title { get; set; } = "";
 
+        public string Description { get; set; } = "";
         public Picture? Picture { get; set; }
         public bool IsPublic { get; set; }
         public bool AllowGuestAuthors { get; set; }
@@ -189,6 +203,7 @@
 
         public string FormId { get; }
         public string TitleId { get; }
+        public string DescriptionId { get; }
         public string IsPublicTrueFormId { get; }
         public string IsPublicFalseFormId { get; }
         public string AllowGuestAuthorsFormId { get; }
@@ -197,6 +212,7 @@
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
             TitleId = $"{FormId}-title";
+            DescriptionId = $"{FormId}-description";
             var isPublicFormId = $"{FormId}-is-public";
             IsPublicTrueFormId = isPublicFormId + "-true";
             IsPublicFalseFormId = isPublicFormId + "-false";

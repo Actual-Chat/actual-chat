@@ -446,6 +446,66 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         });
     }
 
+    [Fact]
+    public async Task ArchiveChat()
+    {
+        var appHost = AppHost;
+        var services = appHost.Services;
+        await using var ownerTester = appHost.NewBlazorTester(Out);
+        await ownerTester.SignInAsAlice();
+        var contacts = services.GetRequiredService<IContacts>();
+        var session = ownerTester.Session;
+
+        var (chatId, inviteId) = await ownerTester.CreateChat(true);
+        await ComputedTest.When(services, async ct => {
+            var contactIds = await contacts.ListIds(session, PlaceId.None, ct);
+            var chatIds = contactIds.Select(c => c.ChatId).ToArray();
+            chatIds.Should().Contain(chatId);
+        });
+
+        await using var otherTester = appHost.NewBlazorTester(Out);
+        await otherTester.SignInAsBob();
+        var session2 = otherTester.Session;
+
+        var author2 = await otherTester.JoinChat(chatId, inviteId);
+        await ComputedTest.When(services, async ct => {
+            var contactIds = await contacts.ListIds(session2, PlaceId.None, ct);
+            var chatIds = contactIds.Select(c => c.ChatId).ToArray();
+            chatIds.Should().Contain(chatId);
+        });
+
+        var commander = services.Commander();
+        var archiveChatCommand = new Chats_Change(session, chatId, null, Change.Update(new ChatDiff {
+            IsArchived = true
+        }));
+        await commander.Call(archiveChatCommand);
+
+        // Owner should still see the chat (e.g. with direct link)
+        var chats = services.GetRequiredService<IChats>();
+        var chat = await chats.Get(session, chatId, default);
+        chat.Should().NotBeNull();
+        chat!.IsArchived.Should().BeTrue();
+        chat.Rules.CanRead().Should().BeTrue();
+        chat.Rules.CanWrite().Should().BeFalse();
+
+        // But even Owner should not see in it the contacts
+        await ComputedTest.When(services, async ct => {
+            var contactIds = await contacts.ListIds(session, PlaceId.None, ct);
+            var chatIds = contactIds.Select(c => c.ChatId).ToArray();
+            chatIds.Should().NotContain(chatId);
+        });
+
+        // Other participants should not see the chat
+        chat = await chats.Get(session2, chatId, default);
+        chat.Should().BeNull();
+
+        await ComputedTest.When(services, async ct => {
+            var contactIds = await contacts.ListIds(session2, PlaceId.None, ct);
+            var chatIds = contactIds.Select(c => c.ChatId).ToArray();
+            chatIds.Should().NotContain(chatId);
+        });
+    }
+
     // Private methods
 
     private static async Task AssertNotJoined(IServiceProvider services, Session session, ChatId chatId, Account account)

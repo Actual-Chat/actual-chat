@@ -9,6 +9,7 @@ public static partial class Constants
         public static readonly TileStack<long> Long5To1K = new(0L, 5L, 1280L, 4);
         public static readonly TileStack<long> Long5To80 = new(0L, 5L, 80L, 4);
         public static readonly TileStack<long> Long5To20 = new(0L, 5L, 20L, 4);
+        public static readonly TileStack<int> Int5To20 = new(0, 5, 4, 4);
         public static readonly TileStack<Moment> Moment3MTo6Y = new(
             new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             new Moment(TimeSpan.FromMinutes(3)),

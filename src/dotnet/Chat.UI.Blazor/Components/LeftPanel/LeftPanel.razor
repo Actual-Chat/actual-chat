@@ -18,9 +18,6 @@
                     <LeftPanelContentHeader/>
                     <DownloadAppBanner CanBeClosed="true"/>
                     <NavbarContent/>
-                    @if (_isSearchPanelOpen) {
-                        <LeftSearchPanel OnAISearchClick="@OpenRightSearchPanel"/>
-                    }
                 </div>
             }
         </ErrorBarrier>
@@ -28,14 +25,10 @@
 </SideNav>
 
 @code {
-    // private Debouncer<Unit> _isOpenDebouncer = null!;
     private Action? _leftPanelVisibilityChanged;
-    private Action? _leftPanelSearchModeChanged;
     private bool _isOpen;
-    private bool _isSearchPanelOpen;
 
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
-    // [Inject] private Dispatcher Dispatcher { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public bool IsSkeletonWidePanel { get; set; }
@@ -44,16 +37,8 @@
 
     protected override void OnInitialized() {
         _isOpen = PanelsUI.Left.IsVisible.Value;
-#if false
-        var isOpenDebouncer = new Debouncer<Unit>(
-            TimeSpan.FromMicroseconds(30),
-            _ => Dispatcher.InvokeAsync(OnLeftPanelVisibilityChanged));
-        _leftPanelVisibilityChanged = () => isOpenDebouncer.Debounce(default);
-#endif
         _leftPanelVisibilityChanged = OnLeftPanelVisibilityChanged;
         PanelsUI.Left.VisibilityChanged += _leftPanelVisibilityChanged;
-        _leftPanelSearchModeChanged = OnLeftPanelSearchModeChanged;
-        PanelsUI.Left.SearchModeChanged += _leftPanelSearchModeChanged;
     }
 
     private void OnLeftPanelVisibilityChanged() {
@@ -65,24 +50,6 @@
         StateHasChanged();
     }
 
-    private void OnLeftPanelSearchModeChanged() {
-        var isSearchMode = PanelsUI.Left.IsSearchMode;
-        if (_isSearchPanelOpen == isSearchMode)
-            return;
-        _isSearchPanelOpen = isSearchMode;
-        StateHasChanged();
-    }
-
-    private void OpenRightSearchPanel() {
-        PanelsUI.Right.SearchToggle();
-        PanelsUI.Left.SearchToggle();
-        if (ScreenSize.IsNarrow()) {
-            PanelsUI.Left.SetIsVisible(false);
-        }
-    }
-
-    public void Dispose() {
-        PanelsUI.Left.VisibilityChanged -= _leftPanelVisibilityChanged;
-        PanelsUI.Left.SearchModeChanged -= _leftPanelSearchModeChanged;
-    }
+    public void Dispose()
+        => PanelsUI.Left.VisibilityChanged -= _leftPanelVisibilityChanged;
 }

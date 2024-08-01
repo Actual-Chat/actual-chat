@@ -1,4 +1,4 @@
-import { audioContextSource } from '../../Services/audio-context-source';
+import { audioContextSource, OverridenAudioContext } from '../../Services/audio-context-source';
 import { AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
 import { FeederState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
 import { Disposable } from 'disposable';
@@ -87,7 +87,7 @@ export class AudioPlayer implements Resettable {
         this.internalId = String(AudioPlayer.nextInternalId++);
         debugLog?.log(`#${this.internalId}.constructor`);
 
-        const attach = async (context: AudioContext, destination: AudioNode) => {
+        const attach = async (context: OverridenAudioContext) => {
             debugLog?.log(`#${this.internalId}.contextRef.attach: context:`, Log.ref(context));
 
             await AudioPlayer.ensureInitialized();
@@ -114,7 +114,8 @@ export class AudioPlayer implements Resettable {
             // Create decoder worker
             await decoderWorker.init(this.internalId, this.decoderToFeederWorkletChannel.port1);
 
-            feederNode.connect(destination);
+            const destinationOverride = context.destinationOverride ?? context.destination;
+            feederNode.connect(destinationOverride);
 
             this.isAttached = true;
         };
@@ -152,7 +153,7 @@ export class AudioPlayer implements Resettable {
 
         if (this.contextRef == null) {
             const options: AudioContextRefOptions = {
-                attach: (context, destination) => retry(3, () => attach(context, destination)),
+                attach: attach,
                 detach: detach,
                 dispose: () => this.end(true),
             }

@@ -5,6 +5,7 @@
     var m = State.Value;
     if (m.AccountFull == AccountFull.Loading)
         return;
+
     if (m.AccountFull.IsGuestOrNone) {
         Modal.Close(true);
         return;
@@ -22,6 +23,7 @@
                 <TimeZoneStep Account="m.AccountFull"/>
                 <AvatarStep/>
                 <PermissionsStep NextButtonRef="@_nextButtonRef"/>
+                <AnalyticsStep IsAnalyticsConfigured="m.IsAnalyticsConfigured"/>
                 <CreateChatsStep/>
             </Steps>
             <Header>
@@ -44,19 +46,19 @@
                         <Button
                             Class="btn-cancel"
                             Click="@(async _ => await stepper.Skip())">
-                            Skip
+                            @stepper.SkipTitle
                         </Button>
                     }
                     <Button
                         Class="btn-primary"
                         ButtonRef="@_nextButtonRef"
                         Click="@(async _ => await stepper.TryMoveForward())">
-                        @if (stepper.CurrentStep is PhoneStep or EmailStep) {
-                            <span>Verify</span>
+                        @if (stepper.CurrentStep is PhoneStep or EmailStep or AnalyticsStep) {
+                            <span>@stepper.NextTitle</span>
                         } else if (stepper.IsLastStep) {
                             <span>Start messaging</span>
                         } else if (stepper.CanMoveForward) {
-                            <span>Next</span>
+                            <span>@stepper.NextTitle</span>
                         } else {
                             Modal.Close(true);
                         }
@@ -79,6 +81,7 @@
 
     [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
+    [Inject] private IAnalyticsUI AnalyticsUI { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -93,9 +96,11 @@
     protected override async Task<ViewModel> ComputeState(CancellationToken cancellationToken) {
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        var isAnalyticsConfigured = await AnalyticsUI.IsConfigured(cancellationToken).ConfigureAwait(false);
         return new() {
             AccountFull = account,
             EnableIncompleteUI = enableIncompleteUI,
+            IsAnalyticsConfigured = isAnalyticsConfigured,
         };
     }
 
@@ -119,6 +124,7 @@
 
         public AccountFull AccountFull { get; init; } = null!;
         public bool EnableIncompleteUI { get; init; }
+        public bool IsAnalyticsConfigured { get; init; }
     }
 
     public sealed record Model : IOptionallyClosable {

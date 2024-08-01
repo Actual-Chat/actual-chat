@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Maui.Services;
+using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
@@ -37,10 +38,17 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c.UIHub()));
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c));
         services.AddScoped<IMauiShare>(c => new MauiShare(c));
+        services.AddScoped<IMauiHostSwitcher>(c => new MauiHostSwitcher(c.UIHub().UrlMapper(), c.GetRequiredService<ReloadUI>()));
+        services.AddScoped<IDeveloperTools>(_ => new MauiDeveloperTools());
         services.AddScoped<SystemSettingsUI>(_ => new MauiSystemSettingsUI());
 
         // Permissions
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
+        if (!HostInfo.HostKind.IsServerOrWasmApp())
+            services.AddScoped<IAnalyticsUI>(_ => new MauiAnalyticsUI());
+
+        // Notifications
+        services.AddSingleton<MauiNotifications>(c => new MauiNotifications(c));
 
         // RemoteComputedCache
         var appCacheDir = new FilePath(FileSystem.CacheDirectory);

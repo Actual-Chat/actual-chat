@@ -26,9 +26,11 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApiOrLocal<IChats, Chats>(); // Used by many
         rpcHost.AddBackend<IChatsBackend, ChatsBackend>();
         rpcHost.AddBackend<IChatsUpgradeBackend, ChatsUpgradeBackend>();
+        services.AddSingleton<MediaStorage>();
 
         // Places
         rpcHost.AddApiOrLocal<IPlaces, Places>(); // Used by Chats
+        rpcHost.AddBackend<IPlacesBackend, PlacesBackend>();
 
         // Authors
         rpcHost.AddApiOrLocal<IAuthors, Authors>(); // Used by Chats
@@ -94,6 +96,12 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
             // DbCopiedChat
             db.AddEntityResolver<string, DbChatCopyState>();
+
+            // DbPlace
+            db.AddEntityResolver<string, DbPlace>();
+
+            // DbReadPositionsStat
+            db.AddEntityResolver<string, DbReadPositionsStat>();
         });
     }
 }

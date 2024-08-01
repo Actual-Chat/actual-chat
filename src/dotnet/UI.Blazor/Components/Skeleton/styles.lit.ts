@@ -11,6 +11,9 @@ export const messageStyles = css`
     .animated-skeleton.message-skeleton {
         animation: pulse 2s infinite;
     }
+    .message-skeleton.place {
+        padding: 0.125rem 0;
+    }
     .message-avatar-wrapper {
         display: flex;
         flex: none;
@@ -43,6 +46,16 @@ export const messageStyles = css`
         opacity: 100%;
         background-color: var(--skeleton);
         border-radius: 0.375rem;
+    }
+    .message-skeleton.place .title.message {
+        height: 1.375rem;
+    }
+    .message-skeleton .place-info-container {
+        display: flex;
+        flex-direction: row;
+        column-gap: 0.25rem;
+        align-items: center;
+        width: 100%;
     }
     .message-skeleton.header-skeleton .title.message {
         width: 20rem;

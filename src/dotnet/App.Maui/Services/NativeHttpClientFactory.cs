@@ -14,7 +14,7 @@ public partial class NativeHttpClientFactory(IServiceProvider services)
         = new(StringComparer.Ordinal);
 
     private IServiceProvider Services { get; } = services;
-    private IOptionsSnapshot<HttpClientFactoryOptions> Options { get; } = services.GetRequiredService<IOptionsSnapshot<HttpClientFactoryOptions>>();
+    private IOptionsMonitor<HttpClientFactoryOptions> Options { get; } = services.GetRequiredService<IOptionsMonitor<HttpClientFactoryOptions>>();
     private List<IHttpMessageHandlerBuilderFilter> Filters { get; } = services.GetRequiredService<IEnumerable<IHttpMessageHandlerBuilderFilter>>().ToList();
 
     public HttpClient CreateClient(string name)

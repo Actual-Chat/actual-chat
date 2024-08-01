@@ -1,0 +1,12 @@
+.chat-message-sending-status {
+    @apply inline-flex flex-row items-center gap-x-1;
+    @apply text-xs text-03;
+}
+.chat-message-sending-status i {
+    @apply text-03 text-xs;
+}
+.chat-message-sending-status .sending-circle {
+    @apply w-1 h-1;
+    @apply rounded-full;
+    @apply bg-primary;
+}

@@ -1,16 +1,15 @@
 ﻿using ActualChat.UI.Blazor.Components.Internal;
-using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public partial class Modal : FusionComponentBase, IDisposable
+public partial class Modal : ComponentBase, IDisposable
 {
-    [CascadingParameter] private ModalHost Host { get; set; } = default!;
-    [Parameter, EditorRequired] public ModalRef Ref { get; set; } = null!;
-    [Parameter] public RenderFragment? Content { get; set; }
-
     private FocusTrap? _focusTrap;
     private bool _mustFocus;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter, EditorRequired] public ModalRef Ref { get; set; } = null!;
+    private ModalHost Host => Ref.Host;
 
     protected override void OnInitialized()
         => Host.OnModalClosed += OnClosed;
@@ -27,8 +26,8 @@ public partial class Modal : FusionComponentBase, IDisposable
         }
     }
 
-    public bool Close(bool force = false)
-        => Ref.Close(force);
+    public void Close(bool force = false)
+        => _ = Ref.Close(force);
 
     public ModalStepRef StepIn(string name)
         => Ref.StepIn(name);

@@ -15,6 +15,7 @@ public static partial class MauiProgram
         services.AddScoped<INotificationsPermission>(_ => new WindowsNotificationsPermission());
         services.AddTransient<INativeAppSettings>(_ => new WindowsAppSettings());
         services.AddScoped<IRecordingPermissionRequester>(_ => new WindowsRecordingPermissionRequester());
+        services.AddScoped<IMauiLogAccessor>(c => new WindowsLogAccessor(c.LogFor<WindowsLogAccessor>()));
     }
 
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)

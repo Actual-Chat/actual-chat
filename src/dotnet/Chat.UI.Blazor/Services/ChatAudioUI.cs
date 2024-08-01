@@ -11,12 +11,10 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
 {
     private readonly MutableState<Moment?> _stopRecordingAt;
-    private readonly MutableState<Moment?> _audioStoppedAt;
     private readonly MutableState<NextBeepState?> _nextBeep;
     private readonly TaskCompletionSource _whenEnabledSource = TaskCompletionSourceExt.New();
 
     private IChats Chats => Hub.Chats;
-    private IContacts Contacts => Hub.Contacts;
     private ChatActivity ChatActivity => Hub.ChatActivity;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private AudioInitializer AudioInitializer => Hub.AudioInitializer;
@@ -36,7 +34,6 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
     private Moment ServerNow => Clocks.ServerClock.Now;
 
     public IState<Moment?> StopRecordingAt => _stopRecordingAt; // CPU time
-    public IState<Moment?> AudioStoppedAt => _audioStoppedAt; // CPU time
     public IState<NextBeepState?> NextBeep => _nextBeep;
     public Task WhenEnabled => _whenEnabledSource.Task;
 
@@ -46,7 +43,6 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
         var type = GetType();
         var stateFactory = StateFactory;
         _stopRecordingAt = stateFactory.NewMutable((Moment?)null, StateCategories.Get(type, nameof(StopRecordingAt)));
-        _audioStoppedAt = stateFactory.NewMutable((Moment?)null, StateCategories.Get(type, nameof(AudioStoppedAt)));
         _nextBeep = stateFactory.NewMutable((NextBeepState?)null, StateCategories.Get(type, nameof(NextBeep)));
     }
 
@@ -197,10 +193,6 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                 }
             },
             StopToken);
-
-    [ComputeMethod] // Synced
-    public virtual Task<bool> IsAudioOn()
-        => Task.FromResult(ActiveChatsUI.ActiveChats.Value.Any(c => c.IsRecording || c.IsListening));
 
     [ComputeMethod]
     public virtual async Task<RealtimePlaybackState?> GetExpectedRealtimePlaybackState()

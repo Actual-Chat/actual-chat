@@ -11,6 +11,12 @@ public static class TestAuthExt
 {
     public static Task<AccountFull> SignIn(
         this IWebTester tester,
+        AccountFull account,
+        CancellationToken cancellationToken = default)
+        => tester.AppHost.SignIn(tester.Session, account.User, cancellationToken);
+
+    public static Task<AccountFull> SignIn(
+        this IWebTester tester,
         User user,
         CancellationToken cancellationToken = default)
         => tester.AppHost.SignIn(tester.Session, user, cancellationToken);

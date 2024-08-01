@@ -36,6 +36,7 @@ public static class MauiDiagnostics
 
     public static readonly Tracer Tracer;
     public static TracerProvider? TracerProvider { get; private set; }
+    public static string LogFilePath { get; private set; } = "";
 
     static MauiDiagnostics()
     {
@@ -97,9 +98,9 @@ public static class MauiDiagnostics
     {
         // We should not use FilePath here, since it triggers MemoryPack formatter registration for FilePath
 #if WINDOWS
-        var logPath = Path.Combine(FileSystem.AppDataDirectory, LogFolder, LogFile);
+        LogFilePath = Path.Combine(FileSystem.AppDataDirectory, LogFolder, LogFile);
         logging = logging.WriteTo.Debug(outputTemplate: AppLogging.DebugOutputTemplate);
-        logging = logging.WriteTo.File(logPath,
+        logging = logging.WriteTo.File(LogFilePath,
             outputTemplate: AppLogging.OutputTemplate,
             fileSizeLimitBytes: AppLogging.FileSizeLimit);
 #elif ANDROID

@@ -33,7 +33,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
     [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        var (entry, _, changeKind) = eventCommand;
+        var (entry, _, changeKind, _) = eventCommand;
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {

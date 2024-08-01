@@ -27,7 +27,7 @@ public static class HttpMockExt
         => mock.Setup(url,
             req => new (HttpStatusCode.OK) {
                 RequestMessage = req,
-                Content = new StreamContent(GetImgStream(resourceName)) {
+                Content = new StreamContent(TestImages.GetImage(resourceName)) {
                     Headers = { ContentType = MediaTypeHeaderValue.Parse(contentType) },
                 },
             });
@@ -67,10 +67,4 @@ public static class HttpMockExt
 
     private static string GetRobotsUrl(string url)
         => new Uri(new Uri(url), "/robots.txt").AbsoluteUri;
-
-    private static Stream GetImgStream(string name)
-    {
-        var type = typeof(HttpMockExt);
-        return type.Assembly.GetManifestResourceStream($"{type.Namespace}.TestImages.{name}").Require();
-    }
 }

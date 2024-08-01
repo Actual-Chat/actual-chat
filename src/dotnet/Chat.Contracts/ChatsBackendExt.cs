@@ -104,7 +104,7 @@ public static class ChatsBackendExt
             return Array.Empty<ChatEntry>();
         }
 
-        var idTiles = Constants.Chat.ServerIdTileStack.FirstLayer.GetCoveringTiles(new Range<long>(minId, maxId));
+        var idTiles = Constants.Chat.ServerIdTileStack.FirstLayer.GetCoveringTiles(new Range<long>(minId, maxId + 1));
         var entries = new List<ChatEntry>(localIds.Count);
         foreach (var idTile in idTiles) {
             var tile = await chatsBackend.GetTile(chatId,
@@ -159,16 +159,5 @@ public static class ChatsBackendExt
             lastId = last.Id;
             minVersion = last.Version;
         }
-    }
-
-    public static async Task<Place?> GetPlace(
-        this IChatsBackend chatsBackend,
-        PlaceId placeId,
-        CancellationToken cancellationToken)
-    {
-        placeId.Require();
-
-        var placeRootChat = await chatsBackend.Get(placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
-        return placeRootChat?.ToPlace();
     }
 }

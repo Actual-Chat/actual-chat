@@ -5,6 +5,10 @@
 }
 
 <ReconnectBanner/>
+@* TODO: need to update (Andrey Y) *@
+@* @if (ScreenSize.IsNarrow()) { *@
+@*     <TalkingMembersBanner ChatContext="@ChatContext"/> *@
+@* } *@
 @foreach (var banner in m.Banners.Take(MaxCount)) {
     @banner.View
 }
@@ -17,6 +21,8 @@
     private const int MaxCount = 2;
 
     private BannerUI BannerUI => ChatContext.Hub.BannerUI;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 

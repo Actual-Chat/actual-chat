@@ -1,0 +1,19 @@
+@{
+    var m = Data;
+}
+
+<div class="place-info-wide-left-panel">
+    @if (m != null) {
+        @foreach (var place in m.Places) {
+            var cls = place.Id == m.SelectedPlaceId ? " active" : "";
+            <div class="navbar-item @cls" onclick="@(() => OnClick.InvokeAsync(place.Id))">
+                @place.Title
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public PlaceInfoPage.Model? Data { get; set; }
+    [Parameter] public EventCallback<PlaceId> OnClick { get; set; }
+}
