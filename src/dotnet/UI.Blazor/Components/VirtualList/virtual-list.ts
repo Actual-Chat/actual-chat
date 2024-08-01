@@ -636,7 +636,6 @@ export class VirtualList {
             if (rs.hasVeryFirstItem)
                 spacerSize = 0;
             if (rs.hasVeryLastItem)
-                
                 endSpacerSize = 0;
         }
         this._spacerRef.style.height = `${spacerSize}px`;
@@ -1005,6 +1004,9 @@ export class VirtualList {
         this._inertialScroll.freeze();
         this._scrollTime = Date.now();
         if (edge == VirtualListEdge.End) {
+            const isFarFromEdge = (this._ref.scrollHeight - this._ref.scrollTop) > 2 * this._ref.offsetHeight;
+            if (isFarFromEdge)
+                useSmoothScroll = false;
             if (useSmoothScroll) {
                 this._endAnchorRef.scrollIntoView({
                     behavior: "smooth",
@@ -1017,6 +1019,9 @@ export class VirtualList {
             void this.turnOnIsEndAnchorVisible();
             this.turnOffIsEndAnchorVisibleDebounced.reset();
         } else {
+            const isFarFromEdge = this._ref.scrollTop > this._ref.offsetHeight;
+            if (isFarFromEdge)
+                useSmoothScroll = false;
             if (useSmoothScroll) {
                 this._spacerRef.scrollIntoView({
                     behavior: "smooth",
