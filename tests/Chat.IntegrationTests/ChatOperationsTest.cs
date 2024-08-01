@@ -74,6 +74,65 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var author = await authors.GetOwn(session, chat.Id, default);
         author.Should().NotBeNull();
         author!.UserId.Should().Be(account.Id);
+        author.Avatar.Should().NotBeNull();
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    public async Task ShouldGetPlaceChat(bool isPublicPlace, bool isPublicChat)
+    {
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var session = tester.Session;
+        var account = await tester.SignInAsBob();
+
+        var services = tester.AppServices;
+        var chats = services.GetRequiredService<IChats>();
+        var roles = services.GetRequiredService<IRoles>();
+        var authors = services.GetRequiredService<IAuthors>();
+
+        var place = await tester.CreatePlace(isPublicPlace);
+
+        // act
+        var (chatId, _) = await tester.CreateChat(isPublicChat, "Some chat", place.Id);
+        var chat = await chats.Get(session, chatId, default).Require();
+
+        chat.Should().NotBeNull();
+        chat.Title.Should().Be("Some chat");
+        chat.IsPublic.Should().Be(isPublicChat);
+        chat.Rules.Author.Should().NotBeNull();
+        chat.Rules.Author!.Avatar.Should().NotBeNull();
+
+        var chatRoles = await roles.List(session, chat.Id, default);
+        chatRoles.Count.Should().Be(2);
+
+        var owners = chatRoles.Single(r => r.SystemRole is SystemRole.Owner);
+        owners.Name.Should().Be(SystemRole.Owner.ToString());
+        owners.Permissions.Has(ChatPermissions.Owner).Should().BeTrue();
+
+        var joined = chatRoles.Single(r => r.SystemRole is SystemRole.Anyone);
+        joined.Name.Should().Be(SystemRole.Anyone.ToString());
+        joined.Permissions.Has(ChatPermissions.Read).Should().BeTrue();
+        joined.Permissions.Has(ChatPermissions.Write).Should().BeTrue();
+        joined.Permissions.Has(ChatPermissions.Join).Should().BeTrue();
+        joined.Permissions.Has(ChatPermissions.Invite).Should().BeTrue();
+
+        var rules = await chats.GetRules(session, chat.Id, default);
+        rules.CanRead().Should().BeTrue();
+        rules.CanWrite().Should().BeTrue();
+        rules.CanJoin().Should().BeTrue();
+        rules.CanInvite().Should().BeTrue();
+        rules.CanEditProperties().Should().BeTrue();
+        rules.CanEditRoles().Should().BeTrue();
+        rules.IsOwner().Should().BeTrue();
+
+        var author = await authors.GetOwn(session, chat.Id, default);
+        rules.Author.Should().BeEquivalentTo(author);
+        author.Should().NotBeNull();
+        author!.UserId.Should().Be(account.Id);
+        author.Avatar.Should().NotBeNull();
     }
 
     [Theory]

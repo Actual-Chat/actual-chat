@@ -1739,7 +1739,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return new AuthorRules(chat.Id, author, account, permissions);
         }
 
-        return directRules;
+        // TODO(DF): refactor this workaround
+        // directRules.Author is not filled for place private chats, but is supposed to be when used in ChatPage.razor.
+        return directRules with {
+            Author = await AuthorsBackend.Get(chatId, principalId, cancellationToken).ConfigureAwait(false)
+        };
     }
 
     // Private / internal methods
