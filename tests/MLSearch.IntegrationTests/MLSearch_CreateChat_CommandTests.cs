@@ -29,7 +29,7 @@ public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutpu
         var command2 = new MLSearch_CreateChat(session, "Any-title", default);
         var commander = tester.Commander;
         var chats = tester.AppServices.GetRequiredService<IChatsBackend>();
-        
+
         // Act
         var chat1 = await commander.Call(command1, default);
         var chat2 = await commander.Call(command2, default);
@@ -52,10 +52,10 @@ public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutpu
         var commander = tester.Commander;
         var chats = tester.AppServices.GetRequiredService<IChatsBackend>();
         var authors = tester.AppServices.GetRequiredService<IAuthorsBackend>();
-        
+
         // Act
         var chat = await commander.Call(command, default);
-        
+
         // Assert
         Assert.False(chat.Id.IsNone);
         var chatUsers = await authors.ListUserIds(chat.Id, default);
@@ -74,10 +74,10 @@ public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutpu
         var command = new MLSearch_CreateChat(session, "Any-title", default);
         var commander = tester.Commander;
         var chats = tester.AppServices.GetRequiredService<IChats>();
-        
+
         // Act
         var chat = await commander.Call(command, default);
-        
+
         // Assert
         var permissions = await chats.GetRules(session, chat.Id, default);
         permissions.CanRead().Should().BeTrue();
@@ -95,16 +95,16 @@ public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutpu
         var commander = tester.Commander;
         var chats = tester.AppServices.GetRequiredService<IChats>();
         var authors = tester.AppServices.GetRequiredService<IAuthorsBackend>();
-        
+
         // Act
         var chat = await commander.Call(command, default);
         var botAuthor = await authors.GetByUserId(chat.Id, Constants.User.MLSearchBot.UserId, AuthorsBackend_GetAuthorOption.Full, default);
         botAuthor.Should().NotBeNull();
-        var result = await commander.Run(new Authors_Exclude(session, botAuthor.Id));
+        var result = await commander.Run(new Authors_Exclude(session, botAuthor!.Id));
         // Assert
         // Expect System.InvalidOperationException: You can't remove an owner of this chat from chat members.
         var outerException = result.UntypedResultTask.Exception;
         outerException.Should().BeOfType<AggregateException>();
-        outerException.InnerExceptions.Should().ContainItemsAssignableTo<InvalidOperationException>();
+        outerException!.InnerExceptions.Should().ContainItemsAssignableTo<InvalidOperationException>();
     }
 }

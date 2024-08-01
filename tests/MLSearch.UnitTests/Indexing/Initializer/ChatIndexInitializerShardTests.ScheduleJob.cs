@@ -18,7 +18,7 @@ public partial class ChatIndexInitializerShardTests
         var cursor = new ChatIndexInitializerShard.Cursor(333);
         var state = new ChatIndexInitializerShard.SharedState(cursor, maxConcurrency);
         var queues = MockQueues().Object;
-        var clock = Mock.Of<IMomentClock>();
+        var clock = Mock.Of<MomentClock>();
         var log = Mock.Of<ILogger>();
         foreach (var _ in Enumerable.Range(0, maxConcurrency)) {
             // We can successfully start up to maxConcurrency task
@@ -44,7 +44,7 @@ public partial class ChatIndexInitializerShardTests
         var cursor = new ChatIndexInitializerShard.Cursor(333);
         var state = new ChatIndexInitializerShard.SharedState(cursor, maxConcurrency);
 
-        var clock = Mock.Of<IMomentClock>();
+        var clock = Mock.Of<MomentClock>();
         var cancellationSource = new CancellationTokenSource();
         var log = LogMock.Create<ChatIndexInitializer>();
         var queues = MockQueues(static (_, ct) =>
@@ -70,7 +70,7 @@ public partial class ChatIndexInitializerShardTests
         var cursor = new ChatIndexInitializerShard.Cursor(333);
         var state = new ChatIndexInitializerShard.SharedState(cursor, maxConcurrency);
 
-        var clock = Mock.Of<IMomentClock>();
+        var clock = Mock.Of<MomentClock>();
         var log = LogMock.Create<ChatIndexInitializer>();
         var queues = MockQueues(static (_, _) => Task.FromException(new UniqueException()));
 
@@ -100,7 +100,7 @@ public partial class ChatIndexInitializerShardTests
         var state = new ChatIndexInitializerShard.SharedState(cursor, maxConcurrency);
 
         var observedDelays = new List<TimeSpan>();
-        var clock = new Mock<IMomentClock>();
+        var clock = new Mock<MomentClock>();
         clock.Setup(x => x.Delay(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Returns<TimeSpan, CancellationToken>((ts, _) => {
                 observedDelays.Add(ts);
@@ -134,7 +134,7 @@ public partial class ChatIndexInitializerShardTests
         var cursor = new ChatIndexInitializerShard.Cursor(0);
         var state = new ChatIndexInitializerShard.SharedState(cursor, maxConcurrency);
 
-        var clock = new Mock<IMomentClock>();
+        var clock = new Mock<MomentClock>();
         clock.SetupGet(x => x.Now).Returns(scheduleMoment);
         var log = Mock.Of<ILogger>();
         var queues = MockQueues();
@@ -155,7 +155,7 @@ public partial class ChatIndexInitializerShardTests
         var cursor = new ChatIndexInitializerShard.Cursor(0);
         var state = new ChatIndexInitializerShard.SharedState(cursor, 1);
 
-        var clock = Mock.Of<IMomentClock>();
+        var clock = Mock.Of<MomentClock>();
         var log = Mock.Of<ILogger>();
 
         ICommand? observedCommand = null;

@@ -16,7 +16,7 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
 
         var serviceCoordinator = new ServiceCoordinator(
             clusterSetup.Object,
-            Mock.Of<IMomentClock>(),
+            Mock.Of<MomentClock>(),
             Mock.Of<ILogger<ServiceCoordinator>>());
 
         await serviceCoordinator.Run();
@@ -29,7 +29,7 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
     {
         var serviceCoordinator = new ServiceCoordinator(
             Mock.Of<IClusterSetup>(),
-            Mock.Of<IMomentClock>(),
+            Mock.Of<MomentClock>(),
             Mock.Of<ILogger<ServiceCoordinator>>());
 
         var dependentAction = serviceCoordinator.ExecuteWhenReadyAsync(_ => Task.CompletedTask, CancellationToken.None);
@@ -59,11 +59,11 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
         zeroRetryDelaySeq.SetupGet(x => x[It.IsAny<int>()]).Returns(TimeSpan.Zero);
 
         // Quick check if sequence generates zero delays
-        Assert.True(zeroRetryDelaySeq.Object.Take(10).All(delay => delay==TimeSpan.Zero));
+        Assert.True(zeroRetryDelaySeq.Object.Delays().Take(10).All(delay => delay==TimeSpan.Zero));
 
         var serviceCoordinator = new ServiceCoordinator(
             clusterSetup.Object,
-            Mock.Of<IMomentClock>(),
+            Mock.Of<MomentClock>(),
             Mock.Of<ILogger<ServiceCoordinator>>()) {
                 RetryDelaySeq = zeroRetryDelaySeq.Object,
             };
@@ -95,7 +95,7 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
 
         var serviceCoordinator = new ServiceCoordinator(
             clusterSetup.Object,
-            Mock.Of<IMomentClock>(),
+            Mock.Of<MomentClock>(),
             Mock.Of<ILogger<ServiceCoordinator>>());
 
         var dependentAction = serviceCoordinator.ExecuteWhenReadyAsync(_ => Task.CompletedTask, CancellationToken.None);
@@ -121,7 +121,7 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
 
         var serviceCoordinator = new ServiceCoordinator(
             clusterSetup.Object,
-            Mock.Of<IMomentClock>(),
+            Mock.Of<MomentClock>(),
             Mock.Of<ILogger<ServiceCoordinator>>()) {
                 OnStartTask = OnStart(),
             };
@@ -153,7 +153,7 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
         clusterSetup
             .Setup(x => x.InitializeAsync(It.IsAny<CancellationToken>()))
             .Returns(initializationError);
-        var clock = new Mock<IMomentClock>();
+        var clock = new Mock<MomentClock>();
         clock.Setup(x => x.Delay(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         var errorRetryDelaySeq = new Mock<RetryDelaySeq>();

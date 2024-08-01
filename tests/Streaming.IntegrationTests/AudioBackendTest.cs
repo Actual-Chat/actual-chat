@@ -32,7 +32,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var streamId = new StreamId(services.MeshNode().Ref, Generate.Option);
         var audioRecord = new AudioRecord(
             streamId, session, Constants.Chat.DefaultChatId,
-            CpuClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
+            CpuClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
         await backend.ProcessAudio(audioRecord, 333,
             new RpcStream<AudioFrame>(AsyncEnumerable.Empty<AudioFrame>()),
             CancellationToken.None);
@@ -75,7 +75,9 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         await accountSettings.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
 
         var streamId = new StreamId(services.MeshNode().Ref, Generate.Option);
-        var audioRecord = new AudioRecord(streamId, session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
+        var audioRecord = new AudioRecord(
+            streamId, session, chat.Id,
+            SystemClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
         var ctsToken = cts.Token;
         var readTask = BackgroundTask.Run(
             () => ReadAudio(client, audioRecord, default, ctsToken),
@@ -123,7 +125,9 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         await accountSettings.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
 
         var streamId = new StreamId(services.MeshNode().Ref, Generate.Option);
-        var audioRecord = new AudioRecord(streamId, session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
+        var audioRecord = new AudioRecord(
+            streamId, session, chat.Id,
+            SystemClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
 
         var ctsToken = cts.Token;
         var readTask = BackgroundTask.Run(
@@ -189,7 +193,9 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         await accountSettings.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
 
         var streamId = new StreamId(services.MeshNode().Ref, Generate.Option);
-        var audioRecord = new AudioRecord(streamId, session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
+        var audioRecord = new AudioRecord(
+            streamId, session, chat.Id,
+            SystemClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
 
         var ctsToken = cts.Token;
         var readTask = BackgroundTask.Run(
@@ -253,7 +259,9 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         using var cts = new CancellationTokenSource();
 
         var streamId = new StreamId(services.MeshNode().Ref, Generate.Option);
-        var audioRecord = new AudioRecord(streamId, session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
+        var audioRecord = new AudioRecord(
+            streamId, session, chat.Id,
+            SystemClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
         var ctsToken = cts.Token;
         var readSizeTask = BackgroundTask.Run(
             () => ReadAudio(client, audioRecord, default, ctsToken),
@@ -293,7 +301,9 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         using var cts = new CancellationTokenSource();
 
         var streamId = new StreamId(services.MeshNode().Ref, Generate.Option);
-        var audioRecord = new AudioRecord(streamId, session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
+        var audioRecord = new AudioRecord(
+            streamId, session, chat.Id,
+            SystemClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
         var ctsToken = cts.Token;
         var readSizeTask = BackgroundTask.Run(
             () => ReadAudio(client, audioRecord, TimeSpan.FromSeconds(1), ctsToken),

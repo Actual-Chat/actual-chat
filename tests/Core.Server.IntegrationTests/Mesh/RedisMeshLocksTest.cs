@@ -120,7 +120,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
                     ctsA.CancelAndDisposeSilently();
                     // ReSharper disable once AccessToDisposedClosure
                     // await h1.DisposeSilentlyAsync();
-                }, CancellationToken.None),
+                }, TaskScheduler.Default),
             CancellationToken.None);
 
         (await locks.GetInfo(key, CancellationToken.None)).Should().NotBeNull();

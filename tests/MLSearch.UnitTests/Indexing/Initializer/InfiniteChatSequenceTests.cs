@@ -14,7 +14,7 @@ internal static class SequenceHelpers
 
 public class InfiniteChatSequenceTests
 {
-    private static readonly IMomentClock Clock = Mock.Of<IMomentClock>();
+    private static readonly MomentClock Clock = Mock.Of<MomentClock>();
     private static readonly IChatsBackend Chats = Mock.Of<IChatsBackend>();
     private static readonly ILogger<InfiniteChatSequence> Log = Mock.Of<ILogger<InfiniteChatSequence>>();
     private static readonly Expression<Func<IChatsBackend, Task<ApiArray<Chat.Chat>>>> ListChangedCall =
@@ -59,7 +59,7 @@ public class InfiniteChatSequenceTests
     {
         var emptyBatchDelay = TimeSpan.FromSeconds(11111);
 
-        var clock = new Mock<IMomentClock>();
+        var clock = new Mock<MomentClock>();
         clock
             .Setup(x => x.Delay(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
@@ -136,7 +136,7 @@ public class InfiniteChatSequenceTests
     {
         var cancellationSource = new CancellationTokenSource();
 
-        var clock = new Mock<IMomentClock>();
+        var clock = new Mock<MomentClock>();
         clock
             .Setup(x => x.Delay(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Throws<TimeSpan, CancellationToken, TaskCanceledException>(
@@ -165,7 +165,7 @@ public class InfiniteChatSequenceTests
         var emptyBatchDelay = TimeSpan.FromSeconds(11111);
         var cancellationSource = new CancellationTokenSource();
 
-        var clock = new Mock<IMomentClock>();
+        var clock = new Mock<MomentClock>();
         clock
             .Setup(x => x.Delay(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Throws<TimeSpan, CancellationToken, TaskCanceledException>(
@@ -201,7 +201,7 @@ public class InfiniteChatSequenceTests
         var emptyBatchDelay = TimeSpan.FromSeconds(11111);
         var cancellationSource = new CancellationTokenSource();
 
-        var clock = new Mock<IMomentClock>();
+        var clock = new Mock<MomentClock>();
         clock
             .Setup(x => x.Delay(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
@@ -244,7 +244,7 @@ public class InfiniteChatSequenceTests
     [InlineData(5)]
     public async Task LoadMethodThrowsIfCanceledDuringBatchEnumeration(int canceledAfter)
     {
-        var clock = new Mock<IMomentClock>();
+        var clock = new Mock<MomentClock>();
         clock
             .Setup(x => x.Delay(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);

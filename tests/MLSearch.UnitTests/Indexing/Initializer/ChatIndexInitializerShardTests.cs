@@ -39,7 +39,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
 
         // Setup clock to generate one event for the update cursor flow
         var delayCallCount = 0;
-        var clock = new Mock<IMomentClock>();
+        var clock = new Mock<MomentClock>();
         clock.Setup(x => x.Delay(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Returns<TimeSpan, CancellationToken>((ts, _) => {
                 if (ts == updateCursorInterval && delayCallCount++ == 0) {
@@ -105,7 +105,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
                 It.Is<ChatIndexInitializerShard.SharedState>(x => states.Add(x) || true),
                 It.Is<ChatIndexInitializerShard.RetrySettings>(x => x.AttemptCount == scheduleJobRetrySettings.AttemptCount),
                 It.Is<IQueues>(x => x == queues),
-                It.Is<IMomentClock>(x => x == clock.Object),
+                It.Is<MomentClock>(x => x == clock.Object),
                 It.Is<ILogger>(x => x == log),
                 It.Is<CancellationToken>(x => x == cancellationSource.Token)));
         mockCompleteJob
@@ -136,7 +136,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
             .Returns<long, CancellationToken>((_, _) => AsyncEnumerable.Empty<(ChatId, long)>());
 
         var initializerShard = new ChatIndexInitializerShard(
-            Mock.Of<IMomentClock>(),
+            Mock.Of<MomentClock>(),
             Mock.Of<IQueues>(),
             infiniteChatSequence.Object,
             Mock.Of<ICursorStates<ChatIndexInitializerShard.Cursor>>(),
@@ -184,7 +184,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
             ChatIndexInitializerShard.SharedState,
             ChatIndexInitializerShard.RetrySettings,
             IQueues,
-            IMomentClock,
+            MomentClock,
             ILogger,
             CancellationToken,
             ValueTask>? onCall = null
@@ -196,7 +196,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
                 It.IsAny<ChatIndexInitializerShard.SharedState>(),
                 It.IsAny<ChatIndexInitializerShard.RetrySettings>(),
                 It.IsAny<IQueues>(),
-                It.IsAny<IMomentClock>(),
+                It.IsAny<MomentClock>(),
                 It.IsAny<ILogger>(),
                 It.IsAny<CancellationToken>()))
             .Returns(onCall ?? ((_, _, _, _, _, _, _) => ValueTask.CompletedTask));
