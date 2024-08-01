@@ -8,7 +8,7 @@ internal interface IInfiniteChatSequence
 }
 
 public class InfiniteChatSequence(
-    IMomentClock clock,
+    MomentClock clock,
     IChatsBackend chats,
     ILogger<InfiniteChatSequence> log
 ) : IInfiniteChatSequence

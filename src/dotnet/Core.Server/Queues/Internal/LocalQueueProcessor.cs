@@ -15,10 +15,9 @@ public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQue
         get => CoreServerModuleInstrumentation.ActivitySource;
     }
 
-    private readonly string ProcessActivityName;
-
     private static bool DebugMode => Constants.DebugMode.QueueProcessor;
 
+    private readonly string _processActivityName;
     private long _lastCommandCompletedAt;
 
     protected IServiceProvider Services { get; }
@@ -41,7 +40,7 @@ public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQue
         Clock = queues.Clock;
         Log = Services.LogFor(GetType());
 
-        ProcessActivityName = $"{nameof(Process)}@{GetType().Name}";
+        _processActivityName = $"{nameof(Process)}@{GetType().Name}";
     }
 
     public abstract Task Enqueue(QueueShardRef queueShardRef, QueuedCommand queuedCommand, CancellationToken cancellationToken = default);
@@ -77,7 +76,7 @@ public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQue
         }
 
         using var activity = QueueActivitySource
-            .StartActivity(ProcessActivityName, ActivityKind.Consumer, senderContext, links: links);
+            .StartActivity(_processActivityName, ActivityKind.Consumer, senderContext, links: links);
 
         var command = queuedCommand.UntypedCommand;
         var kind = command.GetKind();

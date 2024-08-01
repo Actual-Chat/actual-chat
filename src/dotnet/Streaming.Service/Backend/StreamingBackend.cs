@@ -8,7 +8,7 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
-public sealed partial class StreamingBackend : IStreamingBackend, IDisposable
+public partial class StreamingBackend : IStreamingBackend, IDisposable
 {
     public record Options
     {

@@ -29,7 +29,7 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
             || typeof(IBackendService).IsAssignableFrom(serviceType)
             || serviceType.Name.EndsWith("Backend", StringComparison.Ordinal);
 
-    public RpcPeerRef? RouteCall(RpcMethodDef methodDef, ArgumentList arguments)
+    public RpcPeerRef RouteCall(RpcMethodDef methodDef, ArgumentList arguments)
     {
         var serviceDef = methodDef.Service;
         if (!serviceDef.IsBackend)
@@ -41,7 +41,7 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
             throw StandardError.Internal($"{serviceDef} must be a ServiceMode.Client or ServiceMode.Distributed mode service.");
 
         if (_whenRouting is { Task.IsCompleted: false })
-            return null;
+            return RpcPeerRef.Local;
 
         var meshRefResolver = RpcMeshRefResolvers[methodDef];
         var meshRef = meshRefResolver.Invoke(methodDef, arguments, serverSideServiceDef.ShardScheme);

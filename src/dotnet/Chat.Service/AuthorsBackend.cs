@@ -18,7 +18,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     private IDbEntityResolver<string, DbAuthor> DbAuthorResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbAuthor>>();
     private IDbShardLocalIdGenerator<DbAuthor, string> DbAuthorLocalIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbAuthor, string>>();
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
-    private IRolesBackend RolesBackend { get; } = services.GetRequiredService<RolesBackend>();
+    private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
 
     // [ComputeMethod]
     public virtual async Task<AuthorFull?> Get(

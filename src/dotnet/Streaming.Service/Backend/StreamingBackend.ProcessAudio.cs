@@ -8,7 +8,7 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
-public sealed partial class StreamingBackend
+public partial class StreamingBackend
 {
     [GeneratedRegex("^\\s*$")]
     private static partial Regex EmptyRegexFactory();

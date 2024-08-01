@@ -128,7 +128,7 @@
     [Parameter] public bool IsFirstItem { get; set; }
 
     public ChatListItem() {
-        Options = ComputedStateComponentOptions.RecomputeOnParametersSet;
+        Options = ComputedStateComponentOptions.StateIsParameterDependent;
     }
 
     // protected override void OnInitialized() {

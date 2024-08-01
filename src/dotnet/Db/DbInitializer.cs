@@ -37,7 +37,7 @@ public abstract class DbInitializer<
         };
         const string maxAutoPrepare = "Max Auto Prepare";
         if (connectionStringBuilder.ContainsKey(maxAutoPrepare)
-            && (string)connectionStringBuilder[maxAutoPrepare] != "0")
+            && !OrdinalEquals((string)connectionStringBuilder[maxAutoPrepare], "0"))
             connectionStringBuilder[maxAutoPrepare] = "0";
         if (dbContext.Database.GetDbConnection().State == ConnectionState.Closed)
             dbContext.Database.SetConnectionString(connectionStringBuilder.ConnectionString);
