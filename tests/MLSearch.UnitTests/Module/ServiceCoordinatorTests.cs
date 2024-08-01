@@ -55,11 +55,12 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
             .Setup(x => x.InitializeAsync(It.IsAny<CancellationToken>()))
             .Returns<CancellationToken>(_ => ++attemptCount < maxAttempts ? errorTask : Task.CompletedTask);
 
-        var zeroRetryDelaySeq = new Mock<RetryDelaySeq>();
-        zeroRetryDelaySeq.SetupGet(x => x[It.IsAny<int>()]).Returns(TimeSpan.Zero);
+        var zeroRetryDelaySeq = new Mock<RetryDelaySeq>(
+            () => new RetryDelaySeq(TimeSpan.Zero, TimeSpan.Zero, 0d));
+        zeroRetryDelaySeq.Setup(x => x.GetDelay(It.IsAny<int>())).Returns(TimeSpan.Zero);
 
         // Quick check if sequence generates zero delays
-        Assert.True(zeroRetryDelaySeq.Object.Delays().Take(10).All(delay => delay==TimeSpan.Zero));
+        Assert.True(zeroRetryDelaySeq.Object.Delays().Take(10).All(delay => delay == TimeSpan.Zero));
 
         var serviceCoordinator = new ServiceCoordinator(
             clusterSetup.Object,
@@ -156,8 +157,9 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
         var clock = new Mock<MomentClock>();
         clock.Setup(x => x.Delay(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-        var errorRetryDelaySeq = new Mock<RetryDelaySeq>();
-        errorRetryDelaySeq.SetupGet(x => x[It.IsAny<int>()]).Throws<InvalidOperationException>();
+        var errorRetryDelaySeq = new Mock<RetryDelaySeq>(
+            () => new RetryDelaySeq(TimeSpan.FromSeconds(0.1), TimeSpan.FromSeconds(1), 0d));
+        errorRetryDelaySeq.Setup(x => x.GetDelay(It.IsAny<int>())).Throws<InvalidOperationException>();
 
         var retryCount = 0;
         const int maxRetries = 10;
@@ -179,7 +181,7 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
         const int initializeCallCount = maxRetries + 1;
         clusterSetup.Verify(x => x.InitializeAsync(It.IsAny<CancellationToken>()), Times.Exactly(initializeCallCount));
         // Number of attempts to get a delay is equal to number of initialize failures
-        errorRetryDelaySeq.VerifyGet(x => x[It.IsAny<int>()], Times.Exactly(initializeCallCount));
+        errorRetryDelaySeq.Verify(x => x.GetDelay(It.IsAny<int>()), Times.Exactly(initializeCallCount));
 
         return;
 
