@@ -12,7 +12,7 @@ public sealed class WebClientComputedCache : AppClientComputedCache
         : base(settings, services)
     {
         Settings = settings;
-        Backend = new WebKvasBackend($"{BlazorUICoreModule.ImportName}.clientComputedCache", services);
+        Backend = new WebKvasBackend($"{BlazorUICoreModule.ImportName}.remoteComputedCache", services);
         _ = Reader.Start();
     }
 }

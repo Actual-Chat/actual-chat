@@ -89,12 +89,7 @@ public class AppPresenceReporter : ScopedWorkerBase<ChatUIHub>, IComputeService
             _lastCheckInAt.Value = CpuNow;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            var failureKind = e switch {
-                DisconnectedException => "disconnected",
-                TimeoutException => "timed out",
-                _ => "failed",
-            };
-            Log.LogError(e, "CheckIn postponed ({FailureKind})", failureKind);
+            Log.LogError(e, "CheckIn postponed, error: {ErrorType}({Message})", e.GetType().GetName(), e.Message);
             _lastCheckInAt.Value += Constants.Presence.CheckInRetryDelay;
         }
     }

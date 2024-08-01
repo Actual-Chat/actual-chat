@@ -29,7 +29,7 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
             || typeof(IBackendService).IsAssignableFrom(serviceType)
             || serviceType.Name.EndsWith("Backend", StringComparison.Ordinal);
 
-    public RpcPeer? GetPeer(RpcMethodDef methodDef, ArgumentList arguments)
+    public RpcPeerRef? RouteCall(RpcMethodDef methodDef, ArgumentList arguments)
     {
         var serviceDef = methodDef.Service;
         if (!serviceDef.IsBackend)
@@ -37,8 +37,8 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
 
         var serverSideServiceDef = BackendServiceDefs[serviceDef.Type];
         var serviceMode = serverSideServiceDef.ServiceMode;
-        if (serviceMode is not ServiceMode.Client and not ServiceMode.Hybrid)
-            throw StandardError.Internal($"{serviceDef} must be a ServiceMode.Client or ServiceMode.RoutingServer mode service.");
+        if (serviceMode is not ServiceMode.Client and not ServiceMode.Distributed)
+            throw StandardError.Internal($"{serviceDef} must be a ServiceMode.Client or ServiceMode.Distributed mode service.");
 
         if (_whenRouting is { Task.IsCompleted: false })
             return null;
@@ -46,20 +46,20 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
         var meshRefResolver = RpcMeshRefResolvers[methodDef];
         var meshRef = meshRefResolver.Invoke(methodDef, arguments, serverSideServiceDef.ShardScheme);
         var peerRef = MeshWatcher.GetPeerRef(meshRef).Require(meshRef);
-        if (serviceMode == ServiceMode.Hybrid) {
+        if (serviceMode == ServiceMode.Distributed) {
             // Such services expose a client which may route calls to the server on the same node,
             // so the code below speeds up such calls by returning null RpcPeer for them, which makes
             // ActualLab.Rpc infrastructure to call the server method directly for them instead.
             switch (peerRef) {
             case RpcBackendNodePeerRef nodePeerRef when nodePeerRef.NodeRef == MeshNode.Ref:
-                return null; // It's this node, so we won't forward this call
+                return RpcPeerRef.Local; // It's this node, so we won't forward this call
             case RpcBackendShardPeerRef { Latest.WhenReady: { IsCompletedSuccessfully: true } nodePeerRefTask }:
                 if (nodePeerRefTask.Result is { } shardNodePeerRef && shardNodePeerRef.NodeRef == MeshNode.Ref)
-                    return null; // It's this node, so we won't forward this call
+                    return RpcPeerRef.Local; // It's this node, so we won't forward this call
                 break;
             }
         }
-        return Hub.GetClientPeer(peerRef);
+        return peerRef;
     }
 
 #pragma warning disable CA1822 // Can be static

@@ -257,7 +257,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddMeter("Npgsql") // Npgsql meter at Npgsql.MetricsReporter
                 .AddMeter(typeof(RpcHub).GetMeter().Name) // ActualLab.Rpc
                 .AddMeter(typeof(ICommand).GetMeter().Name) // ActualLab.Commander
-                .AddMeter(typeof(IComputed).GetMeter().Name) // ActualLab.Fusion
+                .AddMeter(typeof(Computed).GetMeter().Name) // ActualLab.Fusion
                 // Our own meters (one per assembly)
                 .AddMeter(AppMeter.Name)
                 .AddMeter(MeterExt.Unknown.Name) // Unknown meter
@@ -284,7 +284,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .SetErrorStatusOnException()
                 .AddSource(typeof(RpcHub).GetActivitySource().Name) // ActualLab.Rpc
                 .AddSource(typeof(ICommand).GetActivitySource().Name) // ActualLab.Commander
-                .AddSource(typeof(IComputed).GetActivitySource().Name) // ActualLab.Fusion
+                .AddSource(typeof(Computed).GetActivitySource().Name) // ActualLab.Fusion
                 .AddSource(typeof(IAuthBackend).GetActivitySource().Name) // ActualLab.Fusion.Ext.Services - auth, etc.
                 .AddSource(typeof(DbKey).GetActivitySource().Name) // ActualLab.Fusion.EntityFramework
                 // Our own activity sources (one per assembly)

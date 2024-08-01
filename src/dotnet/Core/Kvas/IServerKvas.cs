@@ -4,7 +4,7 @@ namespace ActualChat.Kvas;
 
 public interface IServerKvas : IComputeService
 {
-    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
     Task<byte[]?> Get(Session session, string key, CancellationToken cancellationToken = default);
 
     [CommandHandler]

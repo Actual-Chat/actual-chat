@@ -44,7 +44,7 @@ public static class HostRolesExt
     private static ServiceMode Fix(this ServiceMode serviceMode)
     {
         if (MustReplaceServerWithHybrid && serviceMode is ServiceMode.Server)
-            serviceMode = ServiceMode.Hybrid;
+            serviceMode = ServiceMode.Distributed;
         return serviceMode;
     }
 }

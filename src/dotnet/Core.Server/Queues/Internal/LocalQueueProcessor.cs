@@ -12,7 +12,7 @@ public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQue
 
     protected IServiceProvider Services { get; }
     protected ICommander Commander { get; }
-    protected IMomentClock Clock { get; }
+    protected MomentClock Clock { get; }
     protected ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
     protected ILogger Log { get; }
 

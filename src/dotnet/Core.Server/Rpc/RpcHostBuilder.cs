@@ -105,7 +105,7 @@ public readonly struct RpcHostBuilder
             throw ActualLab.Internal.Errors.MustBeAssignableTo(implementationType, serviceType, nameof(implementationType));
 
         if (isLocalServiceRequired || IsApiHost)
-            AddService(serviceType, implementationType);
+            AddLocal(serviceType, implementationType);
         if (IsApiHost)
             Rpc.Service(serviceType).HasServer(serviceType).HasName(name);
         return this;
@@ -146,22 +146,16 @@ public readonly struct RpcHostBuilder
         case ServiceMode.Disabled:
             break;
         case ServiceMode.Local:
-            AddService(implementationType, implementationType);
-            AddAlias(serviceType, implementationType);
+            AddLocal(implementationType, implementationType);
             break;
         case ServiceMode.Client:
-            AddClient(serviceType);
-            Rpc.Service(serviceType).HasName(name);
+            AddClient(serviceType, name);
             break;
         case ServiceMode.Server:
-            AddService(implementationType, implementationType);
-            AddAlias(serviceType, implementationType);
-            Rpc.Service(serviceType).HasServer(implementationType).HasName(name);
+            AddServer(implementationType, implementationType, name);
             break;
-        case ServiceMode.Hybrid:
-            AddService(implementationType, implementationType, false);
-            AddHybridClient(serviceType, implementationType);
-            Rpc.Service(serviceType).HasServer(implementationType).HasName(name);
+        case ServiceMode.Distributed:
+            AddDistributed(implementationType, implementationType, name);
             break;
         default:
             throw StandardError.Internal("Invalid ServiceMode value.");
@@ -171,45 +165,40 @@ public readonly struct RpcHostBuilder
 
     // Private methods
 
-    private void AddAlias(Type aliasType, Type serviceType, ServiceLifetime lifetime = ServiceLifetime.Singleton)
+    private void AddLocal(Type serviceType, Type implementationType)
     {
-        var descriptor = new ServiceDescriptor(aliasType, c => c.GetRequiredService(serviceType), lifetime);
-        Services.Add(descriptor);
-    }
-
-    private void AddService(Type serviceType, Type implementationType, bool addCommandHandlers = true)
-    {
-        if (typeof(IComputeService).IsAssignableFrom(serviceType)) {
-            var descriptor = new ServiceDescriptor(
-                serviceType,
-                c => FusionProxies.NewProxy(c, implementationType),
-                ServiceLifetime.Singleton);
-            Services.Add(descriptor);
-        }
+        if (typeof(IComputeService).IsAssignableFrom(serviceType))
+            Fusion.AddComputeService(serviceType, implementationType, false);
         else
             Services.AddSingleton(serviceType, implementationType);
-        if (addCommandHandlers)
-            Commander.AddHandlers(serviceType);
+        Commander.AddHandlers(serviceType);
     }
 
-    private void AddClient(Type serviceType, bool addCommandHandlers = true)
+    private void AddServer(Type serviceType, Type implementationType, Symbol name)
     {
         if (typeof(IComputeService).IsAssignableFrom(serviceType))
-            Services.AddSingleton(serviceType, c => FusionProxies.NewClientProxy(c, serviceType));
+            Fusion.AddServer(serviceType, implementationType, name, false);
         else
-            Services.AddSingleton(serviceType, c => RpcProxies.NewClientProxy(c, serviceType));
-        if (addCommandHandlers)
-            Commander.AddHandlers(serviceType);
+            Rpc.AddServer(serviceType, implementationType, name);
+        Commander.AddHandlers(serviceType);
     }
 
-    private void AddHybridClient(Type serviceType, Type implementationType, bool addCommandHandlers = true)
+    private void AddClient(Type serviceType, Symbol name)
     {
         if (typeof(IComputeService).IsAssignableFrom(serviceType))
-            Services.AddSingleton(serviceType, c => FusionProxies.NewHybridProxy(c, serviceType, implementationType));
+            Fusion.AddClient(serviceType, name, false);
         else
-            Services.AddSingleton(serviceType, c => RpcProxies.NewHybridProxy(c, serviceType, implementationType));
-        if (addCommandHandlers)
-            Commander.AddHandlers(serviceType);
+            Rpc.AddClient(serviceType, name);
+        Commander.AddHandlers(serviceType);
+    }
+
+    private void AddDistributed(Type serviceType, Type implementationType, Symbol name)
+    {
+        if (typeof(IComputeService).IsAssignableFrom(serviceType))
+            Fusion.AddDistributedService(serviceType, implementationType, name, false);
+        else
+            Rpc.AddDistributedService(serviceType, implementationType, name);
+        Commander.AddHandlers(serviceType);
     }
 
     private void AddMeshServices()
@@ -270,7 +259,7 @@ public readonly struct RpcHostBuilder
     private void AddRpcClient()
     {
         // Replace RpcCallRouter
-        Services.AddSingleton<RpcCallRouter>(c => c.GetRequiredService<RpcBackendDelegates>().GetPeer);
+        Services.AddSingleton<RpcCallRouter>(c => c.GetRequiredService<RpcBackendDelegates>().RouteCall);
 
         // Backend-only RpcClient
         Services.AddSingleton(_ => RpcWebSocketClient.Options.Default);

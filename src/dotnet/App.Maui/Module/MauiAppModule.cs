@@ -42,12 +42,12 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // Permissions
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
 
-        // ClientComputedCache
+        // RemoteComputedCache
         var appCacheDir = new FilePath(FileSystem.CacheDirectory);
         services.AddSingleton(_ => new SQLiteClientComputedCache.Options() {
             DbPath = appCacheDir & "CCC.db3",
         });
-        services.AddSingleton<IClientComputedCache>(c => {
+        services.AddSingleton<IRemoteComputedCache>(c => {
             var options = c.GetRequiredService<SQLiteClientComputedCache.Options>();
             return new SQLiteClientComputedCache(options, c);
         });

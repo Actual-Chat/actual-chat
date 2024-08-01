@@ -2,7 +2,7 @@ namespace ActualChat.IO;
 
 #pragma warning disable CA1001 // Type 'Debouncer' owns disposable field(s) '_cts' but is not disposable
 
-public class Debouncer<T>(IMomentClock clock, TimeSpan interval, Func<T, Task> action)
+public class Debouncer<T>(MomentClock clock, TimeSpan interval, Func<T, Task> action)
 {
     private CancellationTokenSource? _cts;
     private Task? _task;
@@ -10,7 +10,7 @@ public class Debouncer<T>(IMomentClock clock, TimeSpan interval, Func<T, Task> a
     private T _item = default!;
     private object Lock => this;
 
-    public IMomentClock Clock { get; } = clock;
+    public MomentClock Clock { get; } = clock;
     public TimeSpan Interval { get; } = interval;
 
     public Debouncer(TimeSpan interval, Func<T, Task> action)

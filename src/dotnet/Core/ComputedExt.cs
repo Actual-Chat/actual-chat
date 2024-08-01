@@ -20,7 +20,7 @@ public static class ComputedExt
     private static readonly ConcurrentDictionary<(Type, string), PropertyInfo?> _propertyCache = new();
     private static readonly ConcurrentDictionary<(Type, string), FieldInfo?> _fieldCache = new();
 
-    public static string DebugDump(this IComputed computed)
+    public static string DebugDump(this Computed computed)
     {
         var type = computed.GetType();
         var pFlags = GetProperty(type, "Flags")!;
@@ -31,8 +31,7 @@ public static class ComputedExt
         sb.Append("Computed: ").Append(computed).AppendLine();
         sb.Append("- Flags: ").Append(flags).AppendLine();
         sb.AppendLine("- Dependencies:");
-        var impl = (IComputedImpl)computed;
-        foreach (var d in impl.Used)
+        foreach (var d in ComputedImpl.GetDependencies(computed))
             sb.Append("  - ").Append(d).AppendLine();
         return sb.ToStringAndRelease();
     }

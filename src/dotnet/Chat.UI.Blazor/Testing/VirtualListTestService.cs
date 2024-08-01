@@ -5,7 +5,7 @@ public class VirtualListTestService : IComputeService
     private static readonly string[] Words = { "best", "virtual", "scroll", "ever", "100%", "absolutely" };
 
     private Moment Start { get; }
-    private IMomentClock Clock { get; }
+    private MomentClock Clock { get; }
 
     public VirtualListTestService(IServiceProvider services)
     {

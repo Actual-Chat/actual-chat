@@ -10,7 +10,7 @@ public class UserActivityUI : ScopedServiceBase<UIHub>, IUserActivityUIBackend
     private readonly MutableState<Moment> _activeUntil;
 
     private IJSRuntime JS => Hub.JSRuntime();
-    private IMomentClock CpuClock { get; }
+    private MomentClock CpuClock { get; }
     private Moment CpuNow => CpuClock.Now;
 
     public IState<Moment> ActiveUntil => _activeUntil; // CPU time

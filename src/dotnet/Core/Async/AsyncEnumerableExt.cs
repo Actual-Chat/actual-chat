@@ -16,7 +16,7 @@ public static class AsyncEnumerableExt
 
     public static async IAsyncEnumerable<T> Throttle<T>(this IAsyncEnumerable<T> source,
         TimeSpan minInterval,
-        IMomentClock clock,
+        MomentClock clock,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var c = Channel.CreateBounded<T>(new BoundedChannelOptions(1) {
@@ -69,7 +69,7 @@ public static class AsyncEnumerableExt
 
     public static async Task<Option<IAsyncEnumerable<T>>> IsNonEmpty<T>(
         this IAsyncEnumerable<T> source,
-        IMomentClock clock,
+        MomentClock clock,
         TimeSpan timeout,
         CancellationToken cancellationToken = default)
     {
@@ -579,7 +579,7 @@ public static class AsyncEnumerableExt
     public static async IAsyncEnumerable<List<TSource>> Buffer<TSource>(
         this IAsyncEnumerable<TSource> source,
         TimeSpan bufferDuration,
-        IMomentClock clock,
+        MomentClock clock,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         bufferDuration = bufferDuration.Positive();

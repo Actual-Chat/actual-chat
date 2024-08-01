@@ -14,18 +14,18 @@ public sealed partial record Chat(
     ) : IHasId<ChatId>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly Requirement<Chat> MustExist = Requirement.New(
-        new(() => StandardError.NotFound<Chat>()),
-        (Chat? c) => c is { Id.IsNone: false });
+        (Chat? c) => c is { Id.IsNone: false },
+        new(() => StandardError.NotFound<Chat>()));
 
     public static readonly Requirement<Chat> MustBeTemplate = MustExist
         & Requirement.New<Chat>(
-            new (() => StandardError.Chat.NonTemplate()),
-            c => c is { IsPublic: true, IsTemplate: true });
+            c => c is { IsPublic: true, IsTemplate: true },
+            new(() => StandardError.Chat.NonTemplate()));
 
     public static readonly Requirement<Chat> MustBePlaceRoot = MustExist
         & Requirement.New<Chat>(
-            new (() => StandardError.Constraint<Chat>("Place root chat is expected.")),
-            c => c is { Id: { IsPlaceChat: true, PlaceChatId.IsRoot: true } });
+            c => c is { Id: { IsPlaceChat: true, PlaceChatId.IsRoot: true } },
+            new(() => StandardError.Constraint<Chat>("Place root chat is expected.")));
 
     [DataMember, MemoryPackOrder(2)] public string Title { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public Moment CreatedAt { get; init; }

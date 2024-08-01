@@ -17,7 +17,7 @@ public sealed class MeshWatcher : WorkerBase
 
     private IHostApplicationLifetime? HostApplicationLifetime { get; }
     private IMeshLocks NodeLocks { get; }
-    private IMomentClock Clock => NodeLocks.Clock;
+    private MomentClock Clock => NodeLocks.Clock;
     private ILogger Log { get; }
 
     public MeshNode MeshNode { get; }

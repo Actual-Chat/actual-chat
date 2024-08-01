@@ -5,7 +5,7 @@ namespace ActualChat.Mesh;
 public class MeshLockHolder : WorkerBase, IHasId<string>
 {
     protected readonly IMeshLocksBackend Backend;
-    protected IMomentClock Clock => Backend.Clock;
+    protected MomentClock Clock => Backend.Clock;
     protected ILogger? Log => Backend.Log;
     protected ILogger? DebugLog => Backend.DebugLog;
     protected HashSet<Task>? Dependencies;

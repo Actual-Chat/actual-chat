@@ -46,7 +46,7 @@
     [Inject] private ReconnectUI ReconnectUI { get; init; } = null!;
 
     protected override void OnInitialized() {
-        State = ReconnectUI.State;
+        SetState(ReconnectUI.State);
         base.OnInitialized();
     }
 

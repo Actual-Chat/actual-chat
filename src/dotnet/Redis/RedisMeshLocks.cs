@@ -12,9 +12,9 @@ public class RedisMeshLocks<TContext> : RedisMeshLocks, IMeshLocks<TContext>
             services.Clocks().SystemClock,
             services.LogFor<RedisMeshLocks>())
     { }
-    public RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null)
+    public RedisMeshLocks(RedisDb redisDb, MomentClock? clock = null)
         : base(redisDb, DefaultKeyPrefix, clock) { }
-    public RedisMeshLocks(RedisDb redisDb, string keyPrefix, IMomentClock? clock = null)
+    public RedisMeshLocks(RedisDb redisDb, string keyPrefix, MomentClock? clock = null)
         : base(redisDb, keyPrefix, clock) { }
 }
 
@@ -98,9 +98,9 @@ public class RedisMeshLocks : MeshLocksBase
 
     public RedisDb RedisDb { get; }
 
-    public RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null, ILogger? log = null)
+    public RedisMeshLocks(RedisDb redisDb, MomentClock? clock = null, ILogger? log = null)
         : this(redisDb, DefaultKeyPrefix, clock, log) { }
-    public RedisMeshLocks(RedisDb redisDb, string keyPrefix, IMomentClock? clock = null, ILogger? log = null)
+    public RedisMeshLocks(RedisDb redisDb, string keyPrefix, MomentClock? clock = null, ILogger? log = null)
         : base(clock, log)
     {
         if (!keyPrefix.IsNullOrEmpty())

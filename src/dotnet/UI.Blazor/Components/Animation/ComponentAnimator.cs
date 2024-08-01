@@ -1,13 +1,13 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public class ComponentAnimator(ComponentBase component, TimeSpan duration, IMomentClock? clock = null)
+public class ComponentAnimator(ComponentBase component, TimeSpan duration, MomentClock? clock = null)
     : IDisposable
 {
     private CancellationTokenSource? _lastAnimateCts;
 
     public ComponentBase Component { get; } = component;
     public TimeSpan Duration { get; } = duration;
-    public IMomentClock Clock { get; } = clock ?? MomentClockSet.Default.CpuClock;
+    public MomentClock Clock { get; } = clock ?? MomentClockSet.Default.CpuClock;
     public Moment AnimationEndsAt { get; private set; }
     public bool IsAnimating => AnimationEndsAt > Clock.Now;
 

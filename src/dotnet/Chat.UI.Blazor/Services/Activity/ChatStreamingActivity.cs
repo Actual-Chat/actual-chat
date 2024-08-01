@@ -25,7 +25,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
     private ChatEntryReader? _textEntryReader;
     private ChatEntryReader? _audioEntryReader;
     private volatile ImmutableList<ChatEntry> _activeEntries = ImmutableList<ChatEntry>.Empty;
-    private IMomentClock? _serverClock;
+    private MomentClock? _serverClock;
     private ILogger? _log;
 
     public ChatActivity Owner { get; }
@@ -34,7 +34,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
     public IState<Moment?> LastTranscribedAt => _lastTranscribedAt;
 
     private ChatUIHub Hub { get; }
-    private IMomentClock ServerClock => _serverClock ??= Hub.Clocks().ServerClock;
+    private MomentClock ServerClock => _serverClock ??= Hub.Clocks().ServerClock;
     private ILogger Log => _log ??= Hub.LogFor(GetType());
 
     public ChatEntryReader TextEntryReader

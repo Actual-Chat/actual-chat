@@ -118,7 +118,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // IAuth
         if (rpcHost.IsApiHost)
-            rpc.AddServer<IAuth>(); // IAuth is registered below
+            rpc.Service<IAuth>().HasServer<IAuth>(); // IAuth is registered below
 
         // Accounts
         rpcHost.AddApiOrLocal<IAccounts, Accounts>(); // Used by Chats, etc.
@@ -157,7 +157,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IMobileSessions, MobileSessions>();
 #pragma warning disable CS0618
         if (rpcHost.IsApiHost)
-            rpc.AddServer<IMobileAuth, IMobileSessions>(); // ~ Alias of IMobileSessions
+            rpc.Service<IMobileAuth>().HasServer<IMobileSessions>(); // Alias of IMobileSessions
 #pragma warning restore CS0618
 
         // NOTE(AY): We don't have a clear separation between the backend and the front-end

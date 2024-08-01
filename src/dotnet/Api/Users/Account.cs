@@ -13,11 +13,11 @@ public partial record Account(
     public static Account Loading => AccountFull.Loading;
 
     public static readonly Requirement<Account> MustExist = Requirement.New(
-        new(() => StandardError.NotFound<Account>()),
-        (Account? a) => a is { IsNone: false });
+        (Account? a) => a is { IsNone: false },
+        new(() => StandardError.NotFound<Account>()));
     public static readonly Requirement<Account> MustNotBeGuest = Requirement.New(
-        new(() => StandardError.Account.Guest()),
-        (Account? a) => a?.IsGuestOrNone == false);
+        (Account? a) => a?.IsGuestOrNone == false,
+        new(() => StandardError.Account.Guest()));
 
     [DataMember, MemoryPackOrder(2)] public AccountStatus Status { get; init; }
     [DataMember, MemoryPackOrder(3)] public Avatar Avatar { get; init; } = null!; // Populated only on reads

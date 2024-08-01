@@ -9,7 +9,7 @@ internal interface IChatIndexInitializerShard
 }
 
 internal sealed class ChatIndexInitializerShard(
-    IMomentClock clock,
+    MomentClock clock,
     ICommander commander,
     IChatsBackend chats,
     ICursorStates<ChatIndexInitializerShard.Cursor> cursorStates,

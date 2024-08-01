@@ -18,7 +18,7 @@ public sealed class SessionTokens(UIHub hub) : ScopedWorkerBase<UIHub>(hub), ICo
 
     private ISecureTokens SecureTokens => _secureTokens ??= Services.GetRequiredService<ISecureTokens>();
     private DeviceAwakeUI DeviceAwakeUI => _deviceAwakeUI ??= Services.GetRequiredService<DeviceAwakeUI>();
-    private IMomentClock ServerClock => Clocks.ServerClock;
+    private MomentClock ServerClock => Clocks.ServerClock;
     private IJSRuntime JS => _js ??= Services.GetRequiredService<IJSRuntime>();
 
     public TimeSpan MinLifespan { get; init; } = TimeSpan.FromMinutes(60);

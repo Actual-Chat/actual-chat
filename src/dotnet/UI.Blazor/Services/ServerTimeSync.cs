@@ -7,7 +7,7 @@ public class ServerTimeSync : WorkerBase
 {
     private ILogger Log { get; }
     private MomentClockSet Clocks { get; }
-    private IMomentClock CpuClock => Clocks.CpuClock;
+    private MomentClock CpuClock => Clocks.CpuClock;
     private HostInfo HostInfo { get; }
     private ISystemProperties SystemProperties { get; set; }
 

@@ -18,7 +18,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     private SignInRequesterUI SignInRequesterUI => _signInRequesterUI ??= Services.GetRequiredService<SignInRequesterUI>();
     private IClientAuth ClientAuth => _clientAuth ??= Services.GetRequiredService<IClientAuth>();
     private History History => Hub.History;
-    private IMomentClock CpuClock { get; }
+    private MomentClock CpuClock { get; }
 
     public Task WhenLoaded => _whenLoadedSource.Task;
     public IState<AccountFull> OwnAccount => _ownAccount;

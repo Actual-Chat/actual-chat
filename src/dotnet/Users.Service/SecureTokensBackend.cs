@@ -13,7 +13,7 @@ public class SecureTokensBackend(IServiceProvider services) : ISecureTokensBacke
         = services.GetRequiredService<IDataProtectionProvider>()
             .CreateProtector(nameof(SecureTokensBackend))
             .ToTimeLimitedDataProtector();
-    private IMomentClock Clock { get; } = services.Clocks().SystemClock;
+    private MomentClock Clock { get; } = services.Clocks().SystemClock;
 
     public ValueTask<SecureToken> Create(string value, CancellationToken cancellationToken = default)
     {

@@ -36,9 +36,8 @@ public class ComputedStateLease<T, TKey, TState, TResource>(
     IStateSnapshot IState.Snapshot => ((IState)State).Snapshot;
     public StateSnapshot<T> Snapshot => State.Snapshot;
 
-    IComputed IState.Computed => ((IState)State).Computed;
+    Computed IState.Computed => ((IState)State).Computed;
     public Computed<T> Computed => State.Computed;
-
 
     public bool IsDisposed => State.IsDisposed;
     public Task? WhenDisposed => State.WhenDisposed;

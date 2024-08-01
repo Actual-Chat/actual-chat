@@ -31,7 +31,7 @@
     [Parameter] public TimeSpan UpdateDelay { get; set; } = TimeSpan.FromSeconds(0.5);
     [Parameter] public EventCallback Click { get; set; }
 
-    private IMomentClock Clock => Clocks.CoarseCpuClock;
+    private MomentClock Clock => Clocks.CoarseCpuClock;
 
     public void Dispose() {
         _cancelRenderDelayCts.CancelAndDisposeSilently();

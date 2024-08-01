@@ -14,7 +14,7 @@ public class BatchingKvas : SafeAsyncDisposableBase, IKvas
         public int FlushBatchSize { get; init; } = 64;
         public TimeSpan FlushDelay { get; init; } = TimeSpan.FromSeconds(0.25);
         public TimeSpan DisposeTimeout { get; init; } = TimeSpan.FromSeconds(3);
-        public RetryDelaySeq FlushRetryDelays { get; init; } = new();
+        public RetryDelaySeq FlushRetryDelays { get; init; } = RetryDelaySeq.Exp(0.5, 5);
     }
 
     private ILogger? _log;

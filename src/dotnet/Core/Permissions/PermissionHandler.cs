@@ -8,13 +8,13 @@ public abstract class PermissionHandler : ScopedWorkerBase<Hub>
     private readonly MutableState<bool?> _cached;
     private SystemSettingsUI? _systemSettingsUI;
     private IDispatcherResolver? _dispatcherResolver;
-    private IMomentClock? _clock;
+    private MomentClock? _clock;
 
     protected SystemSettingsUI SystemSettingsUI
         => _systemSettingsUI ??= Services.GetRequiredService<SystemSettingsUI>();
     protected IDispatcherResolver DispatcherResolver
         => _dispatcherResolver ??= Services.GetRequiredService<IDispatcherResolver>();
-    protected IMomentClock Clock => _clock ??= Services.Clocks().CpuClock;
+    protected MomentClock Clock => _clock ??= Services.Clocks().CpuClock;
 
     protected AsyncLock AsyncLock { get; } = new(LockReentryMode.CheckedPass);
     protected TimeSpan? ExpirationPeriod { get; init; } = TimeSpan.FromSeconds(15);

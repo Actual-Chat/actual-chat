@@ -9,7 +9,8 @@ public class RpcBackendWebSocketClient(RpcWebSocketClient.Options settings, ISer
 {
     // private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
 
-    public override async Task<RpcConnection> Connect(RpcClientPeer peer, CancellationToken cancellationToken)
+    public override async Task<RpcConnection> ConnectRemote(
+        RpcClientPeer peer, Uri? uri, CancellationToken cancellationToken)
     {
         switch (peer.Ref) {
         case RpcBackendNodePeerRef nodePeerRef: {
@@ -20,7 +21,7 @@ public class RpcBackendWebSocketClient(RpcWebSocketClient.Options settings, ISer
             if (meshNode == null)
                 throw MeshNodeIsGoneError();
 
-            return await Connect(peer, meshNode, cancellationToken).ConfigureAwait(false);
+            return await ConnectRemote(peer, meshNode, cancellationToken).ConfigureAwait(false);
         }
         case RpcBackendShardPeerRef shardPeerRef: {
             retry:
@@ -38,7 +39,7 @@ public class RpcBackendWebSocketClient(RpcWebSocketClient.Options settings, ISer
             if (meshNode == null)
                 goto retry;
 
-            return await Connect(peer, meshNode, cancellationToken).ConfigureAwait(false);
+            return await ConnectRemote(peer, meshNode, cancellationToken).ConfigureAwait(false);
         }
         default:
             throw InvalidPeerRefTypeError();
@@ -47,7 +48,7 @@ public class RpcBackendWebSocketClient(RpcWebSocketClient.Options settings, ISer
 
     // Private methods
 
-    private Task<RpcConnection> Connect(RpcClientPeer peer, MeshNode meshNode, CancellationToken cancellationToken)
+    private Task<RpcConnection> ConnectRemote(RpcClientPeer peer, MeshNode meshNode, CancellationToken cancellationToken)
     {
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append("ws://");
@@ -58,15 +59,15 @@ public class RpcBackendWebSocketClient(RpcWebSocketClient.Options settings, ISer
         sb.Append('=');
         sb.Append(peer.ClientId); // Always Url-encoded
         var uri = sb.ToStringAndRelease().ToUri();
-        return Connect(peer, uri, cancellationToken);
+        return base.ConnectRemote(peer, uri, cancellationToken);
     }
 
     private static Exception InvalidPeerRefTypeError()
-        => new ConnectionUnrecoverableException("Invalid RpcPeerRef type.");
+        => new RpcReconnectFailedException("Invalid RpcPeerRef type.");
 
     private static Exception InvalidShardRefError()
-        => new ConnectionUnrecoverableException("ShardRef is invalid or current process is shutting down.");
+        => new RpcReconnectFailedException("ShardRef is invalid or current process is shutting down.");
 
     private static Exception MeshNodeIsGoneError()
-        => new ConnectionUnrecoverableException("Required MeshNode is gone.");
+        => new RpcReconnectFailedException("Required MeshNode is gone.");
 }

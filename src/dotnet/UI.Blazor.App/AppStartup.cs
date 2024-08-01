@@ -12,6 +12,7 @@ using ActualChat.Streaming.UI.Blazor.Module;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.UI.Blazor.Module;
+using ActualLab.Interception;
 using ActualLab.Interception.Interceptors;
 using ActualLab.Internal;
 using ActualLab.RestEase;
@@ -57,7 +58,7 @@ public static class AppStartup
         InterceptorBase.Options.Defaults.IsValidationEnabled = false;
 #else
         if (hostKind.IsMauiApp())
-            InterceptorBase.Options.Defaults.IsValidationEnabled = false;
+            Interceptor.Options.Defaults.IsValidationEnabled = false;
 #endif
 
         // Fusion services

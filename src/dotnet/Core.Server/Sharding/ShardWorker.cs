@@ -23,7 +23,7 @@ public abstract class ShardWorker : WorkerBase
     public MeshLockOptions LockOptions { get; init; }
     public RandomTimeSpan RepeatDelay { get; init; } = TimeSpan.FromMilliseconds(50).ToRandom(0.25);
     public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.1, 5);
-    public IMomentClock Clock => ShardLocks.Clock;
+    public MomentClock Clock => ShardLocks.Clock;
 
     protected ShardWorker(IServiceProvider services, ShardScheme shardScheme, string? keyPrefix = null)
     {
