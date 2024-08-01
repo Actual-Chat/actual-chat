@@ -24,7 +24,7 @@ internal sealed class JobsRunner(
     {
         _logger.LogInformation("{Job} job is starting", jobMetadata.Name);
 
-        using var retryDelays = RetryDelaySeq.Exp(30, 600).GetEnumerator();
+        using var retryDelays = RetryDelaySeq.Exp(30, 600).Delays().GetEnumerator();
         var shouldExecute = jobMetadata.ExecuteAtStart;
 
         while (!token.IsCancellationRequested) {
@@ -61,7 +61,7 @@ internal sealed class JobsRunner(
                 // noop
             }
             catch (Exception ex) {
-                _logger.LogError(ex, "Error in {Job} job.", jobMetadata.Name);
+                _logger.LogError(ex, "Job '{Job}' failed", jobMetadata.Name);
                 retryDelays.MoveNext();
                 await Task.Delay(retryDelays.Current, token).ConfigureAwait(false);
             }
