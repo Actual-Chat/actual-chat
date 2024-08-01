@@ -25,7 +25,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
         var queues = services.Queues();
         queues.Should().BeAssignableTo<NatsQueues>();
 
-        var testService = services.GetRequiredService<ScheduledCommandTestService>();
+        var testService = (ScheduledCommandTestService)services.GetRequiredService<IScheduledCommandTestService>();
         var commander = services.Commander();
 
         testService.ProcessedEvents.Count.Should().Be(0);
@@ -52,7 +52,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
         var queues = services.Queues();
         queues.Should().BeAssignableTo<NatsQueues>();
 
-        var testService = services.GetRequiredService<ScheduledCommandTestService>();
+        var testService = (ScheduledCommandTestService)services.GetRequiredService<IScheduledCommandTestService>();
         var countComputed = await Computed.Capture(() => testService.GetProcessedEventCount(CancellationToken.None));
 
         testService.ProcessedEvents.Count.Should().Be(0);
@@ -84,7 +84,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
         var queues = services.Queues();
         queues.Should().BeAssignableTo<NatsQueues>();
 
-        var testService = services.GetRequiredService<ScheduledCommandTestService>();
+        var testService = (ScheduledCommandTestService)services.GetRequiredService<IScheduledCommandTestService>();
         testService.ProcessedEvents.Count.Should().Be(0);
 
         await queues.Enqueue(new TestCommand3 { ShardKey = 7 });
