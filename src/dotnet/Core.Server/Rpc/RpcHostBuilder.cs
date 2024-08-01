@@ -146,16 +146,16 @@ public readonly struct RpcHostBuilder
         case ServiceMode.Disabled:
             break;
         case ServiceMode.Local:
-            AddLocal(implementationType, implementationType);
+            AddLocal(serviceType, implementationType);
             break;
         case ServiceMode.Client:
             AddClient(serviceType, name);
             break;
         case ServiceMode.Server:
-            AddServer(implementationType, implementationType, name);
+            AddServer(serviceType, implementationType, name);
             break;
         case ServiceMode.Distributed:
-            AddDistributed(implementationType, implementationType, name);
+            AddDistributed(serviceType, implementationType, name);
             break;
         default:
             throw StandardError.Internal("Invalid ServiceMode value.");
