@@ -1,17 +1,16 @@
 using System.Diagnostics.CodeAnalysis;
-using ActualChat.Flows.Infrastructure;
 using ActualChat.Hosting;
 using ActualChat.Mesh;
 using ActualChat.Rpc.Internal;
-using ActualLab.Fusion.Internal;
 using ActualLab.Fusion.Server;
 using ActualLab.Fusion.Server.Middlewares;
 using ActualLab.Fusion.Server.Rpc;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
-using ActualLab.Rpc.Internal;
+using ActualLab.Rpc.Infrastructure;
 using ActualLab.Rpc.Server;
 using ActualLab.Rpc.Testing;
+using ActualLab.Rpc.WebSockets;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.Rpc;
@@ -239,6 +238,10 @@ public readonly struct RpcHostBuilder
         // Replace
         Services.AddSingleton(RpcWebSocketServer.Options.Default with {
             ExposeBackend = true,
+            WebSocketChannelOptions = WebSocketChannel<RpcMessage>.Options.Default with {
+                // TODO(AY): The delay should be zero on backends
+                WriteDelayer = (_, _) => TickSource.Default.WhenNextTick(),
+            },
         });
 
         // Replace RpcBackendServiceDetector (it's used by both RPC client & server)

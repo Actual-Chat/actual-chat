@@ -44,7 +44,8 @@ public static partial class MauiProgram
 
         RpcDefaults.Mode = RpcMode.Client;
         FusionDefaults.Mode = FusionMode.Client;
-        RpcOutboundCommandCallMiddleware.Default.CallTimeout = TimeSpan.FromSeconds(20);
+        RpcDefaults.WebSocketWriteDelayer = (_, _) => ActualLab.Async.TaskExt.YieldDelay();
+        RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connect
 
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
