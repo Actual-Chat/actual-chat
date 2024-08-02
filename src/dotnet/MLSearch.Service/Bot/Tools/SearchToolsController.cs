@@ -16,6 +16,7 @@ namespace ActualChat.MLSearch.Bot.Tools;
 [BotTools]
 [ApiController]
 [Route("api/bot/search")]
+[Produces("application/json")]
 public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine, IBotToolsContextHandler botToolsContext) : ControllerBase
 {
     public sealed class SearchQueryRequest {

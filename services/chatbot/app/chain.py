@@ -3,11 +3,17 @@ from typing import Annotated, Literal
 from typing_extensions import TypedDict
 
 from langchain_core.messages import HumanMessage
-from langgraph.graph import StateGraph, START, END, MessagesState
+from langgraph.graph import StateGraph, START, END
+
+# Note:
+# It is very hard to extend MessagesState. To do so it would
+# require rewriting many prebuild classes as many of them
+# return MessagesState-like dictionaries (hard to modify behavior)
+from langgraph.graph import MessagesState
+
 from langgraph.checkpoint import MemorySaver
 from langchain_core.runnables.config import RunnableConfig
 from langgraph.prebuilt import ToolNode
-from langgraph.prebuilt import InjectedState
 from langgraph.graph.message import add_messages
 
 from langchain_anthropic import ChatAnthropic
@@ -19,16 +25,8 @@ assert(pydantic.VERSION.startswith("2."))
 from .tools import all as all_tools
 from .tools import _reply as reply
 from . import utils
+from langfuse.decorators import langfuse_context, observe
 
-
-# Note: Unused
-"""
-class State(TypedDict):
-    # Messages have the type "list". The `add_messages` function
-    # in the annotation defines how this state key should be updated
-    # (in this case, it appends messages to the list, rather than overwriting them)
-    messages: Annotated[list, add_messages]
-"""
 
 def user_input(input: str) -> MessagesState:
     return {"messages": [HumanMessage(content=input)]}
@@ -40,15 +38,33 @@ def should_continue(state: MessagesState) -> Literal["tools", "final_answer"]:
         return "tools"
     return "final_answer"
 
+@observe()
 def final_answer(state: MessagesState, config: RunnableConfig):
     """Sends a final answer to the user.
     """
+    Ok = {"messages":[]}
     messages = state["messages"]
     last_message = messages[-1]
-    if last_message.content is None or last_message.content.strip() == "":
-        return {"messages":[]}
-    reply(last_message.content, config)
-    return {"messages":[]}
+
+    def _try_add_answer(content):
+        if content is None:
+            return
+        if isinstance(content, list):
+            for line in content:
+                _try_add_answer(text)
+            return
+        if isinstance(content, str):
+            reply(content, config)
+            return
+        langfuse_context.update_current_observation(
+            level="WARNING",
+            status_message=f"Unexpected content type: {str(type(content))}"
+        )
+        return
+
+    _try_add_answer(last_message.content)
+
+    return Ok
 
 
 def create(*, claude_api_key, prompt):
@@ -65,8 +81,9 @@ def create(*, claude_api_key, prompt):
     def call_model(state: MessagesState):
         messages = state["messages"]
         response = llm.invoke(messages)
-        return {"messages": [response]}
-
+        return {
+            "messages": [response]
+        }
 
     graph_builder.add_node("agent", call_model)
     graph_builder.add_node("tools", tool_node)
