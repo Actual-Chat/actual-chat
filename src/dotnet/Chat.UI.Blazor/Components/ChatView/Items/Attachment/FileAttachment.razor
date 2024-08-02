@@ -1,10 +1,9 @@
-@using MimeKit
+@using ActualChat.Media
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
     var fileSize = Attachment.Media.Length / (1024 * 1024d);
     var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
-    MimeTypes.Register("application/x-zip-compressed", ".zip");
-    MimeTypes.TryGetExtension(Attachment.Media.ContentType, out var extension);
+    MediaMimeTypes.TryGetExtension(Attachment.Media.ContentType, out var extension);
     var fileExtension = extension != null ? extension.Replace(".", "") : "";
     var fileCls = _fileColors.GetValueOrDefault(fileExtension, "file-default");
 }
