@@ -1,4 +1,4 @@
-using ActualChat.Chat.Events;
+using ActualChat.Backend.Events;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -60,12 +60,17 @@ public sealed partial record MLSearch_CancelChatIndexing(
 /// </summary>
 public interface IChatIndexTrigger: IComputeService, IBackendService
 {
-    [EventHandler]
-    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+    // Commands
 
     [CommandHandler]
     Task OnCommand(MLSearch_TriggerChatIndexing e, CancellationToken cancellationToken);
-
     [CommandHandler]
     Task OnCancelCommand(MLSearch_CancelChatIndexing e, CancellationToken cancellationToken);
+
+    // Events
+
+    [EventHandler]
+    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken);
 }

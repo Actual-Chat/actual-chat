@@ -1,3 +1,4 @@
+using ActualChat.Backend.Events;
 using ActualLab.Rpc;
 
 namespace ActualChat.Chat;
@@ -9,4 +10,9 @@ public interface IMentionsBackend : IComputeService, IBackendService
         ChatId chatId,
         Symbol mentionId,
         CancellationToken cancellationToken);
+
+    // Events
+
+    [EventHandler]
+    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }

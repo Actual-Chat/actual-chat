@@ -1,10 +1,9 @@
+using ActualChat.Backend.Events;
 using ActualChat.Chat;
-using ActualChat.Chat.Events;
 using ActualChat.Db;
 using ActualChat.Notification.Db;
 using ActualChat.Queues;
 using ActualChat.Users;
-using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using ActualLab.Fusion.EntityFramework;
@@ -319,7 +318,7 @@ public class NotificationsBackend(IServiceProvider services)
 
     // Event handlers
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -369,7 +368,7 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnReactionChangedEvent(ReactionChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -394,10 +393,8 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
-    [EventHandler]
-    public virtual async Task OnSignedOut(
-        UserSignedOutEvent eventCommand,
-        CancellationToken cancellationToken)
+    // [EventHandler]
+    public virtual async Task OnSignedOut(UserSignedOutEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here

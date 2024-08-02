@@ -1,8 +1,7 @@
+using ActualChat.Backend.Events;
 using ActualChat.Chat.Db;
-using ActualChat.Chat.Events;
 using ActualChat.Db;
 using ActualChat.Users;
-using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
@@ -495,7 +494,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         return hasChanges;
     }
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnAvatarChangedEvent(AvatarChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -519,7 +518,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         }
     }
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnAuthorLeftPlaceEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)

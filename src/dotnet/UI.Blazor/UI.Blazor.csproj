@@ -17,7 +17,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
-    <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
     <ProjectReference Include="..\Users.Templates\Users.Templates.csproj" />
   </ItemGroup>
 

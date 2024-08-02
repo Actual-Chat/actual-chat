@@ -1,3 +1,4 @@
+using ActualChat.Backend.Events;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -15,7 +16,7 @@ public interface INotificationsBackend : IComputeService, IBackendService
     Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
         UserId userId, Moment minSentAt, CancellationToken cancellationToken);
 
-    // Command handlers
+    // Commands
 
     [CommandHandler]
     Task OnNotify(NotificationsBackend_Notify command, CancellationToken cancellationToken);
@@ -29,6 +30,15 @@ public interface INotificationsBackend : IComputeService, IBackendService
     Task OnRemoveAccount(NotificationsBackend_RemoveAccount command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnNotifyMembers(NotificationsBackend_NotifyMembers command, CancellationToken cancellationToken);
+
+    // Events
+
+    [EventHandler]
+    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnReactionChangedEvent(ReactionChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnSignedOut(UserSignedOutEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

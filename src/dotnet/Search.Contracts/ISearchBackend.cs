@@ -1,25 +1,13 @@
-﻿using ActualLab.Rpc;
+﻿using ActualChat.Backend.Events;
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Search;
 
 public interface ISearchBackend : IComputeService, IBackendService
 {
-    [CommandHandler]
-    Task OnEntryBulkIndex(SearchBackend_EntryBulkIndex command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task OnUserContactBulkIndex(SearchBackend_UserContactBulkIndex command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task OnChatContactBulkIndex(SearchBackend_ChatContactBulkIndex command, CancellationToken cancellationToken);
-
-    [CommandHandler]
-    Task OnRefresh(SearchBackend_Refresh command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task OnStartUserContactIndexing(SearchBackend_StartUserContactIndexing command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task OnStartChatContactIndexing(SearchBackend_StartChatContactIndexing command, CancellationToken cancellationToken);
-
     // Non-compute methods
+
     Task<EntrySearchResultPage> FindEntriesInChat(
         ChatId chatId,
         string criteria,
@@ -38,6 +26,29 @@ public interface ISearchBackend : IComputeService, IBackendService
         UserId ownerId,
         ContactSearchQuery query,
         CancellationToken cancellationToken);
+
+    // Commands
+
+    [CommandHandler]
+    Task OnEntryBulkIndex(SearchBackend_EntryBulkIndex command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnUserContactBulkIndex(SearchBackend_UserContactBulkIndex command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnChatContactBulkIndex(SearchBackend_ChatContactBulkIndex command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnRefresh(SearchBackend_Refresh command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnStartUserContactIndexing(SearchBackend_StartUserContactIndexing command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnStartChatContactIndexing(SearchBackend_StartChatContactIndexing command, CancellationToken cancellationToken);
+
+    // Events
+
+    [EventHandler]
+    Task OnAccountChangedEvent(AccountChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

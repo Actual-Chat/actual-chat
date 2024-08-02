@@ -1,3 +1,4 @@
+using ActualChat.Backend.Events;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -18,6 +19,8 @@ public interface IContactsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ApiArray<PlaceId>> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken);
 
+    // Commands
+
     [CommandHandler]
     Task<Contact?> OnChange(ContactsBackend_Change command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -32,6 +35,15 @@ public interface IContactsBackend : IComputeService, IBackendService
     Task OnChangePlaceMembership(ContactsBackend_ChangePlaceMembership command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnPublishCopiedChat(ContactsBackend_PublishCopiedChat command, CancellationToken cancellationToken);
+
+    // Events
+
+    [EventHandler]
+    Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

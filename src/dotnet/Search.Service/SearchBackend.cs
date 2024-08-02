@@ -1,10 +1,9 @@
+using ActualChat.Backend.Events;
 using ActualChat.Chat;
-using ActualChat.Chat.Events;
 using ActualChat.Contacts;
 using ActualChat.Queues;
 using ActualChat.Search.Db;
 using ActualChat.Search.Module;
-using ActualChat.Users.Events;
 using Microsoft.AspNetCore.Http;
 using ActualLab.Fusion.EntityFramework;
 using OpenSearch.Client;
@@ -404,7 +403,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         return Task.CompletedTask;
     }
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnAccountChangedEvent(AccountChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -424,7 +423,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             await Queues.Enqueue(new SearchBackend_StartUserContactIndexing(), cancellationToken).ConfigureAwait(false);
     }
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)

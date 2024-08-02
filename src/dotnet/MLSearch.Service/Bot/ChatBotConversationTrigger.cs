@@ -1,13 +1,16 @@
 
+using ActualChat.Backend.Events;
 using ActualChat.Chat;
-using ActualChat.Chat.Events;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.Queues;
 
 namespace ActualChat.MLSearch.Bot;
 
-internal class ChatBotConversationTrigger(IQueues queues, IChatsBackend chats, IWorkerPool<MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId> workerPool)
-    : IChatBotConversationTrigger
+internal class ChatBotConversationTrigger(
+    IQueues queues,
+    IChatsBackend chats,
+    IWorkerPool<MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId> workerPool
+    ) : IChatBotConversationTrigger
 {
     // ReSharper disable once UnusedMember.Global
     // [CommandHandler]

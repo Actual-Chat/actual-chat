@@ -69,6 +69,7 @@
     }
 
     private async Task SendDigest() {
+        /*
         var session = Hub.Session();
         var account = await Hub.Accounts.GetOwn(session, CancellationToken.None).ConfigureAwait(false);
         var sendDigestCommand = new Emails_SendDigest(account.Id);
@@ -77,8 +78,10 @@
         if (error is not null) {
             Hub.ToastUI.Show($"Error: {error.Message}", ToastDismissDelay.Long);
         } else {
-            Hub.ToastUI.Show("Digest has been sent", ToastDismissDelay.Short);
+            Hub.ToastUI.Show("The digest has been sent", ToastDismissDelay.Short);
         }
+        */
+        Hub.ToastUI.Show("This feature is waiting for its proper implementation.", ToastDismissDelay.Long);
     }
 
     public class Model {

@@ -18,7 +18,6 @@ using Microsoft.JSInterop;
 using Sentry;
 using Sentry.Maui.Internal;
 using Serilog;
-using ActualLab.CommandR.Rpc;
 using ActualLab.Rpc;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 #if IOS

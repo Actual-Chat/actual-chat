@@ -1,7 +1,7 @@
 using System.Net.Mail;
+using ActualChat.Backend.Events;
 using ActualChat.Chat;
 using ActualChat.Users.Db;
-using ActualChat.Users.Events;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -230,7 +230,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
     // Event handlers
 
-    [EventHandler]
+    // [EventHandler]
     public virtual Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)

@@ -1,12 +1,12 @@
-using ActualChat.Chat.Events;
+using ActualChat.Backend.Events;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Users;
 
-public class ChatUsagesBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services),
-    IChatUsagesBackend
+public class ChatUsagesBackend(IServiceProvider services)
+    : DbServiceBase<UsersDbContext>(services), IChatUsagesBackend
 {
     private const int RecencyListLimit = 100;
 
@@ -97,7 +97,7 @@ public class ChatUsagesBackend(IServiceProvider services) : DbServiceBase<UsersD
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)

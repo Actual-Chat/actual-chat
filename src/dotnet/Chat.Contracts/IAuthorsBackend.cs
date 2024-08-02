@@ -1,3 +1,4 @@
+using ActualChat.Backend.Events;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -14,12 +15,21 @@ public interface IAuthorsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ApiArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken);
 
+    // Commands
+
     [CommandHandler]
     Task<AuthorFull> OnUpsert(AuthorsBackend_Upsert command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemove(AuthorsBackend_Remove command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<bool> OnCopyChat(AuthorsBackend_CopyChat command, CancellationToken cancellationToken);
+
+    // Events
+
+    [EventHandler]
+    Task OnAvatarChangedEvent(AvatarChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnAuthorLeftPlaceEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 // Commands

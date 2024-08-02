@@ -1,6 +1,6 @@
 using MemoryPack;
 
-namespace ActualChat.Users.Events;
+namespace ActualChat.Backend.Events;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record UserSignedOutEvent(

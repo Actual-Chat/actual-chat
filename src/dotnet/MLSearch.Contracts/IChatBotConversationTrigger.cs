@@ -1,4 +1,4 @@
-using ActualChat.Chat.Events;
+using ActualChat.Backend.Events;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -24,9 +24,13 @@ public sealed partial record MLSearch_TriggerContinueConversationWithBot (
 // TODO: Move IMLSearch back into the MLSearch project.
 public interface IChatBotConversationTrigger: IComputeService, IBackendService
 {
-    [EventHandler]
-    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+    // Commands
 
     [CommandHandler]
     Task OnCommand(MLSearch_TriggerContinueConversationWithBot e, CancellationToken cancellationToken);
+
+    // Events
+
+    [EventHandler]
+    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }

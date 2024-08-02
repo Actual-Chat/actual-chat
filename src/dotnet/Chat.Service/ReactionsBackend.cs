@@ -1,6 +1,5 @@
+using ActualChat.Backend.Events;
 using ActualChat.Chat.Db;
-using ActualChat.Chat.Events;
-using ActualChat.Queues;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 

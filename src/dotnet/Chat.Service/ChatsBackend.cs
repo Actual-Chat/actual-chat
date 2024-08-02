@@ -1,5 +1,5 @@
+using ActualChat.Backend.Events;
 using ActualChat.Chat.Db;
-using ActualChat.Chat.Events;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Hosting;
@@ -7,7 +7,6 @@ using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Media;
 using ActualChat.Users;
-using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
@@ -1446,7 +1445,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     // Event handlers
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -1481,7 +1480,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             await JoinFeedbackTemplateChatIfAdmin(userId, cancellationToken).ConfigureAwait(false);
     }
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -1548,7 +1547,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnPlaceRemoved(PlaceChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)

@@ -1,3 +1,4 @@
+using ActualChat.Backend.Events;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -8,11 +9,17 @@ public interface IChatUsagesBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ApiArray<ChatId>> GetRecencyList(UserId userId, ChatUsageListKind kind, CancellationToken cancellationToken);
 
-    [CommandHandler]
-    Task OnRegisterUsage(ChatUsagesBackend_RegisterUsage command, CancellationToken cancellationToken);
+    // Commands
 
     [CommandHandler]
+    Task OnRegisterUsage(ChatUsagesBackend_RegisterUsage command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task OnPurgeRecencyList(ChatUsagesBackend_PurgeRecencyList command, CancellationToken cancellationToken);
+
+    // Events
+
+    [EventHandler]
+    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
