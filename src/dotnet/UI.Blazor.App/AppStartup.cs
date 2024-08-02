@@ -55,7 +55,7 @@ public static class AppStartup
     {
         var tracer = (rootTracer ?? Tracer.Default)[typeof(AppStartup)];
 #if !DEBUG
-        InterceptorBase.Options.Defaults.IsValidationEnabled = false;
+        Interceptor.Options.Defaults.IsValidationEnabled = false;
 #else
         if (hostKind.IsMauiApp())
             Interceptor.Options.Defaults.IsValidationEnabled = false;
