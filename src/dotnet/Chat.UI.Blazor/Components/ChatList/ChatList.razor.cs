@@ -36,8 +36,8 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
             // Query is there, so data is irrelevant
             _ => query.KeyRange.ToIntRange().Move(query.MoveRange),
         };
-        if (query.IsNone && renderedData.IsNone && !range.Contains(selectedChatIndex)) {
-            // move range to the selected chat for the first render
+        if (query.IsNone && !range.Contains(selectedChatIndex)) {
+            // move range to the selected chat  if there is no query
             var scrollAnchorRange = new Range<int>(
                 selectedChatIndex - HalfLoadLimit,
                 selectedChatIndex + HalfLoadLimit);
@@ -60,8 +60,8 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
         }
 
         var scrollToKey = null as string;
-        if (query.IsNone && renderedData.IsNone) {
-            // scroll to the selected chat on first render
+        if (query.IsNone) {
+            // scroll to the selected chat if there is no query
             var selectedItem = resultItems.FirstOrDefault(it => it.Chat.Id == selectedChatId);
             if (selectedItem != null)
                 scrollToKey = selectedItem.Key;
