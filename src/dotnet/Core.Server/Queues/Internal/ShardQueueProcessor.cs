@@ -1,7 +1,6 @@
 using ActualChat.Concurrency;
-using ActualChat.Module;
+using ActualChat.Diagnostics;
 using ActualLab.Diagnostics;
-using Microsoft.Extensions.Primitives;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
 
@@ -11,12 +10,6 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
     where TSettings : QueueSettings
     where TQueues : IQueues
 {
-    private static ActivitySource QueueActivitySource {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => CoreServerModuleInstrumentation.ActivitySource;
-    }
-
-    private readonly string ProcessActivityName;
     private static bool DebugMode => Constants.DebugMode.QueueProcessor;
 
     private readonly TaskCompletionSource _whenStarted = new();
@@ -42,8 +35,6 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
         Commander = Services.Commander();
         CommandHandlerResolver = Services.GetRequiredService<CommandHandlerResolver>();
         Clock = queues.Clock;
-
-        ProcessActivityName = $"{nameof(Process)}@{GetType().Name}";
     }
 
     public abstract Task Enqueue(QueueShardRef queueShardRef, QueuedCommand queuedCommand, CancellationToken cancellationToken = default);
@@ -98,8 +89,9 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
             links = [new ActivityLink(senderContext)];
         }
 
-        using var activity = QueueActivitySource
-            .StartActivity(ProcessActivityName, ActivityKind.Consumer, senderContext, links: links);
+        var operationName = GetType().GetOperationName();
+        using var activity = CoreServerInstruments.ActivitySource
+            .StartActivity(operationName, ActivityKind.Consumer, senderContext, links: links);
 
         var command = queuedCommand.UntypedCommand;
         var kind = command.GetKind();

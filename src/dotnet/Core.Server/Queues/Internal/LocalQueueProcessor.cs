@@ -1,4 +1,5 @@
 using ActualChat.Concurrency;
+using ActualChat.Diagnostics;
 using ActualChat.Module;
 using ActualLab.Diagnostics;
 using Microsoft.Extensions.Primitives;
@@ -10,14 +11,8 @@ namespace ActualChat.Queues.Internal;
 public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQueueProcessor
     where TQueues : IQueues
 {
-    private static ActivitySource QueueActivitySource {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => CoreServerModuleInstrumentation.ActivitySource;
-    }
-
     private static bool DebugMode => Constants.DebugMode.QueueProcessor;
 
-    private readonly string _processActivityName;
     private long _lastCommandCompletedAt;
 
     protected IServiceProvider Services { get; }
@@ -39,8 +34,6 @@ public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQue
         Commander = Services.Commander();
         Clock = queues.Clock;
         Log = Services.LogFor(GetType());
-
-        _processActivityName = $"{nameof(Process)}@{GetType().Name}";
     }
 
     public abstract Task Enqueue(QueueShardRef queueShardRef, QueuedCommand queuedCommand, CancellationToken cancellationToken = default);
@@ -75,8 +68,9 @@ public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQue
             links = [new ActivityLink(senderContext)];
         }
 
-        using var activity = QueueActivitySource
-            .StartActivity(_processActivityName, ActivityKind.Consumer, senderContext, links: links);
+        var operationName = GetType().GetOperationName();
+        using var activity = CoreServerInstruments.ActivitySource
+            .StartActivity(operationName, ActivityKind.Consumer, senderContext, links: links);
 
         var command = queuedCommand.UntypedCommand;
         var kind = command.GetKind();

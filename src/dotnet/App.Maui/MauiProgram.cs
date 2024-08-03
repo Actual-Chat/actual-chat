@@ -44,7 +44,6 @@ public static partial class MauiProgram
 
         RpcDefaults.Mode = RpcMode.Client;
         FusionDefaults.Mode = FusionMode.Client;
-        RpcDefaults.WebSocketWriteDelayer = (_, _) => ActualLab.Async.TaskExt.YieldDelay();
         RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connect
 
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
@@ -55,7 +54,7 @@ public static partial class MauiProgram
 #if ANDROID || WINDOWS
         _ = Task.Run(() => new SentryOptions()); // JIT compile SentryOptions in advance
 #endif
-        OtelDiagnostics.SetupConditionalPropagator();
+        AppUIOtelSetup.SetupConditionalPropagator();
 #if WINDOWS
         if (Tracer.IsEnabled) {
             // EventSources and EventListeners do not work in Mono. So no sense to enable but platforms different from Windows

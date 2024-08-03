@@ -1,5 +1,3 @@
-
-using ActualChat.Backend.Events;
 using ActualChat.Chat;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.Queues;

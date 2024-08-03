@@ -30,10 +30,9 @@ public static class Program
         // Rpc & Fusion defaults
         RpcDefaults.Mode = RpcMode.Client;
         FusionDefaults.Mode = FusionMode.Client;
-        RpcDefaults.WebSocketWriteDelayer = (_, _) => ActualLab.Async.TaskExt.YieldDelay();
         RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connect
 
-        OtelDiagnostics.SetupConditionalPropagator();
+        AppUIOtelSetup.SetupConditionalPropagator();
         // NOTE(AY): This thing takes 1 second on Windows!
         var isSentryEnabled = Constants.Sentry.EnabledFor.Contains(HostKind.WasmApp);
         var sentrySdkDisposable = isSentryEnabled
@@ -103,7 +102,7 @@ public static class Program
         });
 
         void  CreateAndSaveTracerProvider() {
-            saveTracerProvider(OtelDiagnostics.CreateClientSentryTraceProvider("WasmApp"));
+            saveTracerProvider(AppUIOtelSetup.CreateClientSentryTraceProvider("WasmApp"));
         }
     }
 }

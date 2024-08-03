@@ -134,14 +134,13 @@ public sealed class ChatEntryPlayer : ProcessorBase
             ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
         };
         _ = BackgroundTask.Run(async () => {
-                var now = Clocks.SystemClock.Now;
-                var latency = now - audio.CreatedAt;
-                await StreamClient.ReportAudioLatency(latency, cancellationToken).ConfigureAwait(false);
-                var recorderState = AudioRecorder.State.LastNonErrorValue;
-                if (recorderState.IsRecording && recorderState.ChatId == audioEntry.ChatId)
-                    await AudioRecorder.ConversationSignal(cancellationToken).ConfigureAwait(false);
-            },
-            cancellationToken);
+            var now = Clocks.SystemClock.Now;
+            var latency = now - audio.CreatedAt;
+            await StreamClient.ReportAudioLatency(latency, cancellationToken).ConfigureAwait(false);
+            var recorderState = AudioRecorder.State.LastNonErrorValue;
+            if (recorderState.IsRecording && recorderState.ChatId == audioEntry.ChatId)
+                await AudioRecorder.ConversationSignal(cancellationToken).ConfigureAwait(false);
+        }, cancellationToken);
         return Playback.Play(trackInfo, audio, playAt, cancellationToken);
     }
 

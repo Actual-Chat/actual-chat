@@ -1,4 +1,3 @@
-using ActualChat.Backend.Events;
 using ActualChat.Chat;
 using ActualChat.Db;
 using ActualChat.Notification.Db;

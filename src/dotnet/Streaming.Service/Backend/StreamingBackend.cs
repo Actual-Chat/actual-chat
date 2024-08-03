@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Chat;
+using ActualChat.Diagnostics;
 using ActualChat.Kvas;
 using ActualChat.Mesh;
 using ActualChat.Streaming.Services;
@@ -23,7 +24,6 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     private ILogger Log { get; }
     private ILogger OpenAudioSegmentLog { get; }
     private ILogger AudioSourceLog { get; }
-    private OtelMetrics Metrics { get; }
     private static bool DebugMode => Constants.DebugMode.AudioProcessor;
     private ILogger? DebugLog => DebugMode ? Log : null;
 
@@ -45,7 +45,6 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
         Log = services.LogFor(GetType());
         OpenAudioSegmentLog = services.LogFor<OpenAudioSegment>();
         AudioSourceLog = services.LogFor<AudioSource>();
-        Metrics = services.Metrics();
 
         MeshNode = services.MeshNode();
         AudioSegmentSaver = services.GetRequiredService<AudioSegmentSaver>();
@@ -57,8 +56,8 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
         Clocks = services.Clocks();
 
         _audioStreams = new StreamStore<byte[]>() {
-            StreamCounter = Metrics.AudioStreamCount,
             StreamIdValidator = ValidateStreamId,
+            StreamCount = AppMeters.AudioStreamCount,
             Log = services.LogFor($"{GetType().FullName}.AudioStreams"),
         };
         _transcriptStreams = new StreamStore<TranscriptDiff>() {

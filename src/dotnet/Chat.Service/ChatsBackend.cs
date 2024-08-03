@@ -1,7 +1,7 @@
-using ActualChat.Backend.Events;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
+using ActualChat.Diagnostics;
 using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
@@ -52,7 +52,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IDbEntityResolver<string, DbReadPositionsStat> DbReadPositionsStatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbReadPositionsStat>>();
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
-    private OtelMetrics Metrics { get; } = services.Metrics();
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
@@ -982,7 +981,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return entry;
 
         if (changeKind == ChangeKind.Create)
-            Metrics.MessageCount.Add(1);
+            AppMeters.MessageCount.Add(1);
 
         if (change.IsCreate(out var create) && create.Attachments is { Count: > 0 } attachments) {
             var createAttachmentsCmd = new ChatsBackend_CreateAttachments(attachments.Select((x, i) => new TextEntryAttachment {

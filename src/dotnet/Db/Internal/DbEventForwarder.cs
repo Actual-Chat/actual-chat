@@ -1,3 +1,4 @@
+using ActualChat.Db.Diagnostics;
 using ActualChat.Db.Module;
 using ActualChat.Queues;
 using ActualLab.CommandR.Operations;
@@ -30,7 +31,7 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
         // Forwards everything to Queues
         switch (value) {
         case ICommand command: {
-                using var activity = DbModuleInstrumentation.ActivitySource
+                using var activity = DbInstruments.ActivitySource
                     .StartActivity(ProcessActivityName, ActivityKind.Internal);
 
                 Log.LogInformation("-> {CommandType}: {Info}", command.GetType().GetName(), info);
@@ -58,7 +59,7 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
                     links = [new ActivityLink(senderContext)];
                 }
 
-                using var activity = DbModuleInstrumentation.ActivitySource
+                using var activity = DbInstruments.ActivitySource
                     .StartActivity(ProcessActivityName, ActivityKind.Consumer, senderContext, links: links);
 
                 Log.LogInformation("-> {CommandType}: {Info}", queuedCommand.UntypedCommand.GetType().GetName(), info);

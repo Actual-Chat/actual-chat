@@ -1,5 +1,4 @@
-﻿using ActualChat.Backend.Events;
-using ActualLab.Rpc;
+﻿using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Search;

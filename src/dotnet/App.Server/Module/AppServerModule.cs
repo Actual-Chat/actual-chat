@@ -2,7 +2,9 @@ using System.IO.Compression;
 using ActualChat.App.Server.Health;
 using ActualChat.Chat.Module;
 using ActualChat.Contacts.Module;
+using ActualChat.Db.Diagnostics;
 using ActualChat.Db.Module;
+using ActualChat.Diagnostics;
 using ActualChat.Flows.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Module;
@@ -13,6 +15,7 @@ using ActualChat.Redis.Module;
 using ActualChat.Search.Module;
 using ActualChat.Streaming.Module;
 using ActualChat.Users.Module;
+using ActualLab.CommandR.Diagnostics;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -26,9 +29,11 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using ActualLab.Diagnostics;
+using ActualLab.Fusion.Diagnostics;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.IO;
 using ActualLab.Rpc;
+using ActualLab.Rpc.Diagnostics;
 using ActualLab.Rpc.Server;
 
 namespace ActualChat.App.Server.Module;
@@ -238,7 +243,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         });
 
         // OpenTelemetry
-        services.AddSingleton<OtelMetrics>();
         var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;
         if (openTelemetryEndpoint.IsNullOrEmpty())
             openTelemetryEndpoint = "localhost";
@@ -255,12 +259,14 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddRuntimeInstrumentation()
                 .AddProcessInstrumentation()
                 .AddMeter("Npgsql") // Npgsql meter at Npgsql.MetricsReporter
-                .AddMeter(typeof(RpcHub).GetMeter().Name) // ActualLab.Rpc
-                .AddMeter(typeof(ICommand).GetMeter().Name) // ActualLab.Commander
-                .AddMeter(typeof(Computed).GetMeter().Name) // ActualLab.Fusion
+                .AddMeter(RpcInstruments.Meter.Name) // ActualLab.Rpc
+                .AddMeter(CommanderInstruments.Meter.Name) // ActualLab.Commander
+                .AddMeter(FusionInstruments.Meter.Name) // ActualLab.Fusion
                 // Our own meters (one per assembly)
-                .AddMeter(AppMeter.Name)
-                .AddMeter(MeterExt.Unknown.Name) // Unknown meter
+                .AddMeter(DbInstruments.Meter.Name)
+                .AddMeter(CoreServerInstruments.Meter.Name)
+                .AddMeter(AppInstruments.Meter.Name)
+                .AddMeter(AppUIInstruments.Meter.Name)
                 .AddPrometheusExporter(cfg => { // OtlpExporter doesn't work for metrics ???
                     cfg.ScrapeEndpointPath = "/metrics";
                     cfg.ScrapeResponseCacheDurationMilliseconds = 300;
@@ -282,30 +288,14 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             )
             .WithTracing(builder => builder
                 .SetErrorStatusOnException()
-                .AddSource(typeof(RpcHub).GetActivitySource().Name) // ActualLab.Rpc
-                .AddSource(typeof(ICommand).GetActivitySource().Name) // ActualLab.Commander
-                .AddSource(typeof(Computed).GetActivitySource().Name) // ActualLab.Fusion
-                .AddSource(typeof(IAuthBackend).GetActivitySource().Name) // ActualLab.Fusion.Ext.Services - auth, etc.
-                .AddSource(typeof(DbKey).GetActivitySource().Name) // ActualLab.Fusion.EntityFramework
+                .AddSource(RpcInstruments.ActivitySource.Name) // ActualLab.Rpc
+                .AddSource(CommanderInstruments.ActivitySource.Name) // ActualLab.Commander
+                .AddSource(FusionInstruments.ActivitySource.Name) // ActualLab.Fusion
                 // Our own activity sources (one per assembly)
-                .AddSource(AppTrace.Name)
-                .AddSource(typeof(CoreModule).GetActivitySource().Name)
-                .AddSource(CoreServerModuleInstrumentation.ActivitySource.Name)
-                .AddSource(DbModuleInstrumentation.ActivitySource.Name)
-                .AddSource(typeof(RedisModule).GetActivitySource().Name)
-                .AddSource(typeof(FlowsServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(ApiModule).GetActivitySource().Name)
-                .AddSource(typeof(ApiClientModule).GetActivitySource().Name)
-                .AddSource(typeof(StreamingServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(ChatServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(ContactsServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(InviteServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(MediaServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(SearchServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(NotificationServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(UsersServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(AppServerModule).GetActivitySource().Name)
-                .AddSource(ActivitySourceExt.Unknown.Name) // Unknown meter
+                .AddSource(DbInstruments.ActivitySource.Name)
+                .AddSource(CoreServerInstruments.ActivitySource.Name)
+                .AddSource(AppInstruments.ActivitySource.Name)
+                .AddSource(AppUIInstruments.ActivitySource.Name)
                 .AddAspNetCoreInstrumentation(opt => {
                     var excludedPaths = new PathString[] {
                         "/favicon.ico",

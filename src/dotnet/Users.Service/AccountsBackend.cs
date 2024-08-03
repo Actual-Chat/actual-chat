@@ -1,5 +1,4 @@
 using System.Net.Mail;
-using ActualChat.Backend.Events;
 using ActualChat.Chat;
 using ActualChat.Users.Db;
 using Microsoft.AspNetCore.Authentication.Google;

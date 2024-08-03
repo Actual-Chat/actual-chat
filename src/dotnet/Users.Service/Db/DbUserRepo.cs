@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using ActualChat.Backend.Events;
 using ActualChat.Users.Module;
 using ActualLab.Fusion.Authentication.Services;
 

@@ -45,8 +45,7 @@
     <Using Include="ActualChat.Blobs" Condition="$(IsServerSideProject)"/>
     <Using Include="ActualChat.Collections" />
     <Using Include="ActualChat.DependencyInjection" />
-    <Using Include="ActualChat.Diagnostics" />
-    <Using Include="ActualChat.Diagnostics.AppDiagnostics" Static="true" />
+    <!-- <Using Include="ActualChat.Diagnostics" /> -->
     <Using Include="ActualChat.Diff" />
     <Using Include="ActualChat.IO" />
     <Using Include="ActualChat.Mathematics" />

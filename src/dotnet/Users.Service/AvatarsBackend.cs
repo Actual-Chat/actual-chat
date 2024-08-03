@@ -1,5 +1,4 @@
-﻿using ActualChat.Backend.Events;
-using ActualChat.Media;
+﻿using ActualChat.Media;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 

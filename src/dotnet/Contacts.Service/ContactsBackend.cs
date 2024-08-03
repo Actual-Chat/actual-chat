@@ -1,4 +1,3 @@
-using ActualChat.Backend.Events;
 using ActualChat.Chat;
 using ActualChat.Contacts.Db;
 using ActualChat.Mesh;

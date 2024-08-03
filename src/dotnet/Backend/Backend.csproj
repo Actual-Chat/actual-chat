@@ -1,8 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <IsPackable>true</IsPackable>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RootNamespace>ActualChat</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

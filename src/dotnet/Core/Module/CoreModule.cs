@@ -72,8 +72,6 @@ public sealed class CoreModule(IServiceProvider moduleServices)
 
         // Common services
         services.AddSingleton(c => new UrlMapper(c.HostInfo()));
-        services.AddSingleton(c => new HealthEventListener(c));
-        services.AddSingleton<IRuntimeStats>(c => c.GetRequiredService<HealthEventListener>());
 
         // IArithmetics
         services.AddTypeMapper<IArithmetics>(map => map

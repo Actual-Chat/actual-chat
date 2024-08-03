@@ -1,4 +1,4 @@
-using ActualChat.Module;
+using ActualChat.Diagnostics;
 using Microsoft.Extensions.Primitives;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
@@ -7,15 +7,6 @@ namespace ActualChat.Queues;
 
 public static class QueuesExt
 {
-    private static ActivitySource ActivitySource {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => CoreServerModuleInstrumentation.ActivitySource;
-    }
-
-    private static class ActivityName<TCommand> {
-        public static readonly string Enqueue = $"{nameof(Enqueue)}<{typeof(TCommand).Name}>@{nameof(QueuesExt)}";
-    }
-
     // Enqueue
 
     public static Task Enqueue<TCommand>(this IQueues queues,
@@ -23,9 +14,10 @@ public static class QueuesExt
         CancellationToken cancellationToken = default)
         where TCommand : ICommand
     {
-        using var activity = ActivitySource.StartActivity(ActivityName<TCommand>.Enqueue, ActivityKind.Producer);
+        var operationName = command.GetOperationName("enqueue");
+        using var activity = CoreServerInstruments.ActivitySource.StartActivity(operationName, ActivityKind.Producer);
         Dictionary<string, StringValues>? contextHeaders = null;
-        if (activity is Activity { Context: var activityContext }) {
+        if (activity is { Context: var activityContext }) {
             var propagationContext = new PropagationContext(activityContext, Baggage.Current);
             contextHeaders = new Dictionary<string, StringValues>(StringComparer.Ordinal);
             Propagators.DefaultTextMapPropagator.Inject(

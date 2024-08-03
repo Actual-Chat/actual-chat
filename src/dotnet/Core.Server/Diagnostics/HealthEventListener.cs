@@ -2,7 +2,7 @@
 
 namespace ActualChat.Diagnostics;
 
-public class HealthEventListener(IServiceProvider services, int interval = 10) : EventListener, IRuntimeStats
+public class HealthEventListener(IServiceProvider services, int interval = 10) : EventListener, IHealthState
 {
     private const double Epsilon = 0.01d;
 

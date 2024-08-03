@@ -1,4 +1,3 @@
-using ActualChat.Backend.Events;
 using ActualLab.Rpc;
 using MemoryPack;
 

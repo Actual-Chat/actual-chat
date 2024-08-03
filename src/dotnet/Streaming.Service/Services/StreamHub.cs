@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Diagnostics;
 using ActualChat.Hosting;
 using ActualChat.Mesh;
 using ActualChat.Security;
@@ -22,7 +23,6 @@ public class StreamHub(IServiceProvider services) : Hub
     private ISecureTokensBackend SecureTokensBackend { get; } = services.GetRequiredService<ISecureTokensBackend>();
     private IHostApplicationLifetime HostLifetime { get; } = services.HostLifetime();
     private IStreamingBackend Backend { get; } = services.GetRequiredService<IStreamingBackend>();
-    private OtelMetrics Metrics { get; } = services.Metrics();
     private ILogger Log { get; } = services.LogFor<StreamHub>();
 
     public static Task<string> Ping()
@@ -112,12 +112,6 @@ public class StreamHub(IServiceProvider services) : Hub
             .SilentAwait(false);
     }
 
-    public Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken)
-    {
-        Metrics.AudioLatency.Record((float)latency.TotalMilliseconds);
-        return Task.CompletedTask;
-    }
-
     // Backward compatibility
 
     [Obsolete("2024.02: Remains for backward compability.")]
@@ -129,7 +123,10 @@ public class StreamHub(IServiceProvider services) : Hub
 
     [Obsolete("2024.02: Remains for backward compability.")]
     public Task ReportLatency(TimeSpan latency, CancellationToken cancellationToken)
-        => ReportAudioLatency(latency, cancellationToken);
+    {
+        AppMeters.AudioLatency.Record((float)latency.TotalMilliseconds);
+        return Task.CompletedTask;
+    }
 
     // Private methods
 

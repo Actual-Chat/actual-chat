@@ -1,5 +1,6 @@
 using ActualChat.Chat.UI.Blazor.Events;
 using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Diagnostics;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
@@ -278,7 +279,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         // ReSharper disable once ExplicitCallerInfoArgument
-        using var activity = BlazorUITrace.StartActivity("ChatView.GetVirtualListData");
+        using var activity = AppUIInstruments.ActivitySource.StartActivity(GetType(), "GetVirtualListData");
 
         var chat = Chat;
         var chatId = chat.Id;

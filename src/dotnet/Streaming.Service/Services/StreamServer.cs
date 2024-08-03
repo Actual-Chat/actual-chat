@@ -1,3 +1,4 @@
+using ActualChat.Diagnostics;
 using ActualChat.Transcription;
 using ActualLab.Rpc;
 
@@ -6,8 +7,6 @@ namespace ActualChat.Streaming.Services;
 public class StreamServer(IServiceProvider services) : IStreamServer
 {
     private IStreamingBackend Backend { get; } = services.GetRequiredService<IStreamingBackend>();
-    private OtelMetrics Metrics { get; } = services.Metrics();
-    private ILogger Log { get; } = services.LogFor<StreamHub>();
 
     public async Task<RpcStream<byte[]>?> GetAudio(Symbol streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
@@ -25,7 +24,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
 
     public Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken)
     {
-        Metrics.AudioLatency.Record((float)latency.TotalMilliseconds);
+        AppMeters.AudioLatency.Record((float)latency.TotalMilliseconds);
         return Task.CompletedTask;
     }
 }

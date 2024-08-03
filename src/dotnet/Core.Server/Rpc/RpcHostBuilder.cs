@@ -238,10 +238,6 @@ public readonly struct RpcHostBuilder
         // Replace
         Services.AddSingleton(RpcWebSocketServer.Options.Default with {
             ExposeBackend = true,
-            WebSocketChannelOptions = WebSocketChannel<RpcMessage>.Options.Default with {
-                // TODO(AY): The delay should be zero on backends
-                WriteDelayer = (_, _) => TickSource.Default.WhenNextTick(),
-            },
         });
 
         // Replace RpcBackendServiceDetector (it's used by both RPC client & server)

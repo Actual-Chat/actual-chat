@@ -1,7 +1,7 @@
 using ActualChat.Chat;
 using MemoryPack;
 
-namespace ActualChat.Backend.Events;
+namespace ActualChat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ReactionChangedEvent(
