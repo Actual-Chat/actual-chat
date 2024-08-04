@@ -18,6 +18,12 @@ internal static class Program
 #endif
 
         RpcDefaults.Mode = RpcMode.Server;
+        RpcDefaultDelegates.HashProvider = data => {
+            // SIMD-based version of Blake3 we use here is much faster than SSH256.
+            // See https://github.com/xoofx/Blake3.NET?tab=readme-ov-file#results
+            var hash = Blake3.Hasher.Hash(data.Data.Span);
+            return Convert.ToBase64String(hash.AsSpan()[..18]); // 18 bytes -> 24 chars
+        };
         FusionDefaults.Mode = FusionMode.Server;
         Console.OutputEncoding = Encoding.UTF8;
         Activity.DefaultIdFormat = ActivityIdFormat.W3C;
