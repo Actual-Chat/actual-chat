@@ -1,4 +1,3 @@
-@using ActualChat.UI.Blazor.Module
 @namespace ActualChat.UI.Blazor.Components
 
 <button @ref="ButtonRef"
@@ -37,10 +36,8 @@
 
     public ElementReference ButtonRef { get; private set; }
 
-    protected override void OnInitialized() {
-        _delay = (int)Delay;
-        base.OnInitialized();
-    }
+    protected override void OnInitialized()
+        => _delay = (int)Delay;
 
     private string GetButtonType()
         => Type.ToString().ToLower();

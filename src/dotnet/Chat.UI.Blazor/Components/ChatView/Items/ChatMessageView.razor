@@ -1,9 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatMessageView.Model>
-@using ActualChat.Hosting
-@using Microsoft.AspNetCore.Components.Rendering
-@using System.Diagnostics.CodeAnalysis
-@using ActualLab.Diagnostics
 @{
     var m = _rendered = State.Value;
     var message = _renderedMessage = Message;
@@ -225,10 +221,8 @@
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;
 
-    protected override void OnInitialized() {
-        _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
-        base.OnInitialized();
-    }
+    protected override void OnInitialized()
+        => _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
 
     private void OnAuthorBadgeClick(AuthorId authorId)
         => _ = AuthorUI.Show(authorId);

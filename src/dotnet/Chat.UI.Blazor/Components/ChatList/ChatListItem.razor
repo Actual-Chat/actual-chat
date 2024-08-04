@@ -128,19 +128,15 @@
     [Parameter] public bool IsLastItemInBlock { get; set; }
     [Parameter] public bool IsFirstItem { get; set; }
 
-    public ChatListItem() {
-        Options = ComputedStateComponentOptions.RecomputeStateOnParameterChange;
-    }
+    public ChatListItem()
+        => Options = ComputedStateComponentOptions.RecomputeStateOnParameterChange;
 
     // protected override void OnInitialized() {
-    //
-    //     DebugLog?.LogDebug("Initialized: {ListKind} #{Index}", ListKind, Index);
-    //     base.OnInitialized();
+    //     DebugLog?.LogDebug("OnInitialized: {ListKind} #{Index}", ListKind, Index);
     // }
     //
     // protected override void OnParametersSet() {
     //     DebugLog?.LogDebug("OnParametersSet: {ListKind} #{Index}", ListKind, Index);
-    //     base.OnParametersSet();
     // }
 
     protected override bool ShouldRender() {

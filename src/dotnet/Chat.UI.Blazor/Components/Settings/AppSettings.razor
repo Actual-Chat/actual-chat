@@ -92,10 +92,8 @@
     private BubbleUI BubbleUI => Hub.BubbleUI;
     private ToastUI ToastUI => Hub.ToastUI;
 
-    protected override void OnInitialized() {
-        base.OnInitialized();
-        NativeAppSettings = Hub.GetService<INativeAppSettings>();
-    }
+    protected override void OnInitialized()
+        => NativeAppSettings = Hub.GetService<INativeAppSettings>();
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };

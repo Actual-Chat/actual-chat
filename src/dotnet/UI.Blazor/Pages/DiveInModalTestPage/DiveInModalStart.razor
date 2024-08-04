@@ -13,7 +13,6 @@
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     protected override void OnInitialized() {
-        base.OnInitialized();
         Context.SetTitle("Dive-in modal (Start)");
         Context.RegisterButtons(
             DialogButtonInfo.CancelButton,

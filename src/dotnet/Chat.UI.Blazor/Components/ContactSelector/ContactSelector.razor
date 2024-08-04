@@ -60,7 +60,6 @@
             ImmutableHashSet<ChatId>.Empty,
             StateCategories.Get(type, nameof(SelectedChatIds)));
         _selectedChatIds.Updated += OnSelectedChatIdsUpdated;
-        base.OnInitialized();
     }
 
     protected override ComputedState<IReadOnlyList<ChatInfo>>.Options GetStateOptions()

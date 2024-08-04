@@ -1,5 +1,4 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.Chat.UI.Blazor.Components.Notifications
 @inherits ComputedStateComponent<TranscriptionSettings.Model>
 @{
     var m = State.Value;
@@ -84,10 +83,8 @@
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
-    protected override void OnInitialized() {
-        base.OnInitialized();
-        _formModel = new FormModel(ComponentIdGenerator);
-    }
+    protected override void OnInitialized()
+        => _formModel = new FormModel(ComponentIdGenerator);
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

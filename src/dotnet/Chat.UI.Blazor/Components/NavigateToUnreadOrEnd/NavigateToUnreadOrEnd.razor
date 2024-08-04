@@ -39,11 +39,8 @@
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
-    protected override void OnInitialized() {
-
-        _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300));
-        base.OnInitialized();
-    }
+    protected override void OnInitialized()
+        => _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300));
 
     public override ValueTask DisposeAsync() {
         _animator.Dispose();

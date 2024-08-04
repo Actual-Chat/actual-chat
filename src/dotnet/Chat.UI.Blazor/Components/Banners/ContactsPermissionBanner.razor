@@ -1,6 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Kvas
-@using ActualChat.Contacts.UI.Blazor.Services
 @using ActualChat.Hosting
 @using ActualChat.Permissions
 @inherits ComputedStateComponent<ContactsPermissionBanner.Model>
@@ -45,10 +44,8 @@
     private MomentClockSet Clocks => Hub.Clocks();
     private ILogger Log => _log ??= Hub.LogFor(GetType());
 
-    protected override void OnInitialized() {
-        _dismissedAt = StateFactory.NewKvasStored<Moment>(new(LocalSettings, "Permissions.Contacts.DismissedAt"));
-        base.OnInitialized();
-    }
+    protected override void OnInitialized()
+        => _dismissedAt = StateFactory.NewKvasStored<Moment>(new(LocalSettings, "Permissions.Contacts.DismissedAt"));
 
     protected override async Task OnInitializedAsync()
         => await ContactsPermission.Check(CancellationToken.None);

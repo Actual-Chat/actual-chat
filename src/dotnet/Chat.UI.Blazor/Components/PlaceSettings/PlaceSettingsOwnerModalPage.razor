@@ -162,7 +162,6 @@
         Context.SetTitle("Place Settings");
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
         Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
-        base.OnInitialized();
     }
 
     protected override async Task OnInitializedAsync() {

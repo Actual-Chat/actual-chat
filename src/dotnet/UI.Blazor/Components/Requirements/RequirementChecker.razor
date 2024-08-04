@@ -18,7 +18,6 @@
     public FailedRequirementSet Failures => State.Value;
 
     protected override void OnInitialized() {
-        base.OnInitialized();
         _onLocationChanged = OnLocationChanged;
         Nav.LocationChanged += _onLocationChanged;
     }

@@ -16,10 +16,8 @@ else {
 
     [Inject] private Session Session { get; init; } = null!;
 
-    protected override void OnInitialized() {
-        _reconnectUI = Services.GetService<ReconnectUI>();
-        base.OnInitialized();
-    }
+    protected override void OnInitialized()
+        => _reconnectUI = Services.GetService<ReconnectUI>();
 
     protected override ComputedState<string>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

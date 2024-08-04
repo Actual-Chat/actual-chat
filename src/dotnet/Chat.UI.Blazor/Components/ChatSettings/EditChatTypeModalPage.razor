@@ -169,12 +169,11 @@
     protected override void OnInitialized() {
         ChatId = Context.GetTypedModel<ChatId>();
         Context.SetTitle("Chat settings");
-        if (ChatId.IsPeerChat(out _)) {
+        if (ChatId.IsPeerChat(out _))
             throw StandardError.NotSupported("Peer chat is not supported.");
-        }
+
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
         Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
-        base.OnInitialized();
     }
 
     protected override async Task OnInitializedAsync() {
@@ -194,7 +193,6 @@
                 _form.IsPublic = false;
         }
         Context.SetClass("edit-chat-type");
-        await base.OnInitializedAsync();
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()

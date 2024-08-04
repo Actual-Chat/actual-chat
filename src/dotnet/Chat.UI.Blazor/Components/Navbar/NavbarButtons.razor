@@ -79,10 +79,8 @@
     protected NavbarUI NavbarUI => Hub.NavbarUI;
     protected PanelsUI PanelsUI => Hub.PanelsUI;
 
-    protected override void OnInitialized() {
-        NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;
-        base.OnInitialized();
-    }
+    protected override void OnInitialized()
+        => NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;
 
     public override ValueTask DisposeAsync() {
         NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupChanged;

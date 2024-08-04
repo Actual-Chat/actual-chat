@@ -51,10 +51,8 @@
     private IJSRuntime JS => Hub.JSRuntime();
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
-    protected override void OnInitialized() {
-        _dismissedAt = StateFactory.NewKvasStored<Moment>(new (LocalSettings, "Permissions.Notifications.DismissedAt"));
-        base.OnInitialized();
-    }
+    protected override void OnInitialized()
+        => _dismissedAt = StateFactory.NewKvasStored<Moment>(new (LocalSettings, "Permissions.Notifications.DismissedAt"));
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

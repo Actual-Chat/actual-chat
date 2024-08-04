@@ -1,8 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Streaming.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Module
-@using System.Diagnostics.CodeAnalysis
-@using Timeout = System.Threading.Timeout
 @inherits ComputedStateComponent<RecorderToggle.Model>
 @{
     var m = State.Value;
@@ -99,7 +97,6 @@
     protected override void OnInitialized() {
         _animator = new (this, TimeSpan.FromMilliseconds(300));
         _tooltipAnimator = new ComponentAnimator(this, TimeSpan.FromDays(30)).BeginAnimation();
-        base.OnInitialized();
     }
 
     protected override Task OnInitializedAsync()

@@ -37,7 +37,7 @@
 </div>
 
 @code {
-    private IStoredState<bool> _dismissed = null!;
+    private IStoredState<bool> _isDismissed = null!;
 
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
@@ -45,22 +45,20 @@
 
     [Parameter] public bool CanBeClosed { get; set; } = true;
 
-    protected override void OnInitialized() {
-        _dismissed = StateFactory.NewKvasStored<bool>(new(AccountSettings, "DownloadApplicationBanner"));
-        base.OnInitialized();
-    }
+    protected override void OnInitialized()
+        => _isDismissed = StateFactory.NewKvasStored<bool>(new(AccountSettings, "DownloadApplicationBanner"));
 
     private void OnDownload()
         => ModalUI.Show(new DownloadAppModal.Model());
 
     private void OnClose()
-        => _dismissed.Value = true;
+        => _isDismissed.Value = true;
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         if (!CanBeClosed)
             return true;
 
-        var dismissedState = _dismissed;
+        var dismissedState = _isDismissed;
         await dismissedState.WhenRead.ConfigureAwait(false);
         var dismissed = await dismissedState.Use(cancellationToken).ConfigureAwait(false);
         return !dismissed;

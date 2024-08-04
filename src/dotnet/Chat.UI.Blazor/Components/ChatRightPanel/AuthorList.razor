@@ -78,10 +78,8 @@
     [Parameter] public ChatId ChatId { get; set; } = ChatId.None;
     [Parameter] public PlaceId PlaceId { get; set; } = PlaceId.None;
 
-    protected override void OnInitialized() {
-        _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
-        base.OnInitialized();
-    }
+    protected override void OnInitialized()
+        => _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

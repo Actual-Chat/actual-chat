@@ -52,7 +52,6 @@
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
     protected override void OnInitialized() {
-        base.OnInitialized();
         _formModel = new (ComponentIdGenerator);
         _formModel.EngineChanged += OnEngineChanged;
     }

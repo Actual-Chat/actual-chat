@@ -101,7 +101,6 @@
         // We need to call SelectChat() before ComputeState starts working,
         // coz ComputeState relies on ChatUI.SelectedChatId, which is set there.
         _ = SelectChat(ChatSid);
-        base.OnInitialized();
     }
 
     protected override Task OnParametersSetAsync() {

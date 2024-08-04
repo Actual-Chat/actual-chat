@@ -1,5 +1,3 @@
-@using ActualChat.UI.Blazor.Module
-@using ActualLab.Rpc
 @namespace ActualChat.UI.Blazor.Components
 @inherits StatefulComponentBase<IState<RpcPeerState>>
 @{
@@ -45,10 +43,8 @@
 
     [Inject] private ReconnectUI ReconnectUI { get; init; } = null!;
 
-    protected override void OnInitialized() {
-        SetState(ReconnectUI.State);
-        base.OnInitialized();
-    }
+    protected override void OnInitialized()
+        => SetState(ReconnectUI.State);
 
     public override ValueTask DisposeAsync()
         => default; // Shouldn't dispose State!

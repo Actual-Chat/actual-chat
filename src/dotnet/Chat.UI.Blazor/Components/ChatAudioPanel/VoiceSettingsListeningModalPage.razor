@@ -37,7 +37,6 @@
     protected override void OnInitialized() {
         ChatId = Context.GetTypedModel<ChatId>();
         Context.SetTitle("Turn off listening in this chat:");
-        base.OnInitialized();
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()

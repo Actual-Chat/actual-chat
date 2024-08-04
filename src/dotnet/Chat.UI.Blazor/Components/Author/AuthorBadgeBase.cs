@@ -14,11 +14,8 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     [Parameter, EditorRequired] public string AuthorSid { get; set; } = "";
 
     protected override void OnInitialized()
-    {
         // Set AuthorId here in order to have actual AuthorId value in GetStateOptions.
-        AuthorId = new AuthorId(AuthorSid);
-        base.OnInitialized();
-    }
+        => AuthorId = new AuthorId(AuthorSid);
 
     protected override void OnParametersSet()
         => AuthorId = new AuthorId(AuthorSid);

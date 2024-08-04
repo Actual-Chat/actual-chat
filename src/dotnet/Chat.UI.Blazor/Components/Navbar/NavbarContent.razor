@@ -1,6 +1,4 @@
 @using ActualChat.Hosting
-@using ActualChat.UI.Blazor.Services
-@using ActualChat.Users
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits OwnAccountComponentBase
 @{
@@ -74,7 +72,6 @@
     protected override void OnInitialized() {
         _navbarUIOnSelectedGroupChanged = NavbarUIOnSelectedGroupChanged;
         NavbarUI.SelectedGroupChanged += _navbarUIOnSelectedGroupChanged;
-        base.OnInitialized();
     }
 
     public override ValueTask DisposeAsync() {

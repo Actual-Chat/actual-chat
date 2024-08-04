@@ -77,15 +77,12 @@
     [Parameter, EditorRequired] public ChatListKind Kind { get; set; }
     [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
 
-    protected override void OnInitialized() {
-        DebugLog?.LogDebug("Initialized: {List}", Kind);
-        base.OnInitialized();
-    }
+    protected override void OnInitialized()
+        => DebugLog?.LogDebug("OnInitialized: {List}", Kind);
 
     protected override void OnParametersSet() {
         DebugLog?.LogDebug("OnParametersSet: {List}", Kind);
         _ = _virtualListRef?.Reset();
-        base.OnParametersSet();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
