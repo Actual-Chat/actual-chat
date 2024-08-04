@@ -109,6 +109,11 @@ body.narrow .link-preview.compact .c-icon > i {
     @apply text-caption-6 text-04;
     @apply line-clamp-1;
 }
+.link-preview.local-link-chat .c-domain {
+    @apply text-caption-2;
+    @apply line-clamp-1;
+    @apply font-semibold;
+}
 body.narrow .message-link-preview:not(:has(.compact)) .c-domain {
     @apply mb-1;
 }

@@ -5,12 +5,14 @@
     var m = Data;
     if (!m.CanRender)
         return;
+
     var chat = m.Chat!;
-    var entry = m.Entry!;
+    var entry = m.Entry;
     var place = m.Place;
     var author = m.Author;
     var url = m.LocalUrl;
     var cls = chat.Kind == ChatKind.Place ? "place-link" : "";
+    cls += entry is not null ? " local-link-chat-entry" : " local-link-chat";
 }
 
 <div class="link-preview local-link unfocusable @cls">
@@ -36,17 +38,22 @@
         </div>
     }
     <div class="c-info">
-        <div class="c-top">
-            @if (author != null) {
-                <div class="c-author-header">
-                    <AuthorName AuthorSid="@author.Id" Class="chat-message-author-name"/>
-                    <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
-                </div>
-            }
-            <a class="c-description" href="@url" @onclick:preventDefault="true" @onclick="NavigateToUrl">@entry.Content</a>
-        </div>
+        @if (entry is not null) {
+            <div class="c-top">
+                @if (author != null) {
+                    <div class="c-author-header">
+                        <AuthorName AuthorSid="@author.Id" Class="chat-message-author-name"/>
+                        <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
+                    </div>
+                }
+                <a class="c-description" href="@url" @onclick:preventDefault="true" @onclick="NavigateToUrl">@entry.Content</a>
+            </div>
+        }
         <span class="c-domain">
-            in <a class="text-primary" href="@Links.Chat(chat.Id)" @onclick:preventDefault="true" @onclick="NavigateToChat">@chat.Title</a>
+            @if (entry is not null) {
+                <span>in </span>
+            }
+            <a class="text-primary" href="@Links.Chat(chat.Id)" @onclick:preventDefault="true" @onclick="NavigateToChat">@chat.Title</a>
         </span>
     </div>
     <div class="incut"></div>
@@ -65,7 +72,7 @@
         public ChatEntry? Entry { get; init; }
         public Author? Author { get; init; }
         public Place? Place { get; init; }
-        public bool CanRender => Chat is not null && Entry is not null;
+        public bool CanRender => Chat is not null;
     }
 
     private void NavigateToUrl()
