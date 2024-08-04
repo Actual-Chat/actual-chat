@@ -23,7 +23,7 @@ public static class ChatsBackendExt
     public static async ValueTask<ChatEntry?> GetEntry(
         this IChatsBackend chatsBackend,
         ChatEntryId entryId,
-        TimeSpan timeout,
+        TimeSpan waitTimeout,
         CancellationToken cancellationToken = default)
     {
         if (entryId.IsNone)
@@ -40,13 +40,13 @@ public static class ChatsBackendExt
 
         var tile = cTile.Value;
         var entry = tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
-        if (entry != null)
+        if (entry == null)
             return entry;
 
-        // GetTile hasn't invalidated yet for the new Entry
+        // Tile doesn't contain the entry yet (prob. due to invalidation delays), so we're going to wait for it
         cTile = await cTile
             .When(ct => ct.Entries.Any(e => e.LocalId == entryId.LocalId), cancellationToken)
-            .WaitAsync(timeout, cancellationToken)
+            .WaitAsync(waitTimeout, cancellationToken)
             .ConfigureAwait(false);
 
         tile = cTile.Value;
