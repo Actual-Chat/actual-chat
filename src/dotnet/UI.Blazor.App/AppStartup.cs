@@ -146,7 +146,7 @@ public static class AppStartup
                 new CoreModule(moduleServices),
                 // API
                 new ApiModule(moduleServices),
-                new ApiClientModule(moduleServices),
+                new ApiContractsModule(moduleServices),
                 // UI modules
                 new BlazorUICoreModule(moduleServices),
                 new StreamingBlazorUIModule(moduleServices),

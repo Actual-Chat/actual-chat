@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Net.WebSockets;
 using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Contacts;
@@ -13,19 +14,28 @@ using ActualChat.Security;
 using ActualChat.Streaming;
 using ActualChat.Users;
 using ActualLab.RestEase;
+using ActualLab.Rpc.Clients;
 
 namespace ActualChat.Module;
 
 #pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class ApiClientModule(IServiceProvider moduleServices)
+public sealed class ApiContractsModule(IServiceProvider moduleServices)
     : HostModule(moduleServices), IAppModule
 {
     protected override void InjectServices(IServiceCollection services)
     {
         var fusion = services.AddFusion().AddAuthClient();
         var rpc = fusion.Rpc;
+        services.AddSingleton(_ => new RpcWebSocketClient.Options() {
+            WebSocketOwnerFactory = (client, peer) => {
+                var webSocket = new ClientWebSocket();
+                if (Constants.Api.Compression.IsClientSideEnabled && !peer.Ref.IsBackend)
+                    webSocket.Options.DangerousDeflateOptions = new WebSocketDeflateOptions();
+                return new (peer.Ref.ToString(), webSocket, client.Services);
+            },
+        });
 
         // Audio
         rpc.AddClient<IStreamServer>();

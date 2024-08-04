@@ -7,10 +7,9 @@ using ActualLab.Fusion.Server.Middlewares;
 using ActualLab.Fusion.Server.Rpc;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
-using ActualLab.Rpc.Infrastructure;
 using ActualLab.Rpc.Server;
 using ActualLab.Rpc.Testing;
-using ActualLab.Rpc.WebSockets;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.Rpc;
@@ -47,8 +46,7 @@ public readonly struct RpcHostBuilder
         Services.AddSingleton(c => new RpcMeshRefResolvers(c));
         Services.AddSingleton(c => new RpcBackendDelegates(c));
         AddMeshServices();
-        Fusion.AddWebServer();
-        AddRpcServer(); // Must follow AddWebServer
+        AddRpcServer();
         AddRpcClient();
         AddRpcPeerFactory();
 
@@ -235,9 +233,14 @@ public readonly struct RpcHostBuilder
 
     private void AddRpcServer()
     {
+        Fusion.AddWebServer();
+
         // Replace
         Services.AddSingleton(RpcWebSocketServer.Options.Default with {
             ExposeBackend = true,
+            ConfigureWebSocket = () => new WebSocketAcceptContext() {
+                DangerousEnableCompression = Constants.Api.Compression.IsServerSideEnabled,
+            },
         });
 
         // Replace RpcBackendServiceDetector (it's used by both RPC client & server)
