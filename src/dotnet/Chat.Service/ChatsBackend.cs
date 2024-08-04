@@ -1733,17 +1733,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return AuthorRules.None(chatId);
         }
 
+        var author = await AuthorsBackend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
         if (chat.IsPublic) {
-            var author = await AuthorsBackend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
             var permissions = rootChatRules.Permissions & ~ChatPermissions.Leave; // Do not allow to leave public chat on a place
             return new AuthorRules(chat.Id, author, account, permissions);
         }
 
-        // TODO(DF): refactor this workaround
-        // directRules.Author is not filled for place private chats, but is supposed to be when used in ChatPage.razor.
-        return directRules with {
-            Author = await AuthorsBackend.Get(chatId, principalId, cancellationToken).ConfigureAwait(false)
-        };
+        return new AuthorRules(chat.Id, author, account, directRules.Permissions);
     }
 
     // Private / internal methods

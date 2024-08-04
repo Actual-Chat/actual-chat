@@ -23,31 +23,4 @@ public static class AuthorsBackendExt
 
     public static Task<ApiArray<UserId>> ListPlaceUserIds(this IAuthorsBackend authorsBackend, PlaceId placeId, CancellationToken cancellationToken)
         => authorsBackend.ListUserIds(placeId.ToRootChatId(), cancellationToken);
-
-    public static Task<AuthorFull?> Get(
-        this IAuthorsBackend authorsBackend,
-        ChatId chatId,
-        PrincipalId principalId,
-        CancellationToken cancellationToken)
-        => Get(authorsBackend,
-            chatId,
-            principalId,
-            AuthorsBackend_GetAuthorOption.Full,
-            cancellationToken);
-
-    public static Task<AuthorFull?> Get(
-        this IAuthorsBackend authorsBackend,
-        ChatId chatId,
-        PrincipalId principalId,
-        AuthorsBackend_GetAuthorOption option,
-        CancellationToken cancellationToken)
-    {
-        if (principalId.IsUser(out var userId))
-            return authorsBackend.GetByUserId(chatId, userId, AuthorsBackend_GetAuthorOption.Full, cancellationToken);
-
-        if(principalId.IsAuthor(out var authorId))
-            return authorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken);
-
-        throw StandardError.Internal("Can't remap principal id");
-    }
 }
