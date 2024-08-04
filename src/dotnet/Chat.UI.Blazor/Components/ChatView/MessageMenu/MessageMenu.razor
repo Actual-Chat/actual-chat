@@ -22,9 +22,10 @@
     private bool _isSystem;
     private TextEntryId _entryId;
 
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private IChats Chats => Hub.Chats;
+    private IAuthors Authors => Hub.Authors;
+    private Session Session => Hub.Session();
 
     protected override void OnParametersSet() {
         if (Arguments is not [ var sEntryId, var sIsSystem, var link, var code ])
@@ -44,7 +45,12 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatEntry = await Chats.GetEntry(Session, _entryId, CancellationToken.None).ConfigureAwait(false);
+        var isSystem = _isSystem;
+        var entryId = _entryId;
+        var link = _link;
+        var code = _code;
+
+        var chatEntry = await Hub.Chats.GetEntry(Session, entryId, CancellationToken.None).ConfigureAwait(false);
         if (chatEntry == null)
             return Model.None;
 
@@ -52,9 +58,9 @@
         var rules = await Chats.GetRules(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
 
         return new() {
-            Link = _link,
-            IsSystem = _isSystem,
-            Code = _code,
+            Link = link,
+            IsSystem = isSystem,
+            Code = code,
             ChatEntry = chatEntry,
             CanWrite = rules.CanWrite(),
             IsOwner = rules.IsOwner(),
