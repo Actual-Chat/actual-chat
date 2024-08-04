@@ -720,7 +720,7 @@ public class Chats(IServiceProvider services) : IChats
     {
         var statBackend = await Backend.GetReadPositionsStat(chatId, cancellationToken).ConfigureAwait(false);
         if (statBackend == null)
-            return new ReadPositionsStat(chatId, long.MaxValue, ApiArray.Empty<AuthorReadPosition>());
+            return new ReadPositionsStat(chatId, long.MaxValue, []);
 
         var positions = statBackend.TopReadPositions;
         var top2AuthorReadPositions = (await positions

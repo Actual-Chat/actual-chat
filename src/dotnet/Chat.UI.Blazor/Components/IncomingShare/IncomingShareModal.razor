@@ -238,7 +238,7 @@
     // Nested types
 
     public sealed record Model {
-        public IncomingShareFile[] Files { get; } = Array.Empty<IncomingShareFile>();
+        public IncomingShareFile[] Files { get; } = [];
         public string Text { get; } = "";
         public bool HasFiles => Files.Length > 0;
 

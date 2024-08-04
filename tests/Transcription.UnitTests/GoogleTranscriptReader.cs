@@ -39,12 +39,14 @@ public static class GoogleTranscriptReader
                                     Confidence = a.Confidence,
                                     Transcript = a.Transcript,
                                     Words = {
-                                        a.Words == null ? Array.Empty<WordInfo>() : a.Words.Select(w =>
-                                            new WordInfo {
-                                                Word = w.Word,
-                                                StartOffset = w.StartOffset.FromString(),
-                                                EndOffset = w.EndOffset.FromString(),
-                                            }),
+                                        a.Words == null
+                                            ? Array.Empty<WordInfo>()
+                                            : a.Words.Select(w =>
+                                                new WordInfo {
+                                                    Word = w.Word,
+                                                    StartOffset = w.StartOffset.FromString(),
+                                                    EndOffset = w.EndOffset.FromString(),
+                                                }),
                                     },
                                 }
                             ),

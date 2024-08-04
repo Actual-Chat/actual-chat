@@ -58,8 +58,8 @@
     private MutableState<ImmutableHashSet<UserId>> _selectedUserIds = null!;
 
     private string Filter { get; set; } = "";
-    private Contact[] FilteredContacts { get; set; } = Array.Empty<Contact>();
-    private Contact[] AllContacts { get; set; } = Array.Empty<Contact>();
+    private Contact[] FilteredContacts { get; set; } = [];
+    private Contact[] AllContacts { get; set; } = [];
     private CancellationTokenSource DisposeTokenSource { get; set; } = null!;
     private CancellationToken DisposeToken { get; set; }
 

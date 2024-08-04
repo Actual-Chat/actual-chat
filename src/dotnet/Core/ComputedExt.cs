@@ -28,7 +28,7 @@ public static class ComputedExt
 
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         // var flags = pFlags.GetGetter<ComputedFlags>().Invoke(computed);
-        var flags = (ComputedFlags)pFlags.GetMethod!.Invoke(computed, Array.Empty<object?>())!;
+        var flags = (ComputedFlags)pFlags.GetMethod!.Invoke(computed, [])!;
         sb.Append("Computed: ").Append(computed).AppendLine();
         sb.Append("- Flags: ").Append(flags).AppendLine();
         DumpDependencies(ComputedImpl.GetDependencies(computed), 0);

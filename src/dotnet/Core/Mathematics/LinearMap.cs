@@ -11,7 +11,7 @@ public readonly partial struct LinearMap
     private readonly float[]? _data;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public float[] Data => _data ?? Array.Empty<float>();
+    public float[] Data => _data ?? [];
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ReadOnlySpan<Vector2> Points {
@@ -52,7 +52,7 @@ public readonly partial struct LinearMap
     public LinearMap(ReadOnlySpan<Vector2> points)
     {
         if (points.Length == 0) {
-            _data = Array.Empty<float>();
+            _data = [];
             return;
         }
 
@@ -71,7 +71,7 @@ public readonly partial struct LinearMap
     public LinearMap(ReadOnlySpan<Vector2> head, ReadOnlySpan<Vector2> tail)
     {
         if (head.Length == 0 && tail.Length == 0)
-            _data = Array.Empty<float>();
+            _data = [];
         else {
             _data = new float[(head.Length + tail.Length) << 1];
             var fHead = MemoryMarshal.Cast<Vector2, float>(head);

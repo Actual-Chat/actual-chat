@@ -100,9 +100,8 @@ public static class ChatsBackendExt
             minId = Math.Min(minId, localId);
             maxId = Math.Max(maxId, localId);
         }
-        if (maxId < minId || entryKind is null) {
-            return Array.Empty<ChatEntry>();
-        }
+        if (maxId < minId || entryKind is null)
+            return [];
 
         var idTiles = Constants.Chat.ServerIdTileStack.FirstLayer.GetCoveringTiles(new Range<long>(minId, maxId + 1));
         var entries = new List<ChatEntry>(localIds.Count);

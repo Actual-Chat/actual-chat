@@ -3,14 +3,14 @@
 public class SentAttachmentsStorage
 {
     public ChatId ChatId { get; private set; }
-    public string[] Urls { get; private set; } = Array.Empty<string>();
+    public string[] Urls { get; private set; } = [];
 
     public event EventHandler<EventArgs>? AttachmentsStored;
 
     public void Clear()
     {
         ChatId = ChatId.None;
-        Urls = Array.Empty<string>();
+        Urls = [];
     }
 
     public void Store(ChatId chatId, string[] urls)
