@@ -224,7 +224,7 @@ public class NotificationsBackend(IServiceProvider services)
         else {
             dbDevice.AccessedAt = Clocks.SystemClock.Now;
             if (dbDevice.Type == DeviceType.WebBrowser && deviceType != DeviceType.WebBrowser)
-                dbDevice.Type = deviceType; // Now maui app reports device type properly, lets update it.
+                dbDevice.Type = deviceType; // Now MAUI app reports device type properly, lets update it.
             if (dbDevice.SessionHash.IsNullOrEmpty() && !sessionHash.IsEmpty)
                 dbDevice.SessionHash = sessionHash;
         }
