@@ -235,13 +235,25 @@ public readonly struct RpcHostBuilder
     {
         Fusion.AddWebServer();
 
-        // Replace
+        // Replace RpcWebSocketServer.Options
         Services.AddSingleton(RpcWebSocketServer.Options.Default with {
             ExposeBackend = true,
             ConfigureWebSocket = () => new WebSocketAcceptContext() {
                 DangerousEnableCompression = Constants.Api.Compression.IsServerSideEnabled,
             },
         });
+
+        // Replace RpcPeerFactory
+        Services.AddSingleton<RpcPeerFactory>(_ =>
+            static (hub, peerRef) => peerRef.IsServer
+                ? new RpcServerPeer(hub, peerRef) {
+                    CloseTimeoutProvider = peer => {
+                        var peerLifetime = peer.CreatedAt.Elapsed;
+                        return (0.33 * peerLifetime).Clamp(TimeSpan.FromMinutes(3), TimeSpan.FromMinutes(15));
+                    },
+                }
+                : new RpcClientPeer(hub, peerRef)
+            );
 
         // Replace RpcBackendServiceDetector (it's used by both RPC client & server)
         Services.AddSingleton<RpcBackendServiceDetector>(c => c.GetRequiredService<RpcBackendDelegates>().IsBackendService);

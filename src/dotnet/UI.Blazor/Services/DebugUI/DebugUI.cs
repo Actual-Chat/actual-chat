@@ -3,6 +3,7 @@ using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Module;
 using ActualLab.Fusion.Diagnostics;
+using ActualLab.Rpc;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -92,5 +93,17 @@ public sealed class DebugUI : IDisposable
     {
         Services.GetRequiredService<NavigationManager>().NavigateTo(url);
         Log.LogInformation("NavigateTo '{Url}': done", url);
+    }
+
+    [JSInvokable]
+    public void DisconnectRpc()
+    {
+        if (HostInfo.AppKind == AppKind.Unknown)
+            return;
+
+        Log.LogInformation("Disconnecting RPC connection...");
+        var rpcHub = Services.RpcHub();
+        var clientPeer = rpcHub.GetClientPeer(RpcPeerRef.Default);
+        _ = clientPeer.Disconnect();
     }
 }
