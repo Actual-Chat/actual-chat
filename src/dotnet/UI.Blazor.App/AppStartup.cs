@@ -121,6 +121,8 @@ public static class AppStartup
                         ws.Options.SetRequestHeader(gclbCookieHeader.Name, gclbCookieHeader.Value);
                         if (c.GetService<TrueSessionResolver>() is { HasSession: true } trueSessionResolver)
                             ws.Options.SetRequestHeader(Constants.Session.HeaderName, trueSessionResolver.Session.Id.Value);
+                        if (Constants.Api.Compression.IsClientSideEnabled)
+                            ws.Options.DangerousDeflateOptions = new WebSocketDeflateOptions();
                         return new WebSocketOwner(peer.Ref.Key, ws, client.Services);
 #if false
                         // Non-native Android WebSocket stack requires SocketsHttpHandler to support TLS 1.2

@@ -28,14 +28,6 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
     {
         var fusion = services.AddFusion().AddAuthClient();
         var rpc = fusion.Rpc;
-        services.AddSingleton(_ => new RpcWebSocketClient.Options() {
-            WebSocketOwnerFactory = (client, peer) => {
-                var webSocket = new ClientWebSocket();
-                if (Constants.Api.Compression.IsClientSideEnabled && !peer.Ref.IsBackend)
-                    webSocket.Options.DangerousDeflateOptions = new WebSocketDeflateOptions();
-                return new (peer.Ref.ToString(), webSocket, client.Services);
-            },
-        });
 
         // Audio
         rpc.AddClient<IStreamServer>();
