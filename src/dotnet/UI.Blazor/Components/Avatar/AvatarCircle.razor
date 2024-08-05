@@ -59,8 +59,7 @@
         }
 
         var isSvg = !_pictureUrl.IsNullOrEmpty()
-                    && (_pictureUrl.Contains("svg", StringComparison.OrdinalIgnoreCase)
-                        || _pictureUrl.Contains("boringavatars", StringComparison.OrdinalIgnoreCase));
+                    && _pictureUrl.Contains("svg", StringComparison.OrdinalIgnoreCase);
         if (isSvg)
             _class += " pic-svg";
     }
