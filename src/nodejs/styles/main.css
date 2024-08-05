@@ -23,10 +23,10 @@ body {
 
 body.device-ios {
     @apply ios-height;
+}
 
-    input:focus {
-        animation: blink_input_opacity_to_prevent_scrolling_when_focus 0.01s;
-    }
+body.device-ios input:focus {
+    animation: blink_input_opacity_to_prevent_scrolling_when_focus 0.01s;
 }
 
 body.device-ios * {
