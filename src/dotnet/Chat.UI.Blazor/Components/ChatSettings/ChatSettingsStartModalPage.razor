@@ -121,12 +121,10 @@
             }
 
             @if (m is { IsOwner: true, Chat: not null } && !_isPlaceWelcomeChat) {
-                @if (m.IsAdmin || m.EnableIncompleteUI) {
-                    <TileItem Class="item-archive-chat item-danger" Click="@(() => OnArchiveChatClick(m.Chat))">
-                        <Icon><i class="icon-history"></i></Icon>
-                        <Content>Archive chat</Content>
-                    </TileItem>
-                }
+                <TileItem Class="item-archive-chat item-danger" Click="@(() => OnArchiveChatClick(m.Chat))">
+                    <Icon><i class="icon-history"></i></Icon>
+                    <Content>Archive chat</Content>
+                </TileItem>
 
                 <TileItem Class="item-leave-group item-danger" Click="@(() => OnDeleteChatClick(m.Chat))">
                     <Icon><i class="icon-log-out"></i></Icon>
