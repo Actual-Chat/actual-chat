@@ -66,6 +66,9 @@ def final_answer(state: MessagesState, config: RunnableConfig):
 
     return Ok
 
+# Fake node to interrupt and wait for human feedback
+def human_input(state):
+    pass
 
 def create(*, claude_api_key, prompt):
     memory = MemorySaver()
@@ -88,15 +91,20 @@ def create(*, claude_api_key, prompt):
     graph_builder.add_node("agent", call_model)
     graph_builder.add_node("tools", tool_node)
     graph_builder.add_node("final_answer", final_answer)
+    graph_builder.add_node("human_input", human_input)
+
     graph_builder.add_edge(START, "agent")
     graph_builder.add_conditional_edges(
         "agent",
         should_continue,
     )
     graph_builder.add_edge("tools", "agent")
-    graph_builder.add_edge("final_answer", END)
+    graph_builder.add_edge("final_answer", "human_input")
+    graph_builder.add_edge("human_input", "agent")
+
 
     graph = graph_builder.compile(
-        checkpointer = memory
+        checkpointer = memory,
+        interrupt_before=["human_input"]
     )
     return RunnableLambda(user_input) | graph
