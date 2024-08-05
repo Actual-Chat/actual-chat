@@ -25,7 +25,6 @@ public sealed partial class UrlMapper
     public string ApiBaseUrl { get; }
     public string ContentBaseUrl { get; }
     public string ImageProxyBaseUrl { get; }
-    public string BoringAvatarsProxyBaseUrl { get; }
     public string WebsocketBaseUrl { get; }
 
     public UrlMapper(HostInfo hostInfo) : this(hostInfo.BaseUrl) { }
@@ -45,7 +44,6 @@ public sealed partial class UrlMapper
 
         ApiBaseUrl = $"{BaseUrl}api/";
         ContentBaseUrl = $"{ApiBaseUrl}content/";
-        BoringAvatarsProxyBaseUrl = $"{BaseUrl}boringavatars/";
         ImageProxyBaseUrl = "";
         HasImageProxy = false;
         if (IsActualChat || IsLocalActualChat) {
@@ -146,9 +144,6 @@ public sealed partial class UrlMapper
         if (ExtensionsToExclude.Contains(extension, StringComparer.OrdinalIgnoreCase))
             return imageUrl;
 
-        if (imageUrl.StartsWith("https://source.boringavatars.com/", StringComparison.OrdinalIgnoreCase))
-            return imageUrl;
-
         var sMaxWidth = maxWidth?.Format();
         var sMaxHeight = maxHeight?.Format();
         return $"{ImageProxyBaseUrl}{sMaxWidth}x{sMaxHeight}/{imageUrl}";
@@ -176,8 +171,4 @@ public sealed partial class UrlMapper
 
         return $"{ImageProxyBaseUrl}128/{imageUrl}";
     }
-
-    // Returns absolute URL
-    public string BoringAvatar(string imageUrl)
-        => imageUrl.OrdinalReplace(DefaultUserPicture.BoringAvatarsBaseUrl, BoringAvatarsProxyBaseUrl);
 }
