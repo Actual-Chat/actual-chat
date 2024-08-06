@@ -153,13 +153,12 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
             if (alreadyRegisteredDeviceId == deviceId)
                 return;
         }
-        _registerDeviceTask = null;
-        RegisterDevice(deviceId, cancellationToken);
-        existingTask = _registerDeviceTask;
-        if (existingTask == null)
-            return; // Will be registered at another thread
-
-        await existingTask.ConfigureAwait(false);
+        lock (Lock) {
+            _registerDeviceTask = null;
+            RegisterDevice(deviceId, cancellationToken);
+            existingTask = _registerDeviceTask;
+        }
+        await existingTask!.ConfigureAwait(false);
     }
 
     // Private methods

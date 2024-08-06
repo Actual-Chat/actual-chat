@@ -12,7 +12,7 @@ public class AndroidDeviceTokenRetriever(IServiceProvider services) : IDeviceTok
     public async Task<string?> GetDeviceToken(CancellationToken cancellationToken)
     {
         try {
-            var javaString = await FirebaseMessaging.Instance.GetToken().AsAsync<Java.Lang.String>().ConfigureAwait(true);
+            var javaString = await FirebaseMessaging.Instance.GetToken().AsAsync<Java.Lang.String>().ConfigureAwait(false);
             var token = javaString.ToString();
             Log.LogDebug("FCM token is \'{Token}\'", token);
             return token;
@@ -26,7 +26,7 @@ public class AndroidDeviceTokenRetriever(IServiceProvider services) : IDeviceTok
     public async Task DeleteDeviceToken(CancellationToken cancellationToken)
     {
         try {
-            await FirebaseMessaging.Instance.DeleteToken().AsAsync().ConfigureAwait(true);
+            await FirebaseMessaging.Instance.DeleteToken().AsAsync().ConfigureAwait(false);
         }
         catch(Exception e) {
             Log.LogWarning(e, "Failed to delete FCM token");
