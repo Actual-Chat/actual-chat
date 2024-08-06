@@ -15,6 +15,8 @@ public interface INotifications : IComputeService
     [CommandHandler]
     Task OnRegisterDevice(Notifications_RegisterDevice command, CancellationToken cancellationToken);
     [CommandHandler]
+    Task OnDeregisterDevice(Notifications_DeregisterDevice command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task OnNotifyMembers(Notifications_NotifyMembers command, CancellationToken cancellationToken);
 }
 
@@ -32,6 +34,14 @@ public sealed partial record Notifications_RegisterDevice(
     [property: DataMember, MemoryPackOrder(1)] Symbol DeviceId,
     [property: DataMember, MemoryPackOrder(2)] DeviceType DeviceType
 ) : ISessionCommand<Unit>, IApiCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Notifications_DeregisterDevice(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] Symbol DeviceId
+) : ISessionCommand<Unit>, IApiCommand;
+
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
