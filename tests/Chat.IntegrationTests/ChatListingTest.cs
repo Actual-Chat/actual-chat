@@ -71,7 +71,8 @@ public class ChatListingTest(ChatCollection.AppHostFixture fixture, ITestOutputH
         // act
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var cancellationToken = cts.Token;
-        var retrieved = await ChatsBackend.BatchChanged(lastChanged?.Version ?? 0,
+        var retrieved = await ChatsBackend.BatchChanged(false,
+                lastChanged?.Version ?? 0,
                 long.MaxValue,
                 lastChanged?.Id ?? ChatId.None,
                 limit,

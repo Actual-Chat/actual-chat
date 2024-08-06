@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
@@ -470,7 +471,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // Not a [ComputeMethod]!
+    [SuppressMessage("Usage", "MA0074:Avoid implicit culture-sensitive methods")]
+    [SuppressMessage("Globalization", "CA1309:Use ordinal string comparison")]
+    [SuppressMessage("Globalization", "CA1310:Specify StringComparison for correctness")]
     public async Task<ApiArray<Chat>> ListChanged(
+        bool includePeerChats,
         long minVersion,
         long maxVersion,
         ChatId lastId,
@@ -480,17 +485,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-#pragma warning disable CA1309 // Use ordinal string comparison
-
         var chatsQuery = lastId.IsNone
             ? dbContext.Chats.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
             : dbContext.Chats.Where(x => (x.Version > minVersion && x.Version <= maxVersion)
                 || (x.Version==minVersion && string.Compare(x.Id, lastId.Value) > 0));
 
-#pragma warning restore CA1309 // Use ordinal string comparison
-
         return await chatsQuery
             .Where(x => !Constants.Chat.SystemChatSids.Contains(x.Id))
+            .WhereIf(x => !x.Id.StartsWith(PeerChatId.IdPrefix), !includePeerChats)
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
             .Take(limit)
