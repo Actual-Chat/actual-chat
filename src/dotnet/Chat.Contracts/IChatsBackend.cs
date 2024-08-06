@@ -67,6 +67,7 @@ public interface IChatsBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
 
     Task<ApiArray<Chat>> ListChanged(
+        bool includePeerChats,
         long minVersion,
         long maxVersion,
         ChatId lastId,

@@ -27,7 +27,7 @@ public class InfiniteChatSequence(
             ApiArray<Chat.Chat> batch;
             try {
                 batch = await chats
-                    .ListChanged(lastVersion, long.MaxValue, lastChatId, BatchSize, cancellationToken)
+                    .ListChanged(true, lastVersion, long.MaxValue, lastChatId, BatchSize, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch(Exception e) when (!e.IsCancellationOf(cancellationToken)) {
