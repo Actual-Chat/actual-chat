@@ -16,7 +16,7 @@ public sealed class NotificationBlazorUIModule(IServiceProvider moduleServices)
     {
         services.AddFusion();
         services.AddScoped<NotificationUI>();
-        services.AddScoped<INotificationUI, NotificationUI>(c => c.GetRequiredService<NotificationUI>());
+        services.AddAlias<INotificationUI, NotificationUI>(ServiceLifetime.Scoped);
         if (HostInfo.HostKind.IsServerOrWasmApp()) {
             services.AddTransient<IDeviceTokenRetriever>(c => new WebDeviceTokenRetriever(c));
             services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<NotificationUI>());

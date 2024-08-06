@@ -73,6 +73,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private IPhones Phones { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
@@ -115,7 +116,7 @@
 
     private void OnSignInWith(string schema) {
         Modal.Close();
-        ClientAuth.SignIn(schema);
+        _ = AccountUI.SignIn(schema);
     }
 
     private Task OnSignInWithPhone()
