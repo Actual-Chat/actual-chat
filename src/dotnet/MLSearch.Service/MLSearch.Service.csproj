@@ -13,5 +13,6 @@
     <PackageReference Include="OpenSearch.Client" />
     <PackageReference Include="OpenTelemetry.Api" />
     <PackageReference Include="OpenTelemetry.Api.ProviderBuilderExtensions" />
+    <PackageReference Include="Anthropic.SDK" />
   </ItemGroup>
 </Project>
