@@ -96,16 +96,22 @@ public sealed class MeshWatcher : WorkerBase
 
                 try {
                     consumeTask ??= changes.Reader.WaitToReadAndConsumeAsync(CancellationToken.None);
-                    var canRead = await consumeTask
-                        .WaitAsync(NodeLocks.UnconditionalCheckPeriod, cancellationToken)
+                    var canReadResult = await consumeTask
+                        .WaitResultAsync(NodeLocks.UnconditionalCheckPeriod, cancellationToken)
                         .ConfigureAwait(false);
-                    // It's important to throw on cancellation here: canRead may return false exactly due to this
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (!canRead)
-                        throw new OperationCanceledException("Subscription to changes is lost.");
-                    consumeTask = null;
+                    if (canReadResult.HasError) {
+                        if (canReadResult.Error is not TimeoutException)
+                            canReadResult.ThrowIfError();
+                    }
+                    else {
+                        var canRead = canReadResult.Value;
+                        // It's important to throw on cancellation here: canRead may return false exactly due to this
+                        cancellationToken.ThrowIfCancellationRequested();
+                        if (!canRead)
+                            throw new OperationCanceledException("Subscription to changes is lost.");
+                        consumeTask = null;
+                    }
                 }
-                catch (TimeoutException) { }
                 catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                     await changes.DisposeSilentlyAsync().ConfigureAwait(false);
                     changes = null;
