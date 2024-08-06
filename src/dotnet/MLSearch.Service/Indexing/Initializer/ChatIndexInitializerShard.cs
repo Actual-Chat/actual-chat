@@ -1,5 +1,8 @@
+using ActualChat.MLSearch.Diagnostics;
 using ActualChat.Queues;
 using ActualLab.Resilience;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
 
 namespace ActualChat.MLSearch.Indexing.Initializer;
 
@@ -18,6 +21,12 @@ internal sealed class ChatIndexInitializerShard(
 ) : IChatIndexInitializerShard
 {
     public const string CursorKey = $"{nameof(ChatIndexInitializer)}.{nameof(Cursor)}";
+    private const string ClassName = nameof(ChatIndexInitializerShard);
+    private const string PostActivityName = $"{nameof(PostAsync)}({nameof(MLSearch_TriggerChatIndexingCompletion)})@{ClassName}";
+    private const string OnScheduleJobActivityName = $"{nameof(OnScheduleJob)}({nameof(MLSearch_TriggerChatIndexingCompletion)})@{ClassName}";
+    private const string OnCompleteJobActivityName = $"{nameof(OnCompleteJob)}({nameof(MLSearch_TriggerChatIndexingCompletion)})@{ClassName}";
+    private const string OnUpdateCursorActivityName = $"{nameof(OnUpdateCursor)}@{ClassName}";
+    private static readonly ActivitySource ActivitySource = MLSearchInstruments.ActivitySource;
 
     // # Helper types
     public record Cursor(long LastVersion);
@@ -63,15 +72,16 @@ internal sealed class ChatIndexInitializerShard(
 
     // # Fields
     private object _lock = new();
-    private Channel<MLSearch_TriggerChatIndexingCompletion>? _events;
-    private Channel<MLSearch_TriggerChatIndexingCompletion> Events => LazyInitializer.EnsureInitialized(
+    private Channel<(MLSearch_TriggerChatIndexingCompletion, PropagationContext?)>? _events;
+    private Channel<(MLSearch_TriggerChatIndexingCompletion, PropagationContext?)> Events => LazyInitializer.EnsureInitialized(
         ref _events,
         ref _lock,
-        () => Channel.CreateBounded<MLSearch_TriggerChatIndexingCompletion>(new BoundedChannelOptions(InputBufferCapacity) {
-            FullMode = BoundedChannelFullMode.Wait,
-            SingleReader = true,
-            SingleWriter = false,
-        }));
+        () => Channel.CreateBounded<(MLSearch_TriggerChatIndexingCompletion, PropagationContext?)>(
+            new BoundedChannelOptions(InputBufferCapacity) {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = true,
+                SingleWriter = false,
+            }));
 
     // # Configuration properties
     public int InputBufferCapacity { get; init; } = 50;
@@ -87,7 +97,14 @@ internal sealed class ChatIndexInitializerShard(
 
     // # Public API methods
     public async ValueTask PostAsync(MLSearch_TriggerChatIndexingCompletion evt, CancellationToken cancellationToken = default)
-        => await Events.Writer.WriteAsync(evt, cancellationToken).ConfigureAwait(false);
+    {
+        using var activity = ActivitySource.StartActivity(PostActivityName, ActivityKind.Consumer);
+        var propagationContext = activity == null
+            ? default(PropagationContext?)
+            : new PropagationContext(activity.Context, Baggage.Current);
+
+        await Events.Writer.WriteAsync((evt, propagationContext), cancellationToken).ConfigureAwait(false);
+    }
 
     public async Task UseAsync(CancellationToken cancellationToken = default)
     {
@@ -123,8 +140,12 @@ internal sealed class ChatIndexInitializerShard(
     }
 
     // ## Schedule jobs
-    private ValueTask ScheduleJobForChatAsync(ChatInfo chatInfo, SharedState state, CancellationToken cancellationToken)
-        => OnScheduleJob(chatInfo, state, ScheduleJobRetrySettings, queues, clock, log, cancellationToken);
+    private async ValueTask ScheduleJobForChatAsync(ChatInfo chatInfo, SharedState state, CancellationToken cancellationToken)
+    {
+        using var _ = ActivitySource.StartActivity(OnScheduleJobActivityName, ActivityKind.Internal);
+
+        await OnScheduleJob(chatInfo, state, ScheduleJobRetrySettings, queues, clock, log, cancellationToken).ConfigureAwait(false);
+    }
 
     public static async ValueTask ScheduleIndexingJobAsync(
         ChatInfo chatInfo,
@@ -158,7 +179,7 @@ internal sealed class ChatIndexInitializerShard(
     }
 
     // ## Handle job completion events
-    private async IAsyncEnumerable<MLSearch_TriggerChatIndexingCompletion> ReadCompletionEvents(
+    private async IAsyncEnumerable<(MLSearch_TriggerChatIndexingCompletion, PropagationContext?)> ReadCompletionEvents(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         while (true) {
@@ -169,7 +190,20 @@ internal sealed class ChatIndexInitializerShard(
         // ReSharper disable once IteratorNeverReturns
     }
 
-    private ValueTask HandleCompletionEventAsync(MLSearch_TriggerChatIndexingCompletion evt, SharedState state, CancellationToken _) {
+    private ValueTask HandleCompletionEventAsync(
+        (MLSearch_TriggerChatIndexingCompletion, PropagationContext?) data,
+        SharedState state,
+        CancellationToken _)
+    {
+        var (evt, otelContext) = data;
+        Activity? activity = null;
+        if (otelContext.HasValue) {
+            var context = otelContext.Value;
+            Baggage.Current = context.Baggage;
+            activity = ActivitySource.StartActivity(OnCompleteJobActivityName, ActivityKind.Consumer, context.ActivityContext);
+        }
+        using var __ = activity;
+
         OnCompleteJob(evt, state);
         return ValueTask.CompletedTask;
     }
@@ -198,8 +232,12 @@ internal sealed class ChatIndexInitializerShard(
         // ReSharper disable once IteratorNeverReturns
     }
 
-    private ValueTask UpdateCursorAsync(Moment updateMoment, SharedState state, CancellationToken cancellationToken)
-        => OnUpdateCursor(updateMoment, state, StallJobTimeout, cursorStates, log, cancellationToken: cancellationToken);
+    private async ValueTask UpdateCursorAsync(Moment updateMoment, SharedState state, CancellationToken cancellationToken)
+    {
+        using var _ = ActivitySource.StartActivity(OnUpdateCursorActivityName, ActivityKind.Internal);
+
+        await OnUpdateCursor(updateMoment, state, StallJobTimeout, cursorStates, log, cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
 
     public static async ValueTask UpdateCursorAsync(
         Moment updateMoment,

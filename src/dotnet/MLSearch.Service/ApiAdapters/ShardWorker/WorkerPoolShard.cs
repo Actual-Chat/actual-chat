@@ -1,4 +1,8 @@
 
+using ActualChat.MLSearch.Diagnostics;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
+
 namespace ActualChat.MLSearch.ApiAdapters.ShardWorker;
 
 internal interface IWorkerPoolShard<in TJob, in TJobId, in TShardKey>
@@ -23,15 +27,26 @@ internal sealed class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
     where TJobId : notnull
     where TShardKey : notnull
 {
+    private const string ClassName = nameof(WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>);
+    private static readonly string JobType = typeof(TJob).Name;
+
+    private static readonly string PostActivityName = $"{nameof(PostAsync)}({JobType})@{ClassName}";
+    private static readonly string CancelActivityName = $"{nameof(CancelAsync)}({JobType})@{ClassName}";
+    private static readonly string DispatchJobActivityName = $"{nameof(DispatchJob)}<{JobType}>@{ClassName}";
+    private static readonly string CancelJobActivityName = $"{nameof(CancelJob)}<{JobType}>@{ClassName}";
+    private static readonly string CancelAndRunJobActivityName = $"{nameof(CancelAndRunJobAsync)}<{JobType}>@{ClassName}";
+    private static readonly string RunJobActivityName = $"{nameof(RunJobAsync)}<{JobType}>@{ClassName}";
+
     private record RunningJob(Task CompletionTask, CancellationTokenSource Cancellation, Task? CancellationTask = null);
 
     private record Assignment {
         private Assignment() { }
 
-        public record RunJob(TJob Job) : Assignment;
-        public record CancelJob(TJobId JobId) : Assignment;
+        public record RunJob(TJob Job, PropagationContext? otelContext) : Assignment;
+        public record CancelJob(TJobId JobId, PropagationContext? otelContext) : Assignment;
     }
 
+    private static readonly ActivitySource ActivitySource = MLSearchInstruments.ActivitySource;
     private readonly string jobName = worker.GetType().Name;
     private readonly Channel<Assignment> _assignments =
         Channel.CreateBounded<Assignment>(new BoundedChannelOptions(concurrencyLevel+1) {
@@ -48,14 +63,24 @@ internal sealed class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
 
     public async ValueTask PostAsync(TJob job, CancellationToken cancellationToken)
     {
+        using var activity = ActivitySource.StartActivity(PostActivityName, ActivityKind.Consumer);
+
         await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-        await _assignments.Writer.WriteAsync(new Assignment.RunJob(job), cancellationToken).ConfigureAwait(false);
+        var propagationContext = activity == null
+            ? default(PropagationContext?)
+            : new PropagationContext(activity.Context, Baggage.Current);
+        await _assignments.Writer.WriteAsync(new Assignment.RunJob(job, propagationContext), cancellationToken).ConfigureAwait(false);
     }
 
     public async ValueTask CancelAsync(TJobId jobId, CancellationToken cancellationToken)
     {
+        using var activity = ActivitySource.StartActivity(CancelActivityName, ActivityKind.Consumer);
+
         await _cancellationSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-        await _assignments.Writer.WriteAsync(new Assignment.CancelJob(jobId), cancellationToken).ConfigureAwait(false);
+        var propagationContext = activity == null
+            ? default(PropagationContext?)
+            : new PropagationContext(activity.Context, Baggage.Current);
+        await _assignments.Writer.WriteAsync(new Assignment.CancelJob(jobId, propagationContext), cancellationToken).ConfigureAwait(false);
     }
 
     public async Task UseAsync(CancellationToken cancellationToken)
@@ -66,39 +91,12 @@ internal sealed class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
                     .ReadAsync(cancellationToken)
                     .ConfigureAwait(false);
                 switch (assignment) {
-                    case Assignment.RunJob(var job): {
-                        if (duplicateJobPolicy==DuplicateJobPolicy.Drop) {
-                            if (_runningJobs.TryAdd(job.Id, null)) {
-                                var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                                _runningJobs[job.Id] = new RunningJob(
-                                    RunJobAsync(job, cancellation.Token),
-                                    cancellation);
-                            }
-                            else {
-                                _semaphore.Release();
-                            }
-                        }
-                        if (duplicateJobPolicy==DuplicateJobPolicy.Cancel) {
-                            var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                            var completionTask = _runningJobs.TryRemove(job.Id, out var runningJob)
-                                ? CancelAndRunJobAsync(job, runningJob!, cancellation.Token)
-                                : RunJobAsync(job, cancellation.Token);
-
-                            _runningJobs[job.Id] = new RunningJob(completionTask, cancellation);
-                        }
+                    case Assignment.RunJob(var job, var otelContext): {
+                        DispatchJob(job, otelContext, cancellationToken);
                     }
                     break;
-                    case Assignment.CancelJob(var jobId): {
-                        if (_runningJobs.TryGetValue(jobId, out var runningJob)) {
-                            // runningJob can't be null here because if it is in the dictionary
-                            // then previous iteration of the outer cycle is completely done
-                            if (runningJob!.CancellationTask is null) {
-                                _runningJobs[jobId] = runningJob with {
-                                    CancellationTask = runningJob.Cancellation.CancelAsync()
-                                };
-                            }
-                        }
-                        _cancellationSemaphore.Release();
+                    case Assignment.CancelJob(var jobId, var otelContext): {
+                        CancelJob(jobId, otelContext);
                     }
                     break;
                 }
@@ -121,9 +119,67 @@ internal sealed class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
         }
     }
 
-    private async Task CancelAndRunJobAsync(TJob job, RunningJob runningJob, CancellationToken cancellationToken)
+    private void DispatchJob(TJob job, PropagationContext? otelContext, CancellationToken cancellationToken)
     {
+        Activity? activity = null;
+        if (otelContext.HasValue) {
+            var context = otelContext.Value;
+            Baggage.Current = context.Baggage;
+            activity = ActivitySource.StartActivity(DispatchJobActivityName, ActivityKind.Consumer, context.ActivityContext);
+        }
+        using var _ = activity;
+
+        if (duplicateJobPolicy == DuplicateJobPolicy.Drop) {
+            if (_runningJobs.TryAdd(job.Id, null)) {
+                var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                _runningJobs[job.Id] = new RunningJob(
+                    RunJobAsync(job, otelContext?.ActivityContext, cancellation.Token),
+                    cancellation);
+            }
+            else {
+                _semaphore.Release();
+            }
+        }
+        if (duplicateJobPolicy == DuplicateJobPolicy.Cancel) {
+            var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var completionTask = _runningJobs.TryRemove(job.Id, out var runningJob)
+                ? CancelAndRunJobAsync(job, runningJob!, otelContext?.ActivityContext, cancellation.Token)
+                : RunJobAsync(job, otelContext?.ActivityContext, cancellation.Token);
+
+            _runningJobs[job.Id] = new RunningJob(completionTask, cancellation);
+        }
+    }
+
+    private void CancelJob(TJobId jobId, PropagationContext? otelContext)
+    {
+        Activity? activity = null;
+        if (otelContext.HasValue) {
+            var context = otelContext.Value;
+            Baggage.Current = context.Baggage;
+            activity = ActivitySource.StartActivity(CancelJobActivityName, ActivityKind.Consumer, context.ActivityContext);
+        }
+        using var _ = activity;
+
+        if (_runningJobs.TryGetValue(jobId, out var runningJob)) {
+            // runningJob can't be null here because if it is in the dictionary
+            // then previous iteration of the outer cycle is completely done
+            if (runningJob!.CancellationTask is null) {
+                _runningJobs[jobId] = runningJob with {
+                    CancellationTask = runningJob.Cancellation.CancelAsync()
+                };
+            }
+        }
+        _cancellationSemaphore.Release();
+    }
+
+    private async Task CancelAndRunJobAsync(TJob job, RunningJob runningJob, ActivityContext? parentContext, CancellationToken cancellationToken)
+    {
+        using var activity = parentContext.HasValue
+            ? ActivitySource.StartActivity(CancelAndRunJobActivityName, ActivityKind.Internal, parentContext.Value)
+            : null;
+
         await Task.Yield();
+
         try {
             var cancellationSource = runningJob.Cancellation;
             if (!cancellationSource.IsCancellationRequested && !cancellationSource.IsDisposed()) {
@@ -135,12 +191,16 @@ internal sealed class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
                 jobName, job.Id, shardIndex);
         }
         finally {
-            await RunJobAsync(job, cancellationToken).ConfigureAwait(false);
+            await RunJobAsync(job, parentContext, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private async Task RunJobAsync(TJob job, CancellationToken cancellationToken)
+    private async Task RunJobAsync(TJob job, ActivityContext? parentContext, CancellationToken cancellationToken)
     {
+        using var activity = parentContext.HasValue
+            ? ActivitySource.StartActivity(RunJobActivityName, ActivityKind.Internal, parentContext.Value)
+            : null;
+
         await Task.Yield();
 
         // This method is a single unit of work.

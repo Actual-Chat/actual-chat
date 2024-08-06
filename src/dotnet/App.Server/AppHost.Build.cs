@@ -26,6 +26,7 @@ using ActualLab.Diagnostics;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Logging.Console;
+using OpenTelemetry.Logs;
 using Serilog;
 using Serilog.Events;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
@@ -86,6 +87,7 @@ public partial class AppHost
                 return;
 
             logging.ConfigureServerFilters(env.EnvironmentName);
+            logging.AddOpenTelemetry(options => options.AddOtlpExporter());
             logging.AddConsole();
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
             if (!AppLogging.DevLog.IsEmpty && appKind.IsServer() && !isTested) {
