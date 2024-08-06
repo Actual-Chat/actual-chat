@@ -1,20 +1,10 @@
 using System.IO.Compression;
 using ActualChat.App.Server.Health;
-using ActualChat.Chat.Module;
-using ActualChat.Contacts.Module;
 using ActualChat.Db.Diagnostics;
-using ActualChat.Db.Module;
 using ActualChat.Diagnostics;
-using ActualChat.Flows.Module;
 using ActualChat.Hosting;
-using ActualChat.Invite.Module;
-using ActualChat.Media.Module;
 using ActualChat.Module;
-using ActualChat.Notification.Module;
 using ActualChat.Redis.Module;
-using ActualChat.Search.Module;
-using ActualChat.Streaming.Module;
-using ActualChat.Users.Module;
 using ActualLab.CommandR.Diagnostics;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
@@ -28,13 +18,11 @@ using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using ActualLab.Diagnostics;
 using ActualLab.Fusion.Diagnostics;
-using ActualLab.Fusion.EntityFramework;
 using ActualLab.IO;
-using ActualLab.Rpc;
 using ActualLab.Rpc.Diagnostics;
 using ActualLab.Rpc.Server;
+using ActualChat.MLSearch.Diagnostics;
 
 namespace ActualChat.App.Server.Module;
 
@@ -251,6 +239,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         var openTelemetryEndpointUri = $"http://{host}:{port.Format()}".ToUri();
         Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
         services.AddOpenTelemetry()
+            .ConfigureResource(builder => _ = Env.IsDevelopment()
+                    ? builder.AddService("App", "actualchat", AppVersion, false, "dev")
+                    : builder.AddService("App", "actualchat", AppVersion))
             .WithMetrics(builder => builder
                 // gcloud exporter doesn't support some of metrics yet:
                 // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
@@ -267,6 +258,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddMeter(CoreServerInstruments.Meter.Name)
                 .AddMeter(AppInstruments.Meter.Name)
                 .AddMeter(AppUIInstruments.Meter.Name)
+                .AddMeter(MLSearchInstruments.Meter.Name)
                 .AddPrometheusExporter(cfg => { // OtlpExporter doesn't work for metrics ???
                     cfg.ScrapeEndpointPath = "/metrics";
                     cfg.ScrapeResponseCacheDurationMilliseconds = 300;
@@ -296,6 +288,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddSource(CoreServerInstruments.ActivitySource.Name)
                 .AddSource(AppInstruments.ActivitySource.Name)
                 .AddSource(AppUIInstruments.ActivitySource.Name)
+                .AddSource(MLSearchInstruments.ActivitySource.Name)
                 .AddAspNetCoreInstrumentation(opt => {
                     var excludedPaths = new PathString[] {
                         "/favicon.ico",
@@ -323,8 +316,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                     cfg.Protocol = OtlpExportProtocol.Grpc;
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })
-            )
-            .ConfigureResource(builder => builder
-                .AddService("App", "actualchat", AppVersion));
+            );
     }
 }

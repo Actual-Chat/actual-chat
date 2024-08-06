@@ -6,5 +6,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="OpenSearch.Client" />
+    <PackageReference Include="OpenTelemetry.Api" />
+    <PackageReference Include="OpenTelemetry.Api.ProviderBuilderExtensions" />
   </ItemGroup>
 </Project>
