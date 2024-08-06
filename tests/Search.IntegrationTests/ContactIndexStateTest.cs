@@ -11,49 +11,66 @@ public class ContactIndexStateTest(AppHostFixture fixture, ITestOutputHelper @ou
     private IContactIndexStatesBackend ContactIndexStatesBackend { get; } = fixture.AppHost.Services.GetRequiredService<IContactIndexStatesBackend>();
     private VersionGenerator<long> VersionGenerator { get; } = fixture.AppHost.Services.GetRequiredService<VersionGenerator<long>>();
 
-    [Fact]
-    public async Task ShouldGetAndChange()
+    [Theory]
+    [InlineData(typeof(ChatId))]
+    [InlineData(typeof(UserId))]
+    [InlineData(typeof(AuthorId))]
+    public async Task ShouldGetAndChange(Type idType)
     {
-        await Run(() => ContactIndexStatesBackend.GetForChats(CancellationToken.None), () => new ChatId(Generate.Option));
-        await Run(() => ContactIndexStatesBackend.GetForUsers(CancellationToken.None), () => UserId.New());
+        // act
+        var initialState = await Get();
+
+        // assert
+        initialState.IsStored().Should().BeFalse();
+
+        // act
+        var stateToCreate = initialState with {
+            LastUpdatedId = GenerateLastUpdatedId(),
+            LastUpdatedVersion = VersionGenerator.NextVersion(),
+        };
+        var createCmd = new ContactIndexStatesBackend_Change(initialState.Id, null, Change.Create(stateToCreate));
+        var createdState = await Commander.Call(createCmd);
+        var retrievedCreatedState = await Get();
+
+        // assert
+        createdState.IsStored().Should().BeTrue();
+        createdState.Should().BeEquivalentTo(stateToCreate, o => o.ExcludingSystemProperties());
+        createdState.Version.Should().BeGreaterThan(initialState.Version);
+        retrievedCreatedState.Should().BeEquivalentTo(createdState, o => o.ExcludingSystemProperties());
+
+        // act
+        var stateToUpdate = createdState with {
+            LastUpdatedId = GenerateLastUpdatedId(),
+            LastUpdatedVersion = VersionGenerator.NextVersion(),
+        };
+        var updateCmd = new ContactIndexStatesBackend_Change(initialState.Id, createdState.Version, Change.Update(stateToUpdate));
+        var updatedState = await Commander.Call(updateCmd);
+        var retrievedUpdatedState = await Get();
+
+        // assert
+        updatedState.Should().BeEquivalentTo(stateToUpdate, o => o.ExcludingSystemProperties());
+        updatedState.Version.Should().BeGreaterThan(stateToUpdate.Version);
+        retrievedUpdatedState.Should().BeEquivalentTo(updatedState);
         return;
 
-        async Task Run(Func<Task<ContactIndexState>> get, Func<Symbol> generateLastUpdatedId)
+        Task<ContactIndexState> Get()
         {
-            // act
-            var initialState = await get();
+            if (idType == typeof(ChatId))
+                return ContactIndexStatesBackend.GetForChats(CancellationToken.None);
 
-            // assert
-            initialState.IsStored().Should().BeFalse();
+            return idType == typeof(UserId)
+                ? ContactIndexStatesBackend.GetForUsers(CancellationToken.None)
+                : ContactIndexStatesBackend.GetForPlaceAuthors(CancellationToken.None);
+        }
 
-            // act
-            var stateToCreate = initialState with {
-                LastUpdatedId = generateLastUpdatedId(),
-                LastUpdatedVersion = VersionGenerator.NextVersion(),
-            };
-            var createCmd = new ContactIndexStatesBackend_Change(initialState.Id, null, Change.Create(stateToCreate));
-            var createdState = await Commander.Call(createCmd);
-            var retrievedCreatedState = await get();
+        Symbol GenerateLastUpdatedId()
+        {
+            if (idType == typeof(ChatId))
+                return new ChatId(Generate.Option);
 
-            // assert
-            createdState.IsStored().Should().BeTrue();
-            createdState.Should().BeEquivalentTo(stateToCreate, o => o.ExcludingSystemProperties());
-            createdState.Version.Should().BeGreaterThan(initialState.Version);
-            retrievedCreatedState.Should().BeEquivalentTo(createdState, o => o.ExcludingSystemProperties());
-
-            // act
-            var stateToUpdate = createdState with {
-                LastUpdatedId = generateLastUpdatedId(),
-                LastUpdatedVersion = VersionGenerator.NextVersion(),
-            };
-            var updateCmd = new ContactIndexStatesBackend_Change(initialState.Id, createdState.Version, Change.Update(stateToUpdate));
-            var updatedState = await Commander.Call(updateCmd);
-            var retrievedUpdatedState = await get();
-
-            // assert
-            updatedState.Should().BeEquivalentTo(stateToUpdate, o => o.ExcludingSystemProperties());
-            updatedState.Version.Should().BeGreaterThan(stateToUpdate.Version);
-            retrievedUpdatedState.Should().BeEquivalentTo(updatedState);
+            return idType == typeof(UserId)
+                ? UserId.New()
+                : new AuthorId(new ChatId(Generate.Option), 1, AssumeValid.Option);
         }
     }
 }

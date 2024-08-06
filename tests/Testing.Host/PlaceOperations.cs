@@ -7,8 +7,8 @@ public static class PlaceOperations
 {
     private const string DefaultPlaceTitle = "test place";
 
-    public static Task<Place> CreatePlace(this IWebTester tester, bool isPublicPlace, string title = DefaultPlaceTitle, Account? userToInvite = null)
-        => CreatePlace(tester, c => c with { IsPublic = isPublicPlace, Title = title }, new[]{userToInvite}.SkipNullItems().ToArray());
+    public static Task<Place> CreatePlace(this IWebTester tester, bool isPublicPlace, string title = DefaultPlaceTitle, params AccountFull[] usersToInvite)
+        => CreatePlace(tester, c => c with { IsPublic = isPublicPlace, Title = title }, usersToInvite.OfType<Account>().ToArray());
 
     public static async Task<Place> CreatePlace(this IWebTester tester, Func<PlaceDiff, PlaceDiff> configure, params Account[] usersToInvite)
     {
