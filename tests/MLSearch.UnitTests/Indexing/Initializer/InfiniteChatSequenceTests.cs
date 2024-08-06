@@ -19,6 +19,7 @@ public class InfiniteChatSequenceTests
     private static readonly ILogger<InfiniteChatSequence> Log = Mock.Of<ILogger<InfiniteChatSequence>>();
     private static readonly Expression<Func<IChatsBackend, Task<ApiArray<Chat.Chat>>>> ListChangedCall =
         x => x.ListChanged(
+            It.IsAny<bool>(),
             It.IsAny<long>(),
             It.IsAny<long>(),
             It.IsAny<ChatId>(),
@@ -31,8 +32,8 @@ public class InfiniteChatSequenceTests
         var chats = new Mock<IChatsBackend>();
         chats
             .Setup(ListChangedCall)
-            .Returns<long, long, ChatId, int, CancellationToken>(
-                (minVersion, _, _, size, _) => GetNextBatch(minVersion, size)
+            .Returns<bool, long, long, ChatId, int, CancellationToken>(
+                (_, minVersion, _, _, size, _) => GetNextBatch(minVersion, size)
             );
 
         const int batchSize = 5;
@@ -68,8 +69,8 @@ public class InfiniteChatSequenceTests
         var chats = new Mock<IChatsBackend>();
         chats
             .Setup(ListChangedCall)
-            .Returns<long, long, ChatId, int, CancellationToken>(
-                (minVersion, _, _, size, _) => batchCount++ == 0
+            .Returns<bool, long, long, ChatId, int, CancellationToken>(
+                (_, minVersion, _, _, size, _) => batchCount++ == 0
                     ? Task.FromResult(ApiArray.Empty<Chat.Chat>())
                     : GetNextBatch(minVersion, size)
             );
@@ -117,8 +118,8 @@ public class InfiniteChatSequenceTests
         var chats = new Mock<IChatsBackend>();
         chats
             .Setup(ListChangedCall)
-            .Throws<long, long, ChatId, int, CancellationToken, TaskCanceledException>(
-                (_, _, _, _, ct) => {
+            .Throws<bool, long, long, ChatId, int, CancellationToken, TaskCanceledException>(
+                (_, _, _, _, _, ct) => {
                     cancellationSource.Cancel();
                     return new TaskCanceledException("", null, ct);
                 });
@@ -210,8 +211,8 @@ public class InfiniteChatSequenceTests
         var chats = new Mock<IChatsBackend>();
         chats
             .Setup(ListChangedCall)
-            .Returns<long, long, ChatId, int, CancellationToken>(
-                (minVersion, _, _, size, _) => {
+            .Returns<bool, long, long, ChatId, int, CancellationToken>(
+                (_, minVersion, _, _, size, _) => {
                     batchNum++;
                     if (batchNum == 2) {
                         throw new InvalidOperationException("Something is wrong.");
@@ -252,8 +253,8 @@ public class InfiniteChatSequenceTests
         var chats = new Mock<IChatsBackend>();
         chats
             .Setup(ListChangedCall)
-            .Returns<long, long, ChatId, int, CancellationToken>(
-                (minVersion, _, _, size, _) => GetNextBatch(minVersion, size)
+            .Returns<bool, long, long, ChatId, int, CancellationToken>(
+                (_, minVersion, _, _, size, _) => GetNextBatch(minVersion, size)
             );
 
         const int batchSize = 5;
@@ -289,8 +290,8 @@ public class InfiniteChatSequenceTests
         var batchCount = 0;
         chats
             .Setup(ListChangedCall)
-            .Returns<long, long, ChatId, int, CancellationToken>(
-                (lastVersion, _, lastId, size, _) => {
+            .Returns<bool, long, long, ChatId, int, CancellationToken>(
+                (_, lastVersion, _, lastId, size, _) => {
                     batchCount += 1;
                     // ReSharper disable AccessToModifiedClosure
                     allChecksPassed |= (lastSeenId, lastSeenVersion) == (lastId, lastVersion);

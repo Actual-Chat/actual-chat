@@ -21,13 +21,15 @@ public sealed class ChatContactIndexer(IServiceProvider services) : ContactIndex
         var state = await ContactIndexStatesBackend.GetForChats(cancellationToken).ConfigureAwait(false);
         var batches = ChatsBackend
             .BatchChanged(
+                false,
                 state.LastUpdatedVersion,
                 MaxVersion,
                 state.LastUpdatedChatId,
                 SyncBatchSize,
-                cancellationToken);
+                cancellationToken)
+            .ConfigureAwait(false);
         var hasChanges = false;
-        await foreach (var chats in batches.ConfigureAwait(false)) {
+        await foreach (var chats in batches) {
             var first = chats[0];
             var last = chats[^1];
             Log.LogDebug(
