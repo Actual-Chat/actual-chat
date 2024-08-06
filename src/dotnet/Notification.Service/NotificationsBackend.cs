@@ -229,6 +229,12 @@ public class NotificationsBackend(IServiceProvider services)
                 dbDevice.Type = deviceType; // Now maui app reports device type properly, lets update it.
             if (dbDevice.SessionHash.IsNullOrEmpty() && !sessionHash.IsEmpty)
                 dbDevice.SessionHash = sessionHash;
+            if (UserId.TryParse(dbDevice.UserId, out var existingUserId) && existingUserId != userId) {
+                if (existingUserId.IsGuest)
+                    dbDevice.UserId = userId;
+                else
+                    Log.LogWarning("User {UserId} is trying to register device for {ExistingUserId}. Skipped", userId, existingUserId);
+            }
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

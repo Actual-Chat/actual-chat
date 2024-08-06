@@ -22,4 +22,14 @@ public class AndroidDeviceTokenRetriever(IServiceProvider services) : IDeviceTok
             return null;
         }
     }
+
+    public async Task DeleteDeviceToken(CancellationToken cancellationToken)
+    {
+        try {
+            await FirebaseMessaging.Instance.DeleteToken().AsAsync().ConfigureAwait(true);
+        }
+        catch(Exception e) {
+            Log.LogWarning(e, "Failed to delete FCM token");
+        }
+    }
 }
