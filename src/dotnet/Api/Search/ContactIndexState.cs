@@ -1,3 +1,4 @@
+using System.Text;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
 using MemoryPack;
@@ -15,7 +16,15 @@ public sealed partial record ContactIndexState(
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ChatId LastUpdatedChatId => new (LastUpdatedId);
+    public ChatId LastUpdatedChatId => new (LastUpdatedId, ParseOrNone.Option);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public UserId LastUpdatedUserId => new (LastUpdatedId);
+    public UserId LastUpdatedUserId => new (LastUpdatedId, ParseOrNone.Option);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public AuthorId LastUpdatedPlaceAuthorId => new (LastUpdatedId, ParseOrNone.Option);
+
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append(CultureInfo.InvariantCulture, $"#{Id}, LastUpdatedId: {LastUpdatedId}, LastUpdatedVersion: {LastUpdatedVersion}");
+        return true;
+    }
 }

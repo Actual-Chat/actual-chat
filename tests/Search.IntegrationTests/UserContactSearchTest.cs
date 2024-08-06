@@ -284,8 +284,8 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         var strangerFromBothPlaces = await _tester.CreateAccount("Both places member - Not Bob's friend");
         var bob = await _tester.SignInAsBob();
         await _tester.SignInAsAlice();
-        var place1 = await _tester.CreatePlace(false, userToInvite: bob);
-        var place2 = await _tester.CreatePlace(false, userToInvite: bob);
+        var place1 = await _tester.CreatePlace(false, usersToInvite: bob);
+        var place2 = await _tester.CreatePlace(false, usersToInvite: bob);
         await _tester.SignIn(bob);
         await _tester.CreatePeerContacts(bob, friendFromPlace1, friendFromPlace2, friendFromBothPlaces);
 

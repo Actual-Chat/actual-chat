@@ -425,6 +425,20 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     }
 
     [EventHandler]
+    public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        if (!Settings.IsSearchEnabled)
+            return;
+
+        var (author, oldAuthor) = eventCommand;
+        Log.LogDebug("Received AuthorChangedEvent #{Id}", author.Id);
+        await Queues.Enqueue(new SearchBackend_StartUserContactIndexing(), cancellationToken).ConfigureAwait(false);
+    }
+
+    [EventHandler]
     public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
