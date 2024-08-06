@@ -14,7 +14,8 @@ public static class AccountOperations
         int count,
         Func<int, string>? userNameFactory = null,
         Func<int, string>? nameFactory = null,
-        Func<int, string>? secondNameFactory = null)
+        Func<int, string>? secondNameFactory = null,
+        CancellationToken cancellationToken = default)
     {
         await using var __ = await tester.BackupAuth();
         userNameFactory ??= UniqueNames.User;
@@ -24,7 +25,7 @@ public static class AccountOperations
         for (int i = 0; i < count; i++) {
             var user = new User("", userNameFactory(i)).WithClaim(ClaimTypes.GivenName, nameFactory(i))
                 .WithClaim(ClaimTypes.Surname, secondNameFactory(i));
-            accounts[i] = await tester.SignIn(user);
+            accounts[i] = await tester.SignIn(user, cancellationToken);
         }
         return accounts;
     }

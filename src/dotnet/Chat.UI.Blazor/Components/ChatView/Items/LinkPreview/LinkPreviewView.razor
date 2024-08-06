@@ -17,7 +17,9 @@
 @if (m.LocalLink is { CanRender:true }) {
     <LocalLinkPreview Data="@m.LocalLink"/>
 } else {
-    <a class="link-preview unfocusable @compactCls" href="@uri" target="_blank">
+    var isLocal = m.LocalLink is { };
+    var target = isLocal ? "_self" : "_blank";
+     <a class="link-preview unfocusable @compactCls" href="@uri" target="@target">
         @RenderMedia()
         <div class="c-info">
             @RenderInfo()
@@ -149,18 +151,20 @@
     private async Task<LocalLinkPreview.Model> ComputeLocalLinkModel(LocalUrl localUrl, CancellationToken cancellationToken)
     {
         var localLinkModel = new LocalLinkPreview.Model(localUrl);
-        if (localUrl.IsChatCompat(out var chatId, out var entryLid) && entryLid > 0) {
+        if (localUrl.IsChatCompat(out var chatId, out var entryLid)) {
             // Chat message link
             var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
             if (chat is not null) {
                 localLinkModel = localLinkModel with { Chat = chat };
-                var textEntryId = new TextEntryId(chatId, entryLid, AssumeValid.Option);
-                var entry = await Chats.GetEntry(Session, textEntryId, cancellationToken).ConfigureAwait(false);
-                localLinkModel = localLinkModel with { Entry = entry };
-                if (entry is not null) {
-                    var authorId = entry.AuthorId;
-                    var author = await Authors.Get(Session, entry.ChatId, authorId, cancellationToken).ConfigureAwait(false);
-                    localLinkModel = localLinkModel with { Author = author };
+                if (entryLid > 0) {
+                    var textEntryId = new TextEntryId(chatId, entryLid, AssumeValid.Option);
+                    var entry = await Chats.GetEntry(Session, textEntryId, cancellationToken).ConfigureAwait(false);
+                    localLinkModel = localLinkModel with { Entry = entry };
+                    if (entry is not null) {
+                        var authorId = entry.AuthorId;
+                        var author = await Authors.Get(Session, entry.ChatId, authorId, cancellationToken).ConfigureAwait(false);
+                        localLinkModel = localLinkModel with { Author = author };
+                    }
                 }
             }
             var placeId = chatId.PlaceChatId.PlaceId;

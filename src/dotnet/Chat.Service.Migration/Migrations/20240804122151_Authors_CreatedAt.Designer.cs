@@ -4,6 +4,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    partial class ChatDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240804122151_Authors_CreatedAt")]
+    partial class Authors_CreatedAt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -53,10 +56,6 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_anonymous");
 
-                    b.Property<bool>("IsPlaceAuthor")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_place_author");
-
                     b.Property<long>("LocalId")
                         .HasColumnType("bigint")
                         .HasColumnName("local_id");
@@ -84,9 +83,6 @@ namespace ActualChat.Chat.Migrations
 
                     b.HasIndex("UserId", "AvatarId")
                         .HasDatabaseName("ix_authors_user_id_avatar_id");
-
-                    b.HasIndex("Version", "IsPlaceAuthor")
-                        .HasDatabaseName("ix_authors_version_is_place_author");
 
                     b.ToTable("authors");
 
@@ -137,8 +133,7 @@ namespace ActualChat.Chat.Migrations
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("description")
-                        .UseCollation("C");
+                        .HasColumnName("description");
 
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean")
@@ -458,8 +453,7 @@ namespace ActualChat.Chat.Migrations
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("description")
-                        .UseCollation("C");
+                        .HasColumnName("description");
 
                     b.Property<bool>("IsPublic")
                         .HasColumnType("boolean")

@@ -11,6 +11,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     private readonly MutableState<Moment> _lastChangedAt;
     private readonly TimeSpan _maxInvalidationDelay;
     private IClientAuth? _clientAuth;
+    private INotificationUI? _notificationUI;
     private SignInRequesterUI? _signInRequesterUI;
 
     private IAccounts Accounts => Hub.Accounts;
@@ -18,6 +19,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     private SignInRequesterUI SignInRequesterUI => _signInRequesterUI ??= Services.GetRequiredService<SignInRequesterUI>();
     private IClientAuth ClientAuth => _clientAuth ??= Services.GetRequiredService<IClientAuth>();
     private History History => Hub.History;
+    private INotificationUI NotificationUI => _notificationUI ??= Services.GetRequiredService<INotificationUI>();
     private MomentClock CpuClock { get; }
 
     public Task WhenLoaded => _whenLoadedSource.Task;
@@ -61,6 +63,20 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
         return (changedAt + maxInvalidationDelay - CpuClock.Now).Positive();
     }
 
-    public Task SignOut()
-        => ClientAuth.SignOut();
+    public async Task SignIn(string schema)
+    {
+        await ClientAuth.SignIn(schema).ConfigureAwait(false);
+        await NotificationUI.EnsureDeviceRegistered(default);
+    }
+
+    public async Task SignOut()
+    {
+        try {
+            await NotificationUI.DeregisterDevice(default).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "SignOut: failed to deregister device");
+        }
+        await ClientAuth.SignOut().ConfigureAwait(false);
+    }
 }

@@ -1731,13 +1731,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return AuthorRules.None(chatId);
         }
 
+        var author = await AuthorsBackend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
         if (chat.IsPublic) {
-            var author = await AuthorsBackend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
             var permissions = rootChatRules.Permissions & ~ChatPermissions.Leave; // Do not allow to leave public chat on a place
             return new AuthorRules(chat.Id, author, account, permissions);
         }
 
-        return directRules;
+        return new AuthorRules(chat.Id, author, account, directRules.Permissions);
     }
 
     // Private / internal methods

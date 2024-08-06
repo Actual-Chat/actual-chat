@@ -1,3 +1,4 @@
+using ActualChat.Chat;
 using ActualChat.Search;
 using ActualChat.Users;
 using ActualLab.Versioning;
