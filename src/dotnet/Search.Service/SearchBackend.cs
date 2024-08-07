@@ -448,6 +448,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
             return;
 
         var (chat, _, changeKind) = eventCommand;
+        if (chat.Id.Kind == ChatKind.Peer)
+            return;
+
         // NOTE: we don't have any other chance to process removed items
         if (changeKind == ChangeKind.Remove) {
             var place = await PlacesBackend.Get(chat.Id.PlaceId, cancellationToken).ConfigureAwait(false);
