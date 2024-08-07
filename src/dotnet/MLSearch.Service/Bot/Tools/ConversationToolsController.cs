@@ -11,6 +11,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Cors;
 using ActualChat.MLSearch.Bot.Tools.Context;
+using Microsoft.IdentityModel.Tokens;
 
 namespace ActualChat.MLSearch.Bot.Tools;
 
@@ -18,15 +19,18 @@ namespace ActualChat.MLSearch.Bot.Tools;
 [ApiController]
 [Route("api/bot/conversation")]
 [Produces("application/json")]
-public sealed class ConversationToolsController(ICommander commander, IBotToolsContextHandler botToolsContext): ControllerBase
+public sealed class ConversationToolsController(ICommander commander, IBotToolsContextHandler botToolsContext, UrlMapper urlMapper): ControllerBase
 {
     public sealed class Reply {
         public required string Text {get; init;}
     }
 
-    public sealed class ForwardChatLinks {
+    public sealed class ForwardLocalLinks {
         public string? Comment {get; set;}
-        public List<string>? Links { get; init; }
+        public required List<string> Links { get; init; }
+        
+        [JsonIgnore]
+        public IEnumerable<LocalUrl> LocalUrls => Links.Select(e => new LocalUrl(e));
     }
 
 
@@ -55,7 +59,7 @@ public sealed class ConversationToolsController(ICommander commander, IBotToolsC
     }
 
     [HttpPost("forward-chat-links")]
-    public async Task ForwardChatLinksAction([FromBody]ForwardChatLinks reply, CancellationToken cancellationToken) {
+    public async Task ForwardChatLinksAction([FromBody]ForwardLocalLinks reply, CancellationToken cancellationToken) {
         var context = botToolsContext.GetContext(Request);
         if (!context.IsValid) {
             throw new UnauthorizedAccessException();
@@ -72,10 +76,14 @@ public sealed class ConversationToolsController(ICommander commander, IBotToolsC
             null,
             Change.Create(new ChatEntryDiff {
                 AuthorId = botId,
-                Content = reply.Comment + " >> " + String.Join( 
-                    " + ", 
-                    reply.Links ?? new List<string>()
-                ),
+                Content = string.Format(
+                    format: "{0}\n{1}",
+                    reply.Comment,
+                    string.Join(
+                        '\n', 
+                        reply.LocalUrls.Select(e => e.ToAbsolute(urlMapper))
+                    )
+                )
             }));
         await commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         return;

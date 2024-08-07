@@ -107,14 +107,11 @@ def forward_search_results(
     # However it seems to be a correctly serialized json object.
     last_tool_invocation_results = json.loads(last_tool_invocation_results)
     for result in last_tool_invocation_results:
-        document = result.get("document", {})
-        document_entries = document.get("metadata", {}).get("chatEntries", [])
-        if not document_entries:
+        link = result.get("link", None)
+        if link is None:
             continue
-        first_entry_id = document_entries[0].get("id", None)
-        if first_entry_id is None:
-            continue
-        links.append(first_entry_id)
+        links.append(link)
+
     _post(
         _Tools.FORWARD_CHAT_LINKS,
         {

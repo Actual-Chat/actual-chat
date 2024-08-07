@@ -9,6 +9,9 @@ using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Documents;
 using ActualChat.Chat;
 using ActualChat.MLSearch.Bot.Tools.Context;
+using ActualChat.MLSearch.Bot.Tools;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
+using Google.Apis.Util;
 
 namespace ActualChat.MLSearch.Bot.Tools;
 
@@ -23,10 +26,22 @@ public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine,
         public const int MaxLimit = 3;
         public required string Text { get; init; }
         public int? Limit { get; set; } = 1;
-
     }
+
+    // Note: 
+    // Check if we want to use M6T.Core.TupleModelBinder.
+    // The issue of using it right now: no swagger support.
+    public sealed class SearchQueryDocumentResult {
+        [JsonIgnore]
+        public LocalUrl LocalUrl { get; init; }
+
+        [JsonInclude]
+        public string Link => LocalUrl.Value;
+        public RankedDocument<ChatSlice> Document { get; init; }
+    }
+
     [HttpPost("public-chats")]
-    public async Task<ActionResult<List<RankedDocument<ChatSlice>>>> PublicChatsText([FromBody]SearchQueryRequest search, CancellationToken cancellationToken)
+    public async Task<ActionResult<List<SearchQueryDocumentResult>>> PublicChatsText([FromBody]SearchQueryRequest search, CancellationToken cancellationToken)
     {
         var limit = search.Limit.GetValueOrDefault(1);
         // Add limit constraints.
@@ -48,10 +63,19 @@ public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine,
             Limit = limit
         };
         var searchResult = await searchEngine.Find(query, cancellationToken).ConfigureAwait(false);
-        var documents = searchResult.Documents;
-        // TODO: Error handling
-        
-        return documents.Select(e=>e).ToList();
+        // TODO: (?) Error handling
+        return searchResult.Documents
+            .Where(e => !e.IsNone && !e.Document.Metadata.ChatEntries.IsDefaultOrEmpty)
+            .Select(e => {
+                // This must throw if result 
+                var chatEntryId = e.Document.Metadata.ChatEntries[0].Id;
+                var link = Links.Chat(chatEntryId);
+                return new SearchQueryDocumentResult {
+                    LocalUrl = link,
+                    Document = e
+                };
+            })
+            .ToList();
     }
 
     [HttpPost("my-chats")]
