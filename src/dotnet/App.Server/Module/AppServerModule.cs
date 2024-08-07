@@ -110,7 +110,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         app.UseAuthentication();
         app.UseEndpoints(endpoints => {
             endpoints.MapAppHealth();
-            endpoints.MapAppMetrics();
+            // Disabled as we disabled prometheus endpoint recently
+            // endpoints.MapAppMetrics();
             endpoints.MapBlazorHub();
             endpoints.MapRpcWebSocketServer();
             endpoints.MapControllers();
@@ -259,13 +260,14 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddMeter(AppInstruments.Meter.Name)
                 .AddMeter(AppUIInstruments.Meter.Name)
                 .AddMeter(MLSearchInstruments.Meter.Name)
-                .AddPrometheusExporter(cfg => { // OtlpExporter doesn't work for metrics ???
-                    cfg.ScrapeEndpointPath = "/metrics";
-                    cfg.ScrapeResponseCacheDurationMilliseconds = 300;
-                    // commented out as OpenTelemetry.Exporter.Prometheus.AspNetCore 1.7.0-rc.1 doesn't support it
-                    // and 1.8.0 doesn't allow the managed Prometheus collector to collect metrics
-                    // cfg.DisableTotalNameSuffixForCounters = true;
-                })
+                // Disabled prometheus endpoint to test Otlp
+                // .AddPrometheusExporter(cfg => { // OtlpExporter doesn't work for metrics ???
+                //     cfg.ScrapeEndpointPath = "/metrics";
+                //     cfg.ScrapeResponseCacheDurationMilliseconds = 300;
+                //     // commented out as OpenTelemetry.Exporter.Prometheus.AspNetCore 1.7.0-rc.1 doesn't support it
+                //     // and 1.8.0 doesn't allow the managed Prometheus collector to collect metrics
+                //     // cfg.DisableTotalNameSuffixForCounters = true;
+                // })
                 .AddOtlpExporter(cfg => {
                     cfg.ExportProcessorType = ExportProcessorType.Batch;
                     cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions {
