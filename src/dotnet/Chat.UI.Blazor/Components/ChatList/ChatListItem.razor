@@ -39,9 +39,13 @@
                 @if (lastTextEntry != null) {
                     <div class="c-last-message">
                         @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
-                                <span class="c-name">
-                                <AuthorName AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
+                            <span class="c-name">
+                                <AuthorName
+                                    AuthorSid="@lastTextEntry.AuthorId"
+                                    ShowDetailsOnClick="false"
+                                    ShowOwnAsYou="true"/>
                             </span>
+                            <span class="c-colon">:</span>
                         }
                         @if (lastTextEntry.IsStreaming) {
                             <chat-list-item-streaming-svg class="w-4 h-4"/>

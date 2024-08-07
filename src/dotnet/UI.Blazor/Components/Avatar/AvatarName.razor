@@ -1,6 +1,9 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @inherits FusionComponentBase
+@{
+    var name = ShowOwnAsYou && IsOwn ? "You" : Avatar.Name;
+}
 
 @if (ReferenceEquals(Avatar, Avatar.Loading)) {
     // See avatar-name-spacing class - any width mentioned below has to be listed there
@@ -14,7 +17,7 @@
 } else {
     var extraClass = Click.HasDelegate ? " cursor-pointer" : "";
     <span class="@Class @extraClass avatar-name" @onclick="@Click">
-        @Avatar.Name
+        @name
     </span>
 
 }
@@ -24,4 +27,6 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
     [Parameter] public bool IsAnonymous { get; set; }
+    [Parameter] public bool ShowOwnAsYou { get; set; }
+    [Parameter] public bool IsOwn { get; set; }
 }
