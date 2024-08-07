@@ -1,13 +1,13 @@
 using ActualChat.MLSearch.Indexing.ChatContent;
 
-namespace ActualChat.MLSearch.UnitTests.Indexing.ChatContent;
+namespace ActualChat.MLSearch.IntegrationTests.Indexing.ChatContent;
 
 public class FragmentContinuationSelectorTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
-    public async Task BasicTest()
+    public async Task ChooseOptionTest()
     {
-        var selector = new FragmentContinuationSelector(Log);
+        var selector = new DialogFragmentAnalyzer(Log);
         var index = await selector.ChooseOption(
             "Extensive evaluation will show you a standard RAG pipeline is certainly not enough to avoid unexpected hallucinations, overlooked knowledge, and misunderstood context.",
             new string[] {

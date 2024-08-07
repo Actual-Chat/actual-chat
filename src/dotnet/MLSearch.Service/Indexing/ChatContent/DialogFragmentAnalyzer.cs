@@ -5,7 +5,13 @@ using Anthropic.SDK.Messaging;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;
 
-internal class FragmentContinuationSelector(ILogger log)
+internal interface IDialogFragmentAnalyzer
+{
+    Task<int> ChooseMoreProbableDialog(string[] dialogs);
+    Task<Option<bool>> IsDialogAboutTheSameTopic(string dialog);
+}
+
+internal class DialogFragmentAnalyzer(ILogger log) : IDialogFragmentAnalyzer
 {
     private ILogger Log { get; } = log;
 
@@ -73,11 +79,11 @@ internal class FragmentContinuationSelector(ILogger log)
         return result;
     }
 
-    public async Task<Option<bool>> IsFragmentAboutTheSameTopic(string fragment)
+    public async Task<Option<bool>> IsDialogAboutTheSameTopic(string dialog)
     {
         var sb = new StringBuilder();
         sb.AppendLine("Say if the sentences below looks like they belong to the dialog about the same topic. Answer with just Yes or No.");
-        sb.AppendLine(fragment);
+        sb.AppendLine(dialog);
         var prompt = sb.ToString();
 
         var (isOk, reply) = await GetReply(prompt).ConfigureAwait(false);
