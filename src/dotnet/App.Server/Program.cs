@@ -1,5 +1,4 @@
 using System.Text;
-using ActualChat.App.Server.Initializers;
 using ActualChat.Audio.WebM;
 using ActualLab.Rpc;
 using Grpc.Core;
