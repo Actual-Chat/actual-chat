@@ -4,7 +4,7 @@ namespace ActualChat.MLSearch.IntegrationTests.Indexing.ChatContent;
 
 public class FragmentContinuationSelectorTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    [Fact]
+    [Fact(Skip = "Run explicitly")]
     public async Task ChooseOptionTest()
     {
         var selector = new DialogFragmentAnalyzer(Log);

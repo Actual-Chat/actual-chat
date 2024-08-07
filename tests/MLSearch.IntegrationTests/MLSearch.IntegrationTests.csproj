@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <ProjectReference Include="..\MLSearch.UnitTests\MLSearch.UnitTests.csproj" />
     <ProjectReference Include="..\Testing.Host\Testing.Host.csproj" />
   </ItemGroup>
 
