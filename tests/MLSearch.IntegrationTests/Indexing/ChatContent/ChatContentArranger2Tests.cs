@@ -3,7 +3,7 @@ using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.Users;
 using ActualLab.Generators;
 
-namespace ActualChat.MLSearch.UnitTests.Indexing.ChatContent;
+namespace ActualChat.MLSearch.IntegrationTests.Indexing.ChatContent;
 
 public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
 {
@@ -27,13 +27,15 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
         var authors = CreateAuthors(_messages);
         var entries = GetEntries(_messages, authors).ToList();
         var authorsBackend = CreateAuthorsBackend(authors.Values);
-
+        var chatDialogFormatter = new ChatDialogFormatter(authorsBackend);
         var contentArranger = new ChatContentArranger2(
             Mock.Of<IChatsBackend>(),
-            authorsBackend,
-            new FragmentContinuationSelector(Mock.Of<ILogger>()));
+            new DialogFragmentAnalyzer(Mock.Of<ILogger>()),
+            chatDialogFormatter);
         var sourceGroups = await contentArranger.ArrangeAsync(entries, [], CancellationToken.None).ToListAsync();
-        Assert.True(sourceGroups.Count > 0);
+        Assert.True(sourceGroups.Count >= 2);
+        var dialog1 = await chatDialogFormatter.BuildUpDialog(sourceGroups[0].Entries);
+        var dialog2 = await chatDialogFormatter.BuildUpDialog(sourceGroups[1].Entries);
         Assert.True(sourceGroups[0].Entries.Count == 4);
         Assert.True(sourceGroups[1].Entries.Count == 2);
     }
@@ -80,7 +82,12 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
         var chatId = new ChatId(Generate.Option);
         var localId = 1L;
         var version = DateTime.Now.Ticks;
+        var beginsAt = new DateTime(2024, 5, 1, 13, 0 ,0);
         foreach (var msg in messages) {
+            if (msg.TimestampOffset.HasValue)
+                beginsAt = beginsAt.AddSeconds(msg.TimestampOffset.Value);
+            else if (localId > 1)
+                beginsAt = beginsAt.AddSeconds(1);
             var authorNick = msg.Author;
             var content = msg.Content;
             if (!authors.TryGetValue(authorNick, out var author))
@@ -88,6 +95,7 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
 
             var entryId = new ChatEntryId(chatId, ChatEntryKind.Text, localId++, AssumeValid.Option);
             yield return new ChatEntry(entryId, version++) {
+                BeginsAt = beginsAt,
                 AuthorId = author.Id,
                 Content = content,
             };
