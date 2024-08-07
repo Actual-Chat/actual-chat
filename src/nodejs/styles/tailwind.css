@@ -263,4 +263,8 @@
     .wrap-anywhere {
         overflow-wrap: anywhere;
     }
+
+    .text-wrap-pretty {
+        text-wrap: pretty;
+    }
 }

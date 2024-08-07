@@ -21,7 +21,7 @@
     @apply flex-1 flex-x justify-between items-center gap-x-2;
 }
 .historical-playback-subheader > .c-content > .c-buttons {
-    @apply flex-none flex-x gap-x-1;
+    @apply flex-none flex-x gap-x-0.5;
 }
 .historical-playback-subheader > .c-content > .c-info {
     @apply flex-auto flex-y;
@@ -34,8 +34,9 @@
     @apply cursor-pointer hover:underline;
 }
 .historical-playback-subheader > .c-content > .c-info > .c-text {
-    @apply truncate;
-    @apply font-light;
+    @apply overflow-hidden;
+    @apply text-wrap-pretty;
+    @apply text-text-1 leading-4;
 }
 .historical-playback-subheader > .c-content > .c-info > .c-text > .c-moment {
     @apply font-normal;
