@@ -1,5 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
+    var cls = IsDotOnly ? "only-dot" : "";
+
     var text = Status switch {
         MessageStatus.Sending => "sending",
         MessageStatus.Unread => "unread",
@@ -14,18 +16,20 @@
     }
 }
 
-<span class="chat-message-sending-status">
-    <span>
-        @text
-    </span>
+<span class="chat-message-sending-status @cls">
     @if (Status is MessageStatus.Sending or MessageStatus.Unread) {
         @RenderIcon()
+    }
+    @if (!IsDotOnly) {
+        <span>
+            @text
+        </span>
     }
 </span>
 
 @code {
-    [Parameter]
-    public MessageStatus Status { get; set; }
+    [Parameter] public MessageStatus Status { get; set; }
+    [Parameter] public bool IsDotOnly { get; set; }
 
     public enum MessageStatus {
         Default,

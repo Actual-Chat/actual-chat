@@ -1,12 +1,22 @@
 .chat-message-sending-status {
-    @apply inline-flex flex-row items-center gap-x-1;
-    @apply text-xs text-03;
+    @apply flex-none inline-flex flex-row items-center gap-x-1;
+    @apply px-1;
+    @apply rounded-full;
+    @apply overflow-hidden;
+    @apply bg-hover;
+    @apply text-xs text-primary;
+}
+.chat-message-sending-status.only-dot {
+    @apply bg-transparent;
 }
 .chat-message-sending-status i {
-    @apply text-03 text-xs;
+    @apply text-xs;
 }
 .chat-message-sending-status .sending-circle {
     @apply w-1 h-1;
     @apply rounded-full;
     @apply bg-primary;
+}
+.chat-message:hover > .c-author-badge > .c-empty .only-dot {
+    @apply hidden;
 }

@@ -29,7 +29,9 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply select-none;
 }
 .chat-message > .c-author-badge:has(.c-empty) {
-    @apply py-2;
+    @apply flex items-center;
+    @apply h-6.5;
+    @apply pb-0 pt-1;
 }
 .chat-message > .c-author-badge > .c-empty {
     @apply flex items-center justify-center;
@@ -43,7 +45,7 @@ body.hoverable .system-entry.message-wrapper:hover {
 }
 
 .chat-message > .c-content > .c-author-header {
-    @apply flex-none flex-x items-baseline gap-x-2;
+    @apply flex-none flex-x items-end gap-x-2;
     @apply min-w-0;
     @apply mt-1;
 }
@@ -57,8 +59,8 @@ body.hoverable .system-entry.message-wrapper:hover {
 }
 
 .chat-message-author-name {
-    @apply max-h-6 overflow-hidden truncate;
-    @apply font-bold text-03;
+    @apply truncate;
+    @apply text-headline-1 text-03;
     @apply hover:opacity-80;
     @apply cursor-pointer;
 }
