@@ -117,7 +117,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             endpoints.MapControllers();
             endpoints.MapFallbackToPage("/_Host");
         });
-        app.UseOpenTelemetryPrometheusScrapingEndpoint();
+        // app.UseOpenTelemetryPrometheusScrapingEndpoint();
     }
 
     protected override void InjectServices(IServiceCollection services)
