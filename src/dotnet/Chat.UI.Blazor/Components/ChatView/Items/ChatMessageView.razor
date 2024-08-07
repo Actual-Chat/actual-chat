@@ -92,6 +92,11 @@
                 var timestamp = DateTimeConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
                 <div class="c-empty">
                     <span class="chat-message-timestamp-on-hover">@timestamp</span>
+                    @if (m.IsUnreadMessage) {
+                        <ChatMessageSendingStatus
+                            Status="@ChatMessageSendingStatus.MessageStatus.Unread"
+                            IsDotOnly="true"/>
+                    }
                 </div>
             }
         </div>
@@ -100,6 +105,9 @@
                 <div class="c-author-header">
                     <AuthorName AuthorSid="@entry.AuthorId" Class="chat-message-author-name"/>
                     <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
+                    @if (m.IsUnreadMessage) {
+                        <ChatMessageSendingStatus Status="@ChatMessageSendingStatus.MessageStatus.Unread" />
+                    }
                     @* <div class="text-02 opacity-20 text-xxs">id=@entry.Id</div> *@
                 </div>
             }
@@ -163,10 +171,6 @@
                         <CascadingValue Value="@entry" IsFixed="true">
                             <MarkupView Markup="@_markup"/>
                         </CascadingValue>
-                        @if (m.IsUnreadMessage) {
-                            <span class="mr-1"> </span> @* Delimiter *@
-                            <ChatMessageSendingStatus Status="@ChatMessageSendingStatus.MessageStatus.Unread" />
-                        }
                     </p>
                 }
             </div>
