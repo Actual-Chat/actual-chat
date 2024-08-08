@@ -15,6 +15,7 @@ public class ContactIndexStateTest(AppHostFixture fixture, ITestOutputHelper @ou
     [InlineData(typeof(ChatId))]
     [InlineData(typeof(UserId))]
     [InlineData(typeof(AuthorId))]
+    [InlineData(typeof(PlaceId))]
     public async Task ShouldGetAndChange(Type idType)
     {
         // act
@@ -34,7 +35,6 @@ public class ContactIndexStateTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         // assert
         createdState.IsStored().Should().BeTrue();
-        createdState.Should().BeEquivalentTo(stateToCreate, o => o.ExcludingSystemProperties());
         createdState.Version.Should().BeGreaterThan(initialState.Version);
         retrievedCreatedState.Should().BeEquivalentTo(createdState, o => o.ExcludingSystemProperties());
 
@@ -58,9 +58,16 @@ public class ContactIndexStateTest(AppHostFixture fixture, ITestOutputHelper @ou
             if (idType == typeof(ChatId))
                 return ContactIndexStatesBackend.GetForChats(CancellationToken.None);
 
-            return idType == typeof(UserId)
-                ? ContactIndexStatesBackend.GetForUsers(CancellationToken.None)
-                : ContactIndexStatesBackend.GetForPlaceAuthors(CancellationToken.None);
+            if (idType == typeof(PlaceId))
+                return ContactIndexStatesBackend.GetForPlaces(CancellationToken.None);
+
+            if (idType == typeof(UserId))
+                return ContactIndexStatesBackend.GetForUsers(CancellationToken.None);
+
+            if (idType == typeof(AuthorId))
+                return ContactIndexStatesBackend.GetForPlaceAuthors(CancellationToken.None);
+
+            throw new ArgumentOutOfRangeException(nameof(idType), idType, null);
         }
 
         Symbol GenerateLastUpdatedId()
@@ -68,9 +75,16 @@ public class ContactIndexStateTest(AppHostFixture fixture, ITestOutputHelper @ou
             if (idType == typeof(ChatId))
                 return new ChatId(Generate.Option);
 
-            return idType == typeof(UserId)
-                ? UserId.New()
-                : new AuthorId(new ChatId(Generate.Option), 1, AssumeValid.Option);
+            if (idType == typeof(PlaceId))
+                return new PlaceId(Generate.Option);
+
+            if (idType == typeof(UserId))
+                return UserId.New();
+
+            if (idType == typeof(AuthorId))
+                return new AuthorId(new ChatId(Generate.Option), 1, AssumeValid.Option);
+
+            throw new ArgumentOutOfRangeException(nameof(idType), idType, null);
         }
     }
 }

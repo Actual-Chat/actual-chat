@@ -7,7 +7,7 @@ namespace ActualChat.Chat.Db;
 
 [Table("Chats")]
 [Index(nameof(CreatedAt))]
-[Index(nameof(Version), nameof(Id))]
+[Index(nameof(Version), nameof(Id), nameof(IsPlaceRootChat))]
 public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;
@@ -41,6 +41,8 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         get => _createdAt.DefaultKind(DateTimeKind.Utc);
         set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
     }
+
+    public bool IsPlaceRootChat { get; set; }
 
     public Chat ToModel()
         => new(new ChatId(Id), Version) {
@@ -87,5 +89,6 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             : model.SystemTag.Value;
         Kind = model.Kind;
         MediaId = model.MediaId;
+        IsPlaceRootChat = model.Id.IsPlaceRootChat;
     }
 }

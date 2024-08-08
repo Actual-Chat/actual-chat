@@ -38,8 +38,10 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices)
         //     .AddHostedService(c => c.GetRequiredService<TextEntryIndexer>());
         services.AddSingleton<UserContactIndexer>()
             .AddHostedService(c => c.GetRequiredService<UserContactIndexer>());
-        services.AddSingleton<ChatContactIndexer>()
-            .AddHostedService(c => c.GetRequiredService<ChatContactIndexer>());
+        services.AddSingleton<GroupChatContactIndexer>()
+            .AddHostedService(c => c.GetRequiredService<GroupChatContactIndexer>());
+        services.AddSingleton<PlaceContactIndexer>()
+            .AddHostedService(c => c.GetRequiredService<PlaceContactIndexer>());
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

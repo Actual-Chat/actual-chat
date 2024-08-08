@@ -37,7 +37,7 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         // act
         var updates = IndexedContactUtil.BuildChatContacts(places.Values, chats.Values.ToArray());
         await _commander.Call(new SearchBackend_ChatContactBulkIndex(updates, []));
-        await _commander.Call(new SearchBackend_Refresh(refreshChats: true));
+        await _commander.Call(new SearchBackend_Refresh(refreshGroups: true));
         await _tester.SignIn(bob);
 
         // assert
@@ -75,7 +75,7 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         // act
         var updates = IndexedContactUtil.BuildChatContacts(places.Values, chats.Values.ToArray());
         await _commander.Call(new SearchBackend_ChatContactBulkIndex(updates, []));
-        await _commander.Call(new SearchBackend_Refresh(refreshChats: true));
+        await _commander.Call(new SearchBackend_Refresh(refreshGroups: true));
         await _tester.SignIn(bob);
 
         // assert
@@ -109,7 +109,7 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         // act
         var updates = IndexedContactUtil.BuildChatContacts(places.Values, chats.Values.ToArray());
         await _commander.Call(new SearchBackend_ChatContactBulkIndex(updates, []));
-        await _commander.Call(new SearchBackend_Refresh(refreshChats: true));
+        await _commander.Call(new SearchBackend_Refresh(refreshGroups: true));
         await _tester.SignIn(bob);
 
         // assert
@@ -119,8 +119,8 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         // act
         var updatedChat = chats.JoinedPrivatePlace1JoinedPrivateChat1() with { Title = "bbb" };
         updates = IndexedContactUtil.BuildChatContacts(places.Values, updatedChat);
-        await _commander.Call(new SearchBackend_ChatContactBulkIndex(updates, ApiArray<IndexedChatContact>.Empty));
-        await _commander.Call(new SearchBackend_Refresh(refreshChats: true));
+        await _commander.Call(new SearchBackend_ChatContactBulkIndex(updates, ApiArray<IndexedGroupChatContact>.Empty));
+        await _commander.Call(new SearchBackend_Refresh(refreshGroups: true));
 
         // assert
         searchResults = await _tester.FindGroups("chat", true);
@@ -148,7 +148,7 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         // act
         var updates = IndexedContactUtil.BuildChatContacts(places.Values, chats.Values.ToArray());
         await _commander.Call(new SearchBackend_ChatContactBulkIndex(updates, []));
-        await _commander.Call(new SearchBackend_Refresh(refreshChats: true));
+        await _commander.Call(new SearchBackend_Refresh(refreshGroups: true));
         await _tester.SignIn(bob);
 
         // assert
@@ -158,7 +158,7 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         // act
         var deleted = IndexedContactUtil.BuildChatContacts(places.Values, chats.JoinedPrivatePlace1JoinedPrivateChat1());
         await _commander.Call(new SearchBackend_ChatContactBulkIndex([], deleted));
-        await _commander.Call(new SearchBackend_Refresh(refreshChats: true));
+        await _commander.Call(new SearchBackend_Refresh(refreshGroups: true));
 
         // assert
         searchResults = await _tester.FindGroups("chat", true);

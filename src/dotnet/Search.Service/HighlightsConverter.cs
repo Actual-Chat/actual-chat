@@ -18,7 +18,16 @@ public static class HighlightsConverter
         return ToSearchMatch(hit.Source.FullName, highlight, hit.Score ?? 0.1);
     }
 
-    public static SearchMatch GetSearchMatch(this IHit<IndexedChatContact> hit)
+    public static SearchMatch GetSearchMatch(this IHit<IndexedGroupChatContact> hit)
+    {
+        var highlight = hit.Highlight[TitleField].FirstOrDefault(x => !x.IsNullOrEmpty());
+        if (highlight.IsNullOrEmpty())
+            return SearchMatch.New(hit.Source.Title);
+
+        return ToSearchMatch(hit.Source.Title, highlight, hit.Score ?? 0.1);
+    }
+
+    public static SearchMatch GetSearchMatch(this IHit<IndexedPlaceContact> hit)
     {
         var highlight = hit.Highlight[TitleField].FirstOrDefault(x => !x.IsNullOrEmpty());
         if (highlight.IsNullOrEmpty())

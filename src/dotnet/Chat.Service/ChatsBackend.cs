@@ -474,32 +474,26 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     [SuppressMessage("Usage", "MA0074:Avoid implicit culture-sensitive methods")]
     [SuppressMessage("Globalization", "CA1309:Use ordinal string comparison")]
     [SuppressMessage("Globalization", "CA1310:Specify StringComparison for correctness")]
-    public async Task<ApiArray<Chat>> ListChanged(
-        bool includePeerChats,
-        long minVersion,
-        long maxVersion,
-        ChatId lastId,
-        int limit,
-        CancellationToken cancellationToken)
+    public async Task<ApiArray<Chat>> ListChanged(ChangedChatsQuery query, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var chatsQuery = lastId.IsNone
-            ? dbContext.Chats.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
-            : dbContext.Chats.Where(x => (x.Version > minVersion && x.Version <= maxVersion)
-                || (x.Version==minVersion && string.Compare(x.Id, lastId.Value) > 0));
+        var chatsQuery = query.LastId.IsNone
+            ? dbContext.Chats.Where(x => x.Version >= query.MinVersion && x.Version <= query.MaxVersion)
+            : dbContext.Chats.Where(x => (x.Version > query.MinVersion && x.Version <= query.MaxVersion)
+                || (x.Version == query.MinVersion && string.Compare(x.Id, query.LastId.Value) > 0));
 
-        return await chatsQuery
+        var dbChats = await chatsQuery
             .Where(x => !Constants.Chat.SystemChatSids.Contains(x.Id))
-            .WhereIf(x => !x.Id.StartsWith(PeerChatId.IdPrefix), !includePeerChats)
+            .WhereIf(x => !x.Id.StartsWith(PeerChatId.IdPrefix), query.ExcludePeerChats)
+            .WhereIf(x => !x.IsPlaceRootChat, query.ExcludePlaceRootChats)
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
-            .Take(limit)
-            .AsAsyncEnumerable()
-            .Select(x => x.ToModel())
-            .ToApiArrayAsync(cancellationToken)
-            .ConfigureAwait(false);
+            .Take(query.Limit)
+            .ToListAsync(cancellationToken);
+
+        return dbChats.Select(x => x.ToModel()).ToApiArray();
     }
 
     // Not a [ComputeMethod]!

@@ -2,7 +2,7 @@ using ActualChat.Chat;
 
 namespace ActualChat.Search;
 
-public sealed class ChatContactIndexer(IServiceProvider services) : ContactIndexer(services)
+public sealed class GroupChatContactIndexer(IServiceProvider services) : ContactIndexer(services)
 {
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private IPlacesBackend PlacesBackend { get; } = services.GetRequiredService<IPlacesBackend>();
@@ -11,7 +11,7 @@ public sealed class ChatContactIndexer(IServiceProvider services) : ContactIndex
     {
         var hasChanges = await SyncChanges(cancellationToken).ConfigureAwait(false);
         if (hasChanges) {
-            var cmd = new SearchBackend_Refresh(false, hasChanges);
+            var cmd = new SearchBackend_Refresh(refreshGroups: hasChanges);
             await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -20,8 +20,7 @@ public sealed class ChatContactIndexer(IServiceProvider services) : ContactIndex
     {
         var state = await ContactIndexStatesBackend.GetForChats(cancellationToken).ConfigureAwait(false);
         var batches = ChatsBackend
-            .BatchChanged(
-                false,
+            .BatchChangedGroups(
                 state.LastUpdatedVersion,
                 MaxVersion,
                 state.LastUpdatedChatId,

@@ -34,6 +34,10 @@ public interface ISearchBackend : IComputeService, IBackendService
     Task OnUserContactBulkIndex(SearchBackend_UserContactBulkIndex command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnChatContactBulkIndex(SearchBackend_ChatContactBulkIndex command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnPlaceContactBulkIndex(SearchBackend_PlaceContactBulkIndex command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnStartPlaceContactIndexing(SearchBackend_StartPlaceContactIndexing command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task OnRefresh(SearchBackend_Refresh command, CancellationToken cancellationToken);
@@ -50,6 +54,8 @@ public interface ISearchBackend : IComputeService, IBackendService
     Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnPlaceChangedEvent(PlaceChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -78,8 +84,19 @@ public sealed partial record SearchBackend_UserContactBulkIndex(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record SearchBackend_ChatContactBulkIndex(
-    [property: DataMember, MemoryPackOrder(0)] ApiArray<IndexedChatContact> Updated,
-    [property: DataMember, MemoryPackOrder(1)] ApiArray<IndexedChatContact> Deleted
+    [property: DataMember, MemoryPackOrder(0)] ApiArray<IndexedGroupChatContact> Updated,
+    [property: DataMember, MemoryPackOrder(1)] ApiArray<IndexedGroupChatContact> Deleted
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // Review
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public Unit ShardKey => Unit.Default;
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record SearchBackend_PlaceContactBulkIndex(
+    [property: DataMember, MemoryPackOrder(0)] ApiArray<IndexedPlaceContact> Updated,
+    [property: DataMember, MemoryPackOrder(1)] ApiArray<IndexedPlaceContact> Deleted
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // Review
 {
     [IgnoreDataMember, MemoryPackIgnore]
@@ -105,23 +122,35 @@ public sealed partial record SearchBackend_StartChatContactIndexing
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record SearchBackend_StartPlaceContactIndexing
+    : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // NOTE(AY): Will execute on a single backend now!
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public Unit ShardKey => Unit.Default;
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor]
 // ReSharper disable once InconsistentNaming
 public sealed partial record SearchBackend_Refresh(
     [property: DataMember, MemoryPackOrder(0)] ApiArray<ChatId> ChatIds,
     [property: DataMember, MemoryPackOrder(1)] bool RefreshUsers,
-    [property: DataMember, MemoryPackOrder(2)] bool RefreshChats
+    [property: DataMember, MemoryPackOrder(2)] bool RefreshGroups,
+    [property: DataMember, MemoryPackOrder(3)] bool RefreshPlaces
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId> // Review
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => !ChatIds.IsEmpty ? ChatIds[0] : default;
 
-    public SearchBackend_Refresh(params ChatId[] chatIds) : this(chatIds.ToApiArray(), false, false) { }
+    public SearchBackend_Refresh(params ChatId[] chatIds) : this(chatIds.ToApiArray(), false, false, false) { }
 
     public SearchBackend_Refresh(
         bool refreshUsers = false,
-        bool refreshChats = false) : this(ApiArray<ChatId>.Empty,
+        bool refreshGroups = false,
+        bool refreshPlaces = false) : this([],
         refreshUsers,
-        refreshChats)
+        refreshGroups,
+        refreshPlaces)
     { }
 }
