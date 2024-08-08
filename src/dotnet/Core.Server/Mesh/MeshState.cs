@@ -39,7 +39,7 @@ public sealed partial class MeshState
         NodeByRef = Nodes.ToDictionary(x => x.Ref, x => x);
         NodesByRole = Roles.Select(r => new KeyValuePair<HostRole, ImmutableArray<MeshNode>>(
             r,
-            Nodes.Where(n => n.Roles.Contains(r)).ToImmutableArray())
+            [..Nodes.Where(n => n.Roles.Contains(r))])
         ).ToDictionary();
     }
 

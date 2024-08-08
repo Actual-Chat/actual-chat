@@ -29,7 +29,8 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         if (mustSetUserLanguageSettings)
             await accountSettings.SetUserLanguageSettings(new () { Primary = Languages.Main, }, CancellationToken.None);
 
-        var streamId = new StreamId(services.MeshNode().Ref, Generate.Option);
+        var ownNode = services.MeshWatcher().OwnNode;
+        var streamId = new StreamId(ownNode.Ref, Generate.Option);
         var audioRecord = new AudioRecord(
             streamId, session, Constants.Chat.DefaultChatId,
             CpuClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
@@ -74,7 +75,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await accountSettings.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
 
-        var streamId = new StreamId(services.MeshNode().Ref, Generate.Option);
+        var streamId = new StreamId(services.MeshWatcher().OwnNode.Ref, Generate.Option);
         var audioRecord = new AudioRecord(
             streamId, session, chat.Id,
             SystemClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
@@ -124,7 +125,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await accountSettings.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
 
-        var streamId = new StreamId(services.MeshNode().Ref, Generate.Option);
+        var streamId = new StreamId(services.MeshWatcher().OwnNode.Ref, Generate.Option);
         var audioRecord = new AudioRecord(
             streamId, session, chat.Id,
             SystemClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
@@ -192,7 +193,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await accountSettings.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
 
-        var streamId = new StreamId(services.MeshNode().Ref, Generate.Option);
+        var streamId = new StreamId(services.MeshWatcher().OwnNode.Ref, Generate.Option);
         var audioRecord = new AudioRecord(
             streamId, session, chat.Id,
             SystemClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
@@ -258,7 +259,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
 
         using var cts = new CancellationTokenSource();
 
-        var streamId = new StreamId(services.MeshNode().Ref, Generate.Option);
+        var streamId = new StreamId(services.MeshWatcher().OwnNode.Ref, Generate.Option);
         var audioRecord = new AudioRecord(
             streamId, session, chat.Id,
             SystemClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
@@ -300,7 +301,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
 
         using var cts = new CancellationTokenSource();
 
-        var streamId = new StreamId(services.MeshNode().Ref, Generate.Option);
+        var streamId = new StreamId(services.MeshWatcher().OwnNode.Ref, Generate.Option);
         var audioRecord = new AudioRecord(
             streamId, session, chat.Id,
             SystemClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);

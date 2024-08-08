@@ -43,23 +43,25 @@ public class MeshWatcherTest(ITestOutputHelper @out)
     {
         using var h1 = await NewAppHost();
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
+        var c1 = h1.Services.GetRequiredService<RpcMeshPeerRefCache>();
 
         using var h2 = await NewAppHost();
         var w2 = h2.Services.GetRequiredService<MeshWatcher>();
+        var c2 = h2.Services.GetRequiredService<RpcMeshPeerRefCache>();
 
-        var w1w2 = w1.GetPeerRef(w2.MeshNode.Ref).Require();
-        var w2w1 = w2.GetPeerRef(w1.MeshNode.Ref).Require();
+        var w1w2 = c1.Get(w2.OwnNode.Ref).Require();
+        var w2w1 = c2.Get(w1.OwnNode.Ref).Require();
 
         _ = w2.DisposeAsync();
 
-        var t1a = Task.Delay(w1.NodeTimeout * 0.5, w1w2.StopToken);
-        var t1b = Task.Delay(w1.NodeTimeout * 1.5, w1w2.StopToken);
-        var t2 = Task.Delay(TimeSpan.FromSeconds(1), w2w1.StopToken);
+        var t1a = Task.Delay(w1.NodeTimeout * 0.5, w1w2.RerouteToken);
+        var t1b = Task.Delay(w1.NodeTimeout * 1.5, w1w2.RerouteToken);
+        var t2 = Task.Delay(TimeSpan.FromSeconds(1), w2w1.RerouteToken);
         var r1a = await t1a.ResultAwait();
         var r1b = await t1b.ResultAwait();
         var r2 = await t2.ResultAwait();
         r1a.Error.Should().BeNull();
         (r1b.Error is OperationCanceledException).Should().BeTrue();
-        (r2.Error is OperationCanceledException).Should().BeTrue();
+        r2.Error.Should().BeNull();
     }
 }

@@ -37,8 +37,6 @@ public readonly struct RpcHostBuilder
 
         if (Services.HasService<RpcWebSocketServer>())
             throw StandardError.Internal("Something is off: RpcWebSocketServer is already added.");
-        if (Services.HasService<RpcClient>())
-            throw StandardError.Internal("Something is off: RpcClient is already added.");
 
         // Common services
         RpcServiceRegistry.ConstructionDumpLogLevel = LogLevel.Information;
@@ -260,16 +258,19 @@ public readonly struct RpcHostBuilder
 
     private void AddRpcClient()
     {
+        Rpc.AddWebSocketClient();
+
+        // Additional services
+        Services.AddSingleton(c => new RpcMeshPeerRefCache(c));
+        Services.AddSingleton(c => new RpcMeshRefResolvers(c));
+
         // Replace RpcCallRouter
         Services.AddSingleton<RpcCallRouter>(c => c.GetRequiredService<RpcBackendDelegates>().RouteCall);
 
-        // Backend-only RpcClient
-        Services.AddSingleton(_ => RpcWebSocketClient.Options.Default);
-        Services.AddSingleton(c => {
-            var options = c.GetRequiredService<RpcWebSocketClient.Options>();
-            return new RpcBackendWebSocketClient(options, c);
+        // Replace RpcWebSocketClient.Options
+        Services.AddSingleton(c => RpcWebSocketClient.Options.Default with {
+            ConnectionUriResolver = c.GetRequiredService<RpcBackendDelegates>().GetConnectionUri,
         });
-        Services.AddAlias<RpcClient, RpcBackendWebSocketClient>();
 
         // Replace RpcClientPeerReconnectDelayer
         Services.AddSingleton(c => new RpcClientPeerReconnectDelayer(c) { Delays = RetryDelaySeq.Exp(1, 10) });
