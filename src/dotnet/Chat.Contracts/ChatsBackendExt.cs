@@ -140,7 +140,6 @@ public static class ChatsBackendExt
 
     public static async IAsyncEnumerable<ApiArray<Chat>> BatchChanged(
         this IChatsBackend chatsBackend,
-        bool includePeerChats,
         long minVersion,
         long maxVersion,
         ChatId lastId,
@@ -148,7 +147,42 @@ public static class ChatsBackendExt
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested) {
-            var chats = await chatsBackend.ListChanged(includePeerChats, minVersion, maxVersion, lastId, batchSize, cancellationToken)
+            var chats = await chatsBackend.ListChanged(new ChangedChatsQuery {
+                    MinVersion = minVersion,
+                    MaxVersion = maxVersion,
+                    LastId = lastId,
+                    Limit = batchSize,
+                }, cancellationToken)
+                .ConfigureAwait(false);
+            if (chats.Count == 0)
+                yield break;
+
+            yield return chats;
+
+            var last = chats[^1];
+            lastId = last.Id;
+            minVersion = last.Version;
+        }
+    }
+
+    public static async IAsyncEnumerable<ApiArray<Chat>> BatchChangedGroups(
+        this IChatsBackend chatsBackend,
+        long minVersion,
+        long maxVersion,
+        ChatId lastId,
+        int batchSize,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested) {
+            var chats = await chatsBackend.ListChanged(new ChangedChatsQuery {
+                        MinVersion = minVersion,
+                        MaxVersion = maxVersion,
+                        LastId = lastId,
+                        Limit = batchSize,
+                        ExcludePeerChats = true,
+                        ExcludePlaceRootChats = true,
+                    },
+                    cancellationToken)
                 .ConfigureAwait(false);
             if (chats.Count == 0)
                 yield break;

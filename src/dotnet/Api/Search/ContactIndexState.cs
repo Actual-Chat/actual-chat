@@ -21,6 +21,8 @@ public sealed partial record ContactIndexState(
     public UserId LastUpdatedUserId => new (LastUpdatedId, ParseOrNone.Option);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public AuthorId LastUpdatedPlaceAuthorId => new (LastUpdatedId, ParseOrNone.Option);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public PlaceId LastUpdatedPlaceId => new (LastUpdatedId, ParseOrNone.Option);
 
     private bool PrintMembers(StringBuilder builder)
     {

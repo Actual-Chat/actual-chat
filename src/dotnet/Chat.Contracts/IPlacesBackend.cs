@@ -8,6 +8,15 @@ public interface IPlacesBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Place?> Get(PlaceId placeId, CancellationToken cancellationToken);
 
+    // Non-compute methods
+
+    Task<ApiArray<Place>> ListChanged(
+        long minVersion,
+        long maxVersion,
+        PlaceId lastId,
+        int limit,
+        CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]

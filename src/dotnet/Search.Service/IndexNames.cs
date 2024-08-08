@@ -6,7 +6,8 @@ public sealed class IndexNames
 {
     public const string EntryIndexVersion = "v2";
     public const string UserIndexVersion = "v4";
-    public const string ChatIndexVersion = "v3";
+    public const string ChatIndexVersion = "v4";
+    public const string PlaceIndexVersion = "v1";
 
     public string IndexPrefix { get; init; } = ""; // for testing purpose only
     private string CommonIndexNamePrefix => string.IsNullOrEmpty(IndexPrefix) ? "sm-" : $"sm-{IndexPrefix}-"; // sm == "Search Module"
@@ -16,7 +17,8 @@ public sealed class IndexNames
     public string EntryIndexTemplateName => EntryIndexNamePrefix.Trim('-');
     public string EntryIndexPattern => $"{EntryIndexNamePrefix}*";
     public string UserIndexName => $"{CommonIndexNamePrefix}users-{UserIndexVersion}";
-    public string ChatIndexName => $"{CommonIndexNamePrefix}chats-{ChatIndexVersion}";
+    public string GroupIndexName => $"{CommonIndexNamePrefix}chats-{ChatIndexVersion}";
+    public string PlaceIndexName => $"{CommonIndexNamePrefix}places-{PlaceIndexVersion}";
 
     public IndexName GetIndexName(Chat.Chat chat)
         => GetIndexName(chat.Id, chat.IsPublicPlaceChat());

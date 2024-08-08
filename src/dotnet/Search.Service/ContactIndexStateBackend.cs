@@ -22,6 +22,10 @@ public class ContactIndexStateBackend(IServiceProvider services) : DbServiceBase
     public virtual Task<ContactIndexState> GetForChats(CancellationToken cancellationToken)
         => Get(DbContactIndexState.ChatContactIndexStateId, cancellationToken);
 
+    // [ComputeMethod]
+    public virtual Task<ContactIndexState> GetForPlaces(CancellationToken cancellationToken)
+        => Get(DbContactIndexState.PlaceContactIndexStateId, cancellationToken);
+
     // [CommandHandler]
     public virtual async Task<ContactIndexState> OnChange(
         ContactIndexStatesBackend_Change command,

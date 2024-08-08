@@ -108,7 +108,10 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
             EnsureContactIndex(IndexNames.UserIndexName,
                 ConfigureUserContactIndex,
                 cancellationToken),
-            EnsureContactIndex(IndexNames.ChatIndexName,
+            EnsureContactIndex(IndexNames.GroupIndexName,
+                ConfigureChatContactIndex,
+                cancellationToken),
+            EnsureContactIndex(IndexNames.PlaceIndexName,
                 ConfigureChatContactIndex,
                 cancellationToken));
 
@@ -153,7 +156,7 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
             .Settings(s => s.RefreshInterval(Settings.RefreshInterval));
 
     private ICreateIndexRequest ConfigureChatContactIndex(CreateIndexDescriptor index)
-        => index.Map<IndexedChatContact>(m
+        => index.Map<IndexedGroupChatContact>(m
             => m.Properties(pp
                 => pp.Keyword(p => p.Name(x => x.Id))
                     .Keyword(p => p.Name(x => x.PlaceId))

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat.Db;
 using ActualChat.Media;
 using ActualLab.Fusion.EntityFramework;
@@ -32,6 +33,35 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
             place = place with { Background = background };
         }
         return place;
+    }
+
+    // TODO: since this method does not return Media, we need Place and PlaceFull
+    // Not a [ComputeMethod]!
+    [SuppressMessage("Globalization", "CA1309:Use ordinal string comparison")]
+    [SuppressMessage("Globalization", "CA1310:Specify StringComparison for correctness")]
+    public async Task<ApiArray<Place>> ListChanged(
+        long minVersion,
+        long maxVersion,
+        PlaceId lastId,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var chatsQuery = lastId.IsNone
+            ? dbContext.Places.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
+            : dbContext.Places.Where(x => (x.Version > minVersion && x.Version <= maxVersion)
+                || (x.Version==minVersion && string.Compare(x.Id, lastId.Value) > 0));
+
+        return await chatsQuery
+            .OrderBy(x => x.Version)
+            .ThenBy(x => x.Id)
+            .Take(limit)
+            .AsAsyncEnumerable()
+            .Select(x => x.ToModel())
+            .ToApiArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // [CommandHandler]
