@@ -617,8 +617,8 @@ export class VirtualList {
         let spacerSize = this._defaultSpacerSize;
         let endSpacerSize = this._defaultSpacerSize;
         if (rs.beforeCount !== null && rs.afterCount !== null) {
-            spacerSize = rs.beforeCount * this._statistics.itemSize;
-            endSpacerSize = rs.afterCount * this._statistics.itemSize;
+            spacerSize = rs.beforeCount * Math.floor(this._statistics.itemSize);
+            endSpacerSize = rs.afterCount * Math.floor(this._statistics.itemSize);
         }
         else if (!rs.keyRange?.start) {
             if (rs.renderIndex <= 2) {
@@ -1345,7 +1345,9 @@ export class VirtualList {
     private getDataQuery(): VirtualListDataQuery {
         const rs = this._renderState;
         const itemSize = this._statistics.itemSize;
-        const responseFulfillmentRatio = this._statistics.responseFulfillmentRatio;
+        const responseFulfillmentRatio = rs.beforeCount !== null && rs.afterCount !== null
+            ? 1 // We know count precisely 
+            : this._statistics.responseFulfillmentRatio;
         const viewport = this._viewport;
         const alreadyLoaded = this._itemRange;
         if (!viewport || !alreadyLoaded)
@@ -1355,6 +1357,8 @@ export class VirtualList {
             void this.measureItems();
             return this._lastQuery;
         }
+        if (rs.hasVeryFirstItem && rs.hasVeryLastItem)
+            return this._lastQuery; // We have already loaded all data
 
         const viewportSize = viewport.size;
         const lastQuerySide = this._lastQuery.moveRange.size === 0
@@ -1385,7 +1389,7 @@ export class VirtualList {
             case 'end':
                 // check whether we need to continue loading from the end
                 if (alreadyLoadedTillEnd < loadZoneTrigger) {
-                    if (!rs.hasVeryLastItem) {
+                    if (!rs.hasVeryLastItem && (rs.afterCount === null || rs.afterCount > 5)) {
                         loadEnd = viewport.end + loadZoneSize * 3;
                         loadStart = viewport.start - viewportSize / 2;
                     }
@@ -1401,7 +1405,7 @@ export class VirtualList {
             case 'start':
                 // check whether we need to continue loading from the start
                 if (alreadyLoadedFromStart < loadZoneTrigger) {
-                    if (!rs.hasVeryFirstItem) {
+                    if (!rs.hasVeryFirstItem && (rs.beforeCount === null || rs.beforeCount > 5)) {
                         loadStart = viewport.start - loadZoneSize * 3;
                         loadEnd = viewport.end + viewportSize / 2;
                     }

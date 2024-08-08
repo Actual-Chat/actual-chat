@@ -7,6 +7,9 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
     public static readonly TileStack<int> ChatTileStack = Constants.Chat.ChatTileStack;
     public static readonly int LoadLimit = ChatTileStack.Layers[1].TileSize; // 20
     public static readonly int HalfLoadLimit = LoadLimit / 2;
+    public static readonly int TileSize = ChatTileStack.FirstLayer.TileSize;
+
+    private volatile VirtualListItemVisibility? _visibility;
 
     public async Task<VirtualListData<ChatListItemModel>> GetData(
         VirtualListDataQuery query,
@@ -22,33 +25,31 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
 
         var firstItem = renderedData.FirstItem;
         var lastItem = renderedData.LastItem;
-        var range = (!query.IsNone, firstItem != null) switch {
+        var isFirstRender = firstItem == null;
+        var hasQuery = !query.IsNone;
+        var visibleIndices = _visibility?.VisibleKeys.Select(int.Parse).ToList() ?? [];
+        var minVisibleIndex = visibleIndices.DefaultIfEmpty(firstItem?.Position ?? 0).Min();
+        var maxVisibleIndex = visibleIndices.DefaultIfEmpty(lastItem?.Position ?? 0).Max();
+        var range = (hasQuery, isFirstRender) switch {
             // No query, no data -> initial load
-            (false, false) => new Range<int>(0, LoadLimit),
-            // No query, but there is old data + we're close to the end
-            // KEEP THIS case, otherwise virtual list will grow indefinitely!
-            (false, true) when Math.Abs(lastItem!.Position - chatCount) <= ChatTileStack.FirstLayer.TileSize
-                => new Range<int>(
-                    renderedData.GetNthItem(LoadLimit, true)?.Position ?? firstItem!.Position,
-                    chatCount),
-            // No query, but there is old data -> retaining it
-            (false, true) => new Range<int>(firstItem!.Position, lastItem.Position),
+            (false, true) => new Range<int>(
+                selectedChatIndex - HalfLoadLimit,
+                selectedChatIndex + HalfLoadLimit),
+            // No query, but there is old data -> retaining visual position
+            (false, false) => new Range<int>(minVisibleIndex - TileSize, maxVisibleIndex + TileSize),
             // Query is there, so data is irrelevant
             _ => query.KeyRange.ToIntRange().Move(query.MoveRange),
         };
-        if (query.IsNone && !range.Contains(selectedChatIndex)) {
-            // move range to the selected chat  if there is no query
-            var scrollAnchorRange = new Range<int>(
-                selectedChatIndex - HalfLoadLimit,
-                selectedChatIndex + HalfLoadLimit);
-            range = scrollAnchorRange.Overlaps(range)
-                ? range.MinMaxWith(scrollAnchorRange)
-                : scrollAnchorRange;
-        }
 
+        // Fit to existing chat count
         range = range
             .IntersectWith(new Range<int>(0, chatCount))
             .ExpandToTiles(ChatTileStack.FirstLayer);
+        // Expand and fit again if too small
+        if (range.Size() < LoadLimit)
+            range = range.Expand(TileSize)
+                .IntersectWith(new Range<int>(0, chatCount))
+                .ExpandToTiles(ChatTileStack.FirstLayer);
         var indexTiles = ChatTileStack.FirstLayer.GetCoveringTiles(range);
         var resultItems = new List<ChatListItemModel>();
         foreach (var indexTile in indexTiles) {
@@ -60,8 +61,8 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
         }
 
         var scrollToKey = null as string;
-        if (query.IsNone) {
-            // scroll to the selected chat if there is no query
+        if (isFirstRender) {
+            // scroll to the selected chat on very first render
             var selectedItem = resultItems.FirstOrDefault(it => it.Chat.Id == selectedChatId);
             if (selectedItem != null)
                 scrollToKey = selectedItem.Key;
@@ -77,10 +78,12 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
             resultTiles.Add(resultTile);
 
         // Console.WriteLine(Computed.Current.DebugDump());
+        var firstItemPosition = resultItems.FirstOrDefault()?.Position ?? 0;
+        var lastItemPosition = resultItems.LastOrDefault()?.Position ?? chatCount;
         var result = new VirtualListData<ChatListItemModel>(resultTiles) {
             Index = renderedData.Index + 1,
-            BeforeCount = range.Start,
-            AfterCount = (chatCount - range.End).Clamp(0, chatCount),
+            BeforeCount = firstItemPosition,
+            AfterCount = (chatCount - lastItemPosition - 1).Clamp(0, chatCount),
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
             ScrollToKey = scrollToKey,
@@ -94,4 +97,9 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
 
     public void Dispose()
     { }
+
+    // Private methods
+
+    private void OnItemVisibilityChanged(VirtualListItemVisibility visibility)
+        => _visibility = visibility;
 }
