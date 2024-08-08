@@ -3,7 +3,7 @@
 @{
     var m = State.Value;
     var author = m.Author;
-    var isOwn = m.IsOwn;
+    var showAsYou = m.IsOwn && ShowAsYou;
     var onClick = ShowDetailsOnClick
         ? EventCallback.Factory.Create<MouseEventArgs>(this, _ => AuthorUI.Show(author.Id))
         : Click;
@@ -14,16 +14,14 @@
         Avatar="@author.Avatar"
         Class="@Class"
         IsAnonymous="@author.IsAnonymous"
-        ShowOwnAsYou="@ShowOwnAsYou"
-        IsOwn="@isOwn"
+        ShowAsYou="@showAsYou"
         Click="@onClick"/>
 }
 else {
     <AvatarName
         Avatar="@author.Avatar"
         IsAnonymous="@author.IsAnonymous"
-        ShowOwnAsYou="@ShowOwnAsYou"
-        IsOwn="@isOwn"
+        ShowAsYou="@showAsYou"
         Class="@Class"/>
 }
 
@@ -32,7 +30,7 @@ else {
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool ShowDetailsOnClick { get; set; } = true;
-    [Parameter] public bool ShowOwnAsYou { get; set; }
+    [Parameter] public bool ShowAsYou { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
     protected override void OnParametersSet() {
