@@ -2,7 +2,7 @@
 @using ActualChat.Users
 @inherits FusionComponentBase
 @{
-    var name = ShowOwnAsYou && IsOwn ? "You" : Avatar.Name;
+    var name = ShowAsYou ? "You" : Avatar.Name;
 }
 
 @if (ReferenceEquals(Avatar, Avatar.Loading)) {
@@ -27,6 +27,5 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
     [Parameter] public bool IsAnonymous { get; set; }
-    [Parameter] public bool ShowOwnAsYou { get; set; }
-    [Parameter] public bool IsOwn { get; set; }
+    [Parameter] public bool ShowAsYou { get; set; }
 }
