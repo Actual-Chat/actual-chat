@@ -72,7 +72,7 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
         _transcriptStreams.Dispose();
     }
 
-    public async Task<RpcStream<byte[]>?> GetAudio(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+    public virtual async Task<RpcStream<byte[]>?> GetAudio(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
         var stream = await _audioStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
         if (stream == null)
@@ -82,7 +82,7 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
         return RpcStream.New(stream);
     }
 
-    public async Task<RpcStream<TranscriptDiff>?> GetTranscript(StreamId streamId, CancellationToken cancellationToken)
+    public virtual async Task<RpcStream<TranscriptDiff>?> GetTranscript(StreamId streamId, CancellationToken cancellationToken)
     {
         var stream = await _transcriptStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
         return stream == null ? null

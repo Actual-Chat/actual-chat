@@ -14,7 +14,7 @@ public partial class StreamingBackend
     private static partial Regex EmptyRegexFactory();
     private static readonly Regex EmptyRegex = EmptyRegexFactory();
 
-    public async Task ProcessAudio(
+    public virtual async Task ProcessAudio(
         AudioRecord record,
         int preSkipFrames,
         RpcStream<AudioFrame> frames,
