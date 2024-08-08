@@ -58,6 +58,9 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
         if (target.Node is not { } node)
             return null; // This causes RPC connection to hang waiting for RpcPeerRef.RerouteToken cancellation
 
+        if (!target.ShardRef.IsNone && meshPeerRef.IsRerouted)
+            throw RpcReconnectFailedException.ReconnectFailed(); // Peer transfers its calls to the new one in this case
+
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append("ws://");
         sb.Append(node.Endpoint);

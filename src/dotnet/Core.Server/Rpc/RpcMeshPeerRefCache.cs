@@ -6,6 +6,7 @@ public sealed class RpcMeshPeerRefCache
 {
     private readonly ConcurrentDictionary<MeshRef, RpcMeshPeerRef> _peerRefs = new();
     private readonly object _lock = new ();
+    private ILogger Log { get; }
 
     public MeshWatcher MeshWatcher { get; }
     public MeshNode OwnNode { get; }
@@ -13,6 +14,7 @@ public sealed class RpcMeshPeerRefCache
 
     public RpcMeshPeerRefCache(IServiceProvider services)
     {
+        Log = services.LogFor(GetType());
         MeshWatcher = services.MeshWatcher();
         OwnNode = MeshWatcher.OwnNode;
     }
@@ -46,7 +48,7 @@ public sealed class RpcMeshPeerRefCache
     {
         var state = MeshWatcher.State.Value;
         var target = new MeshRefTarget(meshRef, state, OwnNode);
-        var peerRef = new RpcMeshPeerRef(target, oldPeerRef?.Version ?? 0);
+        var peerRef = new RpcMeshPeerRef(target, (oldPeerRef?.Version ?? 0) + 1);
         _ = MarkRerouted(peerRef, MeshWatcher.StopToken);
         return peerRef;
     }
@@ -66,6 +68,7 @@ public sealed class RpcMeshPeerRefCache
 
             // The node is somehow back, so we'll rinse and repeat
         }
+        Log.LogWarning("MarkRerouted: {RpcPeerRef}", peerRef);
         peerRef.MarkRerouted();
     }
 }
