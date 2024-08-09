@@ -158,7 +158,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
             .Take(limit)
-            .ToListAsync(cancellationToken).ConfigureAwait(false);
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
         return dbAuthors.Select(x => x.ToModel()).ToApiArray();
     }
 
