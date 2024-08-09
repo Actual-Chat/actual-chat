@@ -4,6 +4,7 @@ public partial class ChatUI
 {
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
 
+    // NOTE: Please don't add excessive computed dependencies without real reason - it might rerender whole chat view content
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
     public virtual async Task<VirtualListTile<ChatMessage>> GetTile(
         ChatId chatId,
@@ -12,13 +13,6 @@ public partial class ChatUI
         long lastReadEntryId,
         CancellationToken cancellationToken = default)
     {
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return new VirtualListTile<ChatMessage>(idRange);
-
-        var ownAuthor = chat.Rules.Author;
-        var ownAuthorId = ownAuthor?.Id ?? AuthorId.None;
-
         if (idRange.IsEmptyOrNegative)
             throw new ArgumentOutOfRangeException(nameof(idRange));
 
@@ -59,8 +53,6 @@ public partial class ChatUI
             var isForwardBlockStart = (isBlockStart && isForward) || (isForward && (!isPrevForward || isForwardFromOtherChat));
             var isForwardAuthorBlockStart = isForwardBlockStart || (isForward && isForwardFromOtherAuthor);
             var isEntryUnread = entry.LocalId > lastReadEntryId;
-            var isEntryUnreadByOther = await IsUnreadMessage(entry, ownAuthorId, cancellationToken).ConfigureAwait(false);
-            var isPrevEntryUnreadByOther = prevEntry != null && await IsUnreadMessage(prevEntry, ownAuthorId, cancellationToken).ConfigureAwait(false);
             var isAudio = entry.AudioEntryId != null;
             var shouldAddToResult = idRange.Contains(entry.LocalId);
             var flags = default(ChatMessageFlags);
@@ -74,29 +66,40 @@ public partial class ChatUI
                 flags |= ChatMessageFlags.ForwardAuthorStart;
             if (isEntryUnread)
                 flags |= ChatMessageFlags.Unread;
-            if (isEntryUnreadByOther && !isPrevEntryUnreadByOther)
-                flags |= ChatMessageFlags.UnreadBlockStart;
             if (shouldAddToResult) {
                 if (hasVeryFirstItem && !isWelcomeBlockAdded) {
-                    messages.Add(new ChatMessage(entry) {
+                    var welcomeMessage = new ChatMessage(entry) {
                         ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
-                    });
+                        PreviousMessage = prevMessage,
+                    };
+                    messages.Add(welcomeMessage);
+                    prevMessage = welcomeMessage;
                     isWelcomeBlockAdded = true;
                 }
-                if (isEntryUnread && !isPrevUnread)
-                    messages.Add(new ChatMessage(entry) {
+                if (isEntryUnread && !isPrevUnread) {
+                    var newLineMessage = new ChatMessage(entry) {
                         ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
-                    });
-                if (date != prevDate)
-                    messages.Add(new ChatMessage(entry) {
+                        PreviousMessage = prevMessage,
+                    };
+                    messages.Add(newLineMessage);
+                    prevMessage = newLineMessage;
+                }
+                if (date != prevDate) {
+                    var dateLineMessage = new ChatMessage(entry) {
                         ReplacementKind = ChatMessageReplacementKind.DateLine,
                         Date = date,
-                    });
+                        PreviousMessage = prevMessage,
+                    };
+                    messages.Add(dateLineMessage);
+                    prevMessage = dateLineMessage;
+                }
                 var message = new ChatMessage(entry) {
                     Date = date,
                     Flags = flags,
+                    PreviousMessage = prevMessage,
                 };
                 messages.Add(message);
+                prevMessage = message;
             }
             prevEntry = entry;
             prevDate = date;
@@ -115,19 +118,5 @@ public partial class ChatUI
 
         var prevEndsAt = prevEntry.EndsAt ?? prevEntry.BeginsAt;
         return entry.BeginsAt - prevEndsAt >= BlockStartTimeGap;
-    }
-
-    private async Task<bool> IsUnreadMessage(ChatEntry entry, AuthorId ownAuthorId, CancellationToken cancellationToken) {
-        var isOwnMessage = !ownAuthorId.IsNone && ownAuthorId == entry.AuthorId;
-        if (!isOwnMessage)
-            return false;
-
-        var readPositionsStat = await Chats.GetReadPositionsStat(Session, entry.ChatId, cancellationToken).ConfigureAwait(false);
-        var canCalculateHasRead = readPositionsStat.CanCalculateHasReadByAnotherAuthor(entry);
-        if (!canCalculateHasRead)
-            return false;
-
-        var hasBeenRead = readPositionsStat.HasReadByAnotherAuthor(entry, ownAuthorId);
-        return !hasBeenRead;
     }
 }

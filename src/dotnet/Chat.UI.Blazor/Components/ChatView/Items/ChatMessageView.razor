@@ -1,9 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatMessageView.Model>
-@using ActualChat.Hosting
-@using Microsoft.AspNetCore.Components.Rendering
-@using System.Diagnostics.CodeAnalysis
-@using ActualLab.Diagnostics
 @{
     var m = _rendered = State.Value;
     var message = _renderedMessage = Message;
@@ -17,7 +13,7 @@
     var isForward = !entry.ForwardedAuthorId.IsNone;
     var isReplyToOwnMessage = m.RepliedEntry?.AuthorId == entry.AuthorId;
     var isBlockStart = message.Flags.HasFlag(ChatMessageFlags.BlockStart);
-    var isUnreadBlockStart = message.Flags.HasFlag(ChatMessageFlags.UnreadBlockStart);
+    var isUnreadByOthersBlockStart = m.IsUnreadByOthersBlockStart;
     var showAuthor = !isSystem && (isBlockStart || isReply);
     var showForwardHeader = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardStart);
     var showForwardAuthor = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardAuthorStart);
@@ -27,7 +23,7 @@
     var forwardedClass = isForward ? "forwarded-message" : "";
     var forwardedBorderClass = isForward && !showAuthor ? "forwarded-border" : "";
     var marginClass = isBlockStart ? "mt-2" : "";
-    var unreadBlockClass = isUnreadBlockStart ? "unread-block" : "";
+    var unreadBlockClass = isUnreadByOthersBlockStart ? "unread-block" : "";
     var ownMessageClass = m.OwnAuthorId == message.Entry.AuthorId ? "own-message" : "";
     var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";
     var repliedClass = m.IsReplyTarget ? "replied-message" : "";
@@ -94,10 +90,10 @@
                 var timestamp = DateTimeConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
                 <div class="c-empty">
                     <span class="chat-message-timestamp-on-hover">@timestamp</span>
-                    @if (m.IsUnreadMessage) {
+                    @if (m.IsUnreadByOthers) {
                         <ChatMessageSendingStatus
                             Status="@ChatMessageSendingStatus.MessageStatus.Unread"
-                            IsDotOnly="@(!isUnreadBlockStart)"/>
+                            IsDotOnly="@(!isUnreadByOthersBlockStart)"/>
                     }
                 </div>
             }
@@ -107,10 +103,10 @@
                 <div class="c-author-header">
                     <AuthorName AuthorSid="@entry.AuthorId" Class="chat-message-author-name"/>
                     <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
-                    @if (m.IsUnreadMessage) {
+                    @if (m.IsUnreadByOthers) {
                         <ChatMessageSendingStatus
                             Status="@ChatMessageSendingStatus.MessageStatus.Unread"
-                            IsDotOnly="@(!isUnreadBlockStart)"/>
+                            IsDotOnly="@(!isUnreadByOthersBlockStart)"/>
                     }
                     @* <div class="text-02 opacity-20 text-xxs">id=@entry.Id</div> *@
                 </div>
@@ -274,6 +270,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var entry = Entry;
+        var prevEntry = Message.PreviousMessage?.Entry;
         var chatId = ChatId;
         var chatMessage = Message;
         var ownAuthor = OwnAuthor;
@@ -304,7 +301,7 @@
         var forwardedAuthor = await GetForwardedAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
         var forwardedPeerAuthor = await GetForwardedPeerAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
         var selectedChatEntries = await SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
-        var isUnreadMessage = await IsUnreadMessage(entry, ownAuthorId, cancellationToken);
+        var (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(entry, prevEntry, ownAuthorId, cancellationToken);
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,
@@ -316,7 +313,8 @@
             ForwardedChatEntryId = forwardedChatEntryId,
             ForwardedAuthor = forwardedAuthor,
             ForwardedPeerAuthor = forwardedPeerAuthor,
-            IsUnreadMessage = isUnreadMessage,
+            IsUnreadByOthers = isUnreadByOthers,
+            IsUnreadByOthersBlockStart = isUnreadBlockStart,
         };
         return result.Equals(_rendered) ? _rendered! : result;
 
@@ -331,28 +329,29 @@
         }
     }
 
-    private async Task<bool> IsUnreadMessage(ChatEntry entry, AuthorId ownAuthorId, CancellationToken cancellationToken) {
+    private async Task<(bool IsUnread, bool IsUnreadBlockStart)> IsUnreadByOthers(ChatEntry entry, ChatEntry? prevEntry, AuthorId ownAuthorId, CancellationToken cancellationToken) {
         if (_hasBeenRead)
-            return false;
+            return (false, false);
 
         var isOwnMessage = !ownAuthorId.IsNone && ownAuthorId == entry.AuthorId;
         if (!isOwnMessage)
-            return false;
+            return (false, false);
 
         if (!await ChatSupportsUnreadStatus(cancellationToken).ConfigureAwait(false))
-            return false;
+            return (false, false);
 
         var readPositionsStat = await Chats.GetReadPositionsStat(Session, entry.ChatId, cancellationToken).ConfigureAwait(false);
         var canCalculateHasRead = readPositionsStat.CanCalculateHasReadByAnotherAuthor(entry);
         // Do not show `Unread` label for old messages (before the feature was introduced)
         // until we have at least more or less good enough read positions stat.
         if (!canCalculateHasRead)
-            return false;
+            return  (false, false);
 
         var hasBeenRead = readPositionsStat.HasReadByAnotherAuthor(entry, ownAuthorId);
+        var previousHasBeenRead = prevEntry == null || readPositionsStat.HasReadByAnotherAuthor(prevEntry, ownAuthorId);
         if (hasBeenRead)
             _hasBeenRead = true; // Remember that message has been read, so we don't need to recalculate it on next ComputeState cycle.
-        return !hasBeenRead;
+        return (!hasBeenRead, previousHasBeenRead);
     }
 
     private async Task<bool> ChatSupportsUnreadStatus(CancellationToken cancellationToken) {
@@ -491,6 +490,7 @@
         public ChatEntryId ForwardedChatEntryId { get; init; }
         public Author? ForwardedAuthor { get; init; }
         public Author? ForwardedPeerAuthor { get; init; }
-        public bool IsUnreadMessage { get; init; }
+        public bool IsUnreadByOthers { get; init; }
+        public bool IsUnreadByOthersBlockStart { get; init; }
     }
 }
