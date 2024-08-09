@@ -491,7 +491,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
             .Take(query.Limit)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
 
         return dbChats.Select(x => x.ToModel()).ToApiArray();
     }

@@ -36,13 +36,13 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool AllowGuestAuthors { get; set; }
     public bool AllowAnonymousAuthors { get; set; }
     public string? SystemTag { get; set; }
+    public bool IsPlaceRootChat { get; set; }
 
     public DateTime CreatedAt {
         get => _createdAt.DefaultKind(DateTimeKind.Utc);
         set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    public bool IsPlaceRootChat { get; set; }
 
     public Chat ToModel()
         => new(new ChatId(Id), Version) {
