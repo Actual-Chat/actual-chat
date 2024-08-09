@@ -17,6 +17,7 @@
     var isForward = !entry.ForwardedAuthorId.IsNone;
     var isReplyToOwnMessage = m.RepliedEntry?.AuthorId == entry.AuthorId;
     var isBlockStart = message.Flags.HasFlag(ChatMessageFlags.BlockStart);
+    var isUnreadBlockStart = message.Flags.HasFlag(ChatMessageFlags.UnreadBlockStart);
     var showAuthor = !isSystem && (isBlockStart || isReply);
     var showForwardHeader = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardStart);
     var showForwardAuthor = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardAuthorStart);
@@ -26,12 +27,13 @@
     var forwardedClass = isForward ? "forwarded-message" : "";
     var forwardedBorderClass = isForward && !showAuthor ? "forwarded-border" : "";
     var marginClass = isBlockStart ? "mt-2" : "";
+    var unreadBlockClass = isUnreadBlockStart ? "unread-block" : "";
     var ownMessageClass = m.OwnAuthorId == message.Entry.AuthorId ? "own-message" : "";
     var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";
     var repliedClass = m.IsReplyTarget ? "replied-message" : "";
     var selectedClass = m.IsSelected ? "replied-message" : "";
     var mentionClass = m.IsOwnAuthorMentioned && !isReplyToOwnMessage ? "mention" : "";
-    var cls = $"{systemClass} {forwardedClass} {forwardedBorderClass} {ownMessageClass} {mentionClass} {marginClass} {highlightClass} {repliedClass} {selectedClass} message-wrapper";
+    var cls = $"{systemClass} {forwardedClass} {forwardedBorderClass} {ownMessageClass} {mentionClass} {marginClass} {unreadBlockClass} {highlightClass} {repliedClass} {selectedClass} message-wrapper";
 
     switch (message.ReplacementKind) {
     case ChatMessageReplacementKind.None:
@@ -95,7 +97,7 @@
                     @if (m.IsUnreadMessage) {
                         <ChatMessageSendingStatus
                             Status="@ChatMessageSendingStatus.MessageStatus.Unread"
-                            IsDotOnly="true"/>
+                            IsDotOnly="@(!isUnreadBlockStart)"/>
                     }
                 </div>
             }
@@ -106,7 +108,9 @@
                     <AuthorName AuthorSid="@entry.AuthorId" Class="chat-message-author-name"/>
                     <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
                     @if (m.IsUnreadMessage) {
-                        <ChatMessageSendingStatus Status="@ChatMessageSendingStatus.MessageStatus.Unread" />
+                        <ChatMessageSendingStatus
+                            Status="@ChatMessageSendingStatus.MessageStatus.Unread"
+                            IsDotOnly="@(!isUnreadBlockStart)"/>
                     }
                     @* <div class="text-02 opacity-20 text-xxs">id=@entry.Id</div> *@
                 </div>
@@ -312,7 +316,7 @@
             ForwardedChatEntryId = forwardedChatEntryId,
             ForwardedAuthor = forwardedAuthor,
             ForwardedPeerAuthor = forwardedPeerAuthor,
-            IsUnreadMessage = isUnreadMessage
+            IsUnreadMessage = isUnreadMessage,
         };
         return result.Equals(_rendered) ? _rendered! : result;
 
