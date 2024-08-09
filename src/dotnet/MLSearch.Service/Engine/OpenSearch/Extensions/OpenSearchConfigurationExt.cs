@@ -1,6 +1,5 @@
 using ActualChat.Hosting;
 using ActualChat.Mesh;
-using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
@@ -53,8 +52,8 @@ internal static class OpenSearchConfigurationExt
             .AddHostedService(c => c.GetRequiredService<ServiceCoordinator>());
 
         services
-            .AddSingleton<IClusterSetup>(static services => services.CreateInstanceWith<ClusterSetup>(
-                services.GetRequiredService<IMeshLocks<MLSearchDbContext>>().WithKeyPrefix(nameof(ClusterSetup))
+            .AddSingleton<IClusterSetup>(static c => c.CreateInstance<ClusterSetup>(
+                c.GetRequiredService<IMeshLocks<MLSearchDbContext>>().WithKeyPrefix(nameof(ClusterSetup))
             ))
             .AddSingleton<IClusterSetupActions, ClusterSetupActions>();
 
@@ -63,21 +62,21 @@ internal static class OpenSearchConfigurationExt
             .AddSingleton<IOptionsFactory<SemanticIndexSettings>, SemanticIndexSettingsFactory>();
 
         services
-            .AddSingleton(static services
-                => services.CreateInstanceWith<SettingsChangeTokenSource<SemanticIndexSettings>>(IndexNames.ChatContent))
+            .AddSingleton(
+                static c => c.CreateInstance<SettingsChangeTokenSource<SemanticIndexSettings>>(IndexNames.ChatContent))
             .AddAlias<ISettingsChangeTokenSource, SettingsChangeTokenSource<SemanticIndexSettings>>()
             .AddAlias<IOptionsChangeTokenSource<SemanticIndexSettings>, SettingsChangeTokenSource<SemanticIndexSettings>>();
 
         foreach (var indexName in new[] { IndexNames.ChatCursor, IndexNames.ChatContentCursor }) {
             services
-                .AddSingleton(s => s.CreateInstanceWith<SettingsChangeTokenSource<PlainIndexSettings>>(indexName))
+                .AddSingleton(c => c.CreateInstance<SettingsChangeTokenSource<PlainIndexSettings>>(indexName))
                 .AddAlias<ISettingsChangeTokenSource, SettingsChangeTokenSource<PlainIndexSettings>>()
                 .AddAlias<IOptionsChangeTokenSource<PlainIndexSettings>, SettingsChangeTokenSource<PlainIndexSettings>>();
         }
 
         // ChatSlice engine registrations
-        services.AddSingleton<ISearchEngine<ChatSlice>>(static services
-            => services.CreateInstanceWith<SemanticSearchEngine<ChatSlice>>(IndexNames.ChatContent));
+        services.AddSingleton<ISearchEngine<ChatSlice>>(
+            static c => c.CreateInstance<SemanticSearchEngine<ChatSlice>>(IndexNames.ChatContent));
 
         return services;
     }
