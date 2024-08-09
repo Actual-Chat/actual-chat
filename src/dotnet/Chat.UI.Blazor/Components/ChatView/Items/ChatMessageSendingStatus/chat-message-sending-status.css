@@ -1,12 +1,19 @@
 .chat-message-sending-status {
-    @apply flex-none inline-flex flex-row items-center gap-x-1;
+    @apply flex-none inline-flex flex-row items-center gap-x-0.5;
+    @apply h-4;
     @apply px-1;
     @apply rounded-full;
     @apply overflow-hidden;
     @apply bg-hover;
     @apply text-xs text-primary;
 }
+body.hoverable .chat-message:hover .chat-message-sending-status,
+body.hoverable .chat-message.mention:hover .chat-message-sending-status {
+    @apply hidden;
+}
 .chat-message-sending-status.only-dot {
+    @apply self-end;
+    @apply pl-0;
     @apply bg-transparent;
 }
 .chat-message-sending-status i {
