@@ -33,6 +33,7 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         chat.Property(e => e.MediaId).UseCollation("C");
         chat.Property(e => e.TemplateId).UseCollation("C");
         chat.Property(c => c.TemplatedForUserId).UseCollation("C");
+        chat.HasIndex(x => x.Version).IncludeProperties(nameof(DbChat.Id), nameof(DbChat.IsPlaceRootChat));
 
         var chatEntry = model.Entity<DbChatEntry>();
         chatEntry.Property(e => e.Id).UseCollation("C");
