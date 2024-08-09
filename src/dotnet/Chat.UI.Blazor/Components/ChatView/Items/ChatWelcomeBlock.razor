@@ -16,9 +16,26 @@
             </div>
             <div class="c-chat-title">@Chat.Title</div>
         </div>
-        <div class="c-content">
-            @m.Message
-        </div>
+        @switch (m.MessageType) {
+            case MessageType.Notes:
+                <div class="c-content">
+                    Welcome! You can store your notes in this chat, including recorded ones.
+                </div>
+                break;
+            case MessageType.Contact:
+                <div class="c-content">
+                    <span class="c-incut">To share</span>
+                    <span class="c-contact">@m.ShareModel?.TargetTitle</span>
+                    <span class="c-incut">'s contact, use:</span>
+                </div>
+                break;
+            default:
+                <div class="c-content">
+                    Welcome! Share the link to this chat to invite more people here:
+                </div>
+                break;
+        }
+
         @if (m.ShareModel is { } shareModel) {
             var link = shareModel.Request.Link.GetValueOrDefault();
             var linkKind = link.IsPrivateChatInvite()
@@ -56,6 +73,12 @@
 </div>
 
 @code {
+    public enum MessageType {
+        Default,
+        Notes,
+        Contact,
+    }
+
     // Shortcuts
     private Session Session => ChatContext.Hub.Session();
     private Chat Chat => ChatContext.Chat;
@@ -71,13 +94,14 @@
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chatId = Chat.Id;
 
-        var message = "Welcome! Share the link to this chat to invite more people here:";
+        var messageType = MessageType.Default;
         if (Chat.HasSingleAuthor && Chat.SystemTag == Constants.Chat.SystemTags.Notes)
-            message = "Welcome! You can store your notes in this chat, including recorded ones.";
+            messageType = MessageType.Notes;
         var shareModel = await ShareUI.GetModel(chatId, cancellationToken).ConfigureAwait(false);
         if (shareModel is { Kind: ShareKind.Contact })
-            message = $"To share {shareModel.TargetTitle}'s contact, use:";
-        return new(message, shareModel);
+            messageType = MessageType.Contact;
+
+        return new(messageType, shareModel);
     }
 
     private void OnShareClick(ShareModalModel shareModel)
@@ -86,6 +110,6 @@
     // Nested types
 
     public sealed record Model(
-        string Message,
+        MessageType MessageType,
         ShareModalModel? ShareModel = null);
 }

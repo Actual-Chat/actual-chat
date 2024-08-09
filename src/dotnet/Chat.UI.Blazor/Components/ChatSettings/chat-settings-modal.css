@@ -212,6 +212,12 @@ body.narrow .chat-settings-header > .c-top::after {
     content: '';
     background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
 }
+.chat-settings-header > .c-top .right-panel-close-btn {
+    @apply absolute top-4 right-4;
+}
+body.narrow .chat-settings-header > .c-top .right-panel-close-btn {
+    @apply hidden;
+}
 .chat-settings-header > .c-center {
     @apply absolute top-18 z-20;
     @apply flex-x;

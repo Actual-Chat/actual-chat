@@ -41,11 +41,13 @@
             }
         </div>
     </div>
-    @if (m.IsMember || m.Place.IsPublic) {
+
+    @if (ReferenceEquals(m, Model.Loading)) {
         <div class="c-info">
-        @if (ReferenceEquals(m, Model.Loading)) {
             <place-menu-button-skeleton/>
-        } else {
+        </div>
+    } else if (m.Place.IsPublic || m.IsMember) {
+        <div class="c-info">
             <PlaceMenuButton PlaceId="@m.Place.Id"/>
             @if (m.IsMember) {
                 <div class="c-right">
@@ -57,8 +59,7 @@
                     </ButtonRound>
                 </div>
             }
-        }
-    </div>
+        </div>
     }
 </div>
 

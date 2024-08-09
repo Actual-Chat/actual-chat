@@ -22,7 +22,7 @@
     @apply flex items-center;
     @apply h-6;
     @apply px-2;
-    @apply rounded-full;
+    @apply rounded-full border border-modal;
     @apply bg-01;
     @apply text-caption-6 text-01;
     @apply drop-shadow-lg;
