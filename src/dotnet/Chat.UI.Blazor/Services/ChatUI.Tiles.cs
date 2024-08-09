@@ -4,6 +4,7 @@ public partial class ChatUI
 {
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
 
+    // NOTE: Please don't add excessive computed dependencies without real reason - it might rerender whole chat view content
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
     public virtual async Task<VirtualListTile<ChatMessage>> GetTile(
         ChatId chatId,
@@ -67,25 +68,38 @@ public partial class ChatUI
                 flags |= ChatMessageFlags.Unread;
             if (shouldAddToResult) {
                 if (hasVeryFirstItem && !isWelcomeBlockAdded) {
-                    messages.Add(new ChatMessage(entry) {
+                    var welcomeMessage = new ChatMessage(entry) {
                         ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
-                    });
+                        PreviousMessage = prevMessage,
+                    };
+                    messages.Add(welcomeMessage);
+                    prevMessage = welcomeMessage;
                     isWelcomeBlockAdded = true;
                 }
-                if (isEntryUnread && !isPrevUnread)
-                    messages.Add(new ChatMessage(entry) {
+                if (isEntryUnread && !isPrevUnread) {
+                    var newLineMessage = new ChatMessage(entry) {
                         ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
-                    });
-                if (date != prevDate)
-                    messages.Add(new ChatMessage(entry) {
+                        PreviousMessage = prevMessage,
+                    };
+                    messages.Add(newLineMessage);
+                    prevMessage = newLineMessage;
+                }
+                if (date != prevDate) {
+                    var dateLineMessage = new ChatMessage(entry) {
                         ReplacementKind = ChatMessageReplacementKind.DateLine,
                         Date = date,
-                    });
+                        PreviousMessage = prevMessage,
+                    };
+                    messages.Add(dateLineMessage);
+                    prevMessage = dateLineMessage;
+                }
                 var message = new ChatMessage(entry) {
                     Date = date,
                     Flags = flags,
+                    PreviousMessage = prevMessage,
                 };
                 messages.Add(message);
+                prevMessage = message;
             }
             prevEntry = entry;
             prevDate = date;

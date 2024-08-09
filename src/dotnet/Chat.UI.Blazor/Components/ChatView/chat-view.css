@@ -34,7 +34,7 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply pb-0 pt-1;
 }
 .chat-message > .c-author-badge > .c-empty {
-    @apply flex items-center justify-center;
+    @apply flex-y items-center justify-center;
     @apply w-9 h-2.5;
 }
 
@@ -128,11 +128,11 @@ body.hoverable .message-wrapper.mention.replied-message:hover {
     @apply text-03 text-xs;
 }
 .chat-message-timestamp-on-hover {
-    @apply invisible;
+    @apply hidden;
 }
 body.hoverable .chat-message:hover .chat-message-timestamp-on-hover,
 body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
-    @apply visible;
+    @apply block;
 }
 
 .chat-message-markup {
