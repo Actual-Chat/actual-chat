@@ -13,18 +13,19 @@
     @if (lastTextEntry != null) {
         <div class="contact-view-last-text">
             @if (chatInfo.Chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
-                <span>
-                    <AuthorName
-                        Class="contact-view-last-text-author"
-                        AuthorSid="@lastTextEntry.AuthorId"
-                        ShowDetailsOnClick="false"/>:
-                </span>
+                <AuthorName
+                    Class="contact-view-last-text-author"
+                    AuthorSid="@lastTextEntry.AuthorId"
+                    ShowDetailsOnClick="false"/>
+                <span>:</span>
             }
             @if (lastTextEntry.IsStreaming) {
                 <chat-list-item-streaming-svg class="w-4 h-4"/>
             }
             else {
-                @chatInfo.LastTextEntryText
+                <span class="c-text">
+                    @chatInfo.LastTextEntryText
+                </span>
             }
         </div>
     }

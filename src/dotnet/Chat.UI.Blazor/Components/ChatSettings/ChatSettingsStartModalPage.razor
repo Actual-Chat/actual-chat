@@ -36,6 +36,11 @@
                 HideTitle="@true"
                 IsBlurred="@true"
                 ShowPresence="@false"/>
+            <ButtonRound
+                Click="@(() => Context.Close())"
+                Class="btn-sm right-panel-close-btn">
+                <i class="icon-close text-2xl"></i>
+            </ButtonRound>
         </div>
         <div class="c-center">
             <PicUpload

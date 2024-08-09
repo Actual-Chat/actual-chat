@@ -36,6 +36,11 @@
                 AvatarKind="@AvatarKind.Marble"
                 AvatarKey="@PlaceId.Value"/>
         }
+        <ButtonRound
+            Click="@(() => Context.Close())"
+            Class="btn-sm right-panel-close-btn">
+            <i class="icon-close text-2xl"></i>
+        </ButtonRound>
     </div>
     <div class="c-center">
         <Pic
@@ -69,7 +74,7 @@
                     TooltipPosition="@FloatingPosition.Bottom"
                     Tooltip="Edit Place"
                     Click="@OnOwnerSettingsClick">
-                    <i class="icon-more-vertical text-2xl"></i>
+                    <i class="icon-edit text-2xl"></i>
                 </ButtonRound>
             }
         </div>
@@ -114,6 +119,7 @@
     private IPlaces Places => Hub.Places;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     private PlaceId PlaceId { get; set; }
 

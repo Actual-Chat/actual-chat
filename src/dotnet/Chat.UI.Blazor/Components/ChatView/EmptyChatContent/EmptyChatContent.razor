@@ -12,7 +12,11 @@
     <div class="c-text">
         <span>No messages here yet.</span>
         @if (m.PeerAccount is { } peerAccount) {
-            <span>Say "Hi" to <AccountName UserSid="@peerAccount.Id"/>!</span>
+            <div class="c-truncated-text">
+                <span>Say "Hi" to</span>
+                <AccountName UserSid="@peerAccount.Id"/>
+                <span>!</span>
+            </div>
         } else {
             <span>Post the first one!</span>
         }
