@@ -41,7 +41,7 @@
     <PackageVersion Include="Google.Cloud.Storage.V1" Version="4.10.0" />
     <!-- We use Grpc.Core from otlp exporter -->
     <PackageVersion Include="Grpc.Core" Version="2.46.6" />
-    <PackageVersion Include="Google.Cloud.Speech.V2" Version="1.0.0" />
+    <PackageVersion Include="Google.Cloud.Speech.V2" Version="1.3.0" />
     <PackageVersion Include="Google.Cloud.AspNetCore.DataProtection.Storage" Version="1.0.0-alpha04" />
     <PackageVersion Include="HtmlAgilityPack" Version="1.11.60" />
     <PackageVersion Include="MailKit" Version="4.5.0" />
