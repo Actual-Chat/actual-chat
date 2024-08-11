@@ -36,6 +36,7 @@ public partial class GoogleTranscriber : ITranscriber
     private CoreServerSettings CoreServerSettings { get; }
     private MomentClockSet Clocks { get; }
     private WebMStreamConverter WebMStreamConverter { get; }
+    private OggOpusStreamConverter OggOpusStreamConverter { get; }
 
     private SpeechClient SpeechClient { get; set; } = null!; // Post-WhenInitialized
     private StreamingRecognitionConfig RecognitionConfig { get; set; } = null!; // Post-WhenInitialized
@@ -52,6 +53,7 @@ public partial class GoogleTranscriber : ITranscriber
 
         CoreServerSettings = services.GetRequiredService<CoreServerSettings>();
         WebMStreamConverter = new WebMStreamConverter(Clocks, services.LogFor<WebMStreamConverter>());
+        OggOpusStreamConverter = new OggOpusStreamConverter();
         WhenInitialized = Initialize();
     }
 
@@ -168,7 +170,10 @@ public partial class GoogleTranscriber : ITranscriber
         var recognizeStream = state.RecognizeStream;
         try {
             var transcribedAudioSource = AddSilentPrefixAndSuffix(audioSource, cancellationToken);
-            var byteFrameStream = WebMStreamConverter.ToByteFrameStream(transcribedAudioSource, cancellationToken);
+            var streamConverter = (IAudioStreamConverter) (Constants.Transcription.IsWebMOpusSupportedByGoogle
+                ? WebMStreamConverter
+                : OggOpusStreamConverter);
+            var byteFrameStream = streamConverter.ToByteFrameStream(transcribedAudioSource, cancellationToken);
             var clock = Clocks.CpuClock;
             var startedAt = clock.Now;
             var nextChunkAt = startedAt;
