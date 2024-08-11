@@ -153,6 +153,11 @@ public static partial class Constants
         public static readonly string RecordingSkeleton = "🎙…";
     }
 
+    public static class Transcription
+    {
+        public static readonly bool IsWebMOpusSupportedByGoogle = false;
+    }
+
     // Diagnostics, etc.
 
     public static class Sentry
