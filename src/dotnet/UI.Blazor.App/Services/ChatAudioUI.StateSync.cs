@@ -2,6 +2,7 @@ using ActualChat.Streaming.UI.Blazor.Components;
 using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
+using ActualLab.Resilience;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -30,6 +31,7 @@ public partial class ChatAudioUI
         return (
             from chain in baseChains
             select chain
+                .WithTransiencyResolver(TransiencyResolvers.PreferTransient)
                 .Log(LogLevel.Debug, Log)
                 .RetryForever(retryDelays, Log)
             ).RunIsolated(cancellationToken);
