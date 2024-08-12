@@ -1,0 +1,129 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using System.ComponentModel.DataAnnotations
+@inherits Step;
+
+@if (CurrentStep != this) {
+    return;
+}
+
+<div>
+    @if (Stepper.CurrentStepIndex == 0) {
+        <p class="text-title-1 text-center">Welcome to Actual Chat!</p>
+    }
+    <p class="text-headline-1 mt-6">
+        Please confirm your phone number.
+    </p>
+    <p class="text-headline-1 mt-2">
+        We collect this information to help you find friends in your contacts list who are already using Actual Chat.
+    </p>
+    <Form
+        Class="mt-6"
+        Model="@_model">
+        <AsyncDataAnnotationsValidator @ref="_validator"/>
+        <FormSection
+            For="() => _model.Phone"
+            InputId="phone"
+            Label="Phone"
+            Class="grow"
+            IsLabelInsideInput="true"
+            IsRequired="true">
+            <ChildContent>
+                <InputText
+                    id="phone"
+                    @bind-Value="_model.Phone"
+                    autocomplete="tel"
+                    type="tel"
+                    inputmode="tel"/>
+            </ChildContent>
+            <Right>
+                @if (_showVerificationStatus) {
+                    <VerificationStatus
+                        IsVerified="_isVerified ?? false"
+                        Class="w-8 h-8" />
+                }
+            </Right>
+        </FormSection>
+    </Form>
+</div>
+
+@code {
+    private readonly Model _model = new();
+    private bool _showVerificationStatus;
+    private bool? _isVerified;
+    private bool? _skipped;
+    private AsyncDataAnnotationsValidator _validator = null!;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IPhones Phones { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
+
+    public override bool CanSkip => _isVerified is null or false;
+
+    public override string NextTitle => "Verify";
+
+    public override bool IsCompleted {
+        get {
+            if (Account.HasVerifiedPhone())
+                return true;
+
+            // Can move forward if already verified in case when Skip and Back were pressed
+            if (_isVerified is true)
+                return true;
+
+            // Can't move forward if skipped in case when Skip and Back were pressed
+            if (_skipped is true)
+                return false;
+
+            return OnboardingUI.UserSettings.Value.IsVerifyPhoneStepCompleted;
+        }
+    }
+
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsVerifyPhoneStepCompleted = true });
+
+    protected override async Task OnInitializedAsync() {
+        var account = await Accounts.GetOwn(Session, default);
+        _showVerificationStatus = !account.HasVerifiedPhone();
+        if (!account.Phone.IsNone)
+            _model.Phone = account.Phone.ToReadable();
+    }
+
+    protected override Task<bool> Validate()
+        => _validator.Validate(CancellationToken.None);
+
+    protected override ValueTask OnSkip() {
+        _skipped = true;
+        return ValueTask.CompletedTask;
+    }
+
+    protected override async Task<bool> Save() {
+        var phone = await Phones.Parse(_model.Phone, default);
+        var account = await Accounts.GetOwn(Session, default);
+        var command = new Accounts_Update(Session, account with { Phone = phone }, account.Version);
+        var (_, error) = await UICommander.Run(command);
+        if (error is not null)
+            return false;
+
+        if (!account.HasVerifiedPhone()) {
+            var verificationModel = new PhoneVerificationModal.Model(phone);
+            var modalRef = await ModalUI.Show(verificationModel);
+            await modalRef.WhenClosed;
+            _showVerificationStatus = verificationModel.IsVerified;
+            _isVerified = verificationModel.IsVerified;
+            if (verificationModel is { IsVerified: false, CanSkip: false })
+                return false;
+            _showVerificationStatus = true;
+        }
+
+        return true;
+    }
+
+    public class Model {
+        [Required, PhoneNumber] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
+    }
+}

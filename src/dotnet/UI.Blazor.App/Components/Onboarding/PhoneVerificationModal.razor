@@ -1,0 +1,41 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IModalView<PhoneVerificationModal.Model>
+
+<DialogFrame
+    Class="onboarding-modal"
+    HasHeader="true"
+    Title="Phone number verification"
+    HasCloseButton="true">
+    <Body>
+    <div class="flex-1 flex-y">
+        <div class="flex-x justify-center mb-4">
+            <phone-verification-cat-svg/>
+        </div>
+        <div class="flex-1 flex-y mx-4">
+            <div class="font-bold text-2xl text-02">Enter code</div>
+            <div class="mb-4">Please verify your phone number to enable sign-in with it and to allow your friends to find your account in their list of contacts on Actual Chat.</div>
+            <TotpVerifier
+                Purpose="TotpPurpose.VerifyPhone"
+                Phone="@ModalModel.Phone"
+                Verified="@(_ => Complete(true))"
+                Error="@(_ => Complete(false, true))"/>
+        </div>
+    </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private void Complete(bool isVerified, bool canSkip = false) {
+        ModalModel.IsVerified = isVerified;
+        ModalModel.CanSkip = canSkip;
+        Modal.Close();
+    }
+
+    public sealed record Model(Phone Phone) {
+        public bool IsVerified { get; set; }
+        public bool CanSkip { get; set; }
+    }
+}

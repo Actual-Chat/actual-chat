@@ -1,0 +1,84 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedMenuBase<MessageMenu.Model>
+@{
+    var m = State.Value;
+    if (State.Value == Model.None)
+        return;
+}
+
+<MessageMenuContent
+    ChatEntry="m.ChatEntry"
+    ClickedLinkUrl="@m.Link"
+    ClickedCode="@m.Code"
+    IsOwnEntry="m.IsOwnEntry"
+    IsOwner="m.IsOwner"
+    CanWrite="m.CanWrite"
+    IsSystem="m.IsSystem">
+</MessageMenuContent>
+
+@code {
+    private string? _link;
+    private string? _code;
+    private bool _isSystem;
+    private TextEntryId _entryId;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private IChats Chats => Hub.Chats;
+    private IAuthors Authors => Hub.Authors;
+    private Session Session => Hub.Session();
+
+    protected override void OnParametersSet() {
+        if (Arguments is not [ var sEntryId, var sIsSystem, var link, var code ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _isSystem = bool.Parse(sIsSystem);
+        _entryId = new TextEntryId(sEntryId);
+        _link = link.NullIfEmpty();
+        _code = code.NullIfEmpty();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isSystem = _isSystem;
+        var entryId = _entryId;
+        var link = _link;
+        var code = _code;
+
+        var chatEntry = await Hub.Chats.GetEntry(Session, entryId, CancellationToken.None).ConfigureAwait(false);
+        if (chatEntry == null)
+            return Model.None;
+
+        var requestAuthor = await Authors.GetOwn(Session, chatEntry.ChatId, CancellationToken.None).ConfigureAwait(false);
+        var rules = await Chats.GetRules(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
+
+        return new() {
+            Link = link,
+            IsSystem = isSystem,
+            Code = code,
+            ChatEntry = chatEntry,
+            CanWrite = rules.CanWrite(),
+            IsOwner = rules.IsOwner(),
+            IsOwnEntry = requestAuthor != null && requestAuthor.Id == chatEntry.AuthorId,
+        };
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public string? Link { get; init; }
+        public bool IsSystem { get; init; }
+        public string? Code { get; set; }
+        public bool IsOwnEntry { get; init; }
+        public bool CanWrite { get; init; }
+        public bool IsOwner { get; init; }
+        public ChatEntry ChatEntry { get; init; } = null!;
+    }
+}

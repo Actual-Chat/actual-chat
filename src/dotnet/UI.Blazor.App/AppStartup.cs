@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.WebSockets;
-using ActualChat.Chat.UI.Blazor.Module;
+using ActualChat.UI.Blazor.App.Module;
 using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
@@ -9,11 +9,9 @@ using ActualChat.Module;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Security;
 using ActualChat.Streaming.UI.Blazor.Module;
-using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.UI.Blazor.Module;
 using ActualLab.Interception;
-using ActualLab.Interception.Interceptors;
 using ActualLab.Internal;
 using ActualLab.RestEase;
 using ActualLab.Rpc;
@@ -154,7 +152,6 @@ public static class AppStartup
                 new StreamingBlazorUIModule(moduleServices),
                 new UsersBlazorUIModule(moduleServices),
                 new ContactsBlazorUIModule(moduleServices),
-                new ChatBlazorUIModule(moduleServices),
                 new NotificationBlazorUIModule(moduleServices),
                 // This module should be the last one
                 new BlazorUIAppModule(moduleServices)

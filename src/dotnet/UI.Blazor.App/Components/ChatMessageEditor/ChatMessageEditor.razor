@@ -1,0 +1,251 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IAsyncDisposable
+@using ActualChat.UI.Blazor.App.Events
+@using ActualChat.UI.Blazor.App.Module
+@using ActualChat.Contacts
+@using ActualChat.Hosting
+@using ActualChat.Kvas
+@using ActualLab.Locking
+@using System.Diagnostics.CodeAnalysis
+
+<OnUIEvent TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusChatMessageEditorEvent" />
+<OnUIEvent TEvent="@EditChatMessageEvent" Handler="OnEditChatMessageEvent" />
+<OnUIEvent TEvent="@CancelChatMessageEditEvent" Handler="OnCancelChatMessageEditEvent" />
+<div @ref="Ref" class="chat-message-editor">
+    <MentionListManager @key="@MentionListManagerKey" SearchProvider="@ChatMarkupHub.MentionSearchProvider">
+        <AttachmentList
+            @key="AttachmentListKey"
+            @ref="AttachmentListRef"
+            OnSendClick="@(() => Post())"/>
+        @if (ScreenSize.IsWide()) {
+            <RelatedChatEntryPanel/>
+        }
+        <div class="c-content">
+            @if (ScreenSize.IsNarrow()) {
+                <div class="rounded-sub-footer"></div>
+            }
+            <div class="post-panel"
+                 data-bubble="@(BubbleRef.New<TextMessagePanelBubble>())"
+                 data-bubble-priority="105"
+                 data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
+                <ButtonRound Class="post-panel-btn attach-btn btn-transparent unhovered">
+                    <i class="icon-attach-2 text-2xl"></i>
+                </ButtonRound>
+                <label for="message-input" class="message-input-label">
+                    <MarkupEditor
+                        @key="MarkupEditorKey"
+                        @ref="MarkupEditorRef"
+                        MentionNamer="@ChatMarkupHub.MentionNamer"
+                        HtmlConverter="@ChatMarkupHub.EditorHtmlConverter"
+                        Id="message-input"
+                        Class="message-input -flex-y"
+                        Autofocus="Autofocus"
+                        Placeholder="Write a message - or simply record one!"
+                        Post="text => Post(text)"
+                        Cancel="@(() => OnCancel())"
+                        OpenPrevious="OnOpenPrevious"/>
+                </label>
+                <button class="post-panel-btn post-message btn btn-round btn-transparent unhovered"
+                    @onmousedown="@(_ => Post())"
+                    @onmousedown:preventDefault="true">
+                    <i class="icon-paper-plane text-2xl"></i>
+                </button>
+                <NotifyCallPanel ChatId="@Chat.Id" />
+            </div>
+            @if (ScreenSize.IsNarrow()) {
+                <RelatedChatEntryPanel/>
+            }
+            <ChatAudioPanel Chat="@Chat"/>
+        </div>
+    </MentionListManager>
+</div>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatMessageEditor.create";
+
+    private static object MentionListManagerKey { get; } = new();
+    private static object AttachmentListKey { get; } = new();
+    private static object MarkupEditorKey { get; } = new();
+
+    private readonly AsyncLock _postLock = new(LockReentryMode.CheckedFail);
+    private bool Autofocus => ScreenSize.IsWide() && !BrowserInfo.IsTouchCapable;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+    private MarkupEditor MarkupEditorRef { get; set; } = null!;
+    private AttachmentList AttachmentListRef { get; set; } = null!;
+    private IChatMarkupHub ChatMarkupHub { get; set; } = null!;
+    private SyncedStateLease<ReadPosition>? ReadPositionState { get; set; } = null!;
+    private SentAttachmentsStorage? AttachmentsStorage { get; set; } = null!;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
+    private IAuthors Authors => Hub.Authors;
+    private IContacts Contacts => Hub.Contacts;
+    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+    private PanelsUI PanelsUI => Hub.PanelsUI;
+    private TuneUI TuneUI => Hub.TuneUI;
+    private UICommander UICommander => Hub.UICommander();
+    private MomentClockSet Clocks => Hub.Clocks();
+    private HostInfo HostInfo => Hub.HostInfo();
+    private IJSRuntime JS => Hub.JSRuntime();
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatMessageEditor))]
+    public ChatMessageEditor() { }
+
+    public async ValueTask DisposeAsync() {
+        if (AttachmentsStorage != null)
+            AttachmentsStorage.AttachmentsStored -= OnAttachmentsStored;
+        AttachmentsStorage = null;
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        ReadPositionState.DisposeSilently();
+        ReadPositionState = null!;
+    }
+
+    protected override async Task OnParametersSetAsync() {
+        var chatId = Chat.Id;
+        var oldChatId = ChatMarkupHub?.ChatId ?? default; // ChatMarkupHub == null on the very first call
+        if (oldChatId == chatId)
+            return;
+
+        ChatMarkupHub = ChatMarkupHubFactory[chatId];
+        ReadPositionState.DisposeSilently();
+        ReadPositionState = null;
+        ReadPositionState = await ChatUI.LeaseReadPositionState(chatId, default);
+
+        if (JSRef != null!) {
+            // Only when rendered
+            await AttachmentListRef.Clear();
+            await UpdateChatId();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+            await Task.WhenAll(MarkupEditorRef.WhenReady, AttachmentListRef.WhenReady);
+            if (JSRef == null! || MarkupEditorRef.JSRef == null! || AttachmentListRef.JSRef == null!)
+                return; // Dispose may happen during await above
+
+            await JSRef.InvokeVoidAsync("onNestedControlsReady", MarkupEditorRef.JSRef, AttachmentListRef.JSRef);
+            await UpdateChatId();
+            await ChatEditorUI.RestoreRelatedEntry(Chat.Id);
+            if (JSRef == null! || MarkupEditorRef.JSRef == null! || AttachmentListRef.JSRef == null!)
+                return; // Dispose may happen during await above
+
+            AttachmentsStorage = Hub.GetRequiredService<SentAttachmentsStorage>();
+            if (AttachmentsStorage.ChatId == Chat.Id && AttachmentsStorage.Urls.Length > 0)
+                await SetAttachments(AttachmentsStorage);
+            AttachmentsStorage.AttachmentsStored += OnAttachmentsStored;
+        }
+    }
+
+    // Private methods
+
+    private async Task Post(string? text = null) {
+        using var releaser = await _postLock.Lock();
+        releaser.MarkLockedLocally();
+
+        text ??= await MarkupEditorRef.GetText();
+        text = text.Trim();
+        if (AttachmentListRef.IsUploading) {
+            return;
+        }
+
+        await using var attachmentListSnapshot = AttachmentListRef.PopSnapshot();
+        if (text.IsNullOrEmpty() && attachmentListSnapshot.Attachments.Count == 0)
+            return;
+
+        _ = TuneUI.Play(Tune.SendMessage);
+        try {
+            _ = MarkupEditorRef.Clear();
+
+            var relatedChatEntry = ChatEditorUI.RelatedChatEntry.Value;
+            var relatedChatEntryId = relatedChatEntry?.Id ?? default;
+            await ChatEditorUI.HideRelatedEntry(false);
+
+            Chats_UpsertTextEntry cmd;
+            if (relatedChatEntry is { Kind: RelatedEntryKind.Edit }) {
+                if (relatedChatEntryId.IsNone)
+                    throw new InternalError("Invalid ChatUI.RelatedChatEntry value.");
+                cmd = new Chats_UpsertTextEntry(Session, relatedChatEntryId.ChatId, relatedChatEntryId.LocalId, text);
+            } else {
+                var repliedEntryLid = relatedChatEntryId.IsNone ? (long?)null : relatedChatEntryId.LocalId;
+                cmd = new Chats_UpsertTextEntry(Session, Chat.Id, null, text) {
+                    RepliedChatEntryId = repliedEntryLid,
+                    EntryAttachments = attachmentListSnapshot.Attachments,
+                };
+            }
+            var chatEntry = await UICommander.Run(cmd, CancellationToken.None);
+            var readEntryLid = chatEntry.Value.LocalId;
+
+            if (ReadPositionState != null && ReadPositionState.Value.EntryLid < readEntryLid)
+                ReadPositionState.Value = new (Chat.Id, readEntryLid);
+            await AttachmentListRef.Clear();
+        }
+        catch (Exception e) {
+            UICommander.ShowError(e);
+            attachmentListSnapshot.Rollback();
+            await MarkupEditorRef.SetText(text);
+        }
+    }
+
+    private async Task Edit(ChatEntry chatEntry, CancellationToken cancellationToken)
+    {
+        await ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Edit, chatEntry.Id, focusOnEditor: true);
+        await MarkupEditorRef.SetText(chatEntry.Content, mustFocus: false);
+    }
+
+    private ValueTask UpdateChatId()
+        => JSRef.InvokeVoidAsync("setChatId", Chat.Id);
+
+    // Event handlers
+
+    private Task OnOpenPrevious()
+        => ChatEditorUI.EditLast(ChatUI.SelectedChatId.Value);
+
+    private async Task OnCancel(CancellationToken cancellationToken = default)
+    {
+        await ChatEditorUI.HideRelatedEntry();
+        await MarkupEditorRef.Clear(mustFocus: true);
+    }
+
+    private void OnAttachmentsStored(object? sender, EventArgs e) {
+        var attachmentsStorage = AttachmentsStorage;
+        if (attachmentsStorage != null && attachmentsStorage.ChatId == Chat.Id && attachmentsStorage.Urls.Length > 0)
+            _ = Handle();
+
+        async Task Handle() {
+            await SetAttachments(attachmentsStorage);
+            PanelsUI.HidePanels();
+        }
+    }
+
+    private async Task SetAttachments(SentAttachmentsStorage attachmentsStorage)
+    {
+        await AttachmentListRef.SetSentAttachments(attachmentsStorage.Urls);
+        attachmentsStorage.Clear();
+    }
+
+    // UIEventHub event handlers
+
+    private async Task OnFocusChatMessageEditorEvent(FocusChatMessageEditorEvent @event, CancellationToken cancellationToken)
+        => await MarkupEditorRef.Focus();
+
+    private async Task OnEditChatMessageEvent(EditChatMessageEvent @event, CancellationToken cancellationToken) {
+        var chatEntry = @event.Entry;
+        await Edit(chatEntry, cancellationToken);
+    }
+
+    private async Task OnCancelChatMessageEditEvent(CancelChatMessageEditEvent @event, CancellationToken cancellationToken) {
+        await OnCancel(cancellationToken);
+    }
+}

@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Maui.Services;
-using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.Kvas;

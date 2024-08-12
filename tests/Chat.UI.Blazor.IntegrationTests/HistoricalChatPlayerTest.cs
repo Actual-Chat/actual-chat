@@ -1,9 +1,9 @@
 using ActualChat.Chat.Db;
-using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Testing.Host;
 using Microsoft.EntityFrameworkCore;
 
-namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
+namespace ActualChat.UI.Blazor.App.IntegrationTests;
 
 [Collection(nameof(ChatUICollection))]
 public class HistoricalChatPlayerTest(AppHostFixture fixture, ITestOutputHelper @out)

@@ -1,0 +1,32 @@
+﻿@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="navbar-button @Class"
+     @attributes="@AdditionalAttributes">
+    @if (CanMove) {
+        <div class="c-dots">
+            <i class="icon-more-vertical-2"></i>
+        </div>
+    }
+    <ButtonSquare
+        Click="@Click"
+        Class="@ButtonClass"
+        Tooltip="@Tooltip"
+        ContentClass="navbar-button-content"
+        TooltipPosition="@TooltipPosition">
+        @ChildContent
+    </ButtonSquare>
+    @Ending
+</div>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ButtonClass { get; set; } = "";
+    [Parameter] public string Tooltip { get; set; } = "";
+    [Parameter] public bool CanMove { get; set; }
+    [Parameter] public FloatingPosition TooltipPosition { get; set; } = FloatingPosition.Right;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Ending { get; set; }
+    [Parameter] public EventCallback Click { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+}

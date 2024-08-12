@@ -1,7 +1,7 @@
 using ActualChat.App.Server.Logging;
 using ActualChat.App.Server.Module;
 using ActualChat.Chat.Module;
-using ActualChat.Chat.UI.Blazor.Module;
+using ActualChat.UI.Blazor.App.Module;
 using ActualChat.Contacts.Module;
 using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Db.Module;
@@ -18,7 +18,6 @@ using ActualChat.Search.Module;
 using ActualChat.Streaming.Module;
 using ActualChat.Streaming.UI.Blazor.Module;
 using ActualChat.UI.Blazor.App;
-using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
@@ -168,7 +167,6 @@ public partial class AppHost
                 new StreamingBlazorUIModule(moduleServices),
                 new UsersBlazorUIModule(moduleServices),
                 new ContactsBlazorUIModule(moduleServices),
-                new ChatBlazorUIModule(moduleServices),
                 new NotificationBlazorUIModule(moduleServices),
                 new BlazorUIAppModule(moduleServices), // Should be the last one in UI section
                 // This module should be the last one

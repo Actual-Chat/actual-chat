@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\dotnet\UI.Blazor.App\UI.Blazor.App.csproj" />
     <ProjectReference Include="..\Testing\Testing.csproj" />
-    <ProjectReference Include="..\..\src\dotnet\Chat.UI.Blazor\Chat.UI.Blazor.csproj" />
   </ItemGroup>
 
 </Project>

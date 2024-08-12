@@ -1,0 +1,133 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<NavigateToUnreadOrEnd.Model>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.None))
+        return;
+
+    _animator.State = m.IsVisible;
+    if (_animator.MustHideComponent)
+        return;
+
+    var tooltip = m.ReadEntryLid.HasValue ? "Go to the unread part" : "Go to the last message";
+}
+
+<div class="navigate-to-end @_animator.Class">
+    <div class="c-content">
+        @if (m.UnreadCount > 0) {
+            var text = m.UnreadCount.FormatK();
+            <Badge Class="unread-counter" Click="OnClick">@text</Badge>
+        }
+        <ButtonRound Tooltip="@tooltip" Click="OnClick">
+            <i class="icon-arrow-down text-2xl font-thin"></i>
+        </ButtonRound>
+    </div>
+</div>
+
+@code {
+    private ShowHideAnimator _animator = null!;
+    private Moment _lastClickAt;
+
+    private Session Session => ChatContext.Hub.Session();
+    private Chat Chat => ChatContext.Chat;
+    private IChats Chats => ChatContext.Hub.Chats;
+    private ChatUI ChatUI => ChatContext.Hub.ChatUI;
+    private UIEventHub UIEventHub => ChatContext.Hub.UIEventHub();
+    private Moment CpuNow => ChatContext.Hub.Clocks().CpuClock.Now;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
+    [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300));
+
+    public override ValueTask DisposeAsync() {
+        _animator.Dispose();
+        return base.DisposeAsync();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatView = ChatView;
+        var chatId = Chat.Id;
+        var oldState = State;
+
+        if (chatId.IsNone || !await RegionVisibility.IsVisible.Use(cancellationToken).ConfigureAwait(false))
+            return Model.None;
+
+        var lastEntryId = await GetLastTextEntryLid(cancellationToken).ConfigureAwait(false);
+        if (lastEntryId == 0)
+            return Model.Invisible;
+
+        await chatView.WhenInitialized.ConfigureAwait(false);
+        var itemVisibility = await chatView.ItemVisibility.Use(cancellationToken).ConfigureAwait(false);
+        if (itemVisibility.IsEndAnchorVisible)
+            return Model.Invisible;
+
+        // Delay showing the button for the first time
+        if (ReferenceEquals(oldState.Value, Model.None)) {
+            await chatView.ReadPosition.WhenSynchronized(cancellationToken).ConfigureAwait(false);
+            var timeout = itemVisibility == ChatViewItemVisibility.Empty
+                ? TimeSpan.FromSeconds(1)
+                : TimeSpan.FromSeconds(0.5);
+            await Task.Delay(timeout, cancellationToken).ConfigureAwait(false);
+            itemVisibility = chatView.ItemVisibility.Value;
+            if (itemVisibility.IsEndAnchorVisible)
+                return Model.Invisible;
+        }
+        else if (!chatView.ItemVisibility.Value.IsEndAnchorVisible) {
+            await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
+            itemVisibility = chatView.ItemVisibility.Value;
+            if (itemVisibility.IsEndAnchorVisible)
+                return Model.Invisible;
+        }
+
+        var readEntryLid = await chatView.ShownReadEntryLid.Use(cancellationToken).ConfigureAwait(false);
+        var canScrollToUnread = readEntryLid < lastEntryId && readEntryLid > itemVisibility.MaxEntryLid;
+        var unreadCount = await ChatUI.GetUnreadCount(chatId, cancellationToken).ConfigureAwait(false);
+        return new(true, lastEntryId, canScrollToUnread ? readEntryLid : null, unreadCount);
+
+        async ValueTask<long> GetLastTextEntryLid(CancellationToken cancellationToken1)
+        {
+            var chatNews = await Chats.GetNews(Session, chatId, cancellationToken1).ConfigureAwait(false);
+            return chatNews.LastTextEntry?.LocalId ?? 0;
+        }
+    }
+
+    private void OnClick() {
+        var m = State.Value;
+        if (!m.IsVisible)
+            return;
+
+        // Item visibility updates with a delay, so we want to make sure
+        // the second click always brings you to the bottom of the list
+        var isJustClicked = CpuNow - _lastClickAt < TimeSpan.FromSeconds(5);
+        _lastClickAt = CpuNow;
+        var mustNavigateToUnread = !isJustClicked
+            && m.ReadEntryLid > ChatView.ItemVisibility.Value.MaxEntryLid;
+        _ = mustNavigateToUnread
+            ? ChatView.NavigateToNext(m.ReadEntryLid.GetValueOrDefault(), true)
+            : ChatView.NavigateTo(m.LastEntryLid, false, true);
+    }
+
+    // Nested types
+
+    public sealed record Model(
+        bool IsVisible,
+        long LastEntryLid,
+        long? ReadEntryLid,
+        Trimmed<int> UnreadCount)
+    {
+        public static readonly Model None = new(false, default, default, default);
+        public static readonly Model Invisible = new(false, default, default, default);
+        public static readonly Model InvisibleToVisible = new(false, default, default, default);
+    }
+}

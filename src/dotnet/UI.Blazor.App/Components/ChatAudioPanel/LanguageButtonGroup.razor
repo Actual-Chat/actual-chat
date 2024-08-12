@@ -1,0 +1,64 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.Events
+@inherits ComputedStateComponent<(List<Language>?, Language)>
+@{
+    var m = State.Value;
+    var (languages, language) = m;
+    if (languages == null)
+        return; // Loading
+
+    var useShortTitle = languages.Count > 2;
+}
+
+<div class="language-btn-group">
+    @if (languages.Count < 2) {
+        <div class="c-settings-hint">
+            You secondary language is not selected. You can add it in
+            <a class="link" @onclick="@OnConfigureSecondLanguage" @onclick:preventDefault="true">Settings</a>.
+        </div>
+    }
+    <div class="c-title">
+        Transcription language:
+    </div>
+    <div class="c-languages">
+        @foreach (var l in languages) {
+            <button
+                class="@(l == language ? "active" : "")"
+                @onclick="@(() => OnClick(l))">
+                @(useShortTitle ? l.ShortTitle : l.Title)
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private LanguageUI LanguageUI => Hub.LanguageUI;
+    private UIEventHub UIEventHub => Hub.UIEventHub();
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [Parameter] public EventCallback Click { get; set; }
+
+    protected override ComputedState<(List<Language>?, Language)>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<(List<Language>?, Language)>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<(List<Language>?, Language)> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ChatId;
+
+        var languages = await LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+        var language = await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
+        return (languages.ToList(), language);
+    }
+
+    private async Task OnClick(Language language) {
+        await LanguageUI.ChangeChatLanguage(ChatId, language);
+        await Click.InvokeAsync();
+    }
+
+    private void OnConfigureSecondLanguage()
+        => _ = UIEventHub.Publish(new ShowSettingsEvent());
+}

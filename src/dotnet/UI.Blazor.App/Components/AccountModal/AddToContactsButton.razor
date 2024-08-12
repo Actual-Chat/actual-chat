@@ -1,0 +1,62 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Contacts
+@inherits ComputedStateComponent<AddToContactsButton.Model>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
+}
+
+@if (m.CanAddToContacts) {
+    <ButtonRound
+        Class="btn-sm"
+        Tooltip="Add to Contacts"
+        TooltipPosition="FloatingPosition.Top"
+        Click="@OnAddClick">
+        <i class="icon-person-add text-2xl"></i>
+    </ButtonRound>
+}
+
+@code {
+    private Session Session => Hub.Session();
+    private IContacts Contacts => Hub.Contacts;
+    private UICommander UICommander => Hub.UICommander();
+    private AuthorUI AuthorUI => Hub.AuthorUI;
+
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Author Author { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var authorId = Author.Id;
+        var peerChatId = await AuthorUI.GetPeerChatId(authorId, cancellationToken).ConfigureAwait(false);
+        if (peerChatId == PeerChatId.None)
+            return new ();
+
+        var contact = await Contacts.GetForChat(Session, peerChatId, cancellationToken).ConfigureAwait(false);
+        return new(contact);
+    }
+
+    private async Task OnAddClick() {
+        var contact = State.Value.Contact!;
+        var command = new Contacts_Change(Session, contact.Id, null, new Change<Contact> {
+            Create = contact,
+        });
+        await UICommander.Run(command);
+    }
+
+    // Nested types
+
+    public sealed record Model(Contact? Contact = null) {
+        public  static readonly Model Loading = new();
+
+        public bool CanAddToContacts => Contact is { ChatId.Kind: ChatKind.Peer } && !Contact.IsStored();
+    }
+}

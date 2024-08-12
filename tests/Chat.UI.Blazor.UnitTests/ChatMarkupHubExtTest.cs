@@ -1,7 +1,8 @@
-using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Chat;
+using ActualChat.UI.Blazor.App.Services;
 using Microsoft.AspNetCore.StaticFiles;
 
-namespace ActualChat.Chat.UI.Blazor.UnitTests;
+namespace ActualChat.UI.Blazor.App.UnitTests;
 
 public class ChatMarkupHubExtTest
 {

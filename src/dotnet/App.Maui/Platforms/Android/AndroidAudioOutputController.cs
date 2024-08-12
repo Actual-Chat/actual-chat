@@ -1,4 +1,4 @@
-using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor;
 using Android.Content;

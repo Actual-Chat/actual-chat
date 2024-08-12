@@ -1,0 +1,23 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IModalView<AddMemberModal.Model>
+
+<DiveInDialogFrame
+    HasCloseButton="true"
+    Class="add-member-modal"
+    StartPage="@(DiveInDialogPage.New<AddMemberModalPage>(ModalModel.Data))" />
+
+@code {
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    // Nested types
+
+    public sealed class Model {
+        public object Data { get; }
+
+        public Model(ChatId chatId)
+            => Data = chatId;
+
+        public Model(PlaceId placeId)
+            => Data = placeId;
+    }
+}
