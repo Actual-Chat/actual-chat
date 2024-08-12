@@ -1,0 +1,29 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<Account>
+@{
+    var account = State.Value;
+    if (account == AccountFull.Loading)
+        return;
+}
+
+<AvatarBadge
+    Avatar="@account.Avatar"
+    Size="@SquareSize.Size9"
+    NameClass="hidden">
+    <BadgeContent>
+        <AccountPresenceIndicator UserSid="@account.Id" />
+    </BadgeContent>
+</AvatarBadge>
+
+@code {
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
+
+    protected override ComputedState<Account>.Options GetStateOptions()
+        => new() {
+            InitialValue = AccountUI.OwnAccount.Value,
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Account> ComputeState(CancellationToken cancellationToken)
+        => await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+}

@@ -1,0 +1,89 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AuthorRules>
+@{
+    var m = State.Value;
+}
+
+<div class="c-header">
+    <div class="c-buttons">
+        <ButtonRound Click="@OnHideRightPanelClick" Class="right-panel-close-btn btn-sm">
+            <i class="icon-close text-2xl"></i>
+        </ButtonRound>
+    </div>
+
+    <div class="c-top">
+        <ChatIcon
+            Chat="Chat"
+            Size="SquareSize.SizeFull"
+            IsSquare="@true"
+            HideTitle="@true"
+            IsBlurred="@true"
+            ShowPresence="@false"/>
+    </div>
+
+    <div class="c-center">
+        <ChatIcon Chat="Chat" Size="SquareSize.Size16" ShowPresence="@false"/>
+        <div class="c-buttons">
+            @if (m.CanEditProperties()) {
+                <ButtonRound Class="btn-sm" Click="@OnEditChatSettingsClick">
+                    <i class="icon-edit text-2xl"></i>
+                </ButtonRound>
+            }
+            @if (EditMembersUI.CanAddMembers(Chat)) {
+                <ButtonRound Class="btn-sm" Click="@OnInviteClick">
+                    <i class="icon-person-add text-2xl"></i>
+                </ButtonRound>
+            }
+            @if (ShareModel != null) {
+                <ButtonRound Class="btn-sm" Click="@(() => OnShareClick(ShareModel))">
+                    <i class="icon-share text-2xl"></i>
+                </ButtonRound>
+            }
+        </div>
+    </div>
+
+    <div class="c-bottom">
+        <div class="c-content">
+            <div class="c-title">
+                @Chat.Title
+            </div>
+            <StatusBadge ChatContext="@ChatContext"/>
+        </div>
+        <ChatDescription ChatContext="@ChatContext"/>
+    </div>
+</div>
+
+@code {
+    private Session Session => ChatContext.Hub.Session();
+    private Chat Chat => ChatContext.Chat;
+    private IChats Chats => ChatContext.Hub.Chats;
+    private PanelsUI PanelsUI => ChatContext.Hub.PanelsUI;
+    private ModalUI ModalUI => ChatContext.Hub.ModalUI;
+    private ShareUI ShareUI => ChatContext.Hub.ShareUI;
+    private EditMembersUI EditMembersUI => ChatContext.Hub.EditMembersUI;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter] public ShareModalModel? ShareModel { get; set; }
+
+    protected override ComputedState<AuthorRules>.Options GetStateOptions()
+        => new() {
+            InitialValue = AuthorRules.None(Chat.Id),
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
+
+    protected override Task<AuthorRules> ComputeState(CancellationToken cancellationToken)
+        => Chats.GetRules(Session, Chat.Id, default);
+
+    private void OnHideRightPanelClick()
+        => PanelsUI.Right.SetIsVisible(false);
+
+    private Task OnEditChatSettingsClick()
+        => ModalUI.Show(new ChatSettingsModal.Model(Chat.Id));
+
+    private void OnShareClick(ShareModalModel shareModel)
+        => ShareUI.Share(shareModel);
+
+    private Task OnInviteClick()
+        => ModalUI.Show(new AddMemberModal.Model(Chat.Id));
+}

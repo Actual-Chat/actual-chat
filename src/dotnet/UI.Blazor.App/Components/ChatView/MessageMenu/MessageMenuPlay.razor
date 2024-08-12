@@ -1,0 +1,136 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<MessageMenuPlay.Model>
+@{
+    var m = State.Value;
+    var canPlay = m.CanPlay;
+}
+
+@if (canPlay) {
+    @if (IsMenu) {
+        <MenuEntry
+            Icon="icon-play-fill"
+            Class="important-item"
+            Text="Play"
+            Click="@OnPlay"
+            MustKeepAwake="true">
+        </MenuEntry>
+    } else {
+        <ButtonRound
+            Class="play-btn btn-transparent btn-xs"
+            Tooltip="Play"
+            TooltipPosition="FloatingPosition.Top"
+            Click="@OnPlay"
+            MustKeepAwake="true">
+            <i class="icon-play-fill text-xl text-primary"></i>
+        </ButtonRound>
+    }
+} else {
+    @if (IsMenu) {
+        <MenuEntry
+            Icon="icon-stop-fill"
+            Class="important-item"
+            Text="Stop"
+            Click="@OnStop">
+        </MenuEntry>
+    } else {
+        <ButtonRound
+            Click="OnStop"
+            Class="play-btn btn-xs btn-transparent"
+            Tooltip="Stop"
+            TooltipPosition="FloatingPosition.Top">
+            <i class="icon-stop-fill text-xl text-danger"></i>
+        </ButtonRound>
+    }
+}
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+
+    [Parameter] public ChatEntry Entry { get; set; } = null!;
+    [Parameter] public bool IsMenu { get; set; } = false;
+
+    private ILogger? _log;
+    private ILogger Log => _log ??= Services.LogFor(GetType());
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.NotPlaying,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
+        if (playbackState is not HistoricalPlaybackState { ChatId: var chatId })
+            return Model.NotPlaying;
+
+        var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
+        var historicalChatPlayer = player as HistoricalChatPlayer;
+        var playback = historicalChatPlayer?.Playback;
+        var lastState = State.Value;
+        if (playback == null) {
+            // This happens when player is being disposed, which means this method
+            // will soon recompute anyway.
+            return lastState; // Keep the last state to avoid blinking
+        }
+
+        var isPaused = await playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
+        var playingTracks = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
+        Moment? playingAt = null;
+        var canPlay = true;
+        foreach (var playingTrack in playingTracks) {
+            var trackInfo = playingTrack.TrackInfo;
+            if (trackInfo is ChatAudioTrackInfo chatAudioTrackInfo) {
+                var audioEntry = chatAudioTrackInfo.AudioEntry;
+                if (audioEntry.ChatId != Entry.ChatId)
+                    continue;
+                if (audioEntry.LocalId == Entry.AudioEntryId) {
+                    if (isPaused || playingTrack.State.IsStarted) {
+                        canPlay = false;
+                    }
+                }
+            }
+        }
+        if (!playingAt.HasValue && !ReferenceEquals(lastState, Model.NotPlaying)) {
+            // Try to keep last state to avoid blinking
+            if (lastState.CanPlay == canPlay)
+                return lastState;
+        }
+
+        return new() {
+            CanPlay = canPlay,
+        };
+    }
+
+    private Task OnStop() {
+        ChatPlayers.StopHistoricalPlayback();
+        return Task.CompletedTask;
+    }
+
+    private async Task OnPlay() {
+        var entry = Entry;
+        var chatId = entry.ChatId;
+        var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryId ?? -1, AssumeValid.Option);
+        var audioEntry = await Chats.GetEntry(Session, audioEntryId);
+        if (audioEntry == null) {
+            Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
+            return; // We can't do much in this case
+        }
+
+        var startAt = audioEntry.BeginsAt;
+        var chatPlayers = Services.GetRequiredService<ChatPlayers>();
+        chatPlayers.StartHistoricalPlayback(chatId, startAt);
+    }
+
+    // Nested types
+
+    public sealed record Model
+    {
+        public static readonly Model NotPlaying = new();
+
+        public bool CanPlay { get; init; } = true;
+    }
+}

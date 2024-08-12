@@ -1,0 +1,31 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<ChatAudioState>
+@{
+    var m = State.Value;
+    var playingHistoricalClass = m.IsPlayingHistorical ? "opacity-60" : "";
+    var cls = $"play {(m.IsListening ? "on" : "off")} {playingHistoricalClass}";
+}
+
+<ButtonRound Class="@cls" Click="@OnListenClick" MustKeepAwake="@(!m.IsListening)">
+    <i class="icon-listen text-2xl"></i>
+</ButtonRound>
+
+@code {
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+
+    protected override ComputedState<ChatAudioState>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ChatAudioState>.Options() {
+                InitialValue = ChatAudioState.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override Task<ChatAudioState> ComputeState(CancellationToken cancellationToken)
+        => ChatAudioUI.GetState(ChatId);
+
+    private void OnListenClick()
+        => _ = ChatAudioUI.SetListeningState(ChatId, !State.Value.IsListening);
+}

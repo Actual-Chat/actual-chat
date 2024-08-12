@@ -1,0 +1,159 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits Step;
+
+@if (CurrentStep != this) {
+    return;
+}
+
+<div class="set-chats-step">
+    <p class="text-title-1 text-center">Create frequently used chats</p>
+    <div class="step-tiles">
+        <div class="step-tile"
+             @onclick="CreateFamilyChatClick">
+            <img draggable="false"
+                 class="step-tile-icon"
+                 crossorigin="anonymous"
+                 alt="Family"
+                 src="/dist/images/onboarding/family.svg"/>
+            <div class="step-tile-body">
+                <div class="step-tile-title">
+                    Family
+                </div>
+                <div class="step-tile-subtitle">
+                    Chat with your family members
+                </div>
+            </div>
+            <Checkbox
+                IsChecked="@_model.CreateFamilyChat"
+                Class="!flex-none"
+                Change="CreateFamilyChatClick"/>
+        </div>
+        <div class="step-tile"
+             @onclick="CreateFriendsChatClick">
+            <img draggable="false"
+                 class="step-tile-icon"
+                 crossorigin="anonymous"
+                 alt="Friends"
+                 src="/dist/images/onboarding/friends.svg"/>
+            <div class="step-tile-body">
+                <div class="step-tile-title">
+                    Friends
+                </div>
+                <div class="step-tile-subtitle">
+                    Chat with your close friends
+                </div>
+            </div>
+            <Checkbox
+                IsChecked="@_model.CreateFriendsChat"
+                Class="!flex-none"
+                Change="CreateFriendsChatClick"/>
+        </div>
+        <div class="step-tile"
+             @onclick="CreateClassmatesAlumniChatClick">
+            <img draggable="false"
+                 class="step-tile-icon"
+                 crossorigin="anonymous"
+                 alt="Classmates"
+                 src="/dist/images/onboarding/alumni.svg"/>
+            <div class="step-tile-body">
+                <div class="step-tile-title">
+                    Classmates / Alumni
+                </div>
+                <div class="step-tile-subtitle">
+                    Chat with your classmates / alumni community
+                </div>
+            </div>
+            <Checkbox
+                IsChecked="@_model.CreateClassmatesAlumniChat"
+                Class="!flex-none"
+                Change="CreateClassmatesAlumniChatClick"/>
+        </div>
+        <div class="step-tile"
+             @onclick="CreateCoworkersChatClick">
+            <img draggable="false"
+                 class="step-tile-icon"
+                 crossorigin="anonymous"
+                 alt="Coworkers"
+                 src="/dist/images/onboarding/coworkers.svg"/>
+            <div class="step-tile-body">
+                <div class="step-tile-title">
+                    Coworkers
+                </div>
+                <div class="step-tile-subtitle">
+                    Chat with your coworkers
+                </div>
+            </div>
+            <Checkbox
+                IsChecked="@_model.CreateCoworkersChat"
+                Class="!flex-none"
+                Change="CreateCoworkersChatClick"/>
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly Model _model = new();
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+
+    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsCreateChatsStepCompleted;
+
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsCreateChatsStepCompleted = true });
+
+    protected override Task<bool> Validate() {
+        return Task.FromResult(true);
+    }
+
+    protected override async Task<bool> Save() {
+        if (_model.CreateFamilyChat)
+            await CreateChat("Family", Constants.Chat.SystemTags.Family);
+        if (_model.CreateFriendsChat)
+            await CreateChat("Friends", Constants.Chat.SystemTags.Friends);
+        if (_model.CreateClassmatesAlumniChat)
+            await CreateChat("Classmates / Alumni", Constants.Chat.SystemTags.ClassmatesAlumni, "system-icons:alumni");
+        if (_model.CreateCoworkersChat)
+            await CreateChat("Coworkers", Constants.Chat.SystemTags.Coworkers);
+
+        return true;
+    }
+
+    private async Task CreateChat(string title, Symbol systemTag, string? mediaId = null) {
+        var command = new Chats_Change(
+            Session,
+            default,
+            null,
+            new() {
+                Create = new ChatDiff {
+                    Title = title,
+                    Kind = ChatKind.Group,
+                    MediaId = new MediaId(mediaId ?? $"system-icons:{systemTag.Value}"),
+                    IsPublic = false,
+                    SystemTag = systemTag,
+                },
+            });
+        await UICommander.Run(command);
+    }
+
+    private void CreateFamilyChatClick()
+        => _model.CreateFamilyChat = !_model.CreateFamilyChat;
+
+    private void CreateFriendsChatClick()
+        => _model.CreateFriendsChat = !_model.CreateFriendsChat;
+
+    private void CreateClassmatesAlumniChatClick()
+        => _model.CreateClassmatesAlumniChat = !_model.CreateClassmatesAlumniChat;
+
+    private void CreateCoworkersChatClick()
+        => _model.CreateCoworkersChat = !_model.CreateCoworkersChat;
+
+    public class Model {
+        public bool CreateFamilyChat { get; set; }
+        public bool CreateFriendsChat { get; set; }
+        public bool CreateClassmatesAlumniChat { get; set; }
+        public bool CreateCoworkersChat { get; set; }
+    }
+}

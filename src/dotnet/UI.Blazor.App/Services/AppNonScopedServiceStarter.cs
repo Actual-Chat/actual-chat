@@ -1,5 +1,3 @@
-using ActualChat.Chat;
-using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Components.Internal;

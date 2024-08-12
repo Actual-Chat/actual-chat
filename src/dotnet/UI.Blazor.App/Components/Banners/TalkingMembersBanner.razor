@@ -1,0 +1,84 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<TalkingMembersBanner.Model>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.None))
+        return;
+}
+
+<Banner IsVisible="@m.IsVisible" Severity="BannerSeverity.Default" Class="talking-members-banner subheader">
+    <Icon>
+        <i class="icon-voice-01 text-danger text-2xl"></i>
+    </Icon>
+    <Body>
+    <div class="c-activities-container">
+        <ChatActivities @key="@Chat.Id.Value" Chat="@Chat" MaxIconCount="2"/>
+    </div>
+    </Body>
+    <Buttons>
+        @if (!IsListening) {
+            <Button Class="btn-primary talking-banner-btn" Click="@OnListenClick">
+                <Icon><i class="icon-listen text-xl"></i></Icon>
+                <Title>Listen</Title>
+            </Button>
+        }
+    </Buttons>
+</Banner>
+
+@code {
+    private Chat Chat => ChatContext.Chat;
+    private ChatUIHub Hub => ChatContext.Hub;
+    private Session Session => Hub.Session();
+    private AccountUI AccountUI => Hub.AccountUI;
+    private UICommander UICommander => Hub.UICommander();
+    private ChatActivity ChatActivity => Hub.ChatActivity;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+
+    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
+    private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
+    private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override async Task OnParametersSetAsync() {
+        ChatRecordingActivity?.Dispose();
+        ChatRecordingActivity = Chat.Id.IsNone ? null
+            : await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
+        await base.OnParametersSetAsync();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (ChatRecordingActivity == null)
+            return Model.None;
+
+        var chat = Chat;
+        var chatId = chat.Id;
+        var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
+        var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
+        return new (chat, audioState, authorIds.Count > 0);
+    }
+
+    private void OnListenClick() {
+        if (IsUpdating)
+            return;
+
+        _ = ChatAudioUI.SetListeningState(Chat.Id, !IsListening);
+    }
+
+    // Nested types
+
+    public sealed record Model(
+        Chat Chat,
+        ChatAudioState AudioState,
+        bool IsVisible
+    ) {
+        public static readonly Model None = new(SpecialChat.Loading, ChatAudioState.None, false);
+    }
+}

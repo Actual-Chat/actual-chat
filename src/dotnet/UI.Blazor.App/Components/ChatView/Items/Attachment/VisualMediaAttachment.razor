@@ -1,0 +1,42 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var attachment = Attachment;
+    var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
+    string? previewUrl = null;
+    if (attachment.IsGif() || attachment.IsSvg()) {
+        previewUrl = url; // currently image proxy fails on large gifs
+    } else if (attachment.IsSupportedImage()) {
+        previewUrl = UrlMapper.ImagePreviewUrl(url, null, (int?)Constants.Attachments.MaxActualResolution.Y);
+    }
+}
+
+<div class="image-attachment @Class">
+    <a class="cursor-pointer"
+       href="@url"
+       role="button"
+       @onclick="@(() => VisualMediaViewerUI.Show(url, ChatEntry))"
+       @onclick:preventDefault="true">
+        @if (attachment.IsSupportedVideo()) {
+            <VideoAttachmentThumbnail Attachment="attachment"/>
+        } else {
+            <image-skeleton
+                class="loading"
+                src="@previewUrl"
+            />
+        }
+    </a>
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
+    private NavigationManager Nav => Hub.Nav;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    [Parameter, EditorRequired]
+    public TextEntryAttachment Attachment { get; set; } = null!;
+    [Parameter] public ChatEntry? ChatEntry { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+}

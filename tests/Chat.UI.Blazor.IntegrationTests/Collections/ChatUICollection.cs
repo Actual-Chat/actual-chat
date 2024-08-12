@@ -1,4 +1,4 @@
-namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
+namespace ActualChat.UI.Blazor.App.IntegrationTests;
 
 [CollectionDefinition(nameof(ChatUICollection))]
 public class ChatUICollection : ICollectionFixture<AppHostFixture>;

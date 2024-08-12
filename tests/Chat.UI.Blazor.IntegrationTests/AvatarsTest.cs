@@ -1,7 +1,7 @@
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 
-namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
+namespace ActualChat.UI.Blazor.App.IntegrationTests;
 
 [Collection(nameof(ChatUICollection))]
 public class AvatarsTest(AppHostFixture fixture, ITestOutputHelper @out)

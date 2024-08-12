@@ -1,0 +1,41 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits AuthorBadgeBase
+@{
+    var m = State.Value;
+    var author = m.Author;
+    var showAsYou = m.IsOwn && ShowAsYou;
+    var onClick = ShowDetailsOnClick
+        ? EventCallback.Factory.Create<MouseEventArgs>(this, _ => AuthorUI.Show(author.Id))
+        : Click;
+}
+
+@if (onClick.HasDelegate) {
+    <AvatarName
+        Avatar="@author.Avatar"
+        Class="@Class"
+        IsAnonymous="@author.IsAnonymous"
+        ShowAsYou="@showAsYou"
+        Click="@onClick"/>
+}
+else {
+    <AvatarName
+        Avatar="@author.Avatar"
+        IsAnonymous="@author.IsAnonymous"
+        ShowAsYou="@showAsYou"
+        Class="@Class"/>
+}
+
+@code {
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool ShowDetailsOnClick { get; set; } = true;
+    [Parameter] public bool ShowAsYou { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+
+    protected override void OnParametersSet() {
+        if (ShowDetailsOnClick && Click.HasDelegate)
+            throw StandardError.Constraint("Set ShowDetailsOnClick to false when setting Click parameter");
+        base.OnParametersSet();
+    }
+}

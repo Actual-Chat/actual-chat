@@ -1,6 +1,4 @@
-﻿using ActualChat.Chat.UI.Blazor.Services;
-
-namespace ActualChat.UI.Blazor.App.Services;
+﻿namespace ActualChat.UI.Blazor.App.Services;
 
 public interface IAppIconBadge
 {

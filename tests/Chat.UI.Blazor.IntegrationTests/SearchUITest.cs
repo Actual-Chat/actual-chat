@@ -1,11 +1,12 @@
-using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Chat;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
 using ActualChat.Users;
 using ActualLab.Mathematics;
-using SearchUI = ActualChat.Chat.UI.Blazor.Services.SearchUI;
+using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI;
 
-namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
+namespace ActualChat.UI.Blazor.App.IntegrationTests;
 
 [Collection(nameof(SearchUICollection))]
 [Trait("Category", "Slow")]
@@ -83,8 +84,8 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         string criteria,
         AccountFull[] expectedFriends,
         AccountFull[] expectedStrangers,
-        Chat[] expectedJoinedGroups,
-        Chat[] expectedOtherGroups,
+        Chat.Chat[] expectedJoinedGroups,
+        Chat.Chat[] expectedOtherGroups,
         Place[] expectedJoinedPlaces,
         Place[] expectedOtherPlaces)
         => TestExt.When(async () => {

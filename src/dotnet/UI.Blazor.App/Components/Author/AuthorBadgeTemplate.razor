@@ -1,0 +1,8 @@
+﻿@namespace ActualChat.UI.Blazor.App.Components
+@inherits AuthorBadgeBase
+
+@ChildContent?.Invoke(State.Value)
+
+@code {
+    [Parameter] public RenderFragment<Model>? ChildContent { get; set; }
+}

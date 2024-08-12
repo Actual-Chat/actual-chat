@@ -1,0 +1,13 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="recently-contacted-user" data-href="@($"/chat/{Chat.Id}")">
+    <div class="c-contact">
+        <ChatIcon Chat="@Chat" HideTitle="true"/>
+        <div class="c-name">@Chat.Title</div>
+    </div>
+</div>
+
+
+@code {
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+}

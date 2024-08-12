@@ -1,0 +1,80 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase
+@implements IAsyncDisposable
+@using ActualChat.Transcription
+@using ActualChat.Streaming
+
+<p class="@Class chat-message-transcript">
+    @if (ShowEntryKind) {
+        if (Message.Entry.HasAudioEntry) {
+            <ChatEntryKindView Kind="@ChatEntryKind.Audio"/>
+        } else {
+            <ChatEntryKindView Kind="@ChatEntryKind.Text"/>
+        }
+    }@*
+    *@<span class="retained">@RetainedPart</span>@*
+    *@<span class="changes">@ChangedPart</span>
+</p>
+
+@code {
+    private ILogger? _log;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private IStreamClient StreamClient => Hub.StreamClient;
+    private Dispatcher Dispatcher => Hub.Dispatcher;
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
+
+    [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool ShowEntryKind { get; set; }
+
+    private CancellationTokenSource? RestartCts { get; set; }
+    private Transcript Transcript { get; set; } = Transcript.New();
+    private string RetainedPart { get; set; } = "";
+    private string ChangedPart { get; set; } = "";
+
+    public ValueTask DisposeAsync() {
+        RestartCts.CancelAndDisposeSilently();
+        return default;
+    }
+
+    protected override void OnParametersSet() {
+        RestartCts.CancelAndDisposeSilently();
+        RestartCts = new();
+        var cancellationToken = RestartCts.Token;
+        BackgroundTask.Run(
+            () => ReadTranscript(Message, cancellationToken),
+            Log, "ReadTranscript failed",
+            cancellationToken);
+    }
+
+    private async Task ReadTranscript(ChatMessage message, CancellationToken cancellationToken) {
+        try {
+            var entry = message.Entry;
+            var diffs = StreamClient.GetTranscript(entry.StreamId, cancellationToken);
+            var transcripts = diffs
+                .ToTranscripts()
+                .Throttle(TimeSpan.FromMilliseconds(320), cancellationToken);
+            var lastText = "";
+            await foreach (var transcript in transcripts.ConfigureAwait(false)) {
+                var text = transcript.Text;
+                var commonPrefixLength = lastText.GetCommonPrefixLength(text);
+                await Dispatcher.InvokeSafeAsync(() => {
+                    Transcript = transcript;
+                    RetainedPart = text[..commonPrefixLength];
+                    ChangedPart = text[commonPrefixLength..];
+                    StateHasChanged();
+                }, Log).ConfigureAwait(false); // Ok here
+                lastText = text;
+            }
+        }
+        catch (Exception e) {
+            if (e.GetType().FullName != "Microsoft.AspNetCore.SignalR.HubException")
+                throw;
+            if (!e.Message.Contains(nameof(OperationCanceledException)))
+                throw;
+            // Not fully sure if it's the case, but it seems that sometimes SignalR
+            // wraps OperationCanceledException into HubException, so here we suppress it.
+        }
+    }
+}

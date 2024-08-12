@@ -1,0 +1,37 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Streaming.UI.Blazor.Components
+@inherits FusionComponentBase
+@{
+    var isRecording = ChatState.IsRecording;
+    var cls = "important-item " + (isRecording ? "on" : "off");
+}
+@if (isRecording) {
+    <MenuEntry
+        Class="@cls"
+        Icon="icon-stop-fill"
+        Text="Stop recording"
+        Click="@(async _ => await ChatAudioUI.SetRecordingChatId(default))">
+    </MenuEntry>
+} else {
+    <MenuEntry
+        Class="@cls"
+        Icon="icon-mic-2"
+        Text="Start recording"
+        Click="@OnStartRecordingClick">
+    </MenuEntry>
+}
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private AudioRecorder AudioRecorder => Hub.AudioRecorder;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
+
+    private async Task OnStartRecordingClick() {
+        if (!await AudioRecorder.MicrophonePermission.CheckOrRequest())
+            return;
+
+        await ChatAudioUI.SetRecordingChatId(ChatState.Id);
+    }
+}

@@ -1,0 +1,62 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<ChatListTabUnreadCount.Model>
+@{
+    var m = State.Value;
+    _rendered = m;
+    if (m.Count <= 0)
+        return;
+}
+
+<div class="c-badge">
+    <UnreadCount Value="@m.Count" Click="OnUnreadBadgeClick"/>
+</div>
+
+@code {
+    private Model? _rendered;
+
+    [Inject] private ChatUI ChatUI  { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI  { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
+
+    [Parameter, EditorRequired] public ChatListView ChatListView { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatListFilter ChatListFilter { get; set; } = ChatListFilter.None;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var placeId = ChatListView.PlaceId;
+        var chatListFilter = ChatListFilter;
+
+        var count = await ChatListUI.GetUnreadChatCount(placeId, chatListFilter, cancellationToken).ConfigureAwait(false);
+
+        return new() {
+            Count = count,
+        };
+    }
+
+    private async Task OnUnreadBadgeClick() {
+        var chatListView = ChatListView;
+        var settings = await chatListView.GetSettings();
+        settings = settings with { FilterId = ChatListFilter.Id };
+        var list = await ChatListUI.ListAll(chatListView.PlaceId, settings);
+        if (chatListView != ChatListView)
+            return;
+        var firstUnreadChat = list.FirstOrDefault(c => c.UnreadCount > 0);
+        if (firstUnreadChat == null || firstUnreadChat.Id == ChatUI.SelectedChatId.Value)
+            return;
+
+        _ = History.NavigateTo(Links.Chat(firstUnreadChat.Id));
+    }
+
+    protected override bool ShouldRender()
+        => State.HasError || State.Value != _rendered;
+
+    // Nested types
+
+    public record struct Model(Trimmed<int> Count);
+}

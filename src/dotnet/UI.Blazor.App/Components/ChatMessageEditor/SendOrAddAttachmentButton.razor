@@ -1,0 +1,14 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+@if (Count < 10) {
+    <li class="attachment-wrapper last-element">
+        <ButtonRound Class="add-attachment" Click="@AddClick">
+            <i class="icon-plus text-2xl"></i>
+        </ButtonRound>
+    </li>
+}
+
+@code {
+    [Parameter] public int Count { get; set; }
+    [Parameter] public EventCallback AddClick { get; set; }
+}

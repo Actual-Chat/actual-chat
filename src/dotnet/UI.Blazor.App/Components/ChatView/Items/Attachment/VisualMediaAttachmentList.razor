@@ -1,0 +1,32 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="message-image-attachments">
+    @foreach (var row in GetRows()) {
+        <VisualMediaAttachmentLine
+            Row="@row"
+            ChatEntry="@ChatEntry"/>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<TextEntryAttachment> ImageList { get; set; } = null!;
+    [Parameter] public ChatEntry? ChatEntry { get; set; }
+
+    private IEnumerable<ImageRow> GetRows() {
+        var remainingWidth = Constants.Chat.ImageRowCapacity;
+        var line = new List<ImageTile>(Constants.Chat.ImageRowCapacity);
+        foreach (var attachment in ImageList) {
+            var tile = new ImageTile(attachment);
+            var quota = tile.RowQuota;
+            if (remainingWidth < quota) {
+                yield return new ImageRow(line);
+                line = new (Constants.Chat.ImageRowCapacity);
+                remainingWidth = Constants.Chat.ImageRowCapacity;
+            }
+            remainingWidth -= quota;
+            line.Add(tile);
+        }
+        if (line.Count > 0)
+            yield return new ImageRow(line);
+    }
+}

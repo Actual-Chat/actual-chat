@@ -1,0 +1,60 @@
+@inherits FusionComponentBase
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var selectedUserIds = SelectedUserIds;
+}
+
+<FormBlock Class="with-contact-list">
+    <MemberSelector
+        @ref="_memberSelector"
+        DataProvider="@_memberSelectorBackend"
+        Changed="OnSelectionChanged" />
+</FormBlock>
+
+<RenderIntoSlot Name="@ButtonsSlotName">
+    @if (selectedUserIds.Count > 0) {
+        <Button
+            Class="btn-modal btn-primary"
+            Click="@OnAdd">
+            Add @(selectedUserIds.Count) @("member".Pluralize(selectedUserIds.Count))
+        </Button>
+    } else {
+        <Button
+            Class="btn-modal btn-primary"
+            Click="@(() => Skipped.InvokeAsync(false))">
+            Skip
+        </Button>
+    }
+</RenderIntoSlot>
+
+@code {
+    private MemberSelector? _memberSelector;
+    private IMemberSelector _memberSelectorBackend = null!;
+
+    private IReadOnlySet<UserId> SelectedUserIds
+        => _memberSelector?.SelectedUserIds.Value ?? ImmutableHashSet<UserId>.Empty;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
+    [Parameter, EditorRequired] public EventCallback<bool> Skipped { get; set; }
+    [Parameter, EditorRequired] public EventCallback<bool> Completed { get; set; }
+
+    protected override void OnInitialized() {
+        _memberSelectorBackend = new NewChatMemberSelector(Hub, ChatId);
+    }
+
+    private async Task OnAdd() {
+        var userIds = SelectedUserIds.ToArray();
+        if (userIds.Length > 0) {
+            var error = await _memberSelectorBackend.Invite(userIds, default);
+            if (error != null)
+                return;
+        }
+        await Completed.InvokeAsync(true);
+    }
+
+    private void OnSelectionChanged()
+        => StateHasChanged();
+}

@@ -1,0 +1,99 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Search
+@using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI
+@inherits ComputedStateComponent<FoundChat.Model>
+@{
+    var m = State.Value;
+    if (m == Model.None)
+        return;
+
+    var chatState = m.ChatState;
+    var chat = chatState.Chat;
+    var chatInfo = chatState.Info;
+    var lastTextEntry = chatInfo.LastTextEntry;
+}
+@* TODO: merge with ChatListItem or at least refactor and extract common parts *@
+@if (m == Model.Loading) {
+    <ChatListItemSkeleton />
+} else {
+    <div class="navbar-item found-chat">
+        <div class="navbar-item-content" data-href="@($"/chat/{chat.Id}")">
+            <div class="c-container">
+                <ChatIcon Chat="chatState.Chat"/>
+                <div class="c-description">
+                    <span class="c-title">
+                        <SearchMatchHighlighter Match="@m.SearchMatch"/>
+                    </span>
+                    @if (lastTextEntry != null) {
+                        <div class="c-last-message">
+                            @if (chatState.Chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
+                                <span class="c-name">
+                                    <AuthorName AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
+                                </span>
+                            }
+                            @if (lastTextEntry.IsStreaming) {
+                                <chat-list-item-streaming-svg class="w-4 h-4"/>
+                            } else {
+                                <span class="c-text">
+                                    @chatInfo.LastTextEntryText
+                                </span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="navbar-item-ending">
+            <UnreadCountWithTime
+                Value="@chatState.Info.UnreadCount"
+                LastEntry="@chatState.Info.LastTextEntry"
+                HideLastEntryTime="@(chatState.IsListening || chatState.IsRecording)"
+                NotificationMode="@chatState.Info.UserSettings.NotificationMode"
+                HasMentions="chatState.Info.HasUnreadMentions"/>
+        </div>
+    </div>
+}
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private SearchUI SearchUI => Hub.SearchUI;
+    private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [Parameter] public SearchMatch SearchMatch { get; set; } = SearchMatch.Empty;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    {
+        // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
+        // Properties are copied to local vars because of this.
+        var chatId = ChatId;
+        var searchMatch = SearchMatch;
+
+        var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
+        if (chatState == null)
+            return Model.None;
+
+        return new() {
+            ChatState = chatState,
+            SearchMatch = searchMatch.IsEmpty ? SearchMatch.New(chatState.Chat.Title) : searchMatch,
+        };
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model Loading = new() { ChatState = ChatState.Loading };
+        public static readonly Model None = new() { ChatState = ChatState.None };
+
+        public ChatState ChatState { get; init; } = ChatState.None;
+        public SearchMatch SearchMatch { get; init; } = SearchMatch.Empty;
+    }
+}

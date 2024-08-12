@@ -1,0 +1,42 @@
+﻿@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<Unit>
+@{
+    var allChats = Selector.AllChats.Value;
+    var selectedChatIds = Selector.SelectedChatIds.Value;
+}
+
+<div class="contact-selector-badges">
+    @foreach (var chatId in selectedChatIds) {
+        var chat = allChats.GetValueOrDefault(chatId);
+        if (chat == null)
+            continue;
+
+        <div class="c-contact" @onclick="() => Selector.Remove(chat.Id)">
+            <div class="c-remove">
+                <i class="icon-close c-close"></i>
+                <span class="c-text">Remove</span>
+            </div>
+            <ChatIcon Chat="@chat.Chat" Size="SquareSize.Size6"/>
+            <div class="c-name">
+                @chat.Chat.Title
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [CascadingParameter] public ContactSelector Selector { get; set; } = null!;
+
+    protected override ComputedState<Unit>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Unit>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Unit> ComputeState(CancellationToken cancellationToken) {
+        await Selector.AllChats.Use(cancellationToken).ConfigureAwait(false);
+        await Selector.SelectedChatIds.Use(cancellationToken).ConfigureAwait(false);
+        return default;
+    }
+}

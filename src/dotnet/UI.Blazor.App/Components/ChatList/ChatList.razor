@@ -1,0 +1,121 @@
+@using ActualChat.Comparison
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<ChatList.Model>
+@{
+    var m = State.Value;
+    var searchModeTriggered = m.IsSearchModeOn && !_rendered.IsSearchModeOn;
+    _rendered = m;
+    if (Kind == ChatListKind.All && searchModeTriggered)
+        _resetScrollPositionRequested = true;
+    DebugLog?.LogDebug("Rendered: {List}", Kind);
+}
+
+@if (m.IsLoading) {
+    <div class="p-2">
+        <chat-list-skeleton count="12" rootCls="wide-left-skeleton-panel"></chat-list-skeleton>
+    </div>
+} else {
+    @if (Kind == ChatListKind.Active) {
+        if (m.Chats.Count == 0)
+            return;
+
+        <div class="c-delimiter"></div>
+        <div class="active-chats"
+             data-bubble="@(BubbleRef.New<ActiveChatsBubble>())"
+             data-bubble-priority="202"
+             data-bubble-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+            <div class="c-title" data-tooltip="Chats where you are listening or recording right now">Active Chats</div>
+
+            <div class="chat-list chat-list-active">
+                @foreach(var chat in m.Chats) {
+                    <ChatListItem ListKind="@Kind" Chat="@chat"/>
+                }
+            </div>
+        </div>
+    } else {
+        @* ChatListKind.All *@
+        <VirtualList
+            @ref="_virtualListRef"
+            Class="chat-list chat-list-all"
+            DataSource="@this"
+            ExpandTriggerMultiplier="0.5"
+            ExpandMultiplier="0.7"
+            SkeletonCount="50"
+            KeyComparer="@LongAsStringKeyComparer.Default"
+            ItemVisibilityChanged="@OnItemVisibilityChanged"
+            >
+            <Item>
+                <ChatListItem
+                    ListKind="@Kind"
+                    Chat="@context.Chat"
+                    IsLastItemInBlock="@context.IsLastItemInBlock"
+                    IsFirstItem="@context.IsFirstItem"/>
+            </Item>
+            <Skeleton>
+                <ChatListItemSkeleton />
+            </Skeleton>
+        </VirtualList>
+    }
+}
+
+@code {
+    private VirtualList<ChatListItemModel>? _virtualListRef = null;
+    private Model _rendered;
+    private ILogger? _log;
+    private bool _resetScrollPositionRequested;
+
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private ChatUI ChatUI => Hub.ChatUI;
+    private IChats Chats => Hub.Chats;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+    private SearchUI SearchUI => Hub.SearchUI;
+    private FontSizeUI FontSizeUI => Hub.FontSizeUI;
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
+    private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
+
+    [Parameter, EditorRequired] public ChatListKind Kind { get; set; }
+    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
+
+    protected override void OnInitialized()
+        => DebugLog?.LogDebug("OnInitialized: {List}", Kind);
+
+    protected override void OnParametersSet() {
+        DebugLog?.LogDebug("OnParametersSet: {List}", Kind);
+        _ = _virtualListRef?.Reset();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new (ImmutableList<Chat>.Empty, false, true),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatListKind = Kind;
+
+        DebugLog?.LogDebug("-> ComputeState: {List}", chatListKind);
+        IReadOnlyList<Chat> chats = new List<Chat>();
+        if (Kind == ChatListKind.Active) {
+            var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
+            chats = (await activeChats
+                    .Select(ac => Chats.Get(Session, ac.ChatId, cancellationToken))
+                    .Collect()
+                    .ConfigureAwait(false))
+                .SkipNullItems()
+                .ToList();
+        }
+
+        var isSearchModeOn = await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false);
+        DebugLog?.LogDebug("<- ComputeState: {List}. IsSearchModeOn={IsSearchModeOn}", chatListKind, isSearchModeOn);
+        return new (chats, isSearchModeOn);
+    }
+
+    // Nested types
+
+    public record struct Model(
+        IReadOnlyList<Chat> Chats,
+        bool IsSearchModeOn = false,
+        bool IsLoading = false);
+}

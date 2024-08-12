@@ -1,0 +1,24 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="chat-not-found-container">
+    <div class="c-wrapper">
+        <chat-not-found-svg/>
+        <div class="text-wrapper">
+            <p>Chat not found.</p>
+            <p>Choose another one.</p>
+        </div>
+    </div>
+</div>
+
+@if (ShowSignIn) {
+    <RenderIntoSlot Name="MainFooter">
+        <div class="flex-x items-center justify-center gap-x-2">
+            <span>You can try to sign in to see it</span>
+            <SignInButton/>
+        </div>
+    </RenderIntoSlot>
+}
+
+@code {
+    [Parameter] public bool ShowSignIn { get; set; }
+}

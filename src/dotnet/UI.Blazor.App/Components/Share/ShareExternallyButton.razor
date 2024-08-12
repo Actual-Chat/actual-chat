@@ -1,0 +1,65 @@
+﻿@using ActualChat.UI.Blazor.Module
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="share-button share-externally-button @Class">
+    @if (MauiShare != null) {
+        <Button Class="btn-modal" Click="OnMauiShareClick">
+            <Icon><i class="icon-share-more"></i></Icon>
+            <Title>Share Externally</Title>
+        </Button>
+    } else if (_canUseWebShare) {
+        var textAndLink = Request.GetShareTextAndLink(UrlMapper);
+        var link = Request.GetShareLink(UrlMapper);
+        <Button Class="btn-modal"
+                data-share-title="@Request.Text"
+                data-share-text="@textAndLink"
+                data-share-link="@link"
+                >
+            <Icon><i class="icon-share-more text-2xl"></i></Icon>
+            <Title>Share Externally</Title>
+        </Button>
+    } else {
+        var text = Request.HasLink() ? "Copy link" : "Copy to clipboard";
+        <CopyTrigger Tooltip="Copy" CopyText="@Request.GetShareTextAndLink(UrlMapper)">
+            <Button Class="btn-modal">
+                <Icon>
+                    <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
+                    <i class="copied-hint icon-checkmark-simple text-xl" aria-hidden="true"></i>
+                </Icon>
+                <Title>@text</Title>
+            </Button>
+        </CopyTrigger>
+    }
+</div>
+
+@code {
+    private bool _canUseWebShare;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
+    private IMauiShare? MauiShare { get; set; }
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter, EditorRequired] public ShareRequest Request { get; set; }
+
+    protected override async Task OnInitializedAsync() {
+        MauiShare = Hub.GetService<IMauiShare>();
+        if (MauiShare == null) {
+            var webShareInfo = Hub.GetRequiredService<WebShareInfo>();
+            _canUseWebShare = await webShareInfo.CanShare();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        if (!_canUseWebShare)
+            return;
+
+        await Hub.JSRuntime().InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.Share.registerHandler");
+    }
+
+    private Task OnMauiShareClick()
+        => MauiShare!.Share(Request);
+}
