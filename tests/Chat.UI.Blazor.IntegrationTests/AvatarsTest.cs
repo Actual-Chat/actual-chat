@@ -19,7 +19,7 @@ public class AvatarsTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         var appHost = AppHost;
         await using var tester = appHost.NewWebClientTester(Out);
-        var account = await tester.SignInAsBob("no-admin");
+        var account = await tester.SignInAsUniqueBob();
         var command = new Avatars_Change(tester.Session, Symbol.Empty, null, new Change<AvatarFull>() {
             Create = new AvatarFull(account.Id),
         });
