@@ -166,9 +166,9 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 var options = services.GetRequiredService<IOptionsMonitor<BotToolsContextHandlerOptions>>();
                 return services.CreateInstanceWith<BotToolsContextHandler>(options);
             });
-            var isBotEnabled = 
-                Settings.IsEnabled 
-                && Settings.Integrations.Bot != null 
+            var isBotEnabled =
+                Settings.IsEnabled
+                && Settings.Integrations.Bot != null
                 && Settings.Integrations.Bot.IsEnabled
                 && Settings.Integrations.Bot.WebHookUri != null;
             if (isBotEnabled) {
@@ -187,10 +187,31 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
         // -- Register Controllers --
-        //services.AddMvcCore().AddApplicationPart(GetType().Assembly);
+        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
         // -- Register IMLSearchHanders --
         rpcHost.AddApiOrLocal<IMLSearch, MLSearchImpl>();
 
-        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
+        // -- Register Swagger endpoint (OpenAPI) --
+        // Note: This is temporary disabled. Will be re-enabled in a separate PR.
+        /*
+        services.AddEndpointsApiExplorer();
+        services.AddSwaggerGen(c => {
+            c.IncludeXmlComments(
+                Path.Combine(
+                    AppContext.BaseDirectory,
+                    $"{Assembly.GetExecutingAssembly().GetName().Name}.xml"
+                )
+            );
+            c.DocInclusionPredicate((docName, apiDesc) => {
+                if (!apiDesc.TryGetMethodInfo(out MethodInfo methodInfo)) return false;
+                var isBotTool = methodInfo.DeclaringType
+                    .GetCustomAttributes(true)
+                    .OfType<BotToolsAttribute>()
+                    .Any();
+                return isBotTool;
+            });
+            c.SwaggerDoc("bot-tools-v1", new OpenApiInfo { Title = "Bot Tools API - V1", Version = "v1"});
+        });
+        */
     }
 }
