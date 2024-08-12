@@ -31,7 +31,7 @@ public class TranscriptUpdateTests(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void TranscriberStateTest1()
     {
-        var state = new GoogleTranscribeState(null!, null!, null!);
+        var state = new GoogleTranscribeState(null!, null!, null!, null!);
         state.Append("раз-два-три-четыре-пять,", 4.68f);
         state.Append("раз-два-три-четыре-пять, 67", 4.98f).MakeStable();
         state.Append(" вот", 8.14f);
@@ -44,7 +44,7 @@ public class TranscriptUpdateTests(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void TranscriberStateTest2()
     {
-        var state = new GoogleTranscribeState(null!, null!, null!);
+        var state = new GoogleTranscribeState(null!, null!, null!, null!);
         state.Append("1", 1).MakeStable();
         state.Append(" 2", 2).MakeStable();
         state.Append(" 3", new LinearMap(3, 2, 5, 3)).MakeStable();
@@ -57,7 +57,7 @@ public class TranscriptUpdateTests(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void TranscriberUnstableTest()
     {
-        var state = new GoogleTranscribeState(null!, null!, null!);
+        var state = new GoogleTranscribeState(null!, null!, null!, null!);
         state.Append("1", 1);
         state.Append(" 2", 2).MakeStable();
         state.Stable.TimeMap.Length.Should().Be(3);
@@ -66,7 +66,7 @@ public class TranscriptUpdateTests(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void RandomTranscriberStateTest()
     {
-        var state = new GoogleTranscribeState(null!, null!, null!);
+        var state = new GoogleTranscribeState(null!, null!, null!, null!);
         state.Append("X", null).MakeStable();
         var text = Enumerable.Range(0, 100).Select(i => i.ToString(CultureInfo.InvariantCulture)).ToDelimitedString("-");
         var rnd = new Random(0);

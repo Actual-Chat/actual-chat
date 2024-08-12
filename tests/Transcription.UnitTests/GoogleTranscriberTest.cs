@@ -24,7 +24,7 @@ public class GoogleTranscriberTest : TestBase
         var transcriber = Services.GetRequiredService<GoogleTranscriber>();
         await transcriber.WhenInitialized;
         var responses = GenerateResponses();
-        var state = new GoogleTranscribeState(null!, null!, null!);
+        var state = new GoogleTranscribeState(null!, null!, null!, null!);
         var transcripts = await transcriber.ProcessResponses(state, responses).ToListAsync();
 
         var transcript = transcripts.Last();
@@ -186,7 +186,7 @@ public class GoogleTranscriberTest : TestBase
     {
         var transcriber = Services.GetRequiredService<GoogleTranscriber>();
         await transcriber.WhenInitialized;
-        var state = new GoogleTranscribeState(null!, null!, null!);
+        var state = new GoogleTranscribeState(null!, null!, null!, null!);
         var responses = GoogleTranscriptReader.ReadFromFile("data/transcript.json");
         var transcripts = await transcriber.ProcessResponses(state, responses).ToListAsync();
 
@@ -200,7 +200,7 @@ public class GoogleTranscriberTest : TestBase
     {
         var transcriber = Services.GetRequiredService<GoogleTranscriber>();
         await transcriber.WhenInitialized;
-        var state = new GoogleTranscribeState(null!, null!, null!);
+        var state = new GoogleTranscribeState(null!, null!, null!, null!);
         var responses = GoogleTranscriptReader.ReadFromFile("data/long-transcript.json");
         var transcripts = transcriber.ProcessResponses(state, responses);
 
