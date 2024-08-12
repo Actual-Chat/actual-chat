@@ -58,15 +58,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             app.UseRouting();
         }
     }
-    public void ConfigureApp(IApplicationBuilder app)
-    {
-        if (HostInfo.HasRole(HostRole.Api)) {
-            app.UseEndpoints(endpoints => {
-                endpoints.MapControllers();
-            });
-            app.UseRouting();
-        }
-    }
     protected override void InjectServices(IServiceCollection services)
     {
         if (!Settings.IsEnabled) {
