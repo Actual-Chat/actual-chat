@@ -24,7 +24,7 @@ public partial class GoogleTranscriber : ITranscriber
     private static readonly Regex EndsWithWhitespaceOrEmptyRegex = EndsWithWhitespaceOrEmptyRegexFactory();
 
     private static readonly string RegionId = "us";
-    private static readonly TimeSpan SilentPrefixDuration = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan SilentPrefixDuration = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan SilentSuffixDuration = TimeSpan.FromSeconds(4);
     private static readonly double TranscriptionSpeed = 2;
 
@@ -39,7 +39,6 @@ public partial class GoogleTranscriber : ITranscriber
     private OggOpusStreamConverter OggOpusStreamConverter { get; }
 
     private SpeechClient SpeechClient { get; set; } = null!; // Post-WhenInitialized
-    private StreamingRecognitionConfig RecognitionConfig { get; set; } = null!; // Post-WhenInitialized
     private string GoogleProjectId { get; set; } = null!; // Post-WhenInitialized
     private AudioSource SilenceAudioSource { get; set; } = null!; // Post-WhenInitialized
 
@@ -59,18 +58,6 @@ public partial class GoogleTranscriber : ITranscriber
 
     private async Task Initialize()
     {
-        RecognitionConfig = new StreamingRecognitionConfig {
-            Config = new RecognitionConfig {
-                AutoDecodingConfig = new AutoDetectDecodingConfig(),
-            },
-            StreamingFeatures = new StreamingRecognitionFeatures {
-                InterimResults = true,
-                // TODO(AK): test google VAD events - probably it might be useful
-                // VoiceActivityTimeout =
-                // EnableVoiceActivityEvents =
-            },
-        };
-
         var speechClientBuilder = new SpeechClientBuilder {
             // See https://cloud.google.com/speech-to-text/v2/docs/speech-to-text-supported-languages
             Endpoint = $"{RegionId}-speech.googleapis.com:443",
@@ -110,7 +97,7 @@ public partial class GoogleTranscriber : ITranscriber
             var recognizerName = $"{parent}/recognizers/{recognizerId}";
 
             try {
-                await Transcribe(recognizerName, audioSource, output, cancellationToken)
+                await TranscribeInternal(recognizerName, audioSource, options, output, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (RpcException e) when (
@@ -119,7 +106,7 @@ public partial class GoogleTranscriber : ITranscriber
             {
                 await CreateRecognizer(recognizerId, parent, options, cancellationToken)
                     .ConfigureAwait(false);
-                await Transcribe(recognizerName, audioSource, output, cancellationToken)
+                await TranscribeInternal(recognizerName, audioSource, options, output, cancellationToken)
                     .ConfigureAwait(false);
             }
             output.TryComplete();
@@ -132,9 +119,33 @@ public partial class GoogleTranscriber : ITranscriber
 
     // Private methods
 
-    private async Task Transcribe(
+    private StreamingRecognitionConfig GetStreamingRecognitionConfig(TranscriptionOptions options)
+    {
+        var languageCode = GetRecognizerOptions(options.Language).LanguageCode;
+        return new StreamingRecognitionConfig {
+            Config = new RecognitionConfig {
+                Model = "long",
+                LanguageCodes = { languageCode },
+                AutoDecodingConfig = new AutoDetectDecodingConfig(),
+                Features = new RecognitionFeatures {
+                    EnableAutomaticPunctuation = true,
+                    EnableWordConfidence = true,
+                    EnableWordTimeOffsets = true,
+                },
+            },
+            StreamingFeatures = new StreamingRecognitionFeatures {
+                InterimResults = true,
+                // TODO(AK): test google VAD events - probably it might be useful
+                // VoiceActivityTimeout =
+                // EnableVoiceActivityEvents =
+            },
+        };
+    }
+
+    private async Task TranscribeInternal(
         string recognizerName,
         AudioSource audioSource,
+        TranscriptionOptions options,
         ChannelWriter<Transcript> output,
         CancellationToken cancellationToken)
     {
@@ -142,11 +153,11 @@ public partial class GoogleTranscriber : ITranscriber
             CallSettings.FromCancellationToken(cancellationToken),
             new BidirectionalStreamingSettings(1));
         await recognizeStream.WriteAsync(new StreamingRecognizeRequest {
-            StreamingConfig = RecognitionConfig,
+            StreamingConfig = GetStreamingRecognitionConfig(options),
             Recognizer = recognizerName,
         }).ConfigureAwait(false);
 
-        var state = new GoogleTranscribeState(audioSource, recognizeStream, output);
+        var state = new GoogleTranscribeState(audioSource, options, recognizeStream, output);
         // We want to stop both tasks here on any failure, so...
 #pragma warning disable CA2000
         var cts = cancellationToken.CreateLinkedTokenSource();
@@ -183,7 +194,7 @@ public partial class GoogleTranscriber : ITranscriber
                     await clock.Delay(delay, cancellationToken).ConfigureAwait(false);
 
                 var request = new StreamingRecognizeRequest {
-                    StreamingConfig = RecognitionConfig,
+                    StreamingConfig = GetStreamingRecognitionConfig(state.Options),
                     Audio = ByteString.CopyFrom(chunk),
                 };
                 await recognizeStream.WriteAsync(request).ConfigureAwait(false);
@@ -400,7 +411,7 @@ public partial class GoogleTranscriber : ITranscriber
                         EnableSpokenEmojis = false,
                         ProfanityFilter = recognizerOptions.ProfanityFilter,
                         EnableWordConfidence = false,
-                        EnableWordTimeOffsets = false,
+                        EnableWordTimeOffsets = true,
                         MultiChannelMode = RecognitionFeatures.Types.MultiChannelMode.Unspecified,
                     },
                     AutoDecodingConfig = new AutoDetectDecodingConfig(),
