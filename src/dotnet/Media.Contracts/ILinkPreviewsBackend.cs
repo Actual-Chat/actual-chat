@@ -1,4 +1,3 @@
-using ActualChat.Chat.Events;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -11,8 +10,13 @@ public interface ILinkPreviewsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<LinkPreview?> GetForEntry(ChatEntryId entryId, CancellationToken cancellationToken);
 
+    // Commands
+
     [CommandHandler]
     Task<LinkPreview?> OnRefresh(LinkPreviewsBackend_Refresh command, CancellationToken cancellationToken);
+
+    // Events
+
     [EventHandler]
     Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }

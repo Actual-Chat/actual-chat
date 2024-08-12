@@ -23,7 +23,7 @@ public static class ChatsBackendExt
     public static async ValueTask<ChatEntry?> GetEntry(
         this IChatsBackend chatsBackend,
         ChatEntryId entryId,
-        TimeSpan timeout,
+        TimeSpan waitTimeout,
         CancellationToken cancellationToken = default)
     {
         if (entryId.IsNone)
@@ -40,13 +40,13 @@ public static class ChatsBackendExt
 
         var tile = cTile.Value;
         var entry = tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
-        if (entry != null)
+        if (entry == null)
             return entry;
 
-        // GetTile hasn't invalidated yet for the new Entry
+        // Tile doesn't contain the entry yet (prob. due to invalidation delays), so we're going to wait for it
         cTile = await cTile
             .When(ct => ct.Entries.Any(e => e.LocalId == entryId.LocalId), cancellationToken)
-            .WaitAsync(timeout, cancellationToken)
+            .WaitAsync(waitTimeout, cancellationToken)
             .ConfigureAwait(false);
 
         tile = cTile.Value;
@@ -100,9 +100,8 @@ public static class ChatsBackendExt
             minId = Math.Min(minId, localId);
             maxId = Math.Max(maxId, localId);
         }
-        if (maxId < minId || entryKind is null) {
-            return Array.Empty<ChatEntry>();
-        }
+        if (maxId < minId || entryKind is null)
+            return [];
 
         var idTiles = Constants.Chat.ServerIdTileStack.FirstLayer.GetCoveringTiles(new Range<long>(minId, maxId + 1));
         var entries = new List<ChatEntry>(localIds.Count);
@@ -139,7 +138,7 @@ public static class ChatsBackendExt
         }
     }
 
-    public static async IAsyncEnumerable<ApiArray<Chat>> BatchChanged(
+    public static async IAsyncEnumerable<ApiArray<Chat>> BatchChangedGroups(
         this IChatsBackend chatsBackend,
         long minVersion,
         long maxVersion,
@@ -148,7 +147,15 @@ public static class ChatsBackendExt
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested) {
-            var chats = await chatsBackend.ListChanged(minVersion, maxVersion, lastId, batchSize, cancellationToken)
+            var chats = await chatsBackend.ListChanged(new ChangedChatsQuery {
+                        MinVersion = minVersion,
+                        MaxVersion = maxVersion,
+                        LastId = lastId,
+                        Limit = batchSize,
+                        ExcludePeerChats = true,
+                        ExcludePlaceRootChats = true,
+                    },
+                    cancellationToken)
                 .ConfigureAwait(false);
             if (chats.Count == 0)
                 yield break;

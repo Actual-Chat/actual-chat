@@ -48,7 +48,7 @@ public class DeviceAwakeUI : ScopedServiceBase<UIHub>, ISleepDurationProvider, I
         }
     }
 
-    public async Task SleepUntil(IMomentClock clock, Moment until, CancellationToken cancellationToken = default)
+    public async Task SleepUntil(MomentClock clock, Moment until, CancellationToken cancellationToken = default)
     {
         while (true) {
             cancellationToken.ThrowIfCancellationRequested();

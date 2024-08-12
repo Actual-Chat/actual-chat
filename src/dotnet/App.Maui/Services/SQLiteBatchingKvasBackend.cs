@@ -85,7 +85,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
             connection.EnableWriteAheadLogging();
             var versionBytes = Encoding.UTF8.GetEncoder().Convert(version);
             if (connection.CreateTable<DbItem>() == CreateTableResult.Migrated) {
-                var existingVersionBytes = connection.Find<DbItem>(VersionKey)?.Value ?? Array.Empty<byte>();
+                var existingVersionBytes = connection.Find<DbItem>(VersionKey)?.Value ?? [];
                 if (!versionBytes.AsSpan().SequenceEqual(existingVersionBytes.AsSpan())) {
                     _ = connection.DropTable<DbItem>();
                     _ = connection.CreateTable<DbItem>();

@@ -134,7 +134,7 @@ public static class ShardKeyResolvers
 
         return (Delegate)NewNotFoundMethod
             .MakeGenericMethod(type)
-            .Invoke(null, Array.Empty<object>())!;
+            .Invoke(null, [])!;
     }
 
     private static ShardKeyResolver<object> GetUntypedInternal<

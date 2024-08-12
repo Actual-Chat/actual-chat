@@ -1,27 +1,27 @@
 using ActualChat.Hosting;
-using ActualChat.Mesh;
 using ActualLab.Interception;
 using ActualLab.Rpc;
+using ActualLab.Rpc.Clients;
 using ActualLab.Rpc.Infrastructure;
 using Microsoft.AspNetCore.Http;
 
 namespace ActualChat.Rpc.Internal;
 
 #pragma warning disable VSTHRD002, VSTHRD104
+#pragma warning disable CA1822 // Can be static
 
 public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceBase(services)
 {
-    private volatile TaskCompletionSource? _whenRouting = new();
+    private volatile TaskCompletionSource? _whenRoutingStarted = new();
 
-    private MeshNode MeshNode { get; } = services.MeshNode();
-    private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
-    private BackendServiceDefs BackendServiceDefs { get; } = services.GetRequiredService<BackendServiceDefs>();
+    private RpcMeshPeerRefCache MeshPeerRefs { get; } = services.GetRequiredService<RpcMeshPeerRefCache>();
     private RpcMeshRefResolvers RpcMeshRefResolvers { get; } = services.GetRequiredService<RpcMeshRefResolvers>();
+    private BackendServiceDefs BackendServiceDefs { get; } = services.GetRequiredService<BackendServiceDefs>();
 
     public void StartRouting()
     {
-        _whenRouting?.TrySetResult();
-        _whenRouting = null;
+        _whenRoutingStarted?.TrySetResult();
+        _whenRoutingStarted = null;
     }
 
     public bool IsBackendService(Type serviceType)
@@ -29,7 +29,7 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
             || typeof(IBackendService).IsAssignableFrom(serviceType)
             || serviceType.Name.EndsWith("Backend", StringComparison.Ordinal);
 
-    public RpcPeer? GetPeer(RpcMethodDef methodDef, ArgumentList arguments)
+    public RpcPeerRef RouteCall(RpcMethodDef methodDef, ArgumentList arguments)
     {
         var serviceDef = methodDef.Service;
         if (!serviceDef.IsBackend)
@@ -37,51 +37,51 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
 
         var serverSideServiceDef = BackendServiceDefs[serviceDef.Type];
         var serviceMode = serverSideServiceDef.ServiceMode;
-        if (serviceMode is not ServiceMode.Client and not ServiceMode.Hybrid)
-            throw StandardError.Internal($"{serviceDef} must be a ServiceMode.Client or ServiceMode.RoutingServer mode service.");
+        if (serviceMode is not ServiceMode.Client and not ServiceMode.Distributed)
+            throw StandardError.Internal($"{serviceDef} must be a ServiceMode.Client or ServiceMode.Distributed mode service.");
 
-        if (_whenRouting is { Task.IsCompleted: false })
-            return null;
+        if (_whenRoutingStarted is { Task.IsCompleted: false })
+            return RpcPeerRef.Local;
 
         var meshRefResolver = RpcMeshRefResolvers[methodDef];
         var meshRef = meshRefResolver.Invoke(methodDef, arguments, serverSideServiceDef.ShardScheme);
-        var peerRef = MeshWatcher.GetPeerRef(meshRef).Require(meshRef);
-        if (serviceMode == ServiceMode.Hybrid) {
-            // Such services expose a client which may route calls to the server on the same node,
-            // so the code below speeds up such calls by returning null RpcPeer for them, which makes
-            // ActualLab.Rpc infrastructure to call the server method directly for them instead.
-            switch (peerRef) {
-            case RpcBackendNodePeerRef nodePeerRef when nodePeerRef.NodeRef == MeshNode.Ref:
-                return null; // It's this node, so we won't forward this call
-            case RpcBackendShardPeerRef { Latest.WhenReady: { IsCompletedSuccessfully: true } nodePeerRefTask }:
-                if (nodePeerRefTask.Result is { } shardNodePeerRef && shardNodePeerRef.NodeRef == MeshNode.Ref)
-                    return null; // It's this node, so we won't forward this call
-                break;
-            }
-        }
-        return Hub.GetClientPeer(peerRef);
+        var peerRef = MeshPeerRefs.Get(meshRef).Require(meshRef);
+        return peerRef;
     }
 
-#pragma warning disable CA1822 // Can be static
+    public Uri? GetConnectionUri(RpcWebSocketClient client, RpcClientPeer peer)
+    {
+        if (peer.Ref is not RpcMeshPeerRef meshPeerRef)
+            return null; // This causes RPC connection to hang waiting for RpcPeerRef.RerouteToken cancellation
+
+        var target = meshPeerRef.Target;
+        if (target.Node is not { } node)
+            return null; // This causes RPC connection to hang waiting for RpcPeerRef.RerouteToken cancellation
+
+        if (!target.ShardRef.IsNone && meshPeerRef.IsRerouted)
+            throw RpcReconnectFailedException.ReconnectFailed(); // Peer transfers its calls to the new one in this case
+
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
+        sb.Append("ws://");
+        sb.Append(node.Endpoint);
+        sb.Append(client.Settings.BackendRequestPath);
+        sb.Append('?');
+        sb.Append(client.Settings.ClientIdParameterName);
+        sb.Append('=');
+        sb.Append(peer.ClientId); // Always Url-encoded
+        return sb.ToStringAndRelease().ToUri();
+    }
+
     public Task<RpcConnection> GetConnection(
         RpcServerPeer peer, Channel<RpcMessage> channel, PropertyBag properties,
         CancellationToken cancellationToken)
-#pragma warning restore CA1822
     {
         if (!properties.TryGet<HttpContext>(out var httpContext))
-            return RpcConnectionTask(channel, properties);
+            return Task.FromResult(new RpcConnection(channel, properties));
 
         var session = httpContext.TryGetSessionFromHeader() ?? httpContext.TryGetSessionFromCookie();
-        return session.IsValid()
-            ? RpcBackendConnectionTask(channel, properties, session)
-            : RpcConnectionTask(channel, properties);
+        return Task.FromResult(session.IsValid()
+            ? new RpcBackendConnection(channel, properties, session)
+            : new RpcConnection(channel, properties));
     }
-
-    private static Task<RpcConnection> RpcBackendConnectionTask(
-        Channel<RpcMessage> channel, PropertyBag properties, Session session)
-        => Task.FromResult<RpcConnection>(new RpcBackendConnection(channel, properties, session));
-
-    private static Task<RpcConnection> RpcConnectionTask(
-        Channel<RpcMessage> channel, PropertyBag options)
-        => Task.FromResult(new RpcConnection(channel, options));
 }

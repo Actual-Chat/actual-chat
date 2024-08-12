@@ -1,7 +1,7 @@
 using ActualChat.Search.Module;
 using ActualChat.Testing.Host;
 
-namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
+namespace ActualChat.UI.Blazor.App.IntegrationTests;
 
 [CollectionDefinition(nameof(SearchUICollection))]
 public class SearchUICollection : ICollectionFixture<SearchAppHostFixture>;

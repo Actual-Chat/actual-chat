@@ -1,10 +1,11 @@
 using ActualChat.Users.Db;
-using ActualChat.Users.Events;
 using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
-public class AuthCommandFilters(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), ICommandService
+// NOTE(AY): This type eventually needs to be refactored
+public class AuthCommandFilters(IServiceProvider services)
+    : DbServiceBase<UsersDbContext>(services), ICommandService
 {
     protected UserNamer UserNamer { get; } = services.GetRequiredService<UserNamer>();
     protected IAuth Auth { get; } = services.GetRequiredService<IAuth>();

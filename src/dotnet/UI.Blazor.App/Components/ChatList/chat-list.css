@@ -1,0 +1,254 @@
+/*
+    Simplified nesting structure:
+
+    navbar-chats navbar-group
+        c-container
+            c-(all|active)-chats
+                active-chats
+                    chat-list-active chat-list
+                        <navbar-item>
+                chats-tab
+                    chat-list chat-list-[pinned|unpinned]
+                        <navbar-item>
+    <navbar-item>:
+        navbar-item group
+            navbar-item-content
+            navbar-item-ending
+                [on-hover] - optionally
+                    btn - listening, recording
+                    menu
+                        btn - [...] hover menu
+*/
+
+.navbar-chats.navbar-group {
+    @apply overflow-y-hidden;
+}
+.navbar-chats.navbar-group > .c-container {
+    @apply flex-1 flex-y;
+    @apply overflow-y-hidden;
+}
+.navbar-chats .c-all-chats {
+    @apply flex-1 flex-y;
+    @apply overflow-y-hidden;
+}
+.navbar-chats .c-all-chats > .tab-panel {
+    @apply overflow-y-hidden;
+}
+.navbar-chats .c-all-chats > .tab-panel > .tab {
+    /* This item is, in fact, empty, so it shouldn't take space */
+    @apply flex-none flex-y;
+    @apply overflow-y-hidden;
+}
+.navbar-chats .c-active-chats {
+    @apply flex-none flex-y;
+    @apply overflow-y-hidden;
+    @apply bg-[var(--active-chats)];
+}
+.navbar-chats .c-active-chats > .c-delimiter {
+    @apply hidden;
+}
+.navbar-chats .chat-list {
+    @apply flex-1 flex-y;
+    @apply overflow-y-auto custom-scrollbar;
+}
+
+/* Top-level container - active-chats, pinned-chats, etc. */
+.active-chats {
+    @apply relative flex-y bottom-0 p-2;
+    @apply border-t border-separator;
+}
+.active-chats > .c-title {
+    @apply px-2 pb-2;
+    @apply text-sm font-medium;
+}
+.active-chats .navbar-item.active {
+    @apply bg-selected;
+}
+.active-chats .navbar-item.active .navbar-item-content {
+    @apply font-normal;
+}
+
+/* Tabs */
+.navbar-chats .tab-panel-tabs .chats-tab {
+    @apply flex-y h-full;
+    @apply overflow-y-visible md:overflow-y-auto custom-scrollbar;
+}
+.navbar-chats .tab-panel-tabs .c-container .c-badge {
+    @apply flex-x items-center justify-center;
+}
+
+/* Sort button */
+.navbar-chats .chat-list-sort-btn .btn-content {
+    @apply -mb-1;
+}
+.navbar-chats .chat-list-sort-btn.btn {
+    @apply min-w-fit max-w-fit min-h-fit rounded-full;
+}
+body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
+    @apply text-primary;
+    @apply bg-transparent;
+}
+.navbar-chats .chat-list-sort-btn.btn:active .btn-content,
+.navbar-chats .chat-list-sort-btn.btn:focus .btn-content {
+    @apply bg-transparent;
+}
+
+/* Chat list */
+.chat-list {
+    @apply flex-y gap-y-0.5;
+}
+.chat-list.chat-list-active {
+    @apply flex-1;
+}
+.chat-list.chat-list-all {
+    @apply flex-1 p-2;
+}
+.chat-list.chat-list-skeleton {
+    @apply flex-1 px-2;
+}
+
+/* Buttons - listening, recording, etc. */
+.chat-list .navbar-item-content {
+    @apply flex-1;
+}
+.chat-list .navbar-item-content > .c-container {
+    @apply flex-1 flex-x items-center gap-x-2;
+    @apply overflow-hidden;
+}
+.chat-list .navbar-item-content > .c-container > .c-description {
+    @apply flex-1 flex-y items-start justify-start gap-y-1;
+    @apply overflow-hidden;
+}
+.chat-list .navbar-item-content > .c-container.skeleton > .c-description {
+    @apply flex-1;
+    justify-content: normal;
+}
+.chat-list .navbar-item-content > .c-container > .c-description > .c-chat-title {
+    @apply flex-x items-center gap-x-1;
+    @apply w-full;
+    @apply overflow-hidden;
+    @apply text-headline-1 text-02;
+}
+.chat-list .navbar-item-content > .c-container > .c-description > .c-chat-title > .c-timestamp {
+    @apply flex-none flex;
+    @apply text-xs text-03;
+}
+body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-description > .c-chat-title > .c-timestamp {
+    @apply hidden;
+}
+.chat-list .navbar-item-content > .c-container > .c-description > .c-chat-title > div:first-child,
+.chat-list .navbar-item-content > .c-container > .c-description > .c-chat-title > span:first-child {
+    @apply truncate;
+}
+.chat-list .navbar-item-content > .c-container > .c-description .c-incut {
+    @apply flex-1;
+}
+.chat-list .navbar-item-content > .c-container > .c-description > .c-last-message {
+    @apply flex-x items-end gap-x-1;
+    @apply w-full h-4.5;
+    @apply truncate;
+    @apply text-xs text-03;
+}
+.chat-list .navbar-item-content > .c-container.skeleton > .c-description > .c-chat-title > .c-skeleton,
+.chat-list .navbar-item-content > .c-container.skeleton > .c-description > .c-last-message > .c-skeleton {
+    @apply rounded-md;
+    @apply bg-skeleton;
+}
+.chat-list .navbar-item-content .c-last-message .c-name {
+    @apply flex-none flex;
+    @apply max-w-1/2;
+    @apply truncate;
+    @apply whitespace-pre;
+    @apply text-xs text-02 font-medium;
+}
+.chat-list .navbar-item-content .c-last-message .c-colon {
+    @apply -ml-1;
+    @apply text-xs text-02 font-medium;
+}
+.chat-list .navbar-item-content .c-last-message .c-text {
+    @apply truncate;
+    @apply pointer-events-none;
+}
+
+.chat-list .navbar-item .btn {
+    @apply w-8 h-full;
+    @apply bg-transparent;
+}
+body.hoverable .chat-list .navbar-item .btn.on:hover .btn-content {
+    @apply text-primary;
+}
+.chat-list .navbar-item .recording-in-chat.on,
+body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {
+    @apply text-danger;
+}
+
+/* Hide avatar name skeletons - otherwise they're blinking on refresh */
+.chat-list .navbar-item-content .avatar-name.skeleton {
+    @apply hidden;
+}
+
+/* Menu */
+.chat-list .navbar-item .menu {
+    @apply flex-none flex-x;
+}
+
+/* Badges */
+.active-chats .message-counter-badge {
+    @apply hidden;
+}
+.active-chats .message-counter-with-time {
+    @apply hidden;
+}
+.navbar-item .message-counter-badge {
+    @apply mx-0;
+    @apply text-primary-title;
+}
+body.hoverable .navbar-item:hover .message-counter-badge {
+    @apply hidden;
+}
+
+/* Hoverable slot */
+.chat-list .navbar-item .navbar-item-ending .slot.hoverable {
+    @apply hidden /* flex */;
+}
+body.hoverable .chat-list .navbar-item:hover .navbar-item-ending .slot.hoverable {
+    @apply flex;
+}
+
+/* Tabs */
+.navbar-chats .tab-panel .tab-panel-tabs,
+.navbar-chats .tab-panel .tab-panel-tabs .btn-group,
+.navbar-chats .tab-panel .tab-panel-tabs .btn-group .btn-group-container,
+.navbar-chats .tab-panel .tab-panel-tabs .btn-group .btn-group-container .btn.tab-btn {
+    @apply min-h-10 max-h-10;
+}
+.navbar-chats .tab-panel .tab-panel-tabs .btn-group .btn-group-container .c-bottom-hill {
+    @apply min-h-1 -mt-1;
+}
+.navbar-chats .tab-panel .tab-panel-tabs .message-counter-badge {
+    @apply h-4 min-w-6;
+}
+
+.sort-menu .ac-menu-icon > i {
+    @apply text-03;
+}
+.sort-menu .ac-menu-text {
+    @apply text-headline-1 text-02;
+}
+.sort-menu .ac-menu-item:hover .ac-menu-text,
+.sort-menu .ac-menu-item:hover .ac-menu-icon > i {
+    @apply text-primary;
+}
+
+.last-entry-time {
+    @apply flex-none flex;
+    @apply text-xs text-03 font-normal;
+}
+body.hoverable .navbar-item:hover .last-entry-time {
+    @apply hidden;
+}
+
+body.hoverable .navbar-item:hover > .c-container > .c-description .last-entry-time,
+body.hoverable .navbar-item:hover > .c-container > .c-description .message-counter-badge {
+    @apply hidden;
+}

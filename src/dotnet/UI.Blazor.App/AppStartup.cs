@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.WebSockets;
-using ActualChat.Chat.UI.Blazor.Module;
+using ActualChat.UI.Blazor.App.Module;
 using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
@@ -9,10 +9,9 @@ using ActualChat.Module;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Security;
 using ActualChat.Streaming.UI.Blazor.Module;
-using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.UI.Blazor.Module;
-using ActualLab.Interception.Interceptors;
+using ActualLab.Interception;
 using ActualLab.Internal;
 using ActualLab.RestEase;
 using ActualLab.Rpc;
@@ -54,10 +53,10 @@ public static class AppStartup
     {
         var tracer = (rootTracer ?? Tracer.Default)[typeof(AppStartup)];
 #if !DEBUG
-        InterceptorBase.Options.Defaults.IsValidationEnabled = false;
+        Interceptor.Options.Defaults.IsValidationEnabled = false;
 #else
         if (hostKind.IsMauiApp())
-            InterceptorBase.Options.Defaults.IsValidationEnabled = false;
+            Interceptor.Options.Defaults.IsValidationEnabled = false;
 #endif
 
         // Fusion services
@@ -120,6 +119,8 @@ public static class AppStartup
                         ws.Options.SetRequestHeader(gclbCookieHeader.Name, gclbCookieHeader.Value);
                         if (c.GetService<TrueSessionResolver>() is { HasSession: true } trueSessionResolver)
                             ws.Options.SetRequestHeader(Constants.Session.HeaderName, trueSessionResolver.Session.Id.Value);
+                        if (Constants.Api.Compression.IsClientSideEnabled)
+                            ws.Options.DangerousDeflateOptions = new WebSocketDeflateOptions();
                         return new WebSocketOwner(peer.Ref.Key, ws, client.Services);
 #if false
                         // Non-native Android WebSocket stack requires SocketsHttpHandler to support TLS 1.2
@@ -145,13 +146,12 @@ public static class AppStartup
                 new CoreModule(moduleServices),
                 // API
                 new ApiModule(moduleServices),
-                new ApiClientModule(moduleServices),
+                new ApiContractsModule(moduleServices),
                 // UI modules
                 new BlazorUICoreModule(moduleServices),
                 new StreamingBlazorUIModule(moduleServices),
                 new UsersBlazorUIModule(moduleServices),
                 new ContactsBlazorUIModule(moduleServices),
-                new ChatBlazorUIModule(moduleServices),
                 new NotificationBlazorUIModule(moduleServices),
                 // This module should be the last one
                 new BlazorUIAppModule(moduleServices)

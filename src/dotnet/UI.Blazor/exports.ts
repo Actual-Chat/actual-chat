@@ -3,6 +3,7 @@ export * from './Services/BrowserInit/browser-init';
 
 // Please sort the imports alphabetically!
 export * from './Services/BrowserInfo/browser-info';
+export * from './Services/Caching/remote-computed-cache';
 export * from './Services/ClipboardUI/clipboard';
 export * from './Services/DebugUI/debug-ui';
 export * from './Services/DeviceAwakeUI/device-awake-ui';
@@ -12,7 +13,6 @@ export * from './Services/Escapist/escapist-subscription';
 export * from './Services/Escapist/keyboard-dispatcher';
 export * from './Services/FocusUI/focus-ui'
 export * from './Services/History/history'
-export * from './Services/Caching/client-computed-cache';
 export * from './Services/KeepAwakeUI/keep-awake-ui'
 export * from './Services/Kvas/web-kvas-backend';
 export * from './Services/ScreenSize/screen-size';

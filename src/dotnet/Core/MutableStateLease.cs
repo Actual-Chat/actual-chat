@@ -45,7 +45,7 @@ public class MutableStateLease<T, TKey, TState, TResource>(
     IStateSnapshot IState.Snapshot => ((IState)State).Snapshot;
     public StateSnapshot<T> Snapshot => State.Snapshot;
 
-    IComputed IState.Computed => ((IState)State).Computed;
+    Computed IState.Computed => ((IState)State).Computed;
     public Computed<T> Computed => State.Computed;
 
     public virtual void Dispose()
@@ -57,14 +57,14 @@ public class MutableStateLease<T, TKey, TState, TResource>(
     public void Set(Result<T> result)
         => State.Set(result);
 
-    public void Set(Func<Result<T>, Result<T>> updater)
-        => State.Set(updater);
+    public void Set(Func<Result<T>, Result<T>> updater, bool throwOnError = false)
+        => State.Set(updater, throwOnError);
 
-    public void Set<TOtherState>(TOtherState state, Func<TOtherState, Result<T>, Result<T>> updater)
-        => State.Set(state, updater);
+    public void Set<TState1>(TState1 state, Func<TState1, Result<T>, Result<T>> updater, bool throwOnError = false)
+        => State.Set(state, updater, throwOnError);
 
     public void Set(IResult result)
-        => ((IMutableState)State).Set(result);
+        => State.Set(result);
 
     public bool IsValue([MaybeNullWhen(false)] out T value)
         => State.IsValue(out value);

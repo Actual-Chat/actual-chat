@@ -1,0 +1,35 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase
+@{
+    if (Chat.Id.IsNone)
+        return;
+
+    var cls = $"recording-in-chat {(IsRecording ? "on" : "off")} {Class}";
+}
+
+@if (IsRecording) {
+    <HeaderButton
+        Class="@cls"
+        Click="@(_ => ChatAudioUI.SetRecordingChatId(default))"
+        Tooltip="Stop"
+        TooltipPosition="FloatingPosition.Top">
+        <i class="icon-mic-2 text-2xl"></i>
+    </HeaderButton>
+} else {
+    <HeaderButton
+        Class="@cls"
+        Click="@(_ => ChatAudioUI.SetRecordingChatId(Chat.Id))"
+        Tooltip="Start"
+        TooltipPosition="FloatingPosition.Top"
+        MustKeepAwake="true">
+        <i class="icon-mic-2 text-2xl"></i>
+    </HeaderButton>
+}
+
+@code {
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
+    [Parameter, EditorRequired] public bool IsRecording { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+}

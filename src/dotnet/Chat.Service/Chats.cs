@@ -296,19 +296,6 @@ public class Chats(IServiceProvider services) : IChats
                     Attachments = attachments.IsEmpty ? null : attachments,
                 }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
-            textEntryId = textEntry.Id.ToTextEntryId();
-
-            if (attachments.Count > 0) {
-                var cmd = new ChatsBackend_CreateAttachments(
-                    attachments.Select((x, i) => new TextEntryAttachment {
-                            EntryId = textEntryId,
-                            Index = i,
-                            MediaId = x.MediaId,
-                            ThumbnailMediaId = x.ThumbnailMediaId,
-                        })
-                        .ToApiArray());
-                await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
-            }
         }
 
         return textEntry;
@@ -733,7 +720,7 @@ public class Chats(IServiceProvider services) : IChats
     {
         var statBackend = await Backend.GetReadPositionsStat(chatId, cancellationToken).ConfigureAwait(false);
         if (statBackend == null)
-            return new ReadPositionsStat(chatId, long.MaxValue, ApiArray.Empty<AuthorReadPosition>());
+            return new ReadPositionsStat(chatId, long.MaxValue, []);
 
         var positions = statBackend.TopReadPositions;
         var top2AuthorReadPositions = (await positions

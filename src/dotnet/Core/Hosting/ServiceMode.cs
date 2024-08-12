@@ -6,7 +6,7 @@ public enum ServiceMode
     Local,
     Server,
     Client,
-    Hybrid,
+    Distributed,
 }
 
 public static class ServiceModeExt
@@ -19,6 +19,6 @@ public static class ServiceModeExt
         => serviceMode == ServiceMode.Server;
     public static bool IsClient(this ServiceMode serviceMode)
         => serviceMode == ServiceMode.Client;
-    public static bool RoutingServer(this ServiceMode serviceMode)
-        => serviceMode == ServiceMode.Hybrid;
+    public static bool IsDistributed(this ServiceMode serviceMode)
+        => serviceMode == ServiceMode.Distributed;
 }

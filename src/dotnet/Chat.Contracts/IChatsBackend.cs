@@ -55,23 +55,18 @@ public interface IChatsBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
 
     // Non-compute methods
+
     Task<ApiArray<ChatId>> ListPlaceChatIds(
         PlaceId placeId,
         CancellationToken cancellationToken);
 
-    // Non-compute methods
     Task<ApiArray<Chat>> List(
         Moment minCreatedAt,
         ChatId lastChatId,
         int limit,
         CancellationToken cancellationToken);
 
-    Task<ApiArray<Chat>> ListChanged(
-        long minVersion,
-        long maxVersion,
-        ChatId lastId,
-        int limit,
-        CancellationToken cancellationToken);
+    Task<ApiArray<Chat>> ListChanged(ChangedChatsQuery query, CancellationToken cancellationToken);
 
     Task<Chat?> GetLastChanged(CancellationToken cancellationToken);
 
@@ -125,6 +120,15 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task<ChatCopyState> OnChangeChatCopyState(ChatsBackend_ChangeChatCopyState command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnUpdateReadPositionsStat(ChatsBackend_UpdateReadPositionsStat command, CancellationToken cancellationToken);
+
+    // Events
+
+    [EventHandler]
+    Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnPlaceRemoved(PlaceChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

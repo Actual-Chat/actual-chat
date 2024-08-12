@@ -85,13 +85,13 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             .AddWorkerPoolDependencies();
 
         // -- Register indexing common components --
-        services.AddSingleton<IChatContentUpdateLoader>(static services
-            => services.CreateInstanceWith<ChatContentUpdateLoader>(
+        services.AddSingleton<IChatContentUpdateLoader>(
+            static c => c.CreateInstance<ChatContentUpdateLoader>(
                 100 // the size of a single batch of updates to load from db
             )
         );
-        services.AddSingleton<ICursorStates<ChatContentCursor>>(static services
-            => services.CreateInstanceWith<CursorStates<ChatContentCursor>>(IndexNames.ChatContentCursor));
+        services.AddSingleton<ICursorStates<ChatContentCursor>>(
+            static c => c.CreateInstance<CursorStates<ChatContentCursor>>(IndexNames.ChatContentCursor));
 
         // -- Register chat indexer --
         rpcHost.AddBackend<IChatIndexTrigger, ChatIndexTrigger>();
@@ -100,16 +100,16 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IChatContentMapper, ChatContentMapper>();
         services.AddSingleton<IChatContentArranger, ChatContentArranger>();
 
-        services.AddSingleton<ISink<ChatSlice, string>>(static services
-            => services.CreateInstanceWith<SemanticIndexSink<ChatSlice>>(IndexNames.ChatContent));
+        services.AddSingleton<ISink<ChatSlice, string>>(
+            static c => c.CreateInstance<SemanticIndexSink<ChatSlice>>(IndexNames.ChatContent));
         // Note: This is correct. ChatInfo must be indexed into the same index as ChatSlice for Join field to work
-        services.AddSingleton<ISink<ChatInfo, string>>(static services
-            => services.CreateInstanceWith<SemanticIndexSink<ChatInfo>>(IndexNames.ChatContent));
+        services.AddSingleton<ISink<ChatInfo, string>>(
+            static c => c.CreateInstance<SemanticIndexSink<ChatInfo>>(IndexNames.ChatContent));
 
         services.AddSingleton<IChatInfoIndexer, ChatInfoIndexer>();
         services.AddSingleton<IChatContentIndexerFactory, ChatContentIndexerFactory>();
-        services.AddSingleton<IChatContentIndexWorker>(static services
-            => services.CreateInstanceWith<ChatContentIndexWorker>(
+        services.AddSingleton<IChatContentIndexWorker>(
+            static c => c.CreateInstance<ChatContentIndexWorker>(
                 75,  // a number of updates between flushes
                 5000 // max number of updates to process in a single run
             )
@@ -124,13 +124,12 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         else {
             // -- Register chat index initializer --
             rpcHost.AddBackend<IChatIndexInitializerTrigger, ChatIndexInitializerTrigger>();
-            services.AddSingleton<ICursorStates<ChatIndexInitializerShard.Cursor>>(static services
-                => services.CreateInstanceWith<CursorStates<ChatIndexInitializerShard.Cursor>>(IndexNames.ChatCursor));
+            services.AddSingleton<ICursorStates<ChatIndexInitializerShard.Cursor>>(
+                static c => c.CreateInstance<CursorStates<ChatIndexInitializerShard.Cursor>>(IndexNames.ChatCursor));
             services.AddSingleton<IInfiniteChatSequence, InfiniteChatSequence>();
             services.AddSingleton<IChatIndexInitializerShard, ChatIndexInitializerShard>();
-            services.AddSingleton(static services
-                => services.CreateInstanceWith<ChatIndexInitializer>(
-                    ShardScheme.MLSearchBackend))
+            services.AddSingleton(
+                    static c => c.CreateInstance<ChatIndexInitializer>(ShardScheme.MLSearchBackend))
                 .AddAlias<IChatIndexInitializer, ChatIndexInitializer>()
                 .AddAlias<IHostedService, ChatIndexInitializer>();
         }
@@ -170,20 +169,18 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 services.AddSingleton<IBotConversationHandler, ExternalChatBotConversationHandler>();
             }
         }
-        services.AddSingleton<IChatBotWorker>(static services
-            => services.CreateInstanceWith<ChatBotWorker>(
-            )
-        );
+        services.AddSingleton<IChatBotWorker>(
+            static c => c.CreateInstance<ChatBotWorker>());
         services.AddWorkerPool<IChatBotWorker, MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId>(
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
         // -- Register Controllers --
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
-        // -- Register IMLSearchHanders --
+        // -- Register IMLSearchHandlers --
         rpcHost.AddApiOrLocal<IMLSearch, MLSearchImpl>();
 
         // -- Register Swagger endpoint (OpenAPI) --
-        // Note: This is temporary disabled. Will be re-enabled in a separate PR.
+        // Note: This is temporarily disabled. Will be re-enabled in a separate PR.
         /*
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(c => {

@@ -1,0 +1,101 @@
+/* List */
+.contact-selector-list {
+    @apply flex-y grow;
+    @apply px-2;
+    @apply overflow-y-auto custom-scrollbar;
+}
+
+/* List item */
+.contact-selector-list-item {
+    @apply flex-none flex-x items-center gap-x-1;
+    @apply h-12;
+    @apply px-2;
+    @apply rounded-md;
+    @apply hover:bg-hover;
+}
+.contact-selector-list-item,
+.contact-selector-list-item * {
+    @apply cursor-pointer;
+}
+
+/* List item badges */
+.contact-selector-badges {
+    @apply flex-none flex-x flex-wrap;
+    @apply gap-1;
+    @apply max-h-40 md:max-h-32;
+    @apply mx-4 px-0.5;
+    @apply overflow-y-auto custom-scrollbar;
+    @apply border-separator;
+    @apply bg-modal;
+}
+.contact-selector-badges:has(.c-contact) {
+    @apply pt-2;
+    @apply border-t;
+}
+.contact-selector-badges > .c-contact {
+    @apply relative;
+    @apply flex-1 flex-x items-center;
+    @apply min-w-28 max-w-1/2;
+    @apply px-0.5;
+    @apply rounded-full border border-separator;
+    @apply overflow-hidden;
+    @apply bg-01;
+}
+.contact-selector-badges > .c-contact,
+.contact-selector-badges > .c-contact * {
+    @apply cursor-pointer;
+}
+.contact-selector-badges > .c-contact > .c-remove {
+    @apply absolute inset-0 z-10;
+    @apply hidden items-center justify-start gap-x-2;
+    @apply px-2;
+    @apply bg-danger;
+    @apply text-white;
+}
+.contact-selector-badges > .c-contact > .c-remove > i {
+    @apply text-base leading-4;
+}
+.contact-selector-badges > .c-contact > .c-remove > .c-text {
+    @apply text-caption-1;
+}
+.contact-selector-badges > .c-contact > .c-name {
+    @apply px-1;
+    @apply truncate;
+    @apply text-caption-1;
+}
+body.hoverable .contact-selector-badges > .c-contact:hover .c-remove {
+    @apply flex;
+}
+
+/* Place picker */
+.contact-selector-place-picker {
+    @apply flex-none flex-x gap-x-4 ;
+    @apply overflow-x-auto custom-scrollbar-hide;
+}
+.contact-selector-place-picker .tab-panel-tabs {
+    @apply mb-0 pb-0;
+}
+.contact-selector-place-picker .tab-panel-tabs .btn-group {
+    @apply justify-start;
+}
+.contact-selector-place-picker .tab-panel-tabs .btn-group:first-child,
+.contact-selector-place-picker .tab-panel-tabs .btn-group:last-child {
+    @apply mx-2;
+}
+
+.contact-selector-place-picker .tab-panel-tabs .btn-group-container {
+    @apply min-h-12 max-h-12;
+    @apply justify-between;
+}
+.contact-selector-place-picker .btn.tab-btn {
+    @apply min-w-10 max-w-10 min-h-10 max-h-10;
+    @apply p-0;
+    @apply bg-square;
+    @apply rounded-xl md:rounded-lg;
+}
+.contact-selector-place-picker .c-bottom-hill {
+    @apply w-full;
+}
+.contact-selector-place-picker .tab-panel-tabs .btn .icon-message-ellipse {
+    @apply text-primary;
+}

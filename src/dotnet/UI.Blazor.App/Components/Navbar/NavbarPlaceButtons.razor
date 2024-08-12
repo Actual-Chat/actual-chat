@@ -1,0 +1,136 @@
+﻿@using ActualChat.Media;
+@using ActualChat.UI.Blazor.App.Module
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<NavbarPlaceButtons.Model>
+@{
+    var m = State.Value;
+    var places = m.Places;
+    var previewPlace = m.PreviewPlace;
+    var size = ScreenSize.IsNarrow() ? SquareSize.Size10 : SquareSize.Size12;
+}
+
+@if (places.Any() || previewPlace != null) {
+    <div class=c-delimiter></div>
+}
+
+<div @ref="Ref" class="navbar-place-buttons">
+    @if (previewPlace != null) {
+        <NavbarGroupSelectionButton
+            @key="@previewPlace.Id"
+            data-place-id="@previewPlace.Id"
+            CanMove="@false"
+            Title="@previewPlace.Title"
+            Id="@previewPlace.Id.GetNavbarGroupId()"
+            Tooltip="@previewPlace.Title">
+            <ChildContent>
+                <Pic
+                    Title="@previewPlace.Title"
+                    Picture="@previewPlace.Picture.ToPicture()"
+                    Size="@size"
+                    IsSquare="true"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@previewPlace.Id.Value"/>
+            </ChildContent>
+        </NavbarGroupSelectionButton>
+    }
+    @foreach (var place in places) {
+        <NavbarGroupSelectionButton
+            @key="@place.Id"
+            data-place-id="@place.Id"
+            CanMove="@(!Hub.BrowserInfo.IsTouchCapable)"
+            Title="@place.Title"
+            Id="@place.Id.GetNavbarGroupId()"
+            Tooltip="@place.Title">
+            <ChildContent>
+                <Pic
+                    Title="@place.Title"
+                    Picture="@place.Picture.ToPicture()"
+                    Size="@size"
+                    IsSquare="true"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@place.Id.Value"/>
+            </ChildContent>
+            <BadgeContent>
+                <ChatsNavbarButtonBadge PlaceId="@place.Id"/>
+            </BadgeContent>
+        </NavbarGroupSelectionButton>
+    }
+</div>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.NavbarPlaceButtons.create";
+    private DotNetObjectReference<NavbarPlaceButtons> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    private Session Session => Hub.Session();
+
+    [CascadingParameter] ScreenSize ScreenSize { get; set; }
+
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+        }
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = new Model(),
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var navbarSettings = await Hub.ChatUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
+        var placeIds = await Hub.Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
+
+        var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (selectedChatId.IsPlaceChat && !placeIds.Contains(selectedChatId.PlaceId))
+            placeIds = placeIds.Add(selectedChatId.PlaceId, true);
+
+        var previewPlaceId = PlaceId.None;
+        if (selectedChatId.IsPlaceChat
+            && !placeIds.Contains(selectedChatId.PlaceId)) {
+            previewPlaceId = selectedChatId.PlaceId;
+        }
+
+        var previewPlace = !previewPlaceId.IsNone
+            ? await Hub.Places.Get(Session, previewPlaceId, cancellationToken).ConfigureAwait(false)
+            : null;
+
+        var places = (await placeIds
+            .OrderBy(x => navbarSettings.PlacesOrder.IndexOf(x))
+            .Select(id => Hub.Places.Get(Session, id, cancellationToken))
+            .Collect()
+            .ConfigureAwait(false))
+            .SkipNullItems()
+            .ToList();
+
+        return new() {
+            Places = places,
+            PreviewPlace = previewPlace,
+        };
+    }
+
+    [JSInvokable]
+    public void OnOrderChanged(PlaceId[] places)
+        => Hub.ChatUI.SetNavbarPlacesOrder(places);
+
+    // Nested types
+
+    public sealed record Model {
+        public List<Place> Places { get; init; } = [];
+        public Place? PreviewPlace { get; init; }
+    }
+}

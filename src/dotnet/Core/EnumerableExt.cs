@@ -29,7 +29,7 @@ public static class EnumerableExt
                 notMatched ??= new List<T>();
                 notMatched.Add(item);
             }
-        return (matched?.ToArray() ?? Array.Empty<T>(), notMatched?.ToArray() ?? Array.Empty<T>());
+        return (matched?.ToArray() ?? [], notMatched?.ToArray() ?? []);
     }
 
     public static bool StartsWith<T>(this IEnumerable<T> left, IReadOnlyCollection<T> right)

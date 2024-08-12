@@ -1,9 +1,9 @@
 using ActualChat.Chat.Db;
-using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Testing.Host;
 using Microsoft.EntityFrameworkCore;
 
-namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
+namespace ActualChat.UI.Blazor.App.IntegrationTests;
 
 [Collection(nameof(ChatUICollection))]
 public class HistoricalChatPlayerTest(AppHostFixture fixture, ITestOutputHelper @out)
@@ -36,7 +36,7 @@ public class HistoricalChatPlayerTest(AppHostFixture fixture, ITestOutputHelper 
             await dbContext.SaveChangesAsync();
         }
 
-        var player = services.Activate<HistoricalChatPlayer>(chatId);
+        var player = services.CreateInstance<HistoricalChatPlayer>(chatId);
         // Rewind back along same audio entry
         var newMoment = await player.GetRewindMoment(entry2BeginsAt.AddSeconds(30), TimeSpan.FromSeconds(-15), default);
         newMoment.Should().Be(entry2BeginsAt.AddSeconds(15).ToMoment());

@@ -159,7 +159,7 @@ public static class MauiDiagnostics
             if (!ownAccount.IsAdmin)
                 return;
         }
-        TracerProvider = OtelDiagnostics.CreateClientSentryTraceProvider("MauiApp");
+        TracerProvider = AppUIOtelSetup.CreateClientSentryTraceProvider("MauiApp");
     }
 
     public static ILoggingBuilder AddFilteringSerilog(

@@ -1,4 +1,4 @@
-import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/messaging';
+import { getMessaging, getToken, deleteToken, GetTokenOptions, onMessage } from 'firebase/messaging';
 import { Log } from 'logging';
 import { AppKind } from '../UI.Blazor/Services/BrowserInfo/browser-info';
 import { BrowserInit } from '../UI.Blazor/Services/BrowserInit/browser-init';
@@ -49,6 +49,7 @@ export class NotificationUI {
         return status.state;
     }
 
+    /** Called by Blazor */
     public static async getDeviceToken(): Promise<string | null>
     {
         let { firebaseApp, firebasePublicKey} = BrowserInit;
@@ -78,6 +79,18 @@ export class NotificationUI {
         catch (error) {
             errorLog?.log(`getDeviceToken: failed to obtain device token for notifications, error:`, error);
         }
+    }
+
+    /** Called by Blazor */
+    public static async deleteDeviceToken(): Promise<void> {
+        let { firebaseApp } = BrowserInit;
+        if (!firebaseApp)
+            return;
+
+        const messaging = getMessaging(firebaseApp);
+        deleteToken(messaging);
+        BrowserInit.firebaseApp = null; // reset Firebase App registration
+        BrowserInit.firebaseAnalytics = null;
     }
 
     public static async registerRequestNotificationHandler(element: HTMLElement): Promise<void> {

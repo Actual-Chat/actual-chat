@@ -17,8 +17,8 @@ public partial record Avatar(
     public static readonly Avatar Loading = new(Symbol.Empty, -1); // Should differ by ref. from None
 
     public static readonly Requirement<Avatar> MustExist = Requirement.New(
-        new(() => StandardError.NotFound<Avatar>()),
-        (Avatar? a) => a is { Id.IsEmpty : false });
+        (Avatar? a) => a is { Id.IsEmpty : false },
+        new(() => StandardError.NotFound<Avatar>()));
 
     [DataMember, MemoryPackOrder(2)] public string Name { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public string PictureUrl { get; init; } = "";

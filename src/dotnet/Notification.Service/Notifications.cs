@@ -8,6 +8,7 @@ public class Notifications(IServiceProvider services) : INotifications
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private INotificationsBackend Backend { get; } = services.GetRequiredService<INotificationsBackend>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
+    private ILogger Log { get; } = services.LogFor<Notifications>();
 
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ICommander Commander { get; } = services.Commander();
@@ -54,6 +55,21 @@ public class Notifications(IServiceProvider services) : INotifications
         var (session, deviceId, deviceType) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var registerDeviceCommand = new NotificationsBackend_RegisterDevice(account.Id, deviceId, deviceType, session.Hash);
+        await Commander.Run(registerDeviceCommand, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnDeregisterDevice(
+        Notifications_DeregisterDevice command, CancellationToken cancellationToken)
+    {
+        var (session, deviceId) = command;
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var existingDevices = await Backend.ListDevices(account.Id, cancellationToken).ConfigureAwait(false);
+        if (existingDevices.All(d => d.DeviceId != deviceId)) {
+            Log.LogWarning("OnDeregisterDevice: non-existing device");
+            return;
+        }
+        var registerDeviceCommand = new NotificationsBackend_RemoveDevices([deviceId]);
         await Commander.Run(registerDeviceCommand, cancellationToken).ConfigureAwait(false);
     }
 

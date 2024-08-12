@@ -1,13 +1,23 @@
+using ActualChat.App.Maui.Services;
+using ActualChat.Notification;
+using ActualChat.Security;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Rpc;
 using CoreSpotlight;
+using Firebase.CloudMessaging;
 using Foundation;
 using UIKit;
+using DeviceType = ActualChat.Notification.DeviceType;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace ActualChat.App.Maui;
 
 [Register("AppDelegate")]
-public class AppDelegate : MauiUIApplicationDelegate
+public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
 {
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<AppDelegate>();
+
     protected override MauiApp CreateMauiApp()
     {
         NSHttpCookieStorage.SharedStorage.AcceptPolicy = NSHttpCookieAcceptPolicy.Always;
@@ -40,6 +50,19 @@ public class AppDelegate : MauiUIApplicationDelegate
     {
         SetBackgroundState(true);
         base.DidEnterBackground(application);
+    }
+
+    [Export ("messaging:didReceiveRegistrationToken:")]
+    public void DidReceiveRegistrationToken (Firebase.CloudMessaging.Messaging messaging, string fcmToken)
+    {
+        // Monitor token generation: To be notified whenever the token is updated.
+        var token = fcmToken;
+        Log.LogDebug("OnNewToken: '{Token}'", token);
+        var appServices = IPlatformApplication.Current?.Services;
+        var mauiNotifications = appServices?.GetService<MauiNotifications>();
+        if (mauiNotifications != null )
+            _ = BackgroundTask.Run(() => mauiNotifications.RefreshNotificationToken(token, DeviceType.iOSApp, CancellationToken.None),
+                Log, "DidReceiveRegistrationToken failed.");
     }
 
     // Private methods

@@ -1,6 +1,4 @@
 using ActualChat.Chat.Db;
-using ActualChat.Chat.Events;
-using ActualChat.Queues;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
@@ -157,7 +155,8 @@ public class ReactionsBackend(IServiceProvider services)
                 Change.Update(new ChatEntryDiff {
                     HasReactions = hasReactions,
                 }));
-            entry = await Commander.Call(changeEntryCommand, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(changeEntryCommand, cancellationToken).ConfigureAwait(false);
+            entry = entry with { HasReactions = hasReactions }; // preserving Attachments
         }
     }
 }

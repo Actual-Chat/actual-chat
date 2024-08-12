@@ -8,13 +8,13 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
-public sealed partial class StreamingBackend
+public partial class StreamingBackend
 {
     [GeneratedRegex("^\\s*$")]
     private static partial Regex EmptyRegexFactory();
     private static readonly Regex EmptyRegex = EmptyRegexFactory();
 
-    public async Task ProcessAudio(
+    public virtual async Task ProcessAudio(
         AudioRecord record,
         int preSkipFrames,
         RpcStream<AudioFrame> frames,

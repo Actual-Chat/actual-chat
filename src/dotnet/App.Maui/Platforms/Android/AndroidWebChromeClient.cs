@@ -107,7 +107,7 @@ public class AndroidWebChromeClient : WebChromeClient
         }
 
         var currentResource = requestedResources.Span[0];
-        var requiredPermissions = _requiredPermissionsByWebkitResource.GetValueOrDefault(currentResource, Array.Empty<string>());
+        var requiredPermissions = _requiredPermissionsByWebkitResource.GetValueOrDefault(currentResource, []);
 
         RequestAllPermissions(requiredPermissions, isGranted => {
             // Recurse with the remaining resources. If the first resource was granted, use a modified callback

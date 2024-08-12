@@ -90,7 +90,7 @@ public sealed class ExpiringEntry<TKey, TValue> : IDisposable
         return this;
     }
 
-    public ExpiringEntry<TKey, TValue> BumpExpiresAt(TimeSpan expiresIn, IMomentClock? clock = null)
+    public ExpiringEntry<TKey, TValue> BumpExpiresAt(TimeSpan expiresIn, MomentClock? clock = null)
     {
         ExpiresAt = new CpuTimestamp(Math.Max(ExpiresAt.Value, (CpuTimestamp.Now + expiresIn).Value));
         return this;

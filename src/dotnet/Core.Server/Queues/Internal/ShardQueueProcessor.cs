@@ -1,5 +1,8 @@
 using ActualChat.Concurrency;
+using ActualChat.Diagnostics;
 using ActualLab.Diagnostics;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
 
 namespace ActualChat.Queues.Internal;
 
@@ -14,7 +17,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
 
     protected ICommander Commander { get; }
     protected CommandHandlerResolver CommandHandlerResolver { get; }
-    protected new IMomentClock Clock { get; }
+    protected new MomentClock Clock { get; }
     protected new ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     public TSettings Settings { get; }
@@ -75,6 +78,21 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
             return;
         }
 
+        ActivityContext senderContext = default;
+        IEnumerable<ActivityLink>? links = null;
+        var propagationContext = Propagators.DefaultTextMapPropagator
+            .Extract(default, queuedCommand.Headers, static (headers, name) => headers.TryGetValue(name, out var value) ? value : []);
+
+        if (propagationContext != default) {
+            senderContext = propagationContext.ActivityContext;
+            Baggage.Current = propagationContext.Baggage;
+            links = [new ActivityLink(senderContext)];
+        }
+
+        var operationName = GetType().GetOperationName();
+        using var activity = CoreServerInstruments.ActivitySource
+            .StartActivity(operationName, ActivityKind.Consumer, senderContext, links: links);
+
         var command = queuedCommand.UntypedCommand;
         var kind = command.GetKind();
         DebugLog?.LogDebug("[{ShardIndex}]: Running queued {Kind}: {Command}", shardIndex, kind, queuedCommand);
@@ -87,17 +105,25 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
             };
             await processTask.ConfigureAwait(false);
             await MarkCompleted(shardIndex, message, queuedCommand, cancellationToken).ConfigureAwait(false);
+            activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Completed);
         }
         catch (Exception e) {
             if (e.GetBaseException() is PostponeException pe) {
+                activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
+                activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Postponed);
                 DebugLog?.LogDebug(e, "Queued {Kind} postponed: {Command}", kind, queuedCommand);
                 await MarkPostponed(shardIndex, message, queuedCommand, pe.Delay, cancellationToken).ConfigureAwait(false);
                 return;
             }
             Log.LogError(e, "[{ShardIndex}]: Queued {Kind} failed: {Command}", shardIndex, kind, queuedCommand);
             await MarkFailed(shardIndex, message, queuedCommand, e, cancellationToken).ConfigureAwait(false);
-            if (e.IsCancellationOf(cancellationToken))
+            if (e.IsCancellationOf(cancellationToken)) {
+                activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
+                activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Canceled);
                 throw;
+            }
+            activity?.SetStatus(ActivityStatusCode.Error, e.Message);
+            activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Failed);
         }
         finally {
             InterlockedExt.ExchangeIfGreater(ref _lastCommandCompletedAt, Clock.Now.EpochOffsetTicks);

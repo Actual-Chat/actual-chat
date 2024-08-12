@@ -1,0 +1,20 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase
+
+<MenuEntrySeparator />
+<MenuEntry
+    Class="warning-item"
+    Icon="icon-trash03"
+    Text="Leave chat"
+    Click="@OnClick">
+</MenuEntry>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
+
+    private void OnClick()
+        => ChatUI.LeaveChat(ChatState.Chat);
+}

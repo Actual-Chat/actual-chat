@@ -1,0 +1,20 @@
+@namespace ActualChat.Users.Templates
+
+<EmailBody>
+    @if (Parameters.UnreadChats.Any()) {
+        @foreach (var chat in Parameters.UnreadChats) {
+            <DigestChat Chat="chat" />
+        }
+        @if (Parameters.OtherUnreadCount > 0) {
+            <DigestButton
+                Link="@Parameters.OtherUnreadLink"
+                WithGradient="true">
+                Discover other @(Parameters.OtherUnreadCount) new
+            </DigestButton>
+        }
+    }
+</EmailBody>
+
+@code {
+    [Parameter, EditorRequired] public DigestParameters Parameters { get; set; } = null!;
+}

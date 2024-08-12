@@ -2,7 +2,7 @@ namespace ActualChat.Chat;
 
 public interface IMentions : IComputeService
 {
-    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
+    [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
     Task<Mention?> GetLastOwn(
         Session session,
         ChatId chatId,

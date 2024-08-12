@@ -1,0 +1,98 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Kvas
+@using ActualChat.Hosting
+@using ActualChat.Permissions
+@inherits ComputedStateComponent<ContactsPermissionBanner.Model>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
+
+    var isVisible = m is { IsPermissionGranted: not true, IsDismissed: false };
+}
+
+@if (isVisible) {
+    <RenderIntoSlot Name="PermissionBanner">
+        <Banner
+            @key="@GetType()"
+            IsVisible="@isVisible"
+            Severity="BannerSeverity.Info"
+            ShowDismissButton="true"
+            Dismiss="@OnDismiss">
+            <Body>
+                Actual Chat can import your <strong>contacts</strong> to find them here
+            </Body>
+            <Buttons>
+                <Button
+                    Class="btn-transparent unhovered"
+                    Click="@OnConfigureClick">Configure</Button>
+            </Buttons>
+        </Banner>
+    </RenderIntoSlot>
+}
+
+@code {
+    private IStoredState<Moment> _dismissedAt = null!;
+    private bool _permissionStateWasDefined;
+    private bool _checkIsRequired;
+    private ILogger? _log;
+
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    [Inject] private ContactsPermissionHandler ContactsPermission { get; init; } = null!;
+    private HostInfo HostInfo => Hub.HostInfo();
+    private LocalSettings LocalSettings => Hub.LocalSettings();
+    private MomentClockSet Clocks => Hub.Clocks();
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
+
+    protected override void OnInitialized()
+        => _dismissedAt = StateFactory.NewKvasStored<Moment>(new(LocalSettings, "Permissions.Contacts.DismissedAt"));
+
+    protected override async Task OnInitializedAsync()
+        => await ContactsPermission.Check(CancellationToken.None);
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (!_dismissedAt.WhenRead.IsCompleted)
+            await _dismissedAt.WhenRead;
+
+        // NOTE(AY): I intentionally don't use IFusionTime here - prob. fine to don't show it back on timer
+        var dismissedAt = await _dismissedAt.Use(cancellationToken).ConfigureAwait(false);
+        var dismissPeriod = Clocks.SystemClock.Now - dismissedAt;
+        var isDismissed = dismissPeriod < Constants.Contacts.PermissionRequestDismissPeriod;
+
+        var permissionState = await ContactsPermission.Cached.Use(cancellationToken).ConfigureAwait(false);
+        if (permissionState == null && _permissionStateWasDefined)
+            _checkIsRequired = true;
+        if (_checkIsRequired && !isDismissed) {
+            permissionState = await ContactsPermission.Check(cancellationToken).ConfigureAwait(false);
+            _checkIsRequired = false;
+        }
+        _permissionStateWasDefined = permissionState.HasValue;
+
+        return new (permissionState, isDismissed);
+    }
+
+    // Event handlers
+
+    private void OnDismiss()
+        => _dismissedAt.Value = Clocks.SystemClock.Now;
+
+    private Task OnConfigureClick(MouseEventArgs e)
+        => ContactsPermission.CheckOrRequest().AsTask();
+
+    // Nested types
+
+    public sealed record Model(
+        bool? IsPermissionGranted,
+        bool IsDismissed
+    ) {
+        public static readonly Model Loading = new(null, true);
+    }
+}

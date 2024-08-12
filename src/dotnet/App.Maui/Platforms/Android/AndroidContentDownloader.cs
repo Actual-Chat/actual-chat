@@ -1,4 +1,4 @@
-using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.App.Services;
 using Uri = Android.Net.Uri;
 
 namespace ActualChat.App.Maui;

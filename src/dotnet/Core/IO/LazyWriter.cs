@@ -9,10 +9,10 @@ public class LazyWriter<T> : WorkerBase
     public int FlushMaxItemCount { get; init; } = 64;
     public TimeSpan FlushDelay { get; init; } = TimeSpan.FromMilliseconds(1);
     public TimeSpan DisposeTimeout { get; init; } = TimeSpan.FromSeconds(3);
-    public RetryDelaySeq FlushRetryDelays { get; init; } = new();
+    public RetryDelaySeq FlushRetryDelays { get; init; } = RetryDelaySeq.Exp(0.1, 5);
     public Func<List<T>, Task> Implementation { get; init; } = _ => Task.CompletedTask;
     public Func<Exception, LogLevel> FlushErrorSeverityProvider { get; init; } = static _ => LogLevel.Error;
-    public IMomentClock Clock { get; init; } = MomentClockSet.Default.CpuClock;
+    public MomentClock Clock { get; init; } = MomentClockSet.Default.CpuClock;
     public ILogger? Log { get; init; }
 
     public LazyWriter()

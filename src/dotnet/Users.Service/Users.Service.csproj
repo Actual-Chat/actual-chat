@@ -21,6 +21,7 @@
     <PackageReference Include="Twilio" />
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
     <PackageReference Include="TimeZoneNames" />
+    <PackageReference Include="TimeZoneConverter" />
   </ItemGroup>
 
 </Project>

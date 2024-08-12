@@ -7,7 +7,7 @@ namespace ActualChat.Chat.Db;
 
 [Table("Chats")]
 [Index(nameof(CreatedAt))]
-[Index(nameof(Version), nameof(Id))]
+[Index(nameof(Version))]
 public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;
@@ -19,6 +19,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [ConcurrencyCheck] public long Version { get; set; }
 
     public string Title { get; set; } = "";
+    public string Description { get; set; } = "";
     public ChatKind Kind { get; set; }
     [Obsolete("2023.03: Use MediaId instead.")]
     public string Picture { get; set; } = "";
@@ -35,15 +36,18 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool AllowGuestAuthors { get; set; }
     public bool AllowAnonymousAuthors { get; set; }
     public string? SystemTag { get; set; }
+    public bool IsPlaceRootChat { get; set; }
 
     public DateTime CreatedAt {
         get => _createdAt.DefaultKind(DateTimeKind.Utc);
         set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
     }
 
+
     public Chat ToModel()
         => new(new ChatId(Id), Version) {
             Title = Title,
+            Description = Description,
             CreatedAt = CreatedAt,
             IsTemplate = IsTemplate,
             TemplateId = TemplateId.IsNullOrEmpty()
@@ -71,6 +75,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Id = id;
         Version = model.Version;
         Title = model.Title;
+        Description = model.Description;
         CreatedAt = model.CreatedAt;
         IsTemplate = model.IsTemplate;
         TemplateId = model.TemplateId;
@@ -84,5 +89,6 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             : model.SystemTag.Value;
         Kind = model.Kind;
         MediaId = model.MediaId;
+        IsPlaceRootChat = model.Id.IsPlaceRootChat;
     }
 }

@@ -4,7 +4,7 @@ namespace ActualChat.Users.Db;
 
 public class DbUser : DbUser<string>, IRequirementTarget
 {
-    private DateTime _createdAt = CoarseSystemClock.Now;
+    private DateTime _createdAt = CoarseSystemClock.Instance.Now;
 
     public DateTime CreatedAt {
         get => _createdAt.DefaultKind(DateTimeKind.Utc);

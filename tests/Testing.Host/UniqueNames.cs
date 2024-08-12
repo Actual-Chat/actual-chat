@@ -16,6 +16,9 @@ public static class UniqueNames
     public static string Chat(int i)
         => Name($"Chat {i}");
 
+    public static string Place(int i)
+        => Name($"Place {i}");
+
     public static string Prefix(int length = RandomPartLength)
         => Rsg.Next(length);
 

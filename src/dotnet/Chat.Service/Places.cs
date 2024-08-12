@@ -12,7 +12,7 @@ public class Places(IServiceProvider services) : IPlaces
     private IRoles Roles { get; } = services.GetRequiredService<IRoles>();
     private ICommander Commander { get; } = services.Commander();
 
-    private IPlacesBackend PlacesBackend { get; } = services.GetRequiredService<PlacesBackend>();
+    private IPlacesBackend PlacesBackend { get; } = services.GetRequiredService<IPlacesBackend>();
     private IChats Chats => _chats ??= services.GetRequiredService<IChats>(); // Lazy resolving to prevent cyclic dependency
     private IChatsBackend ChatsBackend => _chatsBackend ??= services.GetRequiredService<IChatsBackend>(); // Lazy resolving to prevent cyclic dependency
 

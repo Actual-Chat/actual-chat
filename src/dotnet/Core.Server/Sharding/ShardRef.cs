@@ -51,7 +51,7 @@ public readonly struct ShardRef(ShardScheme scheme, int key)
     public ShardRef Normalize()
     {
         var shardScheme = Scheme;
-        return shardScheme.IsNone ? this : new (shardScheme, shardScheme.GetShardIndex(Key));
+        return shardScheme.IsNone ? this : new(shardScheme, shardScheme.GetShardIndex(Key));
     }
 
     public ShardRef WithSchemeIfUndefined(ShardScheme scheme)

@@ -1,0 +1,51 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI
+@inherits ComputedStateComponent<ChatSearchTab.Model>
+
+@{
+    var m = _rendered = State.Value;
+    if (m is { OwnChatCount: 0, IsSearchApplied: false })
+        return;
+}
+
+@if (!m.IsSearchApplied) {
+    <RecentlyContactedPeople/>
+    <RecentlyViewedGroups/>
+} else {
+    // TODO: need search by messages and discover
+    @* <CollapsedFoundContactList Title="Chats & Places"/> *@
+    <FoundContactList/>
+}
+
+@code {
+    private Model _rendered;
+
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+
+    private SearchUI SearchUI => Hub.SearchUI;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new(
+                ChatListUI.GetCountWhenLoading(ChatListKind.All),
+                false),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var selectedChatId = Hub.ChatUI.SelectedChatId.Value;
+        var ownChatCount = await ChatListUI.GetCount(selectedChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+        var isSearchApplied = await SearchUI.IsSearchModeOn(cancellationToken);
+        return new(ownChatCount, isSearchApplied);
+    }
+
+    protected override bool ShouldRender()
+        => State.HasError || State.Value != _rendered;
+
+    // Nested types
+
+    public record struct Model(
+        int OwnChatCount,
+        bool IsSearchApplied = false);
+}

@@ -2,8 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
-    <ProjectReference Include="..\Contacts.Contracts\Contacts.Contracts.csproj" />
   </ItemGroup>
-
 
 </Project>

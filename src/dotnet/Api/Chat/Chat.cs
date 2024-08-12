@@ -14,18 +14,18 @@ public sealed partial record Chat(
     ) : IHasId<ChatId>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly Requirement<Chat> MustExist = Requirement.New(
-        new(() => StandardError.NotFound<Chat>()),
-        (Chat? c) => c is { Id.IsNone: false });
+        (Chat? c) => c is { Id.IsNone: false },
+        new(() => StandardError.NotFound<Chat>()));
 
     public static readonly Requirement<Chat> MustBeTemplate = MustExist
         & Requirement.New<Chat>(
-            new (() => StandardError.Chat.NonTemplate()),
-            c => c is { IsPublic: true, IsTemplate: true });
+            c => c is { IsPublic: true, IsTemplate: true },
+            new(() => StandardError.Chat.NonTemplate()));
 
     public static readonly Requirement<Chat> MustBePlaceRoot = MustExist
         & Requirement.New<Chat>(
-            new (() => StandardError.Constraint<Chat>("Place root chat is expected.")),
-            c => c is { Id: { IsPlaceChat: true, PlaceChatId.IsRoot: true } });
+            c => c is { Id: { IsPlaceChat: true, PlaceChatId.IsRoot: true } },
+            new(() => StandardError.Constraint<Chat>("Place root chat is expected.")));
 
     [DataMember, MemoryPackOrder(2)] public string Title { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public Moment CreatedAt { get; init; }
@@ -38,6 +38,7 @@ public sealed partial record Chat(
     [DataMember, MemoryPackOrder(10)] public MediaId MediaId { get; init; }
     [DataMember, MemoryPackOrder(14)] public Symbol SystemTag { get; init; }
     [DataMember, MemoryPackOrder(15)] public bool IsArchived { get; init; }
+    [DataMember, MemoryPackOrder(16)] public string Description { get; init; } = "";
 
     // Populated only on front-end
     [DataMember, MemoryPackOrder(11)] public AuthorRules Rules { get; init; } = null!;
@@ -78,4 +79,5 @@ public sealed partial record ChatDiff : RecordDiff
     [DataMember, MemoryPackOrder(10)] public Symbol? SystemTag { get; init; }
     [DataMember, MemoryPackOrder(11)] public PlaceId? PlaceId { get; init; }
     [DataMember, MemoryPackOrder(12)] public bool? IsArchived { get; init; }
+    [DataMember, MemoryPackOrder(13)] public string? Description { get; init; }
 }

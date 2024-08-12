@@ -13,6 +13,15 @@ public interface IAuthorsBackend : IComputeService, IBackendService
     Task<ApiArray<AuthorId>> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken);
+    // Not a [ComputeMethod]!
+    Task<ApiArray<AuthorFull>> ListChangedPlaceAuthors(
+        long minVersion,
+        long maxVersion,
+        AuthorId lastId,
+        int limit,
+        CancellationToken cancellationToken);
+
+    // Commands
 
     [CommandHandler]
     Task<AuthorFull> OnUpsert(AuthorsBackend_Upsert command, CancellationToken cancellationToken);
@@ -20,6 +29,13 @@ public interface IAuthorsBackend : IComputeService, IBackendService
     Task OnRemove(AuthorsBackend_Remove command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<bool> OnCopyChat(AuthorsBackend_CopyChat command, CancellationToken cancellationToken);
+
+    // Events
+
+    [EventHandler]
+    Task OnAvatarChangedEvent(AvatarChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnAuthorLeftPlaceEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 // Commands

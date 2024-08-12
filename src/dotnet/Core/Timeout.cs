@@ -1,7 +1,7 @@
 namespace ActualChat;
 
 public readonly record struct Timeout(
-    IMomentClock Clock,
+    MomentClock Clock,
     TimeSpan Duration)
 {
     public override string ToString()

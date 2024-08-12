@@ -1,0 +1,25 @@
+.empty-chat-content {
+    @apply flex-y items-center gap-y-4;
+    @apply py-8;
+}
+.empty-chat-content > .c-text {
+    @apply flex-y items-center;
+    @apply w-full;
+    @apply text-lg text-03 text-headline-5;
+}
+.empty-chat-content > .c-text > .c-truncated-text {
+    @apply flex-x justify-center gap-x-2;
+    @apply w-full;
+    @apply px-4;
+    @apply truncate;
+}
+.empty-chat-content > .c-text > .c-truncated-text .avatar-name {
+    @apply max-w-120;
+}
+.narrow .empty-chat-content > .c-image {
+    height: 224px;
+    width: 226px;
+}
+.narrow .empty-chat-content > .c-text {
+    @apply text-headline-1;
+}

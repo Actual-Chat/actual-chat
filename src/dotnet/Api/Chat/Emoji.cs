@@ -17,6 +17,7 @@ public sealed record Emoji(Symbol Id, string Name) : IHasId<Symbol>, IRequiremen
     public static readonly Emoji ThumbsDown = new("👎", "thumbs down");
     public static readonly Emoji ScreamingFaceInFear = new("😱", "face screaming in fear");
     public static readonly Emoji JackOLantern = new("🎃", "jack-o-lantern");
+    public static readonly Emoji FramedPicture = new("🖼️️", "frame with picture");
 
     private static readonly Dictionary<Symbol, Emoji> _all = new[] {
         ThumbsUp,
@@ -28,8 +29,8 @@ public sealed record Emoji(Symbol Id, string Name) : IHasId<Symbol>, IRequiremen
     }.ToDictionary(x => x.Id);
 
     public static readonly Requirement<Emoji> MustExist = Requirement.New(
-        new(() => StandardError.NotFound<Emoji>()),
-        (Emoji? e) => e != null && _all.ContainsKey(e.Id));
+        (Emoji? e) => e != null && _all.ContainsKey(e.Id),
+        new(() => StandardError.NotFound<Emoji>()));
 
     public static readonly IReadOnlyCollection<Emoji> All = _all.Values;
 

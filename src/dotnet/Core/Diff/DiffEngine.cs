@@ -68,7 +68,7 @@ public class DiffEngine(
         if (tHandler == null && diffType.IsAssignableTo(typeof(RecordDiff)))
             tHandler = typeof(RecordDiffHandler<,>).MakeGenericType(sourceType, diffType);
         tHandler ??= typeof(MissingDiffHandler<,>).MakeGenericType(sourceType, diffType);
-        return (IDiffHandler)Services.Activate(tHandler);
+        return (IDiffHandler)Services.CreateInstance(tHandler);
     }
 #pragma warning restore IL2067, IL2070, IL2072
 }

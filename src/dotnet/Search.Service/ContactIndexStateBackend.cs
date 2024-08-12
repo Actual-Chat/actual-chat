@@ -15,8 +15,16 @@ public class ContactIndexStateBackend(IServiceProvider services) : DbServiceBase
         => Get(DbContactIndexState.UserContactIndexStateId, cancellationToken);
 
     // [ComputeMethod]
+    public virtual Task<ContactIndexState> GetForPlaceAuthors(CancellationToken cancellationToken)
+        => Get(DbContactIndexState.PlaceAuthorIndexStateId, cancellationToken);
+
+    // [ComputeMethod]
     public virtual Task<ContactIndexState> GetForChats(CancellationToken cancellationToken)
         => Get(DbContactIndexState.ChatContactIndexStateId, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual Task<ContactIndexState> GetForPlaces(CancellationToken cancellationToken)
+        => Get(DbContactIndexState.PlaceContactIndexStateId, cancellationToken);
 
     // [CommandHandler]
     public virtual async Task<ContactIndexState> OnChange(

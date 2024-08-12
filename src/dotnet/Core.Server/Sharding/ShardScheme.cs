@@ -1,5 +1,6 @@
 using ActualChat.Attributes;
 using ActualChat.Hosting;
+using ActualLab.Internal;
 
 namespace ActualChat;
 
@@ -13,11 +14,12 @@ public sealed class ShardScheme(
     ) : IHasId<Symbol>
 {
     private const int N = 12;
-    private static readonly ConcurrentDictionary<object, BackendClientAttribute?> _backendClientAttributes = new();
+    private static readonly ConcurrentDictionary<object, BackendClientAttribute?> BackendClientAttributes = new();
 
     public static readonly ShardScheme None = new(nameof(None), 0, HostRole.None, ShardSchemeFlags.Special | ShardSchemeFlags.Queue);
     public static readonly ShardScheme Undefined = new(nameof(Undefined), 0, HostRole.None, ShardSchemeFlags.Special | ShardSchemeFlags.Queue);
     public static readonly ShardScheme EventQueue = new(nameof(EventQueue), N, HostRole.EventQueue, ShardSchemeFlags.Queue);
+    public static readonly ShardScheme FlowsBackend = new(nameof(FlowsBackend), N, HostRole.FlowsBackend);
     public static readonly ShardScheme MediaBackend = new(nameof(MediaBackend), N, HostRole.MediaBackend);
     public static readonly ShardScheme AudioBackend = new(nameof(AudioBackend), N, HostRole.AudioBackend);
     public static readonly ShardScheme ChatBackend = new(nameof(ChatBackend), N, HostRole.ChatBackend);
@@ -40,6 +42,7 @@ public sealed class ShardScheme(
         { AudioBackend.Id, AudioBackend },
         { ChatBackend.Id, ChatBackend },
         { ContactsBackend.Id, ContactsBackend },
+        { FlowsBackend.Id, FlowsBackend },
         { InviteBackend.Id, InviteBackend },
         { NotificationBackend.Id, NotificationBackend },
         { SearchBackend.Id, SearchBackend },
@@ -69,10 +72,14 @@ public sealed class ShardScheme(
         => IsUndefined ? null : this;
 
     public static ShardScheme? ForType<T>()
+        where T : class
         => ForType(typeof(T));
     public static ShardScheme? ForType(Type type)
     {
-        var attr = _backendClientAttributes.GetOrAdd(type,
+        if (!type.IsInterface)
+            throw Errors.MustBeInterface(type, nameof(type));
+
+        var attr = BackendClientAttributes.GetOrAdd(type,
             static (_, t) => t.GetCustomAttributes<BackendClientAttribute>().SingleOrDefault(),
             type);
         var shardScheme = attr != null ? ById[attr.ShardScheme] : null;
@@ -83,7 +90,7 @@ public sealed class ShardScheme(
 
     private static ShardScheme? ForAssembly(Assembly assembly)
     {
-        var attr = _backendClientAttributes.GetOrAdd(assembly,
+        var attr = BackendClientAttributes.GetOrAdd(assembly,
             static (_, t) => t.GetCustomAttributes<BackendClientAttribute>().SingleOrDefault(),
             assembly);
         return attr != null ? ById[attr.ShardScheme] : null;

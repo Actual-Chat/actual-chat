@@ -1,0 +1,139 @@
+@using ActualChat.Kvas
+@using ActualChat.Hosting
+@inherits ComputedStateComponent<AppSettings.Model>
+@{
+    var m = State.Value;
+    var status = m.IsAnalyticsEnabled
+        ? "Gathering statistics"
+        : "Turned off";
+    var experimentalStatus = m.IsExperimentalFeatureEnabled
+        ? "Turned on"
+        : "Turned off";
+    var incompleteUIStatus = m.IsIncompleteUIEnabled
+        ? "Turned on"
+        : "Turned off";
+}
+
+@if (NativeAppSettings != null) {
+    <NativeAppSettingsView NativeAppSettings="@NativeAppSettings"></NativeAppSettingsView>
+}
+@if (HostInfo.HostKind != HostKind.MauiApp) {
+    <SettingsBlazorModeToggle/>
+}
+<TileTopic Topic="Data Usage Consent"/>
+<Tile Class="enhance-data">
+    <TileItem Click="@OnAnalyticsEnabledClick">
+        <Icon><i class="icon-info text-2xl"></i></Icon>
+        <Content>Enhance Actual Chat with Data</Content>
+        <Caption>@status</Caption>
+        <Right>
+            <Toggle IsChecked="@m.IsAnalyticsEnabled"/>
+        </Right>
+    </TileItem>
+    <p class="c-description">
+        This setting allows us to use and process your information to enhance our services.
+    </p>
+</Tile>
+
+@if (m.IsAdmin) {
+    <TileTopic Topic="Alpha testing"/>
+    <Tile Class="alpha-testing">
+        <TileItem Click="@OnExperimentalFeatureEnabledClick">
+            <Icon><i class="icon-info text-2xl"></i></Icon>
+            <Content>Enable experimental features</Content>
+            <Caption>@experimentalStatus</Caption>
+            <Right>
+                <Toggle IsChecked="@m.IsExperimentalFeatureEnabled"/>
+            </Right>
+        </TileItem>
+        <p class="c-description">
+            Enables experimental features
+        </p>
+        <TileItem Click="@OnIncompleteUIEnabledClick">
+            <Icon><i class="icon-info text-2xl"></i></Icon>
+            <Content>Show incomplete UI</Content>
+            <Caption>@incompleteUIStatus</Caption>
+            <Right>
+                <Toggle IsChecked="@m.IsIncompleteUIEnabled"/>
+            </Right>
+        </TileItem>
+        <p class="c-description">
+            Enables incomplete UI
+        </p>
+    </Tile>
+}
+
+<TileTopic Topic="Walk-through"/>
+<Button
+    Class="add-avatar-btn"
+    Click="@(OnRestartWalkThrough)">
+    <Icon><i class="icon-refresh text-xl"></i></Icon>
+    <Title>Restart walk-through</Title>
+</Button>
+
+@if (m.IsAdmin) {
+    <TileTopic Topic="Onboarding"/>
+    <Button
+        Class="add-avatar-btn"
+        Click="@(OnRestartOnboarding)">
+        <Icon><i class="icon-refresh text-xl"></i></Icon>
+        <Title>Restart onboarding</Title>
+    </Button>
+}
+
+@code {
+    private INativeAppSettings? NativeAppSettings { get; set; }
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
+    [Inject] private IAnalyticsUI AnalyticsUI { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+    private HostInfo HostInfo => Hub.HostInfo();
+    private BubbleUI BubbleUI => Hub.BubbleUI;
+    private ToastUI ToastUI => Hub.ToastUI;
+
+    protected override void OnInitialized()
+        => NativeAppSettings = Hub.GetService<INativeAppSettings>();
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var settings = await AccountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
+        var account = Hub.AccountUI.OwnAccount.Value;
+        return new(settings.IsAnalyticsEnabled ?? false, settings.IsExperimentalFeatureEnabled ?? false, settings.IsIncompleteUIEnabled ?? false, account.IsAdmin);
+    }
+
+    private async Task OnRestartWalkThrough() {
+        await BubbleUI.ResetSettings().ConfigureAwait(true);
+        ToastUI.Show("Walk-through tips are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
+    }
+
+    private void OnRestartOnboarding() {
+        OnboardingUI.ResetSettings();
+        ToastUI.Show("Onboarding steps are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
+    }
+
+    private async Task OnAnalyticsEnabledClick() {
+        var isAnalyticsEnabled = !State.Value.IsAnalyticsEnabled;
+        await UpdateSettings(x => x with { IsAnalyticsEnabled = isAnalyticsEnabled });
+        await AnalyticsUI.UpdateAnalyticsState(isAnalyticsEnabled, CancellationToken.None);
+    }
+
+    private Task OnExperimentalFeatureEnabledClick()
+        => UpdateSettings(x => x with { IsExperimentalFeatureEnabled = !State.Value.IsExperimentalFeatureEnabled });
+
+    private Task OnIncompleteUIEnabledClick()
+        => UpdateSettings(x => x with { IsIncompleteUIEnabled = !State.Value.IsIncompleteUIEnabled });
+
+    private async Task UpdateSettings(Func<UserAppSettings, UserAppSettings> update, CancellationToken cancellationToken = default) {
+        var settings = await AccountSettings.GetUserAppSettings(cancellationToken);
+        await AccountSettings.SetUserAppSettings(update(settings), cancellationToken);
+    }
+
+    // Nested types
+
+    public record Model(bool IsAnalyticsEnabled, bool IsExperimentalFeatureEnabled, bool IsIncompleteUIEnabled, bool IsAdmin) {
+        public static readonly Model None = new(false, false, false, false);
+    }
+}

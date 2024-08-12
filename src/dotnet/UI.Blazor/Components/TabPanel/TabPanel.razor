@@ -58,7 +58,7 @@
 @code {
     private readonly List<Tab> _tabs = new();
     private string? _selectedTabId;
-    private IReadOnlyList<Tab> _renderedTabs = Array.Empty<Tab>();
+    private IReadOnlyList<Tab> _renderedTabs = [];
     private Tab? _renderedSelectedTab;
 
     [Parameter] public string Class { get; set; } = "";

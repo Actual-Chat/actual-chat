@@ -1,0 +1,492 @@
+.chat-message-editor {
+    @apply relative;
+    @apply bg-post-panel md:bg-01;
+}
+body.narrow .chat-message-editor {
+    background: transparent;
+    @apply landscape:mt-4;
+}
+
+/* Bottom Panel, Desktop view */
+.chat-message-editor > .c-content {
+    @apply relative;
+    @apply flex-none flex-x justify-items-stretch items-stretch gap-x-2.5;
+    @apply px-3 py-2;
+}
+
+/* Bottom Panel, Mobile, Portrait */
+body.narrow .chat-message-editor > .c-content {
+    @apply portrait:-flex-y;
+    @apply portrait:p-0;
+}
+
+/* Bottom Panel, Mobile, Landscape */
+body.narrow .chat-message-editor > .c-content {
+    @apply landscape:bg-post-panel;
+}
+body.narrow .audio-panel-wrapper {
+    @apply -mb-0.5;
+    background: linear-gradient(to bottom, var(--transparent) 70%, var(--audio-panel-gradient-bottom) 0%);
+}
+body.narrow .narrow-panel .audio-panel-wrapper {
+    @apply -mb-0.5;
+    background: linear-gradient(to bottom, var(--transparent) 50%, var(--audio-panel-gradient-bottom) 0%);
+}
+.post-panel {
+    @apply relative;
+    @apply flex-auto flex-x justify-between items-center;
+    @apply min-h-12;
+    @apply py-1 md:py-0;
+    @apply border-bg-01 md:rounded-3xl outline-none;
+    @apply bg-post-panel md:bg-input;
+    @apply overflow-hidden;
+    @apply break-all;
+}
+@media (orientation: portrait) {
+    body.narrow .post-panel {
+        @apply static;
+    }
+}
+@media (orientation: landscape) {
+    body.narrow .post-panel {
+        @apply relative;
+    }
+}
+body.narrow .post-panel {
+    @apply landscape:py-0;
+    @apply landscape:rounded-3xl;
+    @apply landscape:bg-mobile-landscape-post-panel;
+}
+.post-panel .message-input {
+    @apply flex-1;
+    @apply max-h-36 md:max-h-88;
+    @apply overflow-hidden;
+    @apply outline-none;
+    @apply text-post-panel-text md:text-02;
+    @apply bg-post-panel md:bg-transparent;
+    @apply cursor-text;
+    word-break: break-word;
+}
+body.narrow .post-panel .message-input {
+    @apply landscape:max-h-24;
+}
+body.narrow .post-panel .message-input a {
+    @apply text-post-panel-text;
+}
+.ac-bubble-host:has(.ac-bubble) + .base-layout .post-panel .message-input {
+    @apply pointer-events-none;
+}
+.post-panel .message-input-label {
+    @apply flex-auto flex-x justify-items-stretch items-center;
+    @apply truncate;
+}
+
+.post-panel .message-input .editor-content {
+    @apply mr-0 md:mr-4;
+    @apply custom-scrollbar-hide;
+    /* AY: It's an inline element that grows to flexbox container, so setting its width defines the weight,
+       but flexbox ensures it never grows above what's allowed;
+       I checked w-full, etc. - all these options let the text (1 long word) to overflow-x the container. */
+}
+body.narrow .post-panel .message-input .editor-content {
+    @apply landscape:bg-mobile-landscape-post-panel;
+}
+.post-panel .message-input .editor-content::-webkit-scrollbar {
+    display: none;
+}
+
+.not-recording {
+    @apply text-03;
+}
+
+.recording {
+    @apply text-toggle-on;
+}
+
+/* Post panel buttons */
+.post-panel-btn {
+    @apply flex-none flex items-center justify-center;
+    @apply h-12 w-10;
+    @apply bg-transparent;
+    @apply text-round-title;
+}
+body.narrow .post-panel-btn {
+    @apply !text-mobile-landscape-audio-panel-button-text;
+}
+body.hoverable .post-panel-btn:hover {
+    @apply text-02;
+}
+
+[contenteditable=true]:empty:before {
+    @apply truncate;
+    @apply text-placeholder text-base;
+    content:attr(data-text)
+}
+
+/* Notify Call Panel */
+.notify-call-btn {
+    @apply hidden;
+    @apply absolute right-0;
+    @apply duration-200 delay-300;
+    @apply opacity-0;
+    transition-behavior: allow-discrete;
+    transition-property: display, opacity;
+}
+.default-mode .notify-call-btn {
+    @apply static right-auto;
+    @apply flex;
+    @apply opacity-100;
+    @starting-style {
+        opacity: 0;
+    }
+}
+.notify-call-panel {
+    @apply hidden;
+    @apply absolute inset-0;
+    @apply items-center justify-end gap-x-2;
+    @apply rounded-full;
+    @apply duration-300;
+    @apply translate-x-full;
+    @apply bg-primary;
+    transition-behavior: allow-discrete;
+    transition-property: display, transform, opacity, background-color;
+}
+.notify-call-panel.panel-open {
+    @apply flex-x;
+    @apply translate-x-0;
+    @apply bg-03;
+    @starting-style {
+        transform: translateX(100%);
+        background: var(--primary);
+    }
+}
+@media (orientation: portrait) {
+    body.narrow .notify-call-panel {
+        @apply inset-1 top-auto;
+        @apply h-12;
+        @apply bg-primary;
+    }
+    body.narrow .notify-call-panel.panel-open {
+        @apply bg-post-panel;
+        @starting-style {
+            background: var(--primary);
+        }
+    }
+}
+@media (orientation: landscape) {
+    body.narrow .notify-call-panel {
+        @apply bg-primary;
+    }
+    body.narrow .notify-call-panel.panel-open {
+        @apply bg-mobile-landscape-post-panel;
+        @starting-style {
+            background: var(--primary);
+        }
+    }
+}
+.notify-call-panel .notify-call-content {
+    @apply flex-x items-center gap-x-4 md:gap-x-8;
+}
+.notify-call-panel .notify-call-content .actions {
+    @apply flex-x items-center gap-x-4;
+}
+.notify-call-panel .notify-call-content .actions button {
+    @apply flex-x items-center gap-x-2;
+    @apply px-4 py-0;
+    @apply rounded-full;
+    @apply text-text-1;
+}
+.notify-btn {
+    @apply bg-04;
+    @apply text-02;
+}
+.call-btn {
+    @apply bg-primary;
+    @apply text-primary-title;
+}
+
+/* Post button */
+.post-panel-btn.post-message {
+    @apply hidden;
+    @apply absolute right-0;
+    @apply flex-none self-end;
+    @apply outline-none;
+    @apply text-primary;
+    @apply duration-200 delay-300;
+    @apply opacity-0;
+    transition-behavior: allow-discrete;
+    transition-property: display, opacity;
+}
+
+.text-mode .post-panel-btn.post-message {
+    @apply static right-auto;
+    @apply flex;
+    @apply opacity-100;
+    @starting-style {
+        opacity: 0;
+    }
+}
+body.wide .attachment-mode .post-panel-btn.post-message {
+    @apply flex;
+}
+
+.text-mode .recorder-buttons .btn {
+    @apply disabled;
+}
+
+.attachment-list-wrapper {
+    @apply relative flex-y;
+    @apply px-2;
+    @apply bg-01;
+    @apply border-y border-bg-02;
+}
+.attachment-list-wrapper > .c-btn-group {
+    @apply flex-1 flex-x justify-between;
+    @apply px-2;
+}
+body.narrow .attachment-list-wrapper > .c-btn-group {
+    @apply pb-1;
+}
+.attachment-list {
+    @apply flex-1 flex-x justify-start gap-x-4;
+    @apply p-1 md:p-2;
+    @apply overflow-x-auto;
+}
+
+.attachment-list-btn.btn {
+    @apply flex-none;
+    @apply min-h-6 max-h-6;
+    @apply px-0;
+    @apply border-transparent;
+}
+body.narrow .attachment-list-btn.btn {
+    @apply px-0;
+}
+.attachment-list-btn.btn:hover {
+    @apply brightness-125;
+}
+
+.attachment-wrapper {
+    @apply relative;
+    @apply p-px;
+    @apply rounded-lg;
+    @apply bg-03;
+}
+.attachment-wrapper.last-element {
+    @apply flex items-center justify-center;
+    @apply min-w-34;
+}
+body.narrow .attachment-wrapper.last-element {
+    @apply min-w-30;
+}
+.attachment-wrapper > .c-content {
+    @apply relative;
+    @apply flex-y;
+}
+.attachment-item {
+    @apply flex-none relative flex-y justify-center gap-x-1;
+    @apply h-34 w-34;
+    @apply mt-auto;
+    @apply rounded-t-lg;
+    @apply overflow-hidden;
+}
+.attachment-item > img, .attachment-item > video {
+    @apply h-34;
+    @apply object-cover;
+}
+body.narrow .attachment-item {
+    @apply h-30 w-30;
+}
+body.narrow .attachment-item > img, .attachment-item > video {
+    @apply min-h-30;
+}
+.remove-attachment-btn.btn {
+    @apply absolute;
+    @apply self-center;
+    @apply min-w-9 max-w-9 min-h-9 max-h-9;
+    @apply top-0 right-0;
+    @apply z-10;
+    @apply opacity-60;
+}
+.attachment-item > .c-file {
+    @apply flex items-center justify-center;
+    @apply p-3;
+}
+
+.remove-attachment-btn.btn .btn-content {
+    @apply justify-center;
+}
+.attachment-filename {
+    @apply w-full max-w-34;
+    @apply self-center text-center;
+    @apply truncate;
+    @apply px-2 md:px-0.5 py-0.5;
+    @apply cursor-default;
+    @apply bg-01;
+    @apply text-03 text-xs font-medium;
+}
+body.narrow .attachment-filename {
+    @apply max-w-30;
+}
+.attachment-upload-progress {
+    @apply h-[5px];
+    @apply bg-05;
+    @apply rounded-md;
+    transition: all 150ms ease-in-out;
+}
+.attachment-upload-completed {
+    @apply bg-success;
+}
+.attachment-upload-failed {
+    @apply bg-danger;
+}
+
+/* Related Chat Entry Panel (Reply, Edit) */
+body.narrow .chat-message-editor:has(.related-chat-entry-panel) {
+    @apply landscape:mt-16;
+}
+body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rounded-sub-footer {
+    @apply landscape:-top-20;
+}
+.related-chat-entry-panel {
+    @apply flex-x;
+    @apply h-10;
+    @apply py-0;
+    @apply outline-none;
+    @apply bg-03;
+}
+body.narrow .related-chat-entry-panel {
+    @apply h-auto;
+    @apply p-1;
+    @apply overflow-hidden;
+    @apply bg-post-panel;
+}
+@media (orientation: landscape) {
+    body.narrow .related-chat-entry-panel {
+        @apply absolute -top-12 inset-x-0 z-10;
+        @apply px-3 pt-2 pb-0;
+    }
+}
+.related-chat-entry-panel .related-chat-entry > .c-content {
+    @apply flex-1 flex-x items-center gap-x-2;
+    @apply max-w-full max-h-10 md:max-h-8;
+    @apply md:pr-4;
+}
+.related-chat-entry-panel .related-chat-entry > .c-content > .c-icon {
+    @apply flex justify-center;
+    @apply w-8;
+}
+.related-chat-entry-panel .related-chat-entry > .c-content > .c-center {
+    @apply flex-1 flex-y md:flex-x;
+    @apply overflow-hidden;
+}
+.related-chat-entry-panel .related-chat-entry > .c-content > .c-center > .c-author {
+    @apply flex-x;
+}
+.related-chat-entry-panel .related-chat-entry {
+    @apply bg-related-chat-entry;
+}
+
+body.wide .related-chat-entry-panel {
+    @apply hidden;
+    @apply opacity-0;
+    @apply translate-y-100;
+    @apply scale-90;
+    @apply duration-250;
+    transition-behavior: allow-discrete;
+    transition-property: display, transform, opacity;
+}
+body.wide .related-chat-entry-panel:has(.related-chat-entry) {
+    @apply flex;
+    @apply opacity-100;
+    @apply translate-y-0;
+    @apply scale-100;
+    @starting-style {
+        opacity: 0;
+        transform: translateY(100%) scale(0.9);
+    }
+}
+
+body.narrow .related-chat-entry-panel .related-chat-entry {
+    @apply min-h-10;
+    @apply pl-1 pr-2;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+    @apply bg-mobile-related-chat-entry;
+}
+body.narrow .related-chat-entry {
+    @apply hidden;
+    @apply opacity-0;
+    @apply translate-y-100;
+    @apply duration-250;
+    transition-behavior: allow-discrete;
+    transition-property: display, transform, opacity;
+}
+body.narrow .related-chat-entry:has(.c-content) {
+    @apply flex;
+    @apply opacity-100;
+    @apply translate-y-0;
+    @starting-style {
+        opacity: 0;
+        transform: translateY(100%);
+    }
+}
+
+body.narrow .related-chat-entry-panel .related-chat-entry .avatar-name,
+body.narrow .related-chat-entry-panel .related-chat-entry .icon-close,
+body.narrow .related-chat-entry-panel .related-chat-entry .icon-reply,
+body.narrow .related-chat-entry-panel .related-chat-entry .quote-text,
+body.narrow .related-chat-entry-panel .related-chat-entry .icon-edit {
+    @apply text-post-panel-text;
+}
+.related-chat-entry {
+    @apply flex-1 flex-x items-center;
+    @apply max-w-full;
+    @apply md:p-2 md:pl-5;
+    @apply bg-03;
+    @apply text-base;
+    @apply cursor-pointer;
+    @apply md:border-t border-separator;
+}
+.related-chat-entry .btn.btn-round {
+    @apply min-w-8 md:min-w-12;
+    @apply md:mx-1;
+}
+body.hoverable .related-chat-entry .btn.btn-round:hover .btn-content {
+    @apply bg-transparent;
+}
+.related-chat-entry-panel .btn.btn-round .btn-content {
+    @apply min-h-8 max-h-8 min-w-8 max-w-8;
+}
+body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
+    @apply bg-transparent;
+}
+
+.quote-text {
+    @apply flex-1;
+    @apply truncate;
+    @apply text-sm md:text-base;
+    @apply text-02;
+}
+
+.rounded-sub-footer {
+    @apply absolute portrait:top-17 landscape:-top-8;
+    @apply flex;
+    @apply h-0 inset-x-0;
+    background: linear-gradient(to top, var(--background-01), transparent);
+}
+.narrow-panel .rounded-sub-footer {
+    @apply portrait:top-9;
+}
+.rounded-sub-footer::before {
+    content: '';
+    @apply absolute left-0;
+    @apply w-8 h-8;
+    background: radial-gradient(circle at right top, transparent 70%, var(--post-panel) 72%)
+}
+.rounded-sub-footer::after {
+    content: '';
+    @apply absolute right-0;
+    @apply w-8 h-8;
+    background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 72%)
+}

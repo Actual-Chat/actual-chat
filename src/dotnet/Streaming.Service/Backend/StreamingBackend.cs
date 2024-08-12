@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Chat;
+using ActualChat.Diagnostics;
 using ActualChat.Kvas;
 using ActualChat.Mesh;
 using ActualChat.Streaming.Services;
@@ -8,7 +9,7 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
-public sealed partial class StreamingBackend : IStreamingBackend, IDisposable
+public partial class StreamingBackend : IStreamingBackend, IDisposable
 {
     public record Options
     {
@@ -23,13 +24,12 @@ public sealed partial class StreamingBackend : IStreamingBackend, IDisposable
     private ILogger Log { get; }
     private ILogger OpenAudioSegmentLog { get; }
     private ILogger AudioSourceLog { get; }
-    private OtelMetrics Metrics { get; }
     private static bool DebugMode => Constants.DebugMode.AudioProcessor;
     private ILogger? DebugLog => DebugMode ? Log : null;
 
     private Options Settings { get; }
     private IServiceProvider Services { get; }
-    private MeshNode MeshNode { get; }
+    private MeshNode OwnNode { get; }
     private AudioSegmentSaver AudioSegmentSaver { get; }
     private ITranscriberFactory TranscriberFactory { get; }
     private IChats Chats { get; }
@@ -45,9 +45,8 @@ public sealed partial class StreamingBackend : IStreamingBackend, IDisposable
         Log = services.LogFor(GetType());
         OpenAudioSegmentLog = services.LogFor<OpenAudioSegment>();
         AudioSourceLog = services.LogFor<AudioSource>();
-        Metrics = services.Metrics();
 
-        MeshNode = services.MeshNode();
+        OwnNode = services.MeshWatcher().OwnNode;
         AudioSegmentSaver = services.GetRequiredService<AudioSegmentSaver>();
         TranscriberFactory = services.GetRequiredService<ITranscriberFactory>();
         Chats = services.GetRequiredService<IChats>();
@@ -57,8 +56,8 @@ public sealed partial class StreamingBackend : IStreamingBackend, IDisposable
         Clocks = services.Clocks();
 
         _audioStreams = new StreamStore<byte[]>() {
-            StreamCounter = Metrics.AudioStreamCount,
             StreamIdValidator = ValidateStreamId,
+            StreamCount = AppMeters.AudioStreamCount,
             Log = services.LogFor($"{GetType().FullName}.AudioStreams"),
         };
         _transcriptStreams = new StreamStore<TranscriptDiff>() {
@@ -73,7 +72,7 @@ public sealed partial class StreamingBackend : IStreamingBackend, IDisposable
         _transcriptStreams.Dispose();
     }
 
-    public async Task<RpcStream<byte[]>?> GetAudio(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+    public virtual async Task<RpcStream<byte[]>?> GetAudio(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
         var stream = await _audioStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
         if (stream == null)
@@ -83,7 +82,7 @@ public sealed partial class StreamingBackend : IStreamingBackend, IDisposable
         return RpcStream.New(stream);
     }
 
-    public async Task<RpcStream<TranscriptDiff>?> GetTranscript(StreamId streamId, CancellationToken cancellationToken)
+    public virtual async Task<RpcStream<TranscriptDiff>?> GetTranscript(StreamId streamId, CancellationToken cancellationToken)
     {
         var stream = await _transcriptStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
         return stream == null ? null
@@ -94,9 +93,9 @@ public sealed partial class StreamingBackend : IStreamingBackend, IDisposable
 
     private void ValidateStreamId(StreamId streamId)
     {
-        if (streamId.NodeRef != MeshNode.Ref)
+        if (streamId.NodeRef != OwnNode.Ref)
             throw new ArgumentOutOfRangeException(nameof(streamId),
-                $"Wrong mesh node: expected {MeshNode.Ref}, but got {streamId.NodeRef}.");
+                $"Wrong mesh node: expected {OwnNode.Ref}, but got {streamId.NodeRef}.");
     }
 
     private static IAsyncEnumerable<byte[]> SkipTo(

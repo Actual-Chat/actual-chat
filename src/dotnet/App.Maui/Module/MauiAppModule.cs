@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Maui.Services;
-using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
@@ -47,12 +47,15 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         if (!HostInfo.HostKind.IsServerOrWasmApp())
             services.AddScoped<IAnalyticsUI>(_ => new MauiAnalyticsUI());
 
-        // ClientComputedCache
+        // Notifications
+        services.AddSingleton<MauiNotifications>(c => new MauiNotifications(c));
+
+        // RemoteComputedCache
         var appCacheDir = new FilePath(FileSystem.CacheDirectory);
         services.AddSingleton(_ => new SQLiteClientComputedCache.Options() {
             DbPath = appCacheDir & "CCC.db3",
         });
-        services.AddSingleton<IClientComputedCache>(c => {
+        services.AddSingleton<IRemoteComputedCache>(c => {
             var options = c.GetRequiredService<SQLiteClientComputedCache.Options>();
             return new SQLiteClientComputedCache(options, c);
         });

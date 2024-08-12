@@ -2,9 +2,9 @@ namespace ActualChat;
 
 public static class ClockExt
 {
-    public static Timeout Timeout(this IMomentClock clock, TimeSpan duration)
+    public static Timeout Timeout(this MomentClock clock, TimeSpan duration)
         => new (clock, duration);
-    public static Timeout Timeout(this IMomentClock clock, double duration)
+    public static Timeout Timeout(this MomentClock clock, double duration)
         => new (clock, TimeSpan.FromSeconds(duration));
 
     public static Timeout Timeout(this MomentClockSet clocks, TimeSpan duration)

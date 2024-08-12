@@ -2,10 +2,10 @@ namespace ActualChat;
 
 public static class MomentExt
 {
-    public static Moment? Convert(this Moment? moment, IMomentClock fromClock, IMomentClock toClock)
+    public static Moment? Convert(this Moment? moment, MomentClock fromClock, MomentClock toClock)
         => moment is { } v ? v.Convert(fromClock, toClock) : null;
 
-    public static Moment Convert(this Moment moment, IMomentClock fromClock, IMomentClock toClock)
+    public static Moment Convert(this Moment moment, MomentClock fromClock, MomentClock toClock)
     {
         var offset = moment - fromClock.Now;
         return toClock.Now + offset;

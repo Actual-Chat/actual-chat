@@ -1,5 +1,6 @@
 using System.Buffers;
 using ActualChat.Audio;
+using ActualChat.Diagnostics;
 using ActualChat.Transcription;
 
 namespace ActualChat.Streaming.Services;
@@ -9,13 +10,11 @@ public sealed class StreamBackendClient : IStreamClient
     private IStreamingBackend Backend { get; }
     private ILogger Log { get; }
     private ILogger AudioSourceLog { get; }
-    private OtelMetrics Metrics { get; }
 
     public StreamBackendClient(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
         AudioSourceLog = services.LogFor<AudioSource>();
-        Metrics = services.Metrics();
         Backend = services.GetRequiredService<IStreamingBackend>();
     }
 
@@ -60,7 +59,7 @@ public sealed class StreamBackendClient : IStreamClient
 
     public Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken)
     {
-        Metrics.AudioLatency.Record((float)latency.TotalMilliseconds);
+        AppMeters.AudioLatency.Record((float)latency.TotalMilliseconds);
         return Task.CompletedTask;
     }
 }

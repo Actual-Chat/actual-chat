@@ -61,7 +61,7 @@ public class ChatListingTest(ChatCollection.AppHostFixture fixture, ITestOutputH
     [Theory]
     [InlineData(150, 27)]
     [InlineData(30, 15)]
-    public async Task ShouldListChanged(int chatCount, int limit)
+    public async Task ShouldListChangedGroups(int chatCount, int limit)
     {
         // arrange
         var lastChanged = await ChatsBackend.GetLastChanged(CancellationToken.None);
@@ -71,7 +71,8 @@ public class ChatListingTest(ChatCollection.AppHostFixture fixture, ITestOutputH
         // act
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var cancellationToken = cts.Token;
-        var retrieved = await ChatsBackend.BatchChanged(lastChanged?.Version ?? 0,
+        var retrieved = await ChatsBackend.BatchChangedGroups(
+                lastChanged?.Version ?? 0,
                 long.MaxValue,
                 lastChanged?.Id ?? ChatId.None,
                 limit,

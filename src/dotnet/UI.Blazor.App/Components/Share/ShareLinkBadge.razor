@@ -1,0 +1,24 @@
+﻿@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var displayLink = new ShareRequest(Link).GetDisplayLink();
+}
+
+<CopyTrigger CopyTextSourceRef="@CopyTextSource" Tooltip="@displayLink">
+    <Button Class="btn-modal copy-btn">
+        <Icon>
+            <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
+            <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
+        </Icon>
+        <Title>
+            <span class="hide-on-copied-hint">Copy link</span>
+            <span class="copied-hint">Link copied!</span>
+        </Title>
+    </Button>
+</CopyTrigger>
+
+@code {
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+
+    [Parameter, EditorRequired] public LocalUrl Link { get; set; } = null!;
+    [Parameter] public ElementReference? CopyTextSource { get; set; }
+}

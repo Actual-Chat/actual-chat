@@ -10,10 +10,10 @@
 <span class="@Class">@m</span>
 
 @code {
-    private IMomentClock? _clock;
+    private MomentClock? _clock;
 
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    private IMomentClock Clock => _clock ??= Clocks.CpuClock;
+    private MomentClock Clock => _clock ??= Clocks.CpuClock;
 
     [Parameter, EditorRequired] public Moment EndsAt { get; set; } // CPU time!
     [Parameter] public string Class { get; set; } = "";

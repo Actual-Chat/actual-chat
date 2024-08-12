@@ -9,7 +9,10 @@ public class DbContactIndexState : IHasId<string>, IHasVersion<long>, IRequireme
 {
     private const string IndexSchemaVersionDelimiter = "-";
     public static readonly string UserContactIndexStateId = $"{IndexNames.UserIndexVersion}{IndexSchemaVersionDelimiter}users";
+    public static readonly string PlaceAuthorIndexStateId = $"v1{IndexSchemaVersionDelimiter}users";
     public static readonly string ChatContactIndexStateId = $"{IndexNames.ChatIndexVersion}{IndexSchemaVersionDelimiter}chats";
+    public static readonly string PlaceContactIndexStateId = $"{IndexNames.PlaceIndexVersion}{IndexSchemaVersionDelimiter}places";
+
     public DbContactIndexState() { }
     public DbContactIndexState(ContactIndexState model) => UpdateFrom(model);
 

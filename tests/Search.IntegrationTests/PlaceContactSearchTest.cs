@@ -1,156 +1,156 @@
+using ActualChat.Chat;
+using ActualChat.Contacts;
 using ActualChat.Testing.Host;
-using ActualChat.Users;
-using ActualLab.Generators;
 using static ActualChat.Testing.Host.Assertion.AssertOptionsExt;
 
 namespace ActualChat.Search.IntegrationTests;
 
 [Collection(nameof(SearchCollection))]
-[Trait("Category", "Slow")]
 public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : SharedDbLocalAppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private WebClientTester _tester = null!;
-    private ICommander _commander = null!;
-
-    protected override async Task InitializeAsync()
-    {
-        await base.InitializeAsync();
-        _tester = AppHost.NewWebClientTester(Out);
-        _commander = AppHost.Services.Commander();
-    }
+    private WebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
+    private IContactsBackend ContactsBackend { get; } = fixture.AppHost.Services.GetRequiredService<IContactsBackend>();
+    private string UniquePart { get; } = UniqueNames.Prefix();
 
     protected override async Task DisposeAsync()
     {
-        await _tester.DisposeSilentlyAsync();
+        await Tester.DisposeSilentlyAsync();
         await base.DisposeAsync();
     }
 
     [Fact]
-    public async Task ShouldFindPlacesOnly()
+    public async Task ShouldFindPlaces()
     {
         // arrange
-        var bob = await _tester.SignInAsBob(RandomStringGenerator.Default.Next());
-        await _tester.SignInAsAlice();
-        var privateChat = await CreateChat(_tester, false, "Private non-place chat 1 one");
-        var publicChat = await CreateChat(_tester, true, "Public non-place chat 1 one");
-        var joinedPrivatePlace1 = await _tester.CreatePlace(false, "Private Place 1 one with Bob as member", bob);
-        var joinedPrivatePlace2 = await _tester.CreatePlace(false, "Private Place 2 two with Bob as member", bob);
-        var otherPrivatePlace1 = await _tester.CreatePlace(false, "Private Place 1 one without Bob as member");
-        var otherPrivatePlace2 = await _tester.CreatePlace(false, "Private Place 2 two without Bob as member");
-        var joinedPrivatePlace1PrivateChat = await CreateChat(_tester, false, "Private Place 1 one with Bob as member - private chat", joinedPrivatePlace1.Id, bob);
-        var joinedPrivatePlace2PrivateChat = await CreateChat(_tester, false, "Private Place 2 two with Bob as member - private chat", joinedPrivatePlace2.Id, bob);
-        var otherPrivatePlace1PrivateChat = await CreateChat(_tester, false, "Private Place 1 one without Bob as member - private chat", otherPrivatePlace1.Id);
-        var otherPrivatePlace2PrivateChat = await CreateChat(_tester, false, "Private Place 1 one without Bob as member - private chat", otherPrivatePlace2.Id);
-        var joinedPrivatePlace1PublicChat = await CreateChat(_tester, true, "Private Place 1 one with Bob as member - public chat", joinedPrivatePlace1.Id);
-        var joinedPrivatePlace2PublicChat = await CreateChat(_tester, true, "Private Place 2 two with Bob as member - public chat", joinedPrivatePlace2.Id);
-        var otherPrivatePlace1PublicChat = await CreateChat(_tester, true, "Private Place 1 one without Bob as member - public chat", otherPrivatePlace1.Id);
-        var otherPrivatePlace2PublicChat = await CreateChat(_tester, true, "Private Place 2 two without Bob as member - public chat", otherPrivatePlace2.Id);
-        var joinedPublicPlace1 = await _tester.CreatePlace(true, "Public Place 1 one with Bob as member", bob);
-        var joinedPublicPlace2 = await _tester.CreatePlace(true, "Public Place 2 two with Bob as member", bob);
-        var otherPublicPlace1 = await _tester.CreatePlace(true, "Public Place 1 one without Bob as member");
-        var otherPublicPlace2 = await _tester.CreatePlace(true, "Public Place 2 two without Bob as member");
-        var joinedPublicPlace1PrivateChat = await CreateChat(_tester, false, "Public Place 1 one with Bob as member - private chat", joinedPublicPlace1.Id, bob);
-        var joinedPublicPlace2PrivateChat = await CreateChat(_tester, false, "Public Place 2 two with Bob as member - private chat", joinedPublicPlace2.Id, bob);
-        var otherPublicPlace1PrivateChat = await CreateChat(_tester, false, "Public Place 1 one without Bob as member - private chat", otherPublicPlace1.Id);
-        var otherPublicPlace2PrivateChat = await CreateChat(_tester, false, "Public Place 1 one without Bob as member - private chat", otherPublicPlace2.Id);
-        var joinedPublicPlace1PublicChat = await CreateChat(_tester, true, "Public Place 1 one with Bob as member - public chat", joinedPublicPlace1.Id);
-        var joinedPublicPlace2PublicChat = await CreateChat(_tester, true, "Public Place 2 two with Bob as member - public chat", joinedPublicPlace2.Id);
-        var otherPublicPlace1PublicChat = await CreateChat(_tester, true, "Public Place 1 one without Bob as member - public chat", otherPublicPlace1.Id);
-        var otherPublicPlace2PublicChat = await CreateChat(_tester, true, "Public Place 2 two without Bob as member - public chat", otherPublicPlace2.Id);
+        var bob = await Tester.SignInAsUniqueBob();
+        await Tester.SignInAsUniqueAlice();
+        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
 
         // act
-        var updates = IndexedContactUtil.BuildChatContacts(
-            [
-                joinedPrivatePlace1,
-                joinedPrivatePlace2,
-                otherPrivatePlace1,
-                otherPrivatePlace2,
-                joinedPublicPlace1,
-                joinedPublicPlace2,
-                otherPublicPlace1,
-                otherPublicPlace2,
-            ],
-            privateChat,
-            publicChat,
-            joinedPrivatePlace1PrivateChat,
-            joinedPrivatePlace2PrivateChat,
-            otherPrivatePlace1PrivateChat,
-            otherPrivatePlace2PrivateChat,
-            joinedPublicPlace1PrivateChat,
-            joinedPrivatePlace1PublicChat,
-            joinedPrivatePlace2PublicChat,
-            otherPrivatePlace1PublicChat,
-            otherPrivatePlace2PublicChat,
-            joinedPublicPlace1PrivateChat,
-            joinedPublicPlace2PrivateChat,
-            otherPublicPlace1PrivateChat,
-            otherPublicPlace2PrivateChat,
-            joinedPublicPlace1PublicChat,
-            joinedPublicPlace2PublicChat,
-            otherPublicPlace1PublicChat,
-            otherPublicPlace2PublicChat);
-        await _commander.Call(new SearchBackend_ChatContactBulkIndex(updates, ApiArray<IndexedChatContact>.Empty));
-        await _commander.Call(new SearchBackend_Refresh(refreshChats: true));
+        await Index(places);
+        await Tester.SignIn(bob.User);
+        await WaitUntilIndexed(places.Joined().Select(x => x.Id).ToList());
 
         // assert
-        await _tester.SignIn(bob.User);
-        var searchResults = await _tester.FindPlaces("place", true);
+        var searchResults = await Find("pla", true);
+        searchResults.Should().BeEquivalentTo(bob.BuildSearchResults(places.Joined().ToArray()), o => o.ExcludingSearchMatch());
+
+        searchResults = await Find("pla", false);
+        searchResults.Should().BeEquivalentTo(bob.BuildSearchResults(places.OtherPublic().ToArray()), o => o.ExcludingSearchMatch());
+
+        searchResults = await Find("one", true);
+        searchResults.Should().BeEquivalentTo(bob.BuildSearchResults(places.Joined1().ToArray()), o => o.ExcludingSearchMatch());
+
+        searchResults = await Find("one", false);
+        searchResults.Should().BeEquivalentTo(bob.BuildSearchResults(places.OtherPublicPlace1()), o => o.ExcludingSearchMatch());
+
+        searchResults = await Find("place one", true);
         searchResults.Should()
-            .BeEquivalentTo(
-                bob.BuildSearchResults(
-                    (joinedPrivatePlace1, [(8, 13)]),
-                    (joinedPrivatePlace2, [(8, 13)]),
-                    (joinedPublicPlace1, [(7, 12)]),
-                    (joinedPublicPlace2, [(7, 12)])),
+            .BeEquivalentTo([
+                    bob.BuildSearchResult(places.JoinedPublicPlace1(), [new (7, 12), new (16, 19), (20, 25)]),
+                    bob.BuildSearchResult(places.JoinedPrivatePlace1(), [new (8, 13), new (17, 20), (21, 26)]),
+                ],
                 o => o.ExcludingRank());
 
-        searchResults = await _tester.FindPlaces("place", false);
+        searchResults = await Find("place one", false);
         searchResults.Should()
             .BeEquivalentTo(
-                bob.BuildSearchResults(
-                    (otherPublicPlace1, [(7, 12)]),
-                    (otherPublicPlace2, [(7, 12)])),
-                o => o.ExcludingRank());
-
-        searchResults = await _tester.FindPlaces("one", true);
-        searchResults.Should()
-            .BeEquivalentTo(
-                bob.BuildSearchResults(
-                    (joinedPrivatePlace1, [(16, 19)]),
-                    (joinedPublicPlace1, [(15, 18)])),
-                o => o.ExcludingRank());
-
-        searchResults = await _tester.FindPlaces("one", false);
-        searchResults.Should()
-            .BeEquivalentTo(
-                bob.BuildSearchResults(
-                    (otherPublicPlace1, [(15, 18)])),
-                o => o.ExcludingRank());
-
-        searchResults = await _tester.FindPlaces("two", true);
-        searchResults.Should()
-            .BeEquivalentTo(
-                bob.BuildSearchResults(
-                    (joinedPrivatePlace2, [(16, 19)]),
-                    (joinedPublicPlace2, [(15, 18)])),
-                o => o.ExcludingRank());
-
-        searchResults = await _tester.FindPlaces("two", false);
-        searchResults.Should()
-            .BeEquivalentTo(
-                bob.BuildSearchResults(
-                    (otherPublicPlace2, [(15, 18)])),
+                [bob.BuildSearchResult(places.OtherPublicPlace1(), [new (7, 12), new (16, 19), (20, 25)])],
                 o => o.ExcludingRank());
     }
 
-    // Private methods
-
-    private async Task<Chat.Chat> CreateChat(WebClientTester tester, bool isPublic, string title, PlaceId placeId = default, AccountFull? userToInvite = null)
+    [Fact]
+    public async Task ShouldFindUpdatedPlaces()
     {
-        var (id, _) = await tester.CreateChat(isPublic, title, placeId);
-        if (userToInvite != null)
-            await tester.InviteToChat(id, userToInvite.Id);
-        return await tester.Chats.Get(tester.Session, id, CancellationToken.None).Require();
+        // arrange
+        var bob = await Tester.SignInAsUniqueBob();
+        await Tester.SignInAsUniqueAlice();
+        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
+
+        // act
+        await Index(places);
+        await Tester.SignIn(bob.User);
+        await WaitUntilIndexed(places.Joined().Select(x => x.Id).ToList());
+
+        // assert
+        var searchResults = await Find("pla", true);
+        searchResults.Should().BeEquivalentTo(bob.BuildSearchResults(places.Joined().ToArray()), o => o.ExcludingSearchMatch());
+
+        searchResults = await Find("pla", false);
+        searchResults.Should().BeEquivalentTo(bob.BuildSearchResults(places.OtherPublic().ToArray()), o => o.ExcludingSearchMatch());
+
+        // act
+        var updatedPlace = places.JoinedPrivatePlace1() with { Title = $"{UniquePart} bbb" };
+        await Index([updatedPlace]);
+
+        // assert
+        searchResults = await Find("pla", true);
+        searchResults.Should()
+            .BeEquivalentTo(
+                bob.BuildSearchResults(places.Joined()
+                    .Except([places.JoinedPrivatePlace1()])
+                    .ToArray()),
+                o => o.ExcludingSearchMatch());
+
+        // assert
+        searchResults = await Find("bbb", true);
+        searchResults.Should().BeEquivalentTo(bob.BuildSearchResults(updatedPlace), o => o.ExcludingSearchMatch());
+    }
+
+    [Fact]
+    public async Task ShouldFindDeletedPlaces()
+    {
+        // arrange
+        var bob = await Tester.SignInAsUniqueBob();
+        await Tester.SignInAsUniqueAlice();
+        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
+
+        // act
+        await Index(places);
+        await Tester.SignIn(bob.User);
+        await WaitUntilIndexed(places.Joined().Select(x => x.Id).ToList());
+
+        // assert
+        var searchResults = await Find("pla", true);
+        searchResults.Should().BeEquivalentTo(bob.BuildSearchResults(places.Joined().ToArray()), o => o.ExcludingSearchMatch());
+
+        searchResults = await Find("pla", false);
+        searchResults.Should().BeEquivalentTo(bob.BuildSearchResults(places.OtherPublic().ToArray()), o => o.ExcludingSearchMatch());
+
+        // act
+        await Index([], [places.JoinedPrivatePlace1()]);
+
+        // assert
+        searchResults = await Find("pla", true);
+        searchResults.Should()
+            .BeEquivalentTo(
+                bob.BuildSearchResults(places.Joined()
+                    .Except([places.JoinedPrivatePlace1()])
+                    .ToArray()),
+                o => o.ExcludingSearchMatch());
+    }
+
+    private Task Index(IReadOnlyDictionary<TestPlaceKey, Place> places)
+        => Index(places.Values);
+
+    private async Task Index(IEnumerable<Place> updated, IEnumerable<Place>? deleted = null)
+    {
+        var updatedContacts = updated.Select(x => x.ToIndexedPlaceContact()).ToApiArray();
+        var deletedContacts = (deleted ?? []).Select(x => x.ToIndexedPlaceContact()).ToApiArray();
+        await Commander.Call(new SearchBackend_PlaceContactBulkIndex(updatedContacts, deletedContacts));
+        await Commander.Call(new SearchBackend_Refresh(refreshPlaces: true));
+    }
+
+    private Task<ApiArray<ContactSearchResult>> Find(string criteria, bool own)
+        => Tester.FindPlaces($"{UniquePart} {criteria}", own);
+
+    private async Task WaitUntilIndexed(IReadOnlyCollection<PlaceId> expectedIds, CancellationToken cancellationToken = default)
+    {
+        var owner = await Tester.GetOwnAccount(cancellationToken);
+        await TestExt.When(async () => {
+            var placeIds = await ContactsBackend.ListPlaceIds(owner.Id, cancellationToken);
+            placeIds.Should().BeEquivalentTo(expectedIds);
+        }, TimeSpan.FromSeconds(10));
     }
 }

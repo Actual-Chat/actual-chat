@@ -33,4 +33,8 @@ export class DebugUI {
     public static navigateTo(url: string): void {
         this.backendRef.invokeMethodAsync('NavigateTo', url);
     };
+
+    public static disconnectRpc(): void {
+        this.backendRef.invokeMethodAsync('DisconnectRpc');
+    };
 }

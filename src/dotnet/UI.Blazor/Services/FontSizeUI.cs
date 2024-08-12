@@ -34,8 +34,9 @@ public class FontSizeUI : ScopedServiceBase<UIHub>
                 throw StandardError.Constraint($"FontSize '{fontSize}' is not supported.");
 
             var js = Hub.JSRuntime();
-            await Hub.Dispatcher.InvokeAsync( ()
-                => js.InvokeAsync<string>(JSFontSizeSetMethod, fontSize));
+            await Hub.Dispatcher
+                .InvokeAsync(() => js.InvokeAsync<string>(JSFontSizeSetMethod, fontSize))
+                .ConfigureAwait(false); // Ok here
         }
     }
 
@@ -45,7 +46,9 @@ public class FontSizeUI : ScopedServiceBase<UIHub>
             return _fontSizes;
 
         var js = Hub.JSRuntime();
-        var fontSizeMap = await js.InvokeAsync<Dictionary<string, string>>(JSFontSizeListMethod, cancellationToken);
+        var fontSizeMap = await js
+            .InvokeAsync<Dictionary<string, string>>(JSFontSizeListMethod, cancellationToken)
+            .ConfigureAwait(true); // Due to "_fontSize = ..." further
         return _fontSizes = fontSizeMap
             .Select(m => m.Key)
             .ToArray();

@@ -1,0 +1,74 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<List<FoundContact>>
+@{
+    var contacts = State.Value;
+    if (contacts.Count == 0) {
+        return;
+    }
+
+    var shortList = contacts.Count > 3 && !_isExpanded ? contacts.Take(3) : contacts;
+    var btnText = _isExpanded ? "Show less" : "Show more";
+    var headerCls = _isExpanded ? "expanded" : "";
+}
+
+<div class="found-contact-list chat-list">
+    <div class="c-list-header @headerCls">
+        <div class="c-title">@Title</div>
+        @if (contacts.Count > 3) {
+            <Button Class="expand-btn btn-transparent unhovered btn-sm" Click="@OnClick">
+                <i class="icon-chevron-up c-arrow"></i>
+                <span class="c-text">@btnText</span>
+            </Button>
+        }
+    </div>
+    <div class="c-content">
+        @foreach (var contact in shortList) {
+            var contactKey = contact.SearchResult.ContactId.Value;
+            if (contactKey.IsNullOrEmpty())
+                continue;
+
+            <FoundChat @key="@contactKey"
+                       ChatId="contact.SearchResult.ContactId.ChatId"
+                       SearchMatch="contact.SearchResult.SearchMatch"/>
+        }
+    </div>
+</div>
+
+@code {
+    private bool _isExpanded;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private SearchUI SearchUI => Hub.SearchUI;
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    [Parameter] public string Title { get; set; } = "";
+
+    protected override ComputedState<List<FoundContact>>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<List<FoundContact>>.Options() {
+                InitialValue = [],
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<List<FoundContact>> ComputeState(CancellationToken cancellationToken) {
+        var isOn = await SearchUI.IsSearchModeOn(cancellationToken);
+        if (!isOn)
+            return [];
+
+        var foundContacts = await SearchUI.GetContactSearchResults();
+        var realContacts = new List<FoundContact>();
+        foreach (var contact in foundContacts) {
+            var chatId = contact.SearchResult.ContactId.ChatId;
+            var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
+            if (chatState != null)
+                realContacts.Add(contact);
+        }
+        return realContacts;
+    }
+
+    private void OnClick() {
+        _isExpanded = !_isExpanded;
+        StateHasChanged();
+    }
+}

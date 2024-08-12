@@ -1,0 +1,54 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.Events
+@inherits ComputedStateComponent<AccountFull>
+@{
+    var account = State.Value;
+    if (ReferenceEquals(account, AccountFull.Loading))
+        return;
+
+    if (!account.IsGuestOrNone) {
+        <NavbarButton
+            Class="settings-btn"
+            ButtonClass="account-btn unhovered"
+            Tooltip="Settings"
+            TooltipPosition="FloatingPosition.Right"
+            Click="@OnSettingsClick"
+            data-bubble="@(BubbleRef.New<ManageAccountSettingsBubble>())"
+            data-bubble-priority="205"
+            data-bubble-placement="@(FloatingPosition.RightEnd.ToPositionString())">
+            <ChildContent>
+                <AccountView/>
+            </ChildContent>
+            <Ending>
+                <LeftLine/>
+                <div class="right-line"></div>
+            </Ending>
+        </NavbarButton>
+    } else {
+        <div class="navbar-button settings-btn">
+            <SignInButton
+                ButtonClass=""
+                ButtonType="SignInButton.MenuButton.Round"/>
+            <LeftLine/>
+            <div class="right-line"></div>
+        </div>
+    }
+}
+
+@code {
+    [Inject] ChatUIHub Hub { get; init; } = null!;
+    private AccountUI AccountUI => Hub.AccountUI;
+    private UIEventHub UIEventHub => Hub.UIEventHub();
+
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
+        => new() {
+            InitialValue = AccountUI.OwnAccount.Value,
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
+
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => AccountUI.OwnAccount.Use(cancellationToken).AsTask();
+
+    private void OnSettingsClick()
+        => _ = UIEventHub.Publish(new ShowSettingsEvent());
+}

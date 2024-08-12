@@ -23,7 +23,7 @@ public readonly struct MenuRef(
 
     public MenuRef(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type menuType)
-        : this(menuType, Array.Empty<string>()) { }
+        : this(menuType, []) { }
 
     public override string ToString()
     {

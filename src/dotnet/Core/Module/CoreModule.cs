@@ -38,17 +38,17 @@ public sealed class CoreModule(IServiceProvider moduleServices)
 
         // Default caching settings
         ComputedOptions.ClientDefault = ComputedOptions.ClientDefault with {
-            ClientCacheMode = ClientCacheMode.NoCache,
+            CacheMode = RemoteComputedCacheMode.NoCache,
         };
 #endif
 
         // Overrides default requirements for User type
         User.MustExist = Requirement.New(
-            new(() => StandardError.Account.Guest()),
-            (User? u) => u != null);
+            (User? u) => u != null,
+            new(() => StandardError.Account.Guest()));
         User.MustBeAuthenticated = Requirement.New(
-            new(() => StandardError.Account.Guest()),
-            (User? u) => u?.IsAuthenticated() == true);
+            (User? u) => u?.IsAuthenticated() == true,
+            new(() => StandardError.Account.Guest()));
 
         // Any AccountException isn't a transient error
         var oldPreferTransient = TransiencyResolvers.PreferTransient;
@@ -72,8 +72,6 @@ public sealed class CoreModule(IServiceProvider moduleServices)
 
         // Common services
         services.AddSingleton(c => new UrlMapper(c.HostInfo()));
-        services.AddSingleton(c => new HealthEventListener(c));
-        services.AddSingleton<IRuntimeStats>(c => c.GetRequiredService<HealthEventListener>());
 
         // IArithmetics
         services.AddTypeMapper<IArithmetics>(map => map

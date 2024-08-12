@@ -436,7 +436,7 @@ module.exports = {
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
       'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
-      'highlight': 'highlight 1s ease-in-out forwards',
+      'highlight': 'highlight 1.5s ease-in-out forwards',
       'loud-show': 'loud-show 150ms ease-in-out',
       'loud-show-text-mode': 'loud-show-text-mode 150ms ease-in-out',
       'loud-hide': 'loud-hide 150ms ease-in-out',
@@ -752,11 +752,11 @@ module.exports = {
       'headline-7': ['1.25rem', { lineHeight: '1.375rem', fontWeight: '500' }],
       'text-1': ['1rem', { lineHeight: '1.125rem', fontWeight: '400' }],
       'caption-1': ['0.875rem', { lineHeight: '1rem', fontWeight: '500' }],
-      'caption-2': ['0.85rem', { lineHeight: '0.875rem', fontWeight: '400' }],
-      'caption-3': ['0.85rem', { lineHeight: '0.875rem', fontWeight: '500' }],
+      'caption-2': ['0.85rem', { lineHeight: '1rem', fontWeight: '400' }],
+      'caption-3': ['0.85rem', { lineHeight: '1rem', fontWeight: '500' }],
       'caption-4': ['0.875rem', { lineHeight: '1rem', fontWeight: '400' }],
       'caption-6': ['0.75rem', { lineHeight: '0.875rem', fontWeight: '500' }],
-      'caption-7': ['0.85rem', { lineHeight: '0.875rem', fontWeight: '600' }],
+      'caption-7': ['0.85rem', { lineHeight: '1rem', fontWeight: '600' }],
     },
     fontWeight: {
       thin: '100',
@@ -1141,7 +1141,7 @@ module.exports = {
               'border-left': '2px solid var(--replied-message-border)',
           },
           '99%': {
-              'background': '',
+              'background': 'transparent',
               'border-left': '2px solid transparent',
           },
       },
@@ -1584,6 +1584,7 @@ module.exports = {
     lineClamp: {
       1: '1',
       2: '2',
+      3: '3',
     }
   },
   variantOrder: [

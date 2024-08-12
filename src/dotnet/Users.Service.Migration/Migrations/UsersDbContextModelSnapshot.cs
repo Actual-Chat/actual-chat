@@ -99,6 +99,9 @@ namespace ActualChat.Users.Migrations
                         .HasDatabaseName("ix_accounts_username_normalized")
                         .HasFilter("username_normalized is not null");
 
+                    b.HasIndex("Id", "TimeZone")
+                        .HasDatabaseName("ix_accounts_id_time_zone");
+
                     b.HasIndex("Version", "Id")
                         .HasDatabaseName("ix_accounts_version_id");
 

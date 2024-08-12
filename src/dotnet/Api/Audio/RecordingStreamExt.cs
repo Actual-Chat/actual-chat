@@ -9,7 +9,7 @@ public static class RecordingStreamExt
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         yield return new RecordingPart(RecordingEventKind.Resume) {
-            RecordedAt = SystemClock.Now,
+            RecordedAt = SystemClock.Instance.Now,
             Offset = TimeSpan.Zero,
         };
 

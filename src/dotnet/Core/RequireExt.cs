@@ -25,7 +25,7 @@ public static class RequireExt
 
     public static IEnumerable<T> Require<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(
         this IEnumerable<T?> source,
-        Requirement<T>? requirement = null)
+        Requirement<T> requirement)
         where T : class, IRequirementTarget
         => source.Select(x => x.Require(requirement));
 }

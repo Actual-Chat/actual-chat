@@ -1,0 +1,28 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+@{
+    var decorationCls = Decoration switch
+    {
+        LineProgressDecoration.White => "white",
+        LineProgressDecoration.Blue => "blue",
+        _ => throw new ArgumentOutOfRangeException(nameof(Decoration), Decoration, null),
+    };
+}
+
+<div class="line-progress">
+    @for (var i = 0; i < StepCount; i++) {
+        var cls = i == CurrentStepIndex ? "line-progress-item-current" : "";
+        <div class="line-progress-item @decorationCls @cls"></div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int StepCount { get; set; }
+    [Parameter, EditorRequired] public int CurrentStepIndex { get; set; } = 1;
+    [Parameter] public LineProgressDecoration Decoration { get; set; } = LineProgressDecoration.White;
+
+    public enum LineProgressDecoration {
+        White = 0,
+        Blue = 1,
+    }
+}

@@ -1,4 +1,4 @@
-namespace ActualChat.Chat.UI.Blazor.PlaywrightTests;
+namespace ActualChat.UI.Blazor.App.PlaywrightTests;
 
 [CollectionDefinition(nameof(ChatUIAutomationCollection))]
 public class ChatUIAutomationCollection : ICollectionFixture<AppHostFixture>;

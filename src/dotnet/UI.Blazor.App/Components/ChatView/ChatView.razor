@@ -1,0 +1,30 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Comparison
+@using ActualChat.UI.Blazor.App.Events
+
+<OnUIEvent TEvent="@NavigateToChatEntryEvent" Handler="@OnNavigateToChatEntry" />
+<VirtualList
+    @key="@Chat.Id.Value"
+    Class="chat-view"
+    DataSource="@this"
+    Identity="@Chat.Id"
+    DefaultEdge="@VirtualListEdge.End"
+    KeyComparer="@LongAsStringKeyComparer.Default"
+    ItemVisibilityChanged="@OnItemVisibilityChanged">
+    <Item>
+        <ChatMessageView ChatContext="@ChatContext" Message="@context" />
+    </Item>
+    <Skeleton>
+        <chat-message-skeleton />
+    </Skeleton>
+</VirtualList>
+
+<RenderIntoStack Name="SubFooter" Order="-1000_000" Key="NavigateToEndSubFooter">
+    <NavigateToUnreadOrEnd
+        ChatContext="@ChatContext"
+        ChatView="@this" />
+</RenderIntoStack>
+
+<RenderIntoStack Name="SubHeader" Order="1000_000" Key="DateVisor">
+    <DateVisor ChatContext="@ChatContext" ChatView="@this"/>
+</RenderIntoStack>

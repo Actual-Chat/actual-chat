@@ -64,6 +64,7 @@ public static class TestAppHostFactory
                 options.ConfigureModuleServices?.Invoke(ctx, services);
 
                 services.AddSingleton(outputAccessor);
+                services.AddTransient<ITestOutputHelper>(_ => outputAccessor.Output ?? NullTestOutput.Instance);
                 services.AddTestLogging(outputAccessor);
             },
             ConfigureServices = (ctx, services) => {

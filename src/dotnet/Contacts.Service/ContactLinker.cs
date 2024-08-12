@@ -14,7 +14,7 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private ICommander Commander { get; } = services.Commander();
-    private Tracer Tracer => _tracer ??= services.Tracer(GetType());
+    private Tracer Tracer => _tracer ??= Services.Tracer(GetType());
 
     protected override async Task<bool> OnActivate(CancellationToken cancellationToken)
     {

@@ -1,13 +1,13 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat.Db;
-using ActualChat.Chat.Events;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
+using ActualChat.Diagnostics;
 using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Media;
 using ActualChat.Users;
-using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
@@ -53,7 +53,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IDbEntityResolver<string, DbReadPositionsStat> DbReadPositionsStatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbReadPositionsStat>>();
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
-    private OtelMetrics Metrics { get; } = services.Metrics();
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
@@ -472,34 +471,30 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // Not a [ComputeMethod]!
-    public async Task<ApiArray<Chat>> ListChanged(
-        long minVersion,
-        long maxVersion,
-        ChatId lastId,
-        int limit,
-        CancellationToken cancellationToken)
+    [SuppressMessage("Usage", "MA0074:Avoid implicit culture-sensitive methods")]
+    [SuppressMessage("Globalization", "CA1309:Use ordinal string comparison")]
+    [SuppressMessage("Globalization", "CA1310:Specify StringComparison for correctness")]
+    public async Task<ApiArray<Chat>> ListChanged(ChangedChatsQuery query, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-#pragma warning disable CA1309 // Use ordinal string comparison
+        var chatsQuery = query.LastId.IsNone
+            ? dbContext.Chats.Where(x => x.Version >= query.MinVersion && x.Version <= query.MaxVersion)
+            : dbContext.Chats.Where(x => (x.Version > query.MinVersion && x.Version <= query.MaxVersion)
+                || (x.Version == query.MinVersion && string.Compare(x.Id, query.LastId.Value) > 0));
 
-        var chatsQuery = lastId.IsNone
-            ? dbContext.Chats.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
-            : dbContext.Chats.Where(x => (x.Version > minVersion && x.Version <= maxVersion)
-                || (x.Version==minVersion && string.Compare(x.Id, lastId.Value) > 0));
-
-#pragma warning restore CA1309 // Use ordinal string comparison
-
-        return await chatsQuery
+        var dbChats = await chatsQuery
             .Where(x => !Constants.Chat.SystemChatSids.Contains(x.Id))
+            .WhereIf(x => !x.Id.StartsWith(PeerChatId.IdPrefix), query.ExcludePeerChats)
+            .WhereIf(x => !x.IsPlaceRootChat, query.ExcludePlaceRootChats)
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
-            .Take(limit)
-            .AsAsyncEnumerable()
-            .Select(x => x.ToModel())
-            .ToApiArrayAsync(cancellationToken)
+            .Take(query.Limit)
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        return dbChats.Select(x => x.ToModel()).ToApiArray();
     }
 
     // Not a [ComputeMethod]!
@@ -983,13 +978,23 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return entry;
 
         if (changeKind == ChangeKind.Create)
-            Metrics.MessageCount.Add(1);
+            AppMeters.MessageCount.Add(1);
+
+        if (change.IsCreate(out var create) && create.Attachments is { Count: > 0 } attachments) {
+            var createAttachmentsCmd = new ChatsBackend_CreateAttachments(attachments.Select((x, i) => new TextEntryAttachment {
+                    EntryId = chatEntryId.ToTextEntryId(),
+                    Index = i,
+                    MediaId = x.MediaId,
+                    ThumbnailMediaId = x.ThumbnailMediaId,
+                })
+                .ToApiArray());
+            var createdAttachments = await Commander.Call(createAttachmentsCmd, cancellationToken).ConfigureAwait(false);
+            entry = entry with { Attachments = createdAttachments };
+        }
 
         // Let's enqueue the TextEntryChangedEvent
         var authorId = entry.AuthorId;
         var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
-
-        // Raise events
         context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind, oldEntry));
         return entry;
 
@@ -1087,7 +1092,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var dbAttachments = new List<DbTextEntryAttachment>();
         foreach (var attachment in attachments) {
-
             var dbChatEntry = await dbContext.ChatEntries.Get(entryId, cancellationToken)
                 .Require()
                 .ConfigureAwait(false);
@@ -1437,7 +1441,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     // Event handlers
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -1472,7 +1476,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             await JoinFeedbackTemplateChatIfAdmin(userId, cancellationToken).ConfigureAwait(false);
     }
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -1539,7 +1543,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnPlaceRemoved(PlaceChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -1724,13 +1728,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return AuthorRules.None(chatId);
         }
 
+        var author = await AuthorsBackend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
         if (chat.IsPublic) {
-            var author = await AuthorsBackend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
             var permissions = rootChatRules.Permissions & ~ChatPermissions.Leave; // Do not allow to leave public chat on a place
             return new AuthorRules(chat.Id, author, account, permissions);
         }
 
-        return directRules;
+        return new AuthorRules(chat.Id, author, account, directRules.Permissions);
     }
 
     // Private / internal methods

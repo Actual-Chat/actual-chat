@@ -12,8 +12,8 @@ public sealed partial record AuthorRules(
     ) : IRequirementTarget
 {
     public static readonly Requirement<AuthorRules> MustExist = Requirement.New(
-        new(() => StandardError.NotFound<AuthorRules>()),
-        (AuthorRules? a) => a is { ChatId.IsEmpty: false });
+        (AuthorRules? a) => a is { ChatId.IsEmpty: false },
+        new(() => StandardError.NotFound<AuthorRules>()));
 
     public static AuthorRules None(ChatId chatId) => new(chatId, AuthorFull.None, AccountFull.None);
 

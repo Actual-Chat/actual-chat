@@ -1,0 +1,36 @@
+.mention-list-manager {
+    @apply absolute inset-x-0 top-0;
+}
+.mention-list-manager > div {
+    @apply absolute inset-x-0 bottom-0;
+}
+
+.mention-list {
+    @apply flex-y;
+    @apply max-h-48 md:max-h-64;
+    @apply overflow-x-hidden overflow-y-auto;
+    @apply border-y border-separator;
+    @apply bg-01 text-03;
+}
+/* Firefox workaround: it somehow displays the border otherwise */
+.mention-list.hidden {
+    @apply border-y-0;
+}
+
+.mention-list .mention-list-item {
+    @apply flex-none truncate cursor-pointer;
+}
+.mention-list .mention-list-item.selected {
+    @apply bg-mention-list-item-selected;
+}
+
+.mention-list .mention-list-item > .c-content {
+    @apply flex-x items-center gap-x-2;
+    @apply h-9;
+    @apply px-4;
+}
+.mention-list .mention-list-item > .c-content > .c-center {
+    @apply flex-auto;
+    @apply truncate;
+    @apply text-headline-1 text-02;
+}

@@ -11,8 +11,10 @@ namespace ActualChat.Chat.Db;
 [Index(nameof(ChatId), nameof(LocalId), IsUnique = true)]
 [Index(nameof(ChatId), nameof(UserId), IsUnique = true)]
 [Index(nameof(UserId), nameof(AvatarId))]
+[Index(nameof(Version), nameof(IsPlaceAuthor))]
 public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
+    private DateTime _createdAt;
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
     public string ChatId { get; set; } = null!;
@@ -22,7 +24,12 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? UserId { get; set; }
     public string? AvatarId { get; set; }
     public bool HasLeft { get; set; }
+    public bool IsPlaceAuthor { get; set; }
 
+    public DateTime CreatedAt {
+        get => _createdAt.DefaultKind(DateTimeKind.Utc);
+        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+    }
     public List<DbAuthorRole> Roles { get; } = new();
 
     public DbAuthor() { }
@@ -36,6 +43,8 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
             AvatarId = AvatarId ?? "",
             HasLeft = HasLeft,
             RoleIds = Roles.Select(ar => (Symbol)ar.DbRoleId).ToApiArray(),
+            CreatedAt = CreatedAt,
+            IsPlaceAuthor = IsPlaceAuthor,
         };
         return result;
     }
@@ -54,6 +63,8 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
         UserId = model.UserId.Value.NullIfEmpty();
         AvatarId = model.AvatarId.NullIfEmpty();
         HasLeft = model.HasLeft;
+        IsPlaceAuthor = model.ChatId.IsPlaceRootChat;
+        CreatedAt = model.CreatedAt.ToDateTimeClamped();
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbAuthor>

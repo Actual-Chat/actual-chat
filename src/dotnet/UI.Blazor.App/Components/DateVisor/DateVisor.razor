@@ -1,0 +1,68 @@
+@using ActualChat.UI.Blazor.App.Module
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<string>
+@{
+    var m = State.Value;
+}
+
+<div @ref="Ref" class="date-visor-wrapper">
+    <div class="date-visor">
+        @m
+    </div>
+</div>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.DateVisor.create";
+
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+
+    private ChatUIHub Hub => ChatContext.Hub;
+    private Chat Chat => ChatContext.Chat;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
+    private IJSRuntime JS => Hub.JSRuntime();
+    private IChats Chats => Hub.Chats;
+    private Session Session => Hub.Session();
+
+    [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender)
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+    }
+
+    public override ValueTask DisposeAsync() {
+        JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        return base.DisposeAsync();
+    }
+
+    protected override ComputedState<string>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<string>.Options() {
+                InitialValue = string.Empty,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<string> ComputeState(CancellationToken cancellationToken) {
+        var chatView = ChatView;
+        var chatId = Chat.Id;
+        if (chatId.IsNone || !await RegionVisibility.IsVisible.Use(cancellationToken).ConfigureAwait(false))
+            return string.Empty;
+
+        await chatView.WhenInitialized.ConfigureAwait(false);
+        var itemVisibility = await chatView.ItemVisibility.Use(cancellationToken).ConfigureAwait(false);
+        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, itemVisibility.MinEntryLid, AssumeValid.Option);
+        var chatEntry = await Chats.GetEntry(Session, chatEntryId, cancellationToken).ConfigureAwait(false);
+        if (chatEntry == null)
+            return string.Empty;
+
+        var beginsDateTime = chatEntry.BeginsAt.ToDateTime();
+        var dateString = beginsDateTime.ToString("d MMMM yyyy");
+        return dateString;
+    }
+}

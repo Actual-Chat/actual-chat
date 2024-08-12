@@ -3,9 +3,7 @@ using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
-using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
-using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Chat.Module;
 
@@ -26,6 +24,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApiOrLocal<IChats, Chats>(); // Used by many
         rpcHost.AddBackend<IChatsBackend, ChatsBackend>();
         rpcHost.AddBackend<IChatsUpgradeBackend, ChatsUpgradeBackend>();
+        services.AddSingleton<MediaStorage>();
 
         // Places
         rpcHost.AddApiOrLocal<IPlaces, Places>(); // Used by Chats

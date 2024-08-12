@@ -1,0 +1,189 @@
+﻿@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Media
+@using ILinkPreviews = ActualChat.Media.IMediaLinkPreviews
+@using LinkPreview = ActualChat.Media.LinkPreview;
+@inherits ComputedStateComponent<LinkPreviewView.Model>
+@{
+    var m = State.Value;
+    @if (ReferenceEquals(m, Model.None))
+        return;
+
+    var preview = m.Preview;
+    var uri = m.Uri;
+    var imageUrl = GetImageUrl(preview.PreviewMedia);
+    var compactCls = preview.PreviewMedia != null ? "" : "compact";
+}
+
+@if (m.LocalLink is { CanRender:true }) {
+    <LocalLinkPreview Data="@m.LocalLink"/>
+} else {
+    var isLocal = m.LocalLink is { };
+    var target = isLocal ? "_self" : "_blank";
+     <a class="link-preview unfocusable @compactCls" href="@uri" target="@target">
+        @RenderMedia()
+        <div class="c-info">
+            @RenderInfo()
+            <span class="c-domain">@uri.Host</span>
+        </div>
+        <div class="incut"></div>
+    </a>
+}
+
+<div class="link-buttons">
+    <CopyTrigger Tooltip="@uri.ToString()" CopyText="@uri.ToString()">
+        <ButtonRound Class="btn-xs">
+            <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
+            <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
+        </ButtonRound>
+    </CopyTrigger>
+    @if (m.LocalLink is null) {
+        <ButtonRound
+            Tooltip="Forward"
+            Class="btn-xs"
+            Click="@(() => SelectionUI.Forward(Entry.Id))">
+            <i class="icon-share"></i>
+        </ButtonRound>
+    }
+</div>
+
+@{
+    RenderFragment RenderMedia() {
+        if (preview.PreviewMedia != null) {
+            if (preview.IsYouTubeVideo) {
+                return @<div
+                            class="c-thumbnail c-video"
+                            @onclick="@OnVideoClick">
+                    <image-skeleton
+                        class="c-skeleton"
+                        src="@imageUrl"/>
+                    <div class="c-overlay">
+                        <i class="c-play icon-play-fill"></i>
+                    </div>
+                </div>;
+            }
+            return @<image-skeleton
+                        class="c-thumbnail"
+                        src="@imageUrl"/>;
+        }
+        return @<div class="c-icon">
+                   <i class="icon-link-2"></i>
+               </div>;
+    }
+
+    RenderFragment RenderInfo() =>
+        @<div>
+            <span class="c-title">@preview.Title</span>
+            @if (!preview.Description.IsNullOrEmpty()) {
+                <div class="c-description">@preview.Description</div>
+            }
+        </div>;
+}
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
+    private ILinkPreviews MediaLinkPreviews => Hub.MediaLinkPreviews;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
+    private SelectionUI SelectionUI => Hub.SelectionUI;
+    private IChats Chats => Hub.Chats;
+    private IPlaces Places => Hub.Places;
+    private IAuthors Authors => Hub.Authors;
+    private Session Session => Hub.Session();
+
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    private string GetImageUrl(Media? preview)
+    {
+        if (preview?.ContentId.IsNullOrEmpty() != false)
+            return "";
+
+        var imageUrl = UrlMapper.ContentUrl(preview.ContentId);
+        // TODO: use image metadata for better proportions selection
+        var (width, height) = GetImageMaxSize();
+        return UrlMapper.ImagePreviewUrl(imageUrl, width, height);
+    }
+
+    private void OnVideoClick() =>
+        _ = VisualMediaViewerUI.Show("", Entry);
+
+    private (int? Width, int Height) GetImageMaxSize() {
+        const int sizeMultiplier = 2; // reduced images look blurry
+        switch (Entry.LinkPreviewMode) {
+            case LinkPreviewMode.Compact:
+                var maxHeight = ScreenSize.IsNarrow() ? 80 : 120;
+                return (maxHeight * sizeMultiplier, maxHeight * sizeMultiplier);
+            case LinkPreviewMode.Default:
+            case LinkPreviewMode.Full:
+                maxHeight = ScreenSize.IsNarrow() ? 160  : 136;
+                return (null, maxHeight * sizeMultiplier);
+            default:
+                return (0, 0);
+        }
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+        static t => new ComputedState<Model>.Options() {
+            InitialValue = Model.None,
+            Category = ComputedStateComponent.GetStateCategory(t),
+        });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatEntry = Entry;
+        var linkPreview = chatEntry.LinkPreview;
+        if (chatEntry.LinkPreviewMode == LinkPreviewMode.None || linkPreview == null || linkPreview.IsEmpty)
+            return Model.None;
+
+        Uri.TryCreate(linkPreview.Url, UriKind.Absolute, out var uri);
+        if (uri == null)
+            return Model.None;
+
+        var localUrlOpt = LocalUrl.FromAbsolute(linkPreview.Url, UrlMapper);
+        if (localUrlOpt == null)
+            return new Model { ChatEntry = chatEntry, Uri = uri };
+
+        var localLinkModel = await ComputeLocalLinkModel(localUrlOpt.Value, cancellationToken);
+        return new Model { ChatEntry = chatEntry, Uri = uri, LocalLink = localLinkModel };
+    }
+
+    private async Task<LocalLinkPreview.Model> ComputeLocalLinkModel(LocalUrl localUrl, CancellationToken cancellationToken)
+    {
+        var localLinkModel = new LocalLinkPreview.Model(localUrl);
+        if (localUrl.IsChatCompat(out var chatId, out var entryLid)) {
+            // Chat message link
+            var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+            if (chat is not null) {
+                localLinkModel = localLinkModel with { Chat = chat };
+                if (entryLid > 0) {
+                    var textEntryId = new TextEntryId(chatId, entryLid, AssumeValid.Option);
+                    var entry = await Chats.GetEntry(Session, textEntryId, cancellationToken).ConfigureAwait(false);
+                    localLinkModel = localLinkModel with { Entry = entry };
+                    if (entry is not null) {
+                        var authorId = entry.AuthorId;
+                        var author = await Authors.Get(Session, entry.ChatId, authorId, cancellationToken).ConfigureAwait(false);
+                        localLinkModel = localLinkModel with { Author = author };
+                    }
+                }
+            }
+            var placeId = chatId.PlaceChatId.PlaceId;
+            if (!placeId.IsNone) {
+                var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+                localLinkModel = localLinkModel with { Place = place };
+            }
+        }
+        return localLinkModel;
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public ChatEntry ChatEntry { get; init; } = null!;
+        public LinkPreview Preview => ChatEntry.LinkPreview!;
+        public Uri Uri { get; init; } = null!;
+        public LocalLinkPreview.Model? LocalLink { get; init; }
+    }
+}

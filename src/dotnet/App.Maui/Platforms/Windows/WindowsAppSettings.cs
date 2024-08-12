@@ -1,5 +1,5 @@
 ﻿using Windows.ApplicationModel;
-using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.App.Maui;
 

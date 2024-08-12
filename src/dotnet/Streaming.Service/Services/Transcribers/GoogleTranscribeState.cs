@@ -6,6 +6,7 @@ namespace ActualChat.Streaming.Services.Transcribers;
 
 public class GoogleTranscribeState(
     AudioSource audioSource,
+    TranscriptionOptions options,
     SpeechClient.StreamingRecognizeStream recognizeStream,
     ChannelWriter<Transcript> output)
 {
@@ -13,6 +14,7 @@ public class GoogleTranscribeState(
     private float _processedAudioDuration;
 
     public AudioSource AudioSource { get; } = audioSource;
+    public TranscriptionOptions Options { get; } = options;
     public SpeechClient.StreamingRecognizeStream RecognizeStream { get; } = recognizeStream;
     public ChannelWriter<Transcript> Output { get; } = output;
 

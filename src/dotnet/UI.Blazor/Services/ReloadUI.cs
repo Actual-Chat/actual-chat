@@ -48,9 +48,9 @@ public class ReloadUI
     {
         Log.LogWarning("Cleaning caches...");
         try {
-            var clientComputedCache = Services.GetService<IClientComputedCache>();
-            if (clientComputedCache != null)
-                await clientComputedCache.Clear(CancellationToken.None).ConfigureAwait(false);
+            var remoteComputedCache = Services.GetService<IRemoteComputedCache>();
+            if (remoteComputedCache != null)
+                await remoteComputedCache.Clear(CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogError(e, "ClearCaches failed");

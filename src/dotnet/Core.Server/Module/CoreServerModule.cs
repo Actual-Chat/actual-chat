@@ -2,6 +2,7 @@
 using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
 using ActualChat.AspNetCore;
+using ActualChat.Diagnostics;
 using ActualChat.Queues.Internal;
 using ActualChat.Uploads;
 using Microsoft.AspNetCore.StaticFiles;
@@ -54,5 +55,9 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         });
         mvc.AddApplicationPart(GetType().Assembly);
         services.AddResponseCaching();
+
+        // Health-related services
+        services.AddSingleton(c => new HealthEventListener(c));
+        services.AddAlias<IHealthState, HealthEventListener>();
     }
 }

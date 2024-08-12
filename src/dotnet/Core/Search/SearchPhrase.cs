@@ -120,7 +120,7 @@ public sealed partial class SearchPhrase
     private static string[] GetTerms(string text, bool addEndings)
     {
         if (text.NullIfWhiteSpace() == null)
-            return Array.Empty<string>();
+            return [];
 
         var parts = TermSplitRegex.Split(text);
         if (!addEndings)

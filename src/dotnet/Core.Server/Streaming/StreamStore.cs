@@ -9,7 +9,7 @@ public class StreamStore<TItem> : ProcessorBase
     public TimeSpan ExpirationDelay { get; init; } = TimeSpan.FromSeconds(5);
     public TimeSpan ShareWaitDelay { get; init; } = TimeSpan.FromSeconds(2);
     public Action<StreamId> StreamIdValidator { get; init; } = static _ => { };
-    public UpDownCounter<int>? StreamCounter { get; init; }
+    public UpDownCounter<int>? StreamCount { get; init; }
     public ILogger? Log { get; init; }
 
     public bool Has(StreamId streamId)
@@ -68,7 +68,7 @@ public class StreamStore<TItem> : ProcessorBase
         StopToken.ThrowIfCancellationRequested();
 
         // No need to wait for write completion here, it's enough to just register the stream
-        StreamCounter?.Add(1);
+        StreamCount?.Add(1);
         var entry = GetOrAddStream(streamId);
         if (!entry.Value.TrySetResult(memoizer)) {
             Log?.LogWarning("Publish({StreamId}): already exists", streamId);
@@ -100,7 +100,7 @@ public class StreamStore<TItem> : ProcessorBase
                     .New(self._streams, key, memoizerSource, disposeTokenSource)
                     .SetDisposer(e => {
                         if (memoizerSource.Task.IsCompleted)
-                            self.StreamCounter?.Add(-1);
+                            self.StreamCount?.Add(-1);
                         else
                             e.Value.TrySetResult(null);
                     })

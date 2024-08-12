@@ -7,7 +7,6 @@ using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services; // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
-using ActualLab.CommandR.Rpc;
 using ActualLab.Internal;
 using ActualLab.Rpc;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -31,9 +30,9 @@ public static class Program
         // Rpc & Fusion defaults
         RpcDefaults.Mode = RpcMode.Client;
         FusionDefaults.Mode = FusionMode.Client;
-        RpcOutboundCommandCallMiddleware.Default.CallTimeout = TimeSpan.FromSeconds(20);
+        RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connect
 
-        OtelDiagnostics.SetupConditionalPropagator();
+        AppUIOtelSetup.SetupConditionalPropagator();
         // NOTE(AY): This thing takes 1 second on Windows!
         var isSentryEnabled = Constants.Sentry.EnabledFor.Contains(HostKind.WasmApp);
         var sentrySdkDisposable = isSentryEnabled
@@ -103,7 +102,7 @@ public static class Program
         });
 
         void  CreateAndSaveTracerProvider() {
-            saveTracerProvider(OtelDiagnostics.CreateClientSentryTraceProvider("WasmApp"));
+            saveTracerProvider(AppUIOtelSetup.CreateClientSentryTraceProvider("WasmApp"));
         }
     }
 }

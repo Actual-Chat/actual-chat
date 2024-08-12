@@ -1,9 +1,11 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.Diagnostics;
 using ActualChat.Hosting;
 using ActualChat.Permissions;
 using ActualChat.Streaming.UI.Blazor.Module;
 using ActualChat.Streaming.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Diagnostics;
 using ActualLab.Locking;
 
 namespace ActualChat.Streaming.UI.Blazor.Components;
@@ -247,7 +249,8 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             IsConnected = isConnected,
             IsVoiceActive = isVoiceActive,
         };
-        _recordingActivity = BlazorUITrace.StartActivity("AudioRecording");
+        // ReSharper disable once ExplicitCallerInfoArgument
+        _recordingActivity = AppUIInstruments.ActivitySource.StartActivity(GetType(), "Record");
         _recordingActivity
             ?.SetTag("AC." + nameof(ChatId), chatId)
             .AddSentrySimulatedEvent(new ActivityEvent("Recoding is starting",

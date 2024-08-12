@@ -1,10 +1,8 @@
 using ActualChat.Chat;
-using ActualChat.Chat.Events;
 using ActualChat.Db;
 using ActualChat.Notification.Db;
 using ActualChat.Queues;
 using ActualChat.Users;
-using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using ActualLab.Fusion.EntityFramework;
@@ -226,9 +224,15 @@ public class NotificationsBackend(IServiceProvider services)
         else {
             dbDevice.AccessedAt = Clocks.SystemClock.Now;
             if (dbDevice.Type == DeviceType.WebBrowser && deviceType != DeviceType.WebBrowser)
-                dbDevice.Type = deviceType; // Now maui app reports device type properly, lets update it.
+                dbDevice.Type = deviceType; // Now MAUI app reports device type properly, lets update it.
             if (dbDevice.SessionHash.IsNullOrEmpty() && !sessionHash.IsEmpty)
                 dbDevice.SessionHash = sessionHash;
+            if (UserId.TryParse(dbDevice.UserId, out var existingUserId) && existingUserId != userId) {
+                if (existingUserId.IsGuest)
+                    dbDevice.UserId = userId;
+                else
+                    Log.LogWarning("User {UserId} is trying to register device for {ExistingUserId}. Skipped", userId, existingUserId);
+            }
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -319,7 +323,7 @@ public class NotificationsBackend(IServiceProvider services)
 
     // Event handlers
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -345,9 +349,12 @@ public class NotificationsBackend(IServiceProvider services)
             // For regular text messages we notify chat users upon message creation.
         }
 
-        // force loading entry media info
-        entry = await ChatsBackend.GetEntry(entry.Id, Constants.Invalidation.Delay, cancellationToken).Require().ConfigureAwait(false);
-        var (text, mentionIds) = await GetText(entry, MarkupConsumer.Notification, cancellationToken).ConfigureAwait(false);
+        // Force loading entry media info
+        entry = await ChatsBackend
+            .GetEntry(entry.Id, Constants.Notification.EntryWaitTimeout, cancellationToken)
+            .Require().ConfigureAwait(false);
+        var (text, mentionIds) = await GetText(entry, MarkupConsumer.Notification, cancellationToken)
+            .ConfigureAwait(false);
         var chatId = entry.ChatId;
         var key = chatId.Id.Value;
         if (!_recentChatsWithNotifications.TryGetValue(key, out _)) {
@@ -369,7 +376,7 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnReactionChangedEvent(ReactionChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -384,7 +391,9 @@ public class NotificationsBackend(IServiceProvider services)
             return;
 
         var (text, _) = await GetText(entry, MarkupConsumer.ReactionNotification, cancellationToken).ConfigureAwait(false);
-        text = $"{reaction.EmojiId} to \"{text}\"";
+        if (!entry.Content.IsNullOrEmpty())
+            text = $"\"{text}\"";
+        text = $"{reaction.EmojiId} to {text}";
         var userIds = new[] { author.UserId };
         var similarityKey = entry.ChatId;
         await EnqueueMessageRelatedNotifications(
@@ -392,10 +401,8 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
-    [EventHandler]
-    public virtual async Task OnSignedOut(
-        UserSignedOutEvent eventCommand,
-        CancellationToken cancellationToken)
+    // [EventHandler]
+    public virtual async Task OnSignedOut(UserSignedOutEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here

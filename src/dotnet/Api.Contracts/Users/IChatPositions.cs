@@ -4,7 +4,7 @@ namespace ActualChat.Users;
 
 public interface IChatPositions : IComputeService
 {
-    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache, MinCacheDuration = 600)]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
     Task<ChatPosition> GetOwn(Session session, ChatId chatId, ChatPositionKind kind, CancellationToken cancellationToken);
 
     [CommandHandler]

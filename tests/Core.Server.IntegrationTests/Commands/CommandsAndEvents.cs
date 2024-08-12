@@ -4,7 +4,7 @@ using MemoryPack;
 namespace ActualChat.Core.Server.IntegrationTests.Commands;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record TestEvent(
+public partial record TestEvent1(
     [property: MemoryPackOrder(1)] string? Error) : EventCommand, IHasShardKey<Unit>
 {
     [IgnoreDataMember, MemoryPackIgnore]
@@ -19,16 +19,16 @@ public partial record TestEvent2 : EventCommand, IHasShardKey<Unit>
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record TestCommand(
+public partial record AddTestEvent1Command(
     [property: MemoryPackOrder(1)] string? Error
 ) : ICommand<Unit>;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record TestCommand2 : ICommand<Unit>;
+public partial record AddBothTestEventsCommand : ICommand<Unit>;
 
 [Queue(nameof(ShardScheme.TestBackend))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record TestCommand3 : ICommand<Unit>, IHasShardKey<int>
+public partial record AddBothTestEventsCommandWithShardKey : ICommand<Unit>, IHasShardKey<int>
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public int ShardKey { get; init; }

@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor
-@using ActualChat.Users
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.UI.Blazor.App.Pages.Landing
 @inherits ComputedStateComponent<LandingWeb.Model>
@@ -68,7 +67,6 @@
     private LandingLeftMenu? _landingLeftMenu;
 
     [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;

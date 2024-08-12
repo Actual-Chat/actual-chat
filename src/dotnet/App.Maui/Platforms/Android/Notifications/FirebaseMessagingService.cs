@@ -1,8 +1,17 @@
+using ActualChat.App.Maui.Services;
+using ActualChat.Notification;
+using ActualChat.Notification.UI.Blazor;
+using ActualChat.Security;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Rpc;
 using Android.App;
 using AndroidX.Core.App;
 using Firebase.Analytics;
 using Firebase.Messaging;
+using OpenTelemetry.Resources;
+using Serilog;
+using DeviceType = ActualChat.Notification.DeviceType;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace ActualChat.App.Maui;
 
@@ -38,6 +47,12 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     public override void OnNewToken(string token)
     {
         Log.LogDebug("OnNewToken: '{Token}'", token);
+        var appServices = IPlatformApplication.Current?.Services;
+        var mauiNotifications = appServices?.GetService<MauiNotifications>();
+        if (mauiNotifications != null )
+            _ = BackgroundTask.Run(
+                () => mauiNotifications.RefreshNotificationToken(token, DeviceType.AndroidApp, CancellationToken.None),
+                Log, "OnNewToken failed.");
         base.OnNewToken(token);
     }
 

@@ -25,11 +25,11 @@ public class NatsQueueTest(ITestOutputHelper @out)
         var queues = services.Queues();
         queues.Should().BeAssignableTo<NatsQueues>();
 
-        var testService = services.GetRequiredService<ScheduledCommandTestService>();
+        var testService = (ScheduledCommandTestService)services.GetRequiredService<IScheduledCommandTestService>();
         var commander = services.Commander();
 
         testService.ProcessedEvents.Count.Should().Be(0);
-        await commander.Call(new TestCommand(null));
+        await commander.Call(new AddTestEvent1Command(null));
         await queues.WhenProcessing();
 
         testService.ProcessedEvents.Count.Should().BeGreaterThanOrEqualTo(1);
@@ -52,19 +52,29 @@ public class NatsQueueTest(ITestOutputHelper @out)
         var queues = services.Queues();
         queues.Should().BeAssignableTo<NatsQueues>();
 
-        var testService = services.GetRequiredService<ScheduledCommandTestService>();
-        var countComputed = await Computed.Capture(() => testService.GetProcessedEventCount(CancellationToken.None));
+        var testService = (ScheduledCommandTestService)services.GetRequiredService<IScheduledCommandTestService>();
+        var countComputed = await Computed.Capture(
+            () => testService.GetProcessedEventCount(default));
 
         testService.ProcessedEvents.Count.Should().Be(0);
-        for (int i = 0; i < 100; i++)
-            await queues.Enqueue(new TestEvent(null));
+        const int eventCount = 100;
+        for (int i = 0; i < eventCount; i++)
+            await queues.Enqueue(new TestEvent1(null));
 
+        await DumpEventCount("after enqueue");
         await queues.WhenProcessing();
 
-        Out.WriteLine($"{nameof(MultipleCommandsCanBeScheduled)}: event count is {countComputed.Value}. Collection has {testService.ProcessedEvents.Count}");
-        await countComputed.When(i => i >= 100).WaitAsync(TimeSpan.FromSeconds(10));
+        await DumpEventCount("after queues.WhenProcessing");
+        await countComputed.When(i => i >= eventCount).WaitAsync(TimeSpan.FromSeconds(10)).SilentAwait();
 
-        testService.ProcessedEvents.Count.Should().BeGreaterThanOrEqualTo(100);
+        await DumpEventCount($"after awaiting {eventCount} events");
+        countComputed.Value.Should().BeGreaterThanOrEqualTo(eventCount);
+
+        async Task DumpEventCount(string point)
+        {
+            countComputed = await countComputed.Update();
+            Out.WriteLine($"{nameof(MultipleCommandsCanBeScheduled)}: event count {point}: {testService.ProcessedEvents.Count} (computed: {countComputed.Value})");
+        }
     }
 
     [Fact]
@@ -84,10 +94,10 @@ public class NatsQueueTest(ITestOutputHelper @out)
         var queues = services.Queues();
         queues.Should().BeAssignableTo<NatsQueues>();
 
-        var testService = services.GetRequiredService<ScheduledCommandTestService>();
+        var testService = (ScheduledCommandTestService)services.GetRequiredService<IScheduledCommandTestService>();
         testService.ProcessedEvents.Count.Should().Be(0);
 
-        await queues.Enqueue(new TestCommand3 { ShardKey = 7 });
+        await queues.Enqueue(new AddBothTestEventsCommandWithShardKey { ShardKey = 7 });
         await queues.WhenProcessing();
 
         testService.ProcessedEvents.Count.Should().Be(2);

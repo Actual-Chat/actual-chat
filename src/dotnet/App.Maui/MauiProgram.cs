@@ -18,7 +18,6 @@ using Microsoft.JSInterop;
 using Sentry;
 using Sentry.Maui.Internal;
 using Serilog;
-using ActualLab.CommandR.Rpc;
 using ActualLab.Rpc;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 #if IOS
@@ -45,7 +44,7 @@ public static partial class MauiProgram
 
         RpcDefaults.Mode = RpcMode.Client;
         FusionDefaults.Mode = FusionMode.Client;
-        RpcOutboundCommandCallMiddleware.Default.CallTimeout = TimeSpan.FromSeconds(20);
+        RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connect
 
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
@@ -55,7 +54,7 @@ public static partial class MauiProgram
 #if ANDROID || WINDOWS
         _ = Task.Run(() => new SentryOptions()); // JIT compile SentryOptions in advance
 #endif
-        OtelDiagnostics.SetupConditionalPropagator();
+        AppUIOtelSetup.SetupConditionalPropagator();
 #if WINDOWS
         if (Tracer.IsEnabled) {
             // EventSources and EventListeners do not work in Mono. So no sense to enable but platforms different from Windows

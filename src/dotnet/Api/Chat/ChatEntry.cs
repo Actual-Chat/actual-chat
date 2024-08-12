@@ -17,11 +17,11 @@ public sealed partial record ChatEntry(
     public static readonly ChatEntry Loading = new(default, -1); // Should differ by Id & Version from None
 
     public static readonly Requirement<ChatEntry> MustExist = Requirement.New(
-        new(() => StandardError.NotFound<ChatEntry>()),
-        (ChatEntry? c) => c is { Id.IsNone: false });
+        (ChatEntry? c) => c is { Id.IsNone: false },
+        new(() => StandardError.NotFound<ChatEntry>()));
     public static readonly Requirement<ChatEntry> MustNotBeRemoved = Requirement.New(
-        new(() => StandardError.NotFound<ChatEntry>()),
-        (ChatEntry? c) => c is { Id.IsNone: false, IsRemoved: false });
+        (ChatEntry? c) => c is { Id.IsNone: false, IsRemoved: false },
+        new(() => StandardError.NotFound<ChatEntry>()));
 
     public static ChatEntry Removed(ChatEntryId id)
         => new (id) { IsRemoved = true };

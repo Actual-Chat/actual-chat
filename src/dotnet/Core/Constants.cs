@@ -9,6 +9,12 @@ public static partial class Constants
     {
         public static readonly string StringVersion = ThisAssembly.AssemblyVersion; // X.Y.0.0
         public static readonly Version Version = Version.Parse(StringVersion);
+
+        public static class Compression
+        {
+            public const bool IsServerSideEnabled = true;
+            public const bool IsClientSideEnabled = true;
+        }
     }
 
     public static class Hosts
@@ -147,6 +153,11 @@ public static partial class Constants
         public static readonly string RecordingSkeleton = "🎙…";
     }
 
+    public static class Transcription
+    {
+        public static readonly bool IsWebMOpusSupportedByGoogle = false;
+    }
+
     // Diagnostics, etc.
 
     public static class Sentry
@@ -214,6 +225,7 @@ public static partial class Constants
         }
 
         public static readonly TimeSpan PermissionRequestDismissPeriod = TimeSpan.FromDays(7);
+        public static readonly TimeSpan EntryWaitTimeout = TimeSpan.FromSeconds(0.5);
     }
 
     public static class Audio
@@ -230,11 +242,6 @@ public static partial class Constants
         public const int PageSizeLimit = 50;
         public const int ContactSearchDefaultPageSize = 3;
         public const int ContactSearchExtendedPageSize = 30;
-    }
-
-    public static class Invalidation
-    {
-        public static readonly TimeSpan Delay = TimeSpan.FromSeconds(0.5);
     }
 
     public static class Preferences

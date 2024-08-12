@@ -1,13 +1,13 @@
 using ActualChat.App.Server.Logging;
 using ActualChat.App.Server.Module;
 using ActualChat.Chat.Module;
-using ActualChat.Chat.UI.Blazor.Module;
+using ActualChat.UI.Blazor.App.Module;
 using ActualChat.Contacts.Module;
 using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Db.Module;
+using ActualChat.Flows.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Module;
-using ActualChat.Kubernetes.Module;
 using ActualChat.Media.Module;
 using ActualChat.MLSearch.Module;
 using ActualChat.Module;
@@ -18,7 +18,6 @@ using ActualChat.Search.Module;
 using ActualChat.Streaming.Module;
 using ActualChat.Streaming.UI.Blazor.Module;
 using ActualChat.UI.Blazor.App;
-using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
@@ -26,6 +25,7 @@ using ActualLab.Diagnostics;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Logging.Console;
+using OpenTelemetry.Logs;
 using Serilog;
 using Serilog.Events;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
@@ -86,6 +86,7 @@ public partial class AppHost
                 return;
 
             logging.ConfigureServerFilters(env.EnvironmentName);
+            logging.AddOpenTelemetry(options => options.AddOtlpExporter());
             logging.AddConsole();
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
             if (!AppLogging.DevLog.IsEmpty && appKind.IsServer() && !isTested) {
@@ -145,9 +146,10 @@ public partial class AppHost
                 // Core modules
                 new CoreModule(moduleServices),
                 new CoreServerModule(moduleServices),
-                new KubernetesModule(moduleServices),
+                // new KubernetesModule(moduleServices),
                 new RedisModule(moduleServices),
                 new DbModule(moduleServices),
+                new FlowsServiceModule(moduleServices),
                 // API modules
                 new ApiModule(moduleServices),
                 // Service-specific & service modules
@@ -165,7 +167,6 @@ public partial class AppHost
                 new StreamingBlazorUIModule(moduleServices),
                 new UsersBlazorUIModule(moduleServices),
                 new ContactsBlazorUIModule(moduleServices),
-                new ChatBlazorUIModule(moduleServices),
                 new NotificationBlazorUIModule(moduleServices),
                 new BlazorUIAppModule(moduleServices), // Should be the last one in UI section
                 // This module should be the last one

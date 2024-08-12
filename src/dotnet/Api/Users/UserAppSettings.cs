@@ -10,4 +10,6 @@ public sealed partial record UserAppSettings : IHasOrigin
 
     [DataMember, MemoryPackOrder(0)] public bool? IsAnalyticsEnabled{ get; init; }
     [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";
+    [DataMember, MemoryPackOrder(2)] public bool? IsExperimentalFeatureEnabled{ get; init; }
+    [DataMember, MemoryPackOrder(3)] public bool? IsIncompleteUIEnabled{ get; init; }
 }

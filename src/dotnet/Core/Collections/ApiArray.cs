@@ -7,15 +7,20 @@ public static class ApiArray
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ApiArray<T> Empty<T>()
-        => ApiArray<T>.Empty;
+        => default;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ApiArray<T> New<T>(params T[] items)
-        => new(items);
+        => items.Length == 0 ? default : new(items);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ApiArray<T> New<T>(scoped ReadOnlySpan<T> items)
+        => items.Length == 0 ? default : new(items.ToArray());
 }
 
 #pragma warning disable MA0084
 
+[CollectionBuilder(typeof(ApiArray), "New")]
 [JsonConverter(typeof(ApiArrayJsonConverter))]
 [Newtonsoft.Json.JsonConverter(typeof(ApiArrayNewtonsoftJsonConverter))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -23,7 +28,7 @@ public static class ApiArray
 public readonly partial struct ApiArray<T>(T[] items)
     : IReadOnlyList<T>, ICloneable<ApiArray<T>>, IEquatable<ApiArray<T>>
 {
-    private static readonly T[] EmptyItems = Array.Empty<T>();
+    private static readonly T[] EmptyItems = [];
     public static readonly ApiArray<T> Empty = default!;
 
     private readonly T[]? _items = items is { Length: 0 } ? null : items;

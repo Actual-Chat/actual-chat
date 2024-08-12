@@ -34,7 +34,7 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
         if (!WhenReady.IsCompleted)
             await WhenReady.ConfigureAwait(false);
         var values = await JS
-            .InvokeAsync<string?[]>(_getManyName, CancellationToken.None, new object[] { keys })
+            .InvokeAsync<string?[]>(_getManyName, CancellationToken.None, [keys])
             .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
         var result = new byte[]?[keys.Length];
         for (var i = 0; i < values.Length; i++) {

@@ -1,0 +1,58 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Contacts
+@inherits ComputedStateComponent<AddToContactsBanner.Model>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
+}
+
+<Banner IsVisible="@m.CanAddToContacts" Severity="BannerSeverity.Warning" ShowDismissButton="true">
+    <Body>
+        This user is not in your contact list
+    </Body>
+    <Buttons>
+        <Button Class="btn-transparent unhovered" Click="@OnAddClick">Add to contacts</Button>
+    </Buttons>
+</Banner>
+
+@code {
+    private Session Session => ChatContext.Hub.Session();
+    private Chat Chat => ChatContext.Chat;
+    private IContacts Contacts => ChatContext.Hub.Contacts;
+    private AccountUI AccountUI => ChatContext.Hub.AccountUI;
+    private UICommander UICommander => ChatContext.Hub.UICommander();
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var ownAccount = AccountUI.OwnAccount.Value;
+        var chatId = Chat.Id;
+
+        var contact = await Contacts.GetForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return new(!ownAccount.IsGuestOrNone, contact);
+    }
+
+    private async Task OnAddClick() {
+        var contact = State.Value.Contact!;
+        var command = new Contacts_Change(Session, contact.Id, null, new Change<Contact> {
+            Create = contact,
+        });
+        await UICommander.Run(command);
+    }
+
+    // Nested types
+
+    public sealed record Model(bool IsSignedIn, Contact? Contact = null) {
+        public  static readonly Model Loading = new(false);
+
+        public bool CanAddToContacts => IsSignedIn && Contact is { ChatId.Kind: ChatKind.Peer } && !Contact.IsStored();
+    }
+}

@@ -16,8 +16,17 @@ body {
     width: 100%;
 }
 
+@keyframes blink_input_opacity_to_prevent_scrolling_when_focus {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
 body.device-ios {
     @apply ios-height;
+}
+
+body.device-ios input:focus {
+    animation: blink_input_opacity_to_prevent_scrolling_when_focus 0.01s;
 }
 
 body.device-ios * {
@@ -141,6 +150,11 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply overflow-visible;
     @apply bg-transparent;
     @apply transition-height;
+}
+body.narrow .layout-subheader > div:nth-last-child(2) {
+    @apply rounded-b-2xl;
+    @apply overflow-hidden;
+    @apply shadow-lg;
 }
 
 .layout-body {

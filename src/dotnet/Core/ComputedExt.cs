@@ -21,21 +21,20 @@ public static class ComputedExt
     private static readonly ConcurrentDictionary<(Type, string), PropertyInfo?> _propertyCache = new();
     private static readonly ConcurrentDictionary<(Type, string), FieldInfo?> _fieldCache = new();
 
-    public static string DebugDump(this IComputed computed, int maxDepth = 0)
+    public static string DebugDump(this Computed computed, int maxDepth = 0)
     {
         var type = computed.GetType();
         var pFlags = GetProperty(type, "Flags")!;
 
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         // var flags = pFlags.GetGetter<ComputedFlags>().Invoke(computed);
-        var flags = (ComputedFlags)pFlags.GetMethod!.Invoke(computed, Array.Empty<object?>())!;
+        var flags = (ComputedFlags)pFlags.GetMethod!.Invoke(computed, [])!;
         sb.Append("Computed: ").Append(computed).AppendLine();
         sb.Append("- Flags: ").Append(flags).AppendLine();
-        var impl = (IComputedImpl)computed;
-        DumpDependencies(impl.Used, 0);
+        DumpDependencies(ComputedImpl.GetDependencies(computed), 0);
         return sb.ToStringAndRelease();
 
-        void DumpDependencies(IComputedImpl[] dependencies, int depth)
+        void DumpDependencies(Computed[] dependencies, int depth)
         {
             if (dependencies.Length == 0)
                 return;
@@ -46,7 +45,7 @@ public static class ComputedExt
             sb.Append(' ', depth * 2).AppendLine("- Dependencies:");
             foreach (var d in dependencies.OrderBy(i => i.Input.HashCode)) {
                 sb.Append(' ', (depth + 1) * 2).Append("- ").Append(d).AppendLine();
-                DumpDependencies(d.Used, depth + 1);
+                DumpDependencies(ComputedImpl.GetDependencies(d), depth + 1);
             }
         }
     }

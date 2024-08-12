@@ -1,5 +1,4 @@
 using ActualChat.Chat.Db;
-using ActualChat.Chat.Events;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
@@ -30,7 +29,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
 
     // Events
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         var (entry, _, changeKind, _) = eventCommand;

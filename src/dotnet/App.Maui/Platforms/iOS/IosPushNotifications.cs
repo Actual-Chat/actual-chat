@@ -1,4 +1,4 @@
-using ActualChat.Chat.UI.Blazor;
+using ActualChat.UI.Blazor.App;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
@@ -40,6 +40,10 @@ public class IosPushNotifications : IDeviceTokenRetriever, INotificationsPermiss
 
     public Task<string?> GetDeviceToken(CancellationToken cancellationToken)
         => Messaging.GetTokenAsync();
+
+    // TODO(AK): it's suspicious that we can't remove FCM token there - no API available
+    public Task DeleteDeviceToken(CancellationToken cancellationToken)
+        => Task.CompletedTask;
 
     public async Task<bool?> IsGranted(CancellationToken cancellationToken = default)
     {

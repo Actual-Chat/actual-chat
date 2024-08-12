@@ -33,12 +33,15 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices)
         // The services below are used only when this module operates in non-client mode
 
         // Internal services
-        services.AddSingleton<TextEntryIndexer>()
-            .AddHostedService(c => c.GetRequiredService<TextEntryIndexer>());
+        // TODO: uncomment when migration to single index is done
+        // services.AddSingleton<TextEntryIndexer>()
+        //     .AddHostedService(c => c.GetRequiredService<TextEntryIndexer>());
         services.AddSingleton<UserContactIndexer>()
             .AddHostedService(c => c.GetRequiredService<UserContactIndexer>());
-        services.AddSingleton<ChatContactIndexer>()
-            .AddHostedService(c => c.GetRequiredService<ChatContactIndexer>());
+        services.AddSingleton<GroupChatContactIndexer>()
+            .AddHostedService(c => c.GetRequiredService<GroupChatContactIndexer>());
+        services.AddSingleton<PlaceContactIndexer>()
+            .AddHostedService(c => c.GetRequiredService<PlaceContactIndexer>());
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

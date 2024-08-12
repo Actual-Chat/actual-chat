@@ -1,6 +1,4 @@
 using ActualChat.Hosting;
-using ActualChat.Rpc;
-using ActualLab.Rpc;
 using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Mesh;
@@ -11,16 +9,14 @@ public sealed class MeshWatcher : WorkerBase
     private static readonly TimeSpan DefaultChangeTimeoutIfDev = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan DefaultChangeTimeoutIfTested = TimeSpan.FromSeconds(2);
 
-    private readonly ConcurrentDictionary<NodeRef, RpcBackendNodePeerRef> _nodePeerRefs = new();
-    private readonly ConcurrentDictionary<ShardRef, RpcBackendShardPeerRef> _shardPeerRefs = new();
     private readonly MutableState<MeshState> _state;
 
     private IHostApplicationLifetime? HostApplicationLifetime { get; }
     private IMeshLocks NodeLocks { get; }
-    private IMomentClock Clock => NodeLocks.Clock;
+    private MomentClock Clock => NodeLocks.Clock;
     private ILogger Log { get; }
 
-    public MeshNode MeshNode { get; }
+    public MeshNode OwnNode { get; }
     public IState<MeshState> State => _state;
 
     // Settings
@@ -30,7 +26,7 @@ public sealed class MeshWatcher : WorkerBase
     {
         Log = services.LogFor(GetType());
         HostApplicationLifetime = services.GetService<IHostApplicationLifetime>();
-        MeshNode = services.MeshNode();
+        OwnNode = services.GetRequiredService<MeshNode>();
         NodeLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NodeLocks));
         _state = services.StateFactory().NewMutable(new MeshState());
         var hostInfo = services.GetRequiredService<HostInfo>();
@@ -40,23 +36,6 @@ public sealed class MeshWatcher : WorkerBase
         if (mustStart)
             this.Start();
     }
-
-    public RpcPeerRef? GetPeerRef(MeshRef meshRef)
-        => !meshRef.ShardRef.IsNone ? GetPeerRef(meshRef.ShardRef)
-            : !meshRef.NodeRef.IsNone ? GetPeerRef(meshRef.NodeRef)
-                : null;
-
-    public RpcBackendNodePeerRef? GetPeerRef(NodeRef nodeRef)
-        => nodeRef.IsNone ? null
-            : _nodePeerRefs.GetOrAdd(nodeRef,
-                static (nodeRef1, self) => new RpcBackendNodePeerRef(self, nodeRef1),
-                this);
-
-    public RpcBackendShardPeerRef? GetPeerRef(ShardRef shardRef)
-        => shardRef.IsNone ? null
-            : _shardPeerRefs.GetOrAdd(shardRef.Normalize(),
-                static (shardRef1, self) => new RpcBackendShardPeerRef(self, shardRef1),
-                this).Latest;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -90,22 +69,26 @@ public sealed class MeshWatcher : WorkerBase
                     sb.Append("= ").Append(state);
                     var description = sb.ToStringAndRelease();
                     // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-                    Log.LogInformation($"State @ {MeshNode}:{Environment.NewLine}{{Description}}",
-                        MeshNode.Ref.Value, description);
+                    Log.LogInformation($"State @ {OwnNode}:{Environment.NewLine}{{Description}}",
+                        OwnNode.Ref.Value, description);
                 }
 
                 try {
                     consumeTask ??= changes.Reader.WaitToReadAndConsumeAsync(CancellationToken.None);
-                    var canRead = await consumeTask
-                        .WaitAsync(NodeLocks.UnconditionalCheckPeriod, cancellationToken)
+                    var canReadResult = await consumeTask
+                        .WaitResultAsync(NodeLocks.UnconditionalCheckPeriod, cancellationToken)
                         .ConfigureAwait(false);
-                    // It's important to throw on cancellation here: canRead may return false exactly due to this
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (!canRead)
-                        throw new OperationCanceledException("Subscription to changes is lost.");
-                    consumeTask = null;
+                    if (canReadResult.IsValue(out var canRead, out var error)) {
+                        // It's important to throw on cancellation here: canRead may return false exactly due to this
+                        cancellationToken.ThrowIfCancellationRequested();
+                        if (!canRead)
+                            throw new OperationCanceledException("Subscription to changes is lost.");
+                        consumeTask = null;
+                    }
+                    else if (error is not TimeoutException) {
+                        canReadResult.ThrowIfError();
+                    }
                 }
-                catch (TimeoutException) { }
                 catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                     await changes.DisposeSilentlyAsync().ConfigureAwait(false);
                     changes = null;
@@ -123,7 +106,7 @@ public sealed class MeshWatcher : WorkerBase
                 var delay = NodeLocks.RetryDelays[++failureCount];
                 var resumeAt = Clock.Now + delay;
                 Log.LogError(e, "State update cycle failed @ {MeshNode}, will retry in {Delay}",
-                    MeshNode.Ref.Value, delay.ToShortString());
+                    OwnNode.Ref.Value, delay.ToShortString());
 
                 await changes.DisposeSilentlyAsync().ConfigureAwait(false);
                 changes = null;
@@ -144,23 +127,25 @@ public sealed class MeshWatcher : WorkerBase
     {
         try {
             var keys = await NodeLocks.ListKeys("", cancellationToken).ConfigureAwait(false);
-            var ownKey = MeshNode.ToString();
+            var ownKey = OwnNode.ToString();
             if (!keys.Contains(ownKey, StringComparer.Ordinal))
                 keys.Add(ownKey);
 
-            return keys.Select(key => {
-                var node = MeshNode.Parse(key);
-                return node == MeshNode ? MeshNode : node;
-            }).Order().ToImmutableArray();
+            return [
+                ..keys.Select(key => {
+                    var node = MeshNode.Parse(key);
+                    return node == OwnNode ? OwnNode : node;
+                }).Order(),
+            ];
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-            return new[] { MeshNode }.ToImmutableArray();
+            return [..new[] { OwnNode }];
         }
     }
 
     private async Task Announce(TaskCompletionSource whenLockedTcs, CancellationToken cancellationToken)
     {
-        var key = MeshNode.ToString();
+        var key = OwnNode.ToString();
         Log.LogInformation("-> Announce: {MeshNode}", key);
 
         var cts = cancellationToken.LinkWith(HostApplicationLifetime?.ApplicationStopping ?? CancellationToken.None);

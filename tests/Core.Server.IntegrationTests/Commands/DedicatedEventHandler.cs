@@ -2,9 +2,9 @@ using ActualLab.Time.Testing;
 
 namespace ActualChat.Core.Server.IntegrationTests.Commands;
 
-public class DedicatedEventHandler(ScheduledCommandTestService testService) : IComputeService
+public class DedicatedEventHandler(IScheduledCommandTestService testService) : IComputeService
 {
-    private ScheduledCommandTestService TestService { get; } = testService;
+    private ScheduledCommandTestService TestService { get; } = (ScheduledCommandTestService)testService;
 
     [EventHandler]
     public virtual async Task OnTestEvent2(TestEvent2 event2, CancellationToken cancellationToken)

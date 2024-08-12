@@ -55,7 +55,7 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListTile<TItem>>
     public bool IsSimilarTo(VirtualListData<TItem> other)
         => HasVeryFirstItem == other.HasVeryFirstItem
             && HasVeryLastItem == other.HasVeryLastItem
-            && ScrollToKey == other.ScrollToKey
+            && OrdinalEquals(ScrollToKey, other.ScrollToKey)
             && Tiles.SequenceEqual(other.Tiles, TileComparer);
 
     private static bool Equals(VirtualListTile<TItem>? x, VirtualListTile<TItem>? y)
@@ -66,7 +66,7 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListTile<TItem>>
         if (x is null || y is null)
             return false;
 
-        return x.Key == y.Key
+        return OrdinalEquals(x.Key, y.Key)
             && x.Items.Count == y.Items.Count
             && x.Items.SequenceEqual(y.Items);
     }

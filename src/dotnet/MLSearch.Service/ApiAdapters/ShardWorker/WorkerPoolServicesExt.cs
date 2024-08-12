@@ -23,9 +23,9 @@ internal static class WorkerPoolServicesExt
         where TJobId : notnull
         where TShardKey : notnull
     {
-        serviceCollection.AddSingleton(services
-            => services.CreateInstanceWith<WorkerPool<TWorker, TJob, TJobId, TShardKey>>(
-                duplicateJobPolicy, shardConcurrencyLevel))
+        serviceCollection.AddSingleton(
+                c => c.CreateInstance<WorkerPool<TWorker, TJob, TJobId, TShardKey>>(
+                    duplicateJobPolicy, shardConcurrencyLevel))
             .AddAlias<IWorkerPool<TJob, TJobId, TShardKey>, WorkerPool<TWorker, TJob, TJobId, TShardKey>>()
             .AddAlias<IHostedService, WorkerPool<TWorker, TJob, TJobId, TShardKey>>();
 

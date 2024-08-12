@@ -12,20 +12,20 @@ public sealed partial record AccountFull(
     public static new readonly AccountFull Loading = new(User.NewGuest(), -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
 
     public static new readonly Requirement<AccountFull> MustExist = Requirement.New(
-        new(() => StandardError.NotFound<Account>()),
-        (AccountFull? a) => a is { IsNone: false });
+        (AccountFull? a) => a is { IsNone: false },
+        new(() => StandardError.NotFound<Account>()));
     public static new readonly Requirement<AccountFull> MustNotBeGuest = Requirement.New(
-        new(() => StandardError.Account.Guest()),
-        (AccountFull? a) => a?.IsGuestOrNone == false);
+        (AccountFull? a) => a?.IsGuestOrNone == false,
+        new(() => StandardError.Account.Guest()));
     public static readonly Requirement<AccountFull> MustBeAdmin = MustExist & Requirement.New(
-        new(() => StandardError.Account.NonAdmin()),
-        (AccountFull? a) => a?.IsAdmin ?? false);
+        (AccountFull? a) => a?.IsAdmin ?? false,
+        new(() => StandardError.Account.NonAdmin()));
     public static readonly Requirement<AccountFull> MustNotBeSuspended = MustExist & Requirement.New(
-        new(() => StandardError.Account.Suspended()),
-        (AccountFull? a) => a != null && (a.Status != AccountStatus.Suspended || a.IsAdmin));
+        (AccountFull? a) => a != null && (a.Status != AccountStatus.Suspended || a.IsAdmin),
+        new(() => StandardError.Account.Suspended()));
     public static readonly Requirement<AccountFull> MustBeActive = MustNotBeGuest & Requirement.New(
-        new(() => StandardError.Account.Inactive()),
-        (AccountFull? a) => a != null && (a.Status == AccountStatus.Active || a.IsAdmin));
+        (AccountFull? a) => a != null && (a.Status == AccountStatus.Active || a.IsAdmin),
+        new(() => StandardError.Account.Inactive()));
 
     [DataMember, MemoryPackOrder(5)] public bool IsAdmin { get; init; }
     [Obsolete("2023.07: Allows legacy clients to deserialize new version of this type.")]

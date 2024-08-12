@@ -11,7 +11,7 @@ internal interface IServiceCoordinator
 
 internal sealed class ServiceCoordinator(
     IClusterSetup clusterSetup,
-    IMomentClock clock,
+    MomentClock clock,
     ILogger<ServiceCoordinator> log
 ) : WorkerBase, IServiceCoordinator
 {

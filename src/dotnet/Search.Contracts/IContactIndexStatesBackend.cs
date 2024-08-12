@@ -8,7 +8,11 @@ public interface IContactIndexStatesBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ContactIndexState> GetForUsers(CancellationToken cancellationToken);
     [ComputeMethod]
+    Task<ContactIndexState> GetForPlaceAuthors(CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<ContactIndexState> GetForChats(CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<ContactIndexState> GetForPlaces(CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<ContactIndexState> OnChange(

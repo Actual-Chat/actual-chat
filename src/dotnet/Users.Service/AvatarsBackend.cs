@@ -1,7 +1,5 @@
 ﻿using ActualChat.Media;
-using ActualChat.Queues;
 using ActualChat.Users.Db;
-using ActualChat.Users.Events;
 using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users;

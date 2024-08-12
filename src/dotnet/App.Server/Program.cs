@@ -1,5 +1,4 @@
 using System.Text;
-using ActualChat.App.Server.Initializers;
 using ActualChat.Audio.WebM;
 using ActualLab.Rpc;
 using Grpc.Core;
@@ -18,11 +17,17 @@ internal static class Program
 #endif
 
         RpcDefaults.Mode = RpcMode.Server;
+        RpcDefaultDelegates.HashProvider = data => {
+            // SIMD-based version of Blake3 we use here is much faster than SSH256.
+            // See https://github.com/xoofx/Blake3.NET?tab=readme-ov-file#results
+            var hash = Blake3.Hasher.Hash(data.Data.Span);
+            return Convert.ToBase64String(hash.AsSpan()[..18]); // 18 bytes -> 24 chars
+        };
         FusionDefaults.Mode = FusionMode.Server;
         Console.OutputEncoding = Encoding.UTF8;
         Activity.DefaultIdFormat = ActivityIdFormat.W3C;
         Activity.ForceDefaultIdFormat = true;
-        // TODO(AK): try to disable Http/3 for google speech-to-text only instead of global toggle!
+        // TODO(AK): Try to disable HTTP/3 for Google Speech-To-Text only rather than globally
         AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http3Support", false);
         CommandLineHandler.Process(args);
         AdjustThreadPool();

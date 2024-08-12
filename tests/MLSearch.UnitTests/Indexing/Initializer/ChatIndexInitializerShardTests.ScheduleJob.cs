@@ -1,5 +1,6 @@
 
 using ActualChat.MLSearch.Indexing.Initializer;
+using ActualChat.Queues;
 using ActualLab.Resilience;
 
 namespace ActualChat.MLSearch.UnitTests.Indexing.Initializer;
@@ -16,18 +17,18 @@ public partial class ChatIndexInitializerShardTests
         var chatInfo = new ChatIndexInitializerShard.ChatInfo(ChatId.None, 0);
         var cursor = new ChatIndexInitializerShard.Cursor(333);
         var state = new ChatIndexInitializerShard.SharedState(cursor, maxConcurrency);
-        var commander = MockCommander().Object;
-        var clock = Mock.Of<IMomentClock>();
+        var queues = QueuesMock.Create().Object;
+        var clock = Mock.Of<MomentClock>();
         var log = Mock.Of<ILogger>();
         foreach (var _ in Enumerable.Range(0, maxConcurrency)) {
             // We can successfully start up to maxConcurrency task
             await ChatIndexInitializerShard.ScheduleIndexingJobAsync(
-                    chatInfo, state, _scheduleJobRetrySettings, commander, clock, log, CancellationToken.None)
+                    chatInfo, state, _scheduleJobRetrySettings, queues, clock, log, CancellationToken.None)
                 .AsTask()
                 .WaitAsync(TimeSpan.FromSeconds(1));
         }
         var nextJob = ChatIndexInitializerShard.ScheduleIndexingJobAsync(
-            chatInfo, state, _scheduleJobRetrySettings, commander, clock, log, CancellationToken.None);
+            chatInfo, state, _scheduleJobRetrySettings, queues, clock, log, CancellationToken.None);
         Assert.False(nextJob.IsCompleted);
         // Let's free one semaphore slot
         state.Semaphore.Release();
@@ -43,14 +44,14 @@ public partial class ChatIndexInitializerShardTests
         var cursor = new ChatIndexInitializerShard.Cursor(333);
         var state = new ChatIndexInitializerShard.SharedState(cursor, maxConcurrency);
 
-        var clock = Mock.Of<IMomentClock>();
+        var clock = Mock.Of<MomentClock>();
         var cancellationSource = new CancellationTokenSource();
         var log = LogMock.Create<ChatIndexInitializer>();
-        var commander = MockCommander(static (_, ct) =>
+        var queues = QueuesMock.Create(static (_, ct) =>
             ActualLab.Async.TaskExt.NewNeverEndingUnreferenced().WaitAsync(TimeSpan.FromSeconds(1), ct));
 
         var scheduleTask = ChatIndexInitializerShard.ScheduleIndexingJobAsync(
-                chatInfo, state, _scheduleJobRetrySettings, commander.Object, clock, log.Object, cancellationSource.Token)
+                chatInfo, state, _scheduleJobRetrySettings, queues.Object, clock, log.Object, cancellationSource.Token)
             .AsTask();
         await cancellationSource.CancelAsync();
 
@@ -69,16 +70,16 @@ public partial class ChatIndexInitializerShardTests
         var cursor = new ChatIndexInitializerShard.Cursor(333);
         var state = new ChatIndexInitializerShard.SharedState(cursor, maxConcurrency);
 
-        var clock = Mock.Of<IMomentClock>();
+        var clock = Mock.Of<MomentClock>();
         var log = LogMock.Create<ChatIndexInitializer>();
-        var commander = MockCommander(static (_, _) => Task.FromException(new UniqueException()));
+        var queues = QueuesMock.Create(static (_, _) => Task.FromException(new UniqueException()));
 
         ChatIndexInitializerShard.RetrySettings retrySettings =
             new (0, RetryDelaySeq.Exp(0.3, 3), TransiencyResolvers.PreferTransient);
 
         await Assert.ThrowsAsync<UniqueException>(
             async () => await ChatIndexInitializerShard.ScheduleIndexingJobAsync(
-                chatInfo, state, retrySettings, commander.Object, clock, log.Object, CancellationToken.None));
+                chatInfo, state, retrySettings, queues.Object, clock, log.Object, CancellationToken.None));
 
         log.Verify(
             LogMock.GetLogMethodExpression<ChatIndexInitializer>(LogLevel.Error),
@@ -99,7 +100,7 @@ public partial class ChatIndexInitializerShardTests
         var state = new ChatIndexInitializerShard.SharedState(cursor, maxConcurrency);
 
         var observedDelays = new List<TimeSpan>();
-        var clock = new Mock<IMomentClock>();
+        var clock = new Mock<MomentClock>();
         clock.Setup(x => x.Delay(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Returns<TimeSpan, CancellationToken>((ts, _) => {
                 observedDelays.Add(ts);
@@ -107,15 +108,13 @@ public partial class ChatIndexInitializerShardTests
             });
 
         var log = Mock.Of<ILogger>();
-        var commander = MockCommander(static (_, _) => Task.FromException(new UniqueException()));
+        var queues = QueuesMock.Create(static (_, _) => Task.FromException(new UniqueException()));
 
         await Assert.ThrowsAsync<UniqueException>(async () =>
             await ChatIndexInitializerShard.ScheduleIndexingJobAsync(
-                chatInfo, state, retrySettings, commander.Object, clock.Object, log, CancellationToken.None));
+                chatInfo, state, retrySettings, queues.Object, clock.Object, log, CancellationToken.None));
 
-        commander.Verify(x => x.Run(
-            It.IsAny<CommandContext>(),
-            It.IsAny<CancellationToken>()), Times.Exactly(retrySettings.AttemptCount));
+        queues.Verify(x => x.GetSender(It.IsAny<QueueRef>()), Times.Exactly(retrySettings.AttemptCount));
 
         var expectedDelays = Enumerable.Range(1, retrySettings.AttemptCount - 1)
             .Select(attempt => retrySettings.RetryDelaySeq[attempt]);
@@ -135,12 +134,12 @@ public partial class ChatIndexInitializerShardTests
         var cursor = new ChatIndexInitializerShard.Cursor(0);
         var state = new ChatIndexInitializerShard.SharedState(cursor, maxConcurrency);
 
-        var clock = new Mock<IMomentClock>();
+        var clock = new Mock<MomentClock>();
         clock.SetupGet(x => x.Now).Returns(scheduleMoment);
         var log = Mock.Of<ILogger>();
-        var commander = MockCommander();
+        var queues = QueuesMock.Create();
         await ChatIndexInitializerShard.ScheduleIndexingJobAsync(
-            chatInfo, state, _scheduleJobRetrySettings, commander.Object, clock.Object, log, CancellationToken.None);
+            chatInfo, state, _scheduleJobRetrySettings, queues.Object, clock.Object, log, CancellationToken.None);
 
         Assert.True(state.ScheduledJobs.TryGetValue(chatId, out var jobInfo));
         var (version, moment) = jobInfo;
@@ -156,43 +155,17 @@ public partial class ChatIndexInitializerShardTests
         var cursor = new ChatIndexInitializerShard.Cursor(0);
         var state = new ChatIndexInitializerShard.SharedState(cursor, 1);
 
-        var clock = Mock.Of<IMomentClock>();
+        var clock = Mock.Of<MomentClock>();
         var log = Mock.Of<ILogger>();
 
         ICommand? observedCommand = null;
-        var commander = MockCommander((context, _) => {
+        var queues = QueuesMock.Create((context, _) => {
             observedCommand = context.UntypedCommand;
             return Task.CompletedTask;
         });
         await ChatIndexInitializerShard.ScheduleIndexingJobAsync(
-            chatInfo, state, _scheduleJobRetrySettings, commander.Object, clock, log, CancellationToken.None);
+            chatInfo, state, _scheduleJobRetrySettings, queues.Object, clock, log, CancellationToken.None);
 
         Assert.True(observedCommand is MLSearch_TriggerChatIndexing { ChatId: var observedChatId } && chatId == observedChatId);
-    }
-
-    private static Mock<ICommander> MockCommander(Func<CommandContext, CancellationToken, Task>? action = null)
-    {
-        var scopeFactory = new Mock<IServiceScopeFactory>();
-        scopeFactory
-            .Setup(x => x.CreateScope())
-            .Returns(Mock.Of<IServiceScope>());
-        var services = new Mock<IServiceProvider>();
-        services
-            .Setup(x => x.GetService(typeof(IServiceScopeFactory)))
-            .Returns(scopeFactory.Object);
-        var commander = new Mock<ICommander>();
-        commander
-            .SetupGet(x => x.Services)
-            .Returns(services.Object);
-        commander
-            .Setup(x => x.Run(
-                It.IsAny<CommandContext>(),
-                It.IsAny<CancellationToken>()))
-            .Returns<CommandContext, CancellationToken>(
-                (context, ct) => {
-                    context.TryComplete(ct);
-                    return action?.Invoke(context, ct) ?? Task.CompletedTask;
-                });
-        return commander;
     }
 }

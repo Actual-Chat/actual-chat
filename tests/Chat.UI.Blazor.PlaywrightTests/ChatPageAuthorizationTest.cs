@@ -3,7 +3,7 @@ using ActualChat.Testing.Host;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Http;
 
-namespace ActualChat.Chat.UI.Blazor.PlaywrightTests;
+namespace ActualChat.UI.Blazor.App.PlaywrightTests;
 
 [Collection(nameof(ChatUIAutomationCollection))]
 public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper @out)

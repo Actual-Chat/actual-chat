@@ -9,7 +9,7 @@ public sealed class RpcDependentReconnectDelayer : RpcServiceBase, IRetryDelayer
     private RpcClientPeerReconnectDelayer ClientPeerReconnectDelayer { get; }
 
     public RpcPeerRef PeerRef { get; init; } = RpcPeerRef.Default;
-    public IMomentClock Clock => ClientPeerReconnectDelayer.Clock;
+    public MomentClock Clock => ClientPeerReconnectDelayer.Clock;
     public CancellationToken CancelDelaysToken => ClientPeerReconnectDelayer.CancelDelaysToken;
 
     public RpcDependentReconnectDelayer(IServiceProvider services)

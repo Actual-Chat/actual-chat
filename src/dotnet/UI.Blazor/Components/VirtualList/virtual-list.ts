@@ -617,12 +617,20 @@ export class VirtualList {
         let spacerSize = this._defaultSpacerSize;
         let endSpacerSize = this._defaultSpacerSize;
         if (rs.beforeCount !== null && rs.afterCount !== null) {
-            spacerSize = rs.beforeCount * this._statistics.itemSize;
-            endSpacerSize = rs.afterCount * this._statistics.itemSize;
+            spacerSize = rs.beforeCount * Math.floor(this._statistics.itemSize);
+            endSpacerSize = rs.afterCount * Math.floor(this._statistics.itemSize);
         }
         else if (!rs.keyRange?.start) {
-            // no data loaded yet
-            spacerSize = 1000;
+            if (rs.renderIndex <= 2) {
+                // no data loaded yet
+                spacerSize = 1000;
+                endSpacerSize = 0;
+            }
+            else {
+                // empty result list
+                spacerSize = 0;
+                endSpacerSize = 0;
+            }
         }
         else {
             if (rs.hasVeryFirstItem)
@@ -996,6 +1004,9 @@ export class VirtualList {
         this._inertialScroll.freeze();
         this._scrollTime = Date.now();
         if (edge == VirtualListEdge.End) {
+            const isFarFromEdge = (this._ref.scrollHeight - this._ref.scrollTop) > 2 * this._ref.offsetHeight;
+            if (isFarFromEdge)
+                useSmoothScroll = false;
             if (useSmoothScroll) {
                 this._endAnchorRef.scrollIntoView({
                     behavior: "smooth",
@@ -1008,6 +1019,9 @@ export class VirtualList {
             void this.turnOnIsEndAnchorVisible();
             this.turnOffIsEndAnchorVisibleDebounced.reset();
         } else {
+            const isFarFromEdge = this._ref.scrollTop > this._ref.offsetHeight;
+            if (isFarFromEdge)
+                useSmoothScroll = false;
             if (useSmoothScroll) {
                 this._spacerRef.scrollIntoView({
                     behavior: "smooth",
@@ -1331,7 +1345,9 @@ export class VirtualList {
     private getDataQuery(): VirtualListDataQuery {
         const rs = this._renderState;
         const itemSize = this._statistics.itemSize;
-        const responseFulfillmentRatio = this._statistics.responseFulfillmentRatio;
+        const responseFulfillmentRatio = rs.beforeCount !== null && rs.afterCount !== null
+            ? 1 // We know count precisely 
+            : this._statistics.responseFulfillmentRatio;
         const viewport = this._viewport;
         const alreadyLoaded = this._itemRange;
         if (!viewport || !alreadyLoaded)
@@ -1341,6 +1357,8 @@ export class VirtualList {
             void this.measureItems();
             return this._lastQuery;
         }
+        if (rs.hasVeryFirstItem && rs.hasVeryLastItem)
+            return this._lastQuery; // We have already loaded all data
 
         const viewportSize = viewport.size;
         const lastQuerySide = this._lastQuery.moveRange.size === 0
@@ -1371,7 +1389,7 @@ export class VirtualList {
             case 'end':
                 // check whether we need to continue loading from the end
                 if (alreadyLoadedTillEnd < loadZoneTrigger) {
-                    if (!rs.hasVeryLastItem) {
+                    if (!rs.hasVeryLastItem && (rs.afterCount === null || rs.afterCount > 5)) {
                         loadEnd = viewport.end + loadZoneSize * 3;
                         loadStart = viewport.start - viewportSize / 2;
                     }
@@ -1387,7 +1405,7 @@ export class VirtualList {
             case 'start':
                 // check whether we need to continue loading from the start
                 if (alreadyLoadedFromStart < loadZoneTrigger) {
-                    if (!rs.hasVeryFirstItem) {
+                    if (!rs.hasVeryFirstItem && (rs.beforeCount === null || rs.beforeCount > 5)) {
                         loadStart = viewport.start - loadZoneSize * 3;
                         loadEnd = viewport.end + viewportSize / 2;
                     }

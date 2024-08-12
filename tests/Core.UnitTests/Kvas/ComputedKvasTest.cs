@@ -61,7 +61,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         var services = CreateServices();
         var kvas = services.GetRequiredService<IKvas>();
 
-        var moment = CpuClock.Now;
+        var moment = CpuClock.Instance.Now;
         using var buffer = new ArrayPoolBufferWriter<byte>();
         SystemJsonSerializer.Default.Write(buffer, moment);
         await kvas.Set("a", buffer.WrittenMemory.ToArray());

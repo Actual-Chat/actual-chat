@@ -1,0 +1,27 @@
+﻿@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase
+@if (_peerChatId.IsNone) {
+    return;
+}
+
+<MenuEntry
+    Icon="icon-question-mark-bubble"
+    Text="Start anonymous chat"
+    Click="@OnStartChatClick">
+</MenuEntry>
+
+@code {
+    private PeerChatId _peerChatId;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
+
+    protected override void OnParametersSet()
+        => ChatState.Id.IsPeerChat(out _peerChatId);
+
+    private void OnStartChatClick() {
+        var otherUserId = _peerChatId.UserIds.OtherThanOrDefault(Hub.AccountUI.OwnAccount.Value.Id);
+        _ = Hub.AuthorUI.StartAnonymousPeerChat(otherUserId);
+    }
+}

@@ -41,6 +41,10 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnName("chat_id")
                         .UseCollation("C");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
                     b.Property<bool>("HasLeft")
                         .HasColumnType("boolean")
                         .HasColumnName("has_left");
@@ -48,6 +52,10 @@ namespace ActualChat.Chat.Migrations
                     b.Property<bool>("IsAnonymous")
                         .HasColumnType("boolean")
                         .HasColumnName("is_anonymous");
+
+                    b.Property<bool>("IsPlaceAuthor")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_place_author");
 
                     b.Property<long>("LocalId")
                         .HasColumnType("bigint")
@@ -76,6 +84,9 @@ namespace ActualChat.Chat.Migrations
 
                     b.HasIndex("UserId", "AvatarId")
                         .HasDatabaseName("ix_authors_user_id_avatar_id");
+
+                    b.HasIndex("Version", "IsPlaceAuthor")
+                        .HasDatabaseName("ix_authors_version_is_place_author");
 
                     b.ToTable("authors");
 
@@ -123,9 +134,19 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description")
+                        .UseCollation("C");
+
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean")
                         .HasColumnName("is_archived");
+
+                    b.Property<bool>("IsPlaceRootChat")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_place_root_chat");
 
                     b.Property<bool>("IsPublic")
                         .HasColumnType("boolean")
@@ -180,8 +201,10 @@ namespace ActualChat.Chat.Migrations
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("ix_chats_created_at");
 
-                    b.HasIndex("Version", "Id")
-                        .HasDatabaseName("ix_chats_version_id");
+                    b.HasIndex("Version")
+                        .HasDatabaseName("ix_chats_version");
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("Version"), new[] { "Id", "IsPlaceRootChat" });
 
                     b.ToTable("chats");
                 });
@@ -437,6 +460,12 @@ namespace ActualChat.Chat.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description")
+                        .UseCollation("C");
 
                     b.Property<bool>("IsPublic")
                         .HasColumnType("boolean")

@@ -3,7 +3,7 @@ using Cysharp.Text;
 
 namespace ActualChat.Mesh;
 
-public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = null) : IMeshLocksBackend
+public abstract class MeshLocksBase(MomentClock? clock = null, ILogger? log = null) : IMeshLocksBackend
 {
     private static bool DebugMode => Constants.DebugMode.MeshLocks;
 
@@ -26,7 +26,7 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
     public TimeSpan UnconditionalCheckPeriod { get; init; } = DefaultUnconditionalCheckPeriod;
     public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.5, 10);
 
-    public IMomentClock Clock { get; init; } = clock ?? MomentClockSet.Default.SystemClock;
+    public MomentClock Clock { get; init; } = clock ?? MomentClockSet.Default.SystemClock;
     public IMeshLocksBackend Backend => this;
 
     public virtual async Task<MeshLockHolder?> TryLock(

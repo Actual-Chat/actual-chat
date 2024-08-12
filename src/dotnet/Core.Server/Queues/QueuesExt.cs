@@ -1,3 +1,8 @@
+using ActualChat.Diagnostics;
+using Microsoft.Extensions.Primitives;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
+
 namespace ActualChat.Queues;
 
 public static class QueuesExt
@@ -8,7 +13,18 @@ public static class QueuesExt
         TCommand command,
         CancellationToken cancellationToken = default)
         where TCommand : ICommand
-        => queues.Enqueue(QueuedCommand.New(command), cancellationToken);
+    {
+        var operationName = command.GetOperationName("enqueue");
+        using var activity = CoreServerInstruments.ActivitySource.StartActivity(operationName, ActivityKind.Producer);
+        Dictionary<string, StringValues>? contextHeaders = null;
+        if (activity is { Context: var activityContext }) {
+            var propagationContext = new PropagationContext(activityContext, Baggage.Current);
+            contextHeaders = new Dictionary<string, StringValues>(StringComparer.Ordinal);
+            Propagators.DefaultTextMapPropagator.Inject(
+                propagationContext, contextHeaders, static (headers, key, value) => headers[key] = value);
+        }
+        return queues.Enqueue(QueuedCommand.New(command, headers: contextHeaders), cancellationToken);
+    }
 
     public static Task Enqueue(this IQueues queues,
         QueuedCommand queuedCommand,

@@ -18,50 +18,15 @@ public static class ChannelExt
         CancellationToken cancellationToken = default)
         => new(source.ReadAllAsync(cancellationToken), cancellationToken);
 
-    public static async ValueTask<Option<T>> TryReadAsync<T>(
+    public static async Task<Option<T>> ReadOrNone<T>(
         this ChannelReader<T> channel,
         CancellationToken cancellationToken = default)
     {
         while (await channel.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-        while (channel.TryRead(out var value))
-            return value;
-        return Option<T>.None;
-    }
-
-    public static bool TryReadResult<T>(
-        this ChannelReader<T> channel,
-        out Result<T> result)
-    {
-        try {
-            if (!channel.TryRead(out var value)) {
-                result = default;
-                return false;
-            }
-            result = value;
-            return true;
-        }
-        catch (Exception e)  when (e is not OperationCanceledException) {
-            result = Result.New<T>(default!, e);
-            return true;
-        }
-    }
-
-    public static async ValueTask<Result<T>> ReadResultAsync<T>(
-        this ChannelReader<T> channel,
-        CancellationToken cancellationToken = default)
-    {
-        try {
-            while (await channel.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-#pragma warning disable CA1849
-            while (channel.TryRead(out var value)) {
+            if (channel.TryRead(out var value)) // Technically it should always pass the "if" here
                 return value;
-#pragma warning restore CA1849
-            }
-            return GetChannelClosedResult<T>();
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            return Result.New<T>(default!, e);
-        }
+
+        return Option<T>.None;
     }
 
     public static async ValueTask WriteResultAsync<T>(

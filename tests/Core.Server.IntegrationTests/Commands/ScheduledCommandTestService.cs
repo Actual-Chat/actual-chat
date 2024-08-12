@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using ActualChat.Queues;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Rpc;
@@ -12,14 +11,14 @@ public interface IScheduledCommandTestService : IComputeService, IBackendService
     Task<int> GetProcessedEventCount(CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task ProcessTestCommand(TestCommand command, CancellationToken cancellationToken);
+    Task OnAddTestEvent1Command(AddTestEvent1Command command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task ProcessTestCommand2(TestCommand2 command, CancellationToken cancellationToken);
+    Task OnAddBothTestEventsCommand(AddBothTestEventsCommand command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task ProcessTestCommand3(TestCommand3 command, CancellationToken cancellationToken);
+    Task OnAddBothTestEventsCommandWithShardKey(AddBothTestEventsCommandWithShardKey command, CancellationToken cancellationToken);
 
     [EventHandler]
-    Task ProcessTestEvent(TestEvent eventCommand, CancellationToken cancellationToken);
+    Task ProcessTestEvent1(TestEvent1 eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task ProcessTestEvent2(TestEvent2 eventCommand, CancellationToken cancellationToken);
 }
@@ -34,7 +33,7 @@ public class ScheduledCommandTestService(IServiceProvider services)
         => Task.FromResult(ProcessedEvents.Count);
 
     [CommandHandler]
-    public virtual async Task ProcessTestCommand(TestCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnAddTestEvent1Command(AddTestEvent1Command command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return;
@@ -42,11 +41,12 @@ public class ScheduledCommandTestService(IServiceProvider services)
         var context = CommandContext.GetCurrent();
         // CommandDbContext is required to enqueue events
         await using var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        context.Operation.AddEvent(new TestEvent(command.Error));
+        context.Operation.AddEvent(new TestEvent1(command.Error));
     }
 
     [CommandHandler]
-    public virtual async Task ProcessTestCommand2(TestCommand2 command, CancellationToken cancellationToken)
+    public virtual async Task OnAddBothTestEventsCommand(
+        AddBothTestEventsCommand command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return;
@@ -54,12 +54,13 @@ public class ScheduledCommandTestService(IServiceProvider services)
         var context = CommandContext.GetCurrent();
         // CommandDbContext is required to enqueue events
         await using var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        context.Operation.AddEvent(new TestEvent(null));
+        context.Operation.AddEvent(new TestEvent1(null));
         context.Operation.AddEvent(new TestEvent2());
     }
 
     [CommandHandler]
-    public virtual async Task ProcessTestCommand3(TestCommand3 command, CancellationToken cancellationToken)
+    public virtual async Task OnAddBothTestEventsCommandWithShardKey(
+        AddBothTestEventsCommandWithShardKey command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return;
@@ -67,34 +68,28 @@ public class ScheduledCommandTestService(IServiceProvider services)
         var context = CommandContext.GetCurrent();
         // CommandDbContext is required to enqueue events
         await using var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        context.Operation.AddEvent(new TestEvent(null));
+        context.Operation.AddEvent(new TestEvent1(null));
         context.Operation.AddEvent(new TestEvent2()); // Same as above, actually, but for UserId.None
     }
 
     [EventHandler]
-    public virtual Task ProcessTestEvent(TestEvent eventCommand, CancellationToken cancellationToken)
+    public virtual Task ProcessTestEvent1(TestEvent1 eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive) {
-            _ = GetProcessedEventCount(default);
-            return Task.CompletedTask;
-        }
-
         if (eventCommand.Error != null)
             throw new InvalidOperationException(eventCommand.Error);
 
         ProcessedEvents.Enqueue(eventCommand);
+        using (Invalidation.Begin())
+            _ = GetProcessedEventCount(default);
         return Task.CompletedTask;
     }
 
     [EventHandler]
     public virtual Task ProcessTestEvent2(TestEvent2 eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive) {
-            _ = GetProcessedEventCount(default);
-            return Task.CompletedTask;
-        }
-
         ProcessedEvents.Enqueue(eventCommand);
+        using (Invalidation.Begin())
+            _ = GetProcessedEventCount(default);
         return Task.CompletedTask;
     }
 }

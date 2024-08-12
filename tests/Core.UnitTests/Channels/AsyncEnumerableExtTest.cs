@@ -145,9 +145,9 @@ public class AsyncEnumerableExtTest(ITestOutputHelper @out) : TestBase(@out)
         var random = new Random();
         var otherSourceLength = random.Next(4, 7);
         var sequenceLength = 100;
-        var source = GenerateRandomUniqueSequence(sequenceLength, testClock, random, cts.Token);
+        var source = GenerateRandomShuffle(sequenceLength, testClock, random, cts.Token);
         var otherSources = Enumerable.Range(0, otherSourceLength)
-            .Select(_ => GenerateRandomUniqueSequence(sequenceLength, testClock, random, cts.Token));
+            .Select(_ => GenerateRandomShuffle(sequenceLength, testClock, random, cts.Token));
 
         cts.CancelAfter(30*1000);
         var otherSourceArray = otherSources.ToArray();
@@ -160,16 +160,13 @@ public class AsyncEnumerableExtTest(ITestOutputHelper @out) : TestBase(@out)
         Out.WriteLine($"Count is {count}");
     }
 
-    private async IAsyncEnumerable<int> GenerateRandomUniqueSequence(
-        int length,
-        ITestClock delayClock,
+    private async IAsyncEnumerable<int> GenerateRandomShuffle(
+        int count,
+        TestClock delayClock,
         Random random,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var randomNumbers = Enumerable.Range(0, length)
-            .Select(i => (i, random: random.Next()))
-            .OrderBy(x => x.random)
-            .Select(x => x.i);
+        var randomNumbers = Enumerable.Range(0, count).Shuffle(random);
         foreach (var number in randomNumbers) {
             if (random.Next(3) != 0)
                 await delayClock.Delay(random.Next(50), cancellationToken).ConfigureAwait(false);

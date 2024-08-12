@@ -1,8 +1,6 @@
 using ActualChat.Chat.Db;
-using ActualChat.Chat.Events;
 using ActualChat.Db;
 using ActualChat.Users;
-using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
@@ -18,7 +16,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     private IDbEntityResolver<string, DbAuthor> DbAuthorResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbAuthor>>();
     private IDbShardLocalIdGenerator<DbAuthor, string> DbAuthorLocalIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbAuthor, string>>();
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
-    private IRolesBackend RolesBackend { get; } = services.GetRequiredService<RolesBackend>();
+    private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
 
     // [ComputeMethod]
     public virtual async Task<AuthorFull?> Get(
@@ -135,6 +133,36 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         return userIds.Select(x => new UserId(x)).ToApiArray();
     }
 
+    // Not a [ComputeMethod]!
+    public async Task<ApiArray<AuthorFull>> ListChangedPlaceAuthors(
+        long minVersion,
+        long maxVersion,
+        AuthorId lastId,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+#pragma warning disable CA1309 // Use ordinal string comparison
+
+        var authorsQuery = lastId.IsNone
+            ? dbContext.Authors.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
+            : dbContext.Authors.Where(x => (x.Version > minVersion && x.Version <= maxVersion)
+                || (x.Version==minVersion && string.Compare(x.Id, lastId.Value) > 0));
+
+#pragma warning restore CA1309 // Use ordinal string comparison
+
+        var dbAuthors = await authorsQuery
+            .Where(x => x.IsPlaceAuthor)
+            .OrderBy(x => x.Version)
+            .ThenBy(x => x.Id)
+            .Take(limit)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbAuthors.Select(x => x.ToModel()).ToApiArray();
+    }
+
     // [CommandHandler]
     public virtual async Task<AuthorFull> OnUpsert(AuthorsBackend_Upsert command, CancellationToken cancellationToken)
     {
@@ -239,6 +267,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
                 IsAnonymous = command.Diff.IsAnonymous ?? account.IsGuestOrNone
             };
             author = DiffEngine.Patch(author, diff);
+            author = author with { CreatedAt = Clocks.SystemClock.Now };
 
             // Check constraints
             if (author.HasLeft)
@@ -495,7 +524,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         return hasChanges;
     }
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnAvatarChangedEvent(AvatarChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -519,7 +548,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         }
     }
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnAuthorLeftPlaceEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)

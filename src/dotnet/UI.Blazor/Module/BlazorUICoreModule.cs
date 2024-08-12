@@ -133,11 +133,10 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         // IBannerViews
         services.AddTypeMapper<IBannerView>();
 
-        // ClientComputedCache:
-        // Temporarily disabled for WASM due to startup issues
+        // RemoteComputedCache
         if (hostKind.IsWasmApp() && !HostInfo.IsTested) {
             services.AddSingleton(_ => new WebClientComputedCache.Options());
-            services.AddSingleton<IClientComputedCache>(c => {
+            services.AddSingleton<IRemoteComputedCache>(c => {
                 var options = c.GetRequiredService<WebClientComputedCache.Options>();
                 return new WebClientComputedCache(options, c);
             });
@@ -172,7 +171,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
                 SleepPeriod = isDev ? TimeSpan.Zero : TimeSpan.FromMinutes(5).ToRandom(0.2),
                 CollectPeriod = TimeSpan.FromSeconds(isDev ? 10 : 60),
                 AccessFilter = isWasmApp
-                    ? static computed => computed.Input.Function is IClientComputeMethodFunction
+                    ? static computed => computed.Input.Function is IRemoteComputeMethodFunction
                     : static _ => true,
                 AccessStatisticsPreprocessor = StatisticsPreprocessor,
                 RegistrationStatisticsPreprocessor = StatisticsPreprocessor,

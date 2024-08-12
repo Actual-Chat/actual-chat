@@ -1,0 +1,86 @@
+﻿@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Kvas
+@inherits ComputedStateComponent<bool>
+
+<Banner
+    IsVisible="@State.Value"
+    Severity="BannerSeverity.Warning"
+    ShowDismissButton="true"
+    Dismiss="@OnDismiss">
+    <Icon>
+        <i class="icon-bell text-2xl"></i>
+    </Icon>
+    <Body>
+        You are the only person in this chat!
+    </Body>
+    <Buttons>
+        <Button
+            Class="btn-transparent unhovered"
+            Click="@OnInviteClick">Add members</Button>
+    </Buttons>
+</Banner>
+
+@code {
+    private IStoredState<bool> _isDismissed = null!;
+    private ILogger? _log;
+
+    private Session Session => ChatContext.Hub.Session();
+    private Chat Chat => ChatContext.Chat;
+    private IRoles Roles => ChatContext.Hub.Roles;
+    private IAuthors Authors => ChatContext.Hub.Authors;
+    private AccountSettings AccountSettings => ChatContext.Hub.AccountSettings();
+    private ChatListUI ChatListUI => ChatContext.Hub.ChatListUI;
+    private ModalUI ModalUI => ChatContext.Hub.ModalUI;
+    private EditMembersUI EditMembersUI => ChatContext.Hub.EditMembersUI;
+    private ILogger Log => _log ??= ChatContext.Hub.LogFor(GetType());
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        var chatId = Chat.Id;
+        var dismissChatId = Chat is { Kind: ChatKind.Place,IsPublic: true } ? Chat.Id.PlaceId.ToRootChatId() :  chatId;
+        var key = $"AddChatMembersBanner_Dismissed_{dismissChatId.Value}";
+        _isDismissed = StateFactory.NewKvasStored<bool>(new(AccountSettings, key));
+    }
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<bool>.Options() {
+                InitialValue = false,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var chat = Chat;
+        var chatId = chat.Id;
+        if (!_isDismissed.WhenRead.IsCompleted)
+            await _isDismissed.WhenRead.ConfigureAwait(false);
+
+        if (!EditMembersUI.CanAddMembers(chat))
+            return false;
+
+        var dismissed = await _isDismissed.Use(cancellationToken).ConfigureAwait(false);
+        if (dismissed)
+            return false;
+
+        var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (allAuthorIds.Count > 1)
+            return false;
+
+        var ownerIds = await Roles.ListOwnerIds(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var hasRegularMembers = allAuthorIds.Except(ownerIds).Any();
+        if (hasRegularMembers)
+            return false;
+
+        return await EditMembersUI.HaveMembersToAdd(chat).ConfigureAwait(false);
+    }
+
+    // Event handlers
+
+    private void OnDismiss()
+        => _isDismissed.Value = true;
+
+    private void OnInviteClick()
+        => ModalUI.Show(new AddMemberModal.Model(Chat.Id));
+}

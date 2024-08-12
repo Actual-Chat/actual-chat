@@ -67,11 +67,38 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingRank());
     }
 
-    private async Task<ApiArray<ContactSearchResult>> Find(string criteria, int expectedCount, int requestCount = 20)
+    [Fact]
+    public async Task ShouldReindexPlaces()
+    {
+        // arrange
+        var bob = await _tester.SignInAsUniqueBob();
+        var accounts = await _tester.CreateAccounts(5);
+        var place1 = await _tester.CreatePlace(false, "Place 1 one", accounts);
+
+        // act
+        await _userContactIndexer.WhenInitialized.WaitAsync(TimeSpan.FromSeconds(10));
+
+        // assert
+        await _tester.SignIn(bob);
+        var searchResults = await Find("User", accounts.Length);
+        searchResults.Should().BeEquivalentTo(bob.BuildSearchResults(accounts), o => o.ExcludingSearchMatch());
+
+        searchResults = await Find("User", accounts.Length, place1.Id);
+        searchResults.Should().BeEquivalentTo(bob.BuildSearchResults(accounts), o => o.ExcludingSearchMatch());
+
+        // act
+        var place2 = await _tester.CreatePlace(false, "Place 2 two", accounts[..3]);
+
+        // assert
+        searchResults = await Find("User", 3, place2.Id);
+        searchResults.Should().BeEquivalentTo(bob.BuildSearchResults(accounts[..3]), o => o.ExcludingSearchMatch());
+    }
+
+    private async Task<ApiArray<ContactSearchResult>> Find(string criteria, int expectedCount, PlaceId? placeId = null)
     {
         ApiArray<ContactSearchResult> searchResults = [];
         await TestExt.When(async () => {
-                searchResults = await _tester.FindPeople(criteria, false, null, requestCount);
+                searchResults = await _tester.FindPeople(criteria, false, placeId, 20);
                 Log.LogInformation("Found {FoundCount} out of expected {ExpectedCount}",
                         searchResults.Count,
                         expectedCount);

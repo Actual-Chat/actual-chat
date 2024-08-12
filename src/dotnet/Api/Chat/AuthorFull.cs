@@ -7,14 +7,16 @@ namespace ActualChat.Chat;
 public sealed partial record AuthorFull(AuthorId Id, long Version = 0) : Author(Id, Version)
 {
     public static new readonly Requirement<AuthorFull> MustExist = Requirement.New(
-        new(() => StandardError.NotFound<Author>()),
-        (AuthorFull? a) => a is { Id.IsNone: false });
+        (AuthorFull? a) => a is { Id.IsNone: false },
+        new(() => StandardError.NotFound<Author>()));
 
     public static new readonly AuthorFull None = new() { Avatar = Avatar.None };
     public static new readonly AuthorFull Loading = new(default, -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
 
     [DataMember, MemoryPackOrder(6)] public UserId UserId { get; init; }
     [DataMember, MemoryPackOrder(7)] public ApiArray<Symbol> RoleIds { get; init; }
+    [DataMember, MemoryPackOrder(10)]public bool IsPlaceAuthor { get; set; }
+    [DataMember, MemoryPackOrder(9)] public Moment CreatedAt { get; init; }
 
     private AuthorFull() : this(default, 0) { }
 

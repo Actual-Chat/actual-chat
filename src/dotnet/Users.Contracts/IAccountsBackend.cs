@@ -10,11 +10,6 @@ public interface IAccountsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<UserId> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken);
 
-    [CommandHandler]
-    public Task OnUpdate(AccountsBackend_Update command, CancellationToken cancellationToken);
-    [CommandHandler]
-    public Task OnDelete(AccountsBackend_Delete command, CancellationToken cancellationToken);
-
     // Non-compute methods
 
     Task<ApiArray<UserId>> ListChanged(
@@ -25,6 +20,18 @@ public interface IAccountsBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
 
     Task<AccountFull?> GetLastChanged(CancellationToken cancellationToken);
+
+    // Commands
+
+    [CommandHandler]
+    public Task OnUpdate(AccountsBackend_Update command, CancellationToken cancellationToken);
+    [CommandHandler]
+    public Task OnDelete(AccountsBackend_Delete command, CancellationToken cancellationToken);
+
+    // Events
+
+    [EventHandler]
+    Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

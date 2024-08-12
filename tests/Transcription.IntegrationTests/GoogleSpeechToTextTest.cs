@@ -13,6 +13,7 @@ public class GoogleSpeechToTextTest(ITestOutputHelper @out, ILogger<GoogleSpeech
     : TestBase(@out, log)
 {
     [Theory(Skip = "For manual runs only")]
+    // [Theory]
     [InlineData("0004-AK.webm", false)]
     [InlineData("0004-AK.webm", true)]
     [InlineData("0004-AK.opus", false)]

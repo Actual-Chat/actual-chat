@@ -8,7 +8,7 @@ public interface IMeshLocks
     TimeSpan UnconditionalCheckPeriod { get; }
     RetryDelaySeq RetryDelays { get; }
 
-    IMomentClock Clock { get; }
+    MomentClock Clock { get; }
     IMeshLocksBackend Backend { get; }
 
     // Methods MUST auto-retry in case they can't reach the lock service

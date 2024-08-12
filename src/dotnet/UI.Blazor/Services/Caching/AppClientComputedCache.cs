@@ -6,10 +6,11 @@ using ActualLab.Fusion.Interception;
 using ActualLab.Internal;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Caching;
+using ActualLab.Rpc.Serialization;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public abstract class AppClientComputedCache : BatchingKvas, IClientComputedCache
+public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCache
 {
     public new record Options : BatchingKvas.Options
     {
@@ -18,13 +19,11 @@ public abstract class AppClientComputedCache : BatchingKvas, IClientComputedCach
             ImmutableHashSet<(Symbol, Symbol)>.Empty.Add((nameof(IAccounts), nameof(IAccounts.GetOwn)));
     }
 
-    protected static readonly TextOrBytes? Miss = default;
-
     protected new Options Settings { get; }
     protected HashSet<(Symbol, Symbol)> ForceFlushFor { get; }
     protected RpcHub Hub { get; }
     protected RpcArgumentSerializer ArgumentSerializer { get; }
-    protected static bool DebugMode => Constants.DebugMode.ClientComputedCache;
+    protected static bool DebugMode => Constants.DebugMode.RemoteComputedCache;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 
     public Task WhenInitialized { get; protected set; } = Task.CompletedTask;
@@ -39,21 +38,22 @@ public abstract class AppClientComputedCache : BatchingKvas, IClientComputedCach
     }
 
     [RequiresUnreferencedCode(UnreferencedCode.Serialization)]
-    public async ValueTask<(T Value, TextOrBytes Data)?> Get<T>(ComputeMethodInput input, RpcCacheKey key, CancellationToken cancellationToken)
+    public async ValueTask<RpcCacheEntry<T>?> Get<T>(
+        ComputeMethodInput input, RpcCacheKey key, CancellationToken cancellationToken)
     {
         var serviceDef = Hub.ServiceRegistry.Get(key.Service);
-        var methodDef = serviceDef?.Get(key.Method);
+        var methodDef = serviceDef?.GetMethod(key.Method);
         if (methodDef == null)
             return null;
 
         try {
-            var resultDataOpt = await Get(key, cancellationToken).ConfigureAwait(false);
-            if (resultDataOpt is not { } resultData)
+            var cacheValue = await Get(key, cancellationToken).ConfigureAwait(false);
+            if (cacheValue.IsNone)
                 return null;
 
             var resultList = methodDef.ResultListFactory.Invoke();
-            ArgumentSerializer.Deserialize(ref resultList, methodDef.AllowResultPolymorphism, resultData);
-            return (resultList.Get0<T>(), resultData);
+            ArgumentSerializer.Deserialize(ref resultList, methodDef.AllowResultPolymorphism, cacheValue.Data);
+            return new(key, cacheValue, resultList.Get0<T>());
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "Cached result read failed");
@@ -61,24 +61,24 @@ public abstract class AppClientComputedCache : BatchingKvas, IClientComputedCach
         }
     }
 
-    public async ValueTask<TextOrBytes?> Get(RpcCacheKey key, CancellationToken cancellationToken = default)
+    public async ValueTask<RpcCacheValue> Get(RpcCacheKey key, CancellationToken cancellationToken = default)
     {
         if (!WhenInitialized.IsCompleted)
-            return null;
+            return default;
 
-        var value = await Get(key.ToString(), cancellationToken).ConfigureAwait(false);
-        var result = value != null ? new TextOrBytes(value) : Miss;
-        DebugLog?.LogDebug("Get({Key}) -> {Result}", key, result.HasValue ? "hit" : "miss");
-        return result;
+        var bytes = await Get(key.ToString(), cancellationToken).ConfigureAwait(false);
+        var cacheValue = FromBytes(bytes);
+        DebugLog?.LogDebug("Get({Key}) -> {Result}", key, cacheValue.IsNone ? "miss" : "hit");
+        return cacheValue;
     }
 
-    public void Set(RpcCacheKey key, TextOrBytes value)
+    public void Set(RpcCacheKey key, RpcCacheValue value)
     {
         if (!WhenInitialized.IsCompleted)
             return;
 
         DebugLog?.LogDebug("Set({Key})", key);
-        _ = Set(key.ToString(), value.Bytes);
+        _ = Set(key.ToString(), ToBytes(value));
         if (ForceFlushFor.Contains((key.Service, key.Method)))
             _ = Flush();
     }
@@ -101,5 +101,46 @@ public abstract class AppClientComputedCache : BatchingKvas, IClientComputedCach
 
         DebugLog?.LogDebug("Clear()");
         return base.Clear(cancellationToken);
+    }
+
+    // Protected methods
+
+    protected static byte[]? ToBytes(RpcCacheValue cacheValue)
+    {
+        if (cacheValue.IsNone)
+            return null;
+
+        var hash = cacheValue.Hash;
+        var data = cacheValue.Data.Bytes;
+        var hashPrefixLength = 1 + (hash.Length << 1);
+        var bytes = new byte[hashPrefixLength + data.Length];
+        // Hash prefix
+        bytes[0] = checked((byte)hash.Length);
+        var hashBytes = MemoryMarshal.Cast<char, byte>(hash.AsSpan());
+        hashBytes.CopyTo(bytes.AsSpan(1));
+        // Data suffix
+        data.CopyTo(bytes.AsSpan(hashPrefixLength));
+        return bytes;
+    }
+
+    protected RpcCacheValue FromBytes(byte[]? bytes)
+    {
+        if (bytes == null || bytes.Length < 1)
+            return default;
+
+        var byteHashLength = bytes[0] << 1;
+        if (byteHashLength == 0) // Empty hash
+            return new RpcCacheValue(new TextOrBytes(bytes.AsMemory(1)), "");
+
+        if (byteHashLength != 48) {
+            // Current hash length is 24 characters
+            DebugLog?.LogWarning("Invalid hash length: {HashLength}", byteHashLength >> 1);
+            return default;
+        }
+
+        var span = bytes.AsSpan(1);
+        var hash = new string(MemoryMarshal.Cast<byte, char>(span[..byteHashLength]));
+        var data = bytes.AsMemory(1 + byteHashLength);
+        return new RpcCacheValue(new TextOrBytes(data), hash);
     }
 }

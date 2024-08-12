@@ -13,8 +13,8 @@ public sealed partial record Contact(
     ) : IHasId<ContactId>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly Requirement<Contact> MustExist = Requirement.New(
-        new(() => StandardError.NotFound<Contact>()),
-        (Contact? c) => c is { Id.IsNone: false });
+        (Contact? c) => c is { Id.IsNone: false },
+        new(() => StandardError.NotFound<Contact>()));
 
     [DataMember, MemoryPackOrder(2)] public UserId UserId { get; init; }
     [DataMember, MemoryPackOrder(3)] public Moment TouchedAt { get; init; }

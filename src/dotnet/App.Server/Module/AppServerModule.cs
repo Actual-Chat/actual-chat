@@ -1,17 +1,11 @@
 using System.IO.Compression;
 using ActualChat.App.Server.Health;
-using ActualChat.Chat.Module;
-using ActualChat.Contacts.Module;
-using ActualChat.Db.Module;
+using ActualChat.Db.Diagnostics;
+using ActualChat.Diagnostics;
 using ActualChat.Hosting;
-using ActualChat.Invite.Module;
-using ActualChat.Media.Module;
 using ActualChat.Module;
-using ActualChat.Notification.Module;
 using ActualChat.Redis.Module;
-using ActualChat.Search.Module;
-using ActualChat.Streaming.Module;
-using ActualChat.Users.Module;
+using ActualLab.CommandR.Diagnostics;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -24,11 +18,11 @@ using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using ActualLab.Diagnostics;
-using ActualLab.Fusion.EntityFramework;
+using ActualLab.Fusion.Diagnostics;
 using ActualLab.IO;
-using ActualLab.Rpc;
+using ActualLab.Rpc.Diagnostics;
 using ActualLab.Rpc.Server;
+using ActualChat.MLSearch.Diagnostics;
 
 namespace ActualChat.App.Server.Module;
 
@@ -116,13 +110,14 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         app.UseAuthentication();
         app.UseEndpoints(endpoints => {
             endpoints.MapAppHealth();
-            endpoints.MapAppMetrics();
+            // Disabled as we disabled prometheus endpoint recently
+            // endpoints.MapAppMetrics();
             endpoints.MapBlazorHub();
             endpoints.MapRpcWebSocketServer();
             endpoints.MapControllers();
             endpoints.MapFallbackToPage("/_Host");
         });
-        app.UseOpenTelemetryPrometheusScrapingEndpoint();
+        // app.UseOpenTelemetryPrometheusScrapingEndpoint();
     }
 
     protected override void InjectServices(IServiceCollection services)
@@ -237,7 +232,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         });
 
         // OpenTelemetry
-        services.AddSingleton<OtelMetrics>();
         var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;
         if (openTelemetryEndpoint.IsNullOrEmpty())
             openTelemetryEndpoint = "localhost";
@@ -246,6 +240,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         var openTelemetryEndpointUri = $"http://{host}:{port.Format()}".ToUri();
         Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
         services.AddOpenTelemetry()
+            .ConfigureResource(builder => _ = Env.IsDevelopment()
+                    ? builder.AddService("App", "actualchat", AppVersion, false, "dev")
+                    : builder.AddService("App", "actualchat", AppVersion))
             .WithMetrics(builder => builder
                 // gcloud exporter doesn't support some of metrics yet:
                 // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
@@ -254,19 +251,23 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddRuntimeInstrumentation()
                 .AddProcessInstrumentation()
                 .AddMeter("Npgsql") // Npgsql meter at Npgsql.MetricsReporter
-                .AddMeter(typeof(RpcHub).GetMeter().Name) // ActualLab.Rpc
-                .AddMeter(typeof(ICommand).GetMeter().Name) // ActualLab.Commander
-                .AddMeter(typeof(IComputed).GetMeter().Name) // ActualLab.Fusion
+                .AddMeter(RpcInstruments.Meter.Name) // ActualLab.Rpc
+                .AddMeter(CommanderInstruments.Meter.Name) // ActualLab.Commander
+                .AddMeter(FusionInstruments.Meter.Name) // ActualLab.Fusion
                 // Our own meters (one per assembly)
-                .AddMeter(AppMeter.Name)
-                .AddMeter(MeterExt.Unknown.Name) // Unknown meter
-                .AddPrometheusExporter(cfg => { // OtlpExporter doesn't work for metrics ???
-                    cfg.ScrapeEndpointPath = "/metrics";
-                    cfg.ScrapeResponseCacheDurationMilliseconds = 300;
-                    // commented out as OpenTelemetry.Exporter.Prometheus.AspNetCore 1.7.0-rc.1 doesn't support it
-                    // and 1.8.0 doesn't allow the managed Prometheus collector to collect metrics
-                    // cfg.DisableTotalNameSuffixForCounters = true;
-                })
+                .AddMeter(DbInstruments.Meter.Name)
+                .AddMeter(CoreServerInstruments.Meter.Name)
+                .AddMeter(AppInstruments.Meter.Name)
+                .AddMeter(AppUIInstruments.Meter.Name)
+                .AddMeter(MLSearchInstruments.Meter.Name)
+                // Disabled prometheus endpoint to test Otlp
+                // .AddPrometheusExporter(cfg => { // OtlpExporter doesn't work for metrics ???
+                //     cfg.ScrapeEndpointPath = "/metrics";
+                //     cfg.ScrapeResponseCacheDurationMilliseconds = 300;
+                //     // commented out as OpenTelemetry.Exporter.Prometheus.AspNetCore 1.7.0-rc.1 doesn't support it
+                //     // and 1.8.0 doesn't allow the managed Prometheus collector to collect metrics
+                //     // cfg.DisableTotalNameSuffixForCounters = true;
+                // })
                 .AddOtlpExporter(cfg => {
                     cfg.ExportProcessorType = ExportProcessorType.Batch;
                     cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions {
@@ -281,29 +282,15 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             )
             .WithTracing(builder => builder
                 .SetErrorStatusOnException()
-                .AddSource(typeof(RpcHub).GetActivitySource().Name) // ActualLab.Rpc
-                .AddSource(typeof(ICommand).GetActivitySource().Name) // ActualLab.Commander
-                .AddSource(typeof(IComputed).GetActivitySource().Name) // ActualLab.Fusion
-                .AddSource(typeof(IAuthBackend).GetActivitySource().Name) // ActualLab.Fusion.Ext.Services - auth, etc.
-                .AddSource(typeof(DbKey).GetActivitySource().Name) // ActualLab.Fusion.EntityFramework
+                .AddSource(RpcInstruments.ActivitySource.Name) // ActualLab.Rpc
+                .AddSource(CommanderInstruments.ActivitySource.Name) // ActualLab.Commander
+                .AddSource(FusionInstruments.ActivitySource.Name) // ActualLab.Fusion
                 // Our own activity sources (one per assembly)
-                .AddSource(AppTrace.Name)
-                .AddSource(typeof(CoreModule).GetActivitySource().Name)
-                .AddSource(typeof(CoreServerModule).GetActivitySource().Name)
-                .AddSource(typeof(DbModule).GetActivitySource().Name)
-                .AddSource(typeof(RedisModule).GetActivitySource().Name)
-                .AddSource(typeof(ApiModule).GetActivitySource().Name)
-                .AddSource(typeof(ApiClientModule).GetActivitySource().Name)
-                .AddSource(typeof(StreamingServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(ChatServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(ContactsServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(InviteServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(MediaServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(SearchServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(NotificationServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(UsersServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(AppServerModule).GetActivitySource().Name)
-                .AddSource(ActivitySourceExt.Unknown.Name) // Unknown meter
+                .AddSource(DbInstruments.ActivitySource.Name)
+                .AddSource(CoreServerInstruments.ActivitySource.Name)
+                .AddSource(AppInstruments.ActivitySource.Name)
+                .AddSource(AppUIInstruments.ActivitySource.Name)
+                .AddSource(MLSearchInstruments.ActivitySource.Name)
                 .AddAspNetCoreInstrumentation(opt => {
                     var excludedPaths = new PathString[] {
                         "/favicon.ico",
@@ -331,8 +318,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                     cfg.Protocol = OtlpExportProtocol.Grpc;
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })
-            )
-            .ConfigureResource(builder => builder
-                .AddService("App", "actualchat", AppVersion));
+            );
     }
 }

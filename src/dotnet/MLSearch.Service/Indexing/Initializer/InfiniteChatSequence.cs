@@ -8,7 +8,7 @@ internal interface IInfiniteChatSequence
 }
 
 public class InfiniteChatSequence(
-    IMomentClock clock,
+    MomentClock clock,
     IChatsBackend chats,
     ILogger<InfiniteChatSequence> log
 ) : IInfiniteChatSequence
@@ -27,7 +27,12 @@ public class InfiniteChatSequence(
             ApiArray<Chat.Chat> batch;
             try {
                 batch = await chats
-                    .ListChanged(lastVersion, long.MaxValue, lastChatId, BatchSize, cancellationToken)
+                    .ListChanged(new ChangedChatsQuery {
+                            MinVersion = lastVersion,
+                            LastId = lastChatId,
+                            Limit = BatchSize,
+                        },
+                        cancellationToken)
                     .ConfigureAwait(false);
             }
             catch(Exception e) when (!e.IsCancellationOf(cancellationToken)) {

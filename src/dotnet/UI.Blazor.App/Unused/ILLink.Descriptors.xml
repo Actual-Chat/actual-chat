@@ -12,7 +12,7 @@
   <assembly fullname="ActualChat.Audio.UI.Blazor" />
   <assembly fullname="ActualChat.Chat" />
   <assembly fullname="ActualChat.Chat.Contracts" />
-  <assembly fullname="ActualChat.Chat.UI.Blazor" />
+  <assembly fullname="ActualChat.UI.Blazor.App" />
   <assembly fullname="ActualChat.Contacts" />
   <assembly fullname="ActualChat.Contacts.Contracts" />
   <assembly fullname="ActualChat.Contacts.UI.Blazor" />

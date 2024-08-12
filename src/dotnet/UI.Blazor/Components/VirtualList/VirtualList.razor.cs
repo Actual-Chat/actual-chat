@@ -138,9 +138,8 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         var computed = Computed.GetCurrent();
         try {
             data = await DataSource.GetData(query, lastData, cancellationToken).ConfigureAwait(false);
-            if (computed is IComputedImpl impl)
-                if (impl.Used.Any(ci => ci.IsInvalidated()))
-                    return lastData; // current computed is already invalidated - so it will be recalculated shortly
+            if (ComputedImpl.GetDependencies(computed).Any(d => d.IsInvalidated()))
+                return lastData; // Current computed is already invalidated, so no reason to waste our time re-rendering right now
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "DataSource.Invoke(query) failed on query = {Query}", query);

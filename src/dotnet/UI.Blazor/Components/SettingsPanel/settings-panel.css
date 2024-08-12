@@ -80,6 +80,16 @@ body.hoverable .settings-panel > .c-tabs .c-tab-item:hover i {
     @apply h-10;
     @apply bg-03;
 }
+.settings-panel > .c-tabs .c-footer > .c-content {
+    @apply flex-none flex-x items-center justify-between gap-x-2;
+    @apply px-4;
+    @apply text-xxs;
+}
+.settings-panel > .c-tabs .c-footer > .c-content > .c-version {
+    @apply flex-1;
+    @apply truncate;
+    @apply text-03 font-medium;
+}
 
 /* Tab content */
 .settings-tab {

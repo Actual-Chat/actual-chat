@@ -10,9 +10,9 @@ public readonly partial struct OldLinearMap
     private readonly float[] _targetPoints;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public float[] SourcePoints => _sourcePoints ?? Array.Empty<float>();
+    public float[] SourcePoints => _sourcePoints ?? [];
     [DataMember(Order = 1), MemoryPackOrder(1)]
-    public float[] TargetPoints => _targetPoints ?? Array.Empty<float>();
+    public float[] TargetPoints => _targetPoints ?? [];
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public OldLinearMap(float[] sourcePoints, float[] targetPoints)

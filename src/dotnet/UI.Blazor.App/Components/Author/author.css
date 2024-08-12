@@ -1,0 +1,8 @@
+.author-circle-group {
+    @apply flex-x;
+    @apply pr-3;
+}
+.author-circle-group-item {
+    @apply -mr-3;
+    @apply border border-bg-02 rounded-full;
+}

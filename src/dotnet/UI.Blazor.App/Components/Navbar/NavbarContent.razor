@@ -1,0 +1,84 @@
+@using ActualChat.Hosting
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits OwnAccountComponentBase
+@{
+    var m = State.Value;
+    var placeId = PlaceId.None;
+    var isChats = NavbarUI.SelectedGroupId == NavbarGroupIds.Chats || NavbarUI.IsPlaceSelected(out placeId);
+    if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId)) {
+        isChats = true;
+        placeId = pinnedChatId.PlaceId;
+    }
+    var isAdministration = NavbarUI.SelectedGroupId == NavbarGroupIds.Administration;
+    var isTestPages = NavbarUI.SelectedGroupId == NavbarGroupIds.TestPages;
+    var cls = isChats ? "navbar-chats" : "navbar-pages";
+}
+
+<div class="navbar-content">
+    <div class="navbar-group @cls">
+        @if (isChats) {
+            <ChatListNavbarWidget PlaceId="@placeId" />
+        }
+        else if (isAdministration && m.IsAdmin) {
+            <NavbarItem ReplaceOnPrefix="/admin/" Url="/admin/user-invites">Invite Users</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/admin/" Url="/admin/copy-chat2place">Copy chat to place</NavbarItem>
+        }
+        else if (isTestPages && m.IsAdmin) {
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/virtual-list">Virtual List</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-player">Audio Player</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-recorder">Audio Recorder</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/render-slot">Render Slot</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/ui-colors">UI Colors</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/place-info">Place Info</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/discover">Discover</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/error-barrier">Error Barrier</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/toasts">Toasts</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/dive-in-modal-test">Dive-in Modal</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/incoming-share-modal-test">Incoming Share Modal</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/reconnect-overlay">Reconnect Overlay</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/svg-cats">SVG Cats</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/loading-overlay">Loading Overlay</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/mic-permission-guides">Mic Permission Guides</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/skeletons">Skeletons</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/requirements">Requirements</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/features">Features</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/compute-state">Compute State</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/markup-editor">Markup Editor</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/auth">Authentication</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/blazor">Blazor</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/js">JavaScript</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/embedded">Embedded</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/totp">Totp</NavbarItem>
+            @if (HostInfo.HostKind != HostKind.MauiApp && HostInfo.IsDevelopmentInstance) {
+                <NavbarItem ReplaceOnPrefix="/test/" Url="/test/external-contacts">External Contacts</NavbarItem>
+            }
+            @if (HostInfo.HostKind == HostKind.MauiApp) {
+                <NavbarItem ReplaceOnPrefix="/test/" Url="/test/maui">Maui</NavbarItem>
+            }
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/system">System</NavbarItem>
+            @if (HostInfo.HostKind != HostKind.MauiApp && HostInfo.IsDevelopmentInstance) {
+                <NavbarItem ReplaceOnPrefix="/test/" Url="/test/email-templates">Email templates</NavbarItem>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    private EventHandler<NavbarGroupChangedEventArgs> _navbarUIOnSelectedGroupChanged = null!;
+
+    protected override void OnInitialized() {
+        _navbarUIOnSelectedGroupChanged = NavbarUIOnSelectedGroupChanged;
+        NavbarUI.SelectedGroupChanged += _navbarUIOnSelectedGroupChanged;
+    }
+
+    public override ValueTask DisposeAsync() {
+        NavbarUI.SelectedGroupChanged -= _navbarUIOnSelectedGroupChanged;
+        return base.DisposeAsync();
+    }
+
+    private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
+        => StateHasChanged();
+}

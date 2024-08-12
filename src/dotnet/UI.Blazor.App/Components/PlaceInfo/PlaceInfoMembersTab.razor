@@ -1,0 +1,38 @@
+@{
+    var m = Data;
+}
+
+<div class="members-list">
+    @foreach (var authorId in m.AuthorIds) {
+        var isOwn = m.IsOwn(authorId);
+        var isOwner = m.IsOwner(authorId);
+        var statusText = FormatStatusText(isOwner, isOwn);
+        var showMenu = !(isOwn || isOwner);
+        var dataMenuAttr = showMenu ? MenuRef.New<EditPlaceMemberMenu>(authorId).ToString() : null;
+        <li data-menu="@dataMenuAttr"
+            data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+            <div class="grow">
+                <AuthorBadge
+                    @key="@authorId"
+                    AuthorSid="@authorId"
+                    ShowPresence="true"
+                    StatusText="@statusText" />
+            </div>
+        </li>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public PlaceInfo.Model Data { get; set; } = null!;
+
+    private static string? FormatStatusText(bool isOwner, bool isOwn) {
+        var statusText = isOwner ? "Owner" : null;
+        if (isOwn) {
+            if (statusText != null)
+                statusText += ", your profile";
+            else
+                statusText = "Your profile";
+        }
+        return statusText;
+    }
+}

@@ -22,10 +22,12 @@ public class GoogleTranscriberTest(
         = configuration.Settings<CoreServerSettings>(nameof(CoreSettings));
 
     [Theory(Skip = "For manual runs only")]
+    // [Theory]
+    // [InlineData("3.webm", true)]
     // [InlineData("file.webm", false)]
     // [InlineData("file.webm", true)]
     // [InlineData("0002-AK.opuss", true)]
-    // // [InlineData("0003-AK.opuss", true)] - fails as too short???
+    // [InlineData("0003-AK.opuss", true)] - fails as too short???
     // [InlineData("tail-cut.opuss", true)]
     [InlineData("truncated.opuss", true)]
     public async Task TranscribeWorks(string fileName, bool withDelay)
@@ -63,6 +65,7 @@ public class GoogleTranscriberTest(
     }
 
     [Fact(Skip = "Depends on Google API")]
+    // [Fact]
     public async Task ProperTextMapTest()
     {
         var fileName = "0000-AY.webm";

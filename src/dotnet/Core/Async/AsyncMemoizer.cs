@@ -36,10 +36,8 @@ public sealed class AsyncMemoizer<T>
         try {
             var reader = channel.Reader;
             while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-#pragma warning disable CA1849
             while (reader.TryRead(out var item))
                 yield return item;
-#pragma warning restore CA1849
         }
         finally {
             channel.Writer.TryComplete();
@@ -58,10 +56,8 @@ public sealed class AsyncMemoizer<T>
         try {
             var reader = channel.Reader;
             while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-#pragma warning disable CA1849
             while (reader.TryRead(out var item))
                 yield return item;
-#pragma warning restore CA1849
         }
         finally {
             channel.Writer.TryComplete();
@@ -129,7 +125,7 @@ public sealed class AsyncMemoizer<T>
     {
         var closedTargets = new HashSet<ChannelWriter<T>>();
         var buffer = await SwitchToNewBuffer(null).ConfigureAwait(false);
-        var newTargetsReadTask = _newTargets.Reader.TryReadAsync(cancellationToken).AsTask();
+        var newTargetsReadTask = _newTargets.Reader.ReadOrNone(cancellationToken);
         while (newTargetsReadTask != null || !buffer.IsCompleted) {
             if (newTargetsReadTask != null)
                 await Task.WhenAny(newTargetsReadTask, buffer.WhenOutdated).ConfigureAwait(false);
@@ -150,7 +146,7 @@ public sealed class AsyncMemoizer<T>
                         .ConfigureAwait(false);
                     if (success)
                         _targets.Add(newTarget.Target);
-                    newTargetsReadTask = _newTargets.Reader.TryReadAsync(cancellationToken).AsTask();
+                    newTargetsReadTask = _newTargets.Reader.ReadOrNone(cancellationToken);
                 }
                 else
                     newTargetsReadTask = null;

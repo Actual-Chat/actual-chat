@@ -1,5 +1,4 @@
 using ActualChat.Chat;
-using ActualChat.Chat.Events;
 using ActualChat.Contacts.Db;
 using ActualChat.Mesh;
 using ActualChat.Users;
@@ -525,7 +524,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
     // Events
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -546,7 +545,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
     }
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -592,7 +591,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
-    [EventHandler]
+    // [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)

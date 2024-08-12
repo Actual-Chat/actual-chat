@@ -1,4 +1,4 @@
-﻿using ActualChat.Chat.UI.Blazor.Services;
+﻿using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using Android.Content;
 using Android.OS;
@@ -28,6 +28,9 @@ public class IncomingShareHandler
         var action = intent.Action;
         if (!OrdinalEquals(action, Intent.ActionSend) &&
             !OrdinalEquals(action, Intent.ActionSendMultiple))
+            return;
+
+        if (intent.IsFromHistory())
             return;
 
         Log.LogInformation("-> IncomingShare, send intent is detected. Action: {Action}", action);
