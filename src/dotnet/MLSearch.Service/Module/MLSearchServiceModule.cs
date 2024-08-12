@@ -1,11 +1,15 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.MLSearch.Bot;
+using ActualChat.MLSearch.Bot.External;
+using ActualChat.MLSearch.Bot.Tools;
 using ActualChat.MLSearch.Bot.External;
 using ActualChat.MLSearch.Bot.Tools;
 using ActualChat.MLSearch.Db;
@@ -20,8 +24,11 @@ using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.Redis.Module;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using System.Security.Cryptography.X509Certificates;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography.X509Certificates;
 // Note: Temporary disabled. Will be re-enabled with OpenAPI PR
@@ -42,6 +49,15 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 {
     private readonly ILogger<MLSearchServiceModule> _log = moduleServices.LogFor<MLSearchServiceModule>();
 
+    public void ConfigureApp(IApplicationBuilder app)
+    {
+        if (HostInfo.HasRole(HostRole.Api)) {
+            app.UseEndpoints(endpoints => {
+                endpoints.MapControllers();
+            });
+            app.UseRouting();
+        }
+    }
     public void ConfigureApp(IApplicationBuilder app)
     {
         if (HostInfo.HasRole(HostRole.Api)) {
