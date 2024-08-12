@@ -157,7 +157,8 @@ public partial class GoogleTranscriber : ITranscriber
             Recognizer = recognizerName,
         }).ConfigureAwait(false);
 
-        var state = new GoogleTranscribeState(audioSource, options, recognizeStream, output);
+        var state = new GoogleTranscribeState(audioSource, options, recognizeStream, output)
+            .Append("... ", 1);
         // We want to stop both tasks here on any failure, so...
 #pragma warning disable CA2000
         var cts = cancellationToken.CreateLinkedTokenSource();
@@ -227,6 +228,7 @@ public partial class GoogleTranscriber : ITranscriber
         try {
             var output = state.Output;
             var responses = (IAsyncEnumerable<StreamingRecognizeResponse>)state.RecognizeStream.GetResponseStream();
+            await output.WriteAsync(state.Unstable, cancellationToken).ConfigureAwait(false);
             // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
             await foreach (var transcript in ProcessResponses(state, responses).ConfigureAwait(false))
                 await output.WriteAsync(transcript, cancellationToken).ConfigureAwait(false);
