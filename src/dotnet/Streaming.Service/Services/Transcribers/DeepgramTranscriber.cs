@@ -5,9 +5,9 @@ using ActualChat.Audio;
 using ActualChat.Streaming.Module;
 using ActualChat.Transcription;
 using Deepgram;
-using Deepgram.Common;
-using Deepgram.CustomEventArgs;
-using Deepgram.Models;
+using Deepgram.Constants;
+using Deepgram.Models.Authenticate.v1;
+using Deepgram.Models.Listen.v1.WebSocket;
 
 namespace ActualChat.Streaming.Services.Transcribers;
 
@@ -27,7 +27,6 @@ public partial class DeepgramTranscriber : ITranscriber
     private MomentClockSet Clocks { get; }
     private StreamingSettings StreamingSettings { get; }
     private OggOpusStreamConverter OggOpusStreamConverter { get; }
-    private DeepgramClient DeepgramClient { get; }
 
     public DeepgramTranscriber(IServiceProvider services)
     {
@@ -37,8 +36,6 @@ public partial class DeepgramTranscriber : ITranscriber
         OggOpusStreamConverter = new OggOpusStreamConverter(new OggOpusStreamConverter.Options {
             PageDuration = TimeSpan.FromMilliseconds(200),
         });
-        var credentials = new Credentials(StreamingSettings.DeepgramKey);
-        DeepgramClient = new DeepgramClient(credentials);
     }
 
     public async Task Transcribe(
@@ -48,38 +45,45 @@ public partial class DeepgramTranscriber : ITranscriber
         ChannelWriter<Transcript> output,
         CancellationToken cancellationToken = default)
     {
-        using var deepgramLive = DeepgramClient.CreateLiveTranscriptionClient();
-        var transcriptState = new DeepgramTranscribeState(audioSource, deepgramLive, output);
+        using var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var deepgramClient = new ListenWebSocketClient(
+            StreamingSettings.DeepgramKey,
+            new DeepgramWsClientOptions {
+                KeepAlive = true,
+            });
+
+        var transcriptState = new DeepgramTranscribeState(audioSource, output);
         var whenCompletedSource = TaskCompletionSourceExt.New();
         var whenConnectedSource = TaskCompletionSourceExt.New();
         var whenCompleted = whenCompletedSource.Task;
         var whenConnected = whenConnectedSource.Task;
 
+
         Exception? error = null;
         try {
-            deepgramLive.ConnectionOpened += HandleConnectionOpened;
-            deepgramLive.ConnectionClosed += HandleConnectionClosed;
-            deepgramLive.ConnectionError += HandleConnectionError;
-            deepgramLive.TranscriptReceived += HandleTranscriptReceived;
+            deepgramClient.Subscribe(HandleConnectionOpened);
+            deepgramClient.Subscribe(HandleConnectionClosed);
+            deepgramClient.Subscribe(HandleConnectionError);
+            deepgramClient.Subscribe(HandleTranscriptReceived);
 
             var language = GetSupportedLanguage(options);
-            await deepgramLive.StartConnectionAsync(new LiveTranscriptionOptions {
+            var liveSchema = new LiveSchema {
                 Language = language,
                 Punctuate = true,
                 Diarize = false,
                 Encoding = AudioEncoding.OggOpus,
                 Channels = 1,
                 InterimResults = true,
-                Model = language is "ru" or "zh-CN"
-                    ? "general"
-                    : "nova-2",
-            }).ConfigureAwait(false);
+                Model = "nova-2",
+            };
+            await deepgramClient.Connect(liveSchema, tokenSource)
+                .ConfigureAwait(false);
 
             await whenConnected.ConfigureAwait(false);
-            await PushAudio(transcriptState, cancellationToken).ConfigureAwait(false);
+            await PushAudio(transcriptState, deepgramClient, cancellationToken).ConfigureAwait(false);
 
             await whenCompleted.ConfigureAwait(false);
-            await deepgramLive.StopConnectionAsync().ConfigureAwait(false);
+            await deepgramClient.Stop(tokenSource).ConfigureAwait(false);
         }
         catch (Exception e) {
             error = e;
@@ -113,24 +117,25 @@ public partial class DeepgramTranscriber : ITranscriber
         }
 
         [SuppressMessage("ReSharper", "AccessToDisposedClosure")]
-        void HandleConnectionOpened(object? sender, ConnectionOpenEventArgs e)
+        void HandleConnectionOpened(object? sender, OpenResponse e)
             => whenConnectedSource.SetResult();
 
-        void HandleTranscriptReceived(object? sender, TranscriptReceivedEventArgs e)
-            => ProcessResponse(transcriptState, e.Transcript);
+        void HandleTranscriptReceived(object? sender, ResultResponse e)
+            => ProcessResponse(transcriptState, e);
 
-        void HandleConnectionClosed(object? sender, ConnectionClosedEventArgs e)
+        void HandleConnectionClosed(object? sender, CloseResponse e)
             => whenCompletedSource.TrySetResult();
 
-        void HandleConnectionError(object? sender, ConnectionErrorEventArgs e)
-            => whenCompletedSource.TrySetException(e.Exception);
+        void HandleConnectionError(object? sender, ErrorResponse e)
+            => whenCompletedSource.TrySetException(new TranscriptionException(e.Message, e.Description));
     }
 
-    private async Task PushAudio(DeepgramTranscribeState state,
+    private async Task PushAudio(
+        DeepgramTranscribeState state,
+        ListenWebSocketClient deepgramClient,
         CancellationToken cancellationToken)
     {
         var audioSource = state.AudioSource;
-        var deepgramLive = state.DeepgramLive;
         try {
             var byteFrameStream = OggOpusStreamConverter.ToByteFrameStream(audioSource, cancellationToken);
             var clock = Clocks.CpuClock;
@@ -141,7 +146,7 @@ public partial class DeepgramTranscriber : ITranscriber
                 if (delay > TimeSpan.Zero)
                     await clock.Delay(delay, cancellationToken).ConfigureAwait(false);
 
-                deepgramLive.SendData(chunk);
+                deepgramClient.SendBinary(chunk);
 
                 if (lastFrame != null) {
                     var processedAudioDuration = (lastFrame.Offset + lastFrame.Duration).Positive();
@@ -159,15 +164,15 @@ public partial class DeepgramTranscriber : ITranscriber
             throw;
         }
         finally {
-            await deepgramLive.FinishAsync().ConfigureAwait(false);
+            deepgramClient.SendFinalize();
         }
     }
 
-    private static void ProcessResponse(DeepgramTranscribeState state, LiveTranscriptionResult result)
+    private static void ProcessResponse(DeepgramTranscribeState state, ResultResponse result)
     {
-        var isFinal = result.IsFinal;
-        var suffix = result.Channel?.Alternatives.FirstOrDefault()?.Transcript ?? "";
-        var endTime = (float)result.Duration;
+        var isFinal = result.IsFinal ?? false;
+        var suffix = result.Channel?.Alternatives?.FirstOrDefault()?.Transcript ?? "";
+        var endTime = (float?)result.Duration ?? 0;
         var appendToUnstable = state.IsLastAppendStable;
         if (isFinal) {
             if (TryParseFinal(state, result, out suffix, out var map))
@@ -186,7 +191,7 @@ public partial class DeepgramTranscriber : ITranscriber
 
     private static bool TryParseFinal(
         DeepgramTranscribeState state,
-        LiveTranscriptionResult result,
+        ResultResponse result,
         out string text,
         out LinearMap timeMap)
     {
@@ -195,7 +200,7 @@ public partial class DeepgramTranscriber : ITranscriber
         var lastStableDuration = lastStable.TimeMap.YRange.End;
 
         var alternative = result.Channel?.Alternatives?.FirstOrDefault();
-        var endTime = (float)result.Start + (float)result.Duration;
+        var endTime = ((float?)result.Start + (float?)result.Duration) ?? 0;
         if (alternative == null || alternative.Transcript.IsNullOrEmpty()) {
             text = "";
             return false;
@@ -208,15 +213,19 @@ public partial class DeepgramTranscriber : ITranscriber
         var mapPoints = new List<Vector2>();
         var parsedOffset = 0;
         var parsedDuration = lastStableDuration;
-        foreach (var word in alternative.Words) {
-            var wordStartTime = (float)word.Start;
+        foreach (var word in alternative.Words ?? []) {
+            var wordStartTime = (float?)word.Start ?? 0;
             if (wordStartTime < parsedDuration)
                 continue;
+
+            if (word.PunctuatedWord == null)
+                continue;
+
             var wordStart = text.OrdinalIgnoreCaseIndexOf(word.PunctuatedWord, parsedOffset);
             if (wordStart < 0)
                 continue;
 
-            var wordEndTime = (float)word.End;
+            var wordEndTime = (float?)word.End ?? 0;
             var wordEnd = wordStart + word.PunctuatedWord.Length;
 
             mapPoints.Add(new Vector2(lastStableTextLength + wordStart, wordStartTime));

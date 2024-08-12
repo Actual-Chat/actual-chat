@@ -1,19 +1,16 @@
 using ActualChat.Audio;
 using ActualChat.Transcription;
-using Deepgram.Interfaces;
 
 namespace ActualChat.Streaming.Services.Transcribers;
 
 public class DeepgramTranscribeState(
     AudioSource audioSource,
-    ILiveTranscriptionClient deepgramLive,
     ChannelWriter<Transcript> output)
 {
     private Transcript _stable = Transcript.Empty;
     private float _processedAudioDuration;
 
     public AudioSource AudioSource { get; } = audioSource;
-    public ILiveTranscriptionClient DeepgramLive { get; } = deepgramLive;
     public ChannelWriter<Transcript> Output { get; } = output;
 
     public bool IsLastAppendStable { get; private set; }
