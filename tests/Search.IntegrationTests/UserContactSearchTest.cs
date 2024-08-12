@@ -128,6 +128,49 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     }
 
     [Fact]
+    public async Task ShouldFindByMultipleWords()
+    {
+        // arrange
+        var bob = await _tester.SignInAsUniqueBob();
+        await _tester.SignInAsAlice();
+        var places = await _tester.CreatePlaceContacts(bob);
+        var people = await _tester.CreateUserContacts(bob, places);
+
+        // act
+        var updates = people.ToIndexedUserContacts(places).ToApiArray();
+        await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, []));
+        await _commander.Call(new SearchBackend_Refresh(true));
+        await _tester.SignIn(bob);
+
+        // act
+        var searchResults = await _tester.FindPeople("user tw", true);
+
+        // assert
+        searchResults.Should()
+            .BeEquivalentTo(
+                bob.BuildSearchResults(people.Friend1FromPublicPlace2(),
+                    people.Friend1FromPrivatePlace2(),
+                    people.Friend2FromPublicPlace1(),
+                    people.Friend2FromPublicPlace2(),
+                    people.Friend2FromPrivatePlace1(),
+                    people.Friend2FromPrivatePlace2()),
+                o => o.ExcludingSearchMatch());
+
+        // act
+        searchResults = await _tester.FindPeople("user tw", false);
+
+        // assert
+        searchResults.Should()
+            .BeEquivalentTo(bob.BuildSearchResults(people.Stranger1FromPublicPlace2(),
+                    people.Stranger1FromPrivatePlace2(),
+                    people.Stranger2FromPublicPlace1(),
+                    people.Stranger2FromPublicPlace2(),
+                    people.Stranger2FromPrivatePlace1(),
+                    people.Stranger2FromPrivatePlace2()),
+                o => o.ExcludingSearchMatch());
+    }
+
+    [Fact]
     public async Task ShouldFindByPrefixInPlace()
     {
         // arrange
