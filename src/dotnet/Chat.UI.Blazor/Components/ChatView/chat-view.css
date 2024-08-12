@@ -54,10 +54,6 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply flex gap-x-1;
 }
 
-.chat-message:has(.message-link-preview) .url-markup {
-    @apply hidden;
-}
-
 .chat-message-author-name {
     @apply truncate;
     @apply text-headline-1 text-03;
