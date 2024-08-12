@@ -1,15 +1,11 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.MLSearch.Bot;
-using ActualChat.MLSearch.Bot.External;
-using ActualChat.MLSearch.Bot.Tools;
 using ActualChat.MLSearch.Bot.External;
 using ActualChat.MLSearch.Bot.Tools;
 using ActualChat.MLSearch.Db;
@@ -24,13 +20,10 @@ using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.Redis.Module;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using System.Security.Cryptography.X509Certificates;
-using Microsoft.IdentityModel.Tokens;
-using System.Security.Cryptography.X509Certificates;
+
 // Note: Temporary disabled. Will be re-enabled with OpenAPI PR
 // using Microsoft.OpenApi.Models;
 using OpenSearch.Client;
@@ -154,10 +147,11 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             });
             services.AddSingleton<IBotToolsContextHandler>(services => {
                 var options = services.GetRequiredService<IOptionsMonitor<BotToolsContextHandlerOptions>>();
-                return services.CreateInstanceWith<BotToolsContextHandler>(options);
+                return services.CreateInstance<BotToolsContextHandler>(options);
             });
             var isBotEnabled =
                 Settings.IsEnabled
+                && Settings.Integrations != null
                 && Settings.Integrations.Bot != null
                 && Settings.Integrations.Bot.IsEnabled
                 && Settings.Integrations.Bot.WebHookUri != null;
