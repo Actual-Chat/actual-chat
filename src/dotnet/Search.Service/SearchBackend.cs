@@ -155,7 +155,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
                                 => m.Fields(x => x.FullName, x => x.FirstName, x => x.SecondName)
                                     .Query(query.Criteria)
                                     .Type(TextQueryType.PhrasePrefix)
-                                    .Operator(Operator.Or)),
+                                    .Operator(Operator.Or)
+                                    .Slop(10)),
                     query.Own
                         ? q => q.Terms(m => m.Field(x => x.Id).Terms(linkedUserIds))
                         : null,
