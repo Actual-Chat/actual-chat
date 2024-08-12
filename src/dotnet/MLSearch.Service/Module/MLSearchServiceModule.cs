@@ -129,25 +129,22 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         }
 
         // -- Register ML bot --
-//        const string ConversationBotServiceGroup = "ML Chat Bot";
         rpcHost.AddBackend<IChatBotConversationTrigger, ChatBotConversationTrigger>();
         if (Settings.Integrations != null){
             var x509 = X509Certificate2.CreateFromPemFile(
                 Settings.Integrations.CertPemFilePath,
                 Settings.Integrations.KeyPemFilePath
             );
-            X509Certificate2 signingCertificate = new X509Certificate2(x509);
-            var privateKey = signingCertificate.GetECDsaPrivateKey();
+            var privateKey = x509.GetECDsaPrivateKey();
             var securityKey = new ECDsaSecurityKey(privateKey);
             var signingCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha384);
 
             // This is a workaround. Read notes above the ConversationToolsController class
             services.Configure<BotToolsContextHandlerOptions>(e => {
-                // TODO: remove hardcoded.
-                e.Audience = "bot-tools.actual.chat";
-                e.Issuer = "integrations.actual.chat";
+                e.Audience = Settings.Integrations.Audience;
+                e.Issuer = Settings.Integrations.Issuer;
                 e.SigningCredentials = signingCredentials;
-                e.ContextLifetime = TimeSpan.FromMinutes(5);
+                e.ContextLifetime = Settings.Integrations.ContextLifetime;
             });
             services.AddSingleton<IBotToolsContextHandler>(services => {
                 var options = services.GetRequiredService<IOptionsMonitor<BotToolsContextHandlerOptions>>();
@@ -178,18 +175,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // -- Register IMLSearchHanders --
         rpcHost.AddApiOrLocal<IMLSearch, MLSearchImpl>();
 
-
-
-
-        // services.AddAuthorization();
-        // Controllers, etc.
-/*
-        if (rpcHost.IsApiHost) {
-            var mvcCore = services.AddMvcCore();
-            
-            mvcCore.AddApplicationPart(GetType().Assembly);
-        }
-        */
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
     }
 }
