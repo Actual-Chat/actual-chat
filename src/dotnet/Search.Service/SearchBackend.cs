@@ -319,6 +319,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
+        Log.LogDebug("Indexing users: {UpdatedCount} updated and {DeletedCount} deleted", command.Updated.Count, command.Deleted.Count);
         await IndexUserContacts(updated, deleted, cancellationToken).ConfigureAwait(false);
     }
 
@@ -336,6 +337,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
+        Log.LogDebug("Indexing group chats: {UpdatedCount} updated and {DeletedCount} deleted", command.Updated.Count, command.Deleted.Count);
         await IndexChatContacts(command.Updated, command.Deleted, cancellationToken).ConfigureAwait(false);
     }
 
@@ -353,6 +355,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
+        Log.LogDebug("Indexing places: {UpdatedCount} updated and {DeletedCount} deleted", command.Updated.Count, command.Deleted.Count);
         await IndexPlaceContacts(command.Updated, command.Deleted, cancellationToken).ConfigureAwait(false);
     }
 

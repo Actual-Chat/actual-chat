@@ -1,31 +1,25 @@
-using ActualChat.Chat;
-using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
+using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.IntegrationTests;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Users;
 using ActualLab.Mathematics;
 using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI;
 
-namespace ActualChat.UI.Blazor.App.IntegrationTests;
+namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
 [Collection(nameof(SearchUICollection))]
-[Trait("Category", "Slow")]
 public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
-    : SharedDbLocalAppHostTestBase<SearchAppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<SearchAppHostFixture>(fixture, @out)
 {
-    private BlazorTester _tester = null!;
-    private SearchUI _searchUI = null!;
-
-    protected override async Task InitializeAsync()
-    {
-        await base.InitializeAsync();
-        _tester = AppHost.NewBlazorTester(Out);
-        _searchUI = _tester.ScopedAppServices.ChatUIHub().SearchUI;
-    }
+    private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
+    private string UniquePart { get; } = UniqueNames.Prefix();
+    private SearchUI SearchUI => Tester.ScopedAppServices.ChatUIHub().SearchUI;
 
     protected override async Task DisposeAsync()
     {
-        await _tester.DisposeSilentlyAsync();
+        await Tester.DisposeSilentlyAsync();
         await base.DisposeAsync();
     }
 
@@ -33,14 +27,14 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
     public async Task ShouldFindOnCriteriaChange()
     {
         // arrange
-        var bob = await _tester.SignInAsUniqueBob();
-        await _tester.SignInAsAlice();
-        var places = await _tester.CreatePlaceContacts(bob);
-        var chats = await _tester.CreateGroupContacts(bob, places);
-        var people = await _tester.CreateUserContacts(bob, places);
+        var bob = await Tester.SignInAsUniqueBob();
+        await Tester.SignInAsUniqueAlice();
+        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
+        var chats = await Tester.CreateGroupContacts(bob, places, uniquePart: UniquePart);
+        var people = await Tester.CreateUserContacts(bob, places, UniquePart);
 
         // act
-        await _tester.SignIn(bob);
+        await Tester.SignIn(bob);
         var expectedFriends = people.Friends().Where(x => x.FullName.OrdinalIgnoreCaseContains("one")).ToArray();
         var expectedStrangers = people.Strangers().Where(x => x.FullName.OrdinalIgnoreCaseContains("one")).ToArray();
         var expectedJoinedGroups = chats.Joined().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
@@ -48,7 +42,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         var expectedJoinedPlaces = places.Joined().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
         var expectedOtherPlaces = places.OtherPublic().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
         await WaitUntilIndexed("one", expectedFriends, expectedStrangers, expectedJoinedGroups, expectedOtherGroups, expectedJoinedPlaces, expectedOtherPlaces);
-        _searchUI.Text.Value = "one";
+        SearchUI.Text.Value = $"{UniquePart} one";
 
         // assert
         var expectedTotalCount = expectedFriends.Length.Clamp(0, Constants.Search.ContactSearchDefaultPageSize)
@@ -84,26 +78,27 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         string criteria,
         AccountFull[] expectedFriends,
         AccountFull[] expectedStrangers,
-        Chat.Chat[] expectedJoinedGroups,
-        Chat.Chat[] expectedOtherGroups,
+        Chat[] expectedJoinedGroups,
+        Chat[] expectedOtherGroups,
         Place[] expectedJoinedPlaces,
         Place[] expectedOtherPlaces)
         => TestExt.When(async () => {
-                var owner = await _tester.GetOwnAccount();
-                var friends = await _tester.FindPeople(criteria, true);
+                var owner = await Tester.GetOwnAccount();
+                var uniqueCriteria = criteria;
+                var friends = await Tester.FindPeople(uniqueCriteria, true);
                 friends.Should().BeEquivalentTo(owner.BuildSearchResults(expectedFriends), o => o.ExcludingSearchMatch());
-                var strangers = await _tester.FindPeople(criteria, false);
+                var strangers = await Tester.FindPeople(uniqueCriteria, false);
                 strangers.Should().BeEquivalentTo(owner.BuildSearchResults(expectedStrangers), o => o.ExcludingSearchMatch());
-                var joinedGroups = await _tester.FindGroups(criteria, true);
+                var joinedGroups = await Tester.FindGroups(uniqueCriteria, true);
                 joinedGroups.Should()
                     .BeEquivalentTo(owner.BuildSearchResults(expectedJoinedGroups), o => o.ExcludingSearchMatch());
-                var otherGroups = await _tester.FindGroups(criteria, false);
+                var otherGroups = await Tester.FindGroups(uniqueCriteria, false);
                 otherGroups.Should()
                     .BeEquivalentTo(owner.BuildSearchResults(expectedOtherGroups), o => o.ExcludingSearchMatch());
-                var joinedPlaces = await _tester.FindPlaces(criteria, true);
+                var joinedPlaces = await Tester.FindPlaces(uniqueCriteria, true);
                 joinedPlaces.Should()
                     .BeEquivalentTo(owner.BuildSearchResults(expectedJoinedPlaces), o => o.ExcludingSearchMatch());
-                var otherPlaces = await _tester.FindPlaces(criteria, false);
+                var otherPlaces = await Tester.FindPlaces(uniqueCriteria, false);
                 otherPlaces.Should()
                     .BeEquivalentTo(owner.BuildSearchResults(expectedOtherPlaces), o => o.ExcludingSearchMatch());
             },
@@ -113,7 +108,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
     {
         IReadOnlyList<FoundContact> results = [];
         await TestExt.When(async () => {
-                results = await _searchUI.GetContactSearchResults();
+                results = await SearchUI.GetContactSearchResults();
                 results.Should().HaveCount(expectedCount);
             },
             TimeSpan.FromSeconds(10));

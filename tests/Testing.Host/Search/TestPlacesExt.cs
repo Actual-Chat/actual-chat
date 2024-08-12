@@ -6,6 +6,7 @@ public static class TestPlacesExt
 {
     public static Place JoinedPublicPlace1(this IReadOnlyDictionary<TestPlaceKey, Place> places) => places[new (0, true, true)];
     public static Place JoinedPrivatePlace1(this IReadOnlyDictionary<TestPlaceKey, Place> places) => places[new (0, false, true)];
+    public static Place JoinedPrivatePlace2(this IReadOnlyDictionary<TestPlaceKey, Place> places) => places[new (1, false, true)];
     public static Place OtherPublicPlace1(this IReadOnlyDictionary<TestPlaceKey, Place> places) => places[new (0, true, false)];
 
     public static IEnumerable<Place> Joined1(this IReadOnlyDictionary<TestPlaceKey, Place> places)

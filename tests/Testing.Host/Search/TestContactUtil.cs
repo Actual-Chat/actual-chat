@@ -8,9 +8,16 @@ namespace ActualChat.Testing.Host;
 
 public static class TestContactUtil
 {
+    public static Task<ITestPlaceMap> CreatePlaceContacts(
+        this IWebTester tester,
+        AccountFull contactOwner,
+        int placeIndexCount)
+        => tester.CreatePlaceContacts(contactOwner, "", placeIndexCount);
+
     public static async Task<ITestPlaceMap> CreatePlaceContacts(
         this IWebTester tester,
         AccountFull contactOwner,
+        string uniquePart = "",
         int placeIndexCount = 2)
     {
         var places = new Dictionary<TestPlaceKey, Place>();
@@ -18,7 +25,7 @@ public static class TestContactUtil
             foreach (var isPublic in new[] { true, false })
             foreach (var mustJoin in new[] { true, false }) {
                 var placeKey = new TestPlaceKey(i, isPublic, mustJoin);
-                var place = await tester.CreatePlace(placeKey.IsPublic, GetPlaceTitle(contactOwner, placeKey));
+                var place = await tester.CreatePlace(placeKey.IsPublic, GetPlaceTitle(contactOwner, placeKey, uniquePart));
                 if (placeKey.MustJoin)
                     await tester.InviteToPlace(place.Id, contactOwner);
                 places.Add(placeKey, place);
@@ -26,7 +33,7 @@ public static class TestContactUtil
         return places;
     }
 
-    public static async Task<ITestGroupChatMap> CreateGroupContacts(this IWebTester tester, AccountFull contactOwner, ITestPlaceMap places, int nonPlaceChatIndexCount = 2, int placeChatIndexCount = 2)
+    public static async Task<ITestGroupChatMap> CreateGroupContacts(this IWebTester tester, AccountFull contactOwner, ITestPlaceMap places, int nonPlaceChatIndexCount = 2, int placeChatIndexCount = 2, string uniquePart = "")
     {
         var chats = new Dictionary<TestChatKey, Chat.Chat>();
         await GenerateChats(null, nonPlaceChatIndexCount, null);
@@ -39,7 +46,7 @@ public static class TestContactUtil
             => $"{GetPlaceTitle(contactOwner, key.PlaceKey)} - {GetTitleChatPart(key)}";
 
         string GetTitleChatPart(TestChatKey key)
-            => $"{GetVisibilityString(key.IsPublic)} chat {GetIndexString(key.Index)} {GetMembershipSuffix(contactOwner, key.MustJoin)}";
+            => $"{GetVisibilityString(key.IsPublic)} chat {GetIndexString(key.Index)} {uniquePart} {GetMembershipSuffix(contactOwner, key.MustJoin)}";
 
         async Task GenerateChats(TestPlaceKey? placeKey, int chatCount, Place? place)
         {
@@ -61,10 +68,18 @@ public static class TestContactUtil
         }
     }
 
+    public static Task<ITestUserMap> CreateUserContacts(
+        this IWebTester tester,
+        AccountFull contactOwner,
+        ITestPlaceMap places,
+        int indexCount)
+        => tester.CreateUserContacts(contactOwner, places, "", indexCount);
+
     public static async Task<ITestUserMap> CreateUserContacts(
         this IWebTester tester,
         AccountFull contactOwner,
         ITestPlaceMap places,
+        string uniquePart = "",
         int indexCount = 2)
     {
         var placeAdmin = await tester.GetOwnAccount();
@@ -75,7 +90,11 @@ public static class TestContactUtil
                 for (int placeIndex = 0; placeIndex < places.Size(); placeIndex++) {
                     var placeKey = new TestPlaceKey(placeIndex, isPlacePublic, true);
                     var key = new TestUserKey(placeKey, i, isExistingContact);
-                    var name = (isExistingContact ? "Friend" : "Stranger") + " User " + GetIndexString(i);
+                    var name = string.Join(" ",
+                        isExistingContact ? "Friend" : "Stranger",
+                        "User",
+                        GetIndexString(i),
+                        uniquePart);
                     var lastName = "from " + GetPlaceTitle(contactOwner, placeKey);
                     var account = await tester.CreateAccount(name, lastName);
                     users.Add(key, account);
@@ -99,10 +118,10 @@ public static class TestContactUtil
         }
     }
 
-    private static string GetPlaceTitle(AccountFull contactOwner, TestPlaceKey? key)
+    private static string GetPlaceTitle(AccountFull contactOwner, TestPlaceKey? key, string uniquePart = "")
         => key == null
             ? "Non-place"
-            : $"{GetVisibilityString(key.IsPublic)} place {GetIndexString(key.Index)} {GetMembershipSuffix(contactOwner, key.MustJoin)}";
+            : $"{GetVisibilityString(key.IsPublic)} place {GetIndexString(key.Index)} {uniquePart} {GetMembershipSuffix(contactOwner, key.MustJoin)}";
 
     private static string GetVisibilityString(bool isPublic)
         => isPublic ? "public" : "private";
