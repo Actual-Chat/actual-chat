@@ -7,6 +7,9 @@
 @using ActualChat.Kvas
 @using ActualLab.Locking
 @using System.Diagnostics.CodeAnalysis
+@{
+    var placeholder = ScreenSize.IsNarrow() ? "Message..." : "Write a message - or simply record one!";
+}
 
 <OnUIEvent TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusChatMessageEditorEvent" />
 <OnUIEvent TEvent="@EditChatMessageEvent" Handler="OnEditChatMessageEvent" />
@@ -40,7 +43,7 @@
                         Id="message-input"
                         Class="message-input -flex-y"
                         Autofocus="Autofocus"
-                        Placeholder="Write a message - or simply record one!"
+                        Placeholder="@placeholder"
                         Post="text => Post(text)"
                         Cancel="@(() => OnCancel())"
                         OpenPrevious="OnOpenPrevious"/>

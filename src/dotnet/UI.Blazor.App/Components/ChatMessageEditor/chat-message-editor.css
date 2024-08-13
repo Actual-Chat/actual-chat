@@ -45,6 +45,7 @@ body.narrow .narrow-panel .audio-panel-wrapper {
 @media (orientation: portrait) {
     body.narrow .post-panel {
         @apply static;
+        @apply py-2;
     }
 }
 @media (orientation: landscape) {
@@ -346,7 +347,7 @@ body.narrow .chat-message-editor:has(.related-chat-entry-panel) {
     @apply landscape:mt-16;
 }
 body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rounded-sub-footer {
-    @apply landscape:-top-20;
+    @apply landscape:top-0;
 }
 .related-chat-entry-panel {
     @apply flex-x;
@@ -470,13 +471,13 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
 }
 
 .rounded-sub-footer {
-    @apply absolute portrait:top-17 landscape:-top-8;
+    @apply absolute portrait:top-3 landscape:-top-8;
     @apply flex;
     @apply h-0 inset-x-0;
     background: linear-gradient(to top, var(--background-01), transparent);
 }
 .narrow-panel .rounded-sub-footer {
-    @apply portrait:top-9;
+    @apply portrait:top-3;
 }
 .rounded-sub-footer::before {
     content: '';
