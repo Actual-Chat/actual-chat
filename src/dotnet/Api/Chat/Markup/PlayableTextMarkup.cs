@@ -6,7 +6,7 @@ public sealed partial record PlayableTextMarkup(string Text, LinearMap TimeMap) 
 {
     private const float InfTime = 1e6f;
 
-    [GeneratedRegex("\\S+\\s+")]
+    [GeneratedRegex(@"[\S^\u200B]+[\s\u200B]+")]
     private static partial Regex WordRegexFactory();
 
     private static readonly Regex WordRegex = WordRegexFactory();

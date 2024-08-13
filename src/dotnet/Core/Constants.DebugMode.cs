@@ -48,13 +48,11 @@ public static partial class Constants
             => HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp;
         public static readonly bool AudioRecording = false;
         public static readonly bool AudioRecordingStream = false;
-        public static readonly bool AudioStreamProxy = false;
 
         // Transcription
         public static readonly bool Transcription = false;
         public static readonly bool TranscriberAny = false;
         public static readonly bool TranscriberGoogle = false;
-        public static readonly bool TranscriptStreamProxy = false;
 
         // Search
         public static readonly bool OpenSearchRequest = false;

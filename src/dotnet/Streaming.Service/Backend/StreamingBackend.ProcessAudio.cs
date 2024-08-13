@@ -178,7 +178,6 @@ public partial class StreamingBackend
         var transcripts = transcriber
             .Transcribe(audioSegment.StreamId, audioSegment.Source, transcriptionOptions, cancellationToken)
             .Throttle(Settings.TranscriptDebouncePeriod, Clocks.CpuClock, cancellationToken)
-            .SuppressCancellation(CancellationToken.None)
             .Memoize(CancellationToken.None);
         cancellationToken = CancellationToken.None; // We already accounted for it in TrimOnCancellation
 

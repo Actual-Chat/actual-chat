@@ -8,9 +8,6 @@ public static class TranscriptStreamExt
         await foreach (var transcript in transcripts.ConfigureAwait(false)) {
             var diff = transcript - lastTranscript;
             lastTranscript = transcript;
-            if (diff.IsNone)
-                continue;
-
             yield return diff;
         }
     }
@@ -21,9 +18,6 @@ public static class TranscriptStreamExt
         foreach (var transcript in transcripts) {
             var diff = transcript - lastTranscript;
             lastTranscript = transcript;
-            if (diff.IsNone)
-                continue;
-
             yield return diff;
         }
     }

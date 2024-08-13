@@ -155,7 +155,21 @@ public static partial class Constants
 
     public static class Transcription
     {
-        public static readonly bool IsWebMOpusSupportedByGoogle = false;
+        public static readonly bool StartWithEllipsis = true;
+
+        public static class Google
+        {
+            public static readonly bool IsWebMOpusEnabled = false;
+            public static readonly bool UseStabilityHeuristics = false;
+            public static readonly TimeSpan SilentPrefixDuration = TimeSpan.FromSeconds(3);
+            public static readonly TimeSpan SilentSuffixDuration = TimeSpan.Zero; // TimeSpan.FromSeconds(4);
+            public static readonly double Speed = 2;
+        }
+
+        public static class Deepgram
+        {
+            public static readonly double Speed = 2;
+        }
     }
 
     // Diagnostics, etc.

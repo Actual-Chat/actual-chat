@@ -90,6 +90,21 @@ public readonly partial struct LinearMap
     public bool IsInversionValid()
         => Points.IsStrictlyIncreasingYSequence();
 
+    public bool IsIdenticalTo(LinearMap other, Vector2 epsilon = default)
+    {
+        if (Length != other.Length)
+            return false;
+
+        for (var i = 0; i < Length; i++) {
+            var d = other[i] - this[i];
+            if (Math.Abs(d.X) > epsilon.X)
+                return false;
+            if (Math.Abs(d.Y) > epsilon.Y)
+                return false;
+        }
+        return true;
+    }
+
     public LinearMap RequireValid(bool requireInvertible = false)
     {
         if (!IsValid())
@@ -237,7 +252,6 @@ public readonly partial struct LinearMap
             ? Append(point)
             : this;
 
-
     public LinearMap AppendOrUpdateSuffix(LinearMap suffix, float xEpsilon = 0)
     {
         if (suffix.IsEmpty)
@@ -251,7 +265,23 @@ public readonly partial struct LinearMap
         if (points[i].X < suffix[0].X)
             return new LinearMap(points[..(i + 1)], suffix.Points);
 
-        return i == 0 ? suffix : new LinearMap(points[..i], suffix.Points);
+        return i == 0
+            ? suffix
+            : new LinearMap(points[..i], suffix.Points);
+    }
+
+    public LinearMap AppendOrUpdateSuffix(Vector2 suffix, float xEpsilon = 0)
+    {
+        var points = Points;
+        var i = points.IndexOfLowerOrEqualX(suffix.X - xEpsilon);
+        if (i < 0)
+            return new LinearMap(suffix);
+        if (points[i].X < suffix.X)
+            return new LinearMap(points[..(i + 1)], [suffix]);
+
+        return i == 0
+            ? new LinearMap(suffix)
+            : new LinearMap(points[..i], [suffix]);
     }
 
     public LinearMap TrySimplifyToPoint(Vector2 epsilon)

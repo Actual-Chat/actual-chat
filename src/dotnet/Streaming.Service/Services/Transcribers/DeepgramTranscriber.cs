@@ -8,12 +8,12 @@ using Deepgram;
 using Deepgram.Constants;
 using Deepgram.Models.Authenticate.v1;
 using Deepgram.Models.Listen.v1.WebSocket;
+using static ActualChat.Constants.Transcription.Deepgram;
 
 namespace ActualChat.Streaming.Services.Transcribers;
 
 public partial class DeepgramTranscriber : ITranscriber
 {
-    private static readonly double TranscriptionSpeed = 2;
     [GeneratedRegex(@"([\?\!\.]\s*$)|(^\s*$)", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
     private static partial Regex CompleteSentenceOrEmptyRegexFactory();
 
@@ -154,7 +154,7 @@ public partial class DeepgramTranscriber : ITranscriber
                         processedAudioDuration = TimeSpanExt.Min(audioSource.Duration, processedAudioDuration);
                     // state.ProcessedAudioDuration = (float)processedAudioDuration.TotalSeconds;
                     nextChunkAt = startedAt
-                        + TimeSpan.FromSeconds(processedAudioDuration.TotalSeconds / TranscriptionSpeed)
+                        + TimeSpan.FromSeconds(processedAudioDuration.TotalSeconds / Speed)
                         - TimeSpan.FromMilliseconds(50);
                 }
             }
