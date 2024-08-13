@@ -8,7 +8,7 @@ public static class CommandLineHandler
     private const string UrlArgPrefix = "-url:";
     private const string RoleArgPrefix = "-role:";
     private const string KeyboardArg = "-kb";
-    private const string HybridArg = "-hybrid";
+    private const string ForceDistributedArg = "-distributed";
     private const string MultiHostRoleArgPrefix = "-multihost-role:";
     private const string RoleGroupDelimiter = ":";
     private const string UrlsEnvVar = "URLS";
@@ -22,7 +22,7 @@ public static class CommandLineHandler
     private static (string, int)? _defaultHostAndPort;
 
     private static bool UseKeyboard { get; set; }
-    private static bool UseHybrid { get; set; }
+    private static bool ForceDistributed { get; set; }
     private static Symbol RoleGroupName { get; set; } = "1";
     private static int OwnRoleIndex { get; set; } = -1;
     private static HostRole[] RoleGroup => AllRoleGroups[RoleGroupName];
@@ -32,8 +32,8 @@ public static class CommandLineHandler
     {
         // -kb argument
         UseKeyboard = args.Any(x => OrdinalEquals(x, KeyboardArg));
-        // -hybrid argument
-        UseHybrid = HostRolesExt.MustReplaceServerWithHybrid = args.Any(x => OrdinalEquals(x, HybridArg));
+        // -distributed argument
+        ForceDistributed = HostRolesExt.ForceDistributedModeForServerModeServices = args.Any(x => OrdinalEquals(x, ForceDistributedArg));
 
         // -url:<url> argument
         var urlOverride = args
@@ -116,7 +116,7 @@ public static class CommandLineHandler
                 $"{RoleArgPrefix}{RoleGroupName}{RoleGroupDelimiter}{role.Value}",
                 UrlArgPrefix + url,
                 UseKeyboard ? KeyboardArg : "",
-                UseHybrid ? HybridArg : "",
+                ForceDistributed ? ForceDistributedArg : "",
             },
             UseShellExecute = true,
         };
