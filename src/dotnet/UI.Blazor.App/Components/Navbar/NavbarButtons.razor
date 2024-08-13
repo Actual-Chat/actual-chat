@@ -9,7 +9,7 @@
     <NavbarButton
         Tooltip="Create new Chat or Place"
         TooltipPosition="FloatingPosition.Right"
-        data-bubble="@(BubbleRef.New<CreateChatBubble>())"
+        data-bubble="@(BubbleRef.New<CreateChatOrPlaceBubble>())"
         data-bubble-priority="201"
         data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())"
         data-menu="@(MenuRef.New<CreateMenu>().ToString())"

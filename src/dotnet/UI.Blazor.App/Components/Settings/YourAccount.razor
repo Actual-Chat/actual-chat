@@ -57,10 +57,7 @@
         </Caption>
     </TileItem>
 
-    <div @onclick="@OnShareClick"
-         data-bubble="@(BubbleRef.New<LinkToAccountBubble>())"
-         data-bubble-priority="301"
-         data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())">
+    <div @onclick="@OnShareClick">
         <TileItem Class="tile-item-share">
             <Icon>
                 <i class="icon-share text-xl"></i>
