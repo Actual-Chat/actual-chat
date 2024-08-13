@@ -49,8 +49,8 @@
     private ChatId ChatId { get; set; }
 
     protected override void OnInitialized() {
-        ChatId = Context.GetTypedModel<ChatId>();
-        Context.SetTitle("Voice settings");
+        ChatId = Context.GetModel<ChatId>();
+        Context.Title = "Voice settings";
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()

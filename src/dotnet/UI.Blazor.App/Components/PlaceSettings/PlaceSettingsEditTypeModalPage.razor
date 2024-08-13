@@ -13,7 +13,7 @@
     if (_form == null)
         return;
 
-    Context.SetTitle("Place Type");
+    Context.Title = "Place Type";
     Context.ModalDataBag.Set(nameof(PlaceSettingsOwnerModalPage.ComputedModel.Place.IsPublic), m.IsPublic);
     var canEditProperties = m.Place.Rules.CanEditProperties();
 }
@@ -114,10 +114,10 @@
     private PlaceId PlaceId { get; set; }
 
     protected override void OnInitialized() {
-        PlaceId = Context.GetTypedModel<PlaceId>();
-        Context.SetTitle("Edit place settings");
+        PlaceId = Context.GetModel<PlaceId>();
+        Context.Title = "Edit place settings";
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
-        Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
+        Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
     }
 
     protected override async Task OnInitializedAsync() {
@@ -125,7 +125,7 @@
         _form = new FormModel(ComponentIdGenerator) {
             IsPublic = place.IsPublic,
         };
-        Context.SetClass("edit-chat-type");
+        Context.Class = "edit-chat-type";
         await base.OnInitializedAsync();
     }
 

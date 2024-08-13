@@ -13,7 +13,7 @@
     if (_form == null)
         return;
 
-    Context.SetTitle("Chat Type");
+    Context.Title = "Chat Type";
     Context.ModalDataBag.Set(nameof(ChatSettingsStartModalPage.ComputedModel.IsPublic), m.IsPublic);
     var isPlaceChat = !_placeId.IsNone;
     var canChangeChatType = _placeId.IsNone || _place != null && (_place.Rules.CanApplyPublicChatType() && !_isPlaceWelcomeChat);
@@ -167,13 +167,13 @@
     private ChatId ChatId { get; set; }
 
     protected override void OnInitialized() {
-        ChatId = Context.GetTypedModel<ChatId>();
-        Context.SetTitle("Chat settings");
+        ChatId = Context.GetModel<ChatId>();
+        Context.Title = "Chat settings";
         if (ChatId.IsPeerChat(out _))
             throw StandardError.NotSupported("Peer chat is not supported.");
 
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
-        Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
+        Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
     }
 
     protected override async Task OnInitializedAsync() {
@@ -192,7 +192,7 @@
             if (!_place.Rules.CanApplyPublicChatType())
                 _form.IsPublic = false;
         }
-        Context.SetClass("edit-chat-type");
+        Context.Class = "edit-chat-type";
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()

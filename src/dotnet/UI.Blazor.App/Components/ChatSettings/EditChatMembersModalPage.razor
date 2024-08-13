@@ -3,7 +3,7 @@
 @inherits ComputedStateComponent<EditChatMembersModalPage.ComputedModel>
 @{
     var m = State.Value;
-    Context.SetTitle($"{m.MembersCount} members");
+    Context.Title = $"{m.MembersCount} members";
     Context.ModalDataBag.Set(nameof(ChatSettingsStartModalPage.ComputedModel.MembersCount), m.MembersCount);
 }
 
@@ -61,11 +61,11 @@
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     protected override void OnInitialized() {
-        ChatId = Context.GetTypedModel<ChatId>();
+        ChatId = Context.GetModel<ChatId>();
         if (ChatId.IsPeerChat(out _))
             throw StandardError.NotSupported("Peer chat id should not be provided.");
-        Context.SetClass("edit-members");
-        Context.RegisterButtons(DialogButtonInfo.BackButton);
+        Context.Class = "edit-members";
+        Context.Buttons = [DialogButtonInfo.BackButton];
     }
 
     private void OnFilter(string filter) {

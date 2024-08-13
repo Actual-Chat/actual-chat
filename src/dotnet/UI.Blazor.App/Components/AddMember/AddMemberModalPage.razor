@@ -37,9 +37,9 @@
             _backend = new NewPlaceMemberSelector(Hub, placeId);
         else
             throw StandardError.NotSupported("Not supported model type");
-        Context.SetTitle("Add members");
-        Context.SetClass("add-member-modal-content");
-        Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
+        Context.Title = "Add members";
+        Context.Class = "add-member-modal-content";
+        Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
     }
 
     public void Dispose()

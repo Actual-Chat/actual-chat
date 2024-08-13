@@ -6,7 +6,7 @@
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     protected override void OnInitialized() {
-        Context.SetTitle("Dive-in modal (Inner)");
-        Context.RegisterButtons(DialogButtonInfo.BackButton);
+        Context.Title = "Dive-in modal (Inner)";
+        Context.Buttons = [DialogButtonInfo.BackButton];
     }
 }

@@ -10,8 +10,8 @@
     private PlaceId PlaceId { get; set; }
 
     protected override void OnInitialized() {
-        PlaceId = Context.GetTypedModel<PlaceId>();
-        Context.SetTitle("Copy chat into the Place");
+        PlaceId = Context.GetModel<PlaceId>();
+        Context.Title = "Copy chat into the Place";
     }
 
     private Task OnCopyChatClick(ChatId chatId) {
