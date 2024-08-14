@@ -128,6 +128,9 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         }
 
         // -- Register ML bot --
+        services.Configure<ChatBotConversationTriggerOptions>(e => {
+            e.AllowPeerBotChat = (Settings.Integrations?.Bot?.AllowPeerBotChat) ?? false;
+        });
         rpcHost.AddBackend<IChatBotConversationTrigger, ChatBotConversationTrigger>();
         if (Settings.Integrations != null){
             var x509 = X509Certificate2.CreateFromPemFile(

@@ -23,6 +23,8 @@ public sealed class ExternalChatbotSettings {
     
     [Required]
     public required Uri WebHookUri { get; set; }
+
+    public bool AllowPeerBotChat { get; set; }
     
 }
 
@@ -34,7 +36,7 @@ public sealed class ExternalChatbotSettings {
     in asyncronous mode. That means that it will use the JWT token provided to 
     send messages to a user through the internal API. 
 **/
-internal class ExternalChatBotConversationHandler(IOptions<ExternalChatbotSettings> settings, IBotToolsContextHandler botToolsContextHandler)
+internal class ExternalChatBotConversationHandler(IOptions<ExternalChatbotSettings> settings, IBotToolsContextHandler botToolsContextHandler, IHttpClientFactory httpClientFactory)
     : IBotConversationHandler, IComputeService
 {
     public async Task ExecuteAsync(
@@ -65,7 +67,7 @@ internal class ExternalChatBotConversationHandler(IOptions<ExternalChatbotSettin
         
         /// Minimal WebHook implementation.
         
-        HttpClient client = new HttpClient();
+        HttpClient client = httpClientFactory.CreateClient(nameof(ExternalChatBotConversationHandler));
         
         var url = currentSettings.WebHookUri;
 
@@ -79,7 +81,8 @@ internal class ExternalChatBotConversationHandler(IOptions<ExternalChatbotSettin
             input = lastUpdatedDocument.Content
         });
         botToolsContextHandler.SetContext(requestMessage, conversationId: chatId);
-        HttpResponseMessage response = client.SendAsync(requestMessage, cancellationToken).GetAwaiter().GetResult();
+        HttpResponseMessage response = await client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
         var resultContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        // Note: not expecting anything from the bot here. Might be worth logging.
     }
 }

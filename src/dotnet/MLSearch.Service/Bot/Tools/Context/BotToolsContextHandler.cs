@@ -48,8 +48,7 @@ public class BotToolsContextHandler(IOptionsMonitor<BotToolsContextHandlerOption
 
     private ClaimsPrincipal? GetValidatedClaims(HttpRequest request) {
         string? bearerToken = request.Headers.Authorization
-            .Where(e => e?.StartsWith(BEARER_PREFIX, StringComparison.InvariantCulture) == true)
-            .FirstOrDefault();
+            .FirstOrDefault(e => e?.StartsWith(BEARER_PREFIX, StringComparison.Ordinal) == true);
         if (bearerToken == null) {
             return null;
         }
