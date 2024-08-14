@@ -109,7 +109,7 @@
     // allows to avoid unnecessary OnParametersSet call during rendering ChatList and correspondingly
     // it allows to avoid extra ComputeState call and Rendering.
     private static readonly Dictionary<string, object> FirstItemAttributes = new() {
-        { "data-bubble", BubbleRef.New<ChatListItemBubble>() },
+        { "data-bubble", BubbleRef.New<HasContextMenuBubble>() },
         { "data-bubble-priority", 204 },
         { "data-bubble-placement", FloatingPosition.Bottom.ToPositionString() },
     };

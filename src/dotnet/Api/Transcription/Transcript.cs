@@ -20,6 +20,8 @@ public sealed partial record Transcript(
 
     public static readonly Vector2 TimeMapEpsilon = new(0.1f, 0.1f);
     public static readonly Transcript Empty = New();
+    public static readonly Transcript Ellipsis = new("\u2026", new LinearMap(Vector2.Zero, new Vector2(1, 0)));
+    public static readonly Transcript Unrecognized = new("\u2026\u200B\u2026", new LinearMap(Vector2.Zero, new Vector2(3, 0)));
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public int Length => Text.Length;
@@ -33,6 +35,16 @@ public sealed partial record Transcript(
 
     public override string ToString()
         => $"`{Text}` + {TimeMap}";
+
+    public bool IsIdenticalTo(Transcript other)
+        => OrdinalEquals(Text, other.Text)
+            && TimeMap.IsIdenticalTo(other.TimeMap, TimeMapEpsilon);
+
+    public Transcript RequireValid()
+    {
+        TimeMap.RequireValid();
+        return this;
+    }
 
     public int GetContentStart()
         => ContentStartRegex.Match(Text).Length;
@@ -71,12 +83,9 @@ public sealed partial record Transcript(
         => WithSuffix(suffix, TimeMap, suffixEndTime);
     public Transcript WithSuffix(string suffix, LinearMap timeMap, float? suffixEndTime)
     {
-        if (suffix.IsNullOrEmpty())
-            return this;
-
         var text = Text + suffix;
         if (suffixEndTime is { } vSuffixEndTime)
-            timeMap = timeMap.TryAppend(new Vector2(text.Length, vSuffixEndTime), TimeMapEpsilon.X);
+            timeMap = timeMap.AppendOrUpdateSuffix(new Vector2(text.Length, vSuffixEndTime), TimeMapEpsilon.X);
         return new Transcript(text, timeMap);
     }
 
@@ -85,12 +94,6 @@ public sealed partial record Transcript(
         var text = Text + suffix;
         var timeMap = TimeMap.AppendOrUpdateSuffix(suffixTextToTimeMap, TimeMapEpsilon.X);
         return new Transcript(text, timeMap);
-    }
-
-    public Transcript RequireValid()
-    {
-        TimeMap.RequireValid();
-        return this;
     }
 
     // Operators

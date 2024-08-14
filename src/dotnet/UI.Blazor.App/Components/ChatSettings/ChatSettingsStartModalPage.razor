@@ -166,15 +166,15 @@
     private ChatId ChatId { get; set; }
 
     protected override void OnInitialized() {
-        ChatId = Context.GetTypedModel<ChatId>();
-        Context.SetTitle("Chat settings");
+        ChatId = Context.GetModel<ChatId>();
+        Context.Title = "Chat settings";
         if (ChatId.IsPeerChat(out _))
             throw StandardError.NotSupported("Peer chat is not supported.");
 
         _avatarKind = AvatarKind.Marble;
         _avatarKey = ChatId.Value;
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
-        Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
+        Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
     }
 
     protected override async Task OnInitializedAsync() {

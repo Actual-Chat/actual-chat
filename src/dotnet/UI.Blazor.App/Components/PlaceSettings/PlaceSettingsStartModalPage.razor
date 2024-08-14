@@ -123,8 +123,8 @@
     private PlaceId PlaceId { get; set; }
 
     protected override void OnInitialized() {
-        PlaceId = Context.GetTypedModel<PlaceId>();
-        Context.SetTitle("Place Info");
+        PlaceId = Context.GetModel<PlaceId>();
+        Context.Title = "Place Info";
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()

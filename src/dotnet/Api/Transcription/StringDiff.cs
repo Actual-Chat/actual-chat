@@ -9,7 +9,7 @@ public readonly partial record struct StringDiff(
     [property: DataMember(Order = 1), MemoryPackOrder(1)] string? Suffix
     ) : ICanBeNone<StringDiff>
 {
-    public static StringDiff None { get; } = default;
+    public static StringDiff None => default;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => ReferenceEquals(Suffix, null);
@@ -17,7 +17,10 @@ public readonly partial record struct StringDiff(
     public static StringDiff New(string text, string baseText)
     {
         var commonPrefixLength = baseText.GetCommonPrefixLength(text);
-        return commonPrefixLength == text.Length ? None : new StringDiff(commonPrefixLength, text[commonPrefixLength..]);
+        var maxLength = Math.Max(baseText.Length, text.Length);
+        return commonPrefixLength == maxLength
+            ? None
+            : new StringDiff(commonPrefixLength, text[commonPrefixLength..]);
     }
 
     public override string ToString()

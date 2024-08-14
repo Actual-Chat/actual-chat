@@ -8,7 +8,7 @@ public static class HostRolesExt
 {
     private static readonly ConcurrentDictionary<object, BackendServiceAttribute[]> BackendServiceAttributes = new();
 
-    public static bool MustReplaceServerWithHybrid { get; set; }
+    public static bool ForceDistributedModeForServerModeServices { get; set; }
 
     // GetServiceMode
 
@@ -43,7 +43,7 @@ public static class HostRolesExt
 
     private static ServiceMode Fix(this ServiceMode serviceMode)
     {
-        if (MustReplaceServerWithHybrid && serviceMode is ServiceMode.Server)
+        if (ForceDistributedModeForServerModeServices && serviceMode is ServiceMode.Server)
             serviceMode = ServiceMode.Distributed;
         return serviceMode;
     }

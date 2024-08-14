@@ -9,6 +9,7 @@ using Google.Cloud.Speech.V2;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
+using static ActualChat.Constants.Transcription.Google;
 
 namespace ActualChat.Streaming.Services.Transcribers;
 
@@ -22,11 +23,7 @@ public partial class GoogleTranscriber : ITranscriber
 
     private static readonly Regex CompleteSentenceOrEmptyRegex = CompleteSentenceOrEmptyRegexFactory();
     private static readonly Regex EndsWithWhitespaceOrEmptyRegex = EndsWithWhitespaceOrEmptyRegexFactory();
-
     private static readonly string RegionId = "us";
-    private static readonly TimeSpan SilentPrefixDuration = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan SilentSuffixDuration = TimeSpan.FromSeconds(4);
-    private static readonly double TranscriptionSpeed = 2;
 
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -135,7 +132,7 @@ public partial class GoogleTranscriber : ITranscriber
             },
             StreamingFeatures = new StreamingRecognitionFeatures {
                 InterimResults = true,
-                // TODO(AK): test google VAD events - probably it might be useful
+                // TODO(AK): test google VAD events - might be useful
                 // VoiceActivityTimeout =
                 // EnableVoiceActivityEvents =
             },
@@ -157,8 +154,7 @@ public partial class GoogleTranscriber : ITranscriber
             Recognizer = recognizerName,
         }).ConfigureAwait(false);
 
-        var state = new GoogleTranscribeState(audioSource, options, recognizeStream, output)
-            .Append("... ", 1);
+        var state = new GoogleTranscribeState(audioSource, options, recognizeStream, output);
         // We want to stop both tasks here on any failure, so...
 #pragma warning disable CA2000
         var cts = cancellationToken.CreateLinkedTokenSource();
@@ -182,7 +178,7 @@ public partial class GoogleTranscriber : ITranscriber
         var recognizeStream = state.RecognizeStream;
         try {
             var transcribedAudioSource = AddSilentPrefixAndSuffix(audioSource, cancellationToken);
-            var streamConverter = (IAudioStreamConverter) (Constants.Transcription.IsWebMOpusSupportedByGoogle
+            var streamConverter = (IAudioStreamConverter) (IsWebMOpusEnabled
                 ? WebMStreamConverter
                 : OggOpusStreamConverter);
             var byteFrameStream = streamConverter.ToByteFrameStream(transcribedAudioSource, cancellationToken);
@@ -206,7 +202,7 @@ public partial class GoogleTranscriber : ITranscriber
                         processedAudioDuration = TimeSpanExt.Min(audioSource.Duration, processedAudioDuration);
                     state.ProcessedAudioDuration = (float)processedAudioDuration.TotalSeconds;
                     nextChunkAt = startedAt
-                        + TimeSpan.FromSeconds(processedAudioDuration.TotalSeconds / TranscriptionSpeed)
+                        + TimeSpan.FromSeconds(processedAudioDuration.TotalSeconds / Speed)
                         - TimeSpan.FromMilliseconds(50);
                 }
             }
@@ -251,7 +247,10 @@ public partial class GoogleTranscriber : ITranscriber
         }
 
         state.MakeStable();
-        var finalTranscript = state.Stable.WithSuffix("", state.ProcessedAudioDuration);
+        var finalTranscript = state.Stable;
+        if (string.IsNullOrWhiteSpace(finalTranscript.Text))
+            finalTranscript = Transcript.Unrecognized;
+        finalTranscript = finalTranscript.WithSuffix("", state.ProcessedAudioDuration);
         yield return finalTranscript;
     }
 
@@ -268,11 +267,15 @@ public partial class GoogleTranscriber : ITranscriber
             .ToArray();
         var isFinal = results.Any(r => r.IsFinal);
 
-        // Google Transcribe issue: sometimes it omits the final transcript,
-        // so we use a heuristic to automatically identify it
-        if (!isFinal && stability.Length == 1 && stability[0] < 0.5 && lastStability.Length > 1 && lastStability.Max() > 0.5)
-            // not marked final, but previous results contain at least one result with high stability, and now we get single result with low stability
-            state.MakeStable();
+        if (UseStabilityHeuristics) {
+            // Google Transcribe issue: sometimes it omits the final transcript,
+            // so we use a heuristic to automatically identify it
+            if (!isFinal && stability.Length == 1 && stability[0] < 0.5 && lastStability.Length > 1 && lastStability.Max() > 0.5)
+                // Not marked as final, but:
+                // - Previous results contain at least one having a high stability,
+                // - And now we're getting a single result with a low stability.
+                state.MakeStable();
+        }
 
         var mustAppendToUnstable = false;
         for (var i = 0; i < results.Count; i++) {

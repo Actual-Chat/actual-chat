@@ -9,7 +9,7 @@
     @{
         var title = pageContext.Title;
         var cls = Class + " " + pageContext.Class;
-        var narrowViewSettings = _narrowViewSettingsBuilder.GetFrom(pageContext.ButtonInfos, Position);
+        var narrowViewSettings = _narrowViewSettingsBuilder.GetFrom(pageContext.Buttons, Position);
     }
     <DialogFrame
         HasHeader="@HasHeader"
@@ -22,8 +22,8 @@
             @_pageInfo.Body
         </Body>
         <Buttons>
-            @if (pageContext.ButtonInfos != null) {
-                <DialogButtons ButtonInfos="@pageContext.ButtonInfos" Cancel="@OnClose" />
+            @if (pageContext.Buttons.Length != 0) {
+                <DialogButtons ButtonInfos="@pageContext.Buttons" Cancel="@OnClose" />
             }
         </Buttons>
     </DialogFrame>

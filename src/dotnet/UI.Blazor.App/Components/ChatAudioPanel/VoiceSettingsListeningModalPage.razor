@@ -35,8 +35,8 @@
     private AccountSettings AccountSettings => Hub.AccountSettings();
 
     protected override void OnInitialized() {
-        ChatId = Context.GetTypedModel<ChatId>();
-        Context.SetTitle("Turn off listening in this chat:");
+        ChatId = Context.GetModel<ChatId>();
+        Context.Title = "Turn off listening in this chat:";
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()

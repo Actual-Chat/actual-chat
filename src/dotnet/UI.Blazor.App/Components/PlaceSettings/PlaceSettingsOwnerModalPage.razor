@@ -87,7 +87,7 @@
                 Placeholder="Place title*"
                 ClearButton="true"/>
         </FormSection>
-        <FormSection Class="field-chat-title" For="() => _form.Description" InputId="@_form.DescriptionId" IsLabelInsideInput="true" Label="Place description">
+        <FormSection Class="field-chat-title" For="() => _form.Description" InputId="@_form.DescriptionId" IsLabelInsideInput="true" Label="Description">
             <TextBox
                 @bind-Value="@_form.Description"
                 Id="@_form.DescriptionId"
@@ -131,7 +131,7 @@
                         <i class="icon-cloud-upload text-xl"></i>
                     </Icon>
                     <Content>
-                        Copy chat into the Place
+                        Copy chat into this Place
                     </Content>
                 </TileItem>
                 <TileItem Class="item-leave-group item-danger" Click="@(() => OnPlaceDeleteClick())">
@@ -163,10 +163,10 @@
     private PlaceId PlaceId { get; set; }
 
     protected override void OnInitialized() {
-        PlaceId = Context.GetTypedModel<PlaceId>();
-        Context.SetTitle("Place Settings");
+        PlaceId = Context.GetModel<PlaceId>();
+        Context.Title = "Place Settings";
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
-        Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
+        Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
     }
 
     protected override async Task OnInitializedAsync() {

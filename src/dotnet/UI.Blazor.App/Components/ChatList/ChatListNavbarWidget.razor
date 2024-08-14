@@ -38,7 +38,7 @@
                 @for (var i = 0; i < ChatListFilter.All.Count; i++) {
                     var filter = ChatListFilter.All[i];
                     var placePeopleTab = !PlaceId.IsNone && Equals(ChatListFilter.People, filter);
-                    var attributes = placePeopleTab ? PlacePeopleTabAttrs : null;
+                    var attributes = placePeopleTab ? PlacePeopleTabAttributes : null;
                     @RenderTab(filter, i, attributes)
                 }
             </ChildContent>
@@ -53,10 +53,10 @@
 </div>
 
 @code {
-    private static readonly Dictionary<string, object> PlacePeopleTabAttrs = new() {
-        { "data-bubble", BubbleRef.New<PlacePeopleBubble>() },
-        { "data-bubble-priority", "204" },
-        { "data-bubble-placement", FloatingPosition.Bottom.ToPositionString() },
+    private static readonly Dictionary<string, object> PlacePeopleTabAttributes = new() {
+        // { "data-bubble", BubbleRef.New<PlacePeopleBubble>() },
+        // { "data-bubble-priority", "204" },
+        // { "data-bubble-placement", FloatingPosition.Bottom.ToPositionString() },
     };
 
     private TabPanel _tabPanel = null!;

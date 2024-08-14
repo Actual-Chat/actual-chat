@@ -4,7 +4,7 @@
 
 @{
     var m = State.Value;
-    Context.SetTitle($"{m.MembersCount} members");
+    Context.Title = $"{m.MembersCount} members";
     Context.ModalDataBag.Set(nameof(PlaceSettingsStartModalPage.ComputedModel.MembersCount), m.MembersCount);
 }
 
@@ -63,9 +63,9 @@
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     protected override void OnInitialized() {
-        PlaceId = Context.GetTypedModel<PlaceId>();
-        Context.SetClass("edit-members");
-        Context.RegisterButtons(DialogButtonInfo.BackButton);
+        PlaceId = Context.GetModel<PlaceId>();
+        Context.Class = "edit-members";
+        Context.Buttons = [DialogButtonInfo.BackButton];
     }
 
     private void OnFilter(string filter) {
