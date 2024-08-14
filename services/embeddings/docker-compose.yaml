@@ -1,0 +1,9 @@
+services:
+  embeddings-service:
+    build:
+      context: .
+      dockerfile: embeddings-service.dockerfile
+    container_name: embeddings-service
+    ports:
+      - "28080:8080"
+    restart: unless-stopped
