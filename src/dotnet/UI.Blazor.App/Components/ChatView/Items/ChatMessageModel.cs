@@ -15,6 +15,8 @@ public sealed class ChatMessage(ChatEntry entry) : IVirtualListItem, IEquatable<
     public ChatMessageFlags Flags { get; init; }
     public int CountAs { get; init; } = 1;
     public ChatMessage? PreviousMessage { get; init; }
+    public bool ShowIndexDocId { get; init; }
+    public string IndexDocId { get; init; } = "";
 
     public bool IsReplacement
         => ReplacementKind != ChatMessageReplacementKind.None;

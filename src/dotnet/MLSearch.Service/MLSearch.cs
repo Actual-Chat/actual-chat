@@ -1,9 +1,39 @@
 ﻿using ActualChat.Chat;
+using ActualChat.Users;
 
 namespace ActualChat.MLSearch;
 
-public class MLSearchImpl (ICommander commander): IMLSearch
+public class MLSearchImpl (IServiceProvider services): IMLSearch
 {
+    private IChats? _chats;
+    private IAccounts? _accounts;
+
+    private IChats Chats => _chats ??= services.GetRequiredService<IChats>(); // Lazy resolving to prevent cyclic dependency
+    private IAccounts Accounts => _accounts ??= services.GetRequiredService<IAccounts>(); // Lazy resolving to prevent cyclic dependency
+    private IMLSearchBackend Backend { get; } = services.GetRequiredService<IMLSearchBackend>();
+
+    private ICommander Commander { get; } = services.Commander();
+
+    public virtual async Task<string> GetIndexDocIdByEntryId(
+        Session session,
+        ChatEntryId chatEntryId,
+        CancellationToken cancellationToken)
+    {
+        if (session.Id.IsEmpty)
+            throw new ArgumentOutOfRangeException(nameof(session));
+
+        if (chatEntryId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(chatEntryId));
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustBeAdmin);
+
+        var chat = await Chats.Get(session, chatEntryId.ChatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Require(ChatPermissions.Read);
+
+        return await Backend.GetIndexDocIdByEntryId(chatEntryId, cancellationToken).ConfigureAwait(false);
+    }
+
     public virtual async Task<MLSearchChat> OnCreate(MLSearch_CreateChat command, CancellationToken cancellationToken)
     {
         // This method is called from the client side
@@ -22,7 +52,7 @@ public class MLSearchImpl (ICommander commander): IMLSearch
             SystemTag = Constants.Chat.SystemTags.Bot,
         });
         var chatChangeCommand = new Chats_Change(command.Session, ChatId.None, null, chatChange);
-        var chat = await commander.Call(
+        var chat = await Commander.Call(
             chatChangeCommand,
             isOutermost: true,
             cancellationToken: cancellationToken
@@ -35,9 +65,9 @@ public class MLSearchImpl (ICommander commander): IMLSearch
             null,
             new AuthorDiff()
         );
-        var botAuthor = await commander.Call(upsertCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
+        var botAuthor = await Commander.Call(upsertCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
         var promoteCommand = new Authors_PromoteToOwner(command.Session, botAuthor.Id);
-        _ = await commander.Call(promoteCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
+        _ = await Commander.Call(promoteCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
         return new MLSearchChat(chat.Id);
     }
 }
