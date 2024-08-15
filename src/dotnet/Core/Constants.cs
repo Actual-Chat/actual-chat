@@ -160,7 +160,7 @@ public static partial class Constants
         public static class Google
         {
             public static readonly bool IsWebMOpusEnabled = false;
-            public static readonly bool UseStabilityHeuristics = false;
+            public static readonly bool UseStabilityHeuristics = true;
             public static readonly TimeSpan SilentPrefixDuration = TimeSpan.FromSeconds(3);
             public static readonly TimeSpan SilentSuffixDuration = TimeSpan.Zero; // TimeSpan.FromSeconds(4);
             public static readonly double Speed = 2;
