@@ -1,11 +1,11 @@
 using ActualChat.Audio;
-using ActualChat.Streaming.UI.Blazor.Components;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App;
 using ActualChat.Streaming;
-using ActualChat.Streaming.UI.Blazor.Services;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;

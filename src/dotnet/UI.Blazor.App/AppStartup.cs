@@ -6,7 +6,6 @@ using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Security;
-using ActualChat.Streaming.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualLab.Interception;
 using ActualLab.Internal;
@@ -146,7 +145,6 @@ public static class AppStartup
                 new ApiContractsModule(moduleServices),
                 // UI modules
                 new BlazorUICoreModule(moduleServices),
-                new StreamingBlazorUIModule(moduleServices),
                 // This module should be the last one
                 new BlazorUIAppModule(moduleServices)
             );
