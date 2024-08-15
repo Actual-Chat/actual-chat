@@ -201,8 +201,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         await ComputedTest.When(async ct => {
             var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
-            placeIds.Count.Should().Be(1);
-            placeIds.Should().Contain(place.Id);
+            placeIds.Should().BeEquivalentTo([place.Id]);
         }, TimeSpan.FromSeconds(10));
     }
 
