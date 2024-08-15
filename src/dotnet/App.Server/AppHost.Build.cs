@@ -12,7 +12,6 @@ using ActualChat.MLSearch.Module;
 using ActualChat.Module;
 using ActualChat.Notification.Module;
 using ActualChat.Redis.Module;
-using ActualChat.Search.Module;
 using ActualChat.Streaming.Module;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Module;
@@ -156,7 +155,6 @@ public partial class AppHost
                 new UsersServiceModule(moduleServices),
                 new ChatServiceModule(moduleServices),
                 new NotificationServiceModule(moduleServices),
-                new SearchServiceModule(moduleServices),
                 new MLSearchServiceModule(moduleServices),
                 // UI modules
                 new BlazorUICoreModule(moduleServices),

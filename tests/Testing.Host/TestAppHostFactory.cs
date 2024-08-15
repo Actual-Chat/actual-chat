@@ -2,7 +2,6 @@ using ActualChat.App.Server;
 using ActualChat.Blobs.Internal;
 using ActualChat.Module;
 using ActualChat.Redis;
-using ActualChat.Search;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
@@ -77,8 +76,13 @@ public static class TestAppHostFactory
                 services.AddSingleton(options.ChatDbInitializerOptions);
                 services.AddSingleton<IBlobStorages, TempFolderBlobStorages>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
-                services.AddSingleton<IndexNames>(_ => new IndexNames {
-                    IndexPrefix = UniqueNames.OpenSearch("test"),
+                // TODO: merge into single IndexNames
+                var prefix = UniqueNames.OpenSearch("test");
+                services.AddSingleton<Search.IndexNames>(_ => new Search.IndexNames {
+                    IndexPrefix = prefix,
+                });
+                services.AddSingleton<MLSearch.Engine.IndexNames>(_ => new MLSearch.Engine.IndexNames {
+                    IndexPrefix = prefix,
                 });
             },
             ConfigureApp = (ctx, app) => options.ConfigureApp?.Invoke(ctx, app),
