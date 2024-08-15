@@ -1,4 +1,5 @@
 using System.Text;
+using ActualChat.Controllers;
 using ActualChat.Hashing;
 using ActualChat.Media;
 using ActualChat.Security;
@@ -14,6 +15,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
     private ICommander Commander => services.Commander();
 
     [HttpPost("upload-picture")]
+    [DisableFormValueModelBinding]
     [RequestSizeLimit(Constants.Attachments.AvatarPictureFileSizeLimit * 2)]
     [RequestFormLimits(MultipartBodyLengthLimit = Constants.Attachments.AvatarPictureFileSizeLimit * 2)]
     public async Task<ActionResult<MediaContent>> UploadPicture(CancellationToken cancellationToken)
