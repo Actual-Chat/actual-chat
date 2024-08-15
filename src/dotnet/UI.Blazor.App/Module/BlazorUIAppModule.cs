@@ -146,5 +146,13 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
         if (HostInfo.HostKind != HostKind.MauiApp)
             services.AddScoped<ContactsPermissionHandler>(c => new WebContactsPermissionHandler(c.UIHub()));
+
+        // Users
+        // IModalViews
+        services.AddTypeMap<IModalView>(map => map
+            .Add<OwnAccountEditorModal.Model, OwnAccountEditorModal>()
+            .Add<OwnAvatarEditorModal.Model, OwnAvatarEditorModal>()
+            .Add<DeleteAccountModal.Model, DeleteAccountModal>()
+        );
     }
 }

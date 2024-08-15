@@ -1,6 +1,5 @@
 using ActualChat.Invite;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users.UI.Blazor;
 
 namespace ActualChat.UI.Blazor.App;
 

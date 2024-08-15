@@ -28,7 +28,6 @@
   <assembly fullname="ActualChat.Transcription.Contracts" />
   <assembly fullname="ActualChat.Users" />
   <assembly fullname="ActualChat.Users.Contracts" />
-  <assembly fullname="ActualChat.Users.UI.Blazor" />
   <assembly fullname="ActualChat.UI.Blazor" />
 
   <!-- Stl -->
