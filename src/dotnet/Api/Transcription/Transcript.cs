@@ -83,6 +83,9 @@ public sealed partial record Transcript(
         => WithSuffix(suffix, TimeMap, suffixEndTime);
     public Transcript WithSuffix(string suffix, LinearMap timeMap, float? suffixEndTime)
     {
+        if (suffix.IsNullOrEmpty())
+            return this;
+
         var text = Text + suffix;
         if (suffixEndTime is { } vSuffixEndTime)
             timeMap = timeMap.AppendOrUpdateSuffix(new Vector2(text.Length, vSuffixEndTime), TimeMapEpsilon.X);
