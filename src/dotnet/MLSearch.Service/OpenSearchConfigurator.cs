@@ -54,7 +54,7 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
         return;
 
         Task RunChain(AsyncChain chain)
-            => chain.Retry(RetryDelaySeq.Exp(0, 60), 10)
+            => chain.Retry(RetryDelaySeq.Exp(1, 60), 10)
                 .Log(LogLevel.Debug, Log)
                 .RunIsolated(cancellationToken);
     }
