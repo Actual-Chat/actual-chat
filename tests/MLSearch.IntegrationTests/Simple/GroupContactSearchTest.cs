@@ -9,7 +9,7 @@ namespace ActualChat.MLSearch.IntegrationTests;
 public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private WebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
+    private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
     private string UniquePart { get; } = UniqueNames.Prefix();
 
     protected override async Task DisposeAsync()
