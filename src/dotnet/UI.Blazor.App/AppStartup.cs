@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.WebSockets;
 using ActualChat.UI.Blazor.App.Module;
-using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualChat.Module;
@@ -151,7 +150,6 @@ public static class AppStartup
                 new BlazorUICoreModule(moduleServices),
                 new StreamingBlazorUIModule(moduleServices),
                 new UsersBlazorUIModule(moduleServices),
-                new ContactsBlazorUIModule(moduleServices),
                 new NotificationBlazorUIModule(moduleServices),
                 // This module should be the last one
                 new BlazorUIAppModule(moduleServices)

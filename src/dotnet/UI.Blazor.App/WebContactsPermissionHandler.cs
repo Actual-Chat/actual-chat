@@ -1,6 +1,6 @@
 using ActualChat.Permissions;
 
-namespace ActualChat.Contacts.UI.Blazor;
+namespace ActualChat.UI.Blazor.App;
 
 public class WebContactsPermissionHandler : ContactsPermissionHandler
 {

@@ -1,4 +1,6 @@
-namespace ActualChat.Contacts.UI.Blazor.Services;
+using ActualChat.Contacts;
+
+namespace ActualChat.UI.Blazor.App.Services;
 
 public class DeviceContacts
 {

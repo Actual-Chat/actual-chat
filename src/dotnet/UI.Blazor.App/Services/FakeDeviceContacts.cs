@@ -1,10 +1,11 @@
 using System.Text;
+using ActualChat.Contacts;
 using ActualChat.Hashing;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
-namespace ActualChat.Contacts.UI.Blazor.Services;
+namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed class FakeDeviceContacts(IServiceProvider services) : DeviceContacts
 {

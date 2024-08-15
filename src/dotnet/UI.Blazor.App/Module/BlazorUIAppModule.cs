@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio;
 using ActualChat.Hosting;
+using ActualChat.Permissions;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
 using ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView;
 using ActualChat.UI.Blazor.App.Components.Settings;
@@ -135,5 +136,15 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
         // Test Pages
         services.TryAddSingleton<IWebViewCrasher, NoopWebViewCrasher>();
+
+        // Contacts
+        fusion.AddService<ContactSync>(ServiceLifetime.Scoped);
+        if (HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp)
+            services.AddScoped<FakeDeviceContacts>().AddAlias<DeviceContacts, FakeDeviceContacts>(ServiceLifetime.Scoped);
+        else
+            services.AddScoped<DeviceContacts>();
+
+        if (HostInfo.HostKind != HostKind.MauiApp)
+            services.AddScoped<ContactsPermissionHandler>(c => new WebContactsPermissionHandler(c.UIHub()));
     }
 }

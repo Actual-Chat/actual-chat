@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using ActualChat.Contacts.UI.Blazor.Services;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Security;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;

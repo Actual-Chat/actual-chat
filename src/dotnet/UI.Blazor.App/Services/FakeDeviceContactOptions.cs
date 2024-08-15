@@ -1,6 +1,6 @@
 using MemoryPack;
 
-namespace ActualChat.Contacts.UI.Blazor.Services;
+namespace ActualChat.UI.Blazor.App.Services;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record FakeDeviceContactOptions(
