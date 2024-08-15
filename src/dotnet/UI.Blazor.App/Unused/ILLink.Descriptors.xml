@@ -15,7 +15,6 @@
   <assembly fullname="ActualChat.UI.Blazor.App" />
   <assembly fullname="ActualChat.Contacts" />
   <assembly fullname="ActualChat.Contacts.Contracts" />
-  <assembly fullname="ActualChat.Contacts.UI.Blazor" />
   <assembly fullname="ActualChat.Feedback.Contracts" />
   <assembly fullname="ActualChat.Invite" />
   <assembly fullname="ActualChat.Invite.Contracts" />

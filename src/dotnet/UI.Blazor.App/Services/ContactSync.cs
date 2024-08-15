@@ -1,9 +1,10 @@
+using ActualChat.Contacts;
 using ActualChat.Permissions;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using ActualLab.Diagnostics;
 
-namespace ActualChat.Contacts.UI.Blazor.Services;
+namespace ActualChat.UI.Blazor.App.Services;
 
 public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeService
 {

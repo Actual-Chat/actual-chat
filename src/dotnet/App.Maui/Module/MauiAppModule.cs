@@ -1,13 +1,11 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.Permissions;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
-using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
