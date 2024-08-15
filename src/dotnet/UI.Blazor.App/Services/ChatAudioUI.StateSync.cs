@@ -1,4 +1,4 @@
-using ActualChat.Streaming.UI.Blazor.Components;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;

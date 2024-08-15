@@ -1,9 +1,9 @@
 using ActualChat.Audio;
-using ActualChat.Streaming.UI.Blazor.Components;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.MediaPlayback;
 using ActualChat.Messaging;
 using ActualChat.Streaming;
-using ActualChat.Streaming.UI.Blazor.Services;
+using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 

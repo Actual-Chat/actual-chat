@@ -64,3 +64,5 @@
 @import './Components/delete-account.css';
 
 @import './Pages/user-page.css';
+
+@import './Components/AudioRecorder/Guides/guides.css';
