@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 
-namespace ActualChat.Notification.UI.Blazor.Module;
+namespace ActualChat.UI.Blazor.App.Module;
 
 #pragma warning disable IL2026 // Fine for modules
 

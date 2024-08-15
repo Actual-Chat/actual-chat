@@ -1,4 +1,4 @@
-using ActualChat.Notification.UI.Blazor;
+using ActualChat.UI.Blazor.App;
 
 namespace ActualChat.App.Maui;
 

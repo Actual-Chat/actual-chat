@@ -1,19 +1,20 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
-using ActualChat.Notification.UI.Blazor.Module;
+using ActualChat.Notification;
+using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
 
-namespace ActualChat.Notification.UI.Blazor;
+namespace ActualChat.UI.Blazor.App;
 
 public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBackend, INotificationsPermission
 {
     private const int MaxRetryCount = 5;
 
-    private static readonly string JSInitMethod = $"{NotificationBlazorUIModule.ImportName}.NotificationUI.init";
+    private static readonly string JSInitMethod = $"{BlazorUIAppModule.ImportName}.NotificationUI.init";
     private static readonly string JSRegisterRequestNotificationHandlerMethod =
-        $"{NotificationBlazorUIModule.ImportName}.NotificationUI.registerRequestNotificationHandler";
+        $"{BlazorUIAppModule.ImportName}.NotificationUI.registerRequestNotificationHandler";
     private static readonly string JSUnregisterRequestNotificationHandlerMethod =
-        $"{NotificationBlazorUIModule.ImportName}.NotificationUI.unregisterRequestNotificationHandler";
+        $"{BlazorUIAppModule.ImportName}.NotificationUI.unregisterRequestNotificationHandler";
 
     private readonly MutableState<bool?> _permissionState;
     private readonly TaskCompletionSource _whenPermissionStateReady = TaskCompletionSourceExt.New();

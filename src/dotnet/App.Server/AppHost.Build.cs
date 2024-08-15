@@ -11,7 +11,6 @@ using ActualChat.Media.Module;
 using ActualChat.MLSearch.Module;
 using ActualChat.Module;
 using ActualChat.Notification.Module;
-using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Search.Module;
 using ActualChat.Streaming.Module;

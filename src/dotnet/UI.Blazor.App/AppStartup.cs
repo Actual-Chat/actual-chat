@@ -5,7 +5,6 @@ using ActualChat.UI.Blazor.App.Module;
 using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualChat.Module;
-using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Security;
 using ActualChat.Streaming.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Module;
@@ -148,7 +147,6 @@ public static class AppStartup
                 // UI modules
                 new BlazorUICoreModule(moduleServices),
                 new StreamingBlazorUIModule(moduleServices),
-                new NotificationBlazorUIModule(moduleServices),
                 // This module should be the last one
                 new BlazorUIAppModule(moduleServices)
             );

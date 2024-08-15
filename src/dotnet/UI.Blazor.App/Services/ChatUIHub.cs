@@ -3,7 +3,7 @@ using ActualChat.Streaming.UI.Blazor.Components;
 using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.MediaPlayback;
-using ActualChat.Notification.UI.Blazor;
+using ActualChat.UI.Blazor.App;
 using ActualChat.Streaming;
 using ActualChat.Streaming.UI.Blazor.Services;
 using ActualChat.Users;

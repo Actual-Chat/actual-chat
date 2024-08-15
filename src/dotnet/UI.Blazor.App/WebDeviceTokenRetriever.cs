@@ -1,14 +1,14 @@
-using ActualChat.Notification.UI.Blazor.Module;
+using ActualChat.UI.Blazor.App.Module;
 
-namespace ActualChat.Notification.UI.Blazor;
+namespace ActualChat.UI.Blazor.App;
 
 public class WebDeviceTokenRetriever(IServiceProvider services) : IDeviceTokenRetriever
 {
     private static readonly string JSGetDeviceTokenMethod =
-        $"{NotificationBlazorUIModule.ImportName}.NotificationUI.getDeviceToken";
+        $"{BlazorUIAppModule.ImportName}.NotificationUI.getDeviceToken";
 
     private static readonly string JSDeleteDeviceTokenMethod =
-        $"{NotificationBlazorUIModule.ImportName}.NotificationUI.deleteDeviceToken";
+        $"{BlazorUIAppModule.ImportName}.NotificationUI.deleteDeviceToken";
 
     private IJSRuntime JS { get; } = services.GetRequiredService<IJSRuntime>();
 
