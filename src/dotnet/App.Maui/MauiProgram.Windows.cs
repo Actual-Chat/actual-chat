@@ -1,5 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.Notification.UI.Blazor;
+using ActualChat.UI.Blazor.App;
 using ActualChat.Streaming.UI.Blazor.Services;
 using ActualChat.UI.Blazor.App.Services;
 using Microsoft.Maui.LifecycleEvents;

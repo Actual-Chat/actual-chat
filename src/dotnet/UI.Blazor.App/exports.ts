@@ -27,3 +27,5 @@ export * from './Components/Onboarding/phone-verification-cat-svg.lit';
 export * from './Components/SearchPanel/search-panel';
 export * from './Components/Selection/selection-host';
 export * from './Services/LanguageUI/language-ui';
+
+export * from './notification-ui';

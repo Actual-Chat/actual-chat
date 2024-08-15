@@ -23,7 +23,6 @@
   <assembly fullname="ActualChat.MediaPlayback" />
   <assembly fullname="ActualChat.Notification" />
   <assembly fullname="ActualChat.Notification.Contracts" />
-  <assembly fullname="ActualChat.Notification.UI.Blazor" />
   <assembly fullname="ActualChat.SignalR.Client" />
   <assembly fullname="ActualChat.Transcription.Contracts" />
   <assembly fullname="ActualChat.Users" />

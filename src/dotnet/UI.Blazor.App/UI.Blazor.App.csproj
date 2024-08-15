@@ -5,7 +5,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Notification.UI.Blazor\Notification.UI.Blazor.csproj" />
     <ProjectReference Include="..\Streaming.UI.Blazor\Streaming.UI.Blazor.csproj" />
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
   </ItemGroup>

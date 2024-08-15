@@ -1,4 +1,4 @@
-using ActualChat.Notification.UI.Blazor;
+using ActualChat.UI.Blazor.App;
 using Android.Gms.Extensions;
 using Firebase.Messaging;
 
