@@ -9,7 +9,6 @@ using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Security;
 using ActualChat.Streaming.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Module;
-using ActualChat.Users.UI.Blazor.Module;
 using ActualLab.Interception;
 using ActualLab.Internal;
 using ActualLab.RestEase;
@@ -149,7 +148,6 @@ public static class AppStartup
                 // UI modules
                 new BlazorUICoreModule(moduleServices),
                 new StreamingBlazorUIModule(moduleServices),
-                new UsersBlazorUIModule(moduleServices),
                 new NotificationBlazorUIModule(moduleServices),
                 // This module should be the last one
                 new BlazorUIAppModule(moduleServices)

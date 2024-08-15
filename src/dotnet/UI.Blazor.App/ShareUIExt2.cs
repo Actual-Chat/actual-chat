@@ -1,8 +1,9 @@
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 
-namespace ActualChat.Users.UI.Blazor;
+namespace ActualChat.UI.Blazor.App;
 
-public static class ShareUIExt
+public static class ShareUIExt2
 {
     public static async Task<ModalRef?> ShareOwnAccount(
         this ShareUI shareUI, CancellationToken cancellationToken = default)

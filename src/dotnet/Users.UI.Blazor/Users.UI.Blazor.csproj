@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
-
-  <ItemGroup>
-    <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
-    <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
-  </ItemGroup>
-
-</Project>

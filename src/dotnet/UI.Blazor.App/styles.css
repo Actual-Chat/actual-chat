@@ -60,4 +60,7 @@
 @import './Components/StatusBadge/status-badge.css';
 @import './Components/IncomingShare/incoming-share-modal.css';
 
+@import './Components/own-avatar.css';
+@import './Components/delete-account.css';
+
 @import './Pages/user-page.css';

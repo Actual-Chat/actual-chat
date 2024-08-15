@@ -19,7 +19,6 @@ using ActualChat.Streaming.UI.Blazor.Module;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Module;
-using ActualChat.Users.UI.Blazor.Module;
 using ActualLab.Diagnostics;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
@@ -164,7 +163,6 @@ public partial class AppHost
                 // UI modules
                 new BlazorUICoreModule(moduleServices),
                 new StreamingBlazorUIModule(moduleServices),
-                new UsersBlazorUIModule(moduleServices),
                 new NotificationBlazorUIModule(moduleServices),
                 new BlazorUIAppModule(moduleServices), // Should be the last one in UI section
                 // This module should be the last one
