@@ -275,10 +275,10 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
             placeIds.Should().HaveCount(1);
             placeIds.Should().Contain(placeId);
-        }, TimeSpan.FromSeconds(10));
 
-        place = await places.Get(anotherSession, placeId, default);
-        place.Should().NotBeNull();
+            place = await places.Get(anotherSession, placeId, default);
+            place.Should().NotBeNull();
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Theory]
