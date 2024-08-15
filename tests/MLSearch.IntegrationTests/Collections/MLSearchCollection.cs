@@ -7,7 +7,7 @@ using OpenSearch.Client;
 using OpenSearch.Net;
 using HttpMethod = OpenSearch.Net.HttpMethod;
 
-namespace ActualChat.MLSearch.IntegrationTests.Collections;
+namespace ActualChat.MLSearch.IntegrationTests;
 
 [CollectionDefinition(nameof(MLSearchCollection))]
 public class MLSearchCollection : ICollectionFixture<AppHostFixture>;
@@ -18,14 +18,10 @@ public class AppHostFixture(IMessageSink messageSink)
             cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsEnabled)}", "true"));
             cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsInitialIndexingDisabled)}", "true"));
         },
-        ConfigureServices = (_, cfg) => {
-            cfg.AddSingleton(_ => new IndexNames {
-                IndexPrefix = UniqueNames.OpenSearch(IndexNames.TestPrefix),
-            });
-            cfg
-                .AddSingleton<OpenSearchInit>()
+        ConfigureServices = (_, services) => {
+            services.AddSingleton<OpenSearchInit>()
                 .AddAlias<IModuleInitializer, OpenSearchInit>();
-            cfg.AddSingleton<OpenSearchCleanup>();
+            services.AddSingleton<OpenSearchCleanup>();
         }
     })
 {

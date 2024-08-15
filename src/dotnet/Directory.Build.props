@@ -33,6 +33,8 @@
     <!-- <InternalsVisibleTo Include="DynamicProxyGenAssembly2" /> -->
     <InternalsVisibleTo Include="$(AssemblyName).UnitTests$(AssemblyPublicKey)" />
     <InternalsVisibleTo Include="$(AssemblyName).IntegrationTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(BaseName).Testing$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(BaseName).Testing.Host$(AssemblyPublicKey)" />
 
     <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />

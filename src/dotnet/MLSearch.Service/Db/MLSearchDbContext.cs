@@ -1,4 +1,5 @@
 using ActualChat.Db;
+using ActualChat.Search.Db;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Fusion.EntityFramework.Operations;
@@ -7,6 +8,9 @@ namespace ActualChat.MLSearch.Db;
 
 public class MLSearchDbContext(DbContextOptions<MLSearchDbContext> options) : DbContextBase(options)
 {
+    public DbSet<DbIndexedChat> IndexedChats { get; protected set; } = null!;
+    public DbSet<DbContactIndexState> ContactIndexStates { get; protected set; } = null!;
+
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
     public DbSet<DbEvent> Events { get; protected set; } = null!;
@@ -14,6 +18,13 @@ public class MLSearchDbContext(DbContextOptions<MLSearchDbContext> options) : Db
     protected override void OnModelCreating(ModelBuilder model)
     {
         model.ApplyConfigurationsFromAssembly(typeof(MLSearchDbContext).Assembly).UseSnakeCaseNaming();
+
+        var indexedChat = model.Entity<DbIndexedChat>();
+        indexedChat.Property(e => e.Id).UseCollation("C");
+
+        var indexedState = model.Entity<DbContactIndexState>();
+        indexedState.Property(e => e.Id).UseCollation("C");
+        indexedState.Property(e => e.LastUpdatedId).UseCollation("C");
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");

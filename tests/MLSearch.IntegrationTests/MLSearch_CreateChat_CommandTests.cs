@@ -1,15 +1,5 @@
-using ActualChat.MLSearch.Documents;
-using ActualChat.MLSearch.Engine;
-using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
-using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
-using ActualChat.MLSearch.Indexing;
-using ActualChat.MLSearch.Indexing.ChatContent;
-using ActualChat.MLSearch.IntegrationTests.Collections;
 using ActualChat.Testing.Host;
 using ActualChat.Chat;
-using OpenSearch.Client;
-using AppHostFixture = ActualChat.MLSearch.IntegrationTests.Collections.AppHostFixture;
-using ActualChat.Users;
 
 namespace ActualChat.MLSearch.IntegrationTests.MLSearch;
 

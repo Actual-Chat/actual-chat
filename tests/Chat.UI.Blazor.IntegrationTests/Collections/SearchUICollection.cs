@@ -1,4 +1,4 @@
-using ActualChat.Search.Module;
+using ActualChat.MLSearch.Module;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.UI.Blazor.App.IntegrationTests;
@@ -10,8 +10,9 @@ public class SearchAppHostFixture(IMessageSink messageSink) : ActualChat.Testing
     messageSink,
     TestAppHostOptions.Default with {
         ConfigureHost = (_, cfg) => {
-            cfg.AddInMemoryCollection(($"{nameof(SearchSettings)}:{nameof(SearchSettings.IsSearchEnabled)}", "true"));
-            cfg.AddInMemoryCollection(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingDelay)}", "00:00:01"));
-            cfg.AddInMemoryCollection(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingSignalInterval)}", "00:00:00.5"));
+            cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsEnabled)}", "true"));
+            cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsInitialIndexingDisabled)}", "true"));
+            cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.ContactIndexingDelay)}", "00:00:01"));
+            cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.ContactIndexingSignalInterval)}", "00:00:00.5"));
         },
     });

@@ -5,11 +5,9 @@ using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Indexing.ChatContent;
-using ActualChat.MLSearch.IntegrationTests.Collections;
 using ActualChat.Testing.Host;
 using OpenSearch.Client;
 using OpenSearch.Net;
-using AppHostFixture = ActualChat.MLSearch.IntegrationTests.Collections.AppHostFixture;
 
 namespace ActualChat.MLSearch.IntegrationTests.OpenSearch;
 
