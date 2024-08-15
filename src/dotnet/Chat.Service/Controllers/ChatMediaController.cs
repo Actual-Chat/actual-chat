@@ -1,3 +1,4 @@
+using ActualChat.Controllers;
 using ActualChat.Security;
 using ActualChat.Uploads;
 using ActualChat.Users;
@@ -14,6 +15,7 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
         = services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
 
     [HttpPost("{chatId}/upload")]
+    [DisableFormValueModelBinding]
     [RequestSizeLimit(Constants.Attachments.FileSizeLimit * 2)]
     [RequestFormLimits(MultipartBodyLengthLimit = Constants.Attachments.FileSizeLimit * 2)]
     public async Task<ActionResult<MediaContent>> Upload(ChatId chatId, CancellationToken cancellationToken)
