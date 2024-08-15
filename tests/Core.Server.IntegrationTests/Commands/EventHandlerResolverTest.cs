@@ -17,7 +17,7 @@ public class EventHandlerRegistryTest(ITestOutputHelper @out)
             },
         });
         var services = host.Services;
-        services.Queues().Start();
+        // services.Queues().Start();
 
         var eventHandlerResolver = services.GetRequiredService<EventHandlerRegistry>();
         var eventHandlers = eventHandlerResolver.AllEventHandlers;
