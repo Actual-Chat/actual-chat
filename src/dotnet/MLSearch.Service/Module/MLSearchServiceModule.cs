@@ -175,6 +175,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
         // -- Register IMLSearchHandlers --
         rpcHost.AddApiOrLocal<IMLSearch, MLSearchImpl>();
+        rpcHost.AddBackend<IMLSearchBackend, MLSearchBackend>();
 
         // -- Register Swagger endpoint (OpenAPI) --
         // Note: This is temporarily disabled. Will be re-enabled in a separate PR.

@@ -1,0 +1,77 @@
+@page "/admin/show-index-doc-id"
+@using ActualChat.Kvas
+@inherits FusionComponentBase
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Show index doc id chats</MainHeader>
+
+<Form Class="h-full" @ref="@_formRef" Model="@_form">
+    <FormBlock>
+        <DataAnnotationsValidator/>
+
+        <FormSection Label="Chat IDs to show index doc id" Class="field-chat-ids" For="() => _form.ChatIdList" InputId="@_form.ChatIdListFormId" IsLabelInsideInput="true">
+            <TextBox
+                @bind-Value="@_form.ChatIdList"
+                Id="@_form.ChatIdListFormId"
+                Placeholder="Semicolon separated list of chat ids to show index doc id" />
+        </FormSection>
+    </FormBlock>
+
+    <Button Type="@ButtonType.Button" Click="@(() => SaveChanges())">Save changes</Button>
+</Form>
+
+
+@code {
+    private Form? _formRef;
+    private FormModel _form = null!;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    protected override void OnInitialized()
+        => _form = new FormModel(ComponentIdGenerator);
+
+    protected override async Task OnInitializedAsync() {
+        var chatIds = await Hub.AccountSettings().Get<string>(ChatUI.ShowIndexDocIdChatIdsSettingsKey);
+        _form.ChatIdList = chatIds ?? "";
+    }
+
+    private async Task SaveChanges() {
+        if (!EnsureFormIsValid())
+            return;
+
+        await Hub.AccountSettings().Set(ChatUI.ShowIndexDocIdChatIdsSettingsKey, _form.ChatIdList);
+    }
+
+
+    private bool EnsureFormIsValid()
+    {
+        if (_formRef == null)
+            return false;
+        if (!_formRef.IsValid) {
+            Hub.UICommander().ShowError(StandardError.Constraint("Form is not valid"));
+            return false;
+        }
+
+        foreach (var chatSid in _form.ChatIdList.Split(";")) {
+            if (!ChatId.TryParse(chatSid, out _)) {
+                Hub.UICommander().ShowError(StandardError.Constraint($"Invalid chat id: '{chatSid}'"));
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public sealed class FormModel {
+        public string ChatIdList { get; set; } = "";
+
+        public string FormId { get; }
+        public string ChatIdListFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("show-index-doc-id-form");
+            ChatIdListFormId = $"{FormId}-chatIds";
+        }
+    }
+}
