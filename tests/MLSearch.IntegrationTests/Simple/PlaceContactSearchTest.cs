@@ -10,7 +10,7 @@ namespace ActualChat.MLSearch.IntegrationTests;
 public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private WebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
+    private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
     private IContactsBackend ContactsBackend { get; } = fixture.AppHost.Services.GetRequiredService<IContactsBackend>();
     private string UniquePart { get; } = UniqueNames.Prefix();
 
