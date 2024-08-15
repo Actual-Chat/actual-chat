@@ -51,7 +51,7 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
             if (cacheValue.IsNone)
                 return null;
 
-            var resultList = methodDef.ResultListFactory.Invoke();
+            var resultList = methodDef.ResultListType.Factory.Invoke();
             ArgumentSerializer.Deserialize(ref resultList, methodDef.AllowResultPolymorphism, cacheValue.Data);
             return new(key, cacheValue, resultList.Get0<T>());
         }
