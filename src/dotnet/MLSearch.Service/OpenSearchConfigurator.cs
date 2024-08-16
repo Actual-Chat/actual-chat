@@ -1,10 +1,13 @@
 using ActualChat.Hosting;
 using ActualChat.Mesh;
 using ActualChat.MLSearch.Db;
+using ActualChat.MLSearch.Engine;
+using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Module;
+using ActualChat.Search;
 using OpenSearch.Client;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
-namespace ActualChat.Search;
+namespace ActualChat.MLSearch;
 
 public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBase
 {

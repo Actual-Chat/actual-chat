@@ -1,8 +1,10 @@
 using System.Diagnostics;
+using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Module;
+using ActualChat.Search;
 using Microsoft.Extensions.Configuration;
 
-namespace ActualChat.Search.UnitTests;
+namespace ActualChat.MLSearch.UnitTests;
 
 public class ContactIndexingSignalTest : IAsyncLifetime
 {

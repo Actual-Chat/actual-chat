@@ -1,7 +1,8 @@
 using ActualChat.MLSearch.Module;
+using ActualChat.Search;
 using ActualLab.Interception;
 
-namespace ActualChat.Search;
+namespace ActualChat.MLSearch.Indexing;
 
 public abstract class ContactIndexer(IServiceProvider services)
     : ShardWorker(services, ShardScheme.ContactIndexerBackend), INotifyInitialized

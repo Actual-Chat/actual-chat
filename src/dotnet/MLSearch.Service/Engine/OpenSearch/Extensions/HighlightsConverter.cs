@@ -1,6 +1,7 @@
+using ActualChat.Search;
 using OpenSearch.Client;
 
-namespace ActualChat.Search;
+namespace ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 
 public static class HighlightsConverter
 {

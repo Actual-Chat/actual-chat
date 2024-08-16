@@ -1,9 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
+using ActualChat.MLSearch.Engine;
+using ActualChat.Search;
 using ActualLab.Versioning;
+using Microsoft.EntityFrameworkCore;
 
-namespace ActualChat.Search.Db;
+namespace ActualChat.MLSearch.Db;
 
 [Table("IndexedChat")]
 [Index(nameof(ChatCreatedAt))]

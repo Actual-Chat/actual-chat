@@ -1,7 +1,7 @@
-using ActualChat.Testing.Host;
 using ActualChat.Chat;
+using ActualChat.Testing.Host;
 
-namespace ActualChat.MLSearch.IntegrationTests.MLSearch;
+namespace ActualChat.MLSearch.IntegrationTests;
 
 [Trait("Category", "Slow")]
 [Collection(nameof(MLSearchCollection))]

@@ -1,5 +1,6 @@
 using ActualChat.Mesh;
 using ActualChat.MLSearch.Documents;
+using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 using ActualChat.MLSearch.Module;
 using Microsoft.Extensions.Options;
 

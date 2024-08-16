@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ActualChat.MLSearch.Engine;
+using ActualChat.Search;
 using ActualLab.Versioning;
 
-namespace ActualChat.Search.Db;
+namespace ActualChat.MLSearch.Db;
 
 [Table("ContactIndexState")]
 public class DbContactIndexState : IHasId<string>, IHasVersion<long>, IRequirementTarget
