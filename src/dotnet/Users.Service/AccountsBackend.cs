@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Mail;
 using ActualChat.Chat;
 using ActualChat.Users.Db;
@@ -80,6 +81,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     }
 
     // Not a [ComputeMethod]!
+    [SuppressMessage("Globalization", "CA1309:Use ordinal string comparison")]
     public async Task<ApiArray<UserId>> ListChanged(
         long minVersion,
         long maxVersion,
@@ -90,36 +92,19 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbAccounts = await dbContext.Accounts
-            .Where(x => x.Version >= minVersion && x.Version <= maxVersion && !Constants.User.SSystemUserIds.Contains(x.Id))
+        var accountsQuery = lastId.IsNone
+            ? dbContext.Accounts.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
+            : dbContext.Accounts.Where(x => (x.Version > minVersion && x.Version <= maxVersion)
+                || (x.Version == minVersion && string.Compare(x.Id, lastId.Value) > 0));
+
+        var dbAccounts = await accountsQuery
+            .Where(x => !Constants.User.SSystemUserIds.Contains(x.Id))
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
             .Take(limit)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var accounts = dbAccounts.ConvertAll(x => new {
-            Id = new UserId(x.Id), x.Version,
-        });
-        if (lastId.IsNone || Constants.User.SystemUserIds.Contains(lastId))
-            return accounts.Select(x => x.Id).ToApiArray();
-
-        var lastIdIndex = GetLastIndex();
-        return lastIdIndex < 0
-            ? accounts.Select(x => x.Id).ToApiArray()
-            : accounts[(lastIdIndex + 1)..].Select(x => x.Id).ToApiArray();
-
-        int GetLastIndex()
-        {
-            for (int i = 0; i < accounts.Count; i++) {
-                var account = accounts[i];
-                if (account.Version > minVersion)
-                    return -1;
-
-                if (account.Id == lastId)
-                    return i;
-            }
-            return -1;
-        }
+        return dbAccounts.Select(x => new UserId(x.Id)).ToApiArray();
     }
 
     public async Task<AccountFull?> GetLastChanged(CancellationToken cancellationToken)
