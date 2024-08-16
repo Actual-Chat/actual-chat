@@ -23,7 +23,7 @@
     }
 }
 @media (orientation: portrait) {
-    body.narrow .to-thick .chat-audio-panel {
+    body.narrow .to-thick:not(.text-mode) .chat-audio-panel {
         @apply z-button;
         @apply gap-x-8;
         @apply h-11;
@@ -184,7 +184,7 @@ body.narrow .base-panel .chat-audio-panel .playback-wrapper {
     @apply min-w-12 max-w-12 min-h-12 max-h-12;
 }
 @media (orientation: portrait) {
-    body.narrow .to-thick .chat-audio-panel .playback-wrapper {
+    body.narrow .to-thick:not(.text-mode) .chat-audio-panel .playback-wrapper {
         @apply min-w-12 max-w-12 min-h-12 max-h-12;
         transition: all 0ms;
     }
@@ -213,7 +213,7 @@ body.narrow .chat-audio-panel .recorder-wrapper .btn {
         @apply min-w-20 max-w-20 min-h-20 max-h-20;
         @apply text-06;
     }
-    body.narrow .chat-audio-panel .recorder-wrapper .recorder-icon {
+    body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .chat-audio-panel .recorder-wrapper .recorder-icon {
         @apply text-3.5xl;
     }
     body.narrow .to-thin .chat-audio-panel .recorder-wrapper .recorder-icon {
@@ -222,7 +222,7 @@ body.narrow .chat-audio-panel .recorder-wrapper .btn {
     body.narrow .chat-audio-panel .recorder-button .btn.recorder-skeleton .btn-content {
         @apply min-w-20 min-h-20;
     }
-    body.narrow .to-thick .chat-audio-panel .recorder-wrapper {
+    body.narrow .to-thick:not(.text-mode) .chat-audio-panel .recorder-wrapper {
         @apply flex justify-center;
         @apply h-22 w-22;
         transition: all 0ms;
@@ -230,7 +230,7 @@ body.narrow .chat-audio-panel .recorder-wrapper .btn {
     body.narrow .to-thick.smooth .chat-audio-panel .recorder-wrapper {
         transition: all 100ms ease-in-out;
     }
-    body.narrow .to-thick .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content {
+    body.narrow .to-thick:not(.text-mode) .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content {
         @apply min-w-20 max-w-20 min-h-20 max-h-20;
         transition: all 0ms;
     }
@@ -324,6 +324,7 @@ body.narrow .base-panel .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-
     @apply min-w-20 max-w-20 min-h-20 max-h-20;
 }
 @media (orientation: portrait) {
+    body.narrow .text-mode .chat-audio-panel .recorder-wrapper,
     body.narrow .to-thin .chat-audio-panel .recorder-wrapper {
         @apply flex justify-center;
         @apply h-10 w-20;
@@ -335,6 +336,7 @@ body.narrow .base-panel .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-
     body.narrow .to-thin .chat-audio-panel .recorder-wrapper {
         border-width: 0;
     }
+    body.narrow .text-mode .chat-audio-panel .recorder-wrapper .btn.btn-round,
     body.narrow .to-thin .chat-audio-panel .recorder-wrapper .btn.btn-round {
         @apply min-w-20 max-w-20 min-h-10 max-h-10;
         transition: all 0ms;
