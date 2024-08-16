@@ -38,10 +38,10 @@ let codecModule: Codec | null = null;
 // DEBUG - required for a chaos monkey
 // const sockets: WebSocket[] = [];
 
-const CHUNKS_WILL_BE_SENT_ON_RESUME = 6; // 20ms * 6 = 120ms
-const CHUNKS_WILL_BE_SENT_ON_RECONNECT = 500; // 20ms * 500 = 10s
+const CHUNKS_WILL_BE_SENT_ON_RESUME = 50; // 20ms * 20 = 1000ms
+const CHUNKS_WILL_BE_SENT_ON_RECONNECT = 1000; // 20ms * 1000 = 20s
 const FADE_CHUNKS = 3;
-const BUFFER_CHUNKS = 4; // 80ms
+const BUFFER_CHUNKS = 6; // 120ms
 const CHUNK_SIZE = SAMPLES_PER_MS * 20; // 20ms at SAMPLE_RATE
 const DEFAULT_PRE_SKIP = 312;
 
