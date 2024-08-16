@@ -53,13 +53,15 @@ internal class ExternalChatBotConversationHandler(IOptions<ExternalChatbotSettin
         }
 
         var lastUpdatedDocument = updatedDocuments.LastOrDefault();
-        if (lastUpdatedDocument == null)
+        if (lastUpdatedDocument == null) {
             return;
+        }
 
         var chatId = lastUpdatedDocument.ChatId;
         AuthorId botId = new(chatId, Constants.User.MLSearchBot.AuthorLocalId, AssumeValid.Option);
-        if (lastUpdatedDocument.AuthorId == botId)
+        if (lastUpdatedDocument.AuthorId == botId) {
             return;
+        }
         if (lastUpdatedDocument.Kind != ChatEntryKind.Text) {
             // Can't react on anything besides text yet.
             return;
@@ -67,21 +69,21 @@ internal class ExternalChatBotConversationHandler(IOptions<ExternalChatbotSettin
         
         /// Minimal WebHook implementation.
         
-        HttpClient client = httpClientFactory.CreateClient(nameof(ExternalChatBotConversationHandler));
+        var client = httpClientFactory.CreateClient(nameof(ExternalChatBotConversationHandler));
         
         var url = currentSettings.WebHookUri;
 
-        HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, url);
-        
-        // Note: 
-        // The outmost "input" is part of the /invoke method of the langserve.
-        // There are also "kwargs" and "config" parts available.
-        // The inner <input> structure must be syncronized with the prompt used on the bot side.
-        requestMessage.Content = JsonContent.Create(new {
-            input = lastUpdatedDocument.Content
-        });
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, url) {
+            // Note: 
+            // The outmost "input" is part of the /invoke method of the langserve.
+            // There are also "kwargs" and "config" parts available.
+            // The inner <input> structure must be syncronized with the prompt used on the bot side.
+            Content = JsonContent.Create(new {
+                input = lastUpdatedDocument.Content,
+            }),
+        };
         botToolsContextHandler.SetContext(requestMessage, conversationId: chatId);
-        HttpResponseMessage response = await client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
+        var response = await client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
         var resultContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         // Note: not expecting anything from the bot here. Might be worth logging.
     }

@@ -22,11 +22,11 @@ namespace ActualChat.MLSearch.Bot.Tools;
 public sealed class ConversationToolsController(ICommander commander, IBotToolsContextHandler botToolsContext, UrlMapper urlMapper): ControllerBase
 {
     public sealed class Reply {
-        public required string Text {get; init;}
+        public required string Text { get; init; }
     }
 
     public sealed class ForwardLocalLinks {
-        public string? Comment {get; set;}
+        public string? Comment { get; set; }
         public required List<string> Links { get; init; }
         
         [JsonIgnore]
@@ -83,7 +83,7 @@ public sealed class ConversationToolsController(ICommander commander, IBotToolsC
                         '\n', 
                         reply.LocalUrls.Select(e => e.ToAbsolute(urlMapper))
                     )
-                )
+                ),
             }));
         await commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         return;
