@@ -6,6 +6,7 @@ using ActualChat.Kvas;
 using ActualChat.Permissions;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
