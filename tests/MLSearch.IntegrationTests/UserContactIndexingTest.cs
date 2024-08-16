@@ -1,3 +1,4 @@
+using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Module;
 using ActualChat.Search;
 using ActualChat.Testing.Host;

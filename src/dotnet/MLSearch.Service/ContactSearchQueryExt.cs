@@ -1,4 +1,6 @@
-namespace ActualChat.Search;
+using ActualChat.Search;
+
+namespace ActualChat.MLSearch;
 
 public static class ContactSearchQueryExt
 {

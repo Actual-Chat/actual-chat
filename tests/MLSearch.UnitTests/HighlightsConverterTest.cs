@@ -1,7 +1,9 @@
 using System.Globalization;
+using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
+using ActualChat.Search;
 using ActualLab.Mathematics;
 
-namespace ActualChat.Search.UnitTests;
+namespace ActualChat.MLSearch.UnitTests;
 
 public class HighlightsConverterTest
 {

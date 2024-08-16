@@ -1,3 +1,4 @@
+using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Module;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
@@ -6,8 +7,8 @@ using ActualChat.Testing.Host.Assertion;
 namespace ActualChat.MLSearch.IntegrationTests;
 
 [Trait("Category", "Slow")]
-public class PlaceContactIndexingTest(ITestOutputHelper @out)
-    : LocalAppHostTestBase( "place_contact_indexing",
+public class GroupContactIndexingTest(ITestOutputHelper @out)
+    : LocalAppHostTestBase( "group_contact_indexing",
         TestAppHostOptions.Default with {
             ConfigureHost = (_, cfg) => {
                 cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsEnabled)}", "true"));
@@ -19,13 +20,13 @@ public class PlaceContactIndexingTest(ITestOutputHelper @out)
         @out)
 {
     private WebClientTester _tester = null!;
-    private PlaceContactIndexer _placeContactIndexer = null!;
+    private GroupChatContactIndexer _groupChatContactIndexer = null!;
 
     protected override async Task InitializeAsync()
     {
         await base.InitializeAsync();
         _tester = AppHost.NewWebClientTester(Out);
-        _placeContactIndexer = AppHost.Services.GetRequiredService<PlaceContactIndexer>();
+        _groupChatContactIndexer = AppHost.Services.GetRequiredService<GroupChatContactIndexer>();
     }
 
     protected override async Task DisposeAsync()
@@ -40,23 +41,24 @@ public class PlaceContactIndexingTest(ITestOutputHelper @out)
         // arrange
         var bob = await _tester.SignInAsUniqueBob();
         await _tester.SignInAsAlice();
-        var places = await _tester.CreatePlaceContacts(bob);
+        var places = await _tester.CreatePlaceContacts(bob, 1);
+        var chats = await _tester.CreateGroupContacts(bob, places, 1, 1);
 
         // act
         await _tester.SignIn(bob);
 
         // assert
-        await _placeContactIndexer.WhenInitialized.WaitAsync(TimeSpan.FromSeconds(10));
-        var expected = places.Joined().ToArray();
-        var searchResults = await Find( true, "place", expected.Length);
+        await _groupChatContactIndexer.WhenInitialized.WaitAsync(TimeSpan.FromSeconds(10));
+        var expected = chats.JoinedGroups1().ToArray();
+        var searchResults = await Find( true, "chat", expected.Length);
         searchResults.Should()
             .BeEquivalentTo(
                 bob.BuildSearchResults(expected),
                 o => o.ExcludingSearchMatch()
             );
 
-        expected = places.OtherPublic().ToArray();
-        searchResults = await Find( false, "place", expected.Length);
+        expected = chats.OtherPublicGroups1().ToArray();
+        searchResults = await Find( false, "chat", expected.Length);
         searchResults.Should()
             .BeEquivalentTo(
                 bob.BuildSearchResults(expected),
@@ -68,7 +70,7 @@ public class PlaceContactIndexingTest(ITestOutputHelper @out)
     {
         ApiArray<ContactSearchResult> searchResults = [];
         await TestExt.When(async () => {
-                searchResults = await _tester.FindPlaces(criteria, own, limit: requestCount);
+                searchResults = await _tester.FindGroups(criteria, own, limit: requestCount);
                 Out.WriteLine("Found {0} out of expected {1}",
                     searchResults.Count,
                     expectedCount);

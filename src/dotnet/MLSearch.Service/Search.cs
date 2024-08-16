@@ -1,8 +1,9 @@
 using ActualChat.Chat;
+using ActualChat.Search;
 using ActualChat.Users;
 
 #pragma warning disable MA0049
-namespace ActualChat.Search;
+namespace ActualChat.MLSearch;
 public class Search(ISearchBackend backend, IAccounts accounts, IPlaces places) : ISearch
 {
     public virtual async Task<ContactSearchResultPage> FindContacts(

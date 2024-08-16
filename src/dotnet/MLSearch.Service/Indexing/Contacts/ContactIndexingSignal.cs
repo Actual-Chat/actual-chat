@@ -1,6 +1,6 @@
 using ActualChat.MLSearch.Module;
 
-namespace ActualChat.Search;
+namespace ActualChat.MLSearch.Indexing;
 
 public sealed class ContactIndexingSignal : IAsyncDisposable
 {

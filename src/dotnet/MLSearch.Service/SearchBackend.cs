@@ -1,13 +1,17 @@
 using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.MLSearch.Db;
+using ActualChat.MLSearch.Engine;
+using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
+using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Module;
 using ActualChat.Queues;
-using Microsoft.AspNetCore.Http;
+using ActualChat.Search;
 using ActualLab.Fusion.EntityFramework;
+using Microsoft.AspNetCore.Http;
 using OpenSearch.Client;
 
-namespace ActualChat.Search;
+namespace ActualChat.MLSearch;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDbContext>(services), ISearchBackend

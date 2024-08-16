@@ -1,5 +1,4 @@
 using ActualChat.Db;
-using ActualChat.Search.Db;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Fusion.EntityFramework.Operations;

@@ -1,8 +1,9 @@
 using ActualChat.Chat;
 using ActualChat.Contacts;
+using ActualChat.Search;
 using ActualChat.Users;
 
-namespace ActualChat.Search;
+namespace ActualChat.MLSearch.Indexing;
 
 public sealed class UserContactIndexer(IServiceProvider services, IAccountsBackend accountsBackend, IAuthorsBackend authorsBackend, IContactsBackend contactsBackend) : ContactIndexer(services)
 {

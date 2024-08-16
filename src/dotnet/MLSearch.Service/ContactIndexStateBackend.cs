@@ -1,9 +1,9 @@
 using ActualChat.MLSearch.Db;
-using ActualChat.Search.Db;
+using ActualChat.Search;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 
-namespace ActualChat.Search;
+namespace ActualChat.MLSearch;
 
 public class ContactIndexStateBackend(IServiceProvider services) : DbServiceBase<MLSearchDbContext>(services), IContactIndexStatesBackend
 {

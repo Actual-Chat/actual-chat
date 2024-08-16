@@ -2,10 +2,12 @@ using ActualChat.Chat;
 using ActualChat.Mesh;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Module;
+using ActualChat.Search;
 using ActualLab.Interception;
 
-namespace ActualChat.Search;
+namespace ActualChat.MLSearch;
 
+// TODO(FC): remove
 public sealed class TextEntryIndexer(IServiceProvider services) : WorkerBase, IHasServices, INotifyInitialized
 {
     private const int ChatDispatchBatchSize = 20;
