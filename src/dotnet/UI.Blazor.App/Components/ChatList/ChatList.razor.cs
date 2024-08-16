@@ -4,11 +4,6 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtualListDataSource<ChatListItemModel>, IDisposable
 {
-    public static readonly TileStack<int> ChatTileStack = Constants.Chat.ChatTileStack;
-    public static readonly int LoadLimit = ChatTileStack.Layers[1].TileSize; // 20
-    public static readonly int HalfLoadLimit = LoadLimit / 2;
-    public static readonly int TileSize = ChatTileStack.FirstLayer.TileSize;
-
     private volatile VirtualListItemVisibility? _visibility;
 
     public async Task<VirtualListData<ChatListItemModel>> GetData(
@@ -33,10 +28,10 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
         var range = (hasQuery, isFirstRender) switch {
             // No query, no data -> initial load
             (false, true) => new Range<int>(
-                selectedChatIndex - HalfLoadLimit,
-                selectedChatIndex + HalfLoadLimit),
+                selectedChatIndex - ChatListUI.HalfLoadLimit,
+                selectedChatIndex + ChatListUI.HalfLoadLimit),
             // No query, but there is old data -> retaining visual position
-            (false, false) => new Range<int>(minVisibleIndex - TileSize, maxVisibleIndex + TileSize),
+            (false, false) => new Range<int>(minVisibleIndex - ChatListUI.TileSize, maxVisibleIndex + ChatListUI.TileSize),
             // Query is there, so data is irrelevant
             _ => query.KeyRange.ToIntRange().Move(query.MoveRange),
         };
@@ -44,13 +39,13 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
         // Fit to existing chat count
         range = range
             .IntersectWith(new Range<int>(0, chatCount))
-            .ExpandToTiles(ChatTileStack.FirstLayer);
+            .ExpandToTiles(ChatListUI.ChatTileStack.FirstLayer);
         // Expand and fit again if too small
-        if (range.Size() < LoadLimit)
-            range = range.Expand(TileSize)
+        if (range.Size() < ChatListUI.LoadLimit)
+            range = range.Expand(ChatListUI.TileSize)
                 .IntersectWith(new Range<int>(0, chatCount))
-                .ExpandToTiles(ChatTileStack.FirstLayer);
-        var indexTiles = ChatTileStack.FirstLayer.GetCoveringTiles(range);
+                .ExpandToTiles(ChatListUI.ChatTileStack.FirstLayer);
+        var indexTiles = ChatListUI.ChatTileStack.FirstLayer.GetCoveringTiles(range);
         var resultItems = new List<ChatListItemModel>();
         foreach (var indexTile in indexTiles) {
             var tile = await ChatListUI.GetTile(selectedPlaceId, indexTile, cancellationToken).ConfigureAwait(false);

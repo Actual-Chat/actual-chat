@@ -9,6 +9,10 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 {
     public static readonly int ActiveItemCountWhenLoading = 0;
     public static readonly int AllItemCountWhenLoading = 14;
+    public static readonly TileStack<int> ChatTileStack = Constants.Chat.ChatTileStack;
+    public static readonly int LoadLimit = ChatTileStack.Layers[1].TileSize; // 20
+    public static readonly int HalfLoadLimit = LoadLimit / 2;
+    public static readonly int TileSize = ChatTileStack.FirstLayer.TileSize;
     private static readonly TimeSpan MinNotificationInterval = TimeSpan.FromSeconds(5);
 
     private readonly MutableState<bool> _isSelectedChatUnlisted;
@@ -238,10 +242,12 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         for (var i = 0; i < chatInfoTile.Count; i++) {
             var chatInfo = chatInfoTile[i];
             var isLastItemInBlock = false;
-            if (chatInfo.Contact.IsPinned && i < chatInfoTile.Count - 1) {
-                // tile range is larger than pinned chat limit
-                var nextChatState = chatInfoTile[i + 1];
-                isLastItemInBlock = !nextChatState.Contact.IsPinned;
+            if (chatInfo.Contact.IsPinned) {
+                var nextChatState = i == chatInfoTile.Count - 1
+                    ? chatInfos.GetOrDefault(i + 1)
+                    : chatInfoTile[i + 1];
+                if (nextChatState != null)
+                    isLastItemInBlock = !nextChatState.Contact.IsPinned;
             }
             var isFirstItem = i == 0 && indexTile.Start == 0;
             result.Add(new ChatListItemModel(indexTile.Start + i, chatInfo.Chat, isLastItemInBlock, isFirstItem));
