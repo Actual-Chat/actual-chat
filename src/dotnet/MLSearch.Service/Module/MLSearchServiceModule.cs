@@ -3,18 +3,14 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
-using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.MLSearch.Bot;
 using ActualChat.MLSearch.Bot.External;
 using ActualChat.MLSearch.Bot.Tools;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
-using ActualChat.MLSearch.Engine;
-using ActualChat.MLSearch.Engine.OpenSearch;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
-using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.Indexing.Initializer;
@@ -24,14 +20,17 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
-// Note: Temporary disabled. Will be re-enabled with OpenAPI PR
-// using Microsoft.OpenApi.Models;
 using OpenSearch.Client;
 using OpenSearch.Net;
 using Microsoft.AspNetCore.Authentication;
 using ActualChat.Module;
 using Microsoft.AspNetCore.Builder;
 using ActualChat.MLSearch.Bot.Tools.Context;
+using ActualChat.Search;
+using ActualChat.Search.Db;
+using Microsoft.Extensions.Hosting;
+using IndexNames = ActualChat.MLSearch.Engine.IndexNames;
+
 // Note: Temporary disabled. Will be re-enabled with OpenAPI PR
 // using Swashbuckle.AspNetCore.SwaggerGen;
 
@@ -66,10 +65,13 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, MLSearchDbInitializer>();
         dbModule.AddDbContextServices<MLSearchDbContext>(services, Settings.Db, db => {
+            db.AddEntityResolver<string, DbIndexedChat>();
+            db.AddEntityResolver<string, DbContactIndexState>();
         });
 
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
+        // TODO: isBackendClient
 
         // Module configuration
 
@@ -198,5 +200,30 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             c.SwaggerDoc("bot-tools-v1", new OpenApiInfo { Title = "Bot Tools API - V1", Version = "v1"});
         });
         */
+
+        // TODO: put in a proper place in this file after merging PRs
+        // Search
+        rpcHost.AddApi<ISearch, Search.Search>();
+        rpcHost.AddBackend<ISearchBackend, SearchBackend>();
+
+        // Indexing
+        rpcHost.AddBackend<IIndexedChatsBackend, IndexedChatsBackend>();
+        rpcHost.AddBackend<IContactIndexStatesBackend, ContactIndexStateBackend>();
+
+        // Internal services
+        // TODO: uncomment when migration to single index is done
+        // services.AddSingleton<TextEntryIndexer>()
+        //     .AddHostedService(c => c.GetRequiredService<TextEntryIndexer>());
+        services.AddSingleton<UserContactIndexer>()
+            .AddHostedService(c => c.GetRequiredService<UserContactIndexer>());
+        services.AddSingleton<GroupChatContactIndexer>()
+            .AddHostedService(c => c.GetRequiredService<GroupChatContactIndexer>());
+        services.AddSingleton<PlaceContactIndexer>()
+            .AddHostedService(c => c.GetRequiredService<PlaceContactIndexer>());
+
+        services.AddSingleton<OpenSearchConfigurator>()
+            .AddHostedService(c => c.GetRequiredService<OpenSearchConfigurator>());
+        // TODO: merge into single IndexNames
+        services.AddSingleton<Search.IndexNames>();
     }
 }

@@ -1,5 +1,5 @@
 import { EventHandlerSet } from "event-handling";
-import { opusMediaRecorder } from "../../../Streaming.UI.Blazor/Components/AudioRecorder/opus-media-recorder";
+import { opusMediaRecorder } from "../../../UI.Blazor.App/Components/AudioRecorder/opus-media-recorder";
 import { Log } from 'logging';
 
 const { debugLog } = Log.get('SessionTokens');

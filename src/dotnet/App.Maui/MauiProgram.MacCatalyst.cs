@@ -1,4 +1,4 @@
-using ActualChat.Notification.UI.Blazor;
+using ActualChat.UI.Blazor.App;
 using Microsoft.Maui.LifecycleEvents;
 
 namespace ActualChat.App.Maui;

@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net.Mail;
 using System.Text;
 using ActualChat.Contacts;
-using ActualChat.Contacts.UI.Blazor.Services;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Core.NonWasm;
 using ActualChat.Hashing;
 using ActualChat.Permissions;

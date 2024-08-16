@@ -1,0 +1,14 @@
+@page "/test/external-contacts"
+<Button Class="btn-primary" Click="@(_ => OnGenerateClick())">
+    Generate contacts
+</Button>
+
+@code {
+    [Inject] private FakeDeviceContacts FakeDeviceContacts { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    private async Task OnGenerateClick() {
+        await FakeDeviceContacts.BumpSeed(CancellationToken.None);
+        Nav.Refresh(true);
+    }
+}

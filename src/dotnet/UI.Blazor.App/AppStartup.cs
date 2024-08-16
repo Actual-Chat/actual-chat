@@ -2,15 +2,11 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.WebSockets;
 using ActualChat.UI.Blazor.App.Module;
-using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualChat.Module;
-using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Security;
-using ActualChat.Streaming.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Module;
-using ActualChat.Users.UI.Blazor.Module;
 using ActualLab.Interception;
 using ActualLab.Internal;
 using ActualLab.RestEase;
@@ -149,10 +145,6 @@ public static class AppStartup
                 new ApiContractsModule(moduleServices),
                 // UI modules
                 new BlazorUICoreModule(moduleServices),
-                new StreamingBlazorUIModule(moduleServices),
-                new UsersBlazorUIModule(moduleServices),
-                new ContactsBlazorUIModule(moduleServices),
-                new NotificationBlazorUIModule(moduleServices),
                 // This module should be the last one
                 new BlazorUIAppModule(moduleServices)
             );

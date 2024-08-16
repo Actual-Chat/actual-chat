@@ -1,7 +1,7 @@
-using ActualChat.Streaming.UI.Blazor.Components;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Hosting;
-using ActualChat.Notification.UI.Blazor;
+using ActualChat.UI.Blazor.App;
 using ActualChat.Permissions;
 
 namespace ActualChat.UI.Blazor.App.Components;

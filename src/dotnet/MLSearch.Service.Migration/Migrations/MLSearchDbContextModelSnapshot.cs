@@ -22,6 +22,67 @@ namespace ActualChat.MLSearch.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("ActualChat.Search.Db.DbContactIndexState", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<string>("LastUpdatedId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("last_updated_id")
+                        .UseCollation("C");
+
+                    b.Property<long>("LastUpdatedVersion")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_updated_version");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_contact_index_state");
+
+                    b.ToTable("contact_index_state");
+                });
+
+            modelBuilder.Entity("ActualChat.Search.Db.DbIndexedChat", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<DateTime>("ChatCreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("chat_created_at");
+
+                    b.Property<long>("LastEntryLocalId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_entry_local_id");
+
+                    b.Property<long>("LastEntryVersion")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_entry_version");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_indexed_chat");
+
+                    b.HasIndex("ChatCreatedAt")
+                        .HasDatabaseName("ix_indexed_chat_chat_created_at");
+
+                    b.ToTable("indexed_chat");
+                });
+
             modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbEvent", b =>
                 {
                     b.Property<string>("Uuid")

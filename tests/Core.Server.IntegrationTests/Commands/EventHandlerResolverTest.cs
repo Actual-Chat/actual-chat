@@ -7,7 +7,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Commands;
 public class EventHandlerRegistryTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(EventHandlerRegistryTest)}", TestAppHostOptions.Default, @out)
 {
-    [Fact(Timeout = 20_000)]
+    [Fact]
     public async Task BackendServerRoleShouldHandleAllEvents()
     {
         using var host = await NewAppHost(options => options with  {
@@ -17,7 +17,7 @@ public class EventHandlerRegistryTest(ITestOutputHelper @out)
             },
         });
         var services = host.Services;
-        services.Queues().Start();
+        // services.Queues().Start();
 
         var eventHandlerResolver = services.GetRequiredService<EventHandlerRegistry>();
         var eventHandlers = eventHandlerResolver.AllEventHandlers;

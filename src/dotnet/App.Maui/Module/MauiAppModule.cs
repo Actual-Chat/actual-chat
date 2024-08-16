@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.Permissions;
@@ -45,7 +44,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // Permissions
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
         if (!HostInfo.HostKind.IsServerOrWasmApp())
-            services.AddScoped<IAnalyticsUI>(_ => new MauiAnalyticsUI());
+            services.AddScoped<IDataCollectionSettingsUI>(_ => new MauiDataCollectionSettingsUI());
 
         // Notifications
         services.AddSingleton<MauiNotifications>(c => new MauiNotifications(c));

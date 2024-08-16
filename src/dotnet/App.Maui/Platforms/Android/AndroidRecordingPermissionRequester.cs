@@ -1,4 +1,4 @@
-using ActualChat.Streaming.UI.Blazor.Services;
+using ActualChat.UI.Blazor.App.Services;
 using Android.Content;
 
 namespace ActualChat.App.Maui;

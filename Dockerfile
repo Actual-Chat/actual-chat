@@ -101,7 +101,6 @@ RUN dotnet build --runtime linux-x64 src/dotnet/Chat.Service.Migration/Chat.Serv
     && dotnet build --runtime linux-x64 src/dotnet/Media.Service.Migration/Media.Service.Migration.csproj \
     && dotnet build --runtime linux-x64 src/dotnet/MLSearch.Service.Migration/MLSearch.Service.Migration.csproj \
     && dotnet build --runtime linux-x64 src/dotnet/Notification.Service.Migration/Notification.Service.Migration.csproj \
-    && dotnet build --runtime linux-x64 src/dotnet/Search.Service.Migration/Search.Service.Migration.csproj \
     && dotnet build --runtime linux-x64 src/dotnet/Users.Service.Migration/Users.Service.Migration.csproj
 RUN ./ef-migrations.cmd Chat.Service bundle --runtime linux-x64 --output ./artifacts/Chat.Service.Migration.exe \
     && ./ef-migrations.cmd Contacts.Service bundle --runtime linux-x64 --output ./artifacts/Contacts.Service.Migration.exe \
@@ -109,7 +108,6 @@ RUN ./ef-migrations.cmd Chat.Service bundle --runtime linux-x64 --output ./artif
     && ./ef-migrations.cmd Media.Service bundle --runtime linux-x64 --output ./artifacts/Media.Service.Migration.exe \
     && ./ef-migrations.cmd MLSearch.Service bundle --runtime linux-x64 --output ./artifacts/MLSearch.Service.Migration.exe \
     && ./ef-migrations.cmd Notification.Service bundle --runtime linux-x64 --output ./artifacts/Notification.Service.Migration.exe \
-    && ./ef-migrations.cmd Search.Service bundle --runtime linux-x64 --output ./artifacts/Search.Service.Migration.exe \
     && ./ef-migrations.cmd Users.Service bundle --runtime linux-x64 --output ./artifacts/Users.Service.Migration.exe \
     && ls -lha /src/artifacts
 
@@ -123,7 +121,6 @@ COPY <<EOF /migrations/entrypoint.sh
 ./Media.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}media;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
 ./MLSearch.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}mlsearch;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
 ./Notification.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}notification;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
-./Search.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}search;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
 ./Users.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}users;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
 EOF
 RUN chmod -R 755 /migrations/

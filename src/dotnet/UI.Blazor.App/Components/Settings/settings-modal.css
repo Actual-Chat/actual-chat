@@ -52,11 +52,11 @@
     @apply bg-tile;
 }
 
-.enhance-data.tile .tile-item {
+.data-collection-consent.tile .tile-item {
     @apply h-12;
 }
-.enhance-data.tile .c-description,
-.alpha-testing.tile .c-description {
+.data-collection-consent.tile .c-description,
+.early-access-features.tile .c-description {
     @apply pl-12 pr-16;
     @apply text-caption-6;
 }

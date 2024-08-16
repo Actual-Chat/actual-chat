@@ -15,7 +15,6 @@
   <assembly fullname="ActualChat.UI.Blazor.App" />
   <assembly fullname="ActualChat.Contacts" />
   <assembly fullname="ActualChat.Contacts.Contracts" />
-  <assembly fullname="ActualChat.Contacts.UI.Blazor" />
   <assembly fullname="ActualChat.Feedback.Contracts" />
   <assembly fullname="ActualChat.Invite" />
   <assembly fullname="ActualChat.Invite.Contracts" />
@@ -24,12 +23,10 @@
   <assembly fullname="ActualChat.MediaPlayback" />
   <assembly fullname="ActualChat.Notification" />
   <assembly fullname="ActualChat.Notification.Contracts" />
-  <assembly fullname="ActualChat.Notification.UI.Blazor" />
   <assembly fullname="ActualChat.SignalR.Client" />
   <assembly fullname="ActualChat.Transcription.Contracts" />
   <assembly fullname="ActualChat.Users" />
   <assembly fullname="ActualChat.Users.Contracts" />
-  <assembly fullname="ActualChat.Users.UI.Blazor" />
   <assembly fullname="ActualChat.UI.Blazor" />
 
   <!-- Stl -->

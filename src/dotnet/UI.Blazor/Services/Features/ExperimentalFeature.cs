@@ -19,7 +19,7 @@ public abstract class ExperimentalFeature : FeatureDef<bool>, IClientFeatureDef
 
         var accountSettings = services.AccountSettings();
         var appSettings = await accountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
-        return appSettings.IsExperimentalFeatureEnabled ?? true;
+        return appSettings.AreExperimentalFeaturesEnabled ?? true;
     }
 
     private static bool IsTargetUser(AccountFull account)

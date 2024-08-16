@@ -1,4 +1,4 @@
-﻿import { audioContextSource, recordingAudioContextSource } from "../../../Streaming.UI.Blazor/Services/audio-context-source";
+﻿import { audioContextSource, recordingAudioContextSource } from "../../../UI.Blazor.App/Services/audio-context-source";
 
 export class RecorderToggle {
     private static isInitialized = false;

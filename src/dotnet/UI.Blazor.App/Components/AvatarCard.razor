@@ -1,0 +1,15 @@
+﻿@using ActualChat.Chat
+@using ActualChat.Media
+@namespace ActualChat.UI.Blazor.App.Components
+
+<Pic
+    Class="@Class"
+    Title="@Avatar.Name"
+    Picture="@Avatar.Picture"
+    Size="@Size"/>
+
+@code {
+    [Parameter, EditorRequired] public Avatar Avatar { get; set; } = AvatarFull.None;
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
+    [Parameter] public string Class { get; set; } = "";
+}

@@ -1,5 +1,5 @@
 import { delayAsync, PromiseSourceWithTimeout } from 'promises';
-import { audioContextSource } from '../../../Streaming.UI.Blazor/Services/audio-context-source';
+import { audioContextSource } from '../../../UI.Blazor.App/Services/audio-context-source';
 import { Log } from 'logging';
 
 const { debugLog, warnLog } = Log.get('SoundsPlayer');

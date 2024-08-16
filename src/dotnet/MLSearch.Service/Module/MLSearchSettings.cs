@@ -1,4 +1,4 @@
-﻿
+
 using System.ComponentModel.DataAnnotations;
 
 namespace ActualChat.MLSearch.Module;
@@ -15,6 +15,9 @@ public sealed class MLSearchSettings
     public string Redis { get; set; } = "";
 
     public MLIntegrations? Integrations { get; set; }
+    public TimeSpan RefreshInterval { get; set; } = TimeSpan.FromSeconds(30);
+    public TimeSpan ContactIndexingDelay { get; set; } = TimeSpan.FromSeconds(10);
+    public TimeSpan ContactIndexingSignalInterval { get; set; } = TimeSpan.FromSeconds(1);
 }
 
 public sealed class OpenSearchSettings

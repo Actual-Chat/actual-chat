@@ -279,7 +279,7 @@ module.exports = (env, args) => {
                 },
             },
             opusDecoderWorker: {
-                import: './../dotnet/Streaming.UI.Blazor/Components/AudioPlayer/workers/opus-decoder-worker.ts',
+                import: './../dotnet/UI.Blazor.App/Components/AudioPlayer/workers/opus-decoder-worker.ts',
                 chunkLoading: 'import',
                 asyncChunks: true,
                 library: {
@@ -287,7 +287,7 @@ module.exports = (env, args) => {
                 },
             },
             opusEncoderWorker: {
-                import: './../dotnet/Streaming.UI.Blazor/Components/AudioRecorder/workers/opus-encoder-worker.ts',
+                import: './../dotnet/UI.Blazor.App/Components/AudioRecorder/workers/opus-encoder-worker.ts',
                 chunkLoading: 'import',
                 asyncChunks: true,
                 library: {
@@ -295,7 +295,7 @@ module.exports = (env, args) => {
                 },
             },
             vadWorker: {
-                import: './../dotnet/Streaming.UI.Blazor/Components/AudioRecorder/workers/audio-vad-worker.ts',
+                import: './../dotnet/UI.Blazor.App/Components/AudioRecorder/workers/audio-vad-worker.ts',
                 chunkLoading: 'import',
                 asyncChunks: true,
                 library: {
@@ -321,7 +321,7 @@ module.exports = (env, args) => {
                 },
             },
             feederWorklet: {
-                import: './../dotnet/Streaming.UI.Blazor/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts',
+                import: './../dotnet/UI.Blazor.App/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts',
                 chunkLoading: false,
                 asyncChunks: false,
                 runtime: false,
@@ -330,7 +330,7 @@ module.exports = (env, args) => {
                 },
             },
             opusEncoderWorklet: {
-                import: './../dotnet/Streaming.UI.Blazor/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts',
+                import: './../dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts',
                 chunkLoading: false,
                 asyncChunks: false,
                 runtime: false,
@@ -339,7 +339,7 @@ module.exports = (env, args) => {
                 },
             },
             vadWorklet: {
-                import: './../dotnet/Streaming.UI.Blazor/Components/AudioRecorder/worklets/audio-vad-worklet-processor.ts',
+                import: './../dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/audio-vad-worklet-processor.ts',
                 chunkLoading: false,
                 asyncChunks: false,
                 runtime: false,

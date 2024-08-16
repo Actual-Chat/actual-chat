@@ -116,7 +116,7 @@ public partial class GoogleTranscriber : ITranscriber
 
     // Private methods
 
-    private StreamingRecognitionConfig GetStreamingRecognitionConfig(TranscriptionOptions options)
+    private static StreamingRecognitionConfig GetStreamingRecognitionConfig(TranscriptionOptions options)
     {
         var languageCode = GetRecognizerOptions(options.Language).LanguageCode;
         return new StreamingRecognitionConfig {

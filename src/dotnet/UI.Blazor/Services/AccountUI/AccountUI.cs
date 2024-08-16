@@ -66,7 +66,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     public async Task SignIn(string schema)
     {
         await ClientAuth.SignIn(schema).ConfigureAwait(false);
-        await NotificationUI.EnsureDeviceRegistered(default);
+        await NotificationUI.EnsureDeviceRegistered(CancellationToken.None).ConfigureAwait(false);
     }
 
     public async Task SignOut()

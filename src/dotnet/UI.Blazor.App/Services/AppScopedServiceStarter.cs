@@ -1,6 +1,4 @@
-using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Hosting;
-using ActualChat.Streaming.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
@@ -116,7 +114,7 @@ public class AppScopedServiceStarter
             if (hostKind.IsApp())
                 await StartHostedServices().ConfigureAwait(false);
 
-            await ConfigureAnalytics(cancellationToken).ConfigureAwait(false);
+            await ConfigureDataCollection(cancellationToken).ConfigureAwait(false);
 
             await Task.Delay(TimeSpan.FromSeconds(15), cancellationToken).ConfigureAwait(false);
             Services.GetRequiredService<ContactSync>().Start();
@@ -127,22 +125,21 @@ public class AppScopedServiceStarter
         }
     }
 
-
     // Private methods
 
-    private async Task ConfigureAnalytics(CancellationToken cancellationToken)
+    private async Task ConfigureDataCollection(CancellationToken cancellationToken)
     {
-        var analyticsUI = Services.GetRequiredService<IAnalyticsUI>();
-        if (await analyticsUI.IsConfigured(cancellationToken).ConfigureAwait(false))
+        var dataCollectionSettingsUI = Services.GetRequiredService<IDataCollectionSettingsUI>();
+        if (await dataCollectionSettingsUI.IsConfigured(cancellationToken).ConfigureAwait(false))
             return;
 
         var accountSettings = Services.AccountSettings();
         var settings = await accountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
-        var isAnalyticsEnabled = settings.IsAnalyticsEnabled;
-        if (!isAnalyticsEnabled.HasValue)
+        var isDataCollectionEnabled = settings.IsDataCollectionEnabled;
+        if (!isDataCollectionEnabled.HasValue)
             return;
 
-        await analyticsUI.UpdateAnalyticsState(isAnalyticsEnabled.Value, cancellationToken).ConfigureAwait(false);
+        await dataCollectionSettingsUI.UpdateState(isDataCollectionEnabled.Value, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task StartHostedServices()

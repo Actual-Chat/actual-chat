@@ -23,7 +23,7 @@
                 <TimeZoneStep Account="m.AccountFull"/>
                 <AvatarStep/>
                 <PermissionsStep NextButtonRef="@_nextButtonRef"/>
-                <AnalyticsStep IsAnalyticsConfigured="m.IsAnalyticsConfigured"/>
+                <DataCollectionStep IsConfigured="m.IsDataCollectionConfigured"/>
                 <CreateChatsStep/>
             </Steps>
             <Header>
@@ -53,7 +53,7 @@
                         Class="btn-primary"
                         ButtonRef="@_nextButtonRef"
                         Click="@(async _ => await stepper.TryMoveForward())">
-                        @if (stepper.CurrentStep is PhoneStep or EmailStep or AnalyticsStep) {
+                        @if (stepper.CurrentStep is PhoneStep or EmailStep or DataCollectionStep) {
                             <span>@stepper.NextTitle</span>
                         } else if (stepper.IsLastStep) {
                             <span>Start messaging</span>
@@ -81,7 +81,7 @@
 
     [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
-    [Inject] private IAnalyticsUI AnalyticsUI { get; init; } = null!;
+    [Inject] private IDataCollectionSettingsUI DataCollectionSettingsUI { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -95,12 +95,10 @@
 
     protected override async Task<ViewModel> ComputeState(CancellationToken cancellationToken) {
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
-        var isAnalyticsConfigured = await AnalyticsUI.IsConfigured(cancellationToken).ConfigureAwait(false);
+        var isDataCollectionConfigured = await DataCollectionSettingsUI.IsConfigured(cancellationToken).ConfigureAwait(false);
         return new() {
             AccountFull = account,
-            EnableIncompleteUI = enableIncompleteUI,
-            IsAnalyticsConfigured = isAnalyticsConfigured,
+            IsDataCollectionConfigured = isDataCollectionConfigured,
         };
     }
 
@@ -117,14 +115,10 @@
     // Nested types
 
     public sealed record ViewModel {
-        public static readonly ViewModel None = new() {
-            AccountFull = AccountFull.Loading,
-            EnableIncompleteUI = false,
-        };
+        public static readonly ViewModel None = new() { AccountFull = AccountFull.Loading };
 
         public AccountFull AccountFull { get; init; } = null!;
-        public bool EnableIncompleteUI { get; init; }
-        public bool IsAnalyticsConfigured { get; init; }
+        public bool IsDataCollectionConfigured { get; init; }
     }
 
     public sealed record Model : IOptionallyClosable {

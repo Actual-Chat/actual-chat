@@ -1,0 +1,195 @@
+@page "/test/auth"
+@inherits ComputedStateComponent<AuthTestPage.Model>
+@{
+    var m = State.Value;
+    var error = State.Error;
+    var usedAuthSchemas = m.User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
+    var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
+}
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Authentication Test Page</MainHeader>
+
+@if (error != null) {
+    <ErrorToast Title="Update error" Class="mb-3">@error.Message</ErrorToast>
+}
+
+<h3 class="section border-0">Session</h3>
+<ul>
+    <li><code>Session.Id</code>: <b><code>@Session.Id.Value</code></b></li>
+    <li><code>SessionInfo.GetGuestId()</code>: <b><code>@(m.SessionInfo.GetGuestId())</code></b></li>
+    <li><code>SessionInfo</code>: <br/><pre class="whitespace-break-spaces">@(JsonFormatter.Format(m.SessionInfo!))</pre></li>
+</ul>
+
+<h3 class="section">User</h3>
+<ul>
+    <li><code>Id</code>: <b><code>@m.User.Id.Value</code></b></li>
+    <li><code>Name</code>: <b><code>@m.User.Name</code></b></li>
+    <li><code>Version</code>: <b><code>@m.User.Version.ToString()</code></b></li>
+    <li><code>Account.IsAdmin</code>: <b><code>@m.Account.IsAdmin.ToString()</code></b></li>
+    <li><code>Account.Version</code>: <b><code>@m.Account.Version.ToString()</code></b></li>
+</ul>
+<h4>Claims:</h4>
+<ul>
+    @foreach (var (key, value) in m.User.Claims) {
+        <li><code>@key</code>: <b><code>@value</code></b></li>
+    }
+</ul>
+<h4>Identities:</h4>
+<ul>
+    @foreach (var ((schema, schemaBoundId), _) in m.User.Identities) {
+        <li><code>@schema</code>: <b><code>@schemaBoundId</code></b></li>
+    }
+</ul>
+
+<h3 class="section">Account</h3>
+<pre class="whitespace-break-spaces">@(JsonFormatter.Format(m.Account))</pre>
+
+@if (m.Account.IsAdmin) {
+    <div class="flex-x">
+        <span>Status:</span>
+        <Button
+            data-menu="@(MenuRef.New<AccountStatusMenu>().ToString())"
+            data-menu-trigger="@MenuTrigger.Primary"
+            data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+            <div class="px-2 inline-flex">
+                <span class="float-left text-secondary font-semibold chat-header-title">
+                    @m.Account.Status
+                </span>
+            </div>
+        </Button>
+    </div>
+}
+
+@if (m.Sessions.Count != 0) {
+    <h3 class="section">Sessions:</h3>
+    <div>
+        <table class="table table-sm">
+            <thead>
+            <tr>
+                <th scope="col">SessionHash</th>
+                <th scope="col">IP</th>
+                <th scope="col">Browser</th>
+                <th scope="col">Created</th>
+                <th scope="col">Last Seen</th>
+                <th scope="col">Version</th>
+                <th scope="col"></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var session in m.Sessions) {
+                <tr @key="@session.SessionHash">
+                    <td>@session.SessionHash</td>
+                    <td>@session.IPAddress</td>
+                    <td>@session.UserAgent</td>
+                    <td>@session.Created</td>
+                    <td>@session.LastSeen</td>
+                    <td>@session.Version.ToString()</td>
+                    <td>
+                        @if (session.IsCurrent) {
+                            <span>Current</span>
+                        } else {
+                            <Button
+                                Class="btn btn-sm"
+                                Click="@(_ => ClientAuthHelper.Kick(Session, session.SessionHash))">Kick</Button>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (m.User.IsAuthenticated()) {
+    <h3 class="section">Sign out</h3>
+    <FormButtons IsEndAligned="false">
+        <Button Click="@(_ => ClientAuth.SignOut())">Sign out</Button>
+        <Button Click="@(_ => ClientAuthHelper.SignOutEverywhere())">Sign out everywhere</Button>
+        @if (unusedAuthSchemas.Length != 0) {
+            <span> or add account: </span>
+            @foreach (var (name, displayName) in unusedAuthSchemas) {
+                <Button Click="@(_ => ClientAuth.SignIn(name))">@displayName</Button>
+            }
+        }
+    </FormButtons>
+} else {
+    <h3 class="section">Sign in</h3>
+    <SignInButton/>
+}
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAuth Auth { get; init; } = null!;
+    [Inject] private ClientAuthHelper ClientAuthHelper { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private LiveTime LiveTime { get; init; } = null!;
+    private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) {
+            // GetSchemas requires JS interop, so it can be called only at this point
+            AuthSchemas = await ClientAuth.GetSchemas();
+            StateHasChanged();
+        }
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var sessionInfo = await Auth.GetSessionInfo(Session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
+        var sessions = await Auth.GetUserSessions(Session, cancellationToken).ConfigureAwait(false);
+        var sessionList = new List<SessionModel>();
+
+        foreach (var session in sessions) {
+            var model = new SessionModel {
+                SessionHash = session.SessionHash,
+                IPAddress = session.IPAddress,
+                UserAgent = session.UserAgent,
+                Created = await LiveTime.GetDeltaText(session.CreatedAt, cancellationToken).ConfigureAwait(false),
+                LastSeen = await LiveTime.GetDeltaText(session.LastSeenAt, cancellationToken).ConfigureAwait(false),
+                Version = session.Version,
+                IsCurrent = Session.Hash == session.SessionHash,
+            };
+            sessionList.Add(model);
+        }
+        return new() {
+            SessionInfo = sessionInfo,
+            Account = account,
+            Sessions = sessionList.ToImmutableList(),
+        };
+    }
+
+    // Nested types
+
+    public sealed record SessionModel
+    {
+        public string SessionHash { get; init; } = "";
+        public string IPAddress { get; init; } = "";
+        public string UserAgent { get; init; } = "";
+        public string Created { get; init; } = "";
+        public string LastSeen { get; init; } = "";
+        public long Version { get; init; }
+        public bool IsCurrent { get; init; }
+    }
+
+    public sealed record Model {
+        public static readonly Model None = new() { Account = AccountFull.None };
+        public static readonly Model Loading = new() { Account = AccountFull.Loading }; // Should differ by ref. from None
+
+        public SessionInfo? SessionInfo { get; init; }
+        public AccountFull Account { get; init; } = null!;
+        public User User => Account.User;
+        public ImmutableList<SessionModel> Sessions { get; init; } = ImmutableList<SessionModel>.Empty;
+    }
+}

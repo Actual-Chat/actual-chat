@@ -23,6 +23,7 @@ using ActualLab.IO;
 using ActualLab.Rpc.Diagnostics;
 using ActualLab.Rpc.Server;
 using ActualChat.MLSearch.Diagnostics;
+using ActualLab.Fusion.Server;
 
 namespace ActualChat.App.Server.Module;
 
@@ -230,6 +231,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             o.MaximumParallelInvocationsPerClient = 4;
             o.StatefulReconnectBufferSize = 1000;
         });
+        services.AddBlazorCircuitActivitySuppressor();
 
         // OpenTelemetry
         var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;

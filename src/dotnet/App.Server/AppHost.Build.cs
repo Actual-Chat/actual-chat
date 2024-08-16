@@ -3,7 +3,6 @@ using ActualChat.App.Server.Module;
 using ActualChat.Chat.Module;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.Contacts.Module;
-using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Db.Module;
 using ActualChat.Flows.Module;
 using ActualChat.Hosting;
@@ -12,15 +11,11 @@ using ActualChat.Media.Module;
 using ActualChat.MLSearch.Module;
 using ActualChat.Module;
 using ActualChat.Notification.Module;
-using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Redis.Module;
-using ActualChat.Search.Module;
 using ActualChat.Streaming.Module;
-using ActualChat.Streaming.UI.Blazor.Module;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Module;
-using ActualChat.Users.UI.Blazor.Module;
 using ActualLab.Diagnostics;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
@@ -160,14 +155,9 @@ public partial class AppHost
                 new UsersServiceModule(moduleServices),
                 new ChatServiceModule(moduleServices),
                 new NotificationServiceModule(moduleServices),
-                new SearchServiceModule(moduleServices),
                 new MLSearchServiceModule(moduleServices),
                 // UI modules
                 new BlazorUICoreModule(moduleServices),
-                new StreamingBlazorUIModule(moduleServices),
-                new UsersBlazorUIModule(moduleServices),
-                new ContactsBlazorUIModule(moduleServices),
-                new NotificationBlazorUIModule(moduleServices),
                 new BlazorUIAppModule(moduleServices), // Should be the last one in UI section
                 // This module should be the last one
                 new AppServerModule(moduleServices)

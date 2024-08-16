@@ -18,8 +18,6 @@ import './src/init'
 
 // Exports
 export * as ui from '../dotnet/UI.Blazor/exports';
-export * as streaming from '../dotnet/Streaming.UI.Blazor/exports';
-export * as notification from '../dotnet/Notification.UI.Blazor/exports';
 export * as blazorApp from '../dotnet/UI.Blazor.App/exports';
 export * from './src/kvas';
 

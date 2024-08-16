@@ -201,8 +201,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         await ComputedTest.When(async ct => {
             var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
-            placeIds.Count.Should().Be(1);
-            placeIds.Should().Contain(place.Id);
+            placeIds.Should().BeEquivalentTo([place.Id]);
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -243,10 +242,10 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         await commander.Call(new Places_Join(anotherSession, placeId));
 
         await ComputedTest.When(async ct => {
-            var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
-            placeIds.Should().HaveCount(1);
-            placeIds.Should().Contain(placeId);
-        }, TimeSpan.FromSeconds(10));
+                var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
+                placeIds.Should().BeEquivalentTo([placeId]);
+            },
+            TimeSpan.FromSeconds(10));
 
         place = await places.Get(anotherSession, placeId, default);
         place.Should().NotBeNull();
@@ -273,12 +272,11 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         await ComputedTest.When(async ct => {
             var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
-            placeIds.Should().HaveCount(1);
-            placeIds.Should().Contain(placeId);
-        }, TimeSpan.FromSeconds(10));
+            placeIds.Should().BeEquivalentTo([placeId]);
 
-        place = await places.Get(anotherSession, placeId, default);
-        place.Should().NotBeNull();
+            place = await places.Get(anotherSession, placeId, default);
+            place.Should().NotBeNull();
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Theory]

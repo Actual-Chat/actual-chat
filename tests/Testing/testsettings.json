@@ -33,8 +33,6 @@
       "ModelGroup": "NLP_model_group"
     }
   },
-  "SearchSettings": {
-  },
   "UsersSettings": {
     "Db": "",
     "Redis": ""

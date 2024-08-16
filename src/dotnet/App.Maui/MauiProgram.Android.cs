@@ -1,7 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.Notification.UI.Blazor;
-using ActualChat.Streaming.UI.Blazor.Services;
+using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
@@ -79,7 +78,7 @@ public static partial class MauiProgram
     {
         FirebaseApp.InitializeApp(activity);
         FirebaseAnalyticsImplementation.Initialize(activity);
-        var isAnalyticsEnabled = Preferences.Default.Get(Constants.Preferences.EnableAnalytics, false);
+        var isAnalyticsEnabled = Preferences.Default.Get(Constants.Preferences.EnableDataCollectionKey, false);
         CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isAnalyticsEnabled;
     }
 }

@@ -27,3 +27,17 @@ export * from './Components/Onboarding/phone-verification-cat-svg.lit';
 export * from './Components/SearchPanel/search-panel';
 export * from './Components/Selection/selection-host';
 export * from './Services/LanguageUI/language-ui';
+
+export * from './notification-ui';
+
+export * from './Components/AudioPlayer/audio-player';
+export * from './Components/AudioRecorder/audio-recorder';
+export * from './Components/AudioRecorder/opus-media-recorder';
+export * from './Components/AudioRecorder/opus-media-recorder-contracts';
+export * from './Pages/AudioRecorderTestPage/audio-recorder-test-page';
+export * from './Pages/AudioPlayerTestPage/audio-player-test-page';
+export * from './Services/audio-context-ref';
+export * from './Services/audio-context-source';
+export * from './Services/audio-initializer';
+export * from './Services/web-rtc-aec';
+export * from './Services/audio-context-destination-fallback';

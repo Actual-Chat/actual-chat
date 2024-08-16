@@ -1,12 +1,14 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio;
 using ActualChat.Hosting;
+using ActualChat.MediaPlayback;
+using ActualChat.Permissions;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
 using ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView;
 using ActualChat.UI.Blazor.App.Components.Settings;
 using ActualChat.UI.Blazor.App.Pages.Landing;
 using ActualChat.UI.Blazor.App.Pages.Test;
-using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Testing;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
@@ -122,7 +124,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<AutoNavigationUI>(c => new AppAutoNavigationUI(c.UIHub()));
 
         if (HostInfo.HostKind.IsServerOrWasmApp())
-            services.AddScoped<IAnalyticsUI>(c => new WebAnalyticsUI(c));
+            services.AddScoped<IDataCollectionSettingsUI>(c => new WebDataCollectionSettingsUI(c));
 
         fusion.AddService<AppPresenceReporter>(ServiceLifetime.Scoped);
 
@@ -135,5 +137,45 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
         // Test Pages
         services.TryAddSingleton<IWebViewCrasher, NoopWebViewCrasher>();
+
+        // Contacts
+        fusion.AddService<ContactSync>(ServiceLifetime.Scoped);
+        if (HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp)
+            services.AddScoped<FakeDeviceContacts>().AddAlias<DeviceContacts, FakeDeviceContacts>(ServiceLifetime.Scoped);
+        else
+            services.AddScoped<DeviceContacts>();
+
+        if (HostInfo.HostKind != HostKind.MauiApp)
+            services.AddScoped<ContactsPermissionHandler>(c => new WebContactsPermissionHandler(c.UIHub()));
+
+        // Users
+        // IModalViews
+        services.AddTypeMap<IModalView>(map => map
+            .Add<OwnAccountEditorModal.Model, OwnAccountEditorModal>()
+            .Add<OwnAvatarEditorModal.Model, OwnAvatarEditorModal>()
+            .Add<DeleteAccountModal.Model, DeleteAccountModal>()
+        );
+
+        // Notifications
+        services.AddScoped<NotificationUI>();
+        services.AddAlias<INotificationUI, NotificationUI>(ServiceLifetime.Scoped);
+        if (HostInfo.HostKind.IsServerOrWasmApp()) {
+            services.AddTransient<IDeviceTokenRetriever>(c => new WebDeviceTokenRetriever(c));
+            services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<NotificationUI>());
+        }
+
+        // Streaming
+        services.AddScoped<ITrackPlayerFactory>(c => new AudioTrackPlayerFactory(c));
+        services.AddScoped<AudioInitializer>(c => new AudioInitializer(c.UIHub()));
+        services.AddScoped<AudioRecorder>(c => new AudioRecorder(c));
+        if (HostInfo.HostKind != HostKind.MauiApp) {
+            services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
+            services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
+        }
+
+        // IModalViews
+        services.AddTypeMap<IModalView>(map => map
+            .Add<RecordingTroubleshooterModal.Model, RecordingTroubleshooterModal>()
+        );
     }
 }

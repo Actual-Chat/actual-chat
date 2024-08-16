@@ -12,6 +12,8 @@ using static ActualChat.Constants.Transcription.Deepgram;
 
 namespace ActualChat.Streaming.Services.Transcribers;
 
+#pragma warning disable CA1826
+
 public partial class DeepgramTranscriber : ITranscriber
 {
     [GeneratedRegex(@"([\?\!\.]\s*$)|(^\s*$)", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
