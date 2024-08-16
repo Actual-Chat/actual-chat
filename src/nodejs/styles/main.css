@@ -159,6 +159,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 }
 
 .layout-footer {
+    @apply sticky bottom-0;
     @apply flex-none flex-y z-10;
     @apply w-full min-h-footer;
     @apply overflow-visible;

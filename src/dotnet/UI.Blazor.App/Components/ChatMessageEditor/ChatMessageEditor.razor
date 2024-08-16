@@ -31,7 +31,7 @@
                  data-bubble="@(BubbleRef.New<TextMessagePanelBubble>())"
                  data-bubble-priority="150"
                  data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
-                <ButtonRound Class="post-panel-btn attach-btn btn-transparent unhovered">
+                <ButtonRound Class="post-panel-btn attach-btn btn-transparent btn-xs unhovered">
                     <i class="icon-attach-2 text-2xl"></i>
                 </ButtonRound>
                 <label for="message-input" class="message-input-label">
@@ -48,12 +48,23 @@
                         Cancel="@(() => OnCancel())"
                         OpenPrevious="OnOpenPrevious"/>
                 </label>
-                <button class="post-panel-btn post-message btn btn-round btn-transparent unhovered"
-                    @onmousedown="@(_ => Post())"
-                    @onmousedown:preventDefault="true">
-                    <i class="icon-paper-plane text-2xl"></i>
-                </button>
-                <NotifyCallPanel ChatId="@Chat.Id" />
+                <div class="c-buttons">
+                    @if (_enableIncompleteUI) {
+                        <ButtonRound
+                            Class="post-panel-btn btn-transparent btn-xs"
+                            Tooltip="Emoji"
+                            TooltipPosition="FloatingPosition.Top">
+                            <i class="icon-emoji-2 text-2xl"></i>
+                        </ButtonRound>
+                    }
+                    <NotifyCallPanel ChatId="@Chat.Id"/>
+                    <div class="c-incut"></div>
+                    <button class="post-panel-btn post-message btn btn-round btn-transparent btn-xs unhovered"
+                            @onmousedown="@(_ => Post())"
+                            @onmousedown:preventDefault="true">
+                        <i class="icon-paper-plane text-2xl"></i>
+                    </button>
+                </div>
             </div>
             @if (ScreenSize.IsNarrow()) {
                 <RelatedChatEntryPanel/>
@@ -64,6 +75,8 @@
 </div>
 
 @code {
+    private bool _enableIncompleteUI;
+
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatMessageEditor.create";
 
     private static object MentionListManagerKey { get; } = new();
@@ -96,6 +109,7 @@
     private HostInfo HostInfo => Hub.HostInfo();
     private IJSRuntime JS => Hub.JSRuntime();
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
+    private Features Features => Hub.Features();
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -112,6 +126,9 @@
         ReadPositionState.DisposeSilently();
         ReadPositionState = null!;
     }
+
+    protected override async Task OnInitializedAsync() =>
+        _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
 
     protected override async Task OnParametersSetAsync() {
         var chatId = Chat.Id;
