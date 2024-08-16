@@ -260,6 +260,6 @@ public static partial class Constants
 
     public static class Preferences
     {
-        public const string EnableAnalytics = "analytics";
+        public const string EnableDataCollectionKey = "analytics"; // TODO(AppRename): rename to proper name
     }
 }

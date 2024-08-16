@@ -78,7 +78,7 @@ public static partial class MauiProgram
     {
         FirebaseApp.InitializeApp(activity);
         FirebaseAnalyticsImplementation.Initialize(activity);
-        var isAnalyticsEnabled = Preferences.Default.Get(Constants.Preferences.EnableAnalytics, false);
+        var isAnalyticsEnabled = Preferences.Default.Get(Constants.Preferences.EnableDataCollectionKey, false);
         CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isAnalyticsEnabled;
     }
 }

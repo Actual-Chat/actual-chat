@@ -43,7 +43,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // Permissions
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
         if (!HostInfo.HostKind.IsServerOrWasmApp())
-            services.AddScoped<IAnalyticsUI>(_ => new MauiAnalyticsUI());
+            services.AddScoped<IDataCollectionSettingsUI>(_ => new MauiDataCollectionSettingsUI());
 
         // Notifications
         services.AddSingleton<MauiNotifications>(c => new MauiNotifications(c));

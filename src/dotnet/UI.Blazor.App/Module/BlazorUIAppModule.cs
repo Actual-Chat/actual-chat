@@ -124,7 +124,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<AutoNavigationUI>(c => new AppAutoNavigationUI(c.UIHub()));
 
         if (HostInfo.HostKind.IsServerOrWasmApp())
-            services.AddScoped<IAnalyticsUI>(c => new WebAnalyticsUI(c));
+            services.AddScoped<IDataCollectionSettingsUI>(c => new WebDataCollectionSettingsUI(c));
 
         fusion.AddService<AppPresenceReporter>(ServiceLifetime.Scoped);
 

@@ -3,15 +3,15 @@
 @inherits ComputedStateComponent<AppSettings.Model>
 @{
     var m = State.Value;
-    var status = m.IsAnalyticsEnabled
-        ? "Gathering statistics"
-        : "Turned off";
-    var experimentalStatus = m.IsExperimentalFeatureEnabled
-        ? "Turned on"
-        : "Turned off";
+    var dataCollectionStatus = m.IsDataCollectionEnabled
+        ? "Telemetry data collection is allowed."
+        : "Disallowed";
+    var experimentalFeatureStatus = m.AreExperimentalFeaturesEnabled
+        ? "Early access features are enabled."
+        : "Disabled";
     var incompleteUIStatus = m.IsIncompleteUIEnabled
-        ? "Turned on"
-        : "Turned off";
+        ? "Early access UI is enabled."
+        : "Disabled";
 }
 
 @if (NativeAppSettings != null) {
@@ -20,46 +20,42 @@
 @if (HostInfo.HostKind != HostKind.MauiApp) {
     <SettingsBlazorModeToggle/>
 }
-<TileTopic Topic="Data Usage Consent"/>
-<Tile Class="enhance-data">
-    <TileItem Click="@OnAnalyticsEnabledClick">
+<TileTopic Topic="Telemetry Data Collection"/>
+<Tile Class="data-collection-consent">
+    <TileItem Click="@OnEnableTelemetryClick">
         <Icon><i class="icon-info text-2xl"></i></Icon>
-        <Content>Enhance Actual Chat with Data</Content>
-        <Caption>@status</Caption>
+        <Content>Allow Telemetry Data Collection</Content>
+        <Caption>@dataCollectionStatus</Caption>
         <Right>
-            <Toggle IsChecked="@m.IsAnalyticsEnabled"/>
+            <Toggle IsChecked="@m.IsDataCollectionEnabled"/>
         </Right>
     </TileItem>
     <p class="c-description">
-        This setting allows us to use and process your information to enhance our services.
+        Help us to identify user experience issues faster by allowing
+        Actual Chat to collect and process data on certain in-app events,
+        such as critical user actions, errors, and crashes.
     </p>
 </Tile>
 
 @if (m.IsAdmin) {
-    <TileTopic Topic="Alpha testing"/>
-    <Tile Class="alpha-testing">
+    <TileTopic Topic="Early Access Features"/>
+    <Tile Class="early-access-features">
         <TileItem Click="@OnExperimentalFeatureEnabledClick">
             <Icon><i class="icon-info text-2xl"></i></Icon>
-            <Content>Enable experimental features</Content>
-            <Caption>@experimentalStatus</Caption>
+            <Content>Enable early access features</Content>
+            <Caption>@experimentalFeatureStatus</Caption>
             <Right>
-                <Toggle IsChecked="@m.IsExperimentalFeatureEnabled"/>
+                <Toggle IsChecked="@m.AreExperimentalFeaturesEnabled"/>
             </Right>
         </TileItem>
-        <p class="c-description">
-            Enables experimental features
-        </p>
         <TileItem Click="@OnIncompleteUIEnabledClick">
             <Icon><i class="icon-info text-2xl"></i></Icon>
-            <Content>Show incomplete UI</Content>
+            <Content>Enable early access UI features</Content>
             <Caption>@incompleteUIStatus</Caption>
             <Right>
                 <Toggle IsChecked="@m.IsIncompleteUIEnabled"/>
             </Right>
         </TileItem>
-        <p class="c-description">
-            Enables incomplete UI
-        </p>
     </Tile>
 }
 
@@ -86,7 +82,7 @@
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
-    [Inject] private IAnalyticsUI AnalyticsUI { get; init; } = null!;
+    [Inject] private IDataCollectionSettingsUI DataCollectionSettingsUI { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     private HostInfo HostInfo => Hub.HostInfo();
     private BubbleUI BubbleUI => Hub.BubbleUI;
@@ -101,7 +97,11 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await AccountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
         var account = Hub.AccountUI.OwnAccount.Value;
-        return new(settings.IsAnalyticsEnabled ?? false, settings.IsExperimentalFeatureEnabled ?? false, settings.IsIncompleteUIEnabled ?? false, account.IsAdmin);
+        return new(
+            settings.IsDataCollectionEnabled ?? false,
+            settings.AreExperimentalFeaturesEnabled ?? false,
+            settings.IsIncompleteUIEnabled ?? false,
+            account.IsAdmin);
     }
 
     private async Task OnRestartWalkThrough() {
@@ -114,17 +114,22 @@
         ToastUI.Show("Onboarding steps are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
-    private async Task OnAnalyticsEnabledClick() {
-        var isAnalyticsEnabled = !State.Value.IsAnalyticsEnabled;
-        await UpdateSettings(x => x with { IsAnalyticsEnabled = isAnalyticsEnabled });
-        await AnalyticsUI.UpdateAnalyticsState(isAnalyticsEnabled, CancellationToken.None);
+    private async Task OnEnableTelemetryClick() {
+        await UpdateSettings(x => x with {
+            IsDataCollectionEnabled = !State.Value.IsDataCollectionEnabled,
+        });
+        await DataCollectionSettingsUI.UpdateState(!State.Value.IsDataCollectionEnabled, CancellationToken.None);
     }
 
     private Task OnExperimentalFeatureEnabledClick()
-        => UpdateSettings(x => x with { IsExperimentalFeatureEnabled = !State.Value.IsExperimentalFeatureEnabled });
+        => UpdateSettings(x => x with {
+            AreExperimentalFeaturesEnabled = !State.Value.AreExperimentalFeaturesEnabled,
+        });
 
     private Task OnIncompleteUIEnabledClick()
-        => UpdateSettings(x => x with { IsIncompleteUIEnabled = !State.Value.IsIncompleteUIEnabled });
+        => UpdateSettings(x => x with {
+            IsIncompleteUIEnabled = !State.Value.IsIncompleteUIEnabled,
+        });
 
     private async Task UpdateSettings(Func<UserAppSettings, UserAppSettings> update, CancellationToken cancellationToken = default) {
         var settings = await AccountSettings.GetUserAppSettings(cancellationToken);
@@ -133,7 +138,12 @@
 
     // Nested types
 
-    public record Model(bool IsAnalyticsEnabled, bool IsExperimentalFeatureEnabled, bool IsIncompleteUIEnabled, bool IsAdmin) {
+    public record Model(
+        bool IsDataCollectionEnabled,
+        bool AreExperimentalFeaturesEnabled,
+        bool IsIncompleteUIEnabled,
+        bool IsAdmin)
+    {
         public static readonly Model None = new(false, false, false, false);
     }
 }
