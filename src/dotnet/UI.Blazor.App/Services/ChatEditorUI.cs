@@ -90,6 +90,7 @@ public partial class ChatEditorUI : ScopedWorkerBase<ChatUIHub>, IComputeService
         var chatIdRange = await Chats
             .GetIdRange(Session, chatId, ChatEntryKind.Text, CancellationToken.None)
             .ConfigureAwait(false);
+        Log.LogInformation("EditLast: last entry Id: {LastEntryId}", chatIdRange.End - 1);
         var idTileLayer = ChatEntryReader.IdTileStack.Layers[1]; // 5*4 = scan by 20 entries
         var chatEntryReader = Hub.NewEntryReader(chatId, ChatEntryKind.Text, idTileLayer);
         var lastEditableEntry = await chatEntryReader.GetLast(
@@ -101,6 +102,7 @@ public partial class ChatEditorUI : ScopedWorkerBase<ChatUIHub>, IComputeService
         if (lastEditableEntry == null)
             return;
 
+        Log.LogInformation("EditLast: last editable entry Id: {LastEntryId}", lastEditableEntry.Id.LocalId);
         await Edit(lastEditableEntry, cancellationToken).ConfigureAwait(false);
     }
 
