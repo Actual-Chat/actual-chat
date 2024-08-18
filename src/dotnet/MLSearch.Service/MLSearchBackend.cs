@@ -2,10 +2,9 @@ using ActualChat.MLSearch.Indexing.ChatContent;
 
 namespace ActualChat.MLSearch;
 
-public class MLSearchBackend(IServiceProvider services) : IMLSearchBackend
+internal class MLSearchBackend(IChatContentDocumentLoader documentLoader) : IMLSearchBackend
 {
-    internal IChatContentDocumentLoader DocumentLoader { get; } =
-        services.GetRequiredService<IChatContentDocumentLoader>();
+    private IChatContentDocumentLoader DocumentLoader { get; } = documentLoader;
 
     public virtual async Task<string> GetIndexDocIdByEntryId(ChatEntryId chatEntryId, CancellationToken cancellationToken)
     {
