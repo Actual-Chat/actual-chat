@@ -3,16 +3,13 @@ using ActualChat.Users;
 
 namespace ActualChat.MLSearch;
 
-public class MLSearchImpl (IServiceProvider services): IMLSearch
+public class MLSearchImpl (ICommander commander, IMLSearchBackend backend, IChats chats, IAccounts accounts): IMLSearch
 {
-    private IChats? _chats;
-    private IAccounts? _accounts;
+    private IChats Chats => chats;
+    private IAccounts Accounts => accounts;
+    private IMLSearchBackend Backend { get; } = backend;
 
-    private IChats Chats => _chats ??= services.GetRequiredService<IChats>(); // Lazy resolving to prevent cyclic dependency
-    private IAccounts Accounts => _accounts ??= services.GetRequiredService<IAccounts>(); // Lazy resolving to prevent cyclic dependency
-    private IMLSearchBackend Backend { get; } = services.GetRequiredService<IMLSearchBackend>();
-
-    private ICommander Commander { get; } = services.Commander();
+    private ICommander Commander { get; } = commander;
 
     public virtual async Task<string> GetIndexDocIdByEntryId(
         Session session,
