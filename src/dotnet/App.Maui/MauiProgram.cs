@@ -12,6 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Diagnostics;
+using ActualLab.Fusion.Client.Caching;
 using banditoth.MAUI.DeviceId;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.JSInterop;
