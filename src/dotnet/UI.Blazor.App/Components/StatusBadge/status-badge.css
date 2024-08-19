@@ -31,6 +31,7 @@
 }
 
 .chat-header-center > .chat-header-title > .c-info > .status-badge {
+    @apply h-3.5;
     @apply p-0;
     @apply text-caption-6 text-03;
 }
