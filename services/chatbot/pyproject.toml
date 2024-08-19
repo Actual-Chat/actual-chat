@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "chatbot"
+version = "0.1.0"
+description = ""
+authors = ["Andrew Kurochkin <andrew.kurochkin@actual.chat>"]
+readme = "README.md"
+packages = [
+    { include = "app" },
+]
+
+[tool.poetry.dependencies]
+python = "~3.12.2"
+uvicorn = "^0.23.2"
+langchain = "0.2.11"
+langgraph = "0.1.17"
+langchain-anthropic = "0.1.21"
+langserve = {extras = ["server"], version = "0.2.2"}
+pydantic = "2.8.2"
+cleandoc = "0.0.13"
+anthropic = "0.32.0"
+# TODO: remove
+# Obsolete:
+# langchainhub = "0.1.15"
+langfuse = "2.40.0"
+
+[tool.poetry.group.dev.dependencies]
+langchain-cli = ">=0.0.15"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

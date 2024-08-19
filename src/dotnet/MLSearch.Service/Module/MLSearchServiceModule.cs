@@ -1,8 +1,12 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.MLSearch.Bot;
+using ActualChat.MLSearch.Bot.External;
+using ActualChat.MLSearch.Bot.Tools;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
@@ -12,11 +16,19 @@ using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.Redis.Module;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+
+using OpenSearch.Client;
+using OpenSearch.Net;
+using Microsoft.AspNetCore.Authentication;
+using ActualChat.Module;
+using Microsoft.AspNetCore.Builder;
+using ActualChat.MLSearch.Bot.Tools.Context;
 using ActualChat.Search;
 using Microsoft.Extensions.Hosting;
-
-// Note: Temporary disabled. Will be re-enabled with OpenAPI PR
-// using Microsoft.OpenApi.Models;
 
 // Note: Temporary disabled. Will be re-enabled with OpenAPI PR
 // using Swashbuckle.AspNetCore.SwaggerGen;
@@ -24,10 +36,19 @@ using Microsoft.Extensions.Hosting;
 namespace ActualChat.MLSearch.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : HostModule<MLSearchSettings>(moduleServices)
+public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : HostModule<MLSearchSettings>(moduleServices), IWebServerModule
 {
     private readonly ILogger<MLSearchServiceModule> _log = moduleServices.LogFor<MLSearchServiceModule>();
 
+    public void ConfigureApp(IApplicationBuilder app)
+    {
+        if (HostInfo.HasRole(HostRole.Api)) {
+            app.UseEndpoints(endpoints => {
+                endpoints.MapControllers();
+            });
+            app.UseRouting();
+        }
+    }
     protected override void InjectServices(IServiceCollection services)
     {
         if (!Settings.IsEnabled) {
@@ -107,10 +128,44 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         }
 
         // -- Register ML bot --
-//        const string ConversationBotServiceGroup = "ML Chat Bot";
+        services.Configure<ChatBotConversationTriggerOptions>(e => {
+            e.AllowPeerBotChat = (Settings.Integrations?.Bot?.AllowPeerBotChat) ?? false;
+        });
         rpcHost.AddBackend<IChatBotConversationTrigger, ChatBotConversationTrigger>();
+        if (Settings.Integrations != null){
+            var x509 = X509Certificate2.CreateFromPemFile(
+                Settings.Integrations.CertPemFilePath,
+                Settings.Integrations.KeyPemFilePath
+            );
+            var privateKey = x509.GetECDsaPrivateKey();
+            var securityKey = new ECDsaSecurityKey(privateKey);
+            var signingCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha384);
 
-        services.AddSingleton<IBotConversationHandler, SampleChatBot>();
+            // This is a workaround. Read notes above the ConversationToolsController class
+            services.Configure<BotToolsContextHandlerOptions>(e => {
+                e.Audience = Settings.Integrations.Audience;
+                e.Issuer = Settings.Integrations.Issuer;
+                e.SigningCredentials = signingCredentials;
+                e.ContextLifetime = Settings.Integrations.ContextLifetime;
+            });
+            services.AddSingleton<IBotToolsContextHandler>(services => {
+                var options = services.GetRequiredService<IOptionsMonitor<BotToolsContextHandlerOptions>>();
+                return services.CreateInstance<BotToolsContextHandler>(options);
+            });
+            var isBotEnabled =
+                Settings.IsEnabled
+                && Settings.Integrations != null
+                && Settings.Integrations.Bot != null
+                && Settings.Integrations.Bot.IsEnabled
+                && Settings.Integrations.Bot.WebHookUri != null;
+            if (isBotEnabled) {
+                services.Configure<ExternalChatbotSettings>( e => {
+                    e.IsEnabled = true;
+                    e.WebHookUri = Settings!.Integrations!.Bot!.WebHookUri!;
+                });
+                services.AddSingleton<IBotConversationHandler, ExternalChatBotConversationHandler>();
+            }
+        }
         services.AddSingleton<IChatBotWorker>(
             static c => c.CreateInstance<ChatBotWorker>());
         services.AddWorkerPool<IChatBotWorker, MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId>(
@@ -120,7 +175,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
         // -- Register IMLSearchHandlers --
         rpcHost.AddApiOrLocal<IMLSearch, MLSearchImpl>();
-
 
         // -- Register Swagger endpoint (OpenAPI) --
         // Note: This is temporarily disabled. Will be re-enabled in a separate PR.
@@ -135,7 +189,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             );
             c.DocInclusionPredicate((docName, apiDesc) => {
                 if (!apiDesc.TryGetMethodInfo(out MethodInfo methodInfo)) return false;
-
                 var isBotTool = methodInfo.DeclaringType
                     .GetCustomAttributes(true)
                     .OfType<BotToolsAttribute>()
