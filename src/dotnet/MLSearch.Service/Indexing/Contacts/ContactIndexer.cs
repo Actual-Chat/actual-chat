@@ -49,13 +49,14 @@ public abstract class ContactIndexer(IServiceProvider services)
         if (!Settings.IsEnabled)
             return;
 
+        Log.LogInformation("Started {Name} on shard #{ShardIndex}", GetType().Name, shardIndex);
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
 
         _whenInitialized.TrySetResult();
         while (!cancellationToken.IsCancellationRequested)
             try {
-                Log.LogDebug("Syncing contacts");
+                Log.LogDebug("Indexing contacts...");
                 NeedsSync.Reset();
                 await Sync(cancellationToken).ConfigureAwait(false);
 
