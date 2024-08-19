@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualLab.Fusion.Client;
+using ActualLab.Fusion.Client.Caching;
 using ActualLab.Internal;
 using ActualLab.Rpc;
 using Microsoft.Extensions.Configuration;
@@ -19,6 +20,10 @@ public static class ClientAppStartup
         RemoteComputedSynchronizer.Default = new RemoteComputedSynchronizer() {
             TimeoutFactory = (_, ct) => Task.Delay(TimeSpan.FromSeconds(1), ct),
         };
+        var remoteComputedCacheUpdateDelayTask = Task
+            .Delay(2200)
+            .ContinueWith(_ => RemoteComputedCache.UpdateDelayer = null, TaskScheduler.Default);
+        RemoteComputedCache.UpdateDelayer = (_, _) => remoteComputedCacheUpdateDelayTask;
     }
 
     [RequiresUnreferencedCode(UnreferencedCode.Reflection)]

@@ -47,15 +47,6 @@ public class AppNonScopedServiceStarter
         => Task.Run(async () => {
             using var _1 = Tracer.Region();
             try {
-                // NOTE(AY): !!! This code runs in the root scope,
-                // so you CAN'T access any scoped services here!
-                var remoteComputedCacheUpdateDelay = Task.Run(async () => {
-                    await Task.Delay(1250).ConfigureAwait(false); // 1.25s
-                    RemoteComputedCache.UpdateDelayer = null;
-                    // Log.LogInformation("RemoteComputedCache.UpdateDelayer is removed");
-                });
-                RemoteComputedCache.UpdateDelayer = (_, _) => remoteComputedCacheUpdateDelay;
-
                 var startHostedServicesTask = StartHostedServices();
                 if (HostInfo.HostKind.IsWasmApp()) {
                     await startHostedServicesTask.ConfigureAwait(false);
