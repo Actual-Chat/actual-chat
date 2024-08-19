@@ -22,6 +22,7 @@ anthropic = "0.32.0"
 # Obsolete:
 # langchainhub = "0.1.15"
 langfuse = "2.40.0"
+pyjwt = {extras = ["crypto"], version = "2.8.0"}
 
 [tool.poetry.group.dev.dependencies]
 langchain-cli = ">=0.0.15"

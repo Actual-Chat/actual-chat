@@ -70,7 +70,10 @@ def final_answer(state: MessagesState, config: RunnableConfig):
 def human_input(state):
     pass
 
-def create(*, claude_api_key, prompt):
+def create(*,
+    claude_api_key,
+#    prompt = None
+):
     memory = MemorySaver()
     tools = all_tools()
     graph_builder = StateGraph(MessagesState)
