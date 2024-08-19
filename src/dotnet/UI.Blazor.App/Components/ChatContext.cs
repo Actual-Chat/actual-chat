@@ -24,8 +24,8 @@ public sealed class ChatContext(ChatUIHub hub, Chat.Chat chat, AccountFull ownAc
 
     // Some handy helpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ChatEntryReader NewEntryReader(ChatEntryKind entryKind, TileLayer<long>? idTileLayer = null)
-        => new(Hub.Chats, Hub.Session(), Chat.Id, entryKind, idTileLayer);
+    public ChatEntryReader NewEntryReader(ChatEntryKind entryKind)
+        => new(Hub.Chats, Hub.Session(), Chat.Id, entryKind);
 
     // Private methods
 

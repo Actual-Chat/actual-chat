@@ -43,10 +43,7 @@ public static partial class MauiProgram
     {
         using var _1 = Tracer.Region();
 
-        RpcDefaults.Mode = RpcMode.Client;
-        FusionDefaults.Mode = FusionMode.Client;
-        RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connect
-
+        ClientAppStartup.Initialize();
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
 #if IOS

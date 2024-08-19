@@ -63,6 +63,7 @@ public class AppScopedServiceStarter
 
             // Finishing with BrowserInit
             await browserInit.WhenInitialized.ConfigureAwait(false); // Must be completed before the next call
+            // ReSharper disable once ExplicitCallerInfoArgument
             Tracer.Point("BrowserInit completed");
 
             // Finishing with auto-navigation & History init

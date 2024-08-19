@@ -27,11 +27,7 @@ public static class Program
     {
         Tracer.Default.Point();
 
-        // Rpc & Fusion defaults
-        RpcDefaults.Mode = RpcMode.Client;
-        FusionDefaults.Mode = FusionMode.Client;
-        RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connect
-
+        ClientAppStartup.Initialize();
         AppUIOtelSetup.SetupConditionalPropagator();
         // NOTE(AY): This thing takes 1 second on Windows!
         var isSentryEnabled = Constants.Sentry.EnabledFor.Contains(HostKind.WasmApp);
