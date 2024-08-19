@@ -58,6 +58,7 @@
 @import './Components/Selection/selection-header.css';
 @import './Components/Share/share-modal.css';
 @import './Components/StatusBadge/status-badge.css';
+@import './Components/TalkingMembersPanel/talking-members-panel.css';
 @import './Components/IncomingShare/incoming-share-modal.css';
 
 @import './Components/own-avatar.css';

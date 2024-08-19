@@ -6,6 +6,8 @@
     type="@GetButtonType()"
     data-button-class="default"
     @attributes="@GetAttributes()"
+    @onclick:stopPropagation="@StopPropagation"
+    @onclick:preventDefault="@PreventDefault"
     @onclick="@Click">
     <div class="@ContentClass btn-content" tabindex="-1">
         @if (ChildContent is not null) {
@@ -38,6 +40,8 @@
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
     [Parameter] public EventCallback<ElementReference> Rendered { get; set; }
     [Parameter] public Mutable<ElementReference>? ButtonRef { get; set; }
+    [Parameter] public bool StopPropagation { get; set; }
+    [Parameter] public bool PreventDefault { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }

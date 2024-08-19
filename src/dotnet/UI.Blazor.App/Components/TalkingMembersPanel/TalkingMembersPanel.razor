@@ -1,0 +1,108 @@
+@namespace ActualChat.UI.Blazor.Components
+@inherits ComputedStateComponent<TalkingMembersPanel.Model>
+@{
+    var m = State.Value;
+    var isVisible = m.IsAnyoneTalking || m.AudioState.IsListening || IsRecordingHere;
+    if (!isVisible)
+        return;
+
+    var maxCount = ScreenSize.IsNarrow() ? 3 : 2;
+}
+
+<div class="talking-members-panel">
+    @if (m.IsAnyoneTalking) {
+        <chat-list-item-streaming-svg size="6" color="danger"/>
+    } else {
+        <i class="icon-more-vertical silence-icon"></i>
+    }
+    @if (m.IsAnyoneTalking) {
+        <ChatActivities @key="@Chat.Id.Value" Chat="@Chat" MaxIconCount="@maxCount"/>
+    } else {
+        <div class="silence-text">Nobody's talking</div>
+    }
+    <div class="c-buttons">
+        @if (!IsListening) {
+            <Button
+                Class="btn-primary c-listen"
+                StopPropagation="true"
+                PreventDefault="true"
+                Click="@OnListenClick">
+                <Icon>
+                    <i class="icon-listen text-xl"></i>
+                </Icon>
+                <Title>
+                    Listen
+                </Title>
+            </Button>
+        } else {
+            <Button
+                Class="btn-cancel c-mute"
+                StopPropagation="true"
+                PreventDefault="true"
+                Click="@OnListenClick">
+                <Title>
+                    Mute
+                </Title>
+            </Button>
+        }
+    </div>
+</div>
+
+@code {
+    private Chat Chat => ChatContext.Chat;
+    private ChatUIHub Hub => ChatContext.Hub;
+    private ChatActivity ChatActivity => Hub.ChatActivity;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+
+    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
+    private ChatId RecordingChatId => ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId;
+    private bool IsRecordingHere => !Chat.Id.IsNone && RecordingChatId == Chat.Id;
+    private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
+    private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    protected override async Task OnParametersSetAsync() {
+        ChatRecordingActivity?.Dispose();
+        ChatRecordingActivity = Chat.Id.IsNone ? null
+            : await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
+        await base.OnParametersSetAsync();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (ChatRecordingActivity == null)
+            return Model.None;
+
+        var chat = Chat;
+        var chatId = chat.Id;
+        var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
+        var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
+        return new (chat, audioState, authorIds.Count > 0);
+    }
+
+    private void OnListenClick() {
+        if (IsUpdating)
+            return;
+
+        _ = ChatAudioUI.SetListeningState(Chat.Id, !IsListening);
+    }
+
+    // Nested types
+
+    public sealed record Model(
+        Chat Chat,
+        ChatAudioState AudioState,
+        bool IsAnyoneTalking
+    ) {
+        public static readonly Model None = new(SpecialChat.Loading, ChatAudioState.None, false);
+    }
+}
