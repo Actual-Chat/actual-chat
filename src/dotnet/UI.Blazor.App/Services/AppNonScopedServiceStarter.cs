@@ -3,6 +3,7 @@ using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Components.Internal;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
+using ActualLab.Fusion.Client.Caching;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -46,9 +47,6 @@ public class AppNonScopedServiceStarter
         => Task.Run(async () => {
             using var _1 = Tracer.Region();
             try {
-                // NOTE(AY): !!! This code runs in the root scope,
-                // so you CAN'T access any scoped services here!
-
                 var startHostedServicesTask = StartHostedServices();
                 if (HostInfo.HostKind.IsWasmApp()) {
                     await startHostedServicesTask.ConfigureAwait(false);

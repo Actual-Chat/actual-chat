@@ -7,9 +7,8 @@ public static class ChatsExt
         this IChats chats,
         Session session,
         ChatId chatId,
-        ChatEntryKind entryKind,
-        TileLayer<long>? idTileLayer = null)
-        => new(chats, session, chatId, entryKind, idTileLayer);
+        ChatEntryKind entryKind)
+        => new(chats, session, chatId, entryKind);
 
     public static async ValueTask<ChatEntry?> GetEntry(
         this IChats chats,

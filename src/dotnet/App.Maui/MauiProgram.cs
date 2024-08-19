@@ -12,6 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Diagnostics;
+using ActualLab.Fusion.Client.Caching;
 using banditoth.MAUI.DeviceId;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.JSInterop;
@@ -42,10 +43,7 @@ public static partial class MauiProgram
     {
         using var _1 = Tracer.Region();
 
-        RpcDefaults.Mode = RpcMode.Client;
-        FusionDefaults.Mode = FusionMode.Client;
-        RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connect
-
+        ClientAppStartup.Initialize();
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
 #if IOS

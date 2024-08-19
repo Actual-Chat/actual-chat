@@ -1,3 +1,5 @@
+using ActualLab.Fusion.Client;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 // NOTE(AY): This type can't be tagged as IComputeService, coz it has a few fields,
@@ -84,6 +86,8 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
     {
         var startAt = Hub.Clocks().ServerClock.Now;
         var entryReader = GetEntryReader(entryKind);
+        using var syncScope = RemoteComputedSynchronizer.Default.Activate();
+
         var idRange = await Hub.Chats
             .GetIdRange(Hub.Session(), ChatId, entryKind, cancellationToken)
             .ConfigureAwait(false);

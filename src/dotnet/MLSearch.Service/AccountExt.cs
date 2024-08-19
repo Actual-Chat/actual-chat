@@ -1,6 +1,7 @@
+using ActualChat.Search;
 using ActualChat.Users;
 
-namespace ActualChat.Search;
+namespace ActualChat.MLSearch;
 
 public static class AccountExt
 {

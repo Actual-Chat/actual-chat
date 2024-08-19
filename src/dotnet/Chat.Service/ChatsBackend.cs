@@ -485,7 +485,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 || (x.Version == query.MinVersion && string.Compare(x.Id, query.LastId.Value) > 0));
 
         var dbChats = await chatsQuery
-            .Where(x => !Constants.Chat.SystemChatSids.Contains(x.Id))
             .WhereIf(x => !x.Id.StartsWith(PeerChatId.IdPrefix), query.ExcludePeerChats)
             .WhereIf(x => !x.IsPlaceRootChat, query.ExcludePlaceRootChats)
             .OrderBy(x => x.Version)

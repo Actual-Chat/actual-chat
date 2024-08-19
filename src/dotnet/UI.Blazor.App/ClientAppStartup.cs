@@ -1,6 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
+using ActualLab.Fusion.Client;
+using ActualLab.Fusion.Client.Caching;
 using ActualLab.Internal;
+using ActualLab.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
@@ -8,6 +11,20 @@ namespace ActualChat.UI.Blazor.App;
 
 public static class ClientAppStartup
 {
+    public static void Initialize()
+    {
+        // Rpc & Fusion defaults
+        RpcDefaults.Mode = RpcMode.Client;
+        FusionDefaults.Mode = FusionMode.Client;
+        RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connect
+        RemoteComputedSynchronizer.Default = new RemoteComputedSynchronizer() {
+            TimeoutFactory = (_, ct) => Task.Delay(TimeSpan.FromSeconds(1), ct),
+        };
+        var remoteComputedCacheUpdateDelayTask = Task.Delay(2200)
+            .ContinueWith(_ => RemoteComputedCache.UpdateDelayer = null, TaskScheduler.Default);
+        RemoteComputedCache.UpdateDelayer = (_, _) => remoteComputedCacheUpdateDelayTask;
+    }
+
     [RequiresUnreferencedCode(UnreferencedCode.Reflection)]
     public static HostInfo CreateHostInfo(
         IConfiguration cfg,

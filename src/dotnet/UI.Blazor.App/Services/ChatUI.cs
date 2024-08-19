@@ -4,6 +4,7 @@ using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
+using ActualLab.Fusion.Client;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -501,6 +502,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
                     if (pChatId.IsNone)
                         return ReadPosition.None;
 
+                    using var _ = RemoteComputedSynchronizer.Default.Activate();
                     var (entryLid, origin) = await ChatPositions.GetOwn(Session, pChatId, ChatPositionKind.Read, ct).ConfigureAwait(false);
                     return new ReadPosition(pChatId, entryLid, origin);
                 },

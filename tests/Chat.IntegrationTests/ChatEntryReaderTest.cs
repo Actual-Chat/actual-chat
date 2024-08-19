@@ -124,7 +124,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         result[0].Entries.Count.Should().BeGreaterThan(3);
     }
 
-    [Fact(Skip = "Flaky")]
+    [Fact]
     public async Task ShouldReadTilesReverse()
     {
         var appHost = AppHost;
@@ -146,19 +146,20 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         await CreateChatEntries(chats, session, TestChatId, 3);
         var idRange = await chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
-        var idTileRange = ChatEntryReader.IdTileStack.LastLayer;
-        var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text, idTileRange);
+        var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text);
         var tiles = await reader.ReadTilesReverse(idRange, CancellationToken.None).ToListAsync();
 
-        tiles.Should().HaveCount(2);
-        tiles[0]
-            .Entries
-            .TakeLast(3)
+        tiles.Should().HaveCountGreaterThan(400);
+        var entries = tiles.SelectMany(t => t.Entries.Reverse()).ToList();
+        entries
             .Select(x => x.Content)
+            .Where(x => !x.IsNullOrEmpty())
+            .Take(3)
             .Should()
-            .BeEquivalentTo("back in black i hit the sack",
+            .BeEquivalentTo(
+                "it was a teenage wedding and the all folks wished them well",
                 "rape me rape me my friend",
-                "it was a teenage wedding and the all folks wished them well");
+                "back in black i hit the sack");
     }
 
     [Theory(Skip = "Flaky")]

@@ -4,16 +4,15 @@ public sealed class ChatEntryReader(
     IChats chats,
     Session session,
     ChatId chatId,
-    ChatEntryKind entryKind,
-    TileLayer<long>? idTileLayer = null)
+    ChatEntryKind entryKind)
 {
     public static readonly TileStack<long> IdTileStack = Constants.Chat.ReaderIdTileStack;
+    public TileLayer<long> IdTileLayer { get; } = IdTileStack.FirstLayer;
 
     public IChats Chats { get; } = chats;
     public Session Session { get; init; } = session;
     public ChatId ChatId { get; init; } = chatId;
     public ChatEntryKind EntryKind { get; init; } = entryKind;
-    public TileLayer<long> IdTileLayer { get; init; } = idTileLayer ?? IdTileStack.FirstLayer;
     public TimeSpan MaxBeginsAtDisorder { get; init; } = TimeSpan.FromSeconds(15);
     public int MaxEntryCountDisorder { get; init; } = 1000;
 

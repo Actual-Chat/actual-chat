@@ -2,7 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
-namespace ActualChat.MLSearch.Engine.OpenSearch;
+namespace ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 
 internal interface ISettingsChangeTokenSource
 {

@@ -1,5 +1,5 @@
+using ActualChat.MLSearch.IntegrationTests.Util;
 using ActualChat.Search;
-using ActualChat.Search.IntegrationTests;
 using ActualChat.Testing.Host;
 using static ActualChat.Testing.Host.Assertion.AssertOptionsExt;
 

@@ -9,6 +9,7 @@ using ActualChat.MLSearch.Bot.External;
 using ActualChat.MLSearch.Bot.Tools;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
+using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Indexing;
@@ -27,9 +28,7 @@ using ActualChat.Module;
 using Microsoft.AspNetCore.Builder;
 using ActualChat.MLSearch.Bot.Tools.Context;
 using ActualChat.Search;
-using ActualChat.Search.Db;
 using Microsoft.Extensions.Hosting;
-using IndexNames = ActualChat.MLSearch.Engine.IndexNames;
 
 // Note: Temporary disabled. Will be re-enabled with OpenAPI PR
 // using Swashbuckle.AspNetCore.SwaggerGen;
@@ -123,8 +122,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 static c => c.CreateInstance<CursorStates<ChatIndexInitializerShard.Cursor>>(IndexNames.ChatCursor));
             services.AddSingleton<IInfiniteChatSequence, InfiniteChatSequence>();
             services.AddSingleton<IChatIndexInitializerShard, ChatIndexInitializerShard>();
-            services.AddSingleton(
-                    static c => c.CreateInstance<ChatIndexInitializer>(ShardScheme.MLSearchBackend))
+            services.AddSingleton(static c => c.CreateInstance<ChatIndexInitializer>(ShardScheme.MLSearchBackend))
                 .AddAlias<IChatIndexInitializer, ChatIndexInitializer>()
                 .AddAlias<IHostedService, ChatIndexInitializer>();
         }
@@ -203,7 +201,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         // TODO: put in a proper place in this file after merging PRs
         // Search
-        rpcHost.AddApi<ISearch, Search.Search>();
+        rpcHost.AddApi<ISearch, Search>();
         rpcHost.AddBackend<ISearchBackend, SearchBackend>();
 
         // Indexing
@@ -223,7 +221,5 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         services.AddSingleton<OpenSearchConfigurator>()
             .AddHostedService(c => c.GetRequiredService<OpenSearchConfigurator>());
-        // TODO: merge into single IndexNames
-        services.AddSingleton<Search.IndexNames>();
     }
 }

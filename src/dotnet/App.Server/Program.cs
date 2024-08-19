@@ -1,5 +1,6 @@
 using System.Text;
 using ActualChat.Audio.WebM;
+using ActualLab.Fusion.Client;
 using ActualLab.Rpc;
 using Grpc.Core;
 
@@ -24,6 +25,8 @@ internal static class Program
             return Convert.ToBase64String(hash.AsSpan()[..18]); // 18 bytes -> 24 chars
         };
         FusionDefaults.Mode = FusionMode.Server;
+        RemoteComputedSynchronizer.Default = null!; // Server shouldn't use it
+
         Console.OutputEncoding = Encoding.UTF8;
         Activity.DefaultIdFormat = ActivityIdFormat.W3C;
         Activity.ForceDefaultIdFormat = true;

@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.MLSearch;
 using ActualChat.Search;
 using ActualChat.Users;
 

@@ -1,6 +1,7 @@
 using ActualChat.Chat;
+using ActualChat.Search;
 
-namespace ActualChat.Search.IntegrationTests;
+namespace ActualChat.MLSearch.IntegrationTests.Util;
 
 public static class IndexedContactUtil
 {

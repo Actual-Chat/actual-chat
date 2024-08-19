@@ -1,6 +1,7 @@
 using ActualChat.Chat;
+using ActualChat.Search;
 
-namespace ActualChat.Search;
+namespace ActualChat.MLSearch.Indexing;
 
 public sealed class PlaceContactIndexer(IServiceProvider services) : ContactIndexer(services)
 {

@@ -1,5 +1,6 @@
 using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Fusion.Client;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -87,19 +88,21 @@ public partial class ChatEditorUI : ScopedWorkerBase<ChatUIHub>, IComputeService
         if (author == null)
             return;
 
-        var chatIdRange = await Chats
-            .GetIdRange(Session, chatId, ChatEntryKind.Text, CancellationToken.None)
-            .ConfigureAwait(false);
-        var idTileLayer = ChatEntryReader.IdTileStack.Layers[1]; // 5*4 = scan by 20 entries
-        var chatEntryReader = Hub.NewEntryReader(chatId, ChatEntryKind.Text, idTileLayer);
-        var lastEditableEntry = await chatEntryReader.GetLast(
-                chatIdRange,
-                x => x.AuthorId == author.Id && x is { HasMediaEntry: false, IsStreaming: false },
-                1000, // Max. 1000 entries to scan upwards
-                CancellationToken.None)
-            .ConfigureAwait(false);
-        if (lastEditableEntry == null)
-            return;
+        ChatEntry? lastEditableEntry;
+        using (RemoteComputedSynchronizer.Default.Activate()) {
+            var chatIdRange = await Chats
+                .GetIdRange(Session, chatId, ChatEntryKind.Text, CancellationToken.None)
+                .ConfigureAwait(false);
+            var chatEntryReader = Hub.NewEntryReader(chatId, ChatEntryKind.Text);
+            lastEditableEntry = await chatEntryReader.GetLast(
+                    chatIdRange,
+                    x => x.AuthorId == author.Id && x is { HasMediaEntry: false, IsStreaming: false },
+                    1000, // Max. 1000 entries to scan upwards
+                    CancellationToken.None)
+                .ConfigureAwait(false);
+            if (lastEditableEntry == null)
+                return;
+        }
 
         await Edit(lastEditableEntry, cancellationToken).ConfigureAwait(false);
     }

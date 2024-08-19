@@ -85,6 +85,6 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
 
     // Some handy helpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ChatEntryReader NewEntryReader(ChatId chatId, ChatEntryKind entryKind, TileLayer<long>? idTileLayer = null)
-        => new(Chats, Session(), chatId, entryKind, idTileLayer);
+    public ChatEntryReader NewEntryReader(ChatId chatId, ChatEntryKind entryKind)
+        => new(Chats, Session(), chatId, entryKind);
 }

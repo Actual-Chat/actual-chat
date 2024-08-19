@@ -53,6 +53,7 @@ public class AppScopedServiceStarter
 
             // Finishing w/ BrowserInfo
             await browserInfo.WhenReady.ConfigureAwait(false);
+            // ReSharper disable once ExplicitCallerInfoArgument
             Tracer.Point("BrowserInfo is ready");
 
             Services.GetRequiredService<ThemeUI>().Start();
@@ -62,6 +63,7 @@ public class AppScopedServiceStarter
 
             // Finishing with BrowserInit
             await browserInit.WhenInitialized.ConfigureAwait(false); // Must be completed before the next call
+            // ReSharper disable once ExplicitCallerInfoArgument
             Tracer.Point("BrowserInit completed");
 
             // Finishing with auto-navigation & History init

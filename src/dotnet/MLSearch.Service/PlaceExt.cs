@@ -1,6 +1,7 @@
 using ActualChat.Chat;
+using ActualChat.Search;
 
-namespace ActualChat.Search;
+namespace ActualChat.MLSearch;
 
 public static class PlaceExt
 {
