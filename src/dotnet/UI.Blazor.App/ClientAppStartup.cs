@@ -20,8 +20,7 @@ public static class ClientAppStartup
         RemoteComputedSynchronizer.Default = new RemoteComputedSynchronizer() {
             TimeoutFactory = (_, ct) => Task.Delay(TimeSpan.FromSeconds(1), ct),
         };
-        var remoteComputedCacheUpdateDelayTask = Task
-            .Delay(2200)
+        var remoteComputedCacheUpdateDelayTask = Task.Delay(2200)
             .ContinueWith(_ => RemoteComputedCache.UpdateDelayer = null, TaskScheduler.Default);
         RemoteComputedCache.UpdateDelayer = (_, _) => remoteComputedCacheUpdateDelayTask;
     }
