@@ -19,7 +19,7 @@
     MaxLength="@Constants.Chat.MaxSearchFilterLength"
     TextChanged="@OnFilter"/>
 
-<div class="members-list">
+<div class="member-list">
     @foreach (var authorId in m.AuthorIds) {
         var isOwn = m.IsOwn(authorId);
         var isOwner = m.IsOwner(authorId);
@@ -29,13 +29,11 @@
         var dataMenuAttr = showMenu ? MenuRef.New<EditPlaceMemberMenu>(authorId).ToString() : null;
         <li data-menu="@dataMenuAttr"
             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
-            <div class="grow">
-                <AuthorBadge
-                    @key="@authorId"
-                    AuthorSid="@authorId"
-                    ShowPresence="true"
-                    StatusText="@statusText" />
-            </div>
+            <AuthorBadge
+                @key="@authorId"
+                AuthorSid="@authorId"
+                ShowPresence="true"
+                StatusText="@statusText" />
             @if (dataMenuAttr != null) {
                 <div class="menu"
                      data-menu="@dataMenuAttr"

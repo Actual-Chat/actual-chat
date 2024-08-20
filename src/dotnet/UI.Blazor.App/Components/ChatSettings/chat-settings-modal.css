@@ -255,22 +255,22 @@ body.narrow .chat-settings-header > .c-top .right-panel-close-btn {
 }
 
 /* Members list */
-.members-list {
+.member-list {
     @apply overflow-y-auto;
     scrollbar-width: none;
 }
-.members-list > li {
+.member-list > li {
     @apply flex-x;
     @apply min-h-12;
 }
-.members-list > li .menu {
+.member-list > li .menu {
     @apply flex items-center justify-center;
     @apply min-w-4;
 }
-.members-list .avatar-badge {
+.member-list .avatar-badge {
     @apply flex-1;
     @apply overflow-x-hidden;
 }
-.members-list .avatar-badge .c-status {
+.member-list .avatar-badge .c-status {
     @apply text-03 text-xs leading-3.5;
 }

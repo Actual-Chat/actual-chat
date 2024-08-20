@@ -5,6 +5,8 @@ using MemoryPack;
 
 namespace ActualChat.Hashing;
 
+#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<HashString>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<HashString>))]

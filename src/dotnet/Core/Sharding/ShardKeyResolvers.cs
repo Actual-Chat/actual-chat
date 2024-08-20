@@ -73,7 +73,7 @@ public static class ShardKeyResolvers
         Register<ISessionCommand>(x => ForString(x.Session.Id.Value));
     }
 
-    private static void Register<T>(ShardKeyResolver<T> resolver)
+    public static void Register<T>(ShardKeyResolver<T> resolver)
     {
         if (!Registered.TryAdd(typeof(T), resolver))
             throw StandardError.Internal($"ShardKeyResolver for type {typeof(T).GetName()} is already registered.");

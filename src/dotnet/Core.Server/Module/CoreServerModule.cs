@@ -3,6 +3,7 @@ using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
 using ActualChat.AspNetCore;
 using ActualChat.Diagnostics;
+using ActualChat.Flows;
 using ActualChat.Queues.Internal;
 using ActualChat.Uploads;
 using Microsoft.AspNetCore.StaticFiles;
@@ -15,6 +16,12 @@ namespace ActualChat.Module;
 public sealed class CoreServerModule(IServiceProvider moduleServices)
     : HostModule<CoreServerSettings>(moduleServices), IServerModule
 {
+    static CoreServerModule()
+    {
+        ShardKeyResolvers.Register<FlowId>(static x => ShardKeyResolvers.ForString(x.Value));
+        ShardKeyResolvers.Register<IFlowEvent>(static x => ShardKeyResolvers.ForString(x.FlowId.Value));
+    }
+
     protected override CoreServerSettings GetSettings()
         => Cfg.Settings<CoreServerSettings>(nameof(CoreSettings));
 

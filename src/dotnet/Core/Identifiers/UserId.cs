@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Numerics;
 using Cysharp.Text;
 using MemoryPack;
 using ActualLab.Generators;
@@ -8,15 +7,15 @@ using ActualLab.Identifiers.Internal;
 
 namespace ActualChat;
 
+#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<UserId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<UserId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<UserId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
-public readonly partial struct UserId : ISymbolIdentifier<UserId>,
-    IComparable<UserId>,
-    IComparisonOperators<UserId, UserId, bool>
+public readonly partial struct UserId : ISymbolIdentifier<UserId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<UserId>();
@@ -61,14 +60,6 @@ public readonly partial struct UserId : ISymbolIdentifier<UserId>,
     public static implicit operator Symbol(UserId source) => source.Id;
     public static implicit operator string(UserId source) => source.Id.Value;
     public static explicit operator UserId(string source) => new (source);
-
-    // Comparison
-
-    public int CompareTo(UserId other) => Id.CompareTo(other.Id);
-    public static bool operator >(UserId left, UserId right) => left.CompareTo(right) > 0;
-    public static bool operator >=(UserId left, UserId right) => left.CompareTo(right) >= 0;
-    public static bool operator <(UserId left, UserId right) => left.CompareTo(right) < 0;
-    public static bool operator <=(UserId left, UserId right) => left.CompareTo(right) <= 0;
 
     // Equality
 

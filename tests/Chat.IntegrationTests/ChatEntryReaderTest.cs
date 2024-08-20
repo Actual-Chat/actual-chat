@@ -71,16 +71,16 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         var entry = await reader.FindByMinBeginsAt(clocks.Now + TimeSpan.FromDays(1), idRange, CancellationToken.None);
         entry.Should().BeNull();
         entry = await reader.FindByMinBeginsAt(default, idRange, CancellationToken.None);
-        entry!.Id.Should().Be(idRange.Start);
+        entry!.Id.LocalId.Should().Be(idRange.Start);
 
-        for (var entryId = idRange.End - 3; entryId < idRange.End; entryId++) {
-            entry = await reader.Get(entryId, CancellationToken.None);
+        for (var entryLid = idRange.End - 3; entryLid < idRange.End; entryLid++) {
+            entry = await reader.Get(entryLid, CancellationToken.None);
             var eCopy = await reader.FindByMinBeginsAt(entry!.BeginsAt, idRange, CancellationToken.None);
-            eCopy!.Id.Should().Be(entryId);
+            eCopy!.Id.LocalId.Should().Be(entryLid);
             eCopy = await reader.FindByMinBeginsAt(entry.BeginsAt, (entry.LocalId, entry.LocalId + 1), CancellationToken.None);
-            eCopy!.Id.Should().Be(entryId);
+            eCopy!.Id.LocalId.Should().Be(entryLid);
             eCopy = await reader.FindByMinBeginsAt(entry.BeginsAt, (entry.LocalId, entry.LocalId + 2), CancellationToken.None);
-            eCopy!.Id.Should().Be(entryId);
+            eCopy!.Id.LocalId.Should().Be(entryLid);
             eCopy = await reader.FindByMinBeginsAt(entry.BeginsAt, (entry.LocalId, entry.LocalId), CancellationToken.None);
             eCopy.Should().BeNull();
             eCopy = await reader.FindByMinBeginsAt(entry.BeginsAt, (entry.LocalId - 1, entry.LocalId), CancellationToken.None);

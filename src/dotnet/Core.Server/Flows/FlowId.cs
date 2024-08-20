@@ -7,6 +7,8 @@ using MemoryPack;
 
 namespace ActualChat.Flows;
 
+#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<FlowId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<FlowId>))]

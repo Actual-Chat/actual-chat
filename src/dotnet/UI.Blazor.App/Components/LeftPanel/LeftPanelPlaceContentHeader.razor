@@ -5,8 +5,6 @@
 @inherits ComputedStateComponent<LeftPanelPlaceContentHeader.Model>
 @{
     var m = State.Value;
-    if (m.Place == null)
-        return;
 }
 
 <OnUIEvent TEvent="@SelectedChatChangedEvent" Handler="@OnSelectedChatChangedEvent" />
@@ -42,23 +40,13 @@
         </div>
     </div>
 
-    @if (ReferenceEquals(m, Model.Loading)) {
+    @if (m.IsLoading) {
         <div class="c-info">
             <place-menu-button-skeleton/>
         </div>
     } else if (m.Place.IsPublic || m.IsMember) {
         <div class="c-info">
             <PlaceMenuButton PlaceId="@m.Place.Id"/>
-            @if (m.IsMember) {
-                <div class="c-right">
-                    <ButtonRound Class="place-plus-btn btn-sm btn-transparent unhovered"
-                                 data-menu="@(MenuRef.New<LeftPanelPlaceMenu>(m.Place.Id).ToString())"
-                                 data-menu-trigger="@MenuTrigger.Primary"
-                                 data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
-                        <i class="icon-more-vertical text-2xl"></i>
-                    </ButtonRound>
-                </div>
-            }
         </div>
     }
 </div>
@@ -78,21 +66,16 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.Loading,
+            InitialValue = new(Place, false, true),
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var place = Place;
         var placeId = Place.Id;
-
         var places = await Contacts.ListPlaceIds(Session, default).ConfigureAwait(false);
         var isMember = places.Contains(placeId);
-
-        return new() {
-            Place = place,
-            IsMember = isMember,
-        };
+        return new (place, isMember);
     }
 
     private void OnSearchBoxTextChanged(string text)
@@ -108,10 +91,5 @@
 
     // Nested types
 
-    public sealed record Model {
-        public static readonly Model Loading = new();
-
-        public Place? Place { get; init; }
-        public bool IsMember { get; init; }
-    }
+    public sealed record Model(Place Place, bool IsMember = false, bool IsLoading = false);
 }

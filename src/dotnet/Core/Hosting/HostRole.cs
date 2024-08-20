@@ -2,10 +2,12 @@ using MemoryPack;
 
 namespace ActualChat.Hosting;
 
+#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record struct HostRole(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Symbol Id
-    ) : ICanBeNone<HostRole>
+    ) : ICanBeNone<HostRole>, IComparable<HostRole>
 {
     public const string QueueSuffix = "Queue";
     public const string BackendSuffix = "Backend";
@@ -58,4 +60,9 @@ public partial record struct HostRole(
     public static implicit operator HostRole(Symbol source) => new(source);
     public static implicit operator HostRole(string source) => new(source);
     public static implicit operator Symbol(HostRole source) => source.Id;
+
+    // Comparison
+
+    public int CompareTo(HostRole other)
+        => string.CompareOrdinal(Id.Value, other.Id.Value);
 }

@@ -6,6 +6,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
 {
+    private static readonly SemaphoreSlim Lock = new (1);
     private readonly ISyncedState<UserOnboardingSettings> _userSettings;
     private readonly IStoredState<LocalOnboardingSettings> _localSettings;
     private CancellationTokenSource? _lastTryShowCts;
@@ -43,29 +44,36 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
 
     public async Task<bool> TryShow()
     {
-        // Must start in Blazor Dispatcher!
-        if (_lastModalRef is { WhenClosed.IsCompleted: false })
-            return true;
+        await Lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
 
-        _lastModalRef?.Close(true);
-        _lastTryShowCts.CancelAndDisposeSilently();
-        var shouldBeShown = false;
-        // We give it 5 seconds to complete, otherwise it won't be shown
-        using var cts = _lastTryShowCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try {
-            shouldBeShown = await ShouldBeShown(cts.Token).ConfigureAwait(true);
-        }
-        catch (OperationCanceledException) { }
-        finally {
-            if (_lastTryShowCts == cts)
-                _lastTryShowCts = null;
-            cts.DisposeSilently();
-        }
-        if (!shouldBeShown)
-            return false;
+            // Must start in Blazor Dispatcher!
+            if (_lastModalRef is { WhenClosed.IsCompleted: false })
+                return true;
 
-        _lastModalRef = await ModalUI.Show(new OnboardingModal.Model(), CancellationToken.None).ConfigureAwait(false);
-        return true;
+            _lastModalRef?.Close(true);
+            _lastTryShowCts.CancelAndDisposeSilently();
+            var shouldBeShown = false;
+            // We give it 5 seconds to complete, otherwise it won't be shown
+            using var cts = _lastTryShowCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            try {
+                shouldBeShown = await ShouldBeShown(cts.Token).ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) { }
+            finally {
+                if (_lastTryShowCts == cts)
+                    _lastTryShowCts = null;
+                cts.DisposeSilently();
+            }
+            if (!shouldBeShown)
+                return false;
+
+            _lastModalRef = await ModalUI.Show(new OnboardingModal.Model(), CancellationToken.None).ConfigureAwait(false);
+            return true;
+        }
+        finally {
+            Lock.Release();
+        }
     }
 
     public void UpdateUserSettings(UserOnboardingSettings value)

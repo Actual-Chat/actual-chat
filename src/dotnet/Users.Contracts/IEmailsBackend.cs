@@ -6,12 +6,12 @@ namespace ActualChat.Users;
 public interface IEmailsBackend : IComputeService, IBackendService
 {
     [CommandHandler]
-    Task<Unit> OnSendDigest(Emails_SendDigest command, CancellationToken cancellationToken);
+    Task<Unit> OnSendDigest(EmailsBackend_SendDigest command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Emails_SendDigest(
+public sealed partial record EmailsBackend_SendDigest(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {

@@ -13,22 +13,22 @@ public class FlowHost : ProcessorBase, IHasServices
     public MomentClockSet Clocks { get; }
     public ILogger Log { get; }
 
-    public ConcurrentDictionary<FlowId, FlowWorklet> Workers { get; } = new();
+    public ConcurrentDictionary<FlowId, FlowWorklet> Worklets { get; } = new();
 
     public FlowWorklet this[FlowId flowId] {
         get {
-            if (Workers.TryGetValue(flowId, out var result))
+            if (Worklets.TryGetValue(flowId, out var result))
                 return result;
 
             lock (Lock) {
-                if (Workers.TryGetValue(flowId, out result))
+                if (Worklets.TryGetValue(flowId, out result))
                     return result;
                 if (WhenDisposed != null)
                     throw Errors.AlreadyDisposed(GetType());
 
                 flowId.Require();
                 result = Create(flowId).Start();
-                Workers[flowId] = result;
+                Worklets[flowId] = result;
                 return result;
             }
         }
@@ -47,7 +47,7 @@ public class FlowHost : ProcessorBase, IHasServices
     protected override Task DisposeAsyncCore()
     {
         var disposeTasks = new List<Task>();
-        foreach (var (_, worker) in Workers)
+        foreach (var (_, worker) in Worklets)
             disposeTasks.Add(worker.DisposeAsync().AsTask());
         return Task.WhenAll(disposeTasks);
     }
@@ -55,18 +55,18 @@ public class FlowHost : ProcessorBase, IHasServices
     public async Task<long> HandleEvent(FlowId flowId, object? evt, CancellationToken cancellationToken)
     {
         while (true) {
-            var worker = this[flowId];
-            var whenHandled = worker.HandleEvent(evt, cancellationToken);
+            var worklet = this[flowId];
+            var whenHandled = worklet.HandleEvent(evt, cancellationToken);
             try {
                 return await whenHandled.ConfigureAwait(false);
             }
             catch (ChannelClosedException) {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!worker.StopToken.IsCancellationRequested)
+                if (!worklet.StopToken.IsCancellationRequested)
                     throw;
 
                 // runner is disposing - let's wait for its completion before requesting a new one
-                await worker.WhenRunning!.ConfigureAwait(false);
+                await worklet.WhenRunning!.ConfigureAwait(false);
             }
         }
     }
