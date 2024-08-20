@@ -5,6 +5,8 @@ using ActualLab.Identifiers.Internal;
 
 namespace ActualChat;
 
+#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<PeerChatId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<PeerChatId>))]
@@ -13,6 +15,7 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct PeerChatId : ISymbolIdentifier<PeerChatId>
 {
+    private static readonly Comparer<UserId> UserIdComparer = Comparer<UserId>.Default;
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<PeerChatId>();
 
@@ -50,7 +53,7 @@ public readonly partial struct PeerChatId : ISymbolIdentifier<PeerChatId>
         if (userId1 == userId2)
             return;
 
-        (UserId1, UserId2) = (userId1, userId2).Sort();
+        (UserId1, UserId2) = (userId1, userId2).Sort(UserIdComparer);
         Id = Format(UserId1, UserId2);
     }
 
@@ -63,7 +66,7 @@ public readonly partial struct PeerChatId : ISymbolIdentifier<PeerChatId>
         if (userId1 == userId2)
             throw new ArgumentOutOfRangeException(nameof(userId2), "Both user IDs are the same.");
 
-        (UserId1, UserId2) = (userId1, userId2).Sort();
+        (UserId1, UserId2) = (userId1, userId2).Sort(UserIdComparer);
         Id = Format(UserId1, UserId2);
     }
 

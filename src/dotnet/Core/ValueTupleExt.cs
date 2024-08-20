@@ -40,14 +40,25 @@ public static class ValueTupleExt
         return Comparer<T>.Default.Compare(i1, i2) <= 0 ? source : (i2, i1);
     }
 
+    public static (T, T) Sort<T>(this (T, T) source, IComparer<T> comparer)
+        where T : IComparable<T>
+    {
+        var (i1, i2) = source;
+        return comparer.Compare(i1, i2) <= 0 ? source : (i2, i1);
+    }
+
     public static (T, T, T) Sort<T>(this (T, T, T) source)
+        where T : IComparable<T>
+        => source.Sort(Comparer<T>.Default);
+
+    public static (T, T, T) Sort<T>(this (T, T, T) source, IComparer<T> comparer)
         where T : IComparable<T>
     {
         var (i1, i2, i3) = source;
         // Bubble sort
-        (i1, i2) = (i1, i2).Sort();
-        (i2, i3) = (i2, i3).Sort();
-        (i1, i2) = (i1, i2).Sort();
+        (i1, i2) = (i1, i2).Sort(comparer);
+        (i2, i3) = (i2, i3).Sort(comparer);
+        (i1, i2) = (i1, i2).Sort(comparer);
         return (i1, i2, i3);
     }
 

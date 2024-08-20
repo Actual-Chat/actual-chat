@@ -15,9 +15,12 @@ public static class ApiSet
 }
 
 [DataContract, MemoryPackable(GenerateType.Collection)]
-public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>
+public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>, IEnumerable<T>
+
 {
     public static readonly ApiSet<T> Empty = new(Array.Empty<T>());
+
+    private SortedItemCache? _sortedItemCache;
 
     public ApiSet() { }
     public ApiSet(IEnumerable<T> collection) : base(collection) { }
@@ -31,6 +34,16 @@ public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>
 
     object ICloneable.Clone() => Clone();
     public ApiSet<T> Clone() => new(this, Comparer);
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    public new IEnumerator<T> GetEnumerator() => GetSortedItemCache().Items.GetEnumerator();
+
+    private SortedItemCache GetSortedItemCache()
+    {
+        if (_sortedItemCache is not { IsValid: true })
+            _sortedItemCache = new SortedItemCache(base.GetEnumerator(), Count);
+        return _sortedItemCache;
+    }
 
     public override string ToString()
     {
@@ -55,5 +68,38 @@ public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>
         }
         sb.Append(" }");
         return sb.ToStringAndRelease();
+    }
+
+    // Nested types
+
+    private sealed class SortedItemCache(IEnumerator<T> enumerator, int count)
+    {
+        public readonly IEnumerable<T> Items = NewItems(enumerator, count);
+
+        public bool IsValid {
+            get {
+                try
+                {
+                    enumerator.Reset();
+                    return true;
+                }
+                catch (InvalidOperationException)
+                {
+                    // If we're here, the collection was changed.
+                    // Technically this should never happen, coz all ApiXxx collections are ~ immutable,
+                    // but we still need to handle this gracefully - just in case.
+                    return false;
+                }
+            }
+        }
+
+        private static T[] NewItems(IEnumerator<T> e, int count)
+        {
+            var items = new T[count];
+            var i = 0;
+            while (e.MoveNext())
+                items[i++] = e.Current;
+            return items.SortInPlace();
+        }
     }
 }

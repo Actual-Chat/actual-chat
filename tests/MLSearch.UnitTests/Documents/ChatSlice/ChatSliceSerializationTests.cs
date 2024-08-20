@@ -6,7 +6,7 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
 {
     private const string AttachmentSummary = "Don't expect any media here.";
 
-    private static readonly JsonSerializerOptions _serializerOptions = new() {
+    private static readonly JsonSerializerOptions SerializerOptions = new() {
         AllowTrailingCommas = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
@@ -17,7 +17,7 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
         var id = new MediaId("testscope", Generate.Option);
         var attachment = new ChatSliceAttachment(id, AttachmentSummary);
 
-        var jsonString = JsonSerializer.Serialize(attachment, _serializerOptions);
+        var jsonString = JsonSerializer.Serialize(attachment, SerializerOptions);
         Assert.True(jsonString.Contains("id", StringComparison.Ordinal));
         Assert.True(jsonString.Contains("summary", StringComparison.Ordinal));
         Assert.True(jsonString.Contains("testscope:", StringComparison.Ordinal));
@@ -30,9 +30,9 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
         var id = new MediaId("testscope", Generate.Option);
         var attachment = new ChatSliceAttachment(id, AttachmentSummary);
 
-        var jsonString = JsonSerializer.Serialize(attachment, _serializerOptions);
+        var jsonString = JsonSerializer.Serialize(attachment, SerializerOptions);
 
-        var deserializedAttachment = JsonSerializer.Deserialize<ChatSliceAttachment>(jsonString, _serializerOptions);
+        var deserializedAttachment = JsonSerializer.Deserialize<ChatSliceAttachment>(jsonString, SerializerOptions);
         Assert.Equal(attachment, deserializedAttachment);
     }
 
@@ -40,10 +40,10 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
     public void ChatSliceMetadataSerializesAndDeserializesProperly()
     {
         var metadata = CreateMetadata();
-        var jsonString = JsonSerializer.Serialize(metadata, _serializerOptions);
-        var deserializedMetadata = JsonSerializer.Deserialize<ChatSliceMetadata>(jsonString, _serializerOptions);
+        var jsonString = JsonSerializer.Serialize(metadata, SerializerOptions);
+        var deserializedMetadata = JsonSerializer.Deserialize<ChatSliceMetadata>(jsonString, SerializerOptions);
         Assert.Equivalent(metadata, deserializedMetadata);
-        Assert.Equal(jsonString, JsonSerializer.Serialize(deserializedMetadata, _serializerOptions));
+        Assert.Equal(jsonString, JsonSerializer.Serialize(deserializedMetadata, SerializerOptions));
     }
 
     [Fact]
@@ -51,10 +51,10 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
     {
         var metadata = CreateMetadata();
         var document = new MLSearch.Documents.ChatSlice(metadata, "Unique and valuable message");
-        var jsonString = JsonSerializer.Serialize(document, _serializerOptions);
-        var deserializedDocument = JsonSerializer.Deserialize<MLSearch.Documents.ChatSlice>(jsonString, _serializerOptions);
+        var jsonString = JsonSerializer.Serialize(document, SerializerOptions);
+        var deserializedDocument = JsonSerializer.Deserialize<MLSearch.Documents.ChatSlice>(jsonString, SerializerOptions);
         Assert.Equivalent(document, deserializedDocument);
-        Assert.Equal(jsonString, JsonSerializer.Serialize(deserializedDocument, _serializerOptions));
+        Assert.Equal(jsonString, JsonSerializer.Serialize(deserializedDocument, SerializerOptions));
     }
 
     private static ChatSliceMetadata CreateMetadata()

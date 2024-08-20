@@ -4,10 +4,13 @@ using MemoryPack;
 namespace ActualChat.Collections;
 
 [DataContract, MemoryPackable(GenerateType.Collection)]
-public sealed partial class ApiMap<TKey, TValue> : Dictionary<TKey, TValue>, ICloneable<ApiMap<TKey, TValue>>
+public sealed partial class ApiMap<TKey, TValue>
+    : Dictionary<TKey, TValue>, ICloneable<ApiMap<TKey, TValue>>, IEnumerable<KeyValuePair<TKey, TValue>>
     where TKey : notnull
 {
     public static readonly ApiMap<TKey, TValue> Empty = new();
+
+    private SortedItemCache? _sortedItemCache;
 
     public ApiMap() { }
     public ApiMap(IDictionary<TKey, TValue> dictionary) : base(dictionary) { }
@@ -23,6 +26,16 @@ public sealed partial class ApiMap<TKey, TValue> : Dictionary<TKey, TValue>, ICl
 
     object ICloneable.Clone() => Clone();
     public ApiMap<TKey, TValue> Clone() => new(this, Comparer);
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    public new IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => GetSortedItemCache().Items.GetEnumerator();
+
+    private SortedItemCache GetSortedItemCache()
+    {
+        if (_sortedItemCache is not { IsValid: true })
+            _sortedItemCache = new SortedItemCache(base.GetEnumerator(), Count);
+        return _sortedItemCache;
+    }
 
     public override string ToString()
     {
@@ -53,5 +66,38 @@ public sealed partial class ApiMap<TKey, TValue> : Dictionary<TKey, TValue>, ICl
         }
         sb.Append(" }");
         return sb.ToStringAndRelease();
+    }
+
+    // Nested types
+
+    private sealed class SortedItemCache(IEnumerator<KeyValuePair<TKey, TValue>> enumerator, int count)
+    {
+        public readonly IEnumerable<KeyValuePair<TKey, TValue>> Items = NewItems(enumerator, count);
+
+        public bool IsValid {
+            get {
+                try
+                {
+                    enumerator.Reset();
+                    return true;
+                }
+                catch (InvalidOperationException)
+                {
+                    // If we're here, the collection was changed.
+                    // Technically this should never happen, coz all ApiXxx collections are ~ immutable,
+                    // but we still need to handle this gracefully - just in case.
+                    return false;
+                }
+            }
+        }
+
+        private static KeyValuePair<TKey, TValue>[] NewItems(IEnumerator<KeyValuePair<TKey, TValue>> e, int count)
+        {
+            var items = new KeyValuePair<TKey, TValue>[count];
+            var i = 0;
+            while (e.MoveNext())
+                items[i++] = e.Current;
+            return items.SortInPlace(x => x.Key);
+        }
     }
 }
