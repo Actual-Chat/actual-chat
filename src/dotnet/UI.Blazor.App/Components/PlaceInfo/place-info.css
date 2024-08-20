@@ -95,7 +95,7 @@
     scrollbar-width: none;
 }
 
-.place-info .members-list {
+.place-info .member-list {
     @apply p-4;
 }
 

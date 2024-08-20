@@ -18,6 +18,16 @@
         <span>@(m.Place.IsPublic ? "Public" : "Private")</span>
     </div>
 </div>
+@if (m.IsMember) {
+    <div class="c-right">
+        <ButtonRound Class="place-plus-btn btn-sm btn-transparent unhovered"
+                     data-menu="@(MenuRef.New<LeftPanelPlaceMenu>(m.Place.Id).ToString())"
+                     data-menu-trigger="@MenuTrigger.Primary"
+                     data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
+            <i class="icon-more-vertical text-2xl"></i>
+        </ButtonRound>
+    </div>
+}
 
 @code {
     [Inject] private ChatUIHub Hub { get; set; } = null!;
@@ -39,9 +49,13 @@
         var placeId = PlaceId;
         var place = await Hub.Places.Get(Hub.Session(), placeId, default).Require().ConfigureAwait(false);
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
+        var places = await Contacts.ListPlaceIds(Session, default).ConfigureAwait(false);
+        var isMember = places.Contains(placeId);
+
         return new() {
             Place = place,
             MembersCount = allAuthorIds.Count,
+            IsMember = isMember,
         };
     }
 
@@ -55,5 +69,6 @@
 
         public Place? Place { get; init; }
         public int MembersCount { get; init; }
+        public bool IsMember { get; init; }
     }
 }
