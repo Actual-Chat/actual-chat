@@ -55,18 +55,18 @@ public class FlowHost : ProcessorBase, IHasServices
     public async Task<long> HandleEvent(FlowId flowId, object? evt, CancellationToken cancellationToken)
     {
         while (true) {
-            var worker = this[flowId];
-            var whenHandled = worker.HandleEvent(evt, cancellationToken);
+            var worklet = this[flowId];
+            var whenHandled = worklet.HandleEvent(evt, cancellationToken);
             try {
                 return await whenHandled.ConfigureAwait(false);
             }
             catch (ChannelClosedException) {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!worker.StopToken.IsCancellationRequested)
+                if (!worklet.StopToken.IsCancellationRequested)
                     throw;
 
                 // runner is disposing - let's wait for its completion before requesting a new one
-                await worker.WhenRunning!.ConfigureAwait(false);
+                await worklet.WhenRunning!.ConfigureAwait(false);
             }
         }
     }
