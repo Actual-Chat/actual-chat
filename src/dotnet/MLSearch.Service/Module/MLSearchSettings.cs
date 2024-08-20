@@ -31,4 +31,6 @@ public sealed class OpenSearchSettings
 
     [Range(0, 4, ErrorMessage = "Value for {0} must be between {1} and {2}.")]
     public int? DefaultNumberOfReplicas { get; set; }
+
+    public string ClientCertificatePath { get; set; } = "";
 }

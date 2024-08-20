@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using ActualChat.Hosting;
 using ActualChat.Mesh;
 using ActualChat.MLSearch.Db;
@@ -44,6 +45,11 @@ internal static class OpenSearchConfigurationServiceCollectionExt
                 .DefaultFieldNameInferrer(JsonNamingPolicy.CamelCase.ConvertName)
                 .DefaultMappingFor<ChatInfo>(map => map.RelationName(ChatInfoToChatSliceRelation.ChatInfoName))
                 .DefaultMappingFor<ChatSlice>(map => map.RelationName(ChatInfoToChatSliceRelation.ChatSliceName));
+            if (!openSearchSettings.ClientCertificatePath.IsNullOrEmpty()) {
+                var certPath = Path.Combine(openSearchSettings.ClientCertificatePath, "tls.crt");
+                var keyPath = Path.Combine(openSearchSettings.ClientCertificatePath, "tls.key");
+                connectionSettings.ClientCertificate(X509Certificate2.CreateFromPemFile(certPath, keyPath));
+            }
             return new OpenSearchClient(connectionSettings);
         });
 
