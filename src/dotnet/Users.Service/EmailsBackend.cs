@@ -22,7 +22,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
 
     // [CommandHandler]
-    public virtual async Task<Unit> OnSendDigest(Emails_SendDigest command, CancellationToken cancellationToken)
+    public virtual async Task<Unit> OnSendDigest(EmailsBackend_SendDigest command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return default;
