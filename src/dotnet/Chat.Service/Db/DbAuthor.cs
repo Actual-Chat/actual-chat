@@ -42,7 +42,7 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
             UserId = new UserId(UserId ?? Symbol.Empty, AssumeValid.Option),
             AvatarId = AvatarId ?? "",
             HasLeft = HasLeft,
-            RoleIds = Roles.Select(ar => (Symbol)ar.DbRoleId).ToApiArray(),
+            RoleIds = new ApiArray<Symbol>(Roles.ToArray(Roles.Count, x => (Symbol)x.DbRoleId).SortInPlace()),
             CreatedAt = CreatedAt,
             IsPlaceAuthor = IsPlaceAuthor,
         };
