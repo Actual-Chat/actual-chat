@@ -10,6 +10,7 @@ from langchain_core.runnables import ConfigurableField
 from langchain_core.runnables.configurable import RunnableConfigurableAlternatives
 from langchain_core.prompts import ChatPromptTemplate
 
+import jwt
 import os
 import logging
 logger = logging.getLogger(__name__)
@@ -19,13 +20,13 @@ from . import prompts
 from . import utils
 from . import tools
 
-from langfuse import Langfuse
+# from langfuse import Langfuse
 
-langfuse = Langfuse()
+# langfuse = Langfuse()
+# langfuse.auth_check()
+langfuse = None
 
-langfuse.auth_check()
-
-prompts.init(langfuse)
+# prompts.init(langfuse)
 
 app = FastAPI(
     title="Chatbot Service",
@@ -66,17 +67,17 @@ def _add_tracing(
         "conversation_id": conversation_id,
         "user_id": user_id
     }
+    if langfuse is not None:
+        trace = langfuse.trace(
+            id=conversation_id,
+            metadata=metadata,
+        )
+        trace_handler = trace.getNewHandler()
 
-    trace = langfuse.trace(
-        id=conversation_id,
-        metadata=metadata,
-    )
-    trace_handler = trace.getNewHandler()
-
-    config["callbacks"].extend([
-#        langfuse_handler
-        trace_handler
-    ])
+        config["callbacks"].extend([
+            # langfuse_handler
+            trace_handler
+        ])
     return config
 
 
@@ -95,10 +96,22 @@ def _extract_thread_id(
     config: Dict[str, Any],
     request: Request
 ) -> Dict[str, Any]:
-    # TODO: Validate JWT token
-    # TODO: Extract conversation id from the JWT token
     configurable = config.get("configurable", {})
-    configurable["thread_id"] = "1"
+    jwt_bearer_token = request.headers.get("Authorization", None)
+    assert(jwt_bearer_token is not None, "Authorization header must be set")
+    assert(jwt_bearer_token.startswith("Bearer "), "Sanity check")
+    jwt_token = jwt_bearer_token.replace("Bearer ", "", 1)
+
+    claims = jwt.decode(
+        jwt_token,
+        options = {
+            # TODO: Validate JWT token
+            "verify_signature": False
+        }
+    )
+    conversation_id = claims.get("ConversationId", None)
+    assert(conversation_id is not None, "ConversationId must be set")
+    configurable["thread_id"] = conversation_id
     config["configurable"] = configurable
     return config
 
@@ -109,19 +122,23 @@ async def redirect_root_to_docs():
     return RedirectResponse("/docs")
 
 
-dynamic_prompt = prompts.create_dynamic_prompt(langfuse)
+# dynamic_prompt = prompts.create_dynamic_prompt(langfuse)
+
 the_chain = chain.create(
     claude_api_key = os.getenv("CLAUDE_API_KEY"),
-    prompt = dynamic_prompt
+#    prompt = dynamic_prompt
 )
 # Inject real prompt here.
-_set_prompt = prompts.set_per_request(langfuse, dynamic_prompt = dynamic_prompt)
+# _set_prompt = prompts.set_per_request(langfuse, dynamic_prompt = dynamic_prompt)
+_set_prompt = None
 
 def _per_request_config(config, request):
     config = _add_tracing(config, request)
     config = _add_tools_auth_context(config, request)
     config = _extract_thread_id(config, request)
-    return _set_prompt(config, request)
+    if _set_prompt is not None:
+        config = _set_prompt(config, request)
+    return config
 
 
 # Edit this to add the chain you want to add
