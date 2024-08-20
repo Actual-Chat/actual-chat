@@ -49,7 +49,7 @@ internal sealed class DigestJob(IServiceProvider services)
             .ReadAsync(PageSize, x => x.Id, cancellationToken);
         await foreach (var accountId in accountIds.ConfigureAwait(false)) {
             var userId = UserId.Parse(accountId);
-            var sendDigestCommand = new Emails_SendDigest(userId);
+            var sendDigestCommand = new EmailsBackend_SendDigest(userId);
             await Queues.Enqueue(sendDigestCommand, cancellationToken).ConfigureAwait(false);
         }
     }

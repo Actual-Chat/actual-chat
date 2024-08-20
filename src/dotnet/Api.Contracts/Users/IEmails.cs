@@ -8,6 +8,8 @@ public interface IEmails : IComputeService
     Task<Moment> OnSendTotp(Emails_SendTotp command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<bool> OnVerifyEmail(Emails_VerifyEmail command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnSendDigest(Emails_SendDigest command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -22,3 +24,9 @@ public sealed partial record Emails_VerifyEmail(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] int Token
 ) : ISessionCommand<bool>; // NOTE(AY): Add backend, implement IApiCommand
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Emails_SendDigest(
+    [property: DataMember, MemoryPackOrder(0)] Session Session
+) : ISessionCommand<Moment>, IApiCommand;
