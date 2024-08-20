@@ -164,13 +164,13 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                     e.WebHookUri = Settings!.Integrations!.Bot!.WebHookUri!;
                 });
                 services.AddSingleton<IBotConversationHandler, ExternalChatBotConversationHandler>();
+                services.AddSingleton<IChatBotWorker>(
+                    static c => c.CreateInstance<ChatBotWorker>());
+                services.AddWorkerPool<IChatBotWorker, MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId>(
+                    DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
+                );
             }
         }
-        services.AddSingleton<IChatBotWorker>(
-            static c => c.CreateInstance<ChatBotWorker>());
-        services.AddWorkerPool<IChatBotWorker, MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId>(
-            DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
-        );
         // -- Register Controllers --
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
         // -- Register IMLSearchHandlers --
