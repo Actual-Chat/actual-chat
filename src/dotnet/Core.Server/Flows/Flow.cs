@@ -7,7 +7,7 @@ namespace ActualChat.Flows;
 
 public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
 {
-    private FlowWorklet? _worker;
+    private FlowWorklet? _worklet;
 
     // Persisted to the DB directly
     [IgnoreDataMember, MemoryPackIgnore]
@@ -21,7 +21,7 @@ public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
     [IgnoreDataMember, MemoryPackIgnore]
     protected FlowHost Host => Worklet.Host;
     [IgnoreDataMember, MemoryPackIgnore]
-    protected FlowWorklet Worklet => RequireWorker();
+    protected FlowWorklet Worklet => RequireWorklet();
     [IgnoreDataMember, MemoryPackIgnore]
     protected FlowEventSource Event { get; private set; }
 
@@ -30,7 +30,7 @@ public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
         Id = id;
         Version = version;
         Step = step;
-        _worker = worker;
+        _worklet = worker;
     }
 
     public override string ToString()
@@ -41,7 +41,7 @@ public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
 
     public virtual async Task<FlowTransition> HandleEvent(object? evt, CancellationToken cancellationToken)
     {
-        RequireWorker();
+        RequireWorklet();
         var step = Step;
         Event = new FlowEventSource(this, evt);
         FlowTransition transition;
@@ -112,7 +112,7 @@ public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
 
     protected virtual async ValueTask ApplyTransition(FlowTransition transition, CancellationToken cancellationToken)
     {
-        RequireWorker();
+        RequireWorklet();
         Step = transition.Step;
         if (!transition.EffectiveMustStore)
             return;
@@ -138,11 +138,11 @@ public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
             throw Errors.MustBeAssignableTo<Flow>(flowType);
     }
 
-    private FlowWorklet RequireWorker()
+    private FlowWorklet RequireWorklet()
     {
-        if (_worker == null)
+        if (_worklet == null)
             throw Errors.NotInitialized(nameof(Worklet));
 
-        return _worker;
+        return _worklet;
     }
 }

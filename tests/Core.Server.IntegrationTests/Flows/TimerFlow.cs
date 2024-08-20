@@ -33,7 +33,7 @@ public partial class TimerFlow : Flow
         output.WriteLine($"{nameof(OnTimer)}: {timerEvent}");
 
         var nextTag = timerEvent.Tag + "+";
-        return nextTag.Length <= 2
+        return nextTag.Length <= 5
             ? Wait(nameof(OnTimer)).AddTimerEvent(TimeSpan.FromSeconds(5), nextTag)
             : JumpToEnd();
     }

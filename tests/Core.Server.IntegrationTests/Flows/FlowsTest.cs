@@ -18,7 +18,7 @@ public class FlowsTest(ITestOutputHelper @out)
         Out.WriteLine($"[+] {f0}");
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.Get(f0.Id, ct);
+            var flow = await flows.Get<TimerFlow>(f0.Id.Arguments, ct);
             Out.WriteLine($"[*] {flow?.ToString() ?? "null"}");
             flow.Should().BeNull();
         }, TimeSpan.FromSeconds(30));

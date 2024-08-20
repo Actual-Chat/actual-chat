@@ -13,22 +13,22 @@ public class FlowHost : ProcessorBase, IHasServices
     public MomentClockSet Clocks { get; }
     public ILogger Log { get; }
 
-    public ConcurrentDictionary<FlowId, FlowWorklet> Workers { get; } = new();
+    public ConcurrentDictionary<FlowId, FlowWorklet> Worklets { get; } = new();
 
     public FlowWorklet this[FlowId flowId] {
         get {
-            if (Workers.TryGetValue(flowId, out var result))
+            if (Worklets.TryGetValue(flowId, out var result))
                 return result;
 
             lock (Lock) {
-                if (Workers.TryGetValue(flowId, out result))
+                if (Worklets.TryGetValue(flowId, out result))
                     return result;
                 if (WhenDisposed != null)
                     throw Errors.AlreadyDisposed(GetType());
 
                 flowId.Require();
                 result = Create(flowId).Start();
-                Workers[flowId] = result;
+                Worklets[flowId] = result;
                 return result;
             }
         }
@@ -47,7 +47,7 @@ public class FlowHost : ProcessorBase, IHasServices
     protected override Task DisposeAsyncCore()
     {
         var disposeTasks = new List<Task>();
-        foreach (var (_, worker) in Workers)
+        foreach (var (_, worker) in Worklets)
             disposeTasks.Add(worker.DisposeAsync().AsTask());
         return Task.WhenAll(disposeTasks);
     }

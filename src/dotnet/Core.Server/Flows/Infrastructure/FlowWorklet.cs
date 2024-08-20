@@ -122,7 +122,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
             catch {
                 // Intended
             }
-            Host.Workers.TryRemove(FlowId, this);
+            Host.Worklets.TryRemove(FlowId, this);
         }
     }
 
