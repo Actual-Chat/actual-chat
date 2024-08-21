@@ -99,8 +99,7 @@
     private readonly List<SettingsTab> _tabs = new();
     private SettingsTab? _activeTab;
 
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
-    [Inject] private IServiceProvider Services { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
@@ -183,9 +182,9 @@
 
     private void SignOut() {
         Modal.Close();
-        Services.GetRequiredService<AccountUI>().SignOut();
+        _ = Hub.AccountUI.SignOut();
     }
 
     private void Quit()
-        => Services.GetRequiredService<ReloadUI>().Quit();
+        => Hub.ReloadUI.Quit();
 }

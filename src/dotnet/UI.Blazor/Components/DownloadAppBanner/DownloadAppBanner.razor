@@ -4,14 +4,8 @@
 @using ActualChat.Hosting
 @inherits ComputedStateComponent<bool>
 @{
-    if (!State.Value)
+    if (State.Value)
         return;
-    if (HostInfo.HostKind == HostKind.MauiApp) {
-        if (HostInfo.AppKind.IsMobile())
-            return;
-        if (CanBeClosed)
-            return;
-    }
 }
 
 <div class="download-app-banner">
@@ -39,14 +33,15 @@
 @code {
     private IStoredState<bool> _isDismissed = null!;
 
-    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private HostInfo HostInfo => Hub.HostInfo();
+    private LocalSettings LocalSettings => Hub.LocalSettings();
+    private ModalUI ModalUI => Hub.ModalUI;
 
     [Parameter] public bool CanBeClosed { get; set; } = true;
 
     protected override void OnInitialized()
-        => _isDismissed = StateFactory.NewKvasStored<bool>(new(AccountSettings, "DownloadApplicationBanner"));
+        => _isDismissed = StateFactory.NewKvasStored<bool>(new(LocalSettings, "DownloadAppBanner_Dismissed"));
 
     private void OnDownload()
         => ModalUI.Show(new DownloadAppModal.Model());
@@ -54,13 +49,19 @@
     private void OnClose()
         => _isDismissed.Value = true;
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        if (!CanBeClosed)
-            return true;
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => new() {
+            InitialValue = true, // We don't want to show & hide it every time
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
 
-        var dismissedState = _isDismissed;
-        await dismissedState.WhenRead.ConfigureAwait(false);
-        var dismissed = await dismissedState.Use(cancellationToken).ConfigureAwait(false);
-        return !dismissed;
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        if (HostInfo.HostKind == HostKind.MauiApp && (HostInfo.AppKind.IsMobile() || CanBeClosed))
+            return true; // No banner on mobile + only non-closable banner (in SettingsPanel) on Windows
+        if (!CanBeClosed)
+            return false;
+
+        await _isDismissed.WhenRead.ConfigureAwait(false);
+        return await _isDismissed.Use(cancellationToken).ConfigureAwait(false);
     }
 }

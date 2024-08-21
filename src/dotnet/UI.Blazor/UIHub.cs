@@ -12,6 +12,7 @@ public class UIHub(IServiceProvider services) : Hub(services)
     private IAvatars? _avatars;
     private Media.IMediaLinkPreviews? _linkPreviews;
     private LoadingUI? _loadingUI;
+    private ReloadUI? _reloadUI;
     private AccountUI? _accountUI;
     private AutoNavigationUI? _autoNavigationUI;
     private UserActivityUI? _userActivityUI;
@@ -51,6 +52,7 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public Media.IMediaLinkPreviews MediaLinkPreviews => _linkPreviews ??= Services.GetRequiredService<Media.IMediaLinkPreviews>();
     public ISearch Search => _search ??= Services.GetRequiredService<ISearch>();
     public LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
+    public ReloadUI ReloadUI => _reloadUI ??= Services.GetRequiredService<ReloadUI>();
     public AccountUI AccountUI => _accountUI ??= Services.GetRequiredService<AccountUI>();
     public AutoNavigationUI AutoNavigationUI => _autoNavigationUI ??= Services.GetRequiredService<AutoNavigationUI>();
     public UserActivityUI UserActivityUI => _userActivityUI ??= Services.GetRequiredService<UserActivityUI>();

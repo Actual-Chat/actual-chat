@@ -21,7 +21,7 @@
 </Banner>
 
 @code {
-    private IStoredState<bool> _isDismissed = null!;
+    private ISyncedState<bool> _isDismissed = null!;
     private ILogger? _log;
 
     private Session Session => ChatContext.Hub.Session();
@@ -40,7 +40,7 @@
         var chatId = Chat.Id;
         var dismissChatId = Chat is { Kind: ChatKind.Place,IsPublic: true } ? Chat.Id.PlaceId.ToRootChatId() :  chatId;
         var key = $"AddChatMembersBanner_Dismissed_{dismissChatId.Value}";
-        _isDismissed = StateFactory.NewKvasStored<bool>(new(AccountSettings, key));
+        _isDismissed = StateFactory.NewKvasSynced<bool>(new(AccountSettings, key));
     }
 
     protected override ComputedState<bool>.Options GetStateOptions()
@@ -54,14 +54,14 @@
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var chatId = chat.Id;
-        if (!_isDismissed.WhenRead.IsCompleted)
-            await _isDismissed.WhenRead.ConfigureAwait(false);
+        if (!_isDismissed.WhenFirstTimeRead.IsCompleted)
+            await _isDismissed.WhenFirstTimeRead.ConfigureAwait(false);
 
         if (!EditMembersUI.CanAddMembers(chat))
             return false;
 
-        var dismissed = await _isDismissed.Use(cancellationToken).ConfigureAwait(false);
-        if (dismissed)
+        var isDismissed = await _isDismissed.Use(cancellationToken).ConfigureAwait(false);
+        if (isDismissed)
             return false;
 
         var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
