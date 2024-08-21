@@ -24,15 +24,15 @@ public class ClaimMapper
         if (name.IsNullOrEmpty())
             name = fullName;
 
-        var userClaims = user.Claims;
+        var newClaims = user.Claims.Clone();
         if (!name.IsNullOrEmpty()) {
             user = user with { Name = name };
-            userClaims = userClaims.Add(OwnNameClaim, name);
+            newClaims.Add(OwnNameClaim, name);
         }
         if (!fullName.IsNullOrEmpty())
-            userClaims = userClaims.Add(OwnFullNameClaim, name);
+            newClaims.Add(OwnFullNameClaim, name);
 
-        return user with { Claims = userClaims };
+        return user with { Claims = newClaims };
     }
 
     private static string Capitalize(string s)
