@@ -6,6 +6,7 @@ services:
     container_name: embeddings-service
     ports:
       - "28080:8080"
+      - "28081:8081"
     networks:
       - opensearch-net
     restart: unless-stopped
