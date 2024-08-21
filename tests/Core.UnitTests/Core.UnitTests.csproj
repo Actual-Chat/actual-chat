@@ -5,4 +5,8 @@
     <ProjectReference Include="..\Testing\Testing.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="TimeZoneConverter" />
+  </ItemGroup>
+
 </Project>
