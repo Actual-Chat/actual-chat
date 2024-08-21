@@ -2,50 +2,29 @@
 @inherits FusionComponentBase
 @{
     var authorSids = AuthorSids;
-    var currentCount = authorSids.Count;
-    if (currentCount == 0 && !IsForTesting)
+    if (authorSids.Count == 0)
         return;
     var maxLength = MaxIconCount > authorSids.Count ? authorSids.Count : MaxIconCount;
-
-    // For testing with [Parameter] IsForTesting
-    List<string> circles = ["bg-red-400", "bg-green-400", "bg-blue-400", "bg-yellow-400", "bg-gray-400"];
-    var size = Size == SquareSize.Size6 ? "w-6 h-6" : "w-8 h-8";
-    if (IsForTesting) {
-        maxLength = MaxIconCount > circles.Count ? circles.Count : MaxIconCount;
-        currentCount = circles.Count;
-    }
 }
 
 <div class="author-circle-group @Class">
     @{
         var zIndex = 1;
         for (var i = 0; i < maxLength; i++) {
-            if (!IsForTesting) {
-                var authorSid = authorSids[i];
-                <div class="author-circle-group-item" style="z-index: @zIndex;">
-                    <AuthorCircle AuthorSid="@authorSid" Size="@Size" />
-                </div>
-            } else {
-                var color = circles[i];
-                <div class="@size @color rounded-full overflow-hidden author-circle-group-item" style="z-index: @zIndex;"></div>
-            }
+            var authorSid = authorSids[i];
+            <div class="author-circle-group-item" style="z-index: @zIndex;">
+                <AuthorCircle AuthorSid="@authorSid" Size="@Size" />
+            </div>
             zIndex++;
         }
-        if (currentCount > MaxIconCount) {
+        if (authorSids.Count > MaxIconCount) {
             <div class="author-circle-group-item" style="z-index: @(maxLength + 1);">
                 @{
-                    string avatarText;
-                    if (!IsForTesting) {
-                        avatarText = authorSids.Count < 11
-                            ? "+" + (authorSids.Count - MaxIconCount)
-                            : "...";
-                    } else {
-                        avatarText = circles.Count < 11
-                        ? "+" + (circles.Count - MaxIconCount)
+                    var avatarText = authorSids.Count < 11
+                        ? "+" + (authorSids.Count - MaxIconCount)
                         : "...";
-                    }
                 }
-                <AvatarText Size="@Size" Text="@avatarText" />
+                <AvatarText Size="@Size" Text="@avatarText"/>
             </div>
         }
     }
@@ -61,7 +40,6 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public int MaxIconCount { get; set; } = 5;
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size6;
-    [Parameter] public bool IsForTesting { get; set; }
 
     [Parameter, ParameterComparer(typeof(ByItemParameterComparer))]
     public List<string> AuthorSids { get; set; } = [];
