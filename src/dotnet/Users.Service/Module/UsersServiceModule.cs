@@ -2,13 +2,11 @@ using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
-using ActualChat.Jobs;
 using ActualChat.Kvas;
 using ActualChat.Redis.Module;
 using ActualChat.Security;
 using ActualChat.Users.Db;
 using ActualChat.Users.Email;
-using ActualChat.Users.Jobs;
 using ActualChat.Users.Models;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -183,13 +181,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // Email sender - used by IEmails (API)
         services.AddSingleton<IEmailSender, EmailSender>();
-
-        // Jobs
-        if (!isBackendClient) {
-            services.AddJobs();
-            services.AddSingleton<IJobMetadata, DigestJobMetadata>();
-            services.AddScoped<DigestJob>();
-        }
 
         // Text message sender / Twilio - used by IPhoneAuth (API)
         if (Settings.IsTwilioEnabled) {
