@@ -16,7 +16,7 @@ public static partial class Constants
             public static readonly bool BackendClient = false;
             public static readonly bool BackendServer = true;
             public static readonly RandomTimeSpan? AnyServerInboundDelay = null; // new(0.5, 0.1);
-            public static readonly bool LogExistingCacheEntryUpdates = true; // Used only in WASM + DEBUG
+            public static readonly bool LogExistingCacheEntryUpdates = true; // Used only in WASM
         }
 
         // Core components
