@@ -1,0 +1,25 @@
+1. In the services\embeddings\src\build\create-model-archive.sh script
+   compute model archive hash and rename model archive to include part of that hash.
+   Optionally include model dimension into the archive file name as well.
+   So full name now could look like
+        <model_name>.<dimension>_<archive_hash>.mar
+
+2. Now after embeddings container creation one can extract that name via the
+   "curl http://container_address/models" or "curl http://container_address/models/model_id" request
+
+3. At this stage we supposingly have running embeddings model container and going to run OpenSearch initializer.
+   Initializer is going to create/update embeddings model blueprint and then deploy an external model as part of
+   the NLP models group.
+   See "services\opensearch\register-embeddings-connector.txt" for the requests sequence.
+
+4. While deploying the model, initializer may access embeddings model container and extract model hash and dimension from
+   the modelUrl field in a response.
+
+5. Having model hash and dimension, initializer could register that model and include hash and dimension info as part
+   of the 'dimension' field.
+
+6. Once model is in the 'DEPLOYED' state OpenSearch.ClusterSetup class comes into play.
+   It may obtain hash and dimension information from the registered model dimension field instead of extracting that data
+   from the model config as it does now. The problem is there is no model config anymore when we swith to an external model,
+   but we still want to update index names on every change of embeddings model. Model change leads to different embeddings and
+   we have to perform reindexing.
