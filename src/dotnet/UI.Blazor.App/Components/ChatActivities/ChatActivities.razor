@@ -11,6 +11,12 @@
     Size="@size"
     AuthorSids="@m.RecordingAuthorSids" />
 
+@* !!! For testing Talking Members Panel only *@
+@* <AuthorCircleGroupTest *@
+@*     Class="chat-activity-panel" *@
+@*     MaxIconCount="@MaxIconCount" *@
+@*     Size="@size" /> *@
+
 @code {
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private IAuthors Authors => Hub.Authors;
