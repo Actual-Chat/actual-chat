@@ -41,7 +41,7 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
         m.Url.Should().Be(text);
         m.Kind.Should().Be(UrlMarkupKind.Www);
 
-        m = Parse<UrlMarkup>("https://www.roveconcepts.com/round-chair?aid[12]=173&aid[79]=724", out text);
+        m = Parse<UrlMarkup>("https://www.roveconcepts.com/round-chair?aid[12]=173&aid[79]=724&weird=|this|", out text);
         m.Url.Should().Be(text);
         m.Kind.Should().Be(UrlMarkupKind.Www);
 
