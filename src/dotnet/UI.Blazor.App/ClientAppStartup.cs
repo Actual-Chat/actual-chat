@@ -23,7 +23,7 @@ public static class ClientAppStartup
         };
         if (OSInfo.IsWebAssembly && Constants.DebugMode.RpcCalls.LogExistingCacheEntryUpdates)
             RemoteComputeServiceInterceptor.Options.Default = new() {
-                LogCacheEntryUpdateSettings = (LogLevel.Information, 0),
+                LogCacheEntryUpdateSettings = (LogLevel.Information, int.MaxValue),
             };
         var remoteComputedCacheUpdateDelayTask = Task.Delay(2200)
             .ContinueWith(_ => RemoteComputedCache.UpdateDelayer = null, TaskScheduler.Default);
