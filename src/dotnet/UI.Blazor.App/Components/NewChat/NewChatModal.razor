@@ -11,7 +11,7 @@
     HasCloseButton="true"
     NarrowViewSettings="@_narrowViewSettings">
     <Body>
-        @if (_page == Page.Props) {
+        @if (_page == Page.Properties) {
             <NewChatModalProps
                 PlaceId="@ModalModel.PlaceId"
                 ButtonsSlotName="@_buttonsSlotName"
@@ -39,7 +39,7 @@
     private readonly string _buttonsSlotName = Guid.NewGuid().ToString();
 
     private Chat? _chat;
-    private Page _page = Page.Props;
+    private Page _page = Page.Properties;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
@@ -77,5 +77,5 @@
     // Nested types
 
     public sealed record Model(PlaceId PlaceId);
-    private enum Page { Props, Members }
+    private enum Page { Properties, Members }
 }

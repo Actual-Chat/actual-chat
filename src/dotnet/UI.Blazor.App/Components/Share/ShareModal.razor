@@ -37,7 +37,7 @@
         else if (_selectorKind == SelectorKind.Members) {
             <MemberSelector
                 @ref="_memberSelectorRef"
-                DataProvider="@_memberSelectorDataProvider"
+                ListSource="@_memberListSource"
                 SearchBoxPlaceholder="Who would you like to share with"
                 Changed="@(() => StateHasChanged())" />
         }
@@ -77,7 +77,7 @@
     private string _comment = "";
     private ElementReference _copyTextSourceRef;
     private SelectorKind _selectorKind = SelectorKind.Contact;
-    private IMemberSelectorDataProvider? _memberSelectorDataProvider;
+    private IMemberListSource? _memberListSource;
     private bool _hideShareExternallyButton;
 
     private bool HasSelectedItems
@@ -105,7 +105,7 @@
                 _selectorKind = SelectorKind.Unknown;
                 var place = await Places.Get(Session, placeId, default).ConfigureAwait(false);
                 if (place?.IsPublic == false) {
-                    _memberSelectorDataProvider = new PlaceMemberProvider(Hub, placeId, new [] { OwnAccountId });
+                    _memberListSource = new PlaceMemberListSource(Hub, placeId, new [] { OwnAccountId });
                     _hideShareExternallyButton = true;
                     _selectorKind = SelectorKind.Members;
                 } else {

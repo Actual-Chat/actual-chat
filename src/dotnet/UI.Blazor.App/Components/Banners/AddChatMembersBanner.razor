@@ -21,26 +21,30 @@
 </Banner>
 
 @code {
-    private ISyncedState<bool> _isDismissed = null!;
+    private static readonly TimeSpan DismissDuration = TimeSpan.FromDays(7);
+
+    private ISyncedState<Moment> _dismissedAt = null!;
     private ILogger? _log;
 
-    private Session Session => ChatContext.Hub.Session();
+    private ChatUIHub Hub => ChatContext.Hub;
+    private Session Session => Hub.Session();
     private Chat Chat => ChatContext.Chat;
-    private IRoles Roles => ChatContext.Hub.Roles;
-    private IAuthors Authors => ChatContext.Hub.Authors;
-    private AccountSettings AccountSettings => ChatContext.Hub.AccountSettings();
-    private ChatListUI ChatListUI => ChatContext.Hub.ChatListUI;
-    private ModalUI ModalUI => ChatContext.Hub.ModalUI;
-    private EditMembersUI EditMembersUI => ChatContext.Hub.EditMembersUI;
-    private ILogger Log => _log ??= ChatContext.Hub.LogFor(GetType());
+    private IRoles Roles => Hub.Roles;
+    private IAuthors Authors => Hub.Authors;
+    private AccountSettings AccountSettings => Hub.AccountSettings();
+    private EditMembersUI EditMembersUI => Hub.EditMembersUI;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private MomentClockSet Clocks => Hub.Clocks();
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
     protected override void OnInitialized() {
         var chatId = Chat.Id;
         var dismissChatId = Chat is { Kind: ChatKind.Place,IsPublic: true } ? Chat.Id.PlaceId.ToRootChatId() :  chatId;
-        var key = $"AddChatMembersBanner_Dismissed_{dismissChatId.Value}";
-        _isDismissed = StateFactory.NewKvasSynced<bool>(new(AccountSettings, key));
+        var key = $"AddChatMembersBanner_DismissedAt_{dismissChatId.Value}";
+        _dismissedAt = StateFactory.NewKvasSynced<Moment>(new(AccountSettings, key));
     }
 
     protected override ComputedState<bool>.Options GetStateOptions()
@@ -54,14 +58,14 @@
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var chatId = chat.Id;
-        if (!_isDismissed.WhenFirstTimeRead.IsCompleted)
-            await _isDismissed.WhenFirstTimeRead.ConfigureAwait(false);
+        if (!_dismissedAt.WhenFirstTimeRead.IsCompleted)
+            await _dismissedAt.WhenFirstTimeRead.ConfigureAwait(false);
 
         if (!EditMembersUI.CanAddMembers(chat))
             return false;
 
-        var isDismissed = await _isDismissed.Use(cancellationToken).ConfigureAwait(false);
-        if (isDismissed)
+        var dismissedAt = await _dismissedAt.Use(cancellationToken).ConfigureAwait(false);
+        if (dismissedAt + DismissDuration > Clocks.ServerClock.Now)
             return false;
 
         var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
@@ -73,13 +77,13 @@
         if (hasRegularMembers)
             return false;
 
-        return await EditMembersUI.HaveMembersToAdd(chat).ConfigureAwait(false);
+        return true;
     }
 
     // Event handlers
 
     private void OnDismiss()
-        => _isDismissed.Value = true;
+        => _dismissedAt.Value = Clocks.ServerClock.Now;
 
     private void OnInviteClick()
         => ModalUI.Show(new AddMemberModal.Model(Chat.Id));

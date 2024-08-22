@@ -10,8 +10,8 @@ public class EditMembersUI(ChatUIHub hub)
             return false;
 
         var provider = new NewChatMemberSelector(Hub, chat.Id);
-        var selected = await provider.ListPreSelectedUserIds(default).ConfigureAwait(false);
-        var available = await provider.ListUserIds(default).ConfigureAwait(false);
+        var selected = await provider.ListMemberUserIds(default).ConfigureAwait(false);
+        var available = await provider.ListCandidateUserIds(default).ConfigureAwait(false);
         var canAddContacts = available.Except(selected).Any();
         return canAddContacts;
     }
