@@ -1,63 +1,72 @@
-Near term:
-
-Infrastructure:
-- Add RpcMonitor
-
-Potential fixes:
-- [DF] Check share behavior + get rid of activity state persistence on Android
-- [Andrey] iOS: reconnect banner may take two lines on iPhone (not enough horizontal space)
-- [EK] Portrait/landscape mode switch should work in MAUI apps. That's mainly for images & videos; maybe disable fullscreen video mode support on Android. Custom full screen implementation have issues with history if user exits from fullscreen mode with back button.
-- [AY] Fix auto-nav on mobile apps - it shouldn't bring you back to the same chat.
-- iOS: investigate weird "Back" click behavior (sometimes it does not work when you touch it, maybe related to Safari click event propagation or nearby clickable header)
-
-UX improvements:
-- ~~[EK] Pin chat/user to the left panel~~
-- Historical playback speedup
-- Allow to rename contacts + use your custom contact name for any author of a given user (unless anonymous)
-- "New message [in another chat]" notification banner
-- Show bios in Members list
-- Allow to set chat background image (shown @ the top of Chat Settings tab)
-
-General:
-- iOS: render correct unread message counter on app icon
-  - See https://stackoverflow.com/questions/77007133/how-to-make-firebase-push-notification-increase-badge-count-when-receive-notific
-- Add open graph tags for /chat/xxx & u/xxx URLs , ideally make them available for crawlers
-- Web hook for posts
-- New "Modal with tabs" - Andrey, you can start working on this somewhere in /test/
-- Email digest (once per day):
-  - The updates you've missed
-  - Summary on your chat updates (list of chats & authors who posted there)
-  - Summary on your activities (chats you wrote to, messages sent, the amount of time saved by talking, etc.)
-- Custom chat & account IDs (actual.chat/u/xxx URLs, + similar ones for chats - should be aliases requiring no redirect)
-- Add "Auto" rendering mode (from .NET 8)
-- Allow to set author's background image
-- Join requests feature
-
-Permissions:
-- Only owners can post
-- Allow/disallow reactions from others
-- Require join to view the content above last N messages
-- Later:
+In progress:
+- [AndreyY] New real-time playback & recording panels
+- [FC] Simple search & indexing
+  - List near-term tasks & goals
+- [AndrewK, AU, DF] AI search & indexing    
+  - List near-term tasks & goals
+- [EK] Email digest
+  - List near-term tasks & goals
+  
+Candidate tasks:
+- Rename any of your contacts
+  - If you renamed someone, its name is used everywhere, though the image & bio are taken from avatar
+  - Auto-rename the contact to your phone contact name when contact import finds a match
+- New chat modes / settings
+  - Only owners can post
+    + Allow/disallow reactions others
+    + [Later] Allow/disallow others to comment in threads
   - Max. voice fragment duration: [0 (Voice is disabled), 10, 30, 1 min., 3 min., 5min., no limit] seconds
-  - Pause between voice fragments: [same as above + 10 min., 30 min., 1 hour]
-  - Pause between text messages: [same as above]
-  - Add Moderator role: like Owner, but can't assign roles
+  - Post cooldown: [same as above + 10 min., 30 min., 1 hour]
+  - Public chats: require join to view more than N last messages
+- Security
+  - Auto-wipe:
+    - For group chats, it's a chat-level option managed by owner
+    - For private chats, it's an option applicable to messages of a given user
+    - It should also be possible to activate it like this in private chats: 
+      "Wipe all of my messages starting from here once they're read"
+    - Grisha should come up with a way to display wipe timers (or maybe just fade out?)
+  - Add "Disable file system cache" option in Settings/Application
+    (+ explain it means the app stores nearly nothing on your device)
+  - Think of E2E encryption/decryption.
+- Add support for @u:userId mentions
+  - Selector: use either your contacts or place contacts
+  - @a:xxx should be used only for anonymous authors
+  - [Later] Implement a migration to change all @a: to @u: except for anonymous authors 
+  - Unify author info modal to support any PrincipalId
+- Add support for :emoji: syntax
+  - Selector ":" activates it in emoji picker mode (shows a line of emojis, tab & shift-tab moves the selection there)
+  - Integrate https://github.com/missive/emoji-mart ?
+  - AI emojis?
+    - ":my-" allows to generate your own emoji with https://replicate.com/ & prompts from https://github.com/pondorasti/emojis
+    - Admins will have an ability to make their own emojis available for everyone
+- Add support for Tenor
+  - ":" extends emoji picker with .gif picker?
+- Offline action queue:
+    - Enqueue + list queued actions for a given scope (chat)
+    - Implement it for Post (w/ uploads)
+    - Implement it for recorded audio
+- API:
+  - Generate your own API keys
+  - Add support for use of API keys instead of Session
+  - Web hook for posts
+- Google / crawler support for any public chat & place: 
+  - Open graph tags for /chat/xxx & u/xxx URLs
+  - Render the most recent content (up to 1K messages?) - probably implement it as pre-rendering & fetching stored content
+- Custom chat & account IDs (actual.chat/u/xxx URLs, should be aliases requiring no redirect)
+- iOS: render correct unread message counter on app icon
+    - See https://stackoverflow.com/questions/77007133/how-to-make-firebase-push-notification-increase-badge-count-when-receive-notific
 
-Auth:
-- Extract Sessions service w/ proper sharding (+ use Redis?) 
-- Migrate to our own AuthService
-- Get rid of User type
-
-Less urgent bugs:
-- Back button behavior on Android
-- Swipe from the very right edge of the screen to remove the left panel doesn't work consistently
-
-Mid-term (team):
-- Refactor notifications
-- Join as guest shouldn't be enabled by default in chats w/ anonymity enabled
-- How private chat links work (no timer, no max. invite count, manually revoke, show the list of private links, but no "New private link" for public chats)
-- Create chat should have ~ the same anonymity options as in Chat Settings
-- "Join as guest": think of how key walk-through items should look like after this / onboarding
-
-Backlog (team):
-- ChatInfo & ChatState: get rid of one of these? ChatInfo = ChatState + ChatAudioState, i.e. doesn't change frequently enough to have a dedicated entity
+Infrastructure / mostly non-UX candidate improvements:
+- In-app notifications:
+    - In-app notification list for any user (to show it on e.g. Windows app)
+    - List active notifications - all or for a given scope (chat, place?)
+    - Windows app should display Windows notifications relying on notification list API
+    - Recompute notification state for a given notification
+        - Auto-"store" on active -> dismissed change
+        - Must be triggered by certain user actions (e.g. chat read position change)
+    - Banners for certain notifications - e.g. "There are 3 new requests join this chat [Review]"
+- Get rid of IAuth:
+    - Extract Session management service from IAuth, shard it or use Redis
+    - Get rid of IAuth & User, make IAccounts to do what IAuth does
+- Use "Auto" rendering mode (from .NET 8)
+- SettingsPanel / SettingsTab - make sure they inherit or use TabPanel / Tab
