@@ -87,21 +87,21 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             IsRemoved = IsRemoved,
             AuthorId = new AuthorId(AuthorId),
             BeginsAt = BeginsAt,
-            ClientSideBeginsAt = ClientSideBeginsAt,
-            EndsAt = EndsAt,
-            ContentEndsAt = ContentEndsAt,
+            ClientSideBeginsAt = ClientSideBeginsAt.ToMoment(),
+            EndsAt = EndsAt.ToMoment(),
+            ContentEndsAt = ContentEndsAt.ToMoment(),
             Content = !IsSystemEntry ? Content : "",
             SystemEntry = IsSystemEntry ? SystemEntrySerializer.Read(Content) : null,
             HasReactions = HasReactions,
             StreamId = StreamId ?? "",
             AudioEntryId = AudioEntryId,
             VideoEntryId = VideoEntryId,
-            RepliedEntryLocalId = RepliedChatEntryId!,
+            RepliedEntryLocalId = RepliedChatEntryId,
             ForwardedChatTitle = ForwardedChatTitle,
             ForwardedAuthorId = new AuthorId(ForwardedAuthorId),
             ForwardedAuthorName = ForwardedAuthorName,
             ForwardedChatEntryId = new ChatEntryId(ForwardedChatEntryId),
-            ForwardedChatEntryBeginsAt = ForwardedChatEntryBeginsAt,
+            ForwardedChatEntryBeginsAt = ForwardedChatEntryBeginsAt.ToMoment(),
             Attachments = attachmentsArray,
             LinkPreviewId = LinkPreviewId,
             LinkPreviewMode = LinkPreviewMode ?? Media.LinkPreviewMode.Default,
@@ -129,9 +129,9 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
         AuthorId = model.AuthorId;
         BeginsAt = model.BeginsAt;
-        ClientSideBeginsAt = model.ClientSideBeginsAt;
-        EndsAt = model.EndsAt;
-        ContentEndsAt = model.ContentEndsAt;
+        ClientSideBeginsAt = model.ClientSideBeginsAt.Nullable;
+        EndsAt = model.EndsAt.Nullable;
+        ContentEndsAt = model.ContentEndsAt.Nullable;
         Duration = EndsAt.HasValue ? (EndsAt.GetValueOrDefault() - BeginsAt).TotalSeconds : 0;
         HasReactions = model.HasReactions;
         StreamId = model.StreamId;
@@ -142,7 +142,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         ForwardedAuthorId = model.ForwardedAuthorId;
         ForwardedAuthorName = model.ForwardedAuthorName;
         ForwardedChatEntryId = model.ForwardedChatEntryId;
-        ForwardedChatEntryBeginsAt = model.ForwardedChatEntryBeginsAt;
+        ForwardedChatEntryBeginsAt = model.ForwardedChatEntryBeginsAt.Nullable;
         Content = model.SystemEntry != null ? SystemEntrySerializer.Write(model.SystemEntry) : model.Content;
         IsSystemEntry = model.SystemEntry != null;
         LinkPreviewId = model.LinkPreviewId;

@@ -16,7 +16,7 @@ public partial record Notification(
     [DataMember, MemoryPackOrder(4)] public string IconUrl { get; init; } = "";
     [DataMember, MemoryPackOrder(5)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(6)] public Moment SentAt { get; init; }
-    [DataMember, MemoryPackOrder(7)] public Moment? HandledAt { get; init; }
+    [DataMember, MemoryPackOrder(7)] public ApiNullable8<Moment> HandledAt { get; init; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

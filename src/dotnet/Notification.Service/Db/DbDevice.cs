@@ -30,5 +30,5 @@ public class DbDevice : IHasId<string>, IHasVersion<long>, IRequirementTarget
     }
 
     public Device ToModel()
-        => new (Id, Type, CreatedAt, AccessedAt);
+        => new (Id, Type, CreatedAt, AccessedAt.ToMoment());
 }

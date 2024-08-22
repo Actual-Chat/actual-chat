@@ -60,7 +60,7 @@ public static class AsyncEnumerableExt
                 .WaitAsync(timeout, cancellationToken)
                 .ConfigureAwait(false);
             // ReSharper disable once PossibleMultipleEnumeration
-            return Option<IAsyncEnumerable<T>>.Some(source.WithUsedEnumerator(enumerator, hasCurrent));
+            return Option.Some(source.WithUsedEnumerator(enumerator, hasCurrent));
         }
         catch (TimeoutException) {
             return Option<IAsyncEnumerable<T>>.None;
@@ -81,7 +81,7 @@ public static class AsyncEnumerableExt
                 .WaitAsync(clock, timeout, cancellationToken)
                 .ConfigureAwait(false);
             // ReSharper disable once PossibleMultipleEnumeration
-            return Option<IAsyncEnumerable<T>>.Some(source.WithUsedEnumerator(enumerator, hasCurrent));
+            return Option.Some(source.WithUsedEnumerator(enumerator, hasCurrent));
         }
         catch (TimeoutException) {
             return Option<IAsyncEnumerable<T>>.None;

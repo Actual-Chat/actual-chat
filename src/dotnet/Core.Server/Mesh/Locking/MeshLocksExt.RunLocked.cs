@@ -76,7 +76,7 @@ public static partial class MeshLocksExt
             try {
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lockHolder.StopToken);
                 var result = await taskFactory.Invoke(cts.Token).ConfigureAwait(false);
-                return Option<T>.Some(result);
+                return Option.Some(result);
             }
             catch (OperationCanceledException e) when (!cancellationToken.IsCancellationRequested) {
                 if (!lockHolder.StopToken.IsCancellationRequested)

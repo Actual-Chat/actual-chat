@@ -1,9 +1,7 @@
 using ActualChat.Audio;
-using ActualChat.UI.Blazor.App.Components;
 using ActualChat.MediaPlayback;
 using ActualChat.Messaging;
 using ActualChat.Streaming;
-using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -131,7 +129,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
             .ConfigureAwait(false);
         var trackInfo = new ChatAudioTrackInfo(audioEntry) {
             RecordedAt = audioEntry.BeginsAt + skipTo,
-            ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
+            ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt.Nullable ?? audioEntry.BeginsAt) + skipTo,
         };
         _ = BackgroundTask.Run(async () => {
             var now = Clocks.SystemClock.Now;
@@ -156,7 +154,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
             .ConfigureAwait(false);
         var trackInfo = new ChatAudioTrackInfo(audioEntry) {
             RecordedAt = audioEntry.BeginsAt + skipTo,
-            ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
+            ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt.Nullable ?? audioEntry.BeginsAt) + skipTo,
         };
         return Playback.Play(trackInfo, audio, playAt, cancellationToken);
     }

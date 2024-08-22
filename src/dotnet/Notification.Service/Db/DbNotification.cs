@@ -59,7 +59,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
             IconUrl = IconUrl,
             CreatedAt = CreatedAt,
             SentAt = SentAt,
-            HandledAt = HandledAt,
+            HandledAt = HandledAt.ToMoment(),
             Option = Kind switch {
                 NotificationKind.Invitation => new ChatNotificationOption(chatId),
                 NotificationKind.Message => new ChatEntryNotificationOption(entryId, authorId),
@@ -105,7 +105,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         AuthorId = authorSid;
         CreatedAt = model.CreatedAt;
         SentAt = model.SentAt;
-        HandledAt = model.HandledAt;
+        HandledAt = model.HandledAt.Nullable;
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbNotification>

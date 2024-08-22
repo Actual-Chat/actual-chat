@@ -3,31 +3,33 @@ namespace ActualChat.Chat.IntegrationTests;
 
 public class SerializationTest
 {
-    [Fact(Skip = "Does not work yet")]
-    public async Task ReadTile()
+    [Fact]
+    public async Task LegacyTileReadTest()
     {
         await using var stream1 = File.OpenRead("data\\get-tile1.bin");
         await using var stream2 = File.OpenRead("data\\get-tile2.bin");
-
         var tile1Bytes = ReadAsArray(stream1)[8..];
         var tile2Bytes = ReadAsArray(stream2)[8..];
-        var tile1Serialized = MemoryPackSerialized.New<ChatTile>(tile1Bytes);
-        var tile2Serialized = MemoryPackSerialized.New<ChatTile>(tile2Bytes);
-        var tile1 = tile1Serialized.Value;
-        var tile2 = tile2Serialized.Value;
+        var tile1 = MemoryPackByteSerializer.Default.Read<ChatTile>(tile1Bytes, out var readLength1);
+        readLength1.Should().Be(tile1Bytes.Length);
+        var tile2 = MemoryPackByteSerializer.Default.Read<ChatTile>(tile2Bytes, out var readLength2);
+        readLength2.Should().Be(tile2Bytes.Length);
         tile1.Should().BeEquivalentTo(tile2);
         tile1.Entries.Count.Should().Be(tile2.Entries.Count);
         tile1.Entries[0].Should().BeEquivalentTo(tile2.Entries[0]);
 
         var moment1 = tile1.Entries[0].ClientSideBeginsAt;
         var moment2 = tile2.Entries[0].ClientSideBeginsAt;
-        moment1.Should().BeEquivalentTo(moment2);
+        moment1.Should().Be(moment2);
+ #pragma warning disable CS0618 // Type or member is obsolete
+        moment1.RawHasValue.Should().NotBe(moment2.RawHasValue);
+ #pragma warning restore CS0618 // Type or member is obsolete
 
-        var moment1Serialized = MemoryPackSerialized.New(tile1.Entries[0].ClientSideBeginsAt);
-        var moment2Serialized = MemoryPackSerialized.New(tile2.Entries[0].ClientSideBeginsAt);
-        var moment1Bytes = moment1Serialized.Data;
-        var moment2Bytes = moment2Serialized.Data;
-        moment1Bytes.Should().BeEquivalentTo(moment2Bytes);
+        moment1 = moment1.Value;
+        moment2 = moment2.Value;
+        var moment1Bytes = MemoryPackByteSerializer.Default.Write(moment1).WrittenSpan.ToArray();
+        var moment2Bytes = MemoryPackByteSerializer.Default.Write(moment2).WrittenSpan.ToArray();
+        moment1Bytes.Should().Equal(moment2Bytes);
 
         // var entry1Serialized = MemoryPackSerialized.New(tile1.Entries[0]);
         // var entry2Serialized = MemoryPackSerialized.New(tile2.Entries[0]);

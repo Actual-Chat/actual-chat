@@ -133,7 +133,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     }
 
     // [ComputeMethod]
-    public virtual async Task<Moment?> GetLastCheckIn(
+    public virtual async Task<ApiNullable8<Moment>> GetLastCheckIn(
         Session session,
         ChatId chatId,
         AuthorId authorId,

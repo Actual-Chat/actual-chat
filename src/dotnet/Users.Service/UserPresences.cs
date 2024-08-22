@@ -16,7 +16,7 @@ public class UserPresences(IServiceProvider services) : IUserPresences
         => await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
 
     // [ComputeMethod]
-    public virtual async Task<Moment?> GetLastCheckIn(UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<ApiNullable8<Moment>> GetLastCheckIn(UserId userId, CancellationToken cancellationToken)
         => await Backend.GetLastCheckIn(userId, cancellationToken).ConfigureAwait(false);
 
     // [CommandHandler]

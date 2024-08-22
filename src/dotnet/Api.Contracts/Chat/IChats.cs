@@ -19,14 +19,6 @@ public interface IChats : IComputeService
         ChatId chatId,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
-    Task<long> GetEntryCount(
-        Session session,
-        ChatId chatId,
-        ChatEntryKind entryKind,
-        Range<long>? idTileRange,
-        CancellationToken cancellationToken);
-
     // Note that it returns (firstId, lastId + 1) range!
     // Client-side methods always skips entries with IsRemoved flag
     [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
@@ -62,7 +54,7 @@ public interface IChats : IComputeService
     Task<ChatEntry?> FindNext(
         Session session,
         ChatId chatId,
-        long? startEntryId,
+        long? startEntryId, // Nullable is ok here (non-compute method)
         string text,
         CancellationToken cancellationToken);
 

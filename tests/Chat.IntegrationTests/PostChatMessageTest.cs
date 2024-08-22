@@ -61,7 +61,7 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         var chatEntry = await commander.Call(cmd);
 
         var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, "Reply") {
-            RepliedChatEntryId = chatEntry.LocalId
+            RepliedChatEntryId = chatEntry.LocalId,
         };
         var replyChatEntry = await commander.Call(cmd2);
 
@@ -85,7 +85,7 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         var chatEntry = await commander.Call(cmd);
 
         var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, "Reply") {
-            RepliedChatEntryId = chatEntry.LocalId
+            RepliedChatEntryId = chatEntry.LocalId,
         };
         var replyChatEntry = await commander.Call(cmd2);
 

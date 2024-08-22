@@ -96,7 +96,11 @@ public partial class ChatEditorUI : ScopedWorkerBase<ChatUIHub>, IComputeService
             var chatEntryReader = Hub.NewEntryReader(chatId, ChatEntryKind.Text);
             lastEditableEntry = await chatEntryReader.GetLast(
                     chatIdRange,
-                    x => x.AuthorId == author.Id && x is { HasMediaEntry: false, IsStreaming: false },
+                    x => x.AuthorId == author.Id && x is {
+                        HasMediaEntry: false,
+                        IsStreaming: false,
+                        ForwardedChatEntryId.IsNone: true,
+                    },
                     1000, // Max. 1000 entries to scan upwards
                     CancellationToken.None)
                 .ConfigureAwait(false);

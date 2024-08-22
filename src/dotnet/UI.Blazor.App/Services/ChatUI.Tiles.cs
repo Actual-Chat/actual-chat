@@ -116,7 +116,7 @@ public partial class ChatUI
         if (prevEntry.AuthorId != entry.AuthorId)
             return true;
 
-        var prevEndsAt = prevEntry.EndsAt ?? prevEntry.BeginsAt;
+        var prevEndsAt = prevEntry.EndsAt.Nullable ?? prevEntry.BeginsAt;
         return entry.BeginsAt - prevEndsAt >= BlockStartTimeGap;
     }
 }

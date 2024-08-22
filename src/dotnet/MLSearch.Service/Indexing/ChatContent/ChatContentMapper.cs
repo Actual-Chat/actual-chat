@@ -31,14 +31,14 @@ internal class ChatContentMapper(
 
         // -- Replies
         const int replyToEstimatedCount = 1;
-        var uniqueReplyToEnries = new HashSet<ChatEntryId>(replyToEstimatedCount);
-        uniqueReplyToEnries.AddRange(sourceEntries.Entries
-            .Where(e => e.RepliedEntryLocalId is not null)
-            .Select(e => new ChatEntryId(e.ChatId, ChatEntryKind.Text, e.RepliedEntryLocalId!.Value, AssumeValid.Option)));
+        var uniqueReplyToEntries = new HashSet<ChatEntryId>(replyToEstimatedCount);
+        uniqueReplyToEntries.AddRange(sourceEntries.Entries
+            .Where(e => e.RepliedEntryLocalId.HasValue)
+            .Select(e => new ChatEntryId(e.ChatId, ChatEntryKind.Text, e.RepliedEntryLocalId.ValueOrDefault, AssumeValid.Option)));
         // TODO: We may want to build some summary for the entries we are replying to
         // We may use that summary while building document content later
-        var replyToEntries = ImmutableArray.CreateBuilder<ChatEntryId>(uniqueReplyToEnries.Count);
-        replyToEntries.AddRange(uniqueReplyToEnries);
+        var replyToEntries = ImmutableArray.CreateBuilder<ChatEntryId>(uniqueReplyToEntries.Count);
+        replyToEntries.AddRange(uniqueReplyToEntries);
 
         // -- Mentions
         var mentionExtractor = new MentionExtractor();

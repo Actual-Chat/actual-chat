@@ -113,7 +113,7 @@
     private async Task OnPlay() {
         var entry = Entry;
         var chatId = entry.ChatId;
-        var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryId ?? -1, AssumeValid.Option);
+        var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryId.Nullable ?? -1, AssumeValid.Option);
         var audioEntry = await Chats.GetEntry(Session, audioEntryId);
         if (audioEntry == null) {
             Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);

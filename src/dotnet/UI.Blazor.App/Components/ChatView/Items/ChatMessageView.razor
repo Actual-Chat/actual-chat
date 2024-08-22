@@ -249,7 +249,7 @@
     protected override ComputedState<Model>.Options GetStateOptions() {
         var initialValue = Model.None;
         var ownAuthorId = OwnAuthorId;
-        var repliedEntry = Entry.RepliedEntryLocalId != null ? ChatEntry.Loading : null;
+        var repliedEntry = Entry.RepliedEntryLocalId.HasValue ? ChatEntry.Loading : null;
         if (!ownAuthorId.IsNone || repliedEntry != null)
             initialValue = new() {
                 OwnAuthorId = ownAuthorId,
@@ -312,7 +312,7 @@
         return result.Equals(_rendered) ? _rendered! : result;
 
         async Task<ChatEntry?> GetRepliedEntry(CancellationToken cancellationToken1) {
-            if (Entry.RepliedEntryLocalId is not { } repliedEntryLocalId)
+            if (!Entry.RepliedEntryLocalId.IsSome(out var repliedEntryLocalId))
                 return null;
 
             var messageEntry = chatMessage.Entry;

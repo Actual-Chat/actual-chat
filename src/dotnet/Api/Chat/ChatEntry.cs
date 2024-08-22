@@ -29,20 +29,20 @@ public sealed partial record ChatEntry(
     [DataMember, MemoryPackOrder(10)] public bool IsRemoved { get; init; }
     [DataMember, MemoryPackOrder(11)] public AuthorId AuthorId { get; init; }
     [DataMember, MemoryPackOrder(12)] public Moment BeginsAt { get; init; }
-    [DataMember, MemoryPackOrder(13)] public Moment? ClientSideBeginsAt { get; init; }
-    [DataMember, MemoryPackOrder(14)] public Moment? EndsAt { get; init; }
-    [DataMember, MemoryPackOrder(15)] public Moment? ContentEndsAt { get; init; }
+    [DataMember, MemoryPackOrder(13)] public ApiNullable8<Moment> ClientSideBeginsAt { get; init; }
+    [DataMember, MemoryPackOrder(14)] public ApiNullable8<Moment> EndsAt { get; init; }
+    [DataMember, MemoryPackOrder(15)] public ApiNullable8<Moment> ContentEndsAt { get; init; }
     [DataMember, MemoryPackOrder(16)] public string Content { get; init; } = "";
     [DataMember, MemoryPackOrder(17)] public SystemEntry? SystemEntry { get; init; }
     [DataMember, MemoryPackOrder(18)] public bool HasReactions { get; init; }
     [DataMember, MemoryPackOrder(19)] public Symbol StreamId { get; init; } = "";
-    [DataMember, MemoryPackOrder(20)] public long? AudioEntryId { get; init; }
-    [DataMember, MemoryPackOrder(21)] public long? VideoEntryId { get; init; }
+    [DataMember, MemoryPackOrder(20)] public ApiNullable8<long> AudioEntryId { get; init; }
+    [DataMember, MemoryPackOrder(21)] public ApiNullable8<long> VideoEntryId { get; init; }
     [DataMember, MemoryPackOrder(22)] public LinearMap TimeMap { get; init; }
-    [DataMember, MemoryPackOrder(23)] public long? RepliedEntryLocalId { get; init; }
+    [DataMember, MemoryPackOrder(23)] public ApiNullable8<long> RepliedEntryLocalId { get; init; }
     [DataMember, MemoryPackOrder(24)] public ChatEntryId ForwardedChatEntryId { get; init; }
     [DataMember, MemoryPackOrder(25)] public AuthorId ForwardedAuthorId { get; init; }
-    [DataMember, MemoryPackOrder(26)] public Moment? ForwardedChatEntryBeginsAt { get; init; }
+    [DataMember, MemoryPackOrder(26)] public ApiNullable8<Moment> ForwardedChatEntryBeginsAt { get; init; }
     [DataMember, MemoryPackOrder(27)] public string? ForwardedChatTitle { get; init; }
     [DataMember, MemoryPackOrder(28)] public string? ForwardedAuthorName { get; init; }
     [DataMember, MemoryPackOrder(29)] public Symbol LinkPreviewId { get; init; } = "";
@@ -59,7 +59,7 @@ public sealed partial record ChatEntry(
     public ChatEntryKind Kind => Id.Kind;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public double? Duration => EndsAt is {} endsAt ? (endsAt - BeginsAt).TotalSeconds : null;
+    public double? Duration => EndsAt.IsSome(out var endsAt) ? (endsAt - BeginsAt).TotalSeconds : null;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsStreaming => !StreamId.IsEmpty;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
@@ -89,20 +89,20 @@ public sealed partial record ChatEntryDiff() : RecordDiff
     [DataMember, MemoryPackOrder(10)] public bool? IsRemoved { get; init; }
     [DataMember, MemoryPackOrder(11)] public AuthorId? AuthorId { get; init; }
     [DataMember, MemoryPackOrder(12)] public Moment? BeginsAt { get; init; }
-    [DataMember, MemoryPackOrder(13)] public Option<Moment?> ClientSideBeginsAt { get; init; }
-    [DataMember, MemoryPackOrder(14)] public Option<Moment?> EndsAt { get; init; }
-    [DataMember, MemoryPackOrder(15)] public Option<Moment?> ContentEndsAt { get; init; }
+    [DataMember, MemoryPackOrder(13)] public Option<ApiNullable8<Moment>> ClientSideBeginsAt { get; init; }
+    [DataMember, MemoryPackOrder(14)] public Option<ApiNullable8<Moment>> EndsAt { get; init; }
+    [DataMember, MemoryPackOrder(15)] public Option<ApiNullable8<Moment>> ContentEndsAt { get; init; }
     [DataMember, MemoryPackOrder(16)] public string? Content { get; init; }
     [DataMember, MemoryPackOrder(17)] public Option<SystemEntry?> SystemEntry { get; init; }
     [DataMember, MemoryPackOrder(18)] public bool? HasReactions { get; init; }
     [DataMember, MemoryPackOrder(19)] public Symbol? StreamId { get; init; }
-    [DataMember, MemoryPackOrder(20)] public Option<long?> AudioEntryId { get; init; }
-    [DataMember, MemoryPackOrder(21)] public Option<long?> VideoEntryId { get; init; }
+    [DataMember, MemoryPackOrder(20)] public Option<ApiNullable8<long>> AudioEntryId { get; init; }
+    [DataMember, MemoryPackOrder(21)] public Option<ApiNullable8<long>> VideoEntryId { get; init; }
     [DataMember, MemoryPackOrder(22)] public LinearMap? TimeMap { get; init; }
-    [DataMember, MemoryPackOrder(23)] public Option<long?> RepliedEntryLocalId { get; init; }
+    [DataMember, MemoryPackOrder(23)] public Option<ApiNullable8<long>> RepliedEntryLocalId { get; init; }
     [DataMember, MemoryPackOrder(24)] public ChatEntryId? ForwardedChatEntryId { get; init; }
     [DataMember, MemoryPackOrder(25)] public AuthorId? ForwardedAuthorId { get; init; }
-    [DataMember, MemoryPackOrder(26)] public Option<Moment?> ForwardedChatEntryBeginsAt { get; init; }
+    [DataMember, MemoryPackOrder(26)] public Option<ApiNullable8<Moment>> ForwardedChatEntryBeginsAt { get; init; }
     [DataMember, MemoryPackOrder(27)] public string? ForwardedChatTitle { get; init; }
     [DataMember, MemoryPackOrder(28)] public string? ForwardedAuthorName { get; init; }
     [DataMember, MemoryPackOrder(29)] public Symbol? LinkPreviewId { get; init; }

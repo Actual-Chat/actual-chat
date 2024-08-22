@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Net.WebSockets;
 using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Contacts;
@@ -14,7 +13,6 @@ using ActualChat.Security;
 using ActualChat.Streaming;
 using ActualChat.Users;
 using ActualLab.RestEase;
-using ActualLab.Rpc.Clients;
 
 namespace ActualChat.Module;
 

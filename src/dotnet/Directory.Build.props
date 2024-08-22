@@ -54,6 +54,7 @@
     <Using Include="ActualChat.OrdinalStringExt" Static="true" />
     <Using Include="ActualChat.Performance" />
     <Using Include="ActualLab" />
+    <Using Include="ActualLab.Api" />
     <Using Include="ActualLab.Async" />
     <Using Include="ActualLab.Channels" />
     <Using Include="ActualLab.Collections" />

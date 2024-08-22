@@ -1,10 +1,8 @@
 namespace ActualChat.Diff.Handlers;
 
-public class NullableDiffHandler<T> : DiffHandlerBase<T, T?>
+public class NullableDiffHandler<T>(DiffEngine engine) : DiffHandlerBase<T, T?>(engine)
     where T : struct
 {
-    public NullableDiffHandler(DiffEngine engine) : base(engine) { }
-
     public override T? Diff(T source, T target)
         => EqualityComparer<T>.Default.Equals(source, target) ? null : target;
 

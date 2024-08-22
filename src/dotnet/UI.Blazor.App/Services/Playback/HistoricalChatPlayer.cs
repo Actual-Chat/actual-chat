@@ -37,7 +37,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
                 continue;
 
             var playbackNow = PlaybackNow();
-            var entryEndsAt = entry.EndsAt ?? entry.BeginsAt + MaxEntryDuration;
+            var entryEndsAt = entry.EndsAt.Nullable ?? entry.BeginsAt + MaxEntryDuration;
             if (entryEndsAt < playbackNow)
                 continue;
 
@@ -112,7 +112,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
                 continue;
 
             var entryBeginsAt = Moment.Max(entry.BeginsAt, lastShiftPosition);
-            var entryEndsAt = entry.EndsAt ?? entry.BeginsAt + MaxEntryDuration;
+            var entryEndsAt = entry.EndsAt.Nullable ?? entry.BeginsAt + MaxEntryDuration;
 
             var expectedRewindPosition = entryBeginsAt + remainedShift;
             if (expectedRewindPosition <= entryEndsAt)
@@ -170,7 +170,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
 
             var entryBeginsAt = entry.BeginsAt;
             var entryEndsAt = entry.EndsAt.HasValue
-                ? Moment.Min(entry.EndsAt.Value, lastShiftPosition)
+                ? Moment.Min(entry.EndsAt.ValueOrDefault, lastShiftPosition)
                 : lastShiftPosition;
 
             var expectedRewindPosition = entryEndsAt - remainedShift;

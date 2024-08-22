@@ -215,7 +215,7 @@ public partial class StreamingBackend
                 Content = "",
                 StreamId = audioSegment.StreamId,
                 BeginsAt = beginsAt,
-                ClientSideBeginsAt = recordedAt,
+                ClientSideBeginsAt = ApiNullable8.Some(recordedAt),
             }));
         var audioEntry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
         return audioEntry;
@@ -237,8 +237,8 @@ public partial class StreamingBackend
             Change.Update(new ChatEntryDiff {
                 Content = audioBlobId ?? "",
                 StreamId = Symbol.Empty,
-                EndsAt = endsAt,
-                ContentEndsAt = contentEndsAt,
+                EndsAt = ApiNullable8.Some(endsAt),
+                ContentEndsAt = ApiNullable8.Some(contentEndsAt),
             }));
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
@@ -275,10 +275,10 @@ public partial class StreamingBackend
                         AuthorId = authorId,
                         Content = "",
                         StreamId = transcriptStreamId,
-                        AudioEntryId = audioEntry?.LocalId,
+                        AudioEntryId = ApiNullable8.From(audioEntry?.LocalId),
                         BeginsAt = beginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
                         RepliedEntryLocalId = repliedChatEntryId is { IsNone: false, LocalId: var localId }
-                            ? localId
+                            ? ApiNullable8.Some(localId)
                             : null,
                     }));
                 textEntry = await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
@@ -300,8 +300,8 @@ public partial class StreamingBackend
                     : Change.Update(new ChatEntryDiff {
                         Content = lastTranscript.Text,
                         StreamId = Symbol.Empty,
-                        AudioEntryId = audioEntry?.LocalId,
-                        EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
+                        AudioEntryId = ApiNullable8.From(audioEntry?.LocalId),
+                        EndsAt = ApiNullable8.Some(beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End)),
                         TimeMap = audioEntry != null
                             ? lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0)
                             : default,

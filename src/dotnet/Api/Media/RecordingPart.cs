@@ -20,7 +20,7 @@ public partial class RecordingPart(RecordingEventKind eventKind)
     [DataMember(Order = 1), MemoryPackOrder(1)]
     public byte[]? Data { get; init; }
     [DataMember(Order = 2), MemoryPackOrder(2)]
-    public Moment? RecordedAt { get; init; }
+    public Moment? RecordedAt { get; init; } // Nullable is fine here
     [DataMember(Order = 3), MemoryPackOrder(3)]
-    public TimeSpan? Offset { get; init; }
+    public TimeSpan? Offset { get; init; } // Nullable is fine here
 }

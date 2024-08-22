@@ -54,6 +54,10 @@ public class DiffEngine(
     public static void DefaultTypeMapBuilder(TypeMap<IDiffHandler> typeMap)
         => typeMap
             .Add(typeof(Nullable<>), typeof(NullableDiffHandler<>))
+            .Add(typeof(ApiNullable<>), typeof(ApiNullableDiffHandler<>))
+            .Add(typeof(ApiNullable2<>), typeof(ApiNullable2DiffHandler<>))
+            .Add(typeof(ApiNullable4<>), typeof(ApiNullable4DiffHandler<>))
+            .Add(typeof(ApiNullable8<>), typeof(ApiNullable8DiffHandler<>))
             .Add(typeof(Option<>), typeof(OptionDiffHandler<>))
             .Add(typeof(SetDiff<,>), typeof(SetDiffHandler<,>));
 
