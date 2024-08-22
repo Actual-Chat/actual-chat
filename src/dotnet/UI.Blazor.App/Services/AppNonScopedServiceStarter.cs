@@ -122,17 +122,7 @@ public class AppNonScopedServiceStarter
     }
 
     private static void WarmupNewtonsoftJsonSerializer()
-    {
-        var media = new Media.Media() {
-            ContentId = "1",
-            FileName = "1",
-            ContentType = "image/jpeg",
-            Height = 1,
-            Width = 1,
-            Length = 1,
-        };
-        _ = new Media.Media() { MetadataJson = media.MetadataJson };
-    }
+    { }
 
     private static void WarmupSystemJsonSerializer()
     {

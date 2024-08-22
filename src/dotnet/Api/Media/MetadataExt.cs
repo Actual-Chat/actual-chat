@@ -2,13 +2,16 @@ namespace ActualChat.Media;
 
 public interface IHasMetadata
 {
-    ImmutableOptionSet Metadata { get; set; }
+    PropertyBag Metadata { get; init; }
 }
 
 internal static class MetadataExt
 {
-    public static T GetMetadataValue<T>(this IHasMetadata hasMetadata, T @default = default!, [CallerMemberName] string symbol = "") {
-        var value = hasMetadata.Metadata[symbol];
+    private static readonly Action<IHasMetadata, PropertyBag> MetadataSetter
+        = typeof(IHasMetadata).GetProperty("Metadata")!.GetSetter<IHasMetadata, PropertyBag>();
+
+    public static T GetMetadataValue<T>(this IHasMetadata source, T @default = default!, [CallerMemberName] string symbol = "") {
+        var value = source.Metadata[symbol];
         if (value == null)
             return @default;
 
@@ -19,6 +22,6 @@ internal static class MetadataExt
         return (T)value;
     }
 
-    public static void SetMetadataValue<T>(this IHasMetadata metadata, T value, [CallerMemberName] string symbol = "")
-        => metadata.Metadata = metadata.Metadata.Set(symbol, value);
+    public static void SetMetadataValue<T>(this IHasMetadata target, T value, [CallerMemberName] string symbol = "")
+        => MetadataSetter.Invoke(target, target.Metadata.Set(symbol, value));
 }

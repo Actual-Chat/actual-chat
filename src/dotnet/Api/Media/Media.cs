@@ -9,27 +9,11 @@ namespace ActualChat.Media;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record Media : IHasId<MediaId>, IHasMetadata, IRequirementTarget
 {
-    private NewtonsoftJsonSerialized<ImmutableOptionSet> _metadata =
-        NewtonsoftJsonSerialized.New(ImmutableOptionSet.Empty);
-
     [DataMember, MemoryPackOrder(0)] public MediaId Id { get; init; }
     [DataMember, MemoryPackOrder(1)] public string ContentId { get; init; } = "";
-    [DataMember, MemoryPackOrder(2)] public string MetadataJson {
-#pragma warning disable IL2026
-        get => _metadata.Data;
-        init => _metadata = new() { Data = value };
-#pragma warning restore IL2026
-    }
+    [DataMember, MemoryPackOrder(100)] public PropertyBag Metadata { get; init; }
 
     // Computed properties
-
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ImmutableOptionSet Metadata {
-#pragma warning disable IL2026
-        get => _metadata.Value;
-        set => _metadata = new () { Value = value };
-#pragma warning restore IL2026
-    }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public long Length {
@@ -66,11 +50,11 @@ public sealed partial record Media : IHasId<MediaId>, IHasMetadata, IRequirement
         => Id = id;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public Media(MediaId id, string contentId, string metadataJson)
+    public Media(MediaId id, string contentId, PropertyBag metadata)
     {
         Id = id;
         ContentId = contentId;
-        MetadataJson = metadataJson;
+        Metadata = metadata;
     }
 
     // This record relies on referential equality

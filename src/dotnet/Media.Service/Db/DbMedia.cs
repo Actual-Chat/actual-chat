@@ -21,7 +21,7 @@ public class DbMedia : IHasId<string>, IRequirementTarget
     public Media ToModel()
         => new (new MediaId(Id, Scope, LocalId, AssumeValid.Option)) {
             ContentId = ContentId,
-            MetadataJson = MetadataJson,
+            Metadata = MetadataSerializer.Read(MetadataJson),
         };
 
     public void UpdateFrom(Media model)
@@ -35,7 +35,7 @@ public class DbMedia : IHasId<string>, IRequirementTarget
         Scope = model.Id.Scope;
         LocalId = model.Id.LocalId;
         ContentId = model.ContentId;
-        MetadataJson = model.MetadataJson;
+        MetadataJson = MetadataSerializer.Write(model.Metadata);
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbMedia>
