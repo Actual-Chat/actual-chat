@@ -145,7 +145,7 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
 }
 .chat-list .navbar-item-content > .c-container > .c-description > .c-last-message {
     @apply flex-x items-end gap-x-1;
-    @apply w-full h-4.5;
+    @apply w-full h-3.5;
     @apply truncate;
     @apply text-xs text-03;
 }
@@ -229,8 +229,12 @@ body.hoverable .chat-list .navbar-item:hover .navbar-item-ending .slot.hoverable
     @apply h-4 min-w-6;
 }
 
-.sort-menu .ac-menu-icon > i {
-    @apply text-03;
+.sort-menu > .c-title {
+    @apply p-2;
+    @apply text-02 font-semibold;
+}
+.sort-menu > .divider {
+    @apply mb-1;
 }
 .sort-menu .ac-menu-text {
     @apply text-headline-1 text-02;

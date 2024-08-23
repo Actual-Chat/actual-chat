@@ -23,17 +23,19 @@
                 </Content>
             </TileItem>
 
-            <TileItem>
-                <Icon>
-                    <i class="icon-info text-xl"></i>
-                </Icon>
-                <Content>
-                    @avatar.Bio
-                </Content>
-                <Caption>
-                    Bio
-                </Caption>
-            </TileItem>
+            @if (!string.IsNullOrEmpty(avatar.Bio)) {
+                <TileItem>
+                    <Icon>
+                        <i class="icon-info text-xl"></i>
+                    </Icon>
+                    <Content>
+                        @avatar.Bio
+                    </Content>
+                    <Caption>
+                        Bio
+                    </Caption>
+                </TileItem>
+            }
         </Tile>
     }
 

@@ -1,36 +1,62 @@
 @using System.ComponentModel.DataAnnotations
-@using ActualChat.Chat
-@using ActualLab.CommandR.Internal
 @using ActualLab.Generators
 @implements IModalView<OwnAvatarEditorModal.Model>
 @namespace ActualChat.UI.Blazor.App.Components
 @{
-    RenderFragment? noPictureRenderFragment = null;
-    if (_isAnonymous && _form.Picture is null) {
-        noPictureRenderFragment = @<AvatarCircle Size="SquareSize.Size24" Avatar="_avatar"></AvatarCircle>;
-    }
     var additionalAttributes = new Dictionary<string, object> { { "maxLength", 160 } };
 }
 
 <Form @ref="_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
     <DialogFrame
-        Class="own-account-editor-modal"
+        Class="edit-settings-modal edit-avatar-modal"
         Title="@_form.Title"
         HasCloseButton="true"
         NarrowViewSettings="@DialogFrameNarrowViewSettings.FormSubmitButton()"
         ButtonsClass="full-width">
         <Body>
-        <FormBlock>
+        <FormBlock Class="own-avatar-edit-header">
             <DataAnnotationsValidator/>
 
-            <PicUpload
-                UploadUrl="@UploadUrl"
-                Title="@_form.Name"
-                Picture="@_form.Picture"
-                Size="@SquareSize.Size24"
-                GenerateAvatar="@OnGenerateAvatarClick"
-                NoPicture="@noPictureRenderFragment"
-                Picked="@OnImagePicked"/>
+            <div class="c-top">
+                <Pic
+                    Title="@_form.Title"
+                    Picture="@_form.Picture"
+                    Size="@SquareSize.SizeFull"
+                    IsSquare="@true"
+                    IsBlurred="@true"/>
+
+                <ButtonRound Click="@(() => Modal.Close())" Class="btn-sm right-panel-close-btn">
+                    <i class="icon-close text-2xl text-toast-text"></i>
+                </ButtonRound>
+            </div>
+
+            <div class="c-center">
+                <PicUpload
+                    UploadUrl="@UploadUrl"
+                    IsSquare="false"
+                    Size="@SquareSize.Size16"
+                    Title="@_form.Title"
+                    Picture="@_form.Picture"
+                    Picked="@OnImagePicked"/>
+
+                <div class="c-buttons">
+                    <PicUploadButton
+                        UploadUrl="@UploadUrl"
+                        Picked="@OnImagePicked">
+                        <Icon>
+                            <i class="icon-image text-2xl"></i>
+                        </Icon>
+                    </PicUploadButton>
+
+                    <ButtonRound Class="btn-modal btn-sm" Click="@OnGenerateAvatarClick">
+                        <i class="icon-sync"></i>
+                    </ButtonRound>
+                </div>
+            </div>
+        </FormBlock>
+
+        <FormBlock>
+            <DataAnnotationsValidator/>
 
             <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
                 <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" ClearButton="true"/>
@@ -42,27 +68,22 @@
         </FormBlock>
 
         @if (!_isAnonymous) {
-            <FormBlock>
-                <FormSection For="() => _form.IsDefault" InputId="@_form.IsDefaultFieldId" Class="is-default-avatar">
-                    <button
-                        type="button"
-                        class="default-avatar-btn"
-                        @onclick="@ChangeDefaultAvatar">
-                        <div>
-                            <i class="icon-star text-xl hover:text-primary @(_form.IsDefault ? "text-primary" : "text-03")"></i>
-                        </div>
-                        <div class="flex w-full px-8 text-02">
-                            Make default
-                        </div>
-                        <ToggleEdit @bind-Value="@_form.IsDefault" Id="@_form.IsDefaultFieldId"/>
-                    </button>
-                </FormSection>
+            <FormBlock Class="avatar-buttons">
+                <button type="button" class="avatar-btn default-avatar-btn" @onclick="@ChangeDefaultAvatar">
+                    <div>
+                        <i class="icon-star text-xl @(_form.IsDefault ? "text-primary" : "text-03")"></i>
+                    </div>
+                    <div class="c-text">
+                        Make default
+                    </div>
+                    <ToggleEdit @bind-Value="@_form.IsDefault" Id="@_form.IsDefaultFieldId"/>
+                </button>
 
-                <button type="button" class="delete-avatar-btn" @onclick="@OnDeleteAvatarClick">
+                <button type="button" class="avatar-btn delete-avatar-btn" @onclick="@OnDeleteAvatarClick">
                     <div>
                         <i class="icon-trash03 text-xl text-danger"></i>
                     </div>
-                    <div class="flex w-full px-8 text-danger">
+                    <div class="c-text">
                         Delete avatar
                     </div>
                 </button>
@@ -97,12 +118,14 @@
     private bool _isAnonymous;
     private Avatar _avatar = Avatar.None;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAvatars Avatars { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    private Session Session => Hub.Session();
+    private IAvatars Avatars => Hub.Avatars;
+    private IAuthors Authors => Hub.Authors;
+    private IAccounts Accounts => Hub.Accounts;
+    private UICommander UICommander => Hub.UICommander();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -110,6 +133,7 @@
     protected override async Task OnParametersSetAsync() {
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         var avatar = await Avatars.GetOwn(Session, ModalModel.AvatarId, default);
+
         _isAnonymous = avatar?.IsAnonymous ?? false;
         _avatar = avatar ?? Avatar.None;
         var account = await Accounts.GetOwn(Session, default);
@@ -120,9 +144,7 @@
             isActive = ModalModel.AvatarId == (author?.AvatarId ?? Symbol.Empty);
         }
 
-        if (avatar != null) {
-            _form.Picture = avatar.Picture;
-        }
+        _form.Picture = _avatar.Picture;
 
         _form.Name = avatar?.Name ?? "";
         _form.Bio = avatar?.Bio ?? "";
@@ -142,7 +164,7 @@
         avatar = avatar.WithPicture(_form.Picture) with {
             Name = _form.Name,
             Bio = _form.Bio,
-            };
+        };
         var command = new Avatars_Change(Session, avatarId, avatar.Version, new Change<AvatarFull>() {
             Update = avatar,
         });
@@ -222,6 +244,8 @@
             : base("avatar-editor", componentIdGenerator) {
         }
     }
+
+    // Nested types
 
     public sealed record Model(Symbol AvatarId, ChatId ChatId, string Title);
 }

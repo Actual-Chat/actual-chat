@@ -6,18 +6,18 @@
     @apply top-0 left-0 h-full w-full;
     @apply overflow-x-hidden overflow-y-hidden;
     @apply outline-0;
-    @apply duration-300;
+    @apply duration-150;
     backdrop-filter: blur(2px) opacity(0.8);
     background-color: rgba(0,0,0,0.5);
     transition-behavior: allow-discrete;
     transition-property: display;
-    animation: modal-blur-on 300ms ease-in-out;
+    animation: modal-blur-on 150ms ease-in-out;
 }
 .modal-overlay.hide {
     @apply flex;
     background-color: rgba(0,0,0,0);
     backdrop-filter: blur(0) opacity(1);
-    animation: modal-blur-off 300ms ease-in-out;
+    animation: modal-blur-off 150ms ease-in-out;
 }
 @keyframes modal-blur-on {
     0% {
@@ -151,7 +151,7 @@ body.device-ios .modal-chrome {
     @apply rounded-lg;
     @apply font-medium;
     @apply md:shadow-modal-wide;
-    @apply duration-300;
+    @apply duration-150;
     transition-behavior: allow-discrete;
     transition-property: opacity, display, transform;
 }
