@@ -48,13 +48,12 @@ public class ChatSerializationTests(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    // [Fact(Skip = "Investigate why it fails on GitHub")]
     public void LegacyTileReadTest()
     {
         AssertCorrectSize<Moment?>(16);
 
-        using var stream1 = File.OpenRead("data\\get-tile1.bin");
-        using var stream2 = File.OpenRead("data\\get-tile2.bin");
+        using var stream1 = File.OpenRead("data/get-tile1.bin");
+        using var stream2 = File.OpenRead("data/get-tile2.bin");
 
         var tile1Bytes = ReadAsArray(stream1)[8..];
         var tile2Bytes = ReadAsArray(stream2)[8..];
