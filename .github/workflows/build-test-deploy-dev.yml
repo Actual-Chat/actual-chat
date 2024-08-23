@@ -913,5 +913,6 @@ jobs:
           client-secret: ${{ secrets.MSFT_CLIENT_SECRET }}
           app-id: ${{ secrets.MSFT_PRODUCT_ID }}
           package-path: ./packages
-          delete-packages: false
+          delete-packages: true
+          packages-keep: 10
           skip-polling: false
