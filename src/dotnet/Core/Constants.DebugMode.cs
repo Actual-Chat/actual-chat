@@ -14,9 +14,9 @@ public static partial class Constants
             public static readonly bool ApiClient = false;
             public static readonly bool ApiServer = false;
             public static readonly bool BackendClient = false;
-            public static readonly bool BackendServer = false;
+            public static readonly bool BackendServer = true;
             public static readonly RandomTimeSpan? AnyServerInboundDelay = null; // new(0.5, 0.1);
-            public static readonly bool LogExistingCacheEntryUpdates = false; // Used only in WASM
+            public static readonly bool LogExistingCacheEntryUpdates = true; // Used only in WASM
         }
 
         // Core components
@@ -51,7 +51,6 @@ public static partial class Constants
         public static readonly bool AudioRecordingStream = false;
 
         // Transcription
-        // ReSharper disable once MemberHidesStaticFromOuterClass
         public static readonly bool Transcription = false;
         public static readonly bool TranscriberAny = false;
         public static readonly bool TranscriberGoogle = false;
