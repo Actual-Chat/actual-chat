@@ -10,17 +10,21 @@
 .form.form-y section.is-default-avatar .form-section-content {
     @apply px-0;
 }
+.form-block.avatar-buttons {
+    @apply gap-y-2;
+}
+.form-block.avatar-buttons .form-section-validation {
+    @apply hidden;
+}
 .is-default-avatar label.checkbox {
     @apply m-0;
 }
-.default-avatar-btn {
-    @apply flex-x items-center justify-between;
-    @apply h-12 w-full;
-    @apply px-3;
-    @apply rounded-lg;
-}
 body.hoverable .default-avatar-btn:hover {
     @apply bg-outline-hover;
+}
+.default-avatar-btn,
+.delete-avatar-btn {
+    @apply mb-1;
 }
 .default-avatar-btn,
 .delete-avatar-btn,
@@ -28,11 +32,19 @@ body.hoverable .default-avatar-btn:hover {
 .default-avatar-btn * {
     @apply cursor-pointer;
 }
-.delete-avatar-btn {
+.avatar-btn {
     @apply flex-x items-center justify-between;
     @apply h-12 w-full;
     @apply px-3;
     @apply rounded-lg;
+}
+.avatar-btn > .c-text {
+    @apply flex-1 flex justify-start;
+    @apply px-8;
+    @apply text-02;
+}
+.avatar-btn.delete-avatar-btn > .c-text {
+    @apply text-danger;
 }
 body.hoverable .delete-avatar-btn:hover {
     @apply bg-danger-outline-hover;

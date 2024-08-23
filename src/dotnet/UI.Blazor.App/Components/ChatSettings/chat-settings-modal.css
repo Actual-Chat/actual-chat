@@ -11,15 +11,15 @@
 .edit-settings-modal .no-padding-header-decorator {
     @apply mx-0;
 }
-.edit-settings-modal:has(.chat-settings-header) .modal-header-interactive {
+.edit-settings-modal:has(.chat-settings-header, .own-avatar-edit-header) .modal-header-interactive {
     @apply absolute inset-0 z-50;
     @apply border-none;
     @apply bg-transparent;
 }
-.edit-settings-modal:has(.chat-settings-header) .modal-header-interactive .btn-h {
+.edit-settings-modal:has(.chat-settings-header, .own-avatar-edit-header) .modal-header-interactive .btn-h {
     @apply text-viewer-header-text;
 }
-.edit-settings-modal:has(.chat-settings-header) .modal-header-interactive .modal-title {
+.edit-settings-modal:has(.chat-settings-header, .own-avatar-edit-header) .modal-header-interactive .modal-title {
     @apply text-viewer-header-text;
 }
 
@@ -52,7 +52,7 @@
 .edit-settings-modal .form-block:not(:first-of-type) {
     @apply border-0;
 }
-.edit-settings-modal:has(.chat-settings-header) .modal-header {
+.edit-settings-modal:has(.chat-settings-header, .own-avatar-edit-header) .modal-header {
     @apply hidden;
 }
 
@@ -193,6 +193,8 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply whitespace-normal;
 }
 
+.form-block.own-avatar-edit-header,
+.own-avatar-edit-header,
 .form-block.chat-settings-header,
 .chat-settings-header {
     @apply relative;
@@ -200,6 +202,7 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply min-h-32;
     @apply p-0;
 }
+.own-avatar-edit-header > .c-top,
 .chat-settings-header > .c-top {
     @apply relative;
     @apply flex-none;
@@ -207,32 +210,40 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply rounded-b-xl;
     @apply overflow-hidden;
 }
+body.narrow .own-avatar-edit-header > .c-top::after,
 body.narrow .chat-settings-header > .c-top::after {
     @apply absolute z-10 inset-0;
     content: '';
     background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
 }
+.own-avatar-edit-header > .c-top .right-panel-close-btn,
 .chat-settings-header > .c-top .right-panel-close-btn {
     @apply absolute top-4 right-4;
 }
+body.narrow .own-avatar-edit-header > .c-top .right-panel-close-btn,
 body.narrow .chat-settings-header > .c-top .right-panel-close-btn {
     @apply hidden;
 }
+.own-avatar-edit-header > .c-center,
 .chat-settings-header > .c-center {
     @apply absolute top-18 z-20;
     @apply flex-x;
     @apply h-16 w-full;
     @apply px-4;
 }
+.own-avatar-edit-header > .c-center > .c-buttons,
 .chat-settings-header > .c-center > .c-buttons {
     @apply flex-1 flex-x items-center justify-end gap-x-3;
 }
+.own-avatar-edit-header > .c-center > .c-buttons > div,
+.own-avatar-edit-header > .c-center > .c-buttons > .btn.btn-round,
 .chat-settings-header > .c-center > .c-buttons > div,
 .chat-settings-header > .c-center > .c-buttons > .btn.btn-round {
     @apply bg-[var(--round-right-panel)];
     @apply text-primary;
     @apply shadow;
 }
+.own-avatar-edit-header > .c-bottom,
 .chat-settings-header > .c-bottom {
     @apply flex-y items-start justify-end gap-y-1;
     @apply w-full;

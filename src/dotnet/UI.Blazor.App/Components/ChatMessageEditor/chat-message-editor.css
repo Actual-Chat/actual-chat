@@ -279,6 +279,7 @@ body.hoverable .post-panel-btn:hover {
     @apply absolute right-0 md:right-2;
     @apply flex-none self-end;
     @apply outline-none;
+    @apply text-primary;
     @apply duration-150 delay-150;
     @apply opacity-0;
     transition-behavior: allow-discrete;
