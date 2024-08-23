@@ -15,7 +15,7 @@ import { DeviceInfo } from 'device-info';
 
 const { warnLog, debugLog } = Log.get('VirtualList');
 
-const UpdateViewportInterval: number = 320;
+const UpdateViewportInterval: number = 64;
 const UpdateItemVisibilityInterval: number = 250;
 const SafetyTimerPeriod: number = 1600;
 const PivotSyncEpsilon: number = 16;
@@ -1346,7 +1346,7 @@ export class VirtualList {
         const rs = this._renderState;
         const itemSize = this._statistics.itemSize;
         const responseFulfillmentRatio = rs.beforeCount !== null && rs.afterCount !== null
-            ? 1 // We know count precisely 
+            ? 1 // We know count precisely
             : this._statistics.responseFulfillmentRatio;
         const viewport = this._viewport;
         const alreadyLoaded = this._itemRange;
