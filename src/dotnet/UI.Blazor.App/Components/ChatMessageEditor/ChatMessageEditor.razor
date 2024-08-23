@@ -180,7 +180,7 @@
             } else {
                 var repliedEntryLid = relatedChatEntryId.IsNone ? (long?)null : relatedChatEntryId.LocalId;
                 cmd = new Chats_UpsertTextEntry(Session, Chat.Id, null, text) {
-                    RepliedChatEntryId = repliedEntryLid,
+                    RepliedEntryLid = repliedEntryLid,
                     EntryAttachments = attachmentListSnapshot.Attachments,
                 };
             }

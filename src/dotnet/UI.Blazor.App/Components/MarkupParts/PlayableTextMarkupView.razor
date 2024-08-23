@@ -49,7 +49,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
         var chatId = Entry.ChatId;
-        var audioEntryId = Entry.AudioEntryId;
+        var audioEntryId = Entry.AudioEntryLid;
         var markup = Markup;
         var rendered = _rendered;
 
@@ -81,7 +81,7 @@
             if (chatPlayersPlaybackState is not HistoricalPlaybackState historicalPlaybackState || historicalPlaybackState.ChatId != chatId)
                 return Model.None;
 
-            var trackId = ChatAudioTrackInfo.ComposeTrackId(chatId, audioEntryId.ValueOrDefault);
+            var trackId = ChatAudioTrackInfo.ComposeTrackId(chatId, audioEntryId.GetValueOrDefault());
             if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken1).ConfigureAwait(false) is not ChatAudioTrackInfo trackInfo)
                 return Model.None;
 
@@ -138,7 +138,7 @@
         var session = Services.Session();
         var chats = Services.GetRequiredService<IChats>();
 
-        var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryId.Nullable ?? -1, AssumeValid.Option);
+        var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryLid ?? -1, AssumeValid.Option);
         var audioEntry = await chats.GetEntry(session, audioEntryId);
         if (audioEntry == null) {
             Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);

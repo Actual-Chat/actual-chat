@@ -18,7 +18,7 @@
             <i class="icon-reply text-xl text-icon-01"></i>
         </ButtonRound>
     }
-    @if (entry.AudioEntryId != null) {
+    @if (entry.AudioEntryLid.HasValue) {
         <MessageMenuPlay Entry="@entry"/>
     }
     <ButtonRound

@@ -2,7 +2,7 @@ using MemoryPack;
 
 namespace ActualChat.Diff;
 
-[StructLayout(LayoutKind.Sequential)]
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor]
 public readonly partial struct SetDiff<TItem>(
@@ -33,7 +33,7 @@ public readonly partial struct SetDiff<TItem>(
 
 // SetDiff<T> version which also "encodes" original collection type.
 // Its' the one used by SetDiffHandler.
-[StructLayout(LayoutKind.Sequential)]
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor]
 public readonly partial struct SetDiff<TCollection, TItem>(

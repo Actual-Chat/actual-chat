@@ -7,16 +7,26 @@ namespace ActualChat.Notification;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record Notification(
-    [property: DataMember, MemoryPackOrder(0)] NotificationId Id,
-    [property: DataMember, MemoryPackOrder(1)] long Version = 0
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] NotificationId Id,
+    [property: DataMember(Order = 1), MemoryPackOrder(1)] long Version = 0
     ) : IHasId<NotificationId>, IHasVersion<long>, IUnionRecord<NotificationOption?>
 {
-    [DataMember, MemoryPackOrder(2)] public string Title { get; init; } = "";
-    [DataMember, MemoryPackOrder(3)] public string Content { get; init; } = "";
-    [DataMember, MemoryPackOrder(4)] public string IconUrl { get; init; } = "";
-    [DataMember, MemoryPackOrder(5)] public Moment CreatedAt { get; init; }
-    [DataMember, MemoryPackOrder(6)] public Moment SentAt { get; init; }
-    [DataMember, MemoryPackOrder(7)] public ApiNullable8<Moment> HandledAt { get; init; }
+    #region MemoryPackXxx properties
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(7)]
+    private ApiNullable8<Moment> MemoryPackHandledAt {
+        get => HandledAt;
+        init => HandledAt = value;
+    }
+
+    #endregion
+
+    [DataMember(Order = 2), MemoryPackOrder(2)] public string Title { get; init; } = "";
+    [DataMember(Order = 3), MemoryPackOrder(3)] public string Content { get; init; } = "";
+    [DataMember(Order = 4), MemoryPackOrder(4)] public string IconUrl { get; init; } = "";
+    [DataMember(Order = 5), MemoryPackOrder(5)] public Moment CreatedAt { get; init; }
+    [DataMember(Order = 6), MemoryPackOrder(6)] public Moment SentAt { get; init; }
+    [DataMember(Order = 7), MemoryPackIgnore] public Moment? HandledAt { get; init; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
@@ -30,17 +40,17 @@ public partial record Notification(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public NotificationOption? Option { get; init; }
 
-    [DataMember, MemoryPackOrder(8)]
+    [DataMember(Order = 8), MemoryPackOrder(8)]
     public ChatNotificationOption? ChatNotification {
         get => Option as ChatNotificationOption;
         init => Option ??= value;
     }
-    [DataMember, MemoryPackOrder(9)]
+    [DataMember(Order = 9), MemoryPackOrder(9)]
     public ChatEntryNotificationOption? ChatEntryNotification {
         get => Option as ChatEntryNotificationOption;
         init => Option ??= value;
     }
-    [DataMember, MemoryPackOrder(10)]
+    [DataMember(Order = 10), MemoryPackOrder(10)]
     public GetAttentionNotificationOption? GetAttentionNotification {
         get => Option as GetAttentionNotificationOption;
         init => Option ??= value;

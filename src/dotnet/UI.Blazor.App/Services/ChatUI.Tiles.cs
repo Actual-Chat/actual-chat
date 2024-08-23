@@ -37,7 +37,7 @@ public partial class ChatUI
             prevEntry = prevMessage.Entry;
             prevDate = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(prevEntry.BeginsAt));
             isPrevUnread = prevMessage.Flags.HasFlag(ChatMessageFlags.Unread);
-            isPrevAudio = prevEntry.AudioEntryId != null || prevEntry.IsStreaming;
+            isPrevAudio = prevEntry.HasAudioEntry || prevEntry.IsStreaming;
             hasVeryFirstItem = prevMessage.ReplacementKind == ChatMessageReplacementKind.WelcomeBlock;
         }
 
@@ -53,7 +53,7 @@ public partial class ChatUI
             var isForwardBlockStart = (isBlockStart && isForward) || (isForward && (!isPrevForward || isForwardFromOtherChat));
             var isForwardAuthorBlockStart = isForwardBlockStart || (isForward && isForwardFromOtherAuthor);
             var isEntryUnread = entry.LocalId > lastReadEntryId;
-            var isAudio = entry.AudioEntryId != null;
+            var isAudio = entry.HasAudioEntry;
             var shouldAddToResult = idRange.Contains(entry.LocalId);
             var flags = default(ChatMessageFlags);
             if (isBlockStart)
@@ -116,7 +116,7 @@ public partial class ChatUI
         if (prevEntry.AuthorId != entry.AuthorId)
             return true;
 
-        var prevEndsAt = prevEntry.EndsAt.Nullable ?? prevEntry.BeginsAt;
+        var prevEndsAt = prevEntry.EndsAt ?? prevEntry.BeginsAt;
         return entry.BeginsAt - prevEndsAt >= BlockStartTimeGap;
     }
 }

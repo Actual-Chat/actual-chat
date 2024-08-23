@@ -333,14 +333,14 @@ public class NotificationsBackend(IServiceProvider services)
         if (entry.IsSystemEntry)
             return;
 
-        var isTranscribedTextEntry = entry.AudioEntryId.HasValue;
-        if (isTranscribedTextEntry) {
+        if (entry.AudioEntryLid.HasValue) { // Maybe has transcription
             if (changeKind != ChangeKind.Update)
                 return;
+
             // When transcribed message is being finalized, it's updated to IsStreaming = false.
             // At this moment we can notify chat users.
-            var hasFinalized = oldEntry is { IsStreaming: true } && !entry.IsStreaming;
-            if (!hasFinalized)
+            var isFinalized = oldEntry is { IsStreaming: true } && !entry.IsStreaming;
+            if (!isFinalized)
                 return;
         }
         else {

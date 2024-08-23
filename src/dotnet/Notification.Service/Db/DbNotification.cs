@@ -105,7 +105,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         AuthorId = authorSid;
         CreatedAt = model.CreatedAt;
         SentAt = model.SentAt;
-        HandledAt = model.HandledAt.Nullable;
+        HandledAt = model.HandledAt;
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbNotification>

@@ -94,9 +94,9 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             SystemEntry = IsSystemEntry ? SystemEntrySerializer.Read(Content) : null,
             HasReactions = HasReactions,
             StreamId = StreamId ?? "",
-            AudioEntryId = AudioEntryId,
-            VideoEntryId = VideoEntryId,
-            RepliedEntryLocalId = RepliedChatEntryId,
+            AudioEntryLid = AudioEntryId,
+            VideoEntryLid = VideoEntryId,
+            RepliedEntryLid = RepliedChatEntryId,
             ForwardedChatTitle = ForwardedChatTitle,
             ForwardedAuthorId = new AuthorId(ForwardedAuthorId),
             ForwardedAuthorName = ForwardedAuthorName,
@@ -129,20 +129,20 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
         AuthorId = model.AuthorId;
         BeginsAt = model.BeginsAt;
-        ClientSideBeginsAt = model.ClientSideBeginsAt.Nullable;
-        EndsAt = model.EndsAt.Nullable;
-        ContentEndsAt = model.ContentEndsAt.Nullable;
+        ClientSideBeginsAt = model.ClientSideBeginsAt;
+        EndsAt = model.EndsAt;
+        ContentEndsAt = model.ContentEndsAt;
         Duration = EndsAt.HasValue ? (EndsAt.GetValueOrDefault() - BeginsAt).TotalSeconds : 0;
         HasReactions = model.HasReactions;
         StreamId = model.StreamId;
-        AudioEntryId = model.AudioEntryId;
-        VideoEntryId = model.VideoEntryId;
-        RepliedChatEntryId = model.RepliedEntryLocalId;
+        AudioEntryId = model.AudioEntryLid;
+        VideoEntryId = model.VideoEntryLid;
+        RepliedChatEntryId = model.RepliedEntryLid;
         ForwardedChatTitle = model.ForwardedChatTitle;
         ForwardedAuthorId = model.ForwardedAuthorId;
         ForwardedAuthorName = model.ForwardedAuthorName;
         ForwardedChatEntryId = model.ForwardedChatEntryId;
-        ForwardedChatEntryBeginsAt = model.ForwardedChatEntryBeginsAt.Nullable;
+        ForwardedChatEntryBeginsAt = model.ForwardedChatEntryBeginsAt;
         Content = model.SystemEntry != null ? SystemEntrySerializer.Write(model.SystemEntry) : model.Content;
         IsSystemEntry = model.SystemEntry != null;
         LinkPreviewId = model.LinkPreviewId;

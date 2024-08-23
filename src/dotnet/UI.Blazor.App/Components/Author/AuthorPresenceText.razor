@@ -70,7 +70,7 @@
         var lastCheckIn = await Authors.GetLastCheckIn(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         return new() {
             Presence = presence,
-            LastCheckIn = lastCheckIn.Nullable,
+            LastCheckIn = lastCheckIn,
         };
     }
 

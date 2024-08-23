@@ -1,10 +1,8 @@
 namespace ActualChat.Diff.Handlers;
 
-public class CloneDiffHandler<T> : DiffHandlerBase<T, T>
+public class CloneDiffHandler<T>(DiffEngine engine) : DiffHandlerBase<T, T>(engine)
 {
     private readonly bool _isClass = typeof(T).IsClass;
-
-    public CloneDiffHandler(DiffEngine engine) : base(engine) { }
 
     public override T Diff(T source, T target)
     {

@@ -88,7 +88,7 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
             entry.Id,
             entry.Version,
             Change.Update(new ChatEntryDiff {
-                EndsAt = ApiNullable8.Some(endsAt),
+                EndsAt = endsAt,
                 StreamId = Symbol.Empty,
             }));
         entry = await commander.Call(completeCommand, true, cancellationToken).ConfigureAwait(false);

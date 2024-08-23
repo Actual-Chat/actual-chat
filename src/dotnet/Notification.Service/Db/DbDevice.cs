@@ -30,5 +30,7 @@ public class DbDevice : IHasId<string>, IHasVersion<long>, IRequirementTarget
     }
 
     public Device ToModel()
-        => new (Id, Type, CreatedAt, AccessedAt.ToMoment());
+        => new (Id, Type, CreatedAt) {
+            AccessedAt = AccessedAt.ToMoment(),
+        };
 }

@@ -215,7 +215,7 @@ public partial class StreamingBackend
                 Content = "",
                 StreamId = audioSegment.StreamId,
                 BeginsAt = beginsAt,
-                ClientSideBeginsAt = ApiNullable8.Some(recordedAt),
+                ClientSideBeginsAt = recordedAt,
             }));
         var audioEntry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
         return audioEntry;
@@ -237,8 +237,8 @@ public partial class StreamingBackend
             Change.Update(new ChatEntryDiff {
                 Content = audioBlobId ?? "",
                 StreamId = Symbol.Empty,
-                EndsAt = ApiNullable8.Some(endsAt),
-                ContentEndsAt = ApiNullable8.Some(contentEndsAt),
+                EndsAt = endsAt,
+                ContentEndsAt = contentEndsAt,
             }));
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
@@ -268,6 +268,9 @@ public partial class StreamingBackend
                     ? await audioEntryTask.ConfigureAwait(false)
                     : null;
                 var entryId = new ChatEntryId(chatId, ChatEntryKind.Text, 0, AssumeValid.Option);
+                var repliedEntryLid = repliedChatEntryId.IsNone
+                    ? (long?)null
+                    : repliedChatEntryId.LocalId;
                 var command = new ChatsBackend_ChangeEntry(
                     entryId,
                     null,
@@ -275,11 +278,9 @@ public partial class StreamingBackend
                         AuthorId = authorId,
                         Content = "",
                         StreamId = transcriptStreamId,
-                        AudioEntryId = ApiNullable8.From(audioEntry?.LocalId),
+                        AudioEntryLid = audioEntry?.LocalId,
                         BeginsAt = beginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
-                        RepliedEntryLocalId = repliedChatEntryId is { IsNone: false, LocalId: var localId }
-                            ? ApiNullable8.Some(localId)
-                            : null,
+                        RepliedEntryLid = repliedEntryLid,
                     }));
                 textEntry = await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
                 DebugLog?.LogDebug("CreateTextEntry: #{EntryId} is created in chat #{ChatId}",
@@ -300,8 +301,8 @@ public partial class StreamingBackend
                     : Change.Update(new ChatEntryDiff {
                         Content = lastTranscript.Text,
                         StreamId = Symbol.Empty,
-                        AudioEntryId = ApiNullable8.From(audioEntry?.LocalId),
-                        EndsAt = ApiNullable8.Some(beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End)),
+                        AudioEntryLid = audioEntry?.LocalId,
+                        EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
                         TimeMap = audioEntry != null
                             ? lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0)
                             : default,

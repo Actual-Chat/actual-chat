@@ -233,7 +233,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 _shownReadEntryLid.Value = lastEntryLid;
                 UpdateReadPosition(lastEntryLid);
             }
-            if (entry.IsStreaming || entry.AudioEntryId.HasValue)
+            if (entry.IsStreaming || entry.AudioEntryLid.HasValue)
                 continue;
 
             await NavigateTo(lastEntryLid, false).ConfigureAwait(false);

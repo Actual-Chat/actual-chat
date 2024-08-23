@@ -129,7 +129,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
             .ConfigureAwait(false);
         var trackInfo = new ChatAudioTrackInfo(audioEntry) {
             RecordedAt = audioEntry.BeginsAt + skipTo,
-            ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt.Nullable ?? audioEntry.BeginsAt) + skipTo,
+            ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
         };
         _ = BackgroundTask.Run(async () => {
             var now = Clocks.SystemClock.Now;
@@ -154,7 +154,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
             .ConfigureAwait(false);
         var trackInfo = new ChatAudioTrackInfo(audioEntry) {
             RecordedAt = audioEntry.BeginsAt + skipTo,
-            ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt.Nullable ?? audioEntry.BeginsAt) + skipTo,
+            ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
         };
         return Playback.Play(trackInfo, audio, playAt, cancellationToken);
     }

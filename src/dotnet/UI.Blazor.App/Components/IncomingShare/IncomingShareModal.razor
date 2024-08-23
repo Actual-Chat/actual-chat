@@ -212,7 +212,7 @@
         if (media.Length == 0 && _comment.IsNullOrEmpty())
             return null;
         var cmd = new Chats_UpsertTextEntry(Services.Session(), chatId, null, comment) {
-            RepliedChatEntryId = null,
+            RepliedEntryLid = null,
             EntryAttachments = media.Select(x => new TextEntryAttachment {
                 MediaId = x.MediaContent.MediaId,
                 ThumbnailMediaId = x.MediaContent.ThumbnailMediaId,

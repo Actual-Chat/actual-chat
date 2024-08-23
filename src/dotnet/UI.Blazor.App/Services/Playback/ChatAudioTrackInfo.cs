@@ -8,7 +8,7 @@ public record ChatAudioTrackInfo(ChatEntry AudioEntry) : TrackInfo(ComposeTrackI
     public static Symbol ComposeTrackId(ChatEntry entry)
         => entry.Kind == ChatEntryKind.Audio
             ? ComposeTrackId(entry.ChatId, entry.LocalId)
-            : ComposeTrackId(entry.ChatId, entry.AudioEntryId.Nullable ?? 0);
+            : ComposeTrackId(entry.ChatId, entry.AudioEntryLid ?? 0);
 
     public static Symbol ComposeTrackId(ChatId chatId, long audioEntryId)
         => ZString.Concat("audio:", chatId.Value, ":", audioEntryId);

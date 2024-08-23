@@ -75,7 +75,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
                 syncedSleepDuration = sleepDuration;
             }
             var playAt = Moment.Max(minPlayAt, entry.BeginsAt);
-            if (entry.EndsAt.HasValue && playAt >= entry.EndsAt.ValueOrDefault)
+            if (entry.EndsAt is { } endsAt && playAt >= endsAt)
                 continue; // already completed streaming entry
 
             if (playAt >= entry.BeginsAt + Constants.Chat.MaxEntryDuration) // no EndsAt for streaming entries

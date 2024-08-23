@@ -20,10 +20,10 @@ public class UserPresencesBackend : DbServiceBase<UsersDbContext>, IUserPresence
         => Task.FromResult(_userPresences.GetPresence(userId));
 
     // [ComputeMethod]
-    public virtual async Task<Moment?> GetLastCheckIn(UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<ApiNullable8<Moment>> GetLastCheckIn(UserId userId, CancellationToken cancellationToken)
     {
         var lastCheckIn = _userPresences.GetLastCheckIn(userId);
-        if (lastCheckIn != null)
+        if (lastCheckIn.HasValue)
             return lastCheckIn;
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);

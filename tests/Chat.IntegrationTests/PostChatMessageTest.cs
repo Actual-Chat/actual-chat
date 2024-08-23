@@ -61,13 +61,13 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         var chatEntry = await commander.Call(cmd);
 
         var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, "Reply") {
-            RepliedChatEntryId = chatEntry.LocalId,
+            RepliedEntryLid = chatEntry.LocalId,
         };
         var replyChatEntry = await commander.Call(cmd2);
 
         replyChatEntry.ChatId.Should().Be(chatId);
         replyChatEntry.Content.Should().Be(cmd2.Text);
-        replyChatEntry.RepliedEntryLocalId.Should().Be(chatEntry.LocalId);
+        replyChatEntry.RepliedEntryLid.Should().Be(chatEntry.LocalId);
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         var chatEntry = await commander.Call(cmd);
 
         var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, "Reply") {
-            RepliedChatEntryId = chatEntry.LocalId,
+            RepliedEntryLid = chatEntry.LocalId,
         };
         var replyChatEntry = await commander.Call(cmd2);
 
@@ -95,6 +95,6 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         editedReplyChatEntry.ChatId.Should().Be(chatId);
         editedReplyChatEntry.LocalId.Should().Be(replyChatEntry.LocalId);
         editedReplyChatEntry.Content.Should().Be(cmd3.Text);
-        editedReplyChatEntry.RepliedEntryLocalId.Should().Be(chatEntry.LocalId);
+        editedReplyChatEntry.RepliedEntryLid.Should().Be(chatEntry.LocalId);
     }
 }

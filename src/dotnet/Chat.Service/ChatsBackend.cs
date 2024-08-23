@@ -1009,11 +1009,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             // Validation
             switch (newEntry.Kind) {
             case ChatEntryKind.Audio:
-                if (newEntry.AudioEntryId.HasValue)
-                    throw StandardError.Constraint("Audio entry should not have AudioEntryId.");
-                if (newEntry.VideoEntryId.HasValue)
-                    throw StandardError.Constraint("Audio entry should not have VideoEntryId.");
-                if (newEntry.RepliedEntryLocalId.HasValue)
+                if (newEntry.AudioEntryLid.HasValue)
+                    throw StandardError.Constraint("Audio entry should not have AudioEntryLid.");
+                if (newEntry.VideoEntryLid.HasValue)
+                    throw StandardError.Constraint("Audio entry should not have VideoEntryLid.");
+                if (newEntry.RepliedEntryLid.HasValue)
                     throw StandardError.Constraint("Audio entry should not have RepliedEntryLocalId.");
                 if (!newEntry.ForwardedChatEntryId.IsNone)
                     throw StandardError.Constraint("Audio entry should not have ForwardedChatEntryId.");

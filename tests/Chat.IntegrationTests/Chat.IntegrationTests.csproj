@@ -4,8 +4,4 @@
     <ProjectReference Include="..\Testing.Host\Testing.Host.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="data\**" CopyToOutputDirectory="Always" />
-  </ItemGroup>
-
 </Project>

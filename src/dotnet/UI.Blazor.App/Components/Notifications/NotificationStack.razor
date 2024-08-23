@@ -8,7 +8,7 @@
 <div class="flex-y space-y-3 z-90 fixed bottom-16 right-0 min-w-[16%] max-w-[16%] overflow-y-auto custom-scrollbar max-h-[100%]"
     @onmouseover="MouseOver"
     @onmouseout="MouseOut">
-    @foreach (var notification in notifications.OrderBy(n => n.HandledAt.Nullable)) {
+    @foreach (var notification in notifications.OrderBy(n => n.HandledAt)) {
         var notificationId = notification.Id;
         <NotificationEntry
             @key="@notificationId.Value"

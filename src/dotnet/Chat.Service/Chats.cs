@@ -225,7 +225,7 @@ public class Chats(IServiceProvider services) : IChats
 
     public virtual async Task<ChatEntry> OnUpsertTextEntry(Chats_UpsertTextEntry command, CancellationToken cancellationToken)
     {
-        var (session, chatId, localId, text, repliedChatEntryId) = command;
+        var (session, chatId, localId, text, repliedEntryLid) = command;
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
@@ -252,11 +252,11 @@ public class Chats(IServiceProvider services) : IChats
             // Check constraints
             if (textEntry.AuthorId != author.Id)
                 throw StandardError.Unauthorized("You can edit only your own messages.");
-            if (textEntry.Kind != ChatEntryKind.Text || textEntry.IsStreaming || textEntry.AudioEntryId.HasValue)
+            if (textEntry.Kind != ChatEntryKind.Text || textEntry.IsStreaming || textEntry.AudioEntryLid.HasValue)
                 throw StandardError.Constraint("Only text messages can be edited.");
             if (!textEntry.ForwardedChatEntryId.IsNone && !OrdinalEquals(command.Text, textEntry.Content))
                 throw StandardError.Constraint("Forwarded messages cannot be edited.");
-            if (repliedChatEntryId.IsSome(out var v) && textEntry.RepliedEntryLocalId.Nullable != v)
+            if (repliedEntryLid.IsSome(out var v) && textEntry.RepliedEntryLid != v)
                 throw StandardError.Constraint("Replied entry Id cannot be changed.");
 
             var upsertCommand = new ChatsBackend_ChangeEntry(
@@ -264,9 +264,7 @@ public class Chats(IServiceProvider services) : IChats
                 null,
                 Change.Update(new ChatEntryDiff {
                     Content = text,
-                    RepliedEntryLocalId = repliedChatEntryId.IsSome(out var x)
-                        ? Option.Some(ApiNullable8.From(x))
-                        : default, // No change
+                    RepliedEntryLid = repliedEntryLid,
                 }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
@@ -279,14 +277,12 @@ public class Chats(IServiceProvider services) : IChats
                 Change.Create(new ChatEntryDiff {
                     AuthorId = author.Id,
                     Content = text,
-                    RepliedEntryLocalId = repliedChatEntryId.IsSome(out var v)
-                        ? Option.Some(ApiNullable8.From(v))
-                        : default, // No change
+                    RepliedEntryLid = repliedEntryLid,
                     ForwardedChatTitle = command.ForwardedChatTitle,
                     ForwardedAuthorId = command.ForwardedAuthorId,
                     ForwardedAuthorName = command.ForwardedAuthorName,
                     ForwardedChatEntryId = command.ForwardedChatEntryId,
-                    ForwardedChatEntryBeginsAt = ApiNullable8.From(command.ForwardedChatEntryBeginsAt),
+                    ForwardedChatEntryBeginsAt = command.ForwardedChatEntryBeginsAt,
                     Attachments = attachments.IsEmpty ? null : attachments,
                 }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
@@ -514,7 +510,7 @@ public class Chats(IServiceProvider services) : IChats
                     : chatEntry.ForwardedChatEntryId.ChatId.IsPeerChat(out _)
                         ? ChatEntryId.None
                         : chatEntry.ForwardedChatEntryId;
-                var forwardedChatEntryBeginsAt = chatEntry.ForwardedChatEntryBeginsAt.Nullable ?? chatEntry.BeginsAt;
+                var forwardedChatEntryBeginsAt = chatEntry.ForwardedChatEntryBeginsAt ?? chatEntry.BeginsAt;
                 var forwardedAuthorId = chatEntry.ForwardedAuthorId.IsNone
                     ? chatEntry.AuthorId
                     : chatEntry.ForwardedAuthorId;
@@ -773,8 +769,8 @@ public class Chats(IServiceProvider services) : IChats
             throw StandardError.Constraint("This entry is still recording, you'll be able to remove it later.");
 
         await Remove(textEntryId).ConfigureAwait(false);
-        if (textEntry.AudioEntryId.IsSome(out var localAudioEntryId)) {
-            var audioEntryId = new ChatEntryId(chat.Id, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
+        if (textEntry.AudioEntryLid is { } audioEntryLid) {
+            var audioEntryId = new ChatEntryId(chat.Id, ChatEntryKind.Audio, audioEntryLid, AssumeValid.Option);
             await Remove(audioEntryId).ConfigureAwait(false);
         }
         return;
@@ -802,8 +798,8 @@ public class Chats(IServiceProvider services) : IChats
             throw StandardError.Unauthorized("You can restore only your own messages.");
 
         await Restore(textEntryId).ConfigureAwait(false);
-        if (textEntry.AudioEntryId.IsSome(out var localAudioEntryId)) {
-            var audioEntryId = new ChatEntryId(chat.Id, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
+        if (textEntry.AudioEntryLid is { } audioEntryLid) {
+            var audioEntryId = new ChatEntryId(chat.Id, ChatEntryKind.Audio, audioEntryLid, AssumeValid.Option);
             await Restore(audioEntryId).ConfigureAwait(false);
         }
         return;

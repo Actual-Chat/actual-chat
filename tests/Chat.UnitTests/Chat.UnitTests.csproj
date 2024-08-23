@@ -5,4 +5,8 @@
     <ProjectReference Include="..\..\src\dotnet\Chat.Service\Chat.Service.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="data\**" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+
 </Project>
