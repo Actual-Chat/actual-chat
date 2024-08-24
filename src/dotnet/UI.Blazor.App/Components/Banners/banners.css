@@ -1,6 +1,6 @@
 .banner.reconnect-banner  {
     @apply gap-x-2;
-    @apply h-10;
+    @apply min-h-8 max-h-8 h-8;
     @apply bg-banner-error;
     @apply animate-opacity-from-0;
 }

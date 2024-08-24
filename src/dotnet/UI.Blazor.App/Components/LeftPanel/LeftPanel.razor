@@ -16,6 +16,9 @@
             } else {
                 <div class="left-panel-content">
                     <LeftPanelContentHeader/>
+                    @if (ScreenSize.IsNarrow()) {
+                        <ReconnectBanner/>
+                    }
                     <DownloadAppBanner CanBeClosed="true"/>
                     <NavbarContent/>
                 </div>
