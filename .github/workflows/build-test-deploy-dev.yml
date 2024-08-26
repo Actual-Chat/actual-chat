@@ -165,8 +165,8 @@ jobs:
       - name: Build image 'actual-chat-opensearch-configurator:${{ steps.nbgv.outputs.SemVer2 }}'
         uses: docker/build-push-action@v5
         with:
-          context: ./services/opensearch
-          file: opensearch-configurator.dockerfile
+          context: ./services/opensearch/
+          file: ./opensearch-configurator.dockerfile
           tags: |
             ghcr.io/actual-chat/actual-chat-opensearch-configurator:${{ steps.nbgv.outputs.SemVer2 }}
           push: ${{github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/release/')}}
