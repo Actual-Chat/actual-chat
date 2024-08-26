@@ -56,7 +56,7 @@ internal sealed class ChatContentIndexWorker(
 
         var cursor = await LoadCursorAsync(chatId, cancellationToken).ConfigureAwait(false);
 
-        var indexer = indexerFactory.Create(chatId);
+        var indexer = await indexerFactory.Create(chatId).ConfigureAwait(false);
 
         using (ActivitySource.StartActivity(InitIndexerActivityName, ActivityKind.Internal)) {
             await indexer.InitAsync(cursor, cancellationToken).ConfigureAwait(false);
