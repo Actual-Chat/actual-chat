@@ -7,7 +7,7 @@ public class FragmentContinuationSelectorTest(ITestOutputHelper @out) : TestBase
     [Fact(Skip = "Run explicitly")]
     public async Task ChooseOptionTest()
     {
-        var selector = new DialogFragmentAnalyzer(Log);
+        var selector = new DialogFragmentAnalyzer(DialogFragmentAnalyzer.Options.Default, Log);
         var index = await selector.ChooseOption(
             "Extensive evaluation will show you a standard RAG pipeline is certainly not enough to avoid unexpected hallucinations, overlooked knowledge, and misunderstood context.",
             new string[] {

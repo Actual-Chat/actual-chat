@@ -11,14 +11,25 @@ internal interface IDialogFragmentAnalyzer
     Task<Option<bool>> IsDialogAboutTheSameTopic(string dialog);
 }
 
-internal class DialogFragmentAnalyzer(ILogger log) : IDialogFragmentAnalyzer
+internal class DialogFragmentAnalyzer(DialogFragmentAnalyzer.Options options, ILogger log) : IDialogFragmentAnalyzer
 {
+    public record Options
+    {
+        public static Options Default { get; set; } = new();
+
+        public bool IsDiagnosticsEnabled { get; init; }
+    }
+
     private ILogger Log { get; } = log;
+    private bool IsDiagnosticsEnabled => options.IsDiagnosticsEnabled;
 
     public async Task<int> ChooseOption(string phrase, string[] fragments)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("Choose more relevant continuation to the phrase below from given options. Answer with option name only.");
+        sb.Append("Choose more relevant continuation to the phrase below from given options.");
+        if (!IsDiagnosticsEnabled)
+            sb.Append(" Answer with option name only.");
+        sb.AppendLine();
         sb.AppendLine("Phrase: " + phrase);
 
         var fragmentWithKeys = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -50,7 +61,10 @@ internal class DialogFragmentAnalyzer(ILogger log) : IDialogFragmentAnalyzer
     public async Task<int> ChooseMoreProbableDialog(string[] dialogs)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("Which one of the dialogs below looks more probable? Answer with option name only.");
+        sb.AppendLine("Which one of the dialogs below looks more probable?");
+        if (!IsDiagnosticsEnabled)
+            sb.Append(" Answer with option name only.");
+        sb.AppendLine();
 
         var dialogWithKeys = new Dictionary<string, int>(StringComparer.Ordinal);
         var alphabet = Alphabet.AlphaLower;
@@ -82,7 +96,10 @@ internal class DialogFragmentAnalyzer(ILogger log) : IDialogFragmentAnalyzer
     public async Task<Option<bool>> IsDialogAboutTheSameTopic(string dialog)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("Say if the sentences below looks like they belong to the dialog about the same topic. Answer with just Yes or No.");
+        sb.Append("Say if the sentences below looks like they belong to the dialog about the same topic.");
+        if (!IsDiagnosticsEnabled)
+            sb.Append(" Answer with just Yes or No.");
+        sb.AppendLine();
         sb.AppendLine(dialog);
         var prompt = sb.ToString();
 
@@ -93,7 +110,7 @@ internal class DialogFragmentAnalyzer(ILogger log) : IDialogFragmentAnalyzer
         return Option.Some(reply.Contains("yes", StringComparison.OrdinalIgnoreCase));
     }
 
-    private async Task<(bool isOk, string reply)> GetReply(string prompt)
+    private async Task<(bool isOk, string reply)> GetReply(string prompt, [CallerMemberName] string caller = "")
     {
         var parameters = new MessageParameters {
             Messages = [new Message(RoleType.User, prompt)],
@@ -106,14 +123,16 @@ internal class DialogFragmentAnalyzer(ILogger log) : IDialogFragmentAnalyzer
         try {
             var response = await client.Messages.GetClaudeMessageAsync(parameters).ConfigureAwait(false);
             var reply = response.Message.ToString()!;
+            if (IsDiagnosticsEnabled)
+                Log.LogInformation("{Caller} succeeded to get reply. Reply: '{Reply}', Prompt: '{Prompt}'", caller, reply, prompt);
             return (true, reply);
         }
         catch (Exception e) {
             var isDebugEnabled = Log.IsEnabled(LogLevel.Debug);
             if (isDebugEnabled)
-                Log.LogError(e, "Failed to get response on prompt: '{Prompt}'", prompt);
+                Log.LogError(e, "{Caller} failed to get response on prompt: '{Prompt}'", caller, prompt);
             else
-                Log.LogError(e, "Failed to get response on prompt");
+                Log.LogError(e, "{Caller} failed to get response on prompt", caller);
             return (false, "");
         }
     }

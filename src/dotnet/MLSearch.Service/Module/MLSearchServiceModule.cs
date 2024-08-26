@@ -92,7 +92,14 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         services.AddSingleton<IChatContentDocumentLoader, ChatContentDocumentLoader>();
         services.AddSingleton<IChatContentMapper, ChatContentMapper>();
-        services.AddSingleton<IChatContentArranger, ChatContentArranger>();
+        services.AddSingleton(_ => new DialogFragmentAnalyzer.Options { IsDiagnosticsEnabled = true });
+        services.AddSingleton<IDialogFragmentAnalyzer>(c => new DialogFragmentAnalyzer(
+            c.GetRequiredService<DialogFragmentAnalyzer.Options>(),
+            c.LogFor<DialogFragmentAnalyzer>()));
+        services.AddSingleton<ChatDialogFormatter>();
+        services.AddSingleton<ChatContentArranger>();
+        services.AddSingleton<ChatContentArranger2>();
+        services.AddAlias<IChatContentArranger, ChatContentArranger>(ServiceLifetime.Scoped);
 
         services.AddSingleton<ISink<ChatSlice, string>>(
             static c => c.CreateInstance<SemanticIndexSink<ChatSlice>>(IndexNames.ChatContent));
