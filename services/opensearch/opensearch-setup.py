@@ -100,8 +100,9 @@ def main():
     ml_client = MLCommonClient(client)
     if current_model_id is not None:
         current_model_info = ml_client.get_model_info(current_model_id)
-        current_model_content_hash_value = current_model_info['model_content_hash_value']
-        current_model_all_config = current_model_info['model_config']['all_config']
+        print(current_model_info)
+        current_model_content_hash_value = current_model_info.get('model_content_hash_value', '000')
+        current_model_all_config = current_model_info.get('model_config', {'all_config':{}})['all_config']
         with open(os.getenv('TORCHSCRIPT_MODEL_CONFIG_PATH'), 'r') as f:
             next_config = json.load(f)
         # Note: No exception handling. Therse fields must be present

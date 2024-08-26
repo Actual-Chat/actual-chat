@@ -162,6 +162,15 @@ jobs:
             ghcr.io/actual-chat/actual-chat-migration:${{ steps.nbgv.outputs.SemVer2 }}
           push: ${{github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/release/')}}
 
+      - name: Build image 'actual-chat-opensearch-configurator:${{ steps.nbgv.outputs.SemVer2 }}'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/opensearch
+          file: opensearch-configurator.dockerfile
+          tags: |
+            ghcr.io/actual-chat/actual-chat-opensearch-configurator:${{ steps.nbgv.outputs.SemVer2 }}
+          push: ${{github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/release/')}}
+
   unit-tests:
     name: Run Unit tests
     runs-on: ubuntu-latest
@@ -475,6 +484,16 @@ jobs:
           dst: |
             us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/actual-chat-migration:${{needs.build.outputs.semver2}}
 
+      - name: Deploy dev opensearch configurator
+        if: |
+          github.ref == 'refs/heads/dev' ||
+          startsWith(github.ref, 'refs/heads/release/')
+        uses: akhilerm/tag-push-action@v2.0.0
+        with:
+          src: ghcr.io/actual-chat/actual-chat-opensearch-configurator:${{needs.build.outputs.semver2}}
+          dst: |
+            us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/actual-chat-opensearch-configurator:${{needs.build.outputs.semver2}}
+
   deploy-prod:
     name: Deploy prod
     if: |
@@ -527,6 +546,14 @@ jobs:
           src: ghcr.io/actual-chat/actual-chat-migration:${{needs.build.outputs.semver2}}
           dst: |
             us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-migration:${{needs.build.outputs.semver2}}
+
+      - name: Deploy prod opensearch configurator
+        uses: akhilerm/tag-push-action@v2.0.0
+        with:
+          src: ghcr.io/actual-chat/actual-chat-opensearch-configurator:${{needs.build.outputs.semver2}}
+          dst: |
+            us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-opensearch-configurator:${{needs.build.outputs.semver2}}
+
 
   build-ios-pkg:
     name: Build ios app package for ${{ github.ref_name }}
