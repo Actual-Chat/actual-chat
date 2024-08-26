@@ -130,7 +130,7 @@ jobs:
       - name: Build OpenSearch configurator image
         run: |
           docker build \
-          -f ${{github.workspace}}/services/opensearch/opensearch-configurator.dockerfile \
+          -f ${{github.workspace}}/services/opensearch/Dockerfile \
           -t opensearch-configurator-image:latest .
 
       - name: Configure OpenSearch ML pipeline
