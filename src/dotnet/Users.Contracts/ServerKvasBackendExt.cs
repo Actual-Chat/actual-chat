@@ -13,6 +13,9 @@ public static class ServerKvasBackendExt
     public static IKvas<User> GetUserClient(this IServerKvasBackend serverKvasBackend, UserId userId)
         => new ServerKvasBackendClient(serverKvasBackend, GetUserPrefix(userId)).WithScope<User>();
 
+    public static IKvas GetServerSettingsClient(this IServerKvasBackend serverKvasBackend)
+        => new ServerKvasBackendClient(serverKvasBackend, "srv/");
+
     public static string GetUserPrefix(UserId userId)
         => userId.IsNone
             ? ""

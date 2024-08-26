@@ -144,6 +144,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // ServerKvas
         rpcHost.AddApiOrLocal<IServerKvas, ServerKvas>(); // Used by Authors, Avatars -> Chats, etc.
+        rpcHost.AddApiOrLocal<IServerSettings, ServerSettings>();
         rpcHost.AddBackend<IServerKvasBackend, ServerKvasBackend>();
 
         // PhoneAuth
