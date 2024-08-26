@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
-@inherits ComputedStateComponent<TalkingMembersPanel.Model>
+@inherits ComputedStateComponent<ChatActivityPanel.Model>
 @{
     var m = State.Value;
     var isVisible = m.IsAnyoneTalking || m.AudioState.IsListening || IsRecordingHere;
@@ -9,7 +9,7 @@
     var maxCount = ScreenSize.IsNarrow() ? 3 : 2;
 }
 
-<div class="talking-members-panel">
+<div class="chat-activity-panel">
     @if (m.IsAnyoneTalking) {
         <chat-list-item-streaming-svg size="6" color="danger"/>
     } else {
