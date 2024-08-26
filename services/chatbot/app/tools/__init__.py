@@ -12,9 +12,15 @@ import json
 TOOLS_AUTH_FORWARD_CONTEXT = "forward-auth-context"
 
 class _Tools(object):
-    REPLY = "https://local.actual.chat/api/bot/conversation/reply"
-    FORWARD_CHAT_LINKS = "https://local.actual.chat/api/bot/conversation/forward-chat-links"
-    SEARCH_PUBLIC_CHATS = "https://local.actual.chat/api/bot/search/public-chats"
+    REPLY = None
+    FORWARD_CHAT_LINKS = None
+    SEARCH_PUBLIC_CHATS = None
+
+    @classmethod
+    def init(cls, *, base_url):
+        cls.REPLY = base_url + "/api/bot/conversation/reply"
+        cls.FORWARD_CHAT_LINKS = base_url + "/api/bot/conversation/forward-chat-links"
+        cls.SEARCH_PUBLIC_CHATS = base_url + "/api/bot/search/public-chats"
 
 @tool(parse_docstring=True)
 def reply(
