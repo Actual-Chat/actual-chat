@@ -49,18 +49,54 @@ internal sealed class ChatContentArranger2(
                 builder.Dialog = await chatDialogFormatter.BuildUpDialog(builder.Entries).ConfigureAwait(false);
             }
             else {
-                // Do we need to close any builder: have some content and last entry created earlier than 1 day from the current one.
                 SourceEntriesBuilder? builderToAdd = null;
                 var candidates = new List<SourceEntriesBuilder>();
 
-                foreach (var builder in builders) {
-                    var dialog = builder.Dialog;
-                    var entryText = await chatDialogFormatter.EntryToText(entry, builder.Entries[^1]).ConfigureAwait(false);
-                    dialog = dialog + Environment.NewLine + entryText;
-                    builder.PossibleDialog = dialog;
-                    var result = await fragmentAnalyzer.IsDialogAboutTheSameTopic(dialog).ConfigureAwait(false);
-                    if (result is { HasValue: true, Value: true })
-                        candidates.Add(builder);
+                if (entry.RepliedEntryLid is { } repliedEntryLocalId) {
+                    foreach (var builder in builders) {
+                        if (builder.Entries.Any(c => c.LocalId == repliedEntryLocalId)) {
+                            builderToAdd = builder;
+                            break;
+                        }
+                    }
+                }
+
+                if (builderToAdd is null) {
+                    List<SourceEntriesBuilder>? buildersToClose = null;
+                    foreach (var builder in builders) {
+                        var lastEntry = builder.Entries.Last();
+                        var timeDistance = entry.BeginsAt - lastEntry.BeginsAt;
+                        var idDistance = entry.LocalId - lastEntry.LocalId;
+                        var shouldCloseBuilder = idDistance > 100
+                            || (idDistance > 75 && timeDistance > TimeSpan.FromMinutes(30))
+                            || (idDistance > 50 && timeDistance > TimeSpan.FromMinutes(60))
+                            || (idDistance > 30 && timeDistance > TimeSpan.FromMinutes(120))
+                            || (idDistance > 10 && timeDistance > TimeSpan.FromMinutes(240))
+                            || timeDistance > TimeSpan.FromHours(12);
+                        if (shouldCloseBuilder) {
+                            buildersToClose ??= new List<SourceEntriesBuilder>();
+                            buildersToClose.Add(builder);
+                        }
+                    }
+
+                    if (buildersToClose != null) {
+                        foreach (var builder in buildersToClose) {
+                            builders.Remove(builder);
+                            if (builder.HasModified)
+                                yield return new SourceEntries(null, null, builder.Entries);
+                        }
+                    }
+
+                    foreach (var builder in builders) {
+                        var dialog = builder.Dialog;
+                        var entryText = await chatDialogFormatter.EntryToText(entry, builder.Entries[^1])
+                            .ConfigureAwait(false);
+                        dialog = dialog + Environment.NewLine + entryText;
+                        builder.PossibleDialog = dialog;
+                        var result = await fragmentAnalyzer.IsDialogAboutTheSameTopic(dialog).ConfigureAwait(false);
+                        if (result is { HasValue: true, Value: true })
+                            candidates.Add(builder);
+                    }
                 }
                 if (candidates.Count == 1)
                     builderToAdd = candidates[0];
