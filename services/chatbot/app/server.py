@@ -28,6 +28,10 @@ langfuse = None
 
 # prompts.init(langfuse)
 
+tools._Tools.init(
+    base_url = os.getenv("BOT_TOOLS_BASE_URL")
+)
+
 app = FastAPI(
     title="Chatbot Service",
     # TODO: automate or streamline
