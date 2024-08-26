@@ -247,4 +247,9 @@ public static partial class Constants
     {
         public const string EnableDataCollectionKey = "analytics"; // TODO(AppRename): rename to proper name
     }
+
+    public static class ServerSettings
+    {
+        public const string UseChatContentArranger2ChatIds = "UseChatContentArranger2ChatIds";
+    }
 }

@@ -1,0 +1,102 @@
+@page "/admin/content-indexer-settings"
+@using ActualChat.Kvas
+@inherits FusionComponentBase
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Content indexer settings</MainHeader>
+
+<Form Class="h-full" @ref="@_formRef" Model="@_form">
+    <FormBlock>
+        <DataAnnotationsValidator/>
+
+        <FormSection Label="Chat IDs to show index doc id" Class="field-show-doc-id" For="() => _form.ShowDocIdChatIdList" InputId="@_form.ShowDocIdChatIdListFormId" IsLabelInsideInput="true">
+            <TextBox
+                @bind-Value="@_form.ShowDocIdChatIdList"
+                Id="@_form.ShowDocIdChatIdListFormId"
+                Placeholder="Semicolon separated list of chat ids to show index doc id" />
+        </FormSection>
+
+        <FormSection Label="Chat IDs to use ContentArranger2" Class="field-use-arranger" For="() => _form.UseArranger2ChatIdList" InputId="@_form.UseArranger2ChatIdListFormId" IsLabelInsideInput="true">
+            <TextBox
+                @bind-Value="@_form.UseArranger2ChatIdList"
+                Id="@_form.UseArranger2ChatIdListFormId"
+                Placeholder="Semicolon separated list of chat ids to use ContentArranger2" />
+        </FormSection>
+    </FormBlock>
+
+    <Button Type="@ButtonType.Button" Click="@(() => SaveChanges())">Save changes</Button>
+</Form>
+
+
+@code {
+    private Form? _formRef;
+    private FormModel _form = null!;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private ServerSettingsKvasClient ServerSettings { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    protected override void OnInitialized()
+        => _form = new FormModel(ComponentIdGenerator);
+
+    protected override async Task OnInitializedAsync() {
+        var showDocIdChatIds = await Hub.AccountSettings().Get<string>(ChatUI.ShowIndexDocIdChatIdsSettingsKey);
+        var useArranger2ChatIds = await ServerSettings.Get<string>(Constants.ServerSettings.UseChatContentArranger2ChatIds);
+        _form.ShowDocIdChatIdList = showDocIdChatIds ?? "";
+        _form.UseArranger2ChatIdList = useArranger2ChatIds ?? "";
+    }
+
+    private async Task SaveChanges() {
+        if (!EnsureFormIsValid())
+            return;
+
+        await Hub.AccountSettings().Set(ChatUI.ShowIndexDocIdChatIdsSettingsKey, _form.ShowDocIdChatIdList);
+        await ServerSettings.Set(Constants.ServerSettings.UseChatContentArranger2ChatIds, _form.UseArranger2ChatIdList);
+    }
+
+
+    private bool EnsureFormIsValid()
+    {
+        if (_formRef == null)
+            return false;
+        if (!_formRef.IsValid) {
+            Hub.UICommander().ShowError(StandardError.Constraint("Form is not valid"));
+            return false;
+        }
+
+        if (!Validate(_form.ShowDocIdChatIdList, "Show index doc id"))
+            return false;
+
+        if (!Validate(_form.UseArranger2ChatIdList, "Use ContentArranger2"))
+            return false;
+
+        return true;
+    }
+
+    private bool Validate(string chatIdList, string listName)
+    {
+        foreach (var chatSid in chatIdList.Split(";")) {
+            if (!ChatId.TryParse(chatSid, out _)) {
+                Hub.UICommander().ShowError(StandardError.Constraint($"Chat id list '{listName}' contains invalid chat id: '{chatSid}'"));
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public sealed class FormModel {
+        public string ShowDocIdChatIdList { get; set; } = "";
+        public string UseArranger2ChatIdList { get; set; } = "";
+
+        public string FormId { get; }
+        public string ShowDocIdChatIdListFormId { get; }
+        public string UseArranger2ChatIdListFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("indexer-settings-form");
+            ShowDocIdChatIdListFormId = $"{FormId}-show-index-doc-id-chatIds";
+            UseArranger2ChatIdListFormId = $"{FormId}-use-arranger2-chatIds";
+        }
+    }
+}
