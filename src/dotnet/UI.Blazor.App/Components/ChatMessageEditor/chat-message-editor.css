@@ -555,11 +555,11 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     content: '';
     @apply absolute left-0;
     @apply w-8 h-8;
-    background: radial-gradient(circle at right top, transparent 70%, var(--post-panel) 72%)
+    background: radial-gradient(circle at right top, transparent 70%, var(--post-panel) 60%)
 }
 .rounded-sub-footer::after {
     content: '';
     @apply absolute right-0;
     @apply w-8 h-8;
-    background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 72%)
+    background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 60%)
 }

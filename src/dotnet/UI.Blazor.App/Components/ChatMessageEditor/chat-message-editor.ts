@@ -287,7 +287,7 @@ export class ChatMessageEditor {
 
     private updateHasContent() {
         const text = this.markupEditor?.getText() ?? '';
-        const isTextMode = text != '' || this.attachmentList?.some();
+        const isTextMode = text.trim().length != 0 || this.attachmentList?.some();
         if (this.hasContent === isTextMode)
             return;
 

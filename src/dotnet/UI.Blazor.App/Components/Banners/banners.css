@@ -46,17 +46,17 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
     @apply text-06;
 }
 
-.talking-members-banner.banner {
+.chat-activity-banner.banner {
     @apply h-auto;
     @apply pr-3;
 }
-.talking-members-banner.banner:not(:has(.talking-members-panel)) {
+.chat-activity-banner.banner:not(:has(.chat-activity-panel)) {
     @apply border-0;
 }
-.talking-members-banner .author-circle-group {
+.chat-activity-banner .author-circle-group {
     @apply pr-0 md:pr-3;
 }
-.talking-members-banner .author-circle-group-item {
+.chat-activity-banner .author-circle-group-item {
     @apply mr-0 md:-mr-2;
     @apply border border-bg-02 rounded-full;
 }

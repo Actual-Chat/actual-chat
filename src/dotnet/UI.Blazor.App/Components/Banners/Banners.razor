@@ -6,7 +6,7 @@
 
 <ReconnectBanner/>
 @if (ScreenSize.IsNarrow()) {
-     <TalkingMembersBanner ChatContext="@ChatContext"/>
+     <ChatActivityBanner ChatContext="@ChatContext"/>
 }
 @foreach (var banner in m.Banners.Take(MaxCount)) {
     @banner.View
