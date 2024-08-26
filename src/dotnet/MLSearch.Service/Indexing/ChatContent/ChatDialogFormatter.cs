@@ -23,7 +23,7 @@ public class ChatDialogFormatter(IAuthorsBackend authorsBackend, bool displayTim
     public async Task<string> EntryToText(ChatEntry entry, ChatEntry? prevChatEntry)
     {
         var isBlockStart = IsBlockStart(prevChatEntry, entry);
-        var isReply = entry.RepliedEntryLocalId is not null;
+        var isReply = entry.RepliedEntryLid is not null;
         var text = await ContentToText(entry.Content).ConfigureAwait(false);
         var showAuthor = isBlockStart || isReply;
         if (!showAuthor)
