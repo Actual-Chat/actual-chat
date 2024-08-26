@@ -40,6 +40,10 @@ public static class ServiceProviderExt
         => services.GetRequiredService<IServerKvas>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IServerSettings ServerSettings(this IServiceProvider services)
+        => services.GetRequiredService<IServerSettings>();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static LocalSettings LocalSettings(this IServiceProvider services)
         => services.GetRequiredService<LocalSettings>();
 
@@ -49,6 +53,9 @@ public static class ServiceProviderExt
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static AccountSettings AccountSettings(this IServiceProvider services)
         => services.GetRequiredService<AccountSettings>();
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ServerSettingsKvasClient ServerSettingsKvasClient(this IServiceProvider services, Session session)
+        => new (services.ServerSettings(), session);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static KeyedFactory<TService, TKey> KeyedFactory<
