@@ -2,6 +2,7 @@ using ActualChat.Audio;
 using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.MediaPlayback;
+using ActualChat.MLSearch;
 using ActualChat.Streaming;
 using ActualChat.Users;
 
@@ -43,11 +44,13 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     private PlayableTextPaletteProvider? _playableTextPaletteProvider;
     private KeyedFactory<IChatMarkupHub, ChatId>? _chatMarkupHubFactory;
     private IStreamClient? _streamClient;
+    private IMLSearch? _mlSearch;
 
     public IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     public IChatPositions ChatPositions => _chatPositions ??= Services.GetRequiredService<IChatPositions>();
     public IPlaces Places => _places ??= Services.GetRequiredService<IPlaces>();
     public IMentions Mentions => _mentions ??= Services.GetRequiredService<IMentions>();
+    public IMLSearch MLSearch => _mlSearch ??= Services.GetRequiredService<IMLSearch>();
     public IAuthors Authors => _authors ??= Services.GetRequiredService<IAuthors>();
     public IReactions Reactions => _reactions ??= Services.GetRequiredService<IReactions>();
     public IRoles Roles => _roles ??= Services.GetRequiredService<IRoles>();

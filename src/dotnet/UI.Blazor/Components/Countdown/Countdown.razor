@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
-@using Cysharp.Text
+@using ActualChat.Time
 @inherits ComputedStateComponent<string>
 @{
     var m = State.Value;
@@ -17,7 +17,7 @@
 
     [Parameter, EditorRequired] public Moment EndsAt { get; set; } // CPU time!
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public string Format { get; set; } = "{0:mm\\:ss}";
+    [Parameter] public string Format { get; set; } = "Default";
     [Parameter] public double UpdatePeriod { get; set; } = 1;
 
     protected override ComputedState<string>.Options GetStateOptions()
@@ -29,7 +29,7 @@
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken) {
         var remaining = (EndsAt - Clock.Now).Positive();
-        var result = ZString.Format(Format, remaining);
+        var result = remaining.Format(Format);
         if (remaining > TimeSpan.Zero)
             Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(UpdatePeriod), true);
 

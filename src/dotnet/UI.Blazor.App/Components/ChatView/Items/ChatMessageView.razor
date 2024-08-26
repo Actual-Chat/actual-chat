@@ -166,6 +166,9 @@
                                 Status="@ChatMessageSendingStatus.MessageStatus.Unread"
                                 IsDotOnly="@(!isUnreadByOthersBlockStart)"/>
                         }
+                        @if (message.ShowIndexDocId) {
+                            <span>[DocId=@message.IndexDocId]</span>
+                        }
                     </p>
                 }
             </div>
@@ -283,7 +286,7 @@
             if (forwardedChat != null)
                 forwardedChatEntryId = entry.ForwardedChatEntryId;
             else {
-                // May be chat was copied to place and removed afterwards. Try to find out copied chat.
+                // May be chat was copied to place and removed afterward. Try to find out copied chat.
                 var replacementChatId = await Chats.GetForwardChatReplacement(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken).ConfigureAwait(false);
                 if (!replacementChatId.IsNone) {
                     forwardedChat = await Chats.Get(Session, replacementChatId, cancellationToken).ConfigureAwait(false);
@@ -434,7 +437,7 @@
         if (forwardedUserId == ownAuthor.UserId)
             return ownAuthor; // we have forwarded the message - so let's use own author in the current chat
 
-        // try find your peer chat and author for the user who forwarded the message
+        // try to find your peer chat and author for the user who forwarded the message
         var yourPeerChatId = new PeerChatId(forwardedUserId, ownAuthor.UserId);
         var yourPeerAuthorId = new AuthorId(yourPeerChatId, yourPeerChatId.UserId1 == forwardedUserId ? 1 : 2, AssumeValid.Option);
         var author = await Authors.Get(Session, yourPeerChatId, yourPeerAuthorId, cancellationToken);
@@ -459,7 +462,7 @@
         if (forwardedPeerUserId == ownAuthor.UserId)
             return ownAuthor; // message has been forwarded form peer chat with us - so let's use own author in the current chat
 
-        // try find your peer chat and author for the user who was the peer of the author who forwarded the message
+        // try to find your peer chat and author for the user who was the peer of the author who forwarded the message
         var yourPeerChatId = new PeerChatId(forwardedPeerUserId, ownAuthor.UserId);
         var yourPeerAuthorId = new AuthorId(yourPeerChatId, yourPeerChatId.UserId1 == forwardedPeerUserId ? 1 : 2, AssumeValid.Option);
         var author = await Authors.Get(Session, yourPeerChatId, yourPeerAuthorId, cancellationToken);

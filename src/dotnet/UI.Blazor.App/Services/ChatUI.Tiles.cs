@@ -1,7 +1,10 @@
+using ActualChat.Kvas;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class ChatUI
 {
+    public const string ShowIndexDocIdChatIdsSettingsKey = "ShowIndexDocIdChatIds";
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
 
     // NOTE: Please don't add excessive computed dependencies without real reason - it might rerender whole chat view content
@@ -27,6 +30,13 @@ public partial class ChatUI
         var entries = tiles.SelectMany(t => t.Entries).ToList();
         if (entries.Count == 0)
             return new VirtualListTile<ChatMessage>(idRange);
+
+        var showIndexDocId = await GetShowIndexDocId(chatId, cancellationToken).ConfigureAwait(false);
+        IReadOnlyDictionary<ChatEntryId, string> indexDocIds;
+        if (showIndexDocId)
+            indexDocIds = await GetIndexDocIds(entries, cancellationToken).ConfigureAwait(false);
+        else
+            indexDocIds = ImmutableDictionary<ChatEntryId, string>.Empty;
 
         var prevEntry = (ChatEntry?)null;
         var prevDate = DateOnly.MinValue;
@@ -56,6 +66,7 @@ public partial class ChatUI
             var isAudio = entry.HasAudioEntry;
             var shouldAddToResult = idRange.Contains(entry.LocalId);
             var flags = default(ChatMessageFlags);
+            var indexDocId = showIndexDocId ? indexDocIds.GetValueOrDefault(entry.Id, "") : "";
             if (isBlockStart)
                 flags |= ChatMessageFlags.BlockStart;
             if ((isBlockStart && isAudio) || isPrevAudio ^ isAudio)
@@ -97,6 +108,8 @@ public partial class ChatUI
                     Date = date,
                     Flags = flags,
                     PreviousMessage = prevMessage,
+                    ShowIndexDocId = showIndexDocId,
+                    IndexDocId = indexDocId
                 };
                 messages.Add(message);
                 prevMessage = message;
@@ -107,6 +120,30 @@ public partial class ChatUI
             isPrevAudio = isAudio;
         }
         return new VirtualListTile<ChatMessage>($"tile:{idRange.Format()}", messages);
+    }
+
+    private async Task<bool> GetShowIndexDocId(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var account = AccountUI.OwnAccount.Value;
+        var chatIdListToShowIndexDocId = await Hub.AccountSettings().Get<string>(ShowIndexDocIdChatIdsSettingsKey, cancellationToken).ConfigureAwait(false);
+        var chatSidsShowIndexDocId = chatIdListToShowIndexDocId?.Split(';') ?? [];
+        var showIndexDocId = account.IsAdmin && !chatId.IsNone && chatSidsShowIndexDocId.Contains(chatId.Value, StringComparer.Ordinal);
+        return showIndexDocId;
+    }
+
+    private async Task<IReadOnlyDictionary<ChatEntryId, string>> GetIndexDocIds(List<ChatEntry> entries, CancellationToken cancellationToken)
+    {
+        using (Computed.BeginIsolation()) {
+            var entryIds = entries.Select(x => x.Id).ToList();
+            var docIds = await entryIds
+                .Select(c => MLSearch.GetIndexDocIdByEntryId(Session, c, cancellationToken))
+                .Collect()
+                .ConfigureAwait(false);
+            var result = entryIds
+                .Zip(docIds, (entryId, docId) => (entryId, docId))
+                .ToDictionary(c => c.entryId, c => c.docId);
+            return result;
+        }
     }
 
     private static bool IsBlockStart(ChatEntry? prevEntry, ChatEntry entry)

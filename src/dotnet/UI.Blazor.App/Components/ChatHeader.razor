@@ -42,17 +42,14 @@
                             <ChatMemberCounter ChatContext="@ChatContext"/>
                         }
                     }
-                    @if (!ScreenSize.IsNarrow()) {
+                    @if (chat.Id.IsPeerChat(out _)) {
                         <StatusBadge ChatContext="@ChatContext" IsColorful="@false" ShowLastSeen="true"/>
                     }
                 </div>
             </div>
-            // TODO: uncomment after TalkingMembersBanner update (Andrey Y)
-            @* @if (!ScreenSize.IsNarrow()) { *@
-                <div class="c-activities-container">
-                    <ChatActivities @key="@chat.Id.Value" Chat="@chat"/>
-                </div>
-            // }
+            @if (!ScreenSize.IsNarrow()) {
+                <TalkingMembersPanel ChatContext="@ChatContext"/>
+            }
         }
     </div>
     @if (!chat.Id.IsNone) {

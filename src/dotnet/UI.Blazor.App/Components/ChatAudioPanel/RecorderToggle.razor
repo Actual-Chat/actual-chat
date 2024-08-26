@@ -38,6 +38,9 @@
                 <div class="c-tooltip-arrow"></div>
             </div>
         }
+        @if (ScreenSize.IsNarrow()) {
+            <div class="selected-language">@language.ShortTitle</div>
+        }
         <ButtonRound
             Class="record-off-btn"
             Click="@OnClick"
@@ -49,7 +52,7 @@
             @ontouchcancel="@OnPointerUp"
             @oncontextmenu="@OnContextMenu"
             data-context-menu-delay="200">
-            <i class="icon-talking text-xl recorder-icon"></i>
+            <i class="icon-talking recorder-icon"></i>
         </ButtonRound>
         <ButtonRound
             Class="record-on-btn"
@@ -59,7 +62,7 @@
             @ontouchcancel="@OnPointerUp"
             @oncontextmenu="@OnContextMenu"
             data-context-menu-delay="200">
-            <i class="icon-stop-fill text-2xl recorder-icon"></i>
+            <i class="icon-stop-fill recorder-icon"></i>
         </ButtonRound>
     </div>
 } else {
@@ -67,7 +70,7 @@
         <ButtonRound
             Class="mic-disabled"
             Click="@OnClick">
-            <i class="icon-mic-off text-2xl text-06"></i>
+            <i class="icon-mic-off text-06"></i>
         </ButtonRound>
     </div>
 }
@@ -91,6 +94,8 @@
     private bool IsRecordingHere => !Chat.Id.IsNone && RecordingChatId == Chat.Id;
     private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
     private bool IsPushToTalk { get; set; } = false;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
 

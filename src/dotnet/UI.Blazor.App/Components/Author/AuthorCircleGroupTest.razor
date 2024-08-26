@@ -1,0 +1,35 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase
+@{
+    List<string> circles = ["bg-red-400", "bg-green-400", "bg-blue-400", "bg-yellow-400", "bg-gray-400", "bg-yellow-400", "bg-purple-400"];
+    var size = Size == SquareSize.Size6 ? "w-6 h-6" : "w-8 h-8";
+    var maxLength = MaxIconCount > circles.Count ? circles.Count : MaxIconCount;
+    var currentCount = circles.Count;
+}
+
+<div class="author-circle-group @Class">
+    @{
+        var zIndex = 1;
+        for (var i = 0; i < maxLength; i++) {
+            var color = circles[i];
+            <div class="@size @color rounded-full overflow-hidden author-circle-group-item" style="z-index: @zIndex;"></div>
+            zIndex++;
+        }
+        if (currentCount > MaxIconCount) {
+            <div class="author-circle-group-item" style="z-index: @(maxLength + 1);">
+                @{
+                    var avatarText = circles.Count < 11
+                    ? "+" + (circles.Count - MaxIconCount)
+                    : "...";
+                }
+                <AvatarText Size="@Size" Text="@avatarText" />
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public int MaxIconCount { get; set; } = 5;
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size6;
+}

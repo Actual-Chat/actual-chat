@@ -1,6 +1,7 @@
 using ActualChat.UI.Blazor.App.Events;
 using ActualChat.Contacts;
 using ActualChat.Kvas;
+using ActualChat.MLSearch;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
@@ -27,11 +28,13 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
     private IUserPresences UserPresences => Hub.UserPresences;
     private IAccounts Accounts => Hub.Accounts;
+    private AccountUI AccountUI => Hub.AccountUI;
     private IContacts Contacts => Hub.Contacts;
     private IChats Chats => Hub.Chats;
     private IPlaces Places => Hub.Places;
     private IChatPositions ChatPositions => Hub.ChatPositions;
     private IMentions Mentions => Hub.Mentions;
+    private IMLSearch MLSearch => Hub.MLSearch;
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;

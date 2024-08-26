@@ -1,6 +1,6 @@
 .banner.reconnect-banner  {
     @apply gap-x-2;
-    @apply h-10;
+    @apply min-h-8 max-h-8 h-8;
     @apply bg-banner-error;
     @apply animate-opacity-from-0;
 }
@@ -47,12 +47,11 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
 }
 
 .talking-members-banner.banner {
+    @apply h-auto;
     @apply pr-3;
 }
-.talking-members-banner.banner .talking-banner-btn.btn {
-    @apply min-h-8 h-8;
-    @apply px-3;
-    @apply text-base;
+.talking-members-banner.banner:not(:has(.talking-members-panel)) {
+    @apply border-0;
 }
 .talking-members-banner .author-circle-group {
     @apply pr-0 md:pr-3;
