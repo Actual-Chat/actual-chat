@@ -91,15 +91,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         if (targetChatId.IsNone)
             return default!;
 
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var authorSids = await dbContext.Authors
-            .Where(a => a.ChatId == targetChatId && !a.HasLeft)
-            .Select(a => a.Id)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        var authorIds = authorSids.Select(x => new AuthorId(x)).ToApiArray();
+        var authorIds = await ListAuthorIdsInternal(targetChatId, cancellationToken).ConfigureAwait(false);
 
         if (targetChatId != chatId && authorIds.Count > 0)
             authorIds = RemapList(authorIds, chatId);
@@ -122,15 +114,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         if (targetChatId.IsNone)
             return default!;
 
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var userIds = await dbContext.Authors
-            .Where(a => a.ChatId == targetChatId && !a.HasLeft && a.UserId != null)
-            .Select(a => a.UserId!)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return userIds.Select(x => new UserId(x)).ToApiArray();
+        return await ListUserIdsInternal(targetChatId, cancellationToken).ConfigureAwait(false);
     }
 
     // Not a [ComputeMethod]!
@@ -182,8 +166,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
                 _ = GetByUserIdInternal(chatId, invAuthor.UserId, default);
                 var invOldHadLeft = invOldAuthor?.HasLeft ?? true;
                 if (invAuthor.HasLeft != invOldHadLeft) {
-                    _ = ListAuthorIds(chatId, default);
-                    _ = ListUserIds(chatId, default);
+                    _ = ListAuthorIdsInternal(chatId, default);
+                    _ = ListUserIdsInternal(chatId, default);
                 }
             }
             return default!;
@@ -367,8 +351,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             foreach (var invAuthor in invAuthors) {
                 _ = GetInternal(chatId, invAuthor.Id, default);
                 _ = GetByUserIdInternal(chatId, invAuthor.UserId, default);
-                _ = ListAuthorIds(chatId, default);
-                _ = ListUserIds(chatId, default);
+                _ = ListAuthorIdsInternal(chatId, default);
+                _ = ListUserIdsInternal(chatId, default);
             }
             return;
         }
@@ -632,6 +616,38 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         if (!chatId.IsPlaceChat || chatId.PlaceChatId.IsRoot)
             author = await AddAvatar(author, cancellationToken).ConfigureAwait(false);
         return author;
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<ApiArray<AuthorId>> ListAuthorIdsInternal(
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var authorSids = await dbContext.Authors
+            .Where(a => a.ChatId == chatId && !a.HasLeft)
+            .Select(a => a.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return authorSids.Select(x => new AuthorId(x)).ToApiArray();
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<ApiArray<UserId>> ListUserIdsInternal(
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var userIds = await dbContext.Authors
+            .Where(a => a.ChatId == chatId && !a.HasLeft && a.UserId != null)
+            .Select(a => a.UserId!)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return userIds.Select(x => new UserId(x)).ToApiArray();
     }
 
     // Private / internal methods
