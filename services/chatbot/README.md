@@ -12,3 +12,9 @@ CLAUDE_API_KEY=
 LANGFUSE_SECRET_KEY=
 LANGFUSE_PUBLIC_KEY=
 LANGFUSE_HOST=
+BOT_TOOLS_BASE_URL=
+
+### Start direct chat with the bot
+- Make sure you have set "AllowPeerBotChat" server app config to true
+- Message to <base url>/u/ml-search
+
