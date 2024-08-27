@@ -20,11 +20,14 @@ from . import prompts
 from . import utils
 from . import tools
 
-# from langfuse import Langfuse
+from langfuse import Langfuse
 
 try:
-    langfuse = Langfuse()
-    langfuse.auth_check()
+    if os.getenv("LANGFUSE_HOST"):
+        langfuse = Langfuse()
+        langfuse.auth_check()
+    else:
+        langfuse = None
 except:
     langfuse = None
 
