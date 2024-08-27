@@ -33,17 +33,23 @@ body.hoverable .default-avatar-btn:hover {
     @apply cursor-pointer;
 }
 .avatar-btn {
-    @apply flex-x items-center justify-between;
+    @apply flex-x items-center justify-between gap-x-4;
     @apply h-12 w-full;
     @apply px-3;
     @apply rounded-lg;
 }
-.avatar-btn > .c-text {
-    @apply flex-1 flex justify-start;
-    @apply px-8;
-    @apply text-02;
+.avatar-btn > .c-content {
+    @apply flex-1 flex-y items-start;
 }
-.avatar-btn.delete-avatar-btn > .c-text {
+.avatar-btn > .c-content > .c-text {
+    @apply flex-1 flex justify-start;
+    @apply text-02 text-headline-1 leading-4;
+}
+.avatar-btn > .c-content > .c-caption {
+    @apply text-start;
+    @apply text-03 text-xs leading-3;
+}
+.avatar-btn.delete-avatar-btn > .c-content > .c-text {
     @apply text-danger;
 }
 body.hoverable .delete-avatar-btn:hover {
