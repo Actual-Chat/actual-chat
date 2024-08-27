@@ -90,7 +90,7 @@ def _add_tracing(
     return config
 
 
-assert(tools.TOOLS_AUTH_FORWARD_CONTEXT is not None)
+assert tools.TOOLS_AUTH_FORWARD_CONTEXT is not None
 
 def _add_tools_auth_context(
     config: Dict[str, Any],
@@ -107,8 +107,8 @@ def _extract_thread_id(
 ) -> Dict[str, Any]:
     configurable = config.get("configurable", {})
     jwt_bearer_token = request.headers.get("Authorization", None)
-    assert(jwt_bearer_token is not None, "Authorization header must be set")
-    assert(jwt_bearer_token.startswith("Bearer "), "Sanity check")
+    assert jwt_bearer_token is not None, "Authorization header must be set"
+    assert jwt_bearer_token.startswith("Bearer "), "Sanity check"
     jwt_token = jwt_bearer_token.replace("Bearer ", "", 1)
 
     claims = jwt.decode(
@@ -119,7 +119,7 @@ def _extract_thread_id(
         }
     )
     conversation_id = claims.get("ConversationId", None)
-    assert(conversation_id is not None, "ConversationId must be set")
+    assert conversation_id is not None, "ConversationId must be set"
     configurable["thread_id"] = conversation_id
     config["configurable"] = configurable
     return config
