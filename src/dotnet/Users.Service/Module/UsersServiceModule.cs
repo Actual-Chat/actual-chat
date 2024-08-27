@@ -7,6 +7,7 @@ using ActualChat.Redis.Module;
 using ActualChat.Security;
 using ActualChat.Users.Db;
 using ActualChat.Users.Email;
+using ActualChat.Users.Flows;
 using ActualChat.Users.Models;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -173,6 +174,12 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         if (!isBackendClient) {
             services.AddSingleton<ContactGreeter>()
                 .AddHostedService(c => c.GetRequiredService<ContactGreeter>());
+
+            services.AddFlows()
+                .Add<DigestFlow>()
+                .Add<MasterFlow>();
+            services.AddSingleton<FlowsWorker>()
+                .AddHostedService(c => c.GetRequiredService<FlowsWorker>());
         }
 
         // TOTP codes - used by IPhoneAuth (API)
