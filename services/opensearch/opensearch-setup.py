@@ -7,17 +7,25 @@ from opensearch_py_ml.ml_commons import MLCommonClient
 
 
 class API:
-    def __init__(self, cluster_url):
+    def __init__(self, cluster_url, client_cert_path=None, client_key_path=None, ca_cert_path=None):
         self._cluster_url = cluster_url
+        self._client_cert_path = client_cert_path
+        self._client_key_path = client_key_path
+        self._ca_cert_path = ca_cert_path
 
     def call_opensearch(self, path, *, method=requests.get, data=None):
         headers = {
             'Content-Type': 'application/json',
         }
+        cert_config = None
+        if self._client_cert_path:
+            cert_config = (self._client_cert_path, self._client_key_path)
+
         result = method(
             self._cluster_url + path,
             headers=headers,
             json=data,
+            cert=cert_config  # Add certificate configuration here
         )
         print(path)
         print(result)
@@ -85,8 +93,12 @@ class API:
 
 def main():
     cluster_url = os.getenv('OPENSEARCH_CLUSTER_URL')
+    client_cert_path = os.getenv('OPENSEARCH_CLIENT_CERT_PATH')
+    client_key_path = os.getenv('OPENSEARCH_CLIENT_KEY_PATH')
+    ca_cert_path = os.getenv('OPENSEARCH_CA_CERT_PATH')
+   
     model_group_name = os.getenv('OPENSEARCH_ML_MODEL_GROUP')
-    api = API(cluster_url)
+    api = API(cluster_url, client_cert_path, client_key_path, ca_cert_path)  # Pass certificate details
     model_group_id = api.register_model_group(
         model_group_name,
         description = "A model group for NLP models"
@@ -96,7 +108,16 @@ def main():
     )
     client = OpenSearch(
         hosts=[cluster_url],
+        use_ssl=True,  # Enable SSL/TLS
+        verify_certs=True,  # Verify server certificate against CA
+        ssl_assert_hostname=False, # Disable hostname verification (if needed)
+        client_cert=client_cert_path, 
+        client_key=client_key_path,
+        ca_certs=ca_cert_path,
+    ) if client_cert_path else OpenSearch(
+        hosts=[cluster_url],
     )
+    
     ml_client = MLCommonClient(client)
     if current_model_id is not None:
         current_model_info = ml_client.get_model_info(current_model_id)
