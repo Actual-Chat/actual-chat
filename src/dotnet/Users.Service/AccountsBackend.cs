@@ -1,7 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Mail;
 using ActualChat.Chat;
+using ActualChat.Flows;
 using ActualChat.Users.Db;
+using ActualChat.Users.Flows;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -14,6 +16,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private IAvatarsBackend? _avatarsBackend;
     private IServerKvasBackend? _serverKvasBackend;
     private ContactGreeter? _contactGreeter;
+    private IFlows? _flows;
     private IDbEntityResolver<string, DbAccount>? _dbAccountResolver;
     private const string AdminEmailDomain = "actual.chat";
     private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) {
@@ -26,6 +29,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private IAvatarsBackend AvatarsBackend => _avatarsBackend ??= Services.GetRequiredService<IAvatarsBackend>();
     private IServerKvasBackend ServerKvasBackend => _serverKvasBackend ??= Services.GetRequiredService<IServerKvasBackend>();
     private ContactGreeter ContactGreeter => _contactGreeter ??= Services.GetRequiredService<ContactGreeter>();
+    private IFlows Flows => _flows ??= Services.GetRequiredService<IFlows>();
     private IDbEntityResolver<string, DbAccount> DbAccountResolver => _dbAccountResolver ??= Services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
 
     // [ComputeMethod]
@@ -150,6 +154,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             Version = VersionGenerator.NextVersion(dbAccount.Version),
         };
         var mustGreet = dbAccount.IsGreetingCompleted && !account.IsGreetingCompleted;
+        if (!string.Equals(dbAccount.TimeZone, account.TimeZone, StringComparison.Ordinal))
+            await Flows.GetOrStart<DigestFlow>(account.Id.Id, cancellationToken).ConfigureAwait(false);
         dbAccount.UpdateFrom(account);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
