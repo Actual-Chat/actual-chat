@@ -122,6 +122,9 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             if (chat is null)
                 return default;
 
+            if (chat.Id.IsPlaceRootChat)
+                return default;
+
             var unreadMessages = await ChatsBackend
                 .ListNewEntries(contactId.ChatId, chatPosition.EntryLid, 100, cancellationToken)
                 .ConfigureAwait(false);
