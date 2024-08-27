@@ -122,20 +122,23 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             if (chat is null)
                 return default;
 
-            var firstUnreadMessages = await ChatsBackend
-                .ListNewEntries(contactId.ChatId, chatPosition.EntryLid, 1, cancellationToken)
+            var unreadMessages = await ChatsBackend
+                .ListNewEntries(contactId.ChatId, chatPosition.EntryLid, 100, cancellationToken)
                 .ConfigureAwait(false);
-            if (firstUnreadMessages.Count == 0)
+            if (unreadMessages.Count == 0)
                 return default;
 
-            var chatEntry = firstUnreadMessages[0];
+            var firstUnreadMessage = unreadMessages.FirstOrDefault(x => !x.IsSystemEntry);
+            if (firstUnreadMessage is null)
+                return default;
+
             var author = await Authors
-                .Get(chatEntry.ChatId, chatEntry.AuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+                .Get(firstUnreadMessage.ChatId, firstUnreadMessage.AuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
                 .ConfigureAwait(false);
             if (author is null)
                 return default;
 
-            var userBeginsAt = TimeZoneInfo.ConvertTimeFromUtc(chatEntry.BeginsAt.ToDateTime(), timeZoneInfo);
+            var userBeginsAt = TimeZoneInfo.ConvertTimeFromUtc(firstUnreadMessage.BeginsAt.ToDateTime(), timeZoneInfo);
             var digestChat = new DigestParameters.DigestChat {
                 Name = chat.Title,
                 Link = UrlMapper.ToAbsolute(Links.Chat(chat.Id)),
@@ -143,9 +146,9 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
                 FirstUnreadChatEntry = new DigestParameters.DigestChatEntry {
                     At = DeltaText.Get(userBeginsAt, userNow).Text,
                     AuthorName = author.Avatar.Name,
-                    Text = chatEntry.Content.IsNullOrEmpty()
+                    Text = firstUnreadMessage.Content.IsNullOrEmpty()
                         ? "N/A"
-                        : chatEntry.Content,
+                        : firstUnreadMessage.Content,
                 },
             };
             return digestChat;
