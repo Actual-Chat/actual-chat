@@ -10,15 +10,13 @@
 }
 
 <div class="chat-activity-panel">
-    @if (m.IsAnyoneTalking) {
-        <chat-list-item-streaming-svg size="6" color="danger"/>
-    } else {
-        <i class="icon-more-vertical silence-icon"></i>
-    }
+    <div class="c-icon">
+        <chat-activity-svg size="6" isActive="@m.IsAnyoneTalking" activeColor="primary" inactiveColor="text-03"/>
+    </div>
     @if (m.IsAnyoneTalking) {
         <ChatActivities @key="@Chat.Id.Value" Chat="@Chat" MaxIconCount="@maxCount"/>
     } else {
-        <div class="silence-text">Nobody's talking</div>
+        <div class="silence-text">No one is talking</div>
     }
     <div class="c-buttons">
         @if (!IsListening) {

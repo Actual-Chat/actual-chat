@@ -10,6 +10,7 @@ export * from './Components/AISearchPanel/ai-bot-svg.lit';
 export * from './Components/AISearchPanel/ai-talking-svg.lit';
 export * from './Components/ChatAudioPanel/playback-toggle-svg.lit';
 export * from './Components/ChatAudioPanel/recorder-toggle';
+export * from './Components/ChatList/chat-activity-svg.lit';
 export * from './Components/ChatList/chat-list-item-streaming-svg.lit';
 export * from './Components/ChatMessageEditor/attachment-list';
 export * from './Components/ChatMessageEditor/chat-message-editor';
