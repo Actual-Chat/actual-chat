@@ -11,8 +11,8 @@ packages = [
 [tool.poetry.dependencies]
 python = "~3.12.2"
 uvicorn = "^0.23.2"
-langchain = "0.2.11"
-langgraph = "0.1.17"
+langchain = "0.2.14"
+langgraph = "0.2.14"
 langchain-anthropic = "0.1.21"
 langserve = {extras = ["server"], version = "0.2.2"}
 pydantic = "2.8.2"

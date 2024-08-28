@@ -22,6 +22,13 @@ class _Tools(object):
         cls.FORWARD_CHAT_LINKS = base_url + "/api/bot/conversation/forward-chat-links"
         cls.SEARCH_PUBLIC_CHATS = base_url + "/api/bot/search/public-chats"
 
+
+def Ok():
+     # Note: Anthropic can't handle an empty content in a message.
+    return "ok"
+
+
+
 @tool(parse_docstring=True)
 def reply(
     message: str,
@@ -37,8 +44,8 @@ def reply(
     Args:
         message: A message to send.
     """
-    return _reply(message, config)
-
+    _ = _reply(message, config)
+    return Ok()
 
 @tool(parse_docstring=True)
 def search_in_public_chats(
@@ -66,6 +73,30 @@ def search_in_public_chats(
     # return text_results
     return results
 
+def filter_last_search_in_public_chats_results(state):
+    last_tool_invocation_id = None
+    last_tool_invocation_results = state.get("last_search_results", None)
+    for past_message in state["messages"]:
+        try:
+            tool_calls = past_message.get("tool_calls", None)
+        except:
+            # python ideology. better to ask forgiveness.
+            continue
+        if not tool_calls:
+            continue
+        for tool_invocation in tool_calls:
+            if tool_invocation.get("name", None) != search_in_public_chats.name:
+                continue
+            last_tool_invocation_id = tool_invocation["id"]
+
+    if not last_tool_invocation_id:
+        return last_tool_invocation_results
+    for past_message in state["messages"]:
+        if past_message.get("tool_call_id", None) != last_tool_invocation_id:
+            continue
+        last_tool_invocation_results = past_message.get("content", None)
+        break
+    return last_tool_invocation_results
 
 @tool(parse_docstring=True)
 def forward_search_results(
@@ -86,25 +117,7 @@ def forward_search_results(
     # in the state. However it appeared that many prebuilt classes
     # return MessagesState like dictionary. Therefore the state were lost.
     # Instead it is easier to search in the messages history directly
-    last_tool_invocation_id = None
-    last_tool_invocation_results = None
-    for past_message in state["messages"]:
-        tool_calls = past_message.get("tool_calls", None)
-        if not tool_calls:
-            continue
-        for tool_invocation in tool_calls:
-            if tool_invocation.get("name", None) != search_in_public_chats.name:
-                continue
-            last_tool_invocation_id = tool_invocation["id"]
-
-    if not last_tool_invocation_id:
-        raise Exception("Can not forward search results since search_in_public_chats tool was not called.")
-    for past_message in state["messages"]:
-        if past_message.get("tool_call_id", None) != last_tool_invocation_id:
-            continue
-        last_tool_invocation_results = past_message.get("content", None)
-        break
-
+    last_tool_invocation_results = filter_last_search_in_public_chats_results(state)
     if not last_tool_invocation_results:
         raise Exception("Can not forward last search result. It could be that the last search_in_public_chats tool call was not successfull or returned an empty result.")
 
@@ -126,7 +139,7 @@ def forward_search_results(
         },
         config
     )
-    return
+    return Ok()
 
 def _reply(message, config):
     _result = _post(
@@ -136,7 +149,7 @@ def _reply(message, config):
         },
         config
     )
-    return
+    return _result
 
 def _post(url, data, config: RunnableConfig):
     if (config is None):

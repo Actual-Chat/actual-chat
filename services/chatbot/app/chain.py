@@ -5,7 +5,7 @@ from typing_extensions import TypedDict
 from langchain_core.messages import HumanMessage, SystemMessage, RemoveMessage
 from langgraph.graph import StateGraph, START, END
 
-from langgraph.checkpoint import MemorySaver
+from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.runnables.config import RunnableConfig
 from langgraph.prebuilt import ToolNode
 from langgraph.graph.message import add_messages
@@ -19,6 +19,7 @@ import pydantic
 assert(pydantic.VERSION.startswith("2."))
 from .tools import all as all_tools
 from .tools import _reply as reply
+from .tools import filter_last_search_in_public_chats_results
 from . import utils
 from .state import State
 from langfuse.decorators import langfuse_context, observe
@@ -76,6 +77,10 @@ def create(*,
         model="claude-3-haiku-20240307",
         api_key = claude_api_key
     ).bind_tools(tools)
+    llm_no_tools = ChatAnthropic(
+        model="claude-3-haiku-20240307",
+        api_key = claude_api_key
+    )
 
     tool_node = ToolNode(tools)
 
@@ -107,15 +112,27 @@ def create(*,
             )
         else:
             summary_message = "Create a summary of the conversation above:"
-
-        messages = state["messages"] + [HumanMessage(content=summary_message)]
-        response = llm.invoke(messages)
+        def has_content(message):
+            try:
+                if  message.content:
+                    return True
+                else:
+                    return fFalse
+            except:
+                return False
+        messages = filter(has_content, state["messages"])
+        messages = list(messages) + [HumanMessage(content=summary_message)]
+        response = llm_no_tools.invoke(messages)
         # We now need to delete messages that we no longer want to show up
         # Note: It deletes ALL messages and keeps the summary.
         # Otherwise it requires to keep pairs of tools invocations and their results.
         # If pairs are not kept together it fails on the next llm invocation.
         delete_messages = [RemoveMessage(id=m.id) for m in state["messages"][:]]
-        return {"summary": response.content, "messages": delete_messages}
+        return {
+            "summary": response.content,
+            "messages": delete_messages,
+            "last_search_results": filter_last_search_in_public_chats_results(state)
+        }
 
 
     graph_builder.add_node("agent", call_model)
