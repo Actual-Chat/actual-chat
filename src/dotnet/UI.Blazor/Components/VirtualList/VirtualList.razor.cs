@@ -100,7 +100,8 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     protected override bool ShouldRender()
         => !ReferenceEquals(Data, LastData) // Data changed
             || RenderIndex == 0 // OR very first sync render without data loaded
-            || (RenderIndex == 1 && !Data.IsNone); // OR it's our first render with data;
+            || (RenderIndex == 1 && !Data.IsNone) // OR it's our first render with data
+            || LastReportedItemVisibility.VisibleKeys.Count == 0; // OR there are no visible items
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
