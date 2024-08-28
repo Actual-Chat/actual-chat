@@ -154,8 +154,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             Version = VersionGenerator.NextVersion(dbAccount.Version),
         };
         var mustGreet = dbAccount.IsGreetingCompleted && !account.IsGreetingCompleted;
-        if (!string.Equals(dbAccount.TimeZone, account.TimeZone, StringComparison.Ordinal))
-            await Flows.GetOrStart<DigestFlow>(account.Id.Id, cancellationToken).ConfigureAwait(false);
+        var mustStartDigestFlow = !string.Equals(dbAccount.TimeZone, account.TimeZone, StringComparison.Ordinal);
         dbAccount.UpdateFrom(account);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
@@ -163,6 +162,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             new AccountChangedEvent(dbAccount.ToModel(account.User), existing, ChangeKind.Update));
         if (mustGreet)
             ContactGreeter.Activate();
+        if (mustStartDigestFlow)
+            await Flows.GetOrStart<DigestFlow>(account.Id.Id, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
