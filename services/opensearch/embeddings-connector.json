@@ -1,0 +1,22 @@
+{
+  "name": "Self-hosted embeddings model connector",
+  "description": "",
+  "version": "1.0",
+  "protocol": "http",
+  "parameters": {
+    "model": "Alibaba-NLP_gte-multilingual-base"
+  },
+  "actions": [
+    {
+      "action_type": "predict",
+      "method": "POST",
+      "url": "http://localhost:28080/predictions/${parameters.model}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "request_body": "{ \"input\": ${parameters.input} }",
+      "pre_process_function": "connector.pre_process.default.embedding",
+      "post_process_function": "connector.post_process.default.embedding"
+    }
+  ]
+}

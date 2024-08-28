@@ -1,0 +1,63 @@
+PUT /_cluster/settings
+{
+  "persistent": {
+    "plugins.ml_commons.connector.private_ip_enabled": true
+  }
+}
+
+PUT /_cluster/settings
+{
+    "persistent": {
+        "plugins.ml_commons.trusted_connector_endpoints_regex": [
+          "^http://embeddings-service:8080/predictions/.*$"
+        ]
+    }
+}
+
+POST /_plugins/_ml/connectors/_create
+{
+  "name": "Self-hosted embeddings model connector",
+  "description": "",
+  "version": "1.0",
+  "protocol": "http",
+  "parameters": {
+    "model": "Alibaba-NLP_gte-multilingual-base"
+  },
+  "actions": [
+    {
+      "action_type": "predict",
+      "method": "POST",
+      "url": "http://embeddings-service:8080/predictions/${parameters.model}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "request_body": "{ \"input\": ${parameters.input} }",
+      "pre_process_function": "connector.pre_process.default.embedding",
+      "post_process_function": "connector.post_process.default.embedding"
+    }
+  ]
+}
+
+POST /_plugins/_ml/model_groups/_register
+{
+    "name": "Self hosted model group",
+    "description": ""
+}
+
+POST /_plugins/_ml/models/_register
+{
+  "name": "Self-hosted embedding model",
+  "function_name": "remote",
+  "model_group_id": "pH0TWZEBdyYIaAnSyYjd",
+  "description": "test self-hosted model",
+  "connector_id": "OlmmWZEBV8FKOSNYTxR3"
+}
+
+POST /_plugins/_ml/models/PFmmWZEBV8FKOSNY0BQa/_deploy
+
+POST /_plugins/_ml/models/PFmmWZEBV8FKOSNY0BQa/_predict
+{
+  "parameters": {
+    "input": [ "What is the meaning of life?" ]
+  }
+}
