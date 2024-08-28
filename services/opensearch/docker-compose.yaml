@@ -35,34 +35,34 @@ services:
       timeout: 5s
       retries: 8
 
-  opensearch-config:
-    build:
-      context: .
-    container_name: opensearch-config
-    develop:
-      watch:
-        - path: ./opensearch-setup.py
-          action: rebuild
-    environment:
-      OPENSEARCH_CLUSTER_URL: 'http://opensearch-node:9200'
-      OPENSEARCH_ML_MODEL_GROUP: 'NLP_model_group'
-      SLEEP_ON_FAILURE_SECONDS: 15
-      MAX_RETRY_ATTEMPTS: 3
-      TORCHSCRIPT_MODEL_PATH: /ml_model/sentence-transformers_paraphrase-MiniLM-L3-v2-1.0.1-torch_script.zip
-      TORCHSCRIPT_MODEL_CONFIG_PATH: /ml_model/config.json
-    volumes:
-      - type: bind
-        source: ./ml_model
-        target: /ml_model
-      - type: bind
-        source: ./opensearch-setup.py
-        target: /workdir/opensearch-setup.py
-    networks:
-      - opensearch-net
-    depends_on:
-      opensearch-node:
-        condition: service_healthy
-    restart: on-failure
+  # opensearch-config:
+  #   build:
+  #     context: .
+  #   container_name: opensearch-config
+  #   develop:
+  #     watch:
+  #       - path: ./opensearch-setup.py
+  #         action: rebuild
+  #   environment:
+  #     OPENSEARCH_CLUSTER_URL: 'http://opensearch-node:9200'
+  #     OPENSEARCH_ML_MODEL_GROUP: 'NLP_model_group'
+  #     SLEEP_ON_FAILURE_SECONDS: 15
+  #     MAX_RETRY_ATTEMPTS: 3
+  #     TORCHSCRIPT_MODEL_PATH: /ml_model/sentence-transformers_paraphrase-MiniLM-L3-v2-1.0.1-torch_script.zip
+  #     TORCHSCRIPT_MODEL_CONFIG_PATH: /ml_model/config.json
+  #   volumes:
+  #     - type: bind
+  #       source: ./ml_model
+  #       target: /ml_model
+  #     - type: bind
+  #       source: ./opensearch-setup.py
+  #       target: /workdir/opensearch-setup.py
+  #   networks:
+  #     - opensearch-net
+  #   depends_on:
+  #     opensearch-node:
+  #       condition: service_healthy
+  #   restart: on-failure
 
   opensearch-dashboards:
     build:
