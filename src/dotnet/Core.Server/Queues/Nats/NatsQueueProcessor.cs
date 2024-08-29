@@ -94,34 +94,43 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("OnRun: ShardScheme={ShardScheme}, ShardIndex={ShardIndex}", ShardScheme, shardIndex);
-        using var gracefulStopCts = cancellationToken.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
-        var gracefulStopToken = gracefulStopCts.Token;
+        var expireIn = Settings.IdleTimeout.ToRandom(0.25);
+        while (!cancellationToken.IsCancellationRequested) {
+            // retry pull until cancellation is requested
+            using var expiringPullCts = cancellationToken.CreateLinkedTokenSource(expireIn.Next());
+            using var gracefulStopCts = expiringPullCts.Token.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
+            var expiringPullToken = expiringPullCts.Token;
+            var gracefulStopToken = gracefulStopCts.Token;
 
-        var consumer = await GetConsumer(shardIndex, cancellationToken).ConfigureAwait(false);
-        var messages = consumer.ConsumeAsync<IMemoryOwner<byte>>(
-            opts: new NatsJSConsumeOpts {
-                MaxMsgs = 10,
-                Expires = Settings.IdleTimeout,
-            },
-            cancellationToken: cancellationToken);
+            var consumer = await GetConsumer(shardIndex, cancellationToken).ConfigureAwait(false);
+            var messages = consumer.ConsumeAsync<IMemoryOwner<byte>>(
+                opts: new NatsJSConsumeOpts {
+                    MaxMsgs = 10,
+                    Expires = Settings.IdleTimeout,
+                },
+                cancellationToken: expiringPullToken);
 
-        MarkStarted();
-        var parallelOptions = new ParallelOptions {
-            MaxDegreeOfParallelism = Settings.ConcurrencyLevel,
-            CancellationToken = cancellationToken,
-        };
-        await Parallel.ForEachAsync(messages, parallelOptions, HandleMessage).ConfigureAwait(false);
-        return;
+            MarkStarted();
+            var parallelOptions = new ParallelOptions {
+                MaxDegreeOfParallelism = Settings.ConcurrencyLevel,
+                CancellationToken = cancellationToken,
+            };
+            await Parallel.ForEachAsync(messages, parallelOptions, HandleMessage).ConfigureAwait(false);
+            continue;
 
-        async ValueTask HandleMessage(NatsJSMsg<IMemoryOwner<byte>> message, CancellationToken _) {
-            try {
-                cancellationToken.ThrowIfCancellationRequested();
-                await Process(shardIndex, message, gracefulStopToken).ConfigureAwait(false);
-            }
-            finally {
-                message.Data.DisposeSilently();
+            async ValueTask HandleMessage(NatsJSMsg<IMemoryOwner<byte>> message, CancellationToken _) {
+                try {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    // ReSharper disable once AccessToDisposedClosure
+                    expiringPullCts.CancelAfter(expireIn.Next());
+                    await Process(shardIndex, message, gracefulStopToken).ConfigureAwait(false);
+                }
+                finally {
+                    message.Data.DisposeSilently();
+                }
             }
         }
+        cancellationToken.ThrowIfCancellationRequested();
     }
 
     // Private methods
