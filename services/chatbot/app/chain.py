@@ -128,62 +128,6 @@ def create(*,
         else:
             summary_message = "Create a summary of the conversation above:"
 
-        def _create_text_item(text):
-            # Create the same structure as AIMessage content item is
-            return {
-                "type": "text",
-                "text": text
-            }
-
-        def convert_conversation_tool_calls_into_ai_text_messages(content_item):
-            # Note: Return array of items so a single tool call
-            # can be converted into multiple ai messages
-            if content_item.get("type", None) == "text":
-                return [content_item]
-
-            tool_input = content_item.get("input", None)
-            match content_item.get("name", None):
-                case forward_search_results_tool.name:
-                    if not tool_input:
-                        return []
-                    comment = tool_input.get("comment", None)
-                    # TODO: decide. include links or some mentions of them
-                    if not comment:
-                        return []
-                    return [_create_text_item(comment)]
-
-                case reply_tool.name:
-                    if not tool_input:
-                        return []
-                    message = tool_input.get("message", None)
-                    if not message:
-                        return []
-                    return [_create_text_item(message)]
-
-                # Note: case final_answer:
-                # This tool is called from the state and captured as an AI message.
-                case _:
-                    return []
-            return []
-        def prepare_messages(message):
-            # Note:
-            # This function converts each message into an array.
-            if isinstance(message.content, list):
-                new_content = []
-                for content_item in message.content:
-                    new_content.extend(
-                        convert_conversation_tool_calls_into_ai_text_messages(content_item)
-                    )
-                return AIMessage(content=new_content)
-            return message
-        """
-        messages = map(prepare_messages, state["messages"])
-        messages = filter_messages(
-            messages,
-            include_types = [HumanMessage, AIMessage]
-        )
-        """
-
         messages = [
             SystemMessage(
                 content = get_buffer_string(
