@@ -37,8 +37,8 @@ def reply(
     Args:
         message: A message to send.
     """
-    return _reply(message, config)
-
+    _ = _reply(message, config)
+    return
 
 @tool(parse_docstring=True)
 def search_in_public_chats(
@@ -66,6 +66,46 @@ def search_in_public_chats(
     # return text_results
     return results
 
+def filter_last_search_in_public_chats_results(state):
+    # Note:
+    # Messages in the state have different types.
+    # Some of them are Dict type and some objects.
+    # They also have different properties
+    def _read(message, key):
+        try:
+            return getattr(message, key)
+        except:
+            pass
+        try:
+            return message[key]
+        except:
+            return None
+    last_tool_invocation_id = None
+    last_tool_invocation_results = state.get("last_search_result", [])
+    for past_message in state["messages"]:
+        tool_calls = _read(past_message, "tool_calls")
+        if not tool_calls:
+            continue
+        for tool_invocation in tool_calls:
+            tool_name = _read(tool_invocation, "name")
+            if tool_name != search_in_public_chats.name:
+                continue
+            last_tool_invocation_id = tool_invocation["id"]
+    if not last_tool_invocation_id:
+        return last_tool_invocation_results
+    for past_message in state["messages"]:
+        tool_call_id = _read(past_message, "tool_call_id")
+        if tool_call_id != last_tool_invocation_id:
+            continue
+        last_tool_invocation_results = _read(past_message, "content")
+        break
+    # Note: Apparently tool invocation results are serialized into strings.
+    # And it seems to be a correctly serialized json object.
+    if last_tool_invocation_results is not None:
+        last_tool_invocation_results = json.loads(last_tool_invocation_results)
+    else:
+        last_tool_invocation_results = []
+    return last_tool_invocation_results
 
 @tool(parse_docstring=True)
 def forward_search_results(
@@ -81,37 +121,11 @@ def forward_search_results(
     Args:
         comment: A comment to add along with the search results.
     """
-    # Note:
-    # Inital attempt were to save the last call to the search function
-    # in the state. However it appeared that many prebuilt classes
-    # return MessagesState like dictionary. Therefore the state were lost.
-    # Instead it is easier to search in the messages history directly
-    last_tool_invocation_id = None
-    last_tool_invocation_results = None
-    for past_message in state["messages"]:
-        tool_calls = past_message.get("tool_calls", None)
-        if not tool_calls:
-            continue
-        for tool_invocation in tool_calls:
-            if tool_invocation.get("name", None) != search_in_public_chats.name:
-                continue
-            last_tool_invocation_id = tool_invocation["id"]
-
-    if not last_tool_invocation_id:
-        raise Exception("Can not forward search results since search_in_public_chats tool was not called.")
-    for past_message in state["messages"]:
-        if past_message.get("tool_call_id", None) != last_tool_invocation_id:
-            continue
-        last_tool_invocation_results = past_message.get("content", None)
-        break
-
+    last_tool_invocation_results = filter_last_search_in_public_chats_results(state)
     if not last_tool_invocation_results:
         raise Exception("Can not forward last search result. It could be that the last search_in_public_chats tool call was not successfull or returned an empty result.")
 
     links = []
-    # Note: Apparently tool invocation results are converted into strings.
-    # However it seems to be a correctly serialized json object.
-    last_tool_invocation_results = json.loads(last_tool_invocation_results)
     for result in last_tool_invocation_results:
         link = result.get("link", None)
         if link is None:
@@ -136,7 +150,7 @@ def _reply(message, config):
         },
         config
     )
-    return
+    return _result
 
 def _post(url, data, config: RunnableConfig):
     if (config is None):
