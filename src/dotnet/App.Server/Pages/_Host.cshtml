@@ -18,17 +18,17 @@
 @inject IWebHostEnvironment Env
 @{
     var cancellationToken = HttpContext.RequestAborted;
-    var (session, isNewSession) = await HttpContext.Authenticate(ServerAuth, cancellationToken);
+    var (session, isNewSession) = await ServerAuth.Authenticate(HttpContext, cancellationToken);
     SessionResolver.Session = session;
     if (isNewSession)
         HttpContext.Response.Cookies.Delete(BlazorModeEndpoint.Cookie.Name!);
-    if (ServerAuth.IsCompleteFlowRequest(HttpContext, out _, out var returnUrl)) {
-        HttpContext.Response.Redirect(returnUrl, false);
+    var isCloseFlow = ServerAuth.IsCloseFlow(HttpContext, out var flowName, out var redirectUrl);
+    if (isCloseFlow && !redirectUrl.IsNullOrEmpty()) {
+        HttpContext.Response.Redirect(redirectUrl, false);
         return;
     }
 
     var isBlazorServer = isNewSession || BlazorModeEndpoint.IsBlazorServer(HttpContext);
-    var isCloseFlowRequest = ServerAuth.IsCloseFlowRequest(HttpContext, out var completeFlowName);
     var blazorMaxReconnectRetries = 0; // 100_000_000;
     var blazorScriptSuffix = HostInfo.IsDevelopmentInstance ? "" : HostHelper.GetBlazorScriptSuffix();
     var isLocal = HostInfo.BaseUrlKind == BaseUrlKind.Local;
@@ -189,7 +189,7 @@
 
 <body class="app-web @(isBlazorServer ? "app-server" : "app-wasm")" style="background-color: #0036A3">
 
-@if (!isBlazorServer && !isCloseFlowRequest) {
+@if (!isBlazorServer && !isCloseFlow) {
     <div id="web-splash" class="loading-overlay"></div>
     <script nonce="@showOverlayNonce">
         @* We use script here to make sure this overlay isn't used as content image by crawlers *@
@@ -207,17 +207,17 @@
     </script>
 }
 
-@if (isCloseFlowRequest) {
+@if (isCloseFlow) {
     <script nonce="@closeLoginNonce">
         setTimeout(function () {
             window.open('','_self').close();
         }, 500)
     </script>
-    <div class="fusion-close" data-flow-name="@(completeFlowName)">
+    <div class="fusion-close" data-flow-name="@(flowName)">
         <div class="c-content">
             <img draggable="false" src="/dist/images/landing/checkmark-checked.svg" alt="Checked">
             <div class="c-title">
-                <span>@(completeFlowName)</span>
+                <span>@(flowName)</span>
                 <span>completed.</span>
             </div>
             <div class="c-footer">
