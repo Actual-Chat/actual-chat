@@ -13,7 +13,7 @@ def _update(left, right):
     print()
     print()
     print()
-    if len(right) == 0:
+    if right is None or len(right) == 0:
         return left
     else:
         return right

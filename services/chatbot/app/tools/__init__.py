@@ -74,20 +74,13 @@ def search_in_public_chats(
     return results
 
 def filter_last_search_in_public_chats_results(state):
-    print()
-    print()
-    print()
-    print()
-    print()
-    print("STATE")
-    print(state)
     last_tool_invocation_id = None
     last_tool_invocation_results = state.get("last_search_result", None)
     for past_message in state["messages"]:
         try:
-            tool_calls = past_message.tool_calls
+            tool_calls = past_message.get("tool_calls", None)
         except:
-            # python ideology. better to ask forgiveness.
+            # Seems like AIMessage like messages are Dict type. However not all of them are
             continue
         if not tool_calls:
             continue

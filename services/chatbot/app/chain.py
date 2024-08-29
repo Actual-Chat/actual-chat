@@ -2,7 +2,15 @@ from typing import Annotated, Literal
 
 from typing_extensions import TypedDict
 
-from langchain_core.messages import HumanMessage, SystemMessage, RemoveMessage
+from langchain_core.messages import (
+    HumanMessage,
+    SystemMessage,
+    RemoveMessage,
+    AIMessage,
+    filter_messages,
+    trim_messages,
+    get_buffer_string
+)
 from langgraph.graph import StateGraph, START, END
 
 from langgraph.checkpoint.memory import MemorySaver
@@ -13,18 +21,21 @@ from langgraph.graph.message import add_messages
 from langchain_anthropic import ChatAnthropic
 from langchain_core.runnables import RunnableLambda
 from langchain_core.tools import tool
-from langchain_core.messages import trim_messages
 
 import pydantic
 assert(pydantic.VERSION.startswith("2."))
-from .tools import all as all_tools
-from .tools import _reply as reply
-from .tools import filter_last_search_in_public_chats_results
+from .tools import (
+    all as all_tools,
+    _reply as call_reply,
+    reply as reply_tool,
+    forward_search_results as forward_search_results_tool,
+    filter_last_search_in_public_chats_results
+)
 from . import utils
 from .state import State
 from langfuse.decorators import langfuse_context, observe
 
-MAX_MESSAGES_TO_TRIGGER_ERASE_MEMORY = 1
+MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION = 1
 
 def user_input(input: str) -> State:
     return {"messages": [HumanMessage(content=input)]}
@@ -48,7 +59,7 @@ def final_answer(state: State, config: RunnableConfig):
                 _try_add_answer(text)
             return
         if isinstance(content, str):
-            reply(content, config)
+            call_reply(content, config)
             return
         langfuse_context.update_current_observation(
             level="WARNING",
@@ -102,18 +113,9 @@ def create(*,
         }
 
     def summarize_conversation(state: State):
-        # Note: This is a temporary solution.
-        if len(state["messages"]) >= MAX_MESSAGES_TO_TRIGGER_ERASE_MEMORY:
-            print("DELETE MESSAGES")
-            last_search_result = filter_last_search_in_public_chats_results(state)
-            print("LAST SEARCH RESULT:")
-            print(last_search_result)
-            delete_messages = [RemoveMessage(id=m.id) for m in state["messages"][:]]
-            return {
-                "messages": delete_messages,
-                "last_search_result": last_search_result
-            }
-        return {}
+        if len(state["messages"]) < MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION:
+            # No state changes
+            return {}
         # First, we summarize the conversation
         summary = state.get("summary", "")
         if summary:
@@ -125,16 +127,71 @@ def create(*,
             )
         else:
             summary_message = "Create a summary of the conversation above:"
-        def has_content(message):
-            try:
-                if message.content:
-                    return True
-                else:
-                    return False
-            except:
-                return False
-        messages = filter(has_content, state["messages"])
-        messages = list(messages) + [HumanMessage(content=summary_message)]
+
+        def _create_text_item(text):
+            # Create the same structure as AIMessage content item is
+            return {
+                "type": "text",
+                "text": text
+            }
+
+        def convert_conversation_tool_calls_into_ai_text_messages(content_item):
+            # Note: Return array of items so a single tool call
+            # can be converted into multiple ai messages
+            if content_item.get("type", None) == "text":
+                return [content_item]
+
+            tool_input = content_item.get("input", None)
+            match content_item.get("name", None):
+                case forward_search_results_tool.name:
+                    if not tool_input:
+                        return []
+                    comment = tool_input.get("comment", None)
+                    # TODO: decide. include links or some mentions of them
+                    if not comment:
+                        return []
+                    return [_create_text_item(comment)]
+
+                case reply_tool.name:
+                    if not tool_input:
+                        return []
+                    message = tool_input.get("message", None)
+                    if not message:
+                        return []
+                    return [_create_text_item(message)]
+
+                # Note: case final_answer:
+                # This tool is called from the state and captured as an AI message.
+                case _:
+                    return []
+            return []
+        def prepare_messages(message):
+            # Note:
+            # This function converts each message into an array.
+            if isinstance(message.content, list):
+                new_content = []
+                for content_item in message.content:
+                    new_content.extend(
+                        convert_conversation_tool_calls_into_ai_text_messages(content_item)
+                    )
+                return AIMessage(content=new_content)
+            return message
+        """
+        messages = map(prepare_messages, state["messages"])
+        messages = filter_messages(
+            messages,
+            include_types = [HumanMessage, AIMessage]
+        )
+        """
+
+        messages = [
+            SystemMessage(
+                content = get_buffer_string(
+                    state["messages"]
+                )
+            ),
+            HumanMessage(content=summary_message)
+        ]
         response = llm_no_tools.invoke(messages)
         # We now need to delete messages that we no longer want to show up
         # Note: It deletes ALL messages and keeps the summary.
