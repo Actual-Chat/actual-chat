@@ -1,6 +1,5 @@
 ﻿using ActualChat.Security;
 using Microsoft.AspNetCore.Http;
-using ActualLab.Fusion.Server.Authentication;
 
 namespace ActualChat;
 
@@ -17,12 +16,12 @@ public static class HttpSessionExt
 
     public static Task<(Session Session, bool IsNew)> Authenticate(
         this HttpContext httpContext,
-        ServerAuthHelper serverAuthHelper,
+        IServerAuth serverAuth,
         CancellationToken cancellationToken = default)
-        => httpContext.Authenticate(serverAuthHelper, false, cancellationToken);
+        => httpContext.Authenticate(serverAuth, false, cancellationToken);
     public static async Task<(Session Session, bool IsNew)> Authenticate(
         this HttpContext httpContext,
-        ServerAuthHelper serverAuthHelper,
+        IServerAuth serverAuth,
         bool assumeAllowed,
         CancellationToken cancellationToken = default)
     {
@@ -37,7 +36,7 @@ public static class HttpSessionExt
                     throw new TimeoutException();
                 }
 #endif
-                await serverAuthHelper
+                await serverAuth
                     .UpdateAuthState(session, httpContext, assumeAllowed, cancellationToken)
                     .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
                     .ConfigureAwait(false);

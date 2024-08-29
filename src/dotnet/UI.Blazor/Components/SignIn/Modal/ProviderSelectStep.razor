@@ -72,7 +72,6 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
-    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private IPhones Phones { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
@@ -83,26 +82,23 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
-        _isPhoneAuthEnabled = await Features.Get<Features_EnablePhoneAuth, bool>(CancellationToken.None);
-        _stepModel = new StepModel(ComponentIdGenerator).CopyToBase();
-        var schemas = await ClientAuth.GetSchemas();
-        _authSchemas = schemas
+        _authSchemas = AccountUI.GetAuthSchemas()
             .Select(schema => new AuthSchemaModel {
                 Name = schema.Name,
                 DisplayName = schema.DisplayName,
-                Icon = schema.Name switch
-                {
-                    IClientAuth.GoogleSchemeName => "/dist/images/landing/google-icon-color.svg",
-                    IClientAuth.AppleIdSchemeName => "/dist/images/landing/apple-icon-black.svg",
+                Icon = schema.Name switch {
+                    AuthSchema.Google => "/dist/images/landing/google-icon-color.svg",
+                    AuthSchema.Apple => "/dist/images/landing/apple-icon-black.svg",
                     _ => null,
                 },
-                Class = schema.Name switch
-                {
-                    IClientAuth.AppleIdSchemeName => "logo-apple",
+                Class = schema.Name switch {
+                    AuthSchema.Apple => "logo-apple",
                     _ => "",
                 },
             })
             .ToList();
+        _isPhoneAuthEnabled = await Features.Get<Features_EnablePhoneAuth, bool>(CancellationToken.None);
+        _stepModel = new StepModel(ComponentIdGenerator).CopyToBase();
     }
 
     protected override Task<bool> Validate()

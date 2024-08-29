@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using ActualLab.Fusion.Server.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using ActualLab.Fusion.Server;
 
@@ -158,8 +157,8 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
         var oldUser = HttpContext.User;
         HttpContext.User = principal;
         try {
-            var helper = Services.GetRequiredService<ServerAuthHelper>();
-            await helper.UpdateAuthState(session, HttpContext, true, cancellationToken).ConfigureAwait(false);
+            var serverAuth = Services.GetRequiredService<ServerAuth>();
+            await serverAuth.UpdateAuthState(session, HttpContext, true, cancellationToken).ConfigureAwait(false);
         }
         finally {
             HttpContext.User = oldUser;

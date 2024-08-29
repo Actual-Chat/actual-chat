@@ -5,25 +5,30 @@
 @using ActualChat.Security
 @using ActualChat.UI.Blazor.App
 @using ActualChat.UI.Blazor.Services
-@using ActualLab.Fusion.Server.Authentication
+@using ActualChat.Users
 @using ActualLab.Fusion.Server.Endpoints
 @using ActualLab.Generators
+@using Microsoft.AspNetCore.Mvc.TagHelpers
 
 @inject HostInfo HostInfo
-@inject ServerAuthHelper ServerAuthHelper
+@inject ServerAuth ServerAuth
 @inject ISessionResolver SessionResolver
 @inject IServiceProvider Services
 @inject UrlMapper UrlMapper
 @inject IWebHostEnvironment Env
 @{
     var cancellationToken = HttpContext.RequestAborted;
-    var (session, isNewSession) = await HttpContext.Authenticate(ServerAuthHelper, cancellationToken);
+    var (session, isNewSession) = await HttpContext.Authenticate(ServerAuth, cancellationToken);
     SessionResolver.Session = session;
     if (isNewSession)
         HttpContext.Response.Cookies.Delete(BlazorModeEndpoint.Cookie.Name!);
-    var authSchemas = await ServerAuthHelper.GetSchemas(HttpContext);
+    if (ServerAuth.IsCompleteFlowRequest(HttpContext, out _, out var returnUrl)) {
+        HttpContext.Response.Redirect(returnUrl, false);
+        return;
+    }
+
     var isBlazorServer = isNewSession || BlazorModeEndpoint.IsBlazorServer(HttpContext);
-    var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
+    var isCloseFlowRequest = ServerAuth.IsCloseFlowRequest(HttpContext, out var completeFlowName);
     var blazorMaxReconnectRetries = 0; // 100_000_000;
     var blazorScriptSuffix = HostInfo.IsDevelopmentInstance ? "" : HostHelper.GetBlazorScriptSuffix();
     var isLocal = HostInfo.BaseUrlKind == BaseUrlKind.Local;
@@ -151,10 +156,8 @@
     <link rel="prefetch" href="/dist/wasm/ort-wasm-simd-threaded.wasm" as="fetch" asp-append-version="true" crossorigin />
     *@
     <link href="/dist/bundle.css" rel="stylesheet" asp-append-version="true"/>
-    <script src="_content/ActualLab.Fusion.Blazor.Authentication/scripts/fusionAuth.js" asp-append-version="true"></script>
     <script nonce="@startupNonce">
         history.scrollRestoration = "manual";
-        window.FusionAuth.schemas = "@authSchemas";
         window.App = {
             environment: '@(HostInfo.Environment.Value)',
             postMessage: function (data) {
@@ -173,9 +176,6 @@
                 await window.App.whenBundleReady;
                 await window.ui.BrowserInit.init(apiVersion, baseUri, sessionHash, browserInfoBackendRef, appKind);
             },
-            getAuthSchemas: function () {
-                return window.FusionAuth.schemas;
-            },
         };
         window.App.whenBundleReady = new Promise((resolve, _) => {
             window.App.markBundleReady = resolve;
@@ -189,7 +189,7 @@
 
 <body class="app-web @(isBlazorServer ? "app-server" : "app-wasm")" style="background-color: #0036A3">
 
-@if (!isBlazorServer && !isCloseWindowRequest) {
+@if (!isBlazorServer && !isCloseFlowRequest) {
     <div id="web-splash" class="loading-overlay"></div>
     <script nonce="@showOverlayNonce">
         @* We use script here to make sure this overlay isn't used as content image by crawlers *@
@@ -207,17 +207,17 @@
     </script>
 }
 
-@if (isCloseWindowRequest) {
+@if (isCloseFlowRequest) {
     <script nonce="@closeLoginNonce">
         setTimeout(function () {
             window.open('','_self').close();
         }, 500)
     </script>
-    <div class="fusion-close" data-flow-name="@(closeWindowFlowName)">
+    <div class="fusion-close" data-flow-name="@(completeFlowName)">
         <div class="c-content">
             <img draggable="false" src="/dist/images/landing/checkmark-checked.svg" alt="Checked">
             <div class="c-title">
-                <span>@(closeWindowFlowName)</span>
+                <span>@(completeFlowName)</span>
                 <span>completed.</span>
             </div>
             <div class="c-footer">

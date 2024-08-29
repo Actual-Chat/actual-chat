@@ -49,22 +49,22 @@ public static class UserExt
     }
 
     public static UserIdentity GetPhoneIdentity(this User user)
-        => user.GetIdentity(Constants.Auth.Phone.SchemeName);
+        => user.GetIdentity(AuthSchema.Phone);
     public static UserIdentity GetEmailIdentity(this User user)
-        => user.GetIdentity(Constants.Auth.Email.SchemeName);
+        => user.GetIdentity(AuthSchema.Email);
     public static UserIdentity GetHashedPhoneIdentity(this User user)
-        => user.GetIdentity(Constants.Auth.Phone.HashedSchemeName);
+        => user.GetIdentity(AuthSchema.HashedPhone);
     public static UserIdentity GetHashedEmailIdentity(this User user)
-        => user.GetIdentity(Constants.Auth.Email.HashedSchemeName);
-    public static UserIdentity GetIdentity(this User user, string scheme)
-        => user.Identities.FirstOrDefault(x => OrdinalEquals(x.Key.Schema, scheme)).Key;
+        => user.GetIdentity(AuthSchema.HashedEmail);
+    public static UserIdentity GetIdentity(this User user, string schema)
+        => user.Identities.FirstOrDefault(x => OrdinalEquals(x.Key.Schema, schema)).Key;
 
     private static UserIdentity ToPhoneIdentity(Phone phone)
-        => new (Constants.Auth.Phone.SchemeName, phone);
+        => new (AuthSchema.Phone, phone.Value);
     private static UserIdentity ToEmailIdentity(string email)
-        => new (Constants.Auth.Email.SchemeName, email);
+        => new (AuthSchema.Email, email);
     public static UserIdentity ToHashedPhoneIdentity(string phoneHash)
-        => new (Constants.Auth.Phone.HashedSchemeName, phoneHash);
+        => new (AuthSchema.HashedPhone, phoneHash);
     public static UserIdentity ToHashedEmailIdentity(string emailHash)
-        => new (Constants.Auth.Email.HashedSchemeName, emailHash);
+        => new (AuthSchema.HashedEmail, emailHash);
 }
