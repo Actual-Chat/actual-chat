@@ -2,6 +2,8 @@ from typing import Annotated, Literal
 
 from typing_extensions import TypedDict
 
+import os
+
 from langchain_core.messages import (
     HumanMessage,
     SystemMessage,
@@ -24,6 +26,9 @@ from langchain_core.tools import tool
 
 import pydantic
 assert(pydantic.VERSION.startswith("2."))
+
+from langfuse.decorators import langfuse_context, observe
+
 from .tools import (
     all as all_tools,
     _reply as call_reply,
@@ -33,9 +38,11 @@ from .tools import (
 )
 from . import utils
 from .state import State
-from langfuse.decorators import langfuse_context, observe
 
-MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION = 1
+MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION = os.getenv(
+    "BOT_MESSAGES_COUNT_TO_TRIGGER_SUMMARIZATION",
+    default = 100
+)
 
 def user_input(input: str) -> State:
     return {"messages": [HumanMessage(content=input)]}
