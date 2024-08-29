@@ -7,32 +7,24 @@ using ActualLab.Fusion.Server.Authentication;
 
 namespace ActualChat.Users;
 
-public sealed class ServerAuth : IServerAuth
+public sealed class ServerAuth
 {
     public string[] IdClaimKeys { get; init; } = [ClaimTypes.NameIdentifier];
     public string[] NameClaimKeys { get; init; } = [];
     public string CloseFlowRequestPath { get; init; } = "/fusion/close";
     public string AppCloseFlowRequestPath { get; init; } = "/fusion/close-app";
-    public string CompleteFlowRequestPath { get; init; } = "/fusion/complete";
     public TimeSpan SessionInfoUpdatePeriod { get; init; } = Constants.Session.SessionInfoUpdatePeriod;
-    public Func<ServerAuth, HttpContext, bool> AllowSignIn = AllowOnAnyCompleteFlowRequest;
-    public Func<ServerAuth, HttpContext, bool> AllowChange = AllowOnAnyCompleteFlowRequest;
-    public Func<ServerAuth, HttpContext, bool> AllowSignOut = AllowOnAnyCompleteFlowRequest;
+    public Func<ServerAuth, HttpContext, bool> AllowSignIn = AllowOnCloseFlow;
+    public Func<ServerAuth, HttpContext, bool> AllowChange = AllowOnCloseFlow;
+    public Func<ServerAuth, HttpContext, bool> AllowSignOut = AllowOnCloseFlow;
 
     private HostInfo HostInfo { get; }
     private IAuth Auth { get; }
-    private IAuthBackend AuthBackend { get; }
     private IAccountsBackend AccountsBackend { get; }
     private ClaimMapper ClaimMapper { get; }
     private ICommander Commander { get; }
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
-
-    public static bool AllowAnywhere(ServerAuth h, HttpContext httpContext)
-        => true;
-
-    public static bool AllowOnAnyCompleteFlowRequest(ServerAuth h, HttpContext httpContext)
-        => h.IsAnyCompleteFlowRequest(httpContext, out _);
 
     public ServerAuth(IServiceProvider services)
     {
@@ -41,7 +33,6 @@ public sealed class ServerAuth : IServerAuth
 
         HostInfo = services.HostInfo();
         Auth = services.GetRequiredService<IAuth>();
-        AuthBackend = services.GetRequiredService<IAuthBackend>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         ClaimMapper = services.GetRequiredService<ClaimMapper>();
         Commander = services.Commander();
@@ -50,10 +41,7 @@ public sealed class ServerAuth : IServerAuth
             AllowSignIn = AllowAnywhere;
     }
 
-    public bool IsAnyCompleteFlowRequest(HttpContext httpContext, out string flowName)
-        => IsCloseFlowRequest(httpContext, out flowName) || IsCompleteFlowRequest(httpContext, out flowName, out _);
-
-    public bool IsCloseFlowRequest(HttpContext httpContext, out string flowName)
+    public bool IsCloseFlow(HttpContext httpContext, out string flowName, out string redirectUrl)
     {
         var request = httpContext.Request;
         var result =
@@ -62,27 +50,51 @@ public sealed class ServerAuth : IServerAuth
         flowName = "";
         if (result && request.Query.TryGetValue("flow", out var flows))
             flowName = flows.FirstOrDefault() ?? "";
+        redirectUrl = "";
+        if (result && request.Query.TryGetValue("redirectUrl", out var returnUrls))
+            redirectUrl = returnUrls.FirstOrDefault() ?? "";
         return result;
     }
 
-    public bool IsCompleteFlowRequest(HttpContext httpContext, out string flowName, out string returnUrl)
+    public Task<(Session Session, bool IsNew)> Authenticate(
+        HttpContext httpContext, CancellationToken cancellationToken)
+        => Authenticate(httpContext, false, cancellationToken);
+    public async Task<(Session Session, bool IsNew)> Authenticate(
+        HttpContext httpContext, bool assumeAllowed,
+        CancellationToken cancellationToken = default)
     {
-        var request = httpContext.Request;
-        var result = OrdinalEquals(request.Path.Value, CompleteFlowRequestPath);
-        flowName = "";
-        if (result && request.Query.TryGetValue("flow", out var flows))
-            flowName = flows.FirstOrDefault() ?? "";
-        returnUrl = "";
-        if (result && request.Query.TryGetValue("returnUrl", out var returnUrls))
-            returnUrl = returnUrls.FirstOrDefault() ?? "";
-        return result;
+        var originalSession = httpContext.TryGetSessionFromCookie();
+        var session = originalSession ?? Session.New();
+        for (var tryIndex = 0;; tryIndex++) {
+            try {
+#if false
+                // You can enable this code to verify this logic works
+                if (Random.Shared.Next(3) == 0) {
+                    await Task.Delay(1000).ConfigureAwait(false);
+                    throw new TimeoutException();
+                }
+#endif
+                await UpdateAuthState(session, httpContext, assumeAllowed, cancellationToken)
+                    .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
+                    .ConfigureAwait(false);
+                var isNew = originalSession != session;
+                if (isNew)
+                    httpContext.AddSessionCookie(session);
+                return (session, isNew);
+            }
+            catch (TimeoutException) {
+                if (tryIndex >= 2)
+                    throw;
+            }
+            session = Session.New();
+        }
     }
 
     public async Task UpdateAuthState(
         Session session,
         HttpContext httpContext,
         bool assumeAllowed,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var httpUser = httpContext.User;
         var httpAuthenticationSchema = httpUser.Identity?.AuthenticationType ?? "";
@@ -251,4 +263,12 @@ public sealed class ServerAuth : IServerAuth
                 return value;
         return null;
     }
+
+    // AllowXxx
+
+    private static bool AllowAnywhere(ServerAuth h, HttpContext httpContext)
+        => true;
+
+    private static bool AllowOnCloseFlow(ServerAuth h, HttpContext httpContext)
+        => h.IsCloseFlow(httpContext, out _, out _);
 }

@@ -9,9 +9,8 @@ export class WebAuth {
     public static windowFeatures: string = "width=600,height=600";
     public static signInPath: string = "/signIn";
     public static signOutPath: string = "/signOut";
-    public static closePath: string = "/fusion/close";
-    public static completePath: string = "/fusion/complete";
-    public static allowPopup: boolean = !DeviceInfo.isMobile && !DeviceInfo.isWebKit;
+    public static closeFlowPath: string = "/fusion/close";
+    public static allowPopup: boolean = !(DeviceInfo.isMobile || DeviceInfo.isWebKit);
     public static mustRedirectOnPopupBlock: boolean = true;
 
     public static signIn(schema: string) {
@@ -34,7 +33,7 @@ export class WebAuth {
             return;
         }
 
-        const returnUrl = new URL(this.closePath + "?flow=" + encode(flowName), document.baseURI).href;
+        const returnUrl = new URL(this.closeFlowPath + "?flow=" + encode(flowName), document.baseURI).href;
         const url = path + "?returnUrl=" + encode(returnUrl);
         warnLog.log(`popup: -> ${url}`);
         const popup = window.open(url, this.windowTarget, this.windowFeatures);
@@ -49,10 +48,10 @@ export class WebAuth {
     }
 
     private static redirect(path: string, flowName: string) {
-        const finalReturnUrl = window.location.href;
-        const returnUrl = new URL(this.completePath +
+        const redirectUrl = window.location.href;
+        const returnUrl = new URL(this.closeFlowPath +
             "?flow=" + encode(flowName) +
-            "&returnUrl=" + encode(finalReturnUrl),
+            "&redirectUrl=" + encode(redirectUrl),
             document.baseURI
         ).href;
         let url = new URL(path + "?returnUrl=" + encode(returnUrl), document.baseURI).href;
