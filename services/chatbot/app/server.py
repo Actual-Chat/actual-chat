@@ -20,13 +20,22 @@ from . import prompts
 from . import utils
 from . import tools
 
-# from langfuse import Langfuse
+from langfuse import Langfuse
 
-# langfuse = Langfuse()
-# langfuse.auth_check()
-langfuse = None
+try:
+    if os.getenv("LANGFUSE_HOST"):
+        langfuse = Langfuse()
+        langfuse.auth_check()
+    else:
+        langfuse = None
+except:
+    langfuse = None
 
 # prompts.init(langfuse)
+
+tools._Tools.init(
+    base_url = os.getenv("BOT_TOOLS_BASE_URL")
+)
 
 app = FastAPI(
     title="Chatbot Service",
