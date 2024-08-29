@@ -78,12 +78,13 @@ services:
       - "5080:80"
       - "25:25"
   nats:
-    image: nats:2.10.10-alpine3.19
+    image: nats:2.10.19-alpine3.20
     expose:
       - 4222
     ports:
       - 4222:4222
       - 8222:8222
+      - 8080:8080
     volumes:
       - ./.config/local.actual.chat/nats:/etc/nats
     command:

@@ -77,6 +77,7 @@ public static class ServiceCollectionExt
                 ConnectTimeout = natsTimeout,
                 RequestTimeout = natsTimeout,
                 LoggerFactory = c.GetRequiredService<ILoggerFactory>(),
+                WriterBufferSize = 655360, // NATS CommandWriter makes _arrayPoolInitialSize = opts.WriterBufferSize / 256;
             };
         });
 
@@ -85,7 +86,7 @@ public static class ServiceCollectionExt
             var options = c.GetRequiredService<NatsOpts>();
             var log = c.LogFor<NatsConnectionPool>();
             return new NatsConnectionPool(
-                Environment.ProcessorCount / 2,
+                Math.Min(Environment.ProcessorCount / 2, 3),
                 options,
                 connection => {
                     connection.ConnectionOpened += (_, args) => {
