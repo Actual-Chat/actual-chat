@@ -1311,6 +1311,9 @@ export class VirtualList {
         if (!viewport)
             return false;
 
+        if (itemRange.size == 0)
+            return true; // re-request data with empty query
+
         if (this._query === query)
             return false;
 

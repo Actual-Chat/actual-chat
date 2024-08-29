@@ -17,7 +17,6 @@ using Microsoft.Extensions.FileProviders.Physical;
 using Newtonsoft.Json;
 using ActualLab.Fusion.Authentication.Services;
 using ActualLab.Fusion.Server;
-using ActualLab.Fusion.Server.Authentication;
 using Twilio;
 using Twilio.Clients;
 
@@ -89,7 +88,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 options.GenerateClientSecret = true;
                 options.UsePrivateKey(_ => new PhysicalFileInfo(new FileInfo(Settings.ApplePrivateKeyPath)));
             });
-            authentication.AddScheme<PhoneAuthOptions, PhoneAuthHandler>(Constants.Auth.Phone.SchemeName,
+            authentication.AddScheme<PhoneAuthOptions, PhoneAuthHandler>(
+                AuthSchema.Phone,
                 options => options.CallbackPath = Constants.Auth.Phone.CallbackPath);
             /*
             authentication.AddMicrosoftAccount(options => {
@@ -222,17 +222,9 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<DbUserRepo>();
         services.AddAlias<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepo>();
 
-        // ServerAuthHelper replacement
-        services.AddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
-        fusionWebServer.ConfigureServerAuthHelper(_ => new() {
-            NameClaimKeys = [],
-            SessionInfoUpdatePeriod = Constants.Session.SessionInfoUpdatePeriod,
-            AllowSignIn = HostInfo.IsDevelopmentInstance
-                ? ServerAuthHelper.Options.AllowAnywhere
-                : ServerAuthHelper.Options.AllowOnCloseWindowRequest,
-            AllowChange = ServerAuthHelper.Options.AllowOnCloseWindowRequest,
-            AllowSignOut = ServerAuthHelper.Options.AllowOnCloseWindowRequest,
-        });
+        // ServerAuth - we use it instead of Fusion's ServerAuthHelper.
+        // Fusion's service is scoped due to SessionResolver dependency, but ServerAuth doesn't have one.
+        services.AddSingleton<ServerAuth>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

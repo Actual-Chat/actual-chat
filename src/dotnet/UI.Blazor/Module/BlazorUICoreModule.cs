@@ -33,12 +33,9 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         // Fusion
         var fusion = services.AddFusion();
         fusion.AddBlazor();
-        // The only thing we use from fusion.AddBlazor().AddAuthentication():
-        services.AddScoped(c => new WebClientAuthHelper(c));
 
         // Authentication
         // fusion.AddAuthClient();
-        services.AddScoped<ClientAuthHelper>(c => c.GetRequiredService<WebClientAuthHelper>());
 
         // Default update delay is 0.2s
         services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UIActionTracker(), 0.2));
@@ -118,7 +115,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         fusion.AddService<AccountUI>(ServiceLifetime.Scoped);
 
         // Host-specific services
-        services.AddScoped<IClientAuth>(c => new WebClientAuth(c));
+        services.AddScoped<IClientAuth>(c => new WebAuth(c.UIHub()));
         services.AddScoped<SessionTokens>(c => new SessionTokens(c.UIHub()));
 
         InjectDiagnosticsServices(services);

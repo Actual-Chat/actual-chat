@@ -1,6 +1,5 @@
 using ActualChat.Security;
 using Microsoft.AspNetCore.Mvc;
-using ActualLab.Fusion.Server.Authentication;
 
 namespace ActualChat.Users.Controllers;
 
@@ -10,16 +9,10 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
 {
     public const string Route = "/maui-auth";
 
-    private ISecureTokensBackend? _secureTokensBackend;
-    private ServerAuthHelper? _serverAuthHelper;
-    private UrlMapper? _urlMapper;
-    private ILogger? _log;
-
-    private IServiceProvider Services { get; } = services;
-    private ISecureTokensBackend SecureTokensBackend => _secureTokensBackend ??= Services.GetRequiredService<ISecureTokensBackend>();
-    private ServerAuthHelper ServerAuthHelper => _serverAuthHelper ??= Services.GetRequiredService<ServerAuthHelper>();
-    private UrlMapper UrlMapper => _urlMapper ??= Services.UrlMapper();
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    private ISecureTokensBackend SecureTokensBackend { get; } = services.GetRequiredService<ISecureTokensBackend>();
+    private ServerAuth ServerAuth { get; } = services.GetRequiredService<ServerAuth>();
+    private UrlMapper UrlMapper { get; } = services.UrlMapper();
+    private ILogger Log { get; } = services.LogFor<MauiAuthController>();
 
     [HttpGet("sign-in/{scheme}")]
     public ActionResult SignIn(
@@ -55,7 +48,7 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
         CancellationToken cancellationToken = default)
     {
         var session = SecureTokensBackend.ParseSessionToken(sessionToken);
-        await ServerAuthHelper.UpdateAuthState(session, HttpContext, true, cancellationToken).ConfigureAwait(false);
+        await ServerAuth.UpdateAuthState(session, HttpContext, true, cancellationToken).ConfigureAwait(false);
         returnUrl = returnUrl.NullIfEmpty() ?? Links.AutoClose("Authentication state update").Value;
         return Redirect(returnUrl);
     }

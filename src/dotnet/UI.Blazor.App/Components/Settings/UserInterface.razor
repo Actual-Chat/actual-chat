@@ -41,16 +41,11 @@
     private string[]? _fontSizes;
     private string? _fontSize;
 
-    [Inject] private UIHub UIHub { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private ILogger<UserInterface> Log { get; init; } = null!;
-    private FontSizeUI FontSizeUI => UIHub.FontSizeUI;
-    private Session Session => UIHub.Session();
-    private AccountUI AccountUI => UIHub.AccountUI;
-    private IAvatars Avatars => UIHub.Avatars;
-    private IJSRuntime JS => UIHub.JSRuntime();
-    private BubbleUI BubbleUI => UIHub.BubbleUI;
-    private ToastUI ToastUI => UIHub.ToastUI;
+
+    private FontSizeUI FontSizeUI => Hub.FontSizeUI;
 
     protected override void OnInitialized() {
         _formModel = new (ComponentIdGenerator);

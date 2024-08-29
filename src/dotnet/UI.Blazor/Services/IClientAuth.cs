@@ -2,11 +2,10 @@ namespace ActualChat.UI.Blazor.Services;
 
 public interface IClientAuth
 {
-    public const string GoogleSchemeName = Constants.Auth.Google.SchemeName;
-    public const string AppleIdSchemeName = Constants.Auth.Apple.SchemeName;
-    public const string PhoneSchemeName = Constants.Auth.Phone.SchemeName;
-
+    [Obsolete("Not really, but you should use AccountUI instead!")]
+    (string Name, string DisplayName)[] GetSchemas();
+    [Obsolete("Not really, but you should use AccountUI instead!")]
     Task SignIn(string schema);
+    [Obsolete("Not really, but you should use AccountUI instead!")]
     Task SignOut();
-    ValueTask<(string Name, string DisplayName)[]> GetSchemas();
 }

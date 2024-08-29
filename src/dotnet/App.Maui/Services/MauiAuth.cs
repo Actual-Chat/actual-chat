@@ -5,8 +5,8 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Services;
 
-[method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiClientAuth))]
-internal sealed class MauiClientAuth(UIHub hub) : IClientAuth
+[method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiAuth))]
+internal sealed class MauiAuth(UIHub hub) : IClientAuth
 {
     private SessionTokens? _sessionTokens;
     private ILogger? _log;
@@ -16,13 +16,21 @@ internal sealed class MauiClientAuth(UIHub hub) : IClientAuth
     private HostInfo HostInfo => Hub.HostInfo();
     private ILogger Log => _log ??= Hub.LogFor(GetType());
 
+    public (string Name, string DisplayName)[] GetSchemas()
+    {
+        var schemas = AuthSchema.AllExternal.AsEnumerable();
+        if (HostInfo.AppKind == AppKind.Ios)
+            schemas = schemas.Reverse();
+        return AuthSchema.ToSchemasWithDisplayNames(schemas);
+    }
+
     public async Task SignIn(string schema)
     {
         if (schema.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(schema));
 
 #if ANDROID
-        if (OrdinalEquals(IClientAuth.GoogleSchemeName, schema)) {
+        if (OrdinalEquals(schema, AuthSchema.Google)) {
             var googleAuth = Hub.GetRequiredService<NativeGoogleAuth>();
             if (googleAuth.IsAvailable()) {
                 await googleAuth.SignIn().ConfigureAwait(false);
@@ -31,7 +39,7 @@ internal sealed class MauiClientAuth(UIHub hub) : IClientAuth
         }
 #endif
 #if IOS
-        if (OrdinalEquals(IClientAuth.AppleIdSchemeName, schema)
+        if (OrdinalEquals(schema, AuthSchema.Apple)
             && DeviceInfo.Platform == DevicePlatform.iOS
             && DeviceInfo.Version.Major >= 13)
         {
@@ -53,17 +61,6 @@ internal sealed class MauiClientAuth(UIHub hub) : IClientAuth
 #endif
 
         await WebSignInOrSignOut("sign-out").ConfigureAwait(false);
-    }
-
-    public ValueTask<(string Name, string DisplayName)[]> GetSchemas()
-    {
-        var schemas = new[] {
-            (IClientAuth.GoogleSchemeName, "Google"),
-            (IClientAuth.AppleIdSchemeName, "Apple"),
-        };
-        if (HostInfo.AppKind == AppKind.Ios)
-            Array.Reverse(schemas);
-        return ValueTask.FromResult(schemas);
     }
 
     // Private methods
