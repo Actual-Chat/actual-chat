@@ -22,13 +22,6 @@ class _Tools(object):
         cls.FORWARD_CHAT_LINKS = base_url + "/api/bot/conversation/forward-chat-links"
         cls.SEARCH_PUBLIC_CHATS = base_url + "/api/bot/search/public-chats"
 
-
-def Ok():
-     # Note: Anthropic can't handle an empty content in a message.
-    return "ok"
-
-
-
 @tool(parse_docstring=True)
 def reply(
     message: str,
@@ -45,7 +38,7 @@ def reply(
         message: A message to send.
     """
     _ = _reply(message, config)
-    return Ok()
+    return
 
 @tool(parse_docstring=True)
 def search_in_public_chats(
@@ -147,7 +140,7 @@ def forward_search_results(
         },
         config
     )
-    return Ok()
+    return
 
 def _reply(message, config):
     _result = _post(
