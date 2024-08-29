@@ -39,10 +39,10 @@ from .tools import (
 from . import utils
 from .state import State
 
-MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION = os.getenv(
+MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION = int(os.getenv(
     "BOT_MESSAGES_COUNT_TO_TRIGGER_SUMMARIZATION",
-    default = 100
-)
+    default = 1000
+))
 
 def user_input(input: str) -> State:
     return {"messages": [HumanMessage(content=input)]}
@@ -53,6 +53,13 @@ def should_continue(state: State) -> Literal["tools", "final_answer"]:
     if last_message.tool_calls:
         return "tools"
     return "final_answer"
+
+def should_summarize(state: State) -> Literal["summarize_conversation", "human_input"]:
+    if len(state["messages"]) < MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION:
+        # Nothing to do
+        return "human_input"
+    else:
+        return "summarize_conversation"
 
 @observe()
 def final_answer(state: State, config: RunnableConfig):
@@ -120,10 +127,6 @@ def create(*,
         }
 
     def summarize_conversation(state: State):
-        if len(state["messages"]) < MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION:
-            # No state changes
-            return {}
-        # First, we summarize the conversation
         summary = state.get("summary", "")
         if summary:
             # If a summary already exists, we use a different system prompt
@@ -167,7 +170,10 @@ def create(*,
         "agent",
         should_continue,
     )
-    graph_builder.add_edge("summarize_conversation", "human_input")
+    graph_builder.add_conditional_edges(
+        "summarize_conversation",
+        should_summarize
+    )
     graph_builder.add_edge("tools", "agent")
     graph_builder.add_edge("final_answer", "summarize_conversation")
     graph_builder.add_edge("human_input", "agent")
