@@ -1,6 +1,5 @@
 ﻿using ActualChat.Security;
 using Microsoft.AspNetCore.Http;
-using ActualLab.Fusion.Server.Authentication;
 
 namespace ActualChat;
 
@@ -14,45 +13,6 @@ public static class HttpSessionExt
         SameSite = SameSiteMode.Lax,
         Expiration = TimeSpan.FromDays(28),
     };
-
-    public static Task<(Session Session, bool IsNew)> Authenticate(
-        this HttpContext httpContext,
-        ServerAuthHelper serverAuthHelper,
-        CancellationToken cancellationToken = default)
-        => httpContext.Authenticate(serverAuthHelper, false, cancellationToken);
-    public static async Task<(Session Session, bool IsNew)> Authenticate(
-        this HttpContext httpContext,
-        ServerAuthHelper serverAuthHelper,
-        bool assumeAllowed,
-        CancellationToken cancellationToken = default)
-    {
-        var originalSession = httpContext.TryGetSessionFromCookie();
-        var session = originalSession ?? Session.New();
-        for (var tryIndex = 0;; tryIndex++) {
-            try {
-#if false
-                // You can enable this code to verify this logic works
-                if (Random.Shared.Next(3) == 0) {
-                    await Task.Delay(1000).ConfigureAwait(false);
-                    throw new TimeoutException();
-                }
-#endif
-                await serverAuthHelper
-                    .UpdateAuthState(session, httpContext, assumeAllowed, cancellationToken)
-                    .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
-                    .ConfigureAwait(false);
-                var isNew = originalSession != session;
-                if (isNew)
-                    httpContext.AddSessionCookie(session);
-                return (session, isNew);
-            }
-            catch (TimeoutException) {
-                if (tryIndex >= 2)
-                    throw;
-            }
-            session = Session.New();
-        }
-    }
 
     public static Session GetSessionFromHeader(this HttpContext httpContext, SessionFormat format = SessionFormat.Id)
         => httpContext.TryGetSessionFromHeader(format).RequireValid();

@@ -31,6 +31,32 @@ class API:
         print(result)
         print(result.json())
         return result
+    
+    def configure(self):
+        data = {
+            "persistent": {
+                "plugins": {
+                    "ml_commons": {
+                        "only_run_on_ml_node": "false",
+                        "allow_registering_model_via_url": "true",
+                        "allow_registering_model_via_local_file": "true",
+                        "model_access_control_enabled": "true",
+                        "native_memory_threshold": "95"
+                    }
+                }
+            }
+        }
+        result = self.call_opensearch(
+            "/_cluster/settings",
+            method = requests.put,
+            data = data
+        )
+        # Throw an exception if the configuration update fails
+        if result.status_code != 200:
+            raise Exception(f"Failed to update OpenSearch configuration. Status code: {result.status_code}\nDetails: {result.text}")
+
+        return result.json()
+
 
     def register_model_group(self, model_group_name, *, description=""):
         # Notes:
@@ -99,6 +125,7 @@ def main():
    
     model_group_name = os.getenv('OPENSEARCH_ML_MODEL_GROUP')
     api = API(cluster_url, client_cert_path, client_key_path, ca_cert_path)  # Pass certificate details
+    api.configure()
     model_group_id = api.register_model_group(
         model_group_name,
         description = "A model group for NLP models"

@@ -29,7 +29,7 @@ class ChatListItemStreamingSvg extends LitElement {
                             11 5 6 9 2 9 2 15 6 15 11 19 11 5;">
                     </animate>
                 </polygon>
-                <path id="stream-svg-1" d="M14.54 8.46a5 5 0 0 1 0 7.07">
+                <path id="stream-svg-1" d="M14.54 8.46a5 5 0 0 1 0 7.07" stroke-linecap="round">
                     <animate
                         href="#stream-svg-1"
                         attributeName="opacity"
@@ -38,7 +38,7 @@ class ChatListItemStreamingSvg extends LitElement {
                         values="0; 1; 1; 1;">
                     </animate>
                 </path>
-                <path id="stream-svg-2" d="M18.54 7.46a5 6 0 0 1 0 9.07">
+                <path id="stream-svg-2" d="M18.54 7.46a5 6 0 0 1 0 9.07" stroke-linecap="round">
                     <animate
                         href="#stream-svg-2"
                         attributeName="opacity"
@@ -47,7 +47,7 @@ class ChatListItemStreamingSvg extends LitElement {
                         values="0; 0; 1; 1;">
                     </animate>
                 </path>
-                <path id="stream-svg-3" d="M22.54 6.46a5 7 0 0 1 0 11.07">
+                <path id="stream-svg-3" d="M22.54 6.46a5 7 0 0 1 0 11.07" stroke-linecap="round">
                     <animate
                         href="#stream-svg-3"
                         attributeName="opacity"

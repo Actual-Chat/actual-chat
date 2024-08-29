@@ -46,10 +46,10 @@ public sealed class PhoneAuthHandler(
 
         user = user.WithClaim(ClaimTypes.NameIdentifier, user.GetPhoneIdentity().SchemaBoundId);
         var claims = user.Claims.Select(x => new Claim(x.Key, x.Value));
-        var authenticationType = Options.ClaimsIssuer.NullIfEmpty() ?? Constants.Auth.Phone.SchemeName;
+        var authenticationType = Options.ClaimsIssuer.NullIfEmpty() ?? AuthSchema.Phone;
         var identity = new ClaimsIdentity(claims, authenticationType);
         return HandleRequestResult.Success(
             new AuthenticationTicket(new ClaimsPrincipal(identity),
-            Constants.Auth.Phone.SchemeName));
+            AuthSchema.Phone));
     }
 }

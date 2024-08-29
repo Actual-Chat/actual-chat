@@ -181,31 +181,16 @@ public static partial class Constants
 
     public static class Auth
     {
-        public static readonly string[] EmailSchemes = { Google.SchemeName, Apple.SchemeName };
         public static class Phone
         {
-            public const string SchemeName = "phone";
-            public const string HashedSchemeName = "phone-hash"; // used only as identity name
             public const string CallbackPath = "/signin/phone/callback";
             public const int TotpLength = 6;
         }
+
         public static class Email
         {
-            public const string SchemeName = "email"; // for now used only as identity name
-            public const string HashedSchemeName = "email-hash"; // used only as identity name
             public const int TotpLength = 6;
         }
-        public static class Google
-        {
-            public const string SchemeName = "Google";
-        }
-        public static class Apple
-        {
-            public const string SchemeName = "Apple";
-        }
-
-        public static bool IsExternalEmailScheme(string schemeName)
-            => OrdinalEquals(schemeName, Apple.SchemeName) || OrdinalEquals(schemeName, Google.SchemeName);
     }
 
     public static class Notification

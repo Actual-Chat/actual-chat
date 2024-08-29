@@ -3,22 +3,16 @@
     @apply h-14;
 }
 body.wide .chat-activity-panel {
-    @apply h-10 min-w-60;
+    @apply h-10;
     @apply pl-2 pr-1;
     @apply rounded-lg;
-    @apply bg-03;
-}
-.chat-activity-panel .silence-icon {
-    @apply rotate-90;
-    @apply text-base text-03;
 }
 .chat-activity-panel .silence-text {
-    @apply flex-1;
-    @apply px-2;
-    @apply text-headline-1 text-01;
+    @apply flex-1 text-start md:hidden;
+    @apply text-headline-1 text-03;
 }
 .chat-activity-panel > .author-circle-group {
-    @apply flex-1 justify-end gap-x-1;
+    @apply flex-1 justify-start md:justify-end gap-x-1;
 }
 .chat-activity-panel > .c-buttons {
     @apply flex-none;

@@ -4,7 +4,7 @@
     var m = State.Value;
     var error = State.Error;
     var usedAuthSchemas = m.User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
-    var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
+    var unusedAuthSchemas = AccountUI.GetAuthSchemas().Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
 }
 
 <RequireAccount MustBeAdmin="true"/>
@@ -91,7 +91,7 @@
                         } else {
                             <Button
                                 Class="btn btn-sm"
-                                Click="@(_ => ClientAuthHelper.Kick(Session, session.SessionHash))">Kick</Button>
+                                Click="@(_ => AccountUI.Kick(Session, session.SessionHash))">Kick</Button>
                         }
                     </td>
                 </tr>
@@ -104,12 +104,12 @@
 @if (m.User.IsAuthenticated()) {
     <h3 class="section">Sign out</h3>
     <FormButtons IsEndAligned="false">
-        <Button Click="@(_ => ClientAuth.SignOut())">Sign out</Button>
-        <Button Click="@(_ => ClientAuthHelper.SignOutEverywhere())">Sign out everywhere</Button>
+        <Button Click="@(_ => AccountUI.SignOut())">Sign out</Button>
+        <Button Click="@(_ => AccountUI.SignOutEverywhere())">Sign out everywhere</Button>
         @if (unusedAuthSchemas.Length != 0) {
             <span> or add account: </span>
             @foreach (var (name, displayName) in unusedAuthSchemas) {
-                <Button Click="@(_ => ClientAuth.SignIn(name))">@displayName</Button>
+                <Button Click="@(_ => AccountUI.SignIn(name))">@displayName</Button>
             }
         }
     </FormButtons>
@@ -121,22 +121,10 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
-    [Inject] private ClientAuthHelper ClientAuthHelper { get; init; } = null!;
-    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private LiveTime LiveTime { get; init; } = null!;
-    private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender) {
-            // GetSchemas requires JS interop, so it can be called only at this point
-            AuthSchemas = await ClientAuth.GetSchemas();
-            StateHasChanged();
-        }
-    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

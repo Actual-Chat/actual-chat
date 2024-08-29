@@ -63,20 +63,37 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
         return (changedAt + maxInvalidationDelay - CpuClock.Now).Positive();
     }
 
+    // IClientAuth wrapping methods
+
+#pragma warning disable CS0618 // Type or member is obsolete
+
+    public (string Name, string DisplayName)[] GetAuthSchemas()
+        => ClientAuth.GetSchemas();
+
     public async Task SignIn(string schema)
     {
         await ClientAuth.SignIn(schema).ConfigureAwait(false);
+        // TODO(AY): Make it reliable
         await NotificationUI.EnsureDeviceRegistered(CancellationToken.None).ConfigureAwait(false);
     }
 
     public async Task SignOut()
     {
         try {
-            await NotificationUI.DeregisterDevice(default).ConfigureAwait(false);
+            // TODO(AY): Make it reliable
+            await NotificationUI.DeregisterDevice(CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogError(e, "SignOut: failed to deregister device");
         }
         await ClientAuth.SignOut().ConfigureAwait(false);
     }
+
+#pragma warning restore CS0618 // Type or member is obsolete
+
+    public Task SignOutEverywhere(bool force = true)
+        => Commander.Call(new Auth_SignOut(Session, force) { KickAllUserSessions = true });
+
+    public Task Kick(Session session, string otherSessionHash, bool force = false)
+        => Commander.Call(new Auth_SignOut(session, otherSessionHash, force));
 }
