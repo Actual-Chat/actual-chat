@@ -74,11 +74,18 @@ def search_in_public_chats(
     return results
 
 def filter_last_search_in_public_chats_results(state):
+    print()
+    print()
+    print()
+    print()
+    print()
+    print("STATE")
+    print(state)
     last_tool_invocation_id = None
-    last_tool_invocation_results = state.get("last_search_results", None)
+    last_tool_invocation_results = state.get("last_search_result", None)
     for past_message in state["messages"]:
         try:
-            tool_calls = past_message.get("tool_calls", None)
+            tool_calls = past_message.tool_calls
         except:
             # python ideology. better to ask forgiveness.
             continue
@@ -88,7 +95,6 @@ def filter_last_search_in_public_chats_results(state):
             if tool_invocation.get("name", None) != search_in_public_chats.name:
                 continue
             last_tool_invocation_id = tool_invocation["id"]
-
     if not last_tool_invocation_id:
         return last_tool_invocation_results
     for past_message in state["messages"]:

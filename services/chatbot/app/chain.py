@@ -24,6 +24,8 @@ from . import utils
 from .state import State
 from langfuse.decorators import langfuse_context, observe
 
+MAX_MESSAGES_TO_TRIGGER_ERASE_MEMORY = 1
+
 def user_input(input: str) -> State:
     return {"messages": [HumanMessage(content=input)]}
 
@@ -33,7 +35,6 @@ def should_continue(state: State) -> Literal["tools", "final_answer"]:
     if last_message.tool_calls:
         return "tools"
     return "final_answer"
-
 
 @observe()
 def final_answer(state: State, config: RunnableConfig):
@@ -101,6 +102,18 @@ def create(*,
         }
 
     def summarize_conversation(state: State):
+        # Note: This is a temporary solution.
+        if len(state["messages"]) >= MAX_MESSAGES_TO_TRIGGER_ERASE_MEMORY:
+            print("DELETE MESSAGES")
+            last_search_result = filter_last_search_in_public_chats_results(state)
+            print("LAST SEARCH RESULT:")
+            print(last_search_result)
+            delete_messages = [RemoveMessage(id=m.id) for m in state["messages"][:]]
+            return {
+                "messages": delete_messages,
+                "last_search_result": last_search_result
+            }
+        return {}
         # First, we summarize the conversation
         summary = state.get("summary", "")
         if summary:
@@ -114,10 +127,10 @@ def create(*,
             summary_message = "Create a summary of the conversation above:"
         def has_content(message):
             try:
-                if  message.content:
+                if message.content:
                     return True
                 else:
-                    return fFalse
+                    return False
             except:
                 return False
         messages = filter(has_content, state["messages"])
@@ -131,7 +144,7 @@ def create(*,
         return {
             "summary": response.content,
             "messages": delete_messages,
-            "last_search_results": filter_last_search_in_public_chats_results(state)
+            "last_search_result": filter_last_search_in_public_chats_results(state)
         }
 
 
