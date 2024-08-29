@@ -47,7 +47,7 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
 }
 
 .chat-activity-banner.banner {
-    @apply h-auto;
+    @apply h-auto max-h-14;
     @apply pr-3;
 }
 .chat-activity-banner.banner:not(:has(.chat-activity-panel)) {

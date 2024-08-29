@@ -3,6 +3,7 @@
 @inherits FusionComponentBase
 @{
     var name = ShowAsYou ? "You" : Avatar.Name;
+    var flexClass = ShowAsYou ? "non-shrinkable" : "";
 }
 
 @if (ReferenceEquals(Avatar, Avatar.Loading)) {
@@ -16,7 +17,7 @@
     </span>
 } else {
     var extraClass = Click.HasDelegate ? " cursor-pointer" : "";
-    <span class="@Class @extraClass avatar-name" @onclick="@Click">
+    <span class="@Class @extraClass @flexClass avatar-name" @onclick="@Click">
         @name
     </span>
 

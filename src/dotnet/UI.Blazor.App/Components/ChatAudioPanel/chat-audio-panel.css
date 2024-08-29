@@ -10,7 +10,7 @@
 @media (orientation: portrait) {
     body.narrow .chat-audio-panel {
         @apply self-stretch items-center gap-x-8;
-        @apply h-11;
+        @apply h-12;
         @apply p-0;
         @apply rounded-b-4xl;
         @apply overflow-hidden;
@@ -26,7 +26,7 @@
     body.narrow .to-thick:not(.text-mode) .chat-audio-panel {
         @apply z-button;
         @apply gap-x-8;
-        @apply h-11;
+        @apply h-12;
         @apply py-0;
         background: linear-gradient(to top, var(--background-01) 5%, var(--background-01) 35%, transparent);
         transition: all 0ms;
@@ -168,7 +168,7 @@ body.narrow .chat-audio-panel .recorder-wrapper:active {
         @apply flex;
         @apply absolute;
         @apply -translate-x-1/2;
-        @apply -top-1;
+        @apply top-1;
         left: calc(50% + 6rem);
     }
 
@@ -223,7 +223,7 @@ body.narrow .chat-audio-panel .recorder-wrapper .btn {
 }
 @media (orientation: portrait) {
     body.narrow .chat-audio-panel .recorder-button {
-        @apply absolute -top-0.5;
+        @apply absolute top-1;
     }
     body.narrow .chat-audio-panel .recorder-wrapper {
         @apply flex;

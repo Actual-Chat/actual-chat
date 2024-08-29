@@ -22,6 +22,7 @@
     var tooltipText = showStatus ? "" : statusText;
     var tooltipPosition = showStatus ? FloatingPosition.None : FloatingPosition.Top;
     _oldRecordingLanguage = language;
+    var recordingIconSize = ScreenSize.IsNarrow() ? 10 : 8;
 }
 
 @if (m.HasMicrophonePermission != false) {
@@ -62,7 +63,11 @@
             @ontouchcancel="@OnPointerUp"
             @oncontextmenu="@OnContextMenu"
             data-context-menu-delay="200">
-            <i class="icon-stop-fill recorder-icon"></i>
+            @if (m.IsVoiceActive) {
+                <active-recording-svg size="@recordingIconSize"/>
+            } else {
+                <i class="icon-stop-fill recorder-icon"></i>
+            }
         </ButtonRound>
     </div>
 } else {

@@ -147,6 +147,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply absolute top-14 z-10;
     @apply flex-none flex-y;
     @apply w-full;
+    @apply -mt-px;
     @apply overflow-visible;
     @apply bg-transparent;
     @apply transition-height;

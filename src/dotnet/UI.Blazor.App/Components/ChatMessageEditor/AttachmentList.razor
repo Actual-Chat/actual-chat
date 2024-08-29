@@ -21,6 +21,9 @@
                 Send @_attachments.Count @("file".Pluralize(_attachments.Count))
             </Button>
         </div>
+        <ButtonRound Class="remove-all-btn btn-sm" Click="_ => Clear()">
+            <i class="icon-trash03 text-2xl text-danger"></i>
+        </ButtonRound>
         <ul class="attachment-list custom-scrollbar-x">
             @foreach (var attachment in _attachments) {
                 var progress = attachment.Progress;
@@ -66,6 +69,9 @@
                 Count="@_attachments.Count"
                 AddClick="@OnAddClick"/>
         </ul>
+        <ButtonRound Class="close-keyboard-btn btn-sm">
+            <i class="icon-chevron-up text-2xl text-03"></i>
+        </ButtonRound>
     </div>
 }
 
@@ -166,7 +172,7 @@
 
         Exception? TryAdd() {
             if (length > Constants.Attachments.FileSizeLimit)
-                return FileToBigError();
+                return FileTooBigError();
 
             if (_attachments.Count >= Constants.Attachments.FileCountLimit)
                 return StandardError.Constraint("Too many files. Max allowed number is 10.");
@@ -176,7 +182,7 @@
         }
     }
 
-    public static Exception FileToBigError()
+    public static Exception FileTooBigError()
         => StandardError.Constraint($"File is too big. Max file size: {Constants.Attachments.FileSizeLimit / 1024 / 1024}Mb.");
 
     [JSInvokable]
@@ -199,6 +205,9 @@
 
     private Task OnAddClick()
         => JSRef.InvokeVoidAsync("showFilePicker").AsTask();
+
+    private Task OnCloseKeyboard()
+        => JSRef.InvokeVoidAsync("closeKeyboard").AsTask();
 
     private Task OnRemoveClick(Attachment attachment) {
         lock (_lock)
