@@ -142,6 +142,7 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
 }
 .chat-list .navbar-item-content > .c-container > .c-description .c-incut {
     @apply flex-1;
+    @apply min-w-6;
 }
 .chat-list .navbar-item-content > .c-container > .c-description > .c-last-message {
     @apply flex-x items-end gap-x-1;
@@ -155,17 +156,20 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
     @apply bg-skeleton;
 }
 .chat-list .navbar-item-content .c-last-message .c-name {
-    @apply flex-none flex;
-    @apply max-w-1/2;
+    @apply flex;
     @apply truncate;
     @apply whitespace-pre;
     @apply text-xs text-02 font-medium;
+}
+.chat-list .navbar-item-content .c-last-message .c-name:has(.non-shrinkable) {
+    @apply flex-none;
 }
 .chat-list .navbar-item-content .c-last-message .c-colon {
     @apply -ml-1;
     @apply text-xs text-02 font-medium;
 }
 .chat-list .navbar-item-content .c-last-message .c-text {
+    @apply min-w-8;
     @apply truncate;
     @apply pointer-events-none;
 }
@@ -200,6 +204,7 @@ body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {
     @apply hidden;
 }
 .navbar-item .message-counter-badge {
+    @apply absolute right-2.5 bottom-1.5;
     @apply mx-0;
     @apply text-primary-title;
 }
@@ -227,6 +232,7 @@ body.hoverable .chat-list .navbar-item:hover .navbar-item-ending .slot.hoverable
 }
 .navbar-chats .tab-panel .tab-panel-tabs .message-counter-badge {
     @apply h-4 min-w-6;
+    @apply text-primary-title;
 }
 
 .sort-menu > .c-title {

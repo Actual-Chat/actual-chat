@@ -5,6 +5,7 @@ import { isSupportedImage, isSupportedVideo } from "media-types";
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
+import { MarkupEditor } from '../MarkupEditor/markup-editor';
 
 const { debugLog, errorLog } = Log.get('Attachments');
 
@@ -29,6 +30,7 @@ type ProgressReporter = (progressPercent: number) => void;
 
 export class AttachmentList {
     private readonly disposed$: Subject<void> = new Subject<void>();
+    private markupEditor: MarkupEditor;
     private attachments: Map<number, Attachment> = new Map<number, Attachment>();
     private uploads: Map<number, FileUpload> = new Map<number, FileUpload>();
     private attachmentsIdSeed: number = 0;
@@ -69,6 +71,11 @@ export class AttachmentList {
         }
         this.changed();
         return addedBlobs;
+    }
+
+    private closeKeyboard() {
+        console.log('closeKeyboard invoked.');
+        this.markupEditor.contentDiv.blur();
     }
 
     public async add(chatId: string, file: File): Promise<boolean> {
