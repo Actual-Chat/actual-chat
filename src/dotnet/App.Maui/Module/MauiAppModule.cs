@@ -30,7 +30,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // Session & authentication
         services.AddSingleton(c => new MauiSession(c));
-        services.AddScoped<IClientAuth>(c => new MauiClientAuth(c.UIHub()));
+        services.AddScoped<IClientAuth>(c => new MauiAuth(c.UIHub()));
 
         // UI
         services.Replace(ServiceDescriptor.Singleton<ReloadUI>(c => new MauiReloadUI(c))); // Replaces scoped ReloadUI

@@ -11,6 +11,7 @@ public class UIHub(IServiceProvider services) : Hub(services)
     private IAccounts? _accounts;
     private IAvatars? _avatars;
     private Media.IMediaLinkPreviews? _linkPreviews;
+    private ISearch? _search;
     private LoadingUI? _loadingUI;
     private ReloadUI? _reloadUI;
     private AccountUI? _accountUI;
@@ -43,7 +44,6 @@ public class UIHub(IServiceProvider services) : Hub(services)
     private Dispatcher? _dispatcher;
     private AppBlazorCircuitContext? _circuitContext;
     private IJSRuntime? _jsRuntime;
-    private ISearch? _search;
 
     public IFusionTime FusionTime => _fusionTime ??= Services.GetRequiredService<IFusionTime>();
     public LiveTime LiveTime => _liveTime ??= Services.GetRequiredService<LiveTime>();

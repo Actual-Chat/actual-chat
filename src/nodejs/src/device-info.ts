@@ -8,6 +8,7 @@ const isChromium = userAgentLowerCase.indexOf('chrome') >= 0;
 export const DeviceInfo = {
     isMobile: isMobile,
     isAndroid: isMobile && userAgentLowerCase.indexOf('android') >= 0,
+    isAndroidWebView: !!(window['Android'] as unknown),
     isIos: isMobile && /iphone|ipad|ipod/.test(userAgentLowerCase),
     isChromium: isChromium,
     isWebKit: userAgentLowerCase.indexOf('webkit') >= 0 && !isChromium,

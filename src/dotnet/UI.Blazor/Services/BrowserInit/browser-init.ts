@@ -1,11 +1,11 @@
 import { Connectivity } from 'connectivity';
+import { DeviceInfo } from 'device-info';
 import { EventHandlerSet } from "event-handling";
 import { delayAsync, PromiseSource } from 'promises';
 import { AppKind, BrowserInfo } from "../BrowserInfo/browser-info";
 import { Log, LogLevel } from 'logging';
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAnalytics, setAnalyticsCollectionEnabled, Analytics } from 'firebase/analytics';
-
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('BrowserInit');
 const IsAnalyticsEnabledSetting = 'isAnalyticsEnabled';
@@ -41,9 +41,11 @@ export class BrowserInit {
             this.baseUri = baseUri;
             this.sessionHash = sessionHash;
             this.initWindowId();
-            this.initAndroid();
+            if (DeviceInfo.isAndroidWebView)
+                void this.initAndroidWebView();
             if (appKind !== 'MauiApp')
                 void this.initFirebase();
+
             // this.preventSuspend();
             await BrowserInfo.init(browserInfoBackendRef, appKind);
         }
@@ -260,11 +262,7 @@ export class BrowserInit {
         });
     }
 
-    private static initAndroid(): void {
-        const android = window['Android'] as unknown;
-        if (!android)
-            return;
-
+    private static initAndroidWebView(): void {
         // In Android WebView readText and writeText operations fail with insufficient permissions,
         // and there is no way to grant these permissions.
         // https://stackoverflow.com/questions/61243646/clipboard-api-call-throws-notallowederror-without-invoking-onpermissionrequest

@@ -1,7 +1,8 @@
-// A critical one - just so you know it exists
+// The most critical one
 export * from './Services/BrowserInit/browser-init';
 
 // Please sort the imports alphabetically!
+export * from './Services/AccountUI/web-auth';
 export * from './Services/BrowserInfo/browser-info';
 export * from './Services/Caching/remote-computed-cache';
 export * from './Services/ClipboardUI/clipboard';
