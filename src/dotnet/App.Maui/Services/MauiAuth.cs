@@ -49,7 +49,7 @@ internal sealed class MauiAuth(UIHub hub) : IClientAuth
         }
 #endif
 
-        await WebSignInOrSignOut($"/sign-in/{schema}", "Sign-in").ConfigureAwait(false);
+        await WebSignInOrSignOut($"/signIn/{schema}", "Sign-in").ConfigureAwait(false);
     }
 
     public async Task SignOut()
@@ -60,7 +60,7 @@ internal sealed class MauiAuth(UIHub hub) : IClientAuth
             await googleAuth.SignOut().ConfigureAwait(true);
 #endif
 
-        await WebSignInOrSignOut("/sign-out", "Sign-out").ConfigureAwait(false);
+        await WebSignInOrSignOut("/signOut", "Sign-out").ConfigureAwait(false);
     }
 
     // Private methods
@@ -76,9 +76,7 @@ internal sealed class MauiAuth(UIHub hub) : IClientAuth
                 + $"&flow={flowName.UrlEncode()}"
                 + $"&appKind={HostInfo.AppKind:G}";
             if (MauiSettings.WebAuth.UseSystemBrowser) {
-                await Browser.Default.OpenAsync(url, BrowserLaunchMode.External).ConfigureAwait(false);
-                // NOTE(AY): WebView crashes on the call below in Android:
-                // await History.OpenNewWindow(url).ConfigureAwait(false);
+                _ = MauiBrowser.Open(url);
                 return;
             }
 
