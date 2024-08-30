@@ -21,10 +21,12 @@ public static class ClientAppStartup
         RemoteComputedSynchronizer.Default = new RemoteComputedSynchronizer() {
             TimeoutFactory = (_, ct) => Task.Delay(TimeSpan.FromSeconds(1), ct),
         };
+#if DEBUG
         if (OSInfo.IsWebAssembly && Constants.DebugMode.RpcCalls.LogExistingCacheEntryUpdates)
             RemoteComputeServiceInterceptor.Options.Default = new() {
                 LogCacheEntryUpdateSettings = (LogLevel.Information, 0),
             };
+#endif
         var remoteComputedCacheUpdateDelayTask = Task.Delay(2200)
             .ContinueWith(_ => RemoteComputedCache.UpdateDelayer = null, TaskScheduler.Default);
         RemoteComputedCache.UpdateDelayer = (_, _) => remoteComputedCacheUpdateDelayTask;
