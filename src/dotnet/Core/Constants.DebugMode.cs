@@ -35,7 +35,6 @@ public static partial class Constants
         // UI services
         public static readonly bool History = false;
         public static readonly bool ChatUI = false;
-        public static readonly bool ContactsUI = false;
 
         // UI components
         public static readonly bool ChatListComponents = false;
