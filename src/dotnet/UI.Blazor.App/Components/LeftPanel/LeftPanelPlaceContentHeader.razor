@@ -19,6 +19,7 @@
             MaxLength="@Constants.Chat.MaxSearchFilterLength"
             TextChanged="@OnSearchBoxTextChanged"/>
         <div class="c-icon">
+
             @if (m.Place.Background != null) {
                 <Pic
                     Title="@m.Place.Title"
@@ -26,7 +27,8 @@
                     Size="@SquareSize.SizeFull"
                     IsSquare="@true"
                     AvatarKind="@AvatarKind.Marble"
-                    AvatarKey="@m.Place.Id.Value"/>
+                    AvatarKey="@m.Place.Id.Value"
+                    ShowFullSizeImage="true"/>
             } else {
                 <Pic
                     Title="@m.Place.Title"
