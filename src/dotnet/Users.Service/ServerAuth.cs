@@ -49,7 +49,7 @@ public sealed class ServerAuth
             || OrdinalEquals(request.Path.Value, AppCloseFlowRequestPath);
         flowName = "";
         if (result && request.Query.TryGetValue("flow", out var flows))
-            flowName = flows.FirstOrDefault() ?? "";
+            flowName = (flows.FirstOrDefault() ?? "").Capitalize();
         redirectUrl = "";
         if (result && request.Query.TryGetValue("redirectUrl", out var returnUrls))
             redirectUrl = returnUrls.FirstOrDefault() ?? "";
