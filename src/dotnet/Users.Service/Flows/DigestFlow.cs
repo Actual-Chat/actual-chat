@@ -15,7 +15,7 @@ public partial class DigestFlow : Flow
 
     protected override async Task<FlowTransition> OnStart(CancellationToken cancellationToken)
     {
-        var userId = UserId.Parse(Id.Id);
+        var userId = UserId.Parse(Id.Arguments);
         var delay = await GetDelay(userId, cancellationToken).ConfigureAwait(false);
         return delay is null
             ? JumpToEnd()
