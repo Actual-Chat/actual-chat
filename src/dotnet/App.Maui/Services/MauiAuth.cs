@@ -76,7 +76,7 @@ internal sealed class MauiAuth(UIHub hub) : IClientAuth
                 + $"&flow={flowName.UrlEncode()}"
                 + $"&appKind={HostInfo.AppKind:G}";
             if (MauiSettings.WebAuth.UseSystemBrowser) {
-                await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred).ConfigureAwait(false);
+                await Browser.Default.OpenAsync(url, BrowserLaunchMode.External).ConfigureAwait(false);
                 // NOTE(AY): WebView crashes on the call below in Android:
                 // await History.OpenNewWindow(url).ConfigureAwait(false);
                 return;
