@@ -67,10 +67,11 @@
     [Parameter] public string? AvatarKey { get; set; }
     [Parameter] public RenderFragment? NoPicture { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+    [Parameter] public bool ShowFullSizeImage { get; set; }
 
     protected override void OnParametersSet() {
         _avatarKey = AvatarKey ?? Picture?.AvatarKey ?? "";
-        _pictureUrl = UrlMapper.PicturePreview128Url(Picture);
+        _pictureUrl = !ShowFullSizeImage ? UrlMapper.PicturePreview128Url(Picture) : UrlMapper.PicturePreviewUrl(Picture);
     }
 
     private async Task OnPictureClick(MouseEventArgs arg) {
