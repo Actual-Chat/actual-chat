@@ -4,7 +4,6 @@ using ActualChat.Users.Flows;
 
 namespace ActualChat.Users.IntegrationTests.Flows;
 
-[Collection(nameof(UserCollection))]
 public class MasterFlowTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(MasterFlowTest)}", TestAppHostOptions.Default, @out)
 {
