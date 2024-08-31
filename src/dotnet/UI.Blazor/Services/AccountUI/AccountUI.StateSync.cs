@@ -58,8 +58,6 @@ public partial class AccountUI
     private void ProcessOwnAccountChange(AccountFull account, AccountFull oldAccount)
     {
         Changed?.Invoke(account);
-        var history = Services.GetRequiredService<History>();
-        var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
         if (account.IsGuestOrNone) {
             // We're signed out now
             if (!oldAccount.IsGuestOrNone)
@@ -75,15 +73,15 @@ public partial class AccountUI
         }
 
         // We were signed out -> it's a sign-in
-        var onboardingUI = Services.GetRequiredService<IOnboardingUI>();
-        _ = onboardingUI.TryShow();
-        var signInRequest = SignInRequesterUI.Request;
-        if (signInRequest != null) {
+        _ = OnboardingUI.TryShow();
+        if (SignInRequesterUI.Request is { } signInRequest) {
             SignInRequesterUI.Clear();
             if (!signInRequest.RedirectTo.IsNullOrEmpty())
                 _ = History.NavigateTo(signInRequest.RedirectTo, true);
+            return;
         }
-        else if (!history.LocalUrl.IsChatOrChatRoot() && !history.LocalUrl.IsSettings() )
-            _ = autoNavigationUI.NavigateTo(Links.Chats, AutoNavigationReason.SignIn);
+
+        if (!History.LocalUrl.IsChatOrChatRoot() && !History.LocalUrl.IsSettings() )
+            _ = AutoNavigationUI.NavigateTo(Links.Chats, AutoNavigationReason.SignIn);
     }
 }

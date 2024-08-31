@@ -23,7 +23,7 @@ public partial class History
             // Saving the current state
             Save();
 
-            var uri = _uri = Nav.GetLocalUrl().Value;
+            var url = _url = Nav.GetLocalUrl().Value;
             var lastItem = _currentItem;
             if (lastItem.Id == 0)
                 throw StandardError.Internal("Something is off: CurrentItem.Id == 0");
@@ -34,7 +34,7 @@ public partial class History
             var hasValidHistoryEntryState = existingItemId > 0;
             var existingItem = hasValidHistoryEntryState && GetItemById(existingItemId) is { } item ? item : null;
             if (existingItem != null) {
-                if (OrdinalEquals(uri, existingItem.Uri)) {
+                if (OrdinalEquals(url, existingItem.Url)) {
                     currentItem = _currentItem = existingItem;
                     if (currentItem.OnNavigation is { IsNone: false } onNavigation) {
                         DebugLog?.LogDebug("LocationChange: OnNavigation action: {OnNavigation}", onNavigation);
@@ -46,7 +46,7 @@ public partial class History
                 }
                 else {
                     // Navigation with keeping the state but changing the Uri happened
-                    currentItem = _currentItem = existingItem.WithUri(uri);
+                    currentItem = _currentItem = existingItem.WithUrl(url);
                     ReplaceItem(ref currentItem, false);
                     locationChangeKind = LocationChangeKind.NewUri;
                 }

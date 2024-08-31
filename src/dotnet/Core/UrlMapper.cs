@@ -95,19 +95,19 @@ public sealed partial class UrlMapper
     /// Given a base URI (e.g., one previously returned by <see cref="BaseUri"/>),
     /// converts an absolute URI into one relative to the base URI prefix.
     /// </summary>
-    /// <param name="uri">An absolute URI that is within the space of the base URI.</param>
+    /// <param name="url">An absolute URI that is within the space of the base URI.</param>
     /// <returns>A relative URI path.</returns>
-    public string ToBaseRelativePath(string uri)
+    public string ToBaseRelativePath(string url)
     {
-        if (uri.OrdinalStartsWith(BaseUri!.OriginalString))
+        if (url.OrdinalStartsWith(BaseUri!.OriginalString))
         {
             // The absolute URI must be of the form "{baseUri}something" (where
             // baseUri ends with a slash), and from that we return "something"
-            return uri.Substring(BaseUri.OriginalString.Length);
+            return url.Substring(BaseUri.OriginalString.Length);
         }
 
-        var pathEndIndex = uri.IndexOfAny(UriPathEndChar);
-        var uriPathOnly = pathEndIndex < 0 ? uri : uri.Substring(0, pathEndIndex);
+        var pathEndIndex = url.IndexOfAny(UriPathEndChar);
+        var uriPathOnly = pathEndIndex < 0 ? url : url.Substring(0, pathEndIndex);
         if (OrdinalEquals($"{uriPathOnly}/", BaseUri.OriginalString))
         {
             // Special case: for the base URI "/something/", if you're at
@@ -116,10 +116,10 @@ public sealed partial class UrlMapper
             // whether the server would return the same page whether or not the
             // slash is present, but ASP.NET Core at least does by default when
             // using PathBase.
-            return uri.Substring(BaseUri.OriginalString.Length - 1);
+            return url.Substring(BaseUri.OriginalString.Length - 1);
         }
 
-        var message = $"The URI '{uri}' is not contained by the base URI '{BaseUri}'.";
+        var message = $"The URI '{url}' is not contained by the base URI '{BaseUri}'.";
         throw new ArgumentException(message);
     }
 

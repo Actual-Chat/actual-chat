@@ -11,15 +11,16 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     private readonly MutableState<Moment> _lastChangedAt;
     private readonly TimeSpan _maxInvalidationDelay;
     private IClientAuth? _clientAuth;
-    private INotificationUI? _notificationUI;
     private SignInRequesterUI? _signInRequesterUI;
 
     private IAccounts Accounts => Hub.Accounts;
     private AppBlazorCircuitContext CircuitContext => Hub.CircuitContext;
-    private SignInRequesterUI SignInRequesterUI => _signInRequesterUI ??= Services.GetRequiredService<SignInRequesterUI>();
     private IClientAuth ClientAuth => _clientAuth ??= Services.GetRequiredService<IClientAuth>();
+    private SignInRequesterUI SignInRequesterUI => _signInRequesterUI ??= Services.GetRequiredService<SignInRequesterUI>();
+    private IOnboardingUI OnboardingUI => Hub.OnboardingUI;
+    private INotificationUI NotificationUI => Hub.NotificationUI;
+    private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private History History => Hub.History;
-    private INotificationUI NotificationUI => _notificationUI ??= Services.GetRequiredService<INotificationUI>();
     private MomentClock CpuClock { get; }
 
     public Task WhenLoaded => _whenLoadedSource.Task;
@@ -31,8 +32,8 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     public AccountUI(UIHub hub) : base(hub)
     {
         CpuClock = Services.Clocks().CpuClock;
-
         StartedAt = CpuClock.Now;
+
         _maxInvalidationDelay = TimeSpan.FromSeconds(HostInfo.HostKind.IsServer() ? 0.5 : 2);
         var ownAccountComputed = Computed.GetExisting(() => Accounts.GetOwn(Session, default));
         var ownAccount = ownAccountComputed?.IsConsistent() == true &&  ownAccountComputed.HasValue ? ownAccountComputed.Value : null;

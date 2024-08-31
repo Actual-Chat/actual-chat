@@ -31,6 +31,8 @@ public class UIHub(IServiceProvider services) : Hub(services)
     private BubbleUI? _bubbleUI;
     private BannerUI? _bannerUI;
     private NavbarUI? _navbarUI;
+    private IOnboardingUI? _onboardingUI;
+    private INotificationUI? _notificationUI;
     private VisualMediaViewerUI? _visualMediaViewerUI;
     private Escapist? _escapist;
     private UICommander? _uiCommander;
@@ -70,6 +72,8 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public BubbleUI BubbleUI => _bubbleUI ??= Services.GetRequiredService<BubbleUI>();
     public BannerUI BannerUI => _bannerUI ??= Services.GetRequiredService<BannerUI>();
     public NavbarUI NavbarUI => _navbarUI ??= Services.GetRequiredService<NavbarUI>();
+    public IOnboardingUI OnboardingUI => _onboardingUI ??= Services.GetRequiredService<IOnboardingUI>();
+    public INotificationUI NotificationUI => _notificationUI ??= Services.GetRequiredService<INotificationUI>();
     public VisualMediaViewerUI VisualMediaViewerUI => _visualMediaViewerUI ??= Services.GetRequiredService<VisualMediaViewerUI>();
     public Escapist Escapist => _escapist ??= Services.GetRequiredService<Escapist>();
     public RenderVars RenderVars => _renderVars ??= Services.GetRequiredService<RenderVars>();

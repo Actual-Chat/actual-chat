@@ -14,5 +14,7 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
+    // Nested types
+
     public sealed record Model(string Reason = "");
 }

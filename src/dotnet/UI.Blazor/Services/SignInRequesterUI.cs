@@ -12,7 +12,7 @@ public class SignInRequesterUI(IServiceProvider services)
     public void Clear()
         => Request = null;
 
-    public Task NavigateToSignIn(string reason, string redirectTo)
+    public Task SignInFromHomeAndRedirect(string reason, string redirectTo)
     {
         Request = new SignInRequest(reason, redirectTo);
         return History.NavigateTo(Links.Home, true);

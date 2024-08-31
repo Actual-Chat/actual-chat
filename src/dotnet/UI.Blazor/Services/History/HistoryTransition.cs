@@ -7,7 +7,7 @@ public readonly record struct HistoryTransition(
     HistoryItem BaseItem,
     LocationChangeKind LocationChangeKind)
 {
-    public bool IsUriChanged => !OrdinalEquals(Item.Uri, BaseItem.Uri);
+    public bool IsUriChanged => !OrdinalEquals(Item.Url, BaseItem.Url);
 
     public override string ToString()
         => $"({LocationChangeKind}: {BaseItem} -> {Item})";

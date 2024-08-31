@@ -158,7 +158,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 }
             },
             CancellationToken.None);
-        History.CancelWhen(cts, x => !OrdinalEquals(x.Uri, sUri));
+        History.CancelWhen(cts, x => !OrdinalEquals(x.Url, sUri));
         await NavigateTo(entryId, true);
     }
 
