@@ -52,7 +52,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         var contentIndexerFactory = new Mock<IChatContentIndexerFactory>();
         contentIndexerFactory
             .Setup(f => f.Create(It.IsAny<ChatId>()))
-            .Returns(Mock.Of<IChatContentIndexer>());
+            .Returns(Task.FromResult(Mock.Of<IChatContentIndexer>()));
 
         var queues = QueuesMock.Create();
 
@@ -115,7 +115,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         var contentIndexerFactory = new Mock<IChatContentIndexerFactory>();
         contentIndexerFactory
             .Setup(f => f.Create(It.IsAny<ChatId>()))
-            .Returns(contentIndexer.Object);
+            .Returns(Task.FromResult(contentIndexer.Object));
 
         var queues = QueuesMock.Create();
 
@@ -168,7 +168,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         var contentIndexerFactory = new Mock<IChatContentIndexerFactory>();
         contentIndexerFactory
             .Setup(f => f.Create(It.IsAny<ChatId>()))
-            .Returns(contentIndexer.Object);
+            .Returns(Task.FromResult(contentIndexer.Object));
 
         var queues = QueuesMock.Create();
 
@@ -225,7 +225,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         var contentIndexerFactory = new Mock<IChatContentIndexerFactory>();
         contentIndexerFactory
             .Setup(f => f.Create(It.IsAny<ChatId>()))
-            .Returns(contentIndexer.Object);
+            .Returns(Task.FromResult(contentIndexer.Object));
 
         var queues = QueuesMock.Create();
 
@@ -284,7 +284,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         var contentIndexerFactory = new Mock<IChatContentIndexerFactory>();
         contentIndexerFactory
             .Setup(f => f.Create(It.IsAny<ChatId>()))
-            .Returns(contentIndexer.Object);
+            .Returns(Task.FromResult(contentIndexer.Object));
 
         QueuedCommand? command = null;
         var queues = QueuesMock.Create((cmd, _) => {
