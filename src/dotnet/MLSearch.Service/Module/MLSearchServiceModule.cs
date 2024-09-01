@@ -108,6 +108,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         services.AddSingleton<IChatInfoIndexer, ChatInfoIndexer>();
         services.AddSingleton<IChatContentIndexerFactory, ChatContentIndexerFactory>();
+        services.AddSingleton<IChatContentArrangerSelector, ChatContentArrangerSelector>();
         services.AddSingleton<IChatContentIndexWorker>(
             static c => c.CreateInstance<ChatContentIndexWorker>(
                 75,  // a number of updates between flushes

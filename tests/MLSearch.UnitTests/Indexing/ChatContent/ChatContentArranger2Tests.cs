@@ -35,7 +35,7 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
             .Returns<string>(d => {
                 var lines = d.Split(Environment.NewLine);
                 if (lines.Length == 1)
-                    return Task.FromResult(Option<bool>.Some(true));
+                    return Task.FromResult(Option.Some(true));
 
                 foreach (var supposedDialog in supposedDialogs) {
                     if (supposedDialog.Length < lines.Length)
@@ -52,10 +52,10 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
                     }
 
                     if (match)
-                        return Task.FromResult(Option<bool>.Some(true));
+                        return Task.FromResult(Option.Some(true));
                 }
 
-                return Task.FromResult(Option<bool>.Some(false));
+                return Task.FromResult(Option.Some(false));
             });
 
         return mock.Object;
