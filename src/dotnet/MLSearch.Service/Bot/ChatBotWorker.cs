@@ -40,5 +40,5 @@ internal sealed class ChatBotWorker(
 
     private IAsyncEnumerable<ChatEntry> GetUpdatedEntriesAsync(
         ChatId targetId, ChatContentCursor cursor, CancellationToken cancellationToken)
-        => chatUpdateLoader.LoadChatUpdatesAsync(targetId, cursor, cancellationToken);
+        => chatUpdateLoader.LoadChatUpdatesAsync(targetId, cursor.LastEntryVersion, cursor.LastEntryLocalId, cancellationToken);
 }

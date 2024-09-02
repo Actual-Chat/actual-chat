@@ -32,7 +32,7 @@ internal static class OpenSearchConfigurationServiceCollectionExt
                 }
             });
 
-        services.AddSingleton<IndexNames>();
+        services.AddSingleton<OpenSearchNames>();
         services.AddSingleton(_ => new OpenSearchNamingPolicy(JsonNamingPolicy.CamelCase));
 
         services.AddSingleton<IOpenSearchClient>(s => {
@@ -44,7 +44,9 @@ internal static class OpenSearchConfigurationServiceCollectionExt
                     ]))
                 .DefaultFieldNameInferrer(JsonNamingPolicy.CamelCase.ConvertName)
                 .DefaultMappingFor<ChatInfo>(map => map.RelationName(ChatInfoToChatSliceRelation.ChatInfoName))
-                .DefaultMappingFor<ChatSlice>(map => map.RelationName(ChatInfoToChatSliceRelation.ChatSliceName));
+                .DefaultMappingFor<ChatSlice>(map => map.RelationName(ChatInfoToChatSliceRelation.ChatSliceName))
+                .DefaultMappingFor<IndexedChat>(map => map.RoutingProperty(x => x.Id))
+                .DefaultMappingFor<IndexedEntry>(map => map.RoutingProperty(x => x.ChatId));
             if (!openSearchSettings.ClientCertificatePath.IsNullOrEmpty()) {
                 var certPath = Path.Combine(openSearchSettings.ClientCertificatePath, "tls.crt");
                 var keyPath = Path.Combine(openSearchSettings.ClientCertificatePath, "tls.key");
@@ -69,11 +71,11 @@ internal static class OpenSearchConfigurationServiceCollectionExt
 
         services
             .AddSingleton(
-                static c => c.CreateInstance<SettingsChangeTokenSource<SemanticIndexSettings>>(IndexNames.ChatContent))
+                static c => c.CreateInstance<SettingsChangeTokenSource<SemanticIndexSettings>>(OpenSearchNames.ChatContent))
             .AddAlias<ISettingsChangeTokenSource, SettingsChangeTokenSource<SemanticIndexSettings>>()
             .AddAlias<IOptionsChangeTokenSource<SemanticIndexSettings>, SettingsChangeTokenSource<SemanticIndexSettings>>();
 
-        foreach (var indexName in new[] { IndexNames.ChatCursor, IndexNames.ChatContentCursor }) {
+        foreach (var indexName in new[] { OpenSearchNames.ChatCursor, OpenSearchNames.ChatContentCursor }) {
             services
                 .AddSingleton(c => c.CreateInstance<SettingsChangeTokenSource<PlainIndexSettings>>(indexName))
                 .AddAlias<ISettingsChangeTokenSource, SettingsChangeTokenSource<PlainIndexSettings>>()
@@ -82,7 +84,7 @@ internal static class OpenSearchConfigurationServiceCollectionExt
 
         // ChatSlice engine registrations
         services.AddSingleton<ISearchEngine<ChatSlice>>(
-            static c => c.CreateInstance<SemanticSearchEngine<ChatSlice>>(IndexNames.ChatContent));
+            static c => c.CreateInstance<SemanticSearchEngine<ChatSlice>>(OpenSearchNames.ChatContent));
 
         return services;
     }

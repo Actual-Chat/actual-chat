@@ -1,18 +1,17 @@
 using ActualChat.MLSearch.Engine.OpenSearch.Setup;
-using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Engine;
 
-internal sealed class IndexNames
+internal sealed class OpenSearchNames
 {
     public const string MLPrefix = "ml";
     public const string IngestPipelineNameSuffix = "ingest-pipeline";
     public const string IndexNameSuffix = "index";
     public const string TemplateNameSuffix = "template";
-    public const string EntryIndexVersion = "v2"; // TODO: remove
+    public const string EntryIndexVersion = "v3";
     public const string UserIndexVersion = "v5";
-    public const string ChatIndexVersion = "v5";
-    public const string PlaceIndexVersion = "v2";
+    public const string GroupIndexVersion = "v5";
+    public const string PlaceIndexVersion = "v3";
 
     public const string TestPrefix = "test";
     public const string ChatContent = "chat-content";
@@ -26,12 +25,11 @@ internal sealed class IndexNames
     private string Prefix => string.IsNullOrEmpty(UniquePart) ? "sm-" : $"sm-{UniquePart}-"; // sm == "Search Module"
     public string CommonIndexTemplateName => $"{Prefix}common";
     public string CommonIndexPattern => $"{Prefix}*";
-    private string EntryIndexNamePrefix => $"{Prefix}entries-{EntryIndexVersion}"; // TODO: remove
-    public string EntryIndexTemplateName => EntryIndexNamePrefix.Trim('-'); // TODO: remove
-    public string EntryIndexPattern => $"{EntryIndexNamePrefix}*"; // TODO: remove
     public string UserIndexName => $"{Prefix}users-{UserIndexVersion}";
-    public string GroupIndexName => $"{Prefix}chats-{ChatIndexVersion}";
+    public string GroupIndexName => $"{Prefix}chats-{GroupIndexVersion}";
     public string PlaceIndexName => $"{Prefix}places-{PlaceIndexVersion}";
+    public string EntryIndexName => $"{Prefix}entries-{EntryIndexVersion}";
+    public string EntryCursorIndexName => $"{Prefix}entry-cursor-{EntryIndexVersion}";
 
     internal string GetFullName(string id, EmbeddingModelProps modelProps)
         => string.Join('-',
@@ -46,24 +44,4 @@ internal sealed class IndexNames
             id,
             IngestPipelineNameSuffix,
             modelProps.UniqueKey);
-    public IndexName GetIndexName(Chat.Chat chat)
-        => GetIndexName(chat.Id, chat.IsPublicPlaceChat());
-
-    public IndexName GetIndexName(ChatId chatId, bool isPublicPlaceChat)
-        => isPublicPlaceChat || chatId.IsPlaceRootChat
-            ? GetIndexName(chatId.PlaceId)
-            : GetIndexName(chatId.Value);
-
-    public IndexName GetIndexName(PlaceId placeId)
-        => GetIndexName(placeId.Value);
-
-    private string GetIndexName(string sid)
-        => $"{EntryIndexNamePrefix}-{sid.ToLowerInvariant()}";
-
-    // TODO: remove
-    public IEnumerable<IndexName> GetPeerChatSearchIndexNamePatterns(UserId userId)
-    {
-        yield return $"{EntryIndexNamePrefix}-p-{userId.Value.ToLowerInvariant()}-*";
-        yield return $"{EntryIndexNamePrefix}-p-*-{userId.Value.ToLowerInvariant()}";
-    }
 }

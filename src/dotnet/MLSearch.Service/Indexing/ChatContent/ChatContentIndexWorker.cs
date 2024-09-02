@@ -50,9 +50,8 @@ internal sealed class ChatContentIndexWorker(
             await chatInfoIndexer.IndexAsync(chatId, cancellationToken).ConfigureAwait(false);
         }
 
-        if (job.IndexingKind == IndexingKind.ChatInfo) {
+        if (job.IndexingKind != IndexingKind.ChatContent)
             return;
-        }
 
         var cursor = await LoadCursorAsync(chatId, cancellationToken).ConfigureAwait(false);
 
@@ -113,5 +112,5 @@ internal sealed class ChatContentIndexWorker(
 
     private IAsyncEnumerable<ChatEntry> GetUpdatedEntriesAsync(
         ChatId targetId, ChatContentCursor cursor, CancellationToken cancellationToken)
-        => chatUpdateLoader.LoadChatUpdatesAsync(targetId, cursor, cancellationToken);
+        => chatUpdateLoader.LoadChatUpdatesAsync(targetId, cursor.LastEntryVersion, cursor.LastEntryLocalId, cancellationToken);
 }

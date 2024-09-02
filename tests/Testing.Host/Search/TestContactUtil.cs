@@ -1,6 +1,6 @@
 using ActualChat.Chat;
 using ActualChat.Users;
-using ITestGroupChatMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestChatKey, ActualChat.Chat.Chat>;
+using ITestGroupChatMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestGroupKey, ActualChat.Chat.Chat>;
 using ITestPlaceMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestPlaceKey, ActualChat.Chat.Place>;
 using ITestUserMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestUserKey, ActualChat.Users.AccountFull>;
 
@@ -35,17 +35,17 @@ public static class TestContactUtil
 
     public static async Task<ITestGroupChatMap> CreateGroupContacts(this IWebTester tester, AccountFull contactOwner, ITestPlaceMap places, int nonPlaceChatIndexCount = 2, int placeChatIndexCount = 2, string uniquePart = "")
     {
-        var chats = new Dictionary<TestChatKey, Chat.Chat>();
+        var chats = new Dictionary<TestGroupKey, Chat.Chat>();
         await GenerateChats(null, nonPlaceChatIndexCount, null);
         foreach (var (placeKey, place) in places)
             await GenerateChats(placeKey, placeChatIndexCount, place);
 
         return chats;
 
-        string GetChatTitle(TestChatKey key)
+        string GetChatTitle(TestGroupKey key)
             => $"{GetPlaceTitle(contactOwner, key.PlaceKey)} - {GetTitleChatPart(key)}";
 
-        string GetTitleChatPart(TestChatKey key)
+        string GetTitleChatPart(TestGroupKey key)
             => $"{GetVisibilityString(key.IsPublic)} chat {GetIndexString(key.Index)} {uniquePart} {GetMembershipSuffix(contactOwner, key.MustJoin)}";
 
         async Task GenerateChats(TestPlaceKey? placeKey, int chatCount, Place? place)
@@ -59,7 +59,7 @@ public static class TestContactUtil
                     if (placeKey?.MustJoin == true && !mustJoin && isPublic)
                         continue;
 
-                    var key = new TestChatKey(placeKey, i, isPublic, mustJoin);
+                    var key = new TestGroupKey(placeKey, i, isPublic, mustJoin);
                     var (chat, _) = await tester.CreateAndGetChat(isPublic, GetChatTitle(key), place?.Id);
                     if (key.NeedsExplicitJoin)
                         await tester.InviteToChat(chat.Id, contactOwner);

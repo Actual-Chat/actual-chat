@@ -175,6 +175,9 @@ internal sealed class ChatIndexInitializerShard(
         {
             var job = new MLSearch_TriggerChatIndexing(chatId, IndexingKind.ChatContent);
             await queues.Enqueue(job, cancellationToken).ConfigureAwait(false);
+
+            var entriesJob = new MLSearch_TriggerChatIndexing(chatId, IndexingKind.ChatEntries);
+            await queues.Enqueue(entriesJob, cancellationToken).ConfigureAwait(false);
         }
     }
 

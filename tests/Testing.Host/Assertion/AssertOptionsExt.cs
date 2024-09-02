@@ -1,5 +1,5 @@
-using ActualChat.Chat;
 using ActualChat.Search;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Users;
 using ActualLab.Versioning;
 using FluentAssertions.Equivalency;
@@ -32,7 +32,21 @@ public static class AssertOptionsExt
         this EquivalencyAssertionOptions<ContactSearchResult> options)
         => options.Excluding(x => x.SearchMatch);
 
+    public static EquivalencyAssertionOptions<EntrySearchResult> ExcludingSearchMatch(
+        this EquivalencyAssertionOptions<EntrySearchResult> options)
+        => options.Excluding(x => x.SearchMatch);
+
     public static EquivalencyAssertionOptions<Notification.Notification> Text(
         this EquivalencyAssertionOptions<Notification.Notification> options)
         => options.Including(x => x.Title).Including(x => x.Content);
+
+    public static EquivalencyAssertionOptions<FoundContact> ExcludingSearchMatch(
+        this EquivalencyAssertionOptions<FoundContact> options)
+        => options.Excluding(x => x.SearchResult.SearchMatch);
+
+    public static EquivalencyAssertionOptions<FoundContact> ExcludingBorders(
+        this EquivalencyAssertionOptions<FoundContact> options)
+        => options.Excluding(x => x.IsFirstInGroup)
+            .Excluding(x => x.IsLastInGroup)
+            .Excluding(x => x.CanScopeBeExpanded);
 }

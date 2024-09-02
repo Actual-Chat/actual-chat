@@ -511,32 +511,32 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return dbChat?.ToModel();
     }
 
-    public async Task<ApiList<ChatEntry>> ListChangedEntries(
+    public async Task<ApiArray<ChatEntry>> ListChangedEntries(
         ChatId chatId,
-        long maxLocalIdInclusive,
-        long minVersionExclusive,
+        long lastLid,
+        long minVersion,
         int limit,
         CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        // TODO: This method on subsequent calls has risk to stuck or return duplicates
-        // in the case there are multiple entries with the same version.
-        return await dbContext.ChatEntries.Where(x
-                => x.ChatId == chatId.Value
-                && x.Kind == ChatEntryKind.Text
-                && x.Version > minVersionExclusive
-                && x.LocalId <= maxLocalIdInclusive)
+        var entriesQuery = lastLid > 0
+            ? dbContext.ChatEntries.Where(x => x.Version >= minVersion)
+            : dbContext.ChatEntries.Where(x => x.Version > minVersion || (x.Version == minVersion && x.LocalId > lastLid));
+
+        return await entriesQuery
+            .Where(x => x.ChatId == chatId.Value && x.Kind == ChatEntryKind.Text)
             .OrderBy(x => x.Version)
+            .ThenBy(x => x.Id)
             .Take(limit)
             .AsAsyncEnumerable()
             .Select(x => x.ToModel())
-            .ToApiListAsync(cancellationToken)
+            .ToApiArrayAsync(cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public async Task<ApiList<ChatEntry>> ListNewEntries(
+    public async Task<ApiArray<ChatEntry>> ListNewEntries(
         ChatId chatId,
         long minLocalIdExclusive,
         int limit,
@@ -545,16 +545,17 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        return await dbContext.ChatEntries.Where(x
+        var dbEntries = await dbContext.ChatEntries.Where(x
                 => x.ChatId == chatId.Value
                 && x.Kind == ChatEntryKind.Text
                 && x.LocalId > minLocalIdExclusive)
             .OrderBy(x => x.LocalId)
             .Take(limit)
-            .AsAsyncEnumerable()
-            .Select(x => x.ToModel())
-            .ToApiListAsync(cancellationToken)
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        return dbEntries
+            .Select(x => x.ToModel())
+            .ToApiArray();
     }
 
     // Not a [ComputeMethod]!
@@ -967,11 +968,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         if (entryKind != ChatEntryKind.Text)
             return entry;
-        if (changeKind == ChangeKind.Remove)
-            return entry;
 
         if (chatId is { IsPlaceChat: true, PlaceChatId.IsRoot: false })
             await EnsurePlaceChatAuthorExists(entry.AuthorId).ConfigureAwait(false);
+        if (changeKind == ChangeKind.Remove) {
+            await EnqueueChangedEvent().ConfigureAwait(false);
+            return entry;
+        }
 
         if (entry.IsStreaming)
             return entry;
@@ -992,9 +995,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
 
         // Let's enqueue the TextEntryChangedEvent
-        var authorId = entry.AuthorId;
-        var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
-        context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind, oldEntry));
+        await EnqueueChangedEvent().ConfigureAwait(false);
         return entry;
 
         ChatEntry ApplyDiff(ChatEntry originalEntry, ChatEntryDiff? diff, bool isUpdate)
@@ -1061,7 +1062,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     IsAnonymous = false,
                     HasLeft = false,
                 });
-            author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+
+        async Task EnqueueChangedEvent()
+        {
+            var authorId = entry.AuthorId;
+            var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+            context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind, oldEntry));
         }
     }
 

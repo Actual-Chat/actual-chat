@@ -7,7 +7,7 @@ namespace ActualChat.Testing.Host.Assertion;
 public static class ActualFluentFormatters
 {
     private static readonly object Lock = new ();
-    private static volatile bool _isUsed = false;
+    private static volatile bool _isUsed;
 
     public static void Use()
     {
@@ -23,6 +23,7 @@ public static class ActualFluentFormatters
             Add<ContactFormatter>();
             Add<ContactSearchResultFormatter>();
             Add<FoundContactFormatter>();
+            Add<EntrySearchResultFormatter>();
             _isUsed = true;
         }
     }
@@ -41,6 +42,7 @@ public static class ActualFluentFormatters
             Remove<ContactFormatter>();
             Remove<ContactSearchResultFormatter>();
             Remove<FoundContactFormatter>();
+            Remove<EntrySearchResultFormatter>();
             _isUsed = false;
         }
     }

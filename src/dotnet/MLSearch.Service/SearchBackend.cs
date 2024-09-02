@@ -1,6 +1,7 @@
 using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.MLSearch.Db;
+using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Indexing;
@@ -9,19 +10,18 @@ using ActualChat.Queues;
 using ActualChat.Search;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.AspNetCore.Http;
+using Microsoft.IdentityModel.Tokens;
 using OpenSearch.Client;
+using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
 
 namespace ActualChat.MLSearch;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDbContext>(services), ISearchBackend
 {
-    private const int MaxRefreshChatCount = 100;
-
     private MLSearchSettings Settings { get; } = services.GetRequiredService<MLSearchSettings>();
-    private IndexNames IndexNames { get; } = services.GetRequiredService<IndexNames>();
+    private OpenSearchNames OpenSearchNames { get; } = services.GetRequiredService<OpenSearchNames>();
     private IOpenSearchClient OpenSearchClient { get; } = services.GetRequiredService<IOpenSearchClient>();
-    private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private IPlacesBackend PlacesBackend { get; } = services.GetRequiredService<IPlacesBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private UserContactIndexer UserContactIndexer { get; } = services.GetRequiredService<UserContactIndexer>();
@@ -30,69 +30,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     private OpenSearchConfigurator OpenSearchConfigurator { get; } = services.GetRequiredService<OpenSearchConfigurator>();
     private IQueues Queues { get; } = services.Queues();
     private ILogger? DebugLog => Constants.DebugMode.OpenSearchRequest ? Log : null;
-
-    [ComputeMethod]
-    protected virtual async Task<ApiSet<string>> GetIndicesForEntrySearch(UserId userId, CancellationToken cancellationToken)
-    {
-        if (!Settings.IsEnabled) {
-            Log.LogWarning($"{nameof(GetIndicesForEntrySearch)}: search is disabled");
-            return ApiSet<string>.Empty;
-        }
-
-        // public place chats are not returned since we use scoped indexes
-        var contactIds = await ContactsBackend.ListIdsForEntrySearch(userId, cancellationToken).ConfigureAwait(false);
-        var indices = new List<IndexName>(IndexNames.GetPeerChatSearchIndexNamePatterns(userId));
-        indices.AddRange(contactIds.Select(x => IndexNames.GetIndexName(x.ChatId, false)));
-        return indices.Select(x => x.ToString()).ToApiSet();
-    }
-
-    // Non-compute methods
-
-    // Not a [ComputeMethod]!
-    public async Task<EntrySearchResultPage> FindEntriesInChat(
-        ChatId chatId,
-        string criteria,
-        int skip,
-        int limit,
-        CancellationToken cancellationToken)
-    {
-        if (!Settings.IsEnabled) {
-            Log.LogWarning($"{nameof(FindEntriesInChat)}: search is disabled");
-            return EntrySearchResultPage.Empty;
-        }
-
-        var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
-        return await FindEntries(IndexNames.GetIndexName(chat),
-            criteria,
-            skip,
-            limit,
-            cancellationToken).ConfigureAwait(false);
-    }
-
-    // Not a [ComputeMethod]!
-    public async Task<EntrySearchResultPage> FindEntriesInAllChats(
-        UserId userId,
-        string criteria,
-        int skip,
-        int limit,
-        CancellationToken cancellationToken)
-    {
-        if (!Settings.IsEnabled) {
-            Log.LogWarning($"{nameof(FindEntriesInAllChats)}: search is disabled");
-            return EntrySearchResultPage.Empty;
-        }
-
-        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
-            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
-
-        var indices = await GetIndicesForEntrySearch(userId, cancellationToken).ConfigureAwait(false);
-        return await FindEntries(indices.ToArray(),
-                criteria,
-                skip,
-                limit,
-                cancellationToken)
-            .ConfigureAwait(false);
-    }
 
     // Not a [ComputeMethod]!
     public async Task<ContactSearchResultPage> FindContacts(
@@ -107,9 +44,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
-
         query = query.Clamp();
-
         return query.Scope switch {
             ContactSearchScope.People => await FindPeople(ownerId, query, cancellationToken).ConfigureAwait(false),
             ContactSearchScope.Groups => await FindGroups(ownerId, query, cancellationToken).ConfigureAwait(false),
@@ -119,189 +54,20 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     }
 
     // Not a [ComputeMethod]!
-    private async Task<ContactSearchResultPage> FindPeople(
+    public async Task<EntrySearchResultPage> FindEntries(
         UserId userId,
-        ContactSearchQuery query,
+        EntrySearchQuery query,
         CancellationToken cancellationToken)
     {
-        var ownContactIds = await ContactsBackend
-            .ListIdsForUserContactSearch(userId, cancellationToken)
-            .ConfigureAwait(false);
-        if (ownContactIds.IsEmpty && query.Own)
-            return ContactSearchResultPage.Empty;
-
-        var linkedUserIds = ownContactIds.Select(x => x.ChatId.PeerChatId.UserIds.OtherThan(userId)).ToList();
-        var searchResponse =
-            await OpenSearchClient.SearchAsync<IndexedUserContact>(s
-                        => s.Index(IndexNames.UserIndexName)
-                            .From(query.Skip)
-                            .Size(query.Limit)
-                            .Query(qq => qq.Bool(ConfigureQueryDescriptor))
-                            .IgnoreUnavailable()
-                            .Highlight(h => h.Fields(f => f.Field(x => x.FullName)))
-                            .Log(OpenSearchClient, DebugLog, "People search request"),
-                    cancellationToken)
-                .Assert(Log)
-                .ConfigureAwait(false);
-        if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
-            return ContactSearchResultPage.Empty;
-        return new ContactSearchResultPage {
-            Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
-            Offset = query.Skip,
-        };
-
-        BoolQueryDescriptor<IndexedUserContact> ConfigureQueryDescriptor(
-            BoolQueryDescriptor<IndexedUserContact> descriptor)
-            => descriptor.Must(q
-                        => q.MultiMatch(
-                            m
-                                => m.Fields(x => x.FullName, x => x.FirstName, x => x.SecondName)
-                                    .Query(query.Criteria)
-                                    .Type(TextQueryType.PhrasePrefix)
-                                    .Operator(Operator.Or)
-                                    .Slop(10)),
-                    query.Own
-                        ? q => q.Terms(m => m.Field(x => x.Id).Terms(linkedUserIds))
-                        : null,
-                    query.MustFilterByPlace
-                        ? q => q.Match(m => m.Field(x => x.PlaceIds).Query(query.PlaceId.Value))
-                        : null)
-                .MustNot(q => q.Match(m => m.Field(x => x.Id).Query(userId)),
-                    query.Own
-                        ? null
-                        : q => q.Terms(m => m.Field(x => x.Id).Terms(linkedUserIds)));
-
-        ContactSearchResult ToSearchResult(IHit<IndexedUserContact> hit)
-        {
-            var peerChatId = new PeerChatId(userId, UserId.Parse(hit.Source!.Id));
-            var contactId = new ContactId(userId, peerChatId.ToChatId());
-
-            return new ContactSearchResult(contactId, hit.GetSearchMatch());
-        }
-    }
-
-    // Not a [ComputeMethod]!
-    private async Task<ContactSearchResultPage> FindGroups(
-        UserId userId,
-        ContactSearchQuery query,
-        CancellationToken cancellationToken)
-    {
-        var ownGroupContactIds = await ContactsBackend.ListIdsForGroupContactSearch(userId, query.PlaceId, cancellationToken).ConfigureAwait(false);
-        if (ownGroupContactIds.IsEmpty && query.Own)
-            return ContactSearchResultPage.Empty;
-
-        var ownGroupIds = ownGroupContactIds.Select(x => x.ChatId).ToList();
-        var searchResponse =
-            await OpenSearchClient.SearchAsync<IndexedGroupChatContact>(s
-                        => s.Index(IndexNames.GroupIndexName)
-                            .From(query.Skip)
-                            .Size(query.Limit)
-                            .Query(qq => qq.Bool(ConfigureQueryDescriptor))
-                            .IgnoreUnavailable()
-                            .Highlight(h => h.Fields(f => f.Field(x => x.Title)))
-                            .Log(OpenSearchClient, DebugLog, "Group search request"),
-                    cancellationToken)
-                .Assert(Log)
-                .ConfigureAwait(false);
-        if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
-            return ContactSearchResultPage.Empty;
-        return new ContactSearchResultPage {
-            Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
-            Offset = query.Skip,
-        };
-
-        BoolQueryDescriptor<IndexedGroupChatContact> ConfigureQueryDescriptor(BoolQueryDescriptor<IndexedGroupChatContact> descriptor)
-            => descriptor
-                .Must(q => q.MatchBoolPrefix(p => p.Query(query.Criteria).Field(x => x.Title).Operator(Operator.And)),
-                    query.MustFilterByPlace
-                        ? q => q.Term(t => t.Field(x => x.PlaceId).Value(query.PlaceId.Value))
-                        : null,
-                    query.Own
-                        ? q => q.Terms(t => t.Field(x => x.Id).Terms(ownGroupIds))
-                        : q => q.Term(t => t.Field(x => x.IsPublic).Value(true)))
-                .MustNot(
-                    query.Own
-                        ? null
-                        : q => q.Terms(t => t.Field(x => x.Id).Terms(ownGroupIds)));
-
-        ContactSearchResult ToSearchResult(IHit<IndexedGroupChatContact> hit)
-            => new (new ContactId(userId, ChatId.Parse(hit.Source!.Id)), hit.GetSearchMatch());
-    }
-
-    // Not a [ComputeMethod]!
-    private async Task<ContactSearchResultPage> FindPlaces(
-        UserId userId,
-        ContactSearchQuery query,
-        CancellationToken cancellationToken)
-    {
-        var ownPlaceIds = await ContactsBackend.ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
-        if (ownPlaceIds.IsEmpty && query.Own)
-            return ContactSearchResultPage.Empty;
-
-        var searchResponse =
-            await OpenSearchClient.SearchAsync<IndexedPlaceContact>(s
-                        => s.Index(IndexNames.PlaceIndexName)
-                            .From(query.Skip)
-                            .Size(query.Limit)
-                            .Query(qq => qq.Bool(ConfigureQueryDescriptor))
-                            .IgnoreUnavailable()
-                            .Highlight(h => h.Fields(f => f.Field(x => x.Title)))
-                            .Log(OpenSearchClient, DebugLog, "Place search request"),
-                    cancellationToken)
-                .Assert(Log)
-                .ConfigureAwait(false);
-        if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
-            return ContactSearchResultPage.Empty;
-
-        return new ContactSearchResultPage {
-            Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
-            Offset = query.Skip,
-        };
-
-        BoolQueryDescriptor<IndexedPlaceContact> ConfigureQueryDescriptor(
-            BoolQueryDescriptor<IndexedPlaceContact> descriptor)
-            => descriptor
-                .Must(q => q.MatchBoolPrefix(p => p.Query(query.Criteria).Field(x => x.Title).Operator(Operator.And)),
-                    query.Own
-                        ? q => q.Terms(t => t.Field(x => x.Id).Terms(ownPlaceIds))
-                        : q => q.Term(t => t.Field(x => x.IsPublic).Value(true)))
-                .MustNot(query.Own
-                    ? null
-                    : q => q.Terms(t => t.Field(x => x.Id).Terms(ownPlaceIds)));
-
-        ContactSearchResult ToSearchResult(IHit<IndexedPlaceContact> hit)
-            => new (new ContactId(userId, PlaceId.Parse(hit.Source!.Id).ToRootChatId()), hit.GetSearchMatch());
-    }
-
-    // [CommandHandler]
-    public virtual async Task OnEntryBulkIndex(SearchBackend_EntryBulkIndex command, CancellationToken cancellationToken)
-    {
-        var chatId = command.ChatId.Require();
-        if (Invalidation.IsActive)
-            return;
-
         if (!Settings.IsEnabled) {
-            Log.LogWarning($"{nameof(OnEntryBulkIndex)}: search is disabled");
-            return;
+            Log.LogWarning($"{nameof(FindEntries)}: search is disabled");
+            return EntrySearchResultPage.Empty;
         }
-
-        var entriesWithUnexpectedChat = command.Updated.Where(x => !x.ChatId.IsNone && x.ChatId != chatId).ToList();
-        if (entriesWithUnexpectedChat.Count > 0)
-            throw StandardError.Constraint($"All indexed entries must have chat #{chatId}");
-
-        var updated = command.Updated
-            .Require(IndexedEntry.MustBeValid)
-            .ToList();
-        if (updated.Count == 0 && command.Deleted.Count == 0)
-            return;
 
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
-
-        var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
-        var indexName = IndexNames.GetIndexName(chat);
-
-        await IndexEntries(updated, command.Deleted, indexName, cancellationToken).ConfigureAwait(false);
+        query = query.Clamp();
+        return await FindEntriesInOpenSearch(userId, query, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -366,10 +132,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     // [CommandHandler]
     public virtual async Task OnRefresh(SearchBackend_Refresh command, CancellationToken cancellationToken)
     {
-        var chatIds = command.ChatIds;
-        if (chatIds.Count > MaxRefreshChatCount)
-            throw StandardError.Internal("Max chat count to index is " + MaxRefreshChatCount);
-
         if (Invalidation.IsActive)
             return;
 
@@ -378,15 +140,15 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             return;
         }
 
-        var chats = await chatIds.Select(x => ChatsBackend.Get(x, cancellationToken)).Collect().ConfigureAwait(false);
         var indices = new List<IndexName>();
         if (command.RefreshUsers)
-            indices.Add(IndexNames.UserIndexName);
+            indices.Add(OpenSearchNames.UserIndexName);
         if (command.RefreshGroups)
-            indices.Add(IndexNames.GroupIndexName);
+            indices.Add(OpenSearchNames.GroupIndexName);
         if (command.RefreshPlaces)
-            indices.Add(IndexNames.PlaceIndexName);
-        indices.AddRange(chats.SkipNullItems().Select(IndexNames.GetIndexName).Distinct());
+            indices.Add(OpenSearchNames.PlaceIndexName);
+        if (command.RefreshEntries)
+            indices.Add(OpenSearchNames.EntryIndexName);
         if (indices.Count == 0)
             return;
 
@@ -522,26 +284,14 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
     // Private methods
 
-    private Task IndexEntries(
-        IReadOnlyCollection<IndexedEntry> updated,
-        IReadOnlyCollection<IndexedEntry> deleted,
-        IndexName indexName,
-        CancellationToken cancellationToken)
-        => OpenSearchClient
-            .BulkAsync(r => r
-                    .IndexMany(updated, (op, _) => op.Index(indexName))
-                    .DeleteMany(deleted, (op, _) => op.Index(indexName)),
-                cancellationToken)
-            .Assert(Log);
-
     private Task IndexUserContacts(
         IReadOnlyCollection<IndexedUserContact> updated,
         IReadOnlyCollection<IndexedUserContact> deleted,
         CancellationToken cancellationToken)
         => OpenSearchClient
             .BulkAsync(r => r
-                    .IndexMany(updated, (op, _) => op.Index(IndexNames.UserIndexName))
-                    .DeleteMany(deleted, (op, _) => op.Index(IndexNames.UserIndexName)),
+                    .IndexMany(updated, (op, _) => op.Index(OpenSearchNames.UserIndexName))
+                    .DeleteMany(deleted, (op, _) => op.Index(OpenSearchNames.UserIndexName)),
                 cancellationToken)
             .Assert(Log);
 
@@ -551,8 +301,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         CancellationToken cancellationToken)
         => OpenSearchClient
             .BulkAsync(r
-                    => r.IndexMany(updated, (op, _) => op.Index(IndexNames.GroupIndexName))
-                        .DeleteMany(deleted, (op, _) => op.Index(IndexNames.GroupIndexName)),
+                    => r.IndexMany(updated, (op, _) => op.Index(OpenSearchNames.GroupIndexName))
+                        .DeleteMany(deleted, (op, _) => op.Index(OpenSearchNames.GroupIndexName)),
                 cancellationToken)
             .Assert(Log);
 
@@ -562,32 +312,189 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         CancellationToken cancellationToken)
         => OpenSearchClient
             .BulkAsync(r
-                    => r.IndexMany(updated, (op, _) => op.Index(IndexNames.PlaceIndexName))
-                        .DeleteMany(deleted, (op, _) => op.Index(IndexNames.PlaceIndexName)),
+                    => r.IndexMany(updated, (op, _) => op.Index(OpenSearchNames.PlaceIndexName))
+                        .DeleteMany(deleted, (op, _) => op.Index(OpenSearchNames.PlaceIndexName)),
                 cancellationToken)
             .Assert(Log);
 
-    private async Task<EntrySearchResultPage> FindEntries(
-        Indices indices,
-        string criteria,
-        int skip,
-        int limit,
+    private async Task<ContactSearchResultPage> FindPeople(
+        UserId userId,
+        ContactSearchQuery query,
+        CancellationToken cancellationToken)
+    {
+        var ownContactIds = await ContactsBackend
+            .ListIdsForUserContactSearch(userId, cancellationToken)
+            .ConfigureAwait(false);
+        if (ownContactIds.IsEmpty && query.Own)
+            return ContactSearchResultPage.Empty;
+
+        var linkedUserIds = ownContactIds.Select(x => x.ChatId.PeerChatId.UserIds.OtherThan(userId)).ToList();
+        var searchResponse =
+            await OpenSearchClient.SearchAsync<IndexedUserContact>(s
+                        => s.Index(OpenSearchNames.UserIndexName)
+                            .From(query.Skip)
+                            .Size(query.Limit)
+                            .Query(qq => qq.Bool(ConfigureQuery))
+                            .IgnoreUnavailable()
+                            .Highlight(h => h.Fields(f => f.Field(x => x.FullName)))
+                            .Log(OpenSearchClient, DebugLog, "People search request"),
+                    cancellationToken)
+                .Assert(Log)
+                .ConfigureAwait(false);
+        if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
+            return ContactSearchResultPage.Empty;
+        return new ContactSearchResultPage {
+            Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
+            Offset = query.Skip,
+        };
+
+        BoolQueryDescriptor<IndexedUserContact> ConfigureQuery(
+            BoolQueryDescriptor<IndexedUserContact> descriptor)
+            => descriptor.Must(q
+                        => q.MultiMatch(
+                            m
+                                => m.Fields(x => x.FullName, x => x.FirstName, x => x.SecondName)
+                                    .Query(query.Criteria)
+                                    .Type(TextQueryType.PhrasePrefix)
+                                    .Operator(Operator.Or)
+                                    .Slop(10)),
+                    query.Own
+                        ? q => q.Terms(m => m.Field(x => x.Id).Terms(linkedUserIds))
+                        : null,
+                    query.MustFilterByPlace
+                        ? q => q.Match(m => m.Field(x => x.PlaceIds).Query(query.PlaceId.Value))
+                        : null)
+                .MustNot(q => q.Match(m => m.Field(x => x.Id).Query(userId)),
+                    query.Own
+                        ? null
+                        : q => q.Terms(m => m.Field(x => x.Id).Terms(linkedUserIds)));
+
+        ContactSearchResult ToSearchResult(IHit<IndexedUserContact> hit)
+        {
+            var peerChatId = new PeerChatId(userId, UserId.Parse(hit.Source!.Id));
+            var contactId = new ContactId(userId, peerChatId.ToChatId());
+
+            return new ContactSearchResult(contactId, hit.GetSearchMatch());
+        }
+    }
+
+    private async Task<ContactSearchResultPage> FindGroups(
+        UserId userId,
+        ContactSearchQuery query,
+        CancellationToken cancellationToken)
+    {
+        var ownGroupContactIds = await ContactsBackend.ListIdsForGroupContactSearch(userId, query.PlaceId, cancellationToken).ConfigureAwait(false);
+        if (ownGroupContactIds.IsEmpty && query.Own)
+            return ContactSearchResultPage.Empty;
+
+        var ownGroupIds = ownGroupContactIds.Select(x => x.ChatId).ToList();
+        var searchResponse =
+            await OpenSearchClient.SearchAsync<IndexedGroupChatContact>(s
+                        => s.Index(OpenSearchNames.GroupIndexName)
+                            .From(query.Skip)
+                            .Size(query.Limit)
+                            .Query(qq => qq.Bool(ConfigureQuery))
+                            .IgnoreUnavailable()
+                            .Highlight(h => h.Fields(f => f.Field(x => x.Title)))
+                            .Log(OpenSearchClient, DebugLog, "Group search request"),
+                    cancellationToken)
+                .Assert(Log)
+                .ConfigureAwait(false);
+        if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
+            return ContactSearchResultPage.Empty;
+        return new ContactSearchResultPage {
+            Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
+            Offset = query.Skip,
+        };
+
+        BoolQueryDescriptor<IndexedGroupChatContact> ConfigureQuery(BoolQueryDescriptor<IndexedGroupChatContact> descriptor)
+            => descriptor
+                .Must(q => q.MatchBoolPrefix(p => p.Query(query.Criteria).Field(x => x.Title).Operator(Operator.And)),
+                    query.MustFilterByPlace
+                        ? q => q.Term(t => t.Field(x => x.PlaceId).Value(query.PlaceId.Value))
+                        : null,
+                    query.Own
+                        ? q => q.Terms(t => t.Field(x => x.Id).Terms(ownGroupIds))
+                        : q => q.Term(t => t.Field(x => x.IsPublic).Value(true)))
+                .MustNot(
+                    query.Own
+                        ? null
+                        : q => q.Terms(t => t.Field(x => x.Id).Terms(ownGroupIds)));
+
+        ContactSearchResult ToSearchResult(IHit<IndexedGroupChatContact> hit)
+            => new (new ContactId(userId, ChatId.Parse(hit.Source!.Id)), hit.GetSearchMatch());
+    }
+
+    private async Task<ContactSearchResultPage> FindPlaces(
+        UserId userId,
+        ContactSearchQuery query,
+        CancellationToken cancellationToken)
+    {
+        var ownPlaceIds = await ContactsBackend.ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
+        if (ownPlaceIds.IsEmpty && query.Own)
+            return ContactSearchResultPage.Empty;
+
+        var searchResponse =
+            await OpenSearchClient.SearchAsync<IndexedPlaceContact>(s
+                        => s.Index(OpenSearchNames.PlaceIndexName)
+                            .From(query.Skip)
+                            .Size(query.Limit)
+                            .Query(qq => qq.Bool(ConfigureQuery))
+                            .IgnoreUnavailable()
+                            .Highlight(h => h.Fields(f => f.Field(x => x.Title)))
+                            .Log(OpenSearchClient, DebugLog, "Place search request"),
+                    cancellationToken)
+                .Assert(Log)
+                .ConfigureAwait(false);
+        if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
+            return ContactSearchResultPage.Empty;
+
+        return new ContactSearchResultPage {
+            Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
+            Offset = query.Skip,
+        };
+
+        BoolQueryDescriptor<IndexedPlaceContact> ConfigureQuery(
+            BoolQueryDescriptor<IndexedPlaceContact> descriptor)
+            => descriptor
+                .Must(q => q.MatchBoolPrefix(p => p.Query(query.Criteria).Field(x => x.Title).Operator(Operator.And)),
+                    query.Own
+                        ? q => q.Terms(t => t.Field(x => x.Id).Terms(ownPlaceIds))
+                        : q => q.Term(t => t.Field(x => x.IsPublic).Value(true)))
+                .MustNot(query.Own
+                    ? null
+                    : q => q.Terms(t => t.Field(x => x.Id).Terms(ownPlaceIds)));
+
+        ContactSearchResult ToSearchResult(IHit<IndexedPlaceContact> hit)
+            => new (new ContactId(userId, PlaceId.Parse(hit.Source!.Id).ToRootChatId()), hit.GetSearchMatch());
+    }
+
+    private async Task<EntrySearchResultPage> FindEntriesInOpenSearch(
+        UserId userId,
+        EntrySearchQuery query,
         CancellationToken cancellationToken)
     {
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
-        skip = skip.Clamp(0, int.MaxValue);
-        limit = limit.Clamp(0, Constants.Search.PageSizeLimit);
+        // TODO: filter by placeId and chatId
+        IReadOnlyCollection<ChatId> chatIds = [];
+        if (!query.ChatId.IsNone)
+            chatIds = [query.ChatId];
+        else if (query.PlaceId != null) {
+            var contactIds = await ContactsBackend.ListIdsForSearch(userId, query.PlaceId, cancellationToken).ConfigureAwait(false);
+            chatIds = contactIds.Select(x => x.ChatId).ToList();
+        }
 
         var searchResponse =
             await OpenSearchClient.SearchAsync<IndexedEntry>(s
-                => s.Index(indices)
-                    .From(skip)
-                    .Size(limit)
-                    .Query(q => q.MatchPhrasePrefix(p => p.Query(criteria).Field(x => x.Content)))
-                    .IgnoreUnavailable()
-                    .Log(OpenSearchClient, DebugLog, "Entry search request"),
-                cancellationToken)
+                        => s.Index(OpenSearchNames.EntryIndexName)
+                            .From(query.Skip)
+                            .Size(query.Limit)
+                            .Query(q => q.Bool(ConfigureQuery))
+                            .IgnoreUnavailable()
+                            .Highlight(h => h.Fields(f => f.Field(x => x.Content)))
+                            .Log(OpenSearchClient, DebugLog, "Entry search request"),
+                    cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
         if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
@@ -595,10 +502,18 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
         return new EntrySearchResultPage {
             Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
-            Offset = skip,
+            Offset = query.Skip,
         };
 
-        EntrySearchResult ToSearchResult(IHit<IndexedEntry> x)
-            => new (x.Source!.Id, SearchMatch.New(x.Source.Content));
+        EntrySearchResult ToSearchResult(IHit<IndexedEntry> hit)
+            => new (hit.Source!.Id, hit.GetSearchMatch());
+
+        BoolQueryDescriptor<IndexedEntry> ConfigureQuery(BoolQueryDescriptor<IndexedEntry> descriptor)
+            => descriptor.Must(q
+                    => q.MatchBoolPrefix(p => p.Query(query.Criteria).Field(x => x.Content).Operator(Operator.And)),
+                chatIds.Count > 0
+                    ? qc => qc.HasParent<IndexedChat>(
+                        p => p.Query(q => q.Terms(t => t.Field(x => x.Id).Terms(chatIds))))
+                    : null);
     }
 }

@@ -76,7 +76,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ContactId>> ListIdsForGroupContactSearch(UserId userId, PlaceId? placeId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<ContactId>> ListIdsForSearch(UserId userId, PlaceId? placeId, CancellationToken cancellationToken)
     {
         if (placeId != null)
             return await ListIds(userId, placeId.Value, cancellationToken).ConfigureAwait(false);
@@ -88,7 +88,15 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .Flatten()
             .ConfigureAwait(false);
         return contactIds
-            .Where(x => x.ChatId is { Kind: ChatKind.Group or ChatKind.Place, IsPlaceRootChat: false })
+            .Where(x => !x.ChatId.IsPlaceRootChat)
+            .ToApiArray();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<ContactId>> ListIdsForGroupContactSearch(UserId userId, PlaceId? placeId, CancellationToken cancellationToken)
+    {
+        var contactIds = await ListIdsForSearch(userId, placeId, cancellationToken).ConfigureAwait(false);
+        return contactIds.Where(x => x.ChatId is { Kind: ChatKind.Group or ChatKind.Place })
             .ToApiArray();
     }
 

@@ -35,7 +35,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
     {
         var updateLoader = new Mock<IChatContentUpdateLoader>();
         updateLoader
-            .Setup(x => x.LoadChatUpdatesAsync(It.IsAny<ChatId>(), It.IsAny<ChatContentCursor>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.LoadChatUpdatesAsync(It.IsAny<ChatId>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns(AsyncEnumerable.Empty<ChatEntry>());
 
         var cursor = new ChatContentCursor(77, 88);
@@ -71,8 +71,8 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         await contentIndexWorker.ExecuteAsync(job, cancellationSource.Token);
 
         chatInfoIndexer.Verify(x => x.IndexAsync(
-            It.Is<ChatId>(id => id == chatId),
-            It.Is<CancellationToken>(ct => ct == cancellationSource.Token)
+            chatId,
+            cancellationSource.Token
         ), Times.Once);
         chatInfoIndexer.VerifyNoOtherCalls();
 
@@ -84,10 +84,12 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         }
         else {
             updateLoader.Verify(x => x.LoadChatUpdatesAsync(
-                It.Is<ChatId>(id => id == chatId),
-                It.Is<ChatContentCursor>(c => c == cursor),
-                It.Is<CancellationToken>(ct => ct == cancellationSource.Token)
-            ), Times.Once);
+                    chatId,
+                    cursor.LastEntryVersion,
+                    cursor.LastEntryLocalId,
+                    It.Is<CancellationToken>(ct => ct == cancellationSource.Token)
+                ),
+                Times.Once);
         }
     }
 
@@ -96,7 +98,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
     {
         var updateLoader = new Mock<IChatContentUpdateLoader>();
         updateLoader
-            .Setup(x => x.LoadChatUpdatesAsync(It.IsAny<ChatId>(), It.IsAny<ChatContentCursor>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.LoadChatUpdatesAsync(It.IsAny<ChatId>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns(AsyncEnumerable.Empty<ChatEntry>());
 
         var cursor = new ChatContentCursor(77, 88);
@@ -150,7 +152,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         var updates = GenerateUpdates(chatId, updateCount);
         var updateLoader = new Mock<IChatContentUpdateLoader>();
         updateLoader
-            .Setup(x => x.LoadChatUpdatesAsync(It.IsAny<ChatId>(), It.IsAny<ChatContentCursor>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.LoadChatUpdatesAsync(It.IsAny<ChatId>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns(updates.ToAsyncEnumerable());
 
         var cursorStates = new Mock<ICursorStates<ChatContentCursor>>();
@@ -206,7 +208,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         var updates = GenerateUpdates(chatId, updateCount);
         var updateLoader = new Mock<IChatContentUpdateLoader>();
         updateLoader
-            .Setup(x => x.LoadChatUpdatesAsync(It.IsAny<ChatId>(), It.IsAny<ChatContentCursor>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.LoadChatUpdatesAsync(It.IsAny<ChatId>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns(updates.ToAsyncEnumerable());
 
         var cursorStates = new Mock<ICursorStates<ChatContentCursor>>();
@@ -270,7 +272,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         var updates = GenerateUpdates(chatId, updateCount);
         var updateLoader = new Mock<IChatContentUpdateLoader>();
         updateLoader
-            .Setup(x => x.LoadChatUpdatesAsync(It.IsAny<ChatId>(), It.IsAny<ChatContentCursor>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.LoadChatUpdatesAsync(It.IsAny<ChatId>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns(updates.ToAsyncEnumerable());
 
         var cursorStates = new Mock<ICursorStates<ChatContentCursor>>();
