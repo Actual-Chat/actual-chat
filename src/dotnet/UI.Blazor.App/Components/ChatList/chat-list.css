@@ -211,6 +211,9 @@ body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {
 body.hoverable .navbar-item:hover .message-counter-badge {
     @apply hidden;
 }
+.navbar-item .navbar-item-ending .message-counter-badge {
+    @apply static;
+}
 
 /* Hoverable slot */
 .chat-list .navbar-item .navbar-item-ending .slot.hoverable {
@@ -218,6 +221,9 @@ body.hoverable .navbar-item:hover .message-counter-badge {
 }
 body.hoverable .chat-list .navbar-item:hover .navbar-item-ending .slot.hoverable {
     @apply flex;
+}
+.chat-list .navbar-item .navbar-item-ending .listen-wrapper {
+    @apply mb-0.5;
 }
 
 /* Tabs */
