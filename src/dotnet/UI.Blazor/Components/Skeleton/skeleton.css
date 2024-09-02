@@ -123,7 +123,9 @@ body.narrow .wide-left-skeleton-panel:has(.inaccessible-place-request) {
     @apply bg-01;
 }
 body.narrow .chat-skeleton-panel .skeleton-panel-footer {
-    min-height: 9.5rem;
+    @apply min-h-26;
+    @apply p-0;
+    @apply bg-03;
 }
 body.wide .thin-left-skeleton-panel .skeleton-panel-footer {
     @apply justify-end;
@@ -132,10 +134,6 @@ body.wide .thin-left-skeleton-panel .skeleton-panel-footer {
     @apply p-2 md:p-1.5;
     @apply overflow-y-auto;
     scrollbar-width: none;
-}
-body.narrow .chat-skeleton-panel .skeleton-panel-footer {
-    @apply p-0;
-    @apply bg-03;
 }
 .chat-skeleton-panel .skeleton-panel-body::-webkit-scrollbar {
     @apply hidden;
