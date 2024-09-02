@@ -12,7 +12,7 @@ public sealed class GroupChatContactIndexer(IServiceProvider services) : Contact
     {
         var hasChanges = await SyncChanges(cancellationToken).ConfigureAwait(false);
         if (hasChanges) {
-            var cmd = new SearchBackend_Refresh(refreshGroups: hasChanges);
+            var cmd = new SearchBackend_Refresh(RefreshGroups: hasChanges);
             await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         }
     }

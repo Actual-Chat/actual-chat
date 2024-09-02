@@ -11,7 +11,7 @@ public sealed class PlaceContactIndexer(IServiceProvider services) : ContactInde
     {
         var hasChanges = await SyncPlaceChanges(cancellationToken).ConfigureAwait(false);
         if (hasChanges) {
-            var cmd = new SearchBackend_Refresh(refreshPlaces: hasChanges);
+            var cmd = new SearchBackend_Refresh(RefreshPlaces: hasChanges);
             await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         }
     }

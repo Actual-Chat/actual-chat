@@ -23,7 +23,7 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         // Cleanup all test indexes before each test method start
         var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
         var deleteByQueryResponse = await client.DeleteByQueryAsync<object>(d => d
-            .Index(IndexNames.MLTestIndexPattern)
+            .Index(OpenSearchNames.MLTestIndexPattern)
             .Refresh(true)
             .WaitForCompletion(true)
             .Query(query => query.Script(

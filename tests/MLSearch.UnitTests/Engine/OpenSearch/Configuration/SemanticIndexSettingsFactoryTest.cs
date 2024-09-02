@@ -10,7 +10,7 @@ public class SemanticIndexSettingsFactoryTest(ITestOutputHelper @out) : TestBase
     private const string ModelId = "id_model_qwerty";
     private const int EmbeddingDimension = 1024;
 
-    private readonly IndexNames _indexNames = new();
+    private readonly OpenSearchNames _openSearchNames = new();
     private readonly ClusterSetupResult _setupResult =
         new(new EmbeddingModelProps(ModelId, EmbeddingDimension, ModelAllConfig));
 
@@ -18,7 +18,7 @@ public class SemanticIndexSettingsFactoryTest(ITestOutputHelper @out) : TestBase
     public void SettingsPropertiesSetAsExpected()
     {
         const string indexName = "test-index";
-        var factory = new SemanticIndexSettingsFactory(_indexNames, MockClusterSetup());
+        var factory = new SemanticIndexSettingsFactory(_openSearchNames, MockClusterSetup());
         var settings = factory.Create(indexName);
         Assert.Equal(ModelId, settings.ModelId);
         Assert.NotEqual(settings.IndexName, settings.IngestPipelineId);
@@ -29,7 +29,7 @@ public class SemanticIndexSettingsFactoryTest(ITestOutputHelper @out) : TestBase
     [Fact]
     public void NullOrEmptyIndexNameIsNotAllowed()
     {
-        var factory = new SemanticIndexSettingsFactory(_indexNames, MockClusterSetup());
+        var factory = new SemanticIndexSettingsFactory(_openSearchNames, MockClusterSetup());
 #pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         Assert.Throws<ArgumentNullException>(() => factory.Create(null));
 #pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.

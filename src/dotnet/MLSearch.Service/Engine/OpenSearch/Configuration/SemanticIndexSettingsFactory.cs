@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 
-internal sealed class SemanticIndexSettingsFactory(IndexNames indexNames, IClusterSetup clusterSetup)
+internal sealed class SemanticIndexSettingsFactory(OpenSearchNames openSearchNames, IClusterSetup clusterSetup)
     : IOptionsFactory<SemanticIndexSettings>
 {
     public SemanticIndexSettings Create(string name)
@@ -12,8 +12,8 @@ internal sealed class SemanticIndexSettingsFactory(IndexNames indexNames, IClust
         ArgumentException.ThrowIfNullOrEmpty(name);
 
         var embeddingModelProps = clusterSetup.Result.EmbeddingModelProps;
-        var indexName = indexNames.GetFullName(name, embeddingModelProps);
-        var ingestPipelineName = indexNames.GetFullIngestPipelineName(name, embeddingModelProps);
+        var indexName = openSearchNames.GetFullName(name, embeddingModelProps);
+        var ingestPipelineName = openSearchNames.GetFullIngestPipelineName(name, embeddingModelProps);
         return new SemanticIndexSettings(indexName, embeddingModelProps.Id, ingestPipelineName);
     }
 }

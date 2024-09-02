@@ -20,7 +20,7 @@ internal sealed class ClusterSetup(
     IOptions<OpenSearchSettings> openSearchSettings,
     IEnumerable<ISettingsChangeTokenSource> changeSources,
     ILogger<ClusterSetup> log,
-    IndexNames indexNames,
+    OpenSearchNames openSearchNames,
     Tracer baseTracer
 ) : IClusterSetup
 {
@@ -59,9 +59,9 @@ internal sealed class ClusterSetup(
     {
         var numberOfReplicas = openSearchSettings.Value.DefaultNumberOfReplicas;
 
-        var (templateName, pattern) = (IndexNames.MLTemplateName, IndexNames.MLIndexPattern);
-        var ingestPipelineName = indexNames.GetFullIngestPipelineName(IndexNames.ChatContent, embeddingModelProps);
-        var indexShortNames = new[] { IndexNames.ChatContent, IndexNames.ChatContentCursor, IndexNames.ChatCursor };
+        var (templateName, pattern) = (OpenSearchNames.MLTemplateName, OpenSearchNames.MLIndexPattern);
+        var ingestPipelineName = openSearchNames.GetFullIngestPipelineName(OpenSearchNames.ChatContent, embeddingModelProps);
+        var indexShortNames = new[] { OpenSearchNames.ChatContent, OpenSearchNames.ChatContentCursor, OpenSearchNames.ChatCursor };
 
         var isTemplateValid = await actions.IsTemplateValidAsync(templateName, pattern, numberOfReplicas, cancellationToken)
             .ConfigureAwait(false);
@@ -69,7 +69,7 @@ internal sealed class ClusterSetup(
             .ConfigureAwait(false);
         var isAllIndexesExist = true;
         foreach (var name in indexShortNames) {
-            var fullIndexName = indexNames.GetFullName(name, embeddingModelProps);
+            var fullIndexName = openSearchNames.GetFullName(name, embeddingModelProps);
             isAllIndexesExist &= await actions.IsIndexExistsAsync(fullIndexName, cancellationToken).ConfigureAwait(false);
         }
         return isTemplateValid && isIngestPipelineExists && isAllIndexesExist;
@@ -86,8 +86,8 @@ internal sealed class ClusterSetup(
         using var _ = _tracer.Region();
 
         await actions.EnsureTemplateAsync(
-                IndexNames.MLTemplateName,
-                IndexNames.MLIndexPattern,
+                OpenSearchNames.MLTemplateName,
+                OpenSearchNames.MLIndexPattern,
                 openSearchSettings.Value.DefaultNumberOfReplicas,
                 cancellationToken
             )
@@ -103,11 +103,11 @@ internal sealed class ClusterSetup(
         // It has to succeed once and only once to set up an OpenSearch cluster.
         // After the initial setup this would never be called again.
         using var _1 = _tracer.Region();
-        var contentIndexName = indexNames.GetFullName(IndexNames.ChatContent, embeddingModelProps);
-        var contentCursorIndexName = indexNames.GetFullName(IndexNames.ChatContentCursor, embeddingModelProps);
-        var chatsCursorIndexName = indexNames.GetFullName(IndexNames.ChatCursor, embeddingModelProps);
+        var contentIndexName = openSearchNames.GetFullName(OpenSearchNames.ChatContent, embeddingModelProps);
+        var contentCursorIndexName = openSearchNames.GetFullName(OpenSearchNames.ChatContentCursor, embeddingModelProps);
+        var chatsCursorIndexName = openSearchNames.GetFullName(OpenSearchNames.ChatCursor, embeddingModelProps);
 
-        var ingestPipelineName = indexNames.GetFullIngestPipelineName(IndexNames.ChatContent, embeddingModelProps);
+        var ingestPipelineName = openSearchNames.GetFullIngestPipelineName(OpenSearchNames.ChatContent, embeddingModelProps);
 
         var modelId = embeddingModelProps.Id;
 

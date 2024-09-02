@@ -1,12 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.MLSearch.Bot;
 using ActualChat.MLSearch.Bot.External;
-using ActualChat.MLSearch.Bot.Tools;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
@@ -16,19 +14,14 @@ using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.Redis.Module;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-
-using OpenSearch.Client;
-using OpenSearch.Net;
-using Microsoft.AspNetCore.Authentication;
 using ActualChat.Module;
 using Microsoft.AspNetCore.Builder;
 using ActualChat.MLSearch.Bot.Tools.Context;
 using ActualChat.Search;
-using Microsoft.Extensions.Hosting;
+using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
 
 // Note: Temporary disabled. Will be re-enabled with OpenAPI PR
 // using Swashbuckle.AspNetCore.SwaggerGen;
@@ -64,7 +57,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, MLSearchDbInitializer>();
         dbModule.AddDbContextServices<MLSearchDbContext>(services, Settings.Db, db => {
-            db.AddEntityResolver<string, DbIndexedChat>();
             db.AddEntityResolver<string, DbContactIndexState>();
         });
 
@@ -85,7 +77,9 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             )
         );
         services.AddSingleton<ICursorStates<ChatContentCursor>>(
-            static c => c.CreateInstance<CursorStates<ChatContentCursor>>(IndexNames.ChatContentCursor));
+            static c => c.CreateInstance<CursorStates<ChatContentCursor>>(OpenSearchNames.ChatContentCursor));
+        services.AddSingleton<ICursorStates<ChatEntryCursor>>(
+            static c => c.CreateInstance<CursorStates<ChatEntryCursor>>(c.GetRequiredService<OpenSearchNames>().EntryCursorIndexName));
 
         // -- Register chat indexer --
         rpcHost.AddBackend<IChatIndexTrigger, ChatIndexTrigger>();
@@ -95,10 +89,15 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IChatContentArranger, ChatContentArranger>();
 
         services.AddSingleton<ISink<ChatSlice, string>>(
-            static c => c.CreateInstance<SemanticIndexSink<ChatSlice>>(IndexNames.ChatContent));
-        // Note: This is correct. ChatInfo must be indexed into the same index as ChatSlice for Join field to work
+            static c => c.CreateInstance<SemanticIndexSink<ChatSlice>>(OpenSearchNames.ChatContent));
+        // Note: This is correct. ChatInfo  must be indexed into the same index as ChatSlice and ChatEntry for Join field to work
         services.AddSingleton<ISink<ChatInfo, string>>(
-            static c => c.CreateInstance<SemanticIndexSink<ChatInfo>>(IndexNames.ChatContent));
+            static c => c.CreateInstance<SemanticIndexSink<ChatInfo>>(OpenSearchNames.ChatContent));
+
+        services.AddSingleton<ISink<IndexedEntry, TextEntryId>>(
+            static c => c.CreateInstance<IndexSink<IndexedEntry, TextEntryId>>(c.GetRequiredService<OpenSearchNames>().EntryIndexName));
+        services.AddSingleton<ISink<IndexedChat, ChatId>>(
+            static c => c.CreateInstance<IndexSink<IndexedChat, ChatId>>(c.GetRequiredService<OpenSearchNames>().EntryIndexName));
 
         services.AddSingleton<IChatInfoIndexer, ChatInfoIndexer>();
         services.AddSingleton<IChatContentIndexerFactory, ChatContentIndexerFactory>();
@@ -111,6 +110,10 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddWorkerPool<IChatContentIndexWorker, MLSearch_TriggerChatIndexing, (ChatId, IndexingKind), ChatId>(
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
+        services.AddSingleton<ChatEntryIndexWorker>();
+        services.AddWorkerPool<ChatEntryIndexWorker, MLSearch_TriggerChatIndexing, (ChatId, IndexingKind), ChatId>(
+            DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
+        );
 
         if (Settings.IsInitialIndexingDisabled) {
             _log.LogInformation("Initial chat indexing is disabled, skipping services registration.");
@@ -119,7 +122,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             // -- Register chat index initializer --
             rpcHost.AddBackend<IChatIndexInitializerTrigger, ChatIndexInitializerTrigger>();
             services.AddSingleton<ICursorStates<ChatIndexInitializerShard.Cursor>>(
-                static c => c.CreateInstance<CursorStates<ChatIndexInitializerShard.Cursor>>(IndexNames.ChatCursor));
+                static c => c.CreateInstance<CursorStates<ChatIndexInitializerShard.Cursor>>(OpenSearchNames.ChatCursor));
             services.AddSingleton<IInfiniteChatSequence, InfiniteChatSequence>();
             services.AddSingleton<IChatIndexInitializerShard, ChatIndexInitializerShard>();
             services.AddSingleton(static c => c.CreateInstance<ChatIndexInitializer>(ShardScheme.MLSearchBackend))
@@ -131,7 +134,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.Configure<ChatBotConversationTriggerOptions>(e => {
             e.AllowPeerBotChat = (Settings.Integrations?.Bot?.AllowPeerBotChat) ?? false;
         });
-        rpcHost.AddBackend<IChatBotConversationTrigger, ChatBotConversationTrigger>();
         if (Settings.Integrations != null){
             var x509 = X509Certificate2.CreateFromPemFile(
                 Settings.Integrations.CertPemFilePath,
@@ -148,17 +150,17 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 e.SigningCredentials = signingCredentials;
                 e.ContextLifetime = Settings.Integrations.ContextLifetime;
             });
-            services.AddSingleton<IBotToolsContextHandler>(services => {
-                var options = services.GetRequiredService<IOptionsMonitor<BotToolsContextHandlerOptions>>();
-                return services.CreateInstance<BotToolsContextHandler>(options);
+            services.AddSingleton<IBotToolsContextHandler>(c => {
+                var options = c.GetRequiredService<IOptionsMonitor<BotToolsContextHandlerOptions>>();
+                return c.CreateInstance<BotToolsContextHandler>(options);
             });
             var isBotEnabled =
-                Settings.IsEnabled
-                && Settings.Integrations != null
+                Settings is { IsEnabled: true, Integrations: not null }
                 && Settings.Integrations.Bot != null
                 && Settings.Integrations.Bot.IsEnabled
                 && Settings.Integrations.Bot.WebHookUri != null;
             if (isBotEnabled) {
+                rpcHost.AddBackend<IChatBotConversationTrigger, ChatBotConversationTrigger>();
                 services.Configure<ExternalChatbotSettings>( e => {
                     e.IsEnabled = true;
                     e.WebHookUri = Settings!.Integrations!.Bot!.WebHookUri!;
@@ -206,7 +208,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         rpcHost.AddBackend<ISearchBackend, SearchBackend>();
 
         // Indexing
-        rpcHost.AddBackend<IIndexedChatsBackend, IndexedChatsBackend>();
         rpcHost.AddBackend<IContactIndexStatesBackend, ContactIndexStateBackend>();
 
         // Internal services

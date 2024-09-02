@@ -49,12 +49,12 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var chatsQuery = lastId.IsNone
+        var placesQuery = lastId.IsNone
             ? dbContext.Places.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
             : dbContext.Places.Where(x => (x.Version > minVersion && x.Version <= maxVersion)
                 || (x.Version==minVersion && string.Compare(x.Id, lastId.Value) > 0));
 
-        return await chatsQuery
+        return await placesQuery
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
             .Take(limit)
