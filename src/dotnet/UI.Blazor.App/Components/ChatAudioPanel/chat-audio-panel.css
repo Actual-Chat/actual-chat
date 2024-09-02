@@ -93,7 +93,10 @@ body.narrow .chat-audio-panel .playback-wrapper .btn.btn-round {
 .chat-audio-panel .recorder-wrapper.applying-changes .record-off-btn.btn,
 .chat-audio-panel .recorder-wrapper.applying-changes .record-on-btn.btn {
     filter: brightness(0.7);
-    animation: rotate-button 0.5s ease-in-out infinite;
+}
+.chat-audio-panel .recorder-wrapper.applying-changes .record-off-btn.btn i,
+.chat-audio-panel .recorder-wrapper.applying-changes .record-on-btn.btn i {
+    animation: rotate-button 1s ease-in-out infinite;
 }
 .recorder-wrapper .recorder-icon {
     @apply always-white;
@@ -464,8 +467,8 @@ body.narrow .chat-audio-panel .recorder-wrapper {
 .chat-audio-panel .recorder-wrapper.record-off .record-off-btn.btn {
     @apply opacity-100;
 }
-.chat-audio-panel .recorder-wrapper.record-off.applying-changes .record-off-btn.btn {
-    animation: rotate-button 0.5s ease-in-out infinite;
+.chat-audio-panel .recorder-wrapper.record-off.applying-changes .record-off-btn.btn i {
+    animation: rotate-button 1s ease-in-out infinite;
 }
 .chat-audio-panel .recorder-wrapper.record-off-to-on .record-off-btn.btn {
     @apply opacity-0;
@@ -475,7 +478,9 @@ body.narrow .chat-audio-panel .recorder-wrapper {
 }
 .chat-audio-panel .recorder-wrapper.record-off-to-on.applying-changes .record-on-btn.btn {
     filter: brightness(0.7);
-    animation: rotate-button 0.5s ease-in-out infinite;
+}
+.chat-audio-panel .recorder-wrapper.record-off-to-on.applying-changes .record-on-btn.btn i {
+    animation: rotate-button 1s ease-in-out infinite;
 }
 .chat-audio-panel .recorder-wrapper.record-off-to-on.applying-changes .record-on-btn.btn .btn-content {
     @apply duration-150 delay-150 ease-in-out;
@@ -492,7 +497,9 @@ body.narrow .chat-audio-panel .recorder-wrapper {
 }
 .chat-audio-panel .recorder-wrapper.record-on.applying-changes .record-on-btn.btn {
     filter: brightness(0.7);
-    animation: rotate-button 0.5s ease-in-out infinite;
+}
+.chat-audio-panel .recorder-wrapper.record-on.applying-changes .record-on-btn.btn i {
+    animation: rotate-button 1s ease-in-out infinite;
 }
 .chat-audio-panel .recorder-wrapper.record-on.applying-changes .record-on-btn.btn .btn-content {
     @apply duration-150 delay-150 ease-in-out;
@@ -502,6 +509,8 @@ body.narrow .chat-audio-panel .recorder-wrapper {
 .chat-audio-panel .recorder-wrapper.record-on-to-off .record-on-btn.btn {
     @apply opacity-0;
     @apply transition-opacity delay-200;
+}
+.chat-audio-panel .recorder-wrapper.record-on-to-off .record-on-btn.btn i {
     animation: rotate-button 200ms ease-in-out;
 }
 .chat-audio-panel .recorder-wrapper.record-on-to-off .record-off-btn.btn {
@@ -510,6 +519,8 @@ body.narrow .chat-audio-panel .recorder-wrapper {
 .chat-audio-panel .recorder-wrapper.record-on-to-off.applying-changes .record-off-btn.btn {
     @apply opacity-100;
     @apply transition-opacity delay-400;
+}
+.chat-audio-panel .recorder-wrapper.record-on-to-off.applying-changes .record-off-btn.btn i {
     animation: rotate-button 200ms ease-in-out 200ms;
 }
 
@@ -575,7 +586,7 @@ body.narrow .chat-audio-panel .recorder-wrapper {
 
 @media (orientation: portrait) {
     body.narrow .narrow-panel .narrow-recorder-tooltip {
-        @apply portrait:bottom-28 landscape:bottom-16;
+        @apply portrait:bottom-34 landscape:bottom-16;
     }
 }
 
@@ -680,16 +691,16 @@ body.narrow .selected-language {
         transform: rotate(0deg);
     }
     20% {
-        transform: rotate(15deg);
+        transform: rotate(30deg);
     }
     40% {
-        transform: rotate(60deg);
+        transform: rotate(90deg);
     }
     60% {
-        transform: rotate(300deg);
+        transform: rotate(270deg);
     }
     80% {
-        transform: rotate(345deg);
+        transform: rotate(330deg);
     }
     100% {
         transform: rotate(360deg);
