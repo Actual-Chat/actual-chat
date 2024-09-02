@@ -5,6 +5,7 @@ import { AudioVadWorker } from './workers/audio-vad-worker-contract';
 import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
 import { Disposable } from 'disposable';
 import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
+import { Observable, Subject } from 'rxjs';
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
 import {
     catchErrors,
@@ -54,7 +55,11 @@ const { logScope, infoLog, debugLog, warnLog, errorLog } = Log.get('OpusMediaRec
 const RecordingFailedInterval = 500;
 
 export class OpusMediaRecorder implements RecorderStateEventHandler {
-    public static readonly audioPowerChanged$: signalR.Subject<number> = new signalR.Subject<number>();
+    private static readonly audioPowerChangedSubject: Subject<number> = new Subject<number>();
+
+    public static get audioPowerChanged$(): Observable<number> {
+        return OpusMediaRecorder.audioPowerChangedSubject.asObservable();
+    }
 
     private whenInitialized: PromiseSource<void>;
     private initStarted = false;
@@ -524,7 +529,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     }
 
     public onAudioPowerChange(power: number, _noWait?: RpcNoWait): Promise<void> {
-        OpusMediaRecorder.audioPowerChanged$.next(power);
+        OpusMediaRecorder.audioPowerChangedSubject.next(power);
 
         return Promise.resolve(undefined);
     }

@@ -32,7 +32,6 @@ let webrtcVoiceDetector: VoiceActivityDetector = null;
 let isVadRunning = false;
 let isActive = false;
 let isNNVadInitialized = false;
-let audioPowerSampleCounter = 0;
 let audioPowerAverage = new ExponentialMovingAverage(10);
 let canUseNNVad = false;
 let lastVadEventProcessedAt = 0;
@@ -153,12 +152,8 @@ async function processQueue(): Promise<void> {
             // debugLog?.log(`processQueue: vadEvent:`, vadEvent, ', hasNNVad:', hasNNVad);
             if (typeof vadEvent === 'number') {
                 audioPowerAverage.append(vadEvent);
-                if (audioPowerSampleCounter++ > 10) {
-                    // debugLog?.log(`processQueue: lastAverage:`, audioPowerAverage.lastAverage);
-                    // Let's sample audio power results to call this once per 300 ms
-                    void server.onAudioPowerChange(audioPowerAverage.lastAverage, rpcNoWait);
-                    audioPowerSampleCounter = 0;
-                }
+                // debugLog?.log(`processQueue: lastAverage:`, audioPowerAverage.lastAverage);
+                void server.onAudioPowerChange(audioPowerAverage.lastAverage, rpcNoWait);
             }
             else {
                 if (vadEvent.kind === "start") {
