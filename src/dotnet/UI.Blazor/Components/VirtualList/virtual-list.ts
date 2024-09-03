@@ -1129,8 +1129,12 @@ export class VirtualList {
             const item = this._items.get(key);
             if (item && item.size < 0) {
                 const itemRef = this.getItemRef(key);
-                const itemRect = itemRef.getBoundingClientRect();
-                item.size = itemRect.height;
+                if (itemRef) {
+                    const itemRect = itemRef.getBoundingClientRect();
+                    item.size = itemRect.height;
+                }
+                else
+                    this._items.delete(key);
             }
             const hasRemoved = this._unmeasuredItems.delete(key);
             itemsWereMeasured ||= hasRemoved;
