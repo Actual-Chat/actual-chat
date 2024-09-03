@@ -102,6 +102,20 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     }
 
     // [ComputeMethod]
+    public virtual async Task<ApiArray<AuthorId>> ListOwnerAuthorIds(ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (chatId.IsNone || chatId.IsPlaceChat)
+            return default;
+
+        if (chatId.IsPeerChat(out var peerChatId))
+            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id).ToApiArray();
+
+        // Group chat
+
+        return await ListOwnerAuthorIdsInternal(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<ApiArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNone)
@@ -634,6 +648,20 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return authorSids.Select(x => new AuthorId(x)).ToApiArray();
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<ApiArray<AuthorId>> ListOwnerAuthorIdsInternal(
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var ownerRole = await RolesBackend
+            .GetSystem(chatId, SystemRole.Owner, cancellationToken)
+            .ConfigureAwait(false);
+
+        return ownerRole == null
+            ? ApiArray.Empty<AuthorId>()
+            : await RolesBackend.ListAuthorIds(chatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
