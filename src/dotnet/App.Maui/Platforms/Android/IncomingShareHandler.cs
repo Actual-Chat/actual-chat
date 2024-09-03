@@ -1,36 +1,23 @@
 ﻿using ActualChat.UI.Blazor.App.Services;
-using ActualChat.UI.Blazor.Services;
 using Android.Content;
 using Android.OS;
 using Java.Lang;
-using Activity = Android.App.Activity;
 using Uri = Android.Net.Uri;
 
 namespace ActualChat.App.Maui;
 
 public class IncomingShareHandler
 {
-    private ILogger Log { get; set; } = NullLogger.Instance;
+    private ILogger Log { get; } = StaticLog.For(typeof(IncomingShareHandler));
 
-    public void OnPostCreate(Activity activity, Bundle? savedInstanceState)
-    {
-        Log = AppServices.LogFor(GetType());
-        TryHandleSend(activity.Intent);
-    }
-
-    public void OnNewIntent(Activity activity, Intent? intent)
+    public void HandleIntent(Intent intent)
         => TryHandleSend(intent);
 
-    private void TryHandleSend(Intent? intent)
+    private void TryHandleSend(Intent intent)
     {
-        if (intent == null)
-            return;
         var action = intent.Action;
         if (!OrdinalEquals(action, Intent.ActionSend) &&
             !OrdinalEquals(action, Intent.ActionSendMultiple))
-            return;
-
-        if (intent.IsFromHistory())
             return;
 
         Log.LogInformation("-> IncomingShare, send intent is detected. Action: {Action}", action);

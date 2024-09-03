@@ -16,7 +16,11 @@ public static class Formatters
             using var writer = new Utf8JsonWriter(stream);
             writer.WriteStartObject();
             writer.WriteString(nameof(Intent.Action), intent.Action);
-            WriteStringArray(intent, writer);
+            if (intent.Data is null)
+                writer.WriteNull(nameof(Intent.Data));
+            else
+                writer.WriteString(nameof(Intent.Data), intent.Data.ToString());
+            WriteCategories(intent, writer);
             writer.WriteString(nameof(Intent.Flags), intent.Flags.ToString());
             WriteBundle(writer, nameof(Intent.Extras), intent.Extras);
             writer.WriteEndObject();
@@ -29,7 +33,7 @@ public static class Formatters
         }
     }
 
-    private static void WriteStringArray(Intent intent, Utf8JsonWriter writer)
+    private static void WriteCategories(Intent intent, Utf8JsonWriter writer)
     {
         if (intent.Categories == null)
             writer.WriteNull(nameof(Intent.Categories));
