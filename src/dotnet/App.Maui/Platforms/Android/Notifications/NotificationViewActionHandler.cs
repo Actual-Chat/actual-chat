@@ -1,31 +1,19 @@
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Services;
 using Android.Content;
-using Android.OS;
-using Activity = Android.App.Activity;
 
 namespace ActualChat.App.Maui;
 
 public class NotificationViewActionHandler
 {
-    private ILogger Log { get; set; } = NullLogger.Instance;
+    private ILogger Log { get; } = StaticLog.For(typeof(NotificationViewActionHandler));
 
-    public void OnPostCreate(Activity activity, Bundle? savedInstanceState)
-    {
-        Log = AppServices.LogFor(GetType());
-        TryHandleViewAction(activity.Intent);
-        NotificationHelper.EnsureDefaultNotificationChannelExist(activity, NotificationHelper.Constants.DefaultChannelId);
-    }
-
-    public void OnNewIntent(Activity activity, Intent? intent)
+    public void HandleIntent(Intent intent)
         => TryHandleViewAction(intent);
 
-    private void TryHandleViewAction(Intent? intent)
+    private void TryHandleViewAction(Intent intent)
     {
-        if (intent is null || !OrdinalEquals(NotificationHelper.NotificationViewAction, intent.Action))
-            return;
-
-        if (intent.IsFromHistory())
+        if (!OrdinalEquals(NotificationHelper.NotificationViewAction, intent.Action))
             return;
 
         if (intent.Data is null)
