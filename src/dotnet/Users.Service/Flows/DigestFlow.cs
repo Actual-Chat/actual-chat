@@ -16,6 +16,13 @@ public partial class DigestFlow : Flow
     protected override async Task<FlowTransition> OnStart(CancellationToken cancellationToken)
     {
         var userId = UserId.Parse(Id.Arguments);
+
+        var serverKvasBackend = Host.Services.GetRequiredService<IServerKvasBackend>();
+        var kvas = serverKvasBackend.GetUserClient(userId);
+        var userEmailsSettings = await kvas.GetUserEmailsSettings(cancellationToken).ConfigureAwait(false);
+        if (!userEmailsSettings.IsDigestEnabled)
+            return JumpToEnd();
+
         var delay = await GetDelay(userId, cancellationToken).ConfigureAwait(false);
         return delay is null
             ? JumpToEnd()
@@ -25,14 +32,15 @@ public partial class DigestFlow : Flow
     protected async Task<FlowTransition> OnTimer(CancellationToken cancellationToken)
     {
         var userId = UserId.Parse(Id.Id);
-        var delay = await GetDelay(userId, cancellationToken).ConfigureAwait(false);
-        if (delay is null)
-            return JumpToEnd();
 
         var sendDigestCommand = new EmailsBackend_SendDigest(userId);
         var queues = Host.Services.Queues();
         await queues.Enqueue(sendDigestCommand, cancellationToken).ConfigureAwait(false);
-        return Wait(nameof(OnTimer)).AddTimerEvent(delay.Value);
+
+        var delay = await GetDelay(userId, cancellationToken).ConfigureAwait(false);
+        return delay is null
+            ? JumpToEnd()
+            : Wait(nameof(OnTimer)).AddTimerEvent(delay.Value);
     }
 
     private async Task<TimeSpan?> GetDelay(UserId userId, CancellationToken cancellationToken)
@@ -43,10 +51,16 @@ public partial class DigestFlow : Flow
         if (account.TimeZone.IsNullOrEmpty())
             return null;
 
-        if (TZConvert.TryGetTimeZoneInfo(account.TimeZone, out var timeZoneInfo))
-            return Host.Clocks.SystemClock.UtcNow.DelayTo(new TimeSpan(9, 0, 0), timeZoneInfo);
+        if (!TZConvert.TryGetTimeZoneInfo(account.TimeZone, out var timeZoneInfo)) {
+            Host.Log.LogWarning("Unable to find time zone info. Time zone: '{TimeZone}'.", account.TimeZone);
+            return null;
+        }
 
-        Host.Log.LogWarning("Unable to find time zone info. Time zone: '{TimeZone}'.", account.TimeZone);
-        return null;
+        var serverKvasBackend = Host.Services.GetRequiredService<IServerKvasBackend>();
+        var kvas = serverKvasBackend.GetUserClient(userId);
+        var userEmailsSettings = await kvas.GetUserEmailsSettings(cancellationToken).ConfigureAwait(false);
+
+        var timeSpan = Host.Clocks.SystemClock.UtcNow.DelayTo(userEmailsSettings.DigestTime, timeZoneInfo);
+        return timeSpan;
     }
 }
