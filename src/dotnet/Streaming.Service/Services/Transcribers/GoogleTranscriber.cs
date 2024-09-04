@@ -247,10 +247,7 @@ public partial class GoogleTranscriber : ITranscriber
         }
 
         state.MakeStable();
-        var finalTranscript = state.Stable;
-        if (string.IsNullOrWhiteSpace(finalTranscript.Text))
-            finalTranscript = Transcript.Unrecognized;
-        finalTranscript = finalTranscript.WithSuffix("", state.ProcessedAudioDuration);
+        var finalTranscript = state.Stable.WithSuffix("", state.ProcessedAudioDuration);
         yield return finalTranscript;
     }
 
