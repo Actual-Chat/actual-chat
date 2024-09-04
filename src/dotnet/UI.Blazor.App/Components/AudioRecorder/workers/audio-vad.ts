@@ -175,15 +175,13 @@ export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
     private readonly modelUri: URL;
 
     private session: ort.InferenceSession = null;
-    private h0: ort.Tensor;
-    private c0: ort.Tensor;
+    private state: ort.Tensor;
 
     constructor(modelUri: URL, lastActivityEvent: VoiceActivityChange) {
         super(true, AR.SAMPLE_RATE, lastActivityEvent);
 
         this.modelUri = modelUri;
-        this.h0 = new ort.Tensor(new Float32Array(2 * 64), [2, 1, 64]);
-        this.c0 = new ort.Tensor(new Float32Array(2 * 64), [2, 1, 64]);
+        this.resetInternal();
 
         const wasmPath = Versioning.mapPath(wasm);
         const wasmThreadedPath = Versioning.mapPath(wasmThreaded);
@@ -214,7 +212,7 @@ export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
     }
 
     protected async appendChunkInternal(monoPcm: Float32Array): Promise<number | null> {
-        const { h0, c0} = this;
+        const { state } = this;
         if (this.session == null) {
             // skip processing until initialized
             return null;
@@ -227,13 +225,15 @@ export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
         const tensor = new ort.Tensor(monoPcm, [1, AR.SAMPLES_PER_WINDOW_32]);
         const srArray = new BigInt64Array(1).fill(BigInt(16000));
         const sr = new ort.Tensor(srArray);
-        const feeds = { input: tensor, h: h0, c: c0, sr: sr };
+        const feeds = { input: tensor, state: state, sr: sr };
         const result = await this.session.run(feeds);
-        const { output, hn, cn } = result;
-        this.h0 = hn;
-        this.c0 = cn;
-
+        const { output, stateN } = result;
+        this.state = stateN;
         return output.data[0] as number;
+    }
+
+    protected resetInternal(): void {
+        this.state = new ort.Tensor(new Float32Array(2 * 128), [2, 1, 128]);
     }
 }
 
