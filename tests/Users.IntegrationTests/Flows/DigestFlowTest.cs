@@ -67,4 +67,43 @@ public class DigestFlowTest(ITestOutputHelper @out)
             flow?.Step.Should().Be("OnTimer");
         }, TimeSpan.FromSeconds(30));
     }
+
+    [Fact]
+    public async Task ShouldQueueDigest()
+    {
+        var emailsBackend = new Mock<IEmailsBackend>();
+
+        using var h = await NewAppHost(options => options with  {
+            ConfigureServices = (_, services) => {
+                services.AddSingleton(emailsBackend.Object);
+            },
+        });
+
+        var commander = h.Services.Commander();
+        var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
+        var serverKvasBackend = h.Services.GetRequiredService<IServerKvasBackend>();
+
+        var userId = UserId.Parse("actual-admin");
+        var kvas = serverKvasBackend.GetUserClient(userId);
+        var userEmailsSettings = await kvas.GetUserEmailsSettings(default);
+        await kvas.SetUserEmailsSettings(
+            userEmailsSettings with {
+                DigestTime = DateTime.Now.TimeOfDay.Add(new TimeSpan(0, 0, 10)),
+            },
+            default);
+        var account = await accountsBackend.Get(userId, default);
+        var accountUpdate = new AccountsBackend_Update(
+            account! with {
+                TimeZone = TimeZoneInfo.Local.Id,
+            },
+            account.Version);
+        await commander.Call(accountUpdate, true);
+
+        await ComputedTest.When(async _ => {
+            emailsBackend.Verify(
+                x => x.OnSendDigest(It.IsAny<EmailsBackend_SendDigest>(), It.IsAny<CancellationToken>()),
+                Times.Once);
+            await Task.CompletedTask;
+        }, TimeSpan.FromSeconds(30));
+    }
 }
