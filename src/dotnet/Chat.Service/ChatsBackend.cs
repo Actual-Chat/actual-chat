@@ -137,8 +137,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var otherChats = dbContext.Chats
             .Where(c => (c.Kind == ChatKind.Group || c.Kind == ChatKind.Place)
                 && !c.IsPublic && !c.IsArchived
-                && dbContext.Authors.Any(a => a.UserId == userId && a.ChatId == c.Id && !a.HasLeft
-                    && dbContext.Roles.Any(r => r.CanRead && dbContext.AuthorRoles.Any(ar => ar.DbRoleId==r.Id && ar.DbAuthorId==a.Id))));
+                && dbContext.AuthorRoles.Any(ar =>
+                    dbContext.Authors.Any(a => a.ChatId == c.Id && a.UserId == userId && ar.DbAuthorId == a.Id)
+                    && dbContext.Roles.Any(r => r.ChatId == c.Id && r.CanRead && ar.DbRoleId == r.Id)
+                ));
 
         var chatIds = peerChats.Union(otherChats)
             .Select(chat => chat.Id)
