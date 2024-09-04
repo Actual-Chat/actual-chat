@@ -48,7 +48,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     protected lastConversationPhraseAtSample: number | null = null;
 
     protected constructor(protected sampleRate: number, private isHighQuality: boolean, public lastActivityEvent: VoiceActivityChange = VoiceActivityDetectorBase.DefaultVoiceActivity) {
-        this.movingAverages = new ExponentialMovingAverage(8); // 32ms*8 ~ 250ms
+        this.movingAverages = new ExponentialMovingAverage(5); // 32ms*5 ~ 150ms
         this.longMovingAverages = new ExponentialMovingAverage(64); // 32ms*64 ~ 2s
         this.speechBoundaries = new StreamedMedian();
         // this.speechBoundaries.push(0.75); // initial speech probability boundary
