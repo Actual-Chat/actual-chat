@@ -7,8 +7,9 @@ const { debugLog } = Log.get('Interactive');
 
 export class Interactive {
     private static _isInitialized = false;
-    private static _isInteractive = window.location.host === '0.0.0.0';
-    private static _isAlwaysInteractive = window.location.host === '0.0.0.0';
+    // TODO: replace this strange way to determine app kind
+    private static _isInteractive = window.location.host === 'localhost';
+    private static _isAlwaysInteractive = window.location.host === 'localhost';
 
     public static interactionEvents: EventHandlerSet<Event>;
     public static readonly interactionEvent$ = new Observable<Event>(subject => {

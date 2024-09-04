@@ -158,9 +158,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         }
         // TODO: setup security headers: better CSP, Referrer-Policy / X-Content-Type-Options / X-Frame-Options etc
         var origins = new List<string> {
-            "http://0.0.0.0",
-            "https://0.0.0.0",
-            "app://0.0.0.0",
+            "http://localhost",
+            "https://localhost",
+            "app://localhost",
         };
         if (Env.IsDevelopment()) {
             origins.Add("https://local.actual.chat");

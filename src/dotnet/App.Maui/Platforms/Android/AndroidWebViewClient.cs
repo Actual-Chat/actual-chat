@@ -10,7 +10,7 @@ public class AndroidWebViewClient(
     ILogger log
     ) : WebViewClient
 {
-    private const string AppHostAddress = "0.0.0.0";
+    private const string AppHostAddress = "localhost";
     private ILogger? _log;
 
     private ILogger Log => _log ??= StaticLog.Factory.CreateLogger(GetType());

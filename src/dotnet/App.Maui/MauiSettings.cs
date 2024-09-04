@@ -5,7 +5,7 @@ namespace ActualChat.App.Maui;
 
 public static class MauiSettings
 {
-    public const string LocalHost = "0.0.0.0";
+    public const string LocalHost = "localhost";
 #if IS_DEV_MAUI
     public const bool IsDevApp = true;
 #else

@@ -32,7 +32,7 @@
 	<dict>
 		<key>NSExceptionDomains</key>
 		<dict>
-			<key>0.0.0.0</key>
+			<key>localhost</key>
 			<dict>
 				<key>NSIncludesSubdomains</key>
 				<true/>

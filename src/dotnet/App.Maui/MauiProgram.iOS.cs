@@ -3,6 +3,7 @@ using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Maui.LifecycleEvents;
 using Plugin.Firebase.Analytics;
 using Plugin.Firebase.CloudMessaging;
@@ -47,4 +48,12 @@ public static partial class MauiProgram
 #endif
             return false;
         }));
+
+    // TODO: remove after migrating to .net 9.0
+    private static void FixIosBaseAddress()
+    {
+        var handlerType = typeof(BlazorWebViewHandler);
+        var field = handlerType.GetField("AppOriginUri", BindingFlags.Static | BindingFlags.NonPublic) ?? throw new Exception("AppOriginUri field not found");
+        field.SetValue(null, new Uri("app://localhost/"));
+    }
 }
