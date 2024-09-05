@@ -171,11 +171,10 @@ def create(*,
         should_continue,
     )
     graph_builder.add_conditional_edges(
-        "summarize_conversation",
+        "final_answer",
         should_summarize
     )
     graph_builder.add_edge("tools", "agent")
-    graph_builder.add_edge("final_answer", "summarize_conversation")
     graph_builder.add_edge("human_input", "agent")
 
 
