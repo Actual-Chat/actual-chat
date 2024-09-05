@@ -32,7 +32,8 @@
 	<dict>
 		<key>NSExceptionDomains</key>
 		<dict>
-			<key>0.0.0.0</key>
+<!--            TODO: Remove is not necessary-->
+			<key>localhost</key>
 			<dict>
 				<key>NSIncludesSubdomains</key>
 				<true/>
