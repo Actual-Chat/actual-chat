@@ -105,7 +105,6 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new TuneUI(c));
         services.AddScoped(c => new BubbleUI(c.UIHub()));
         services.AddScoped(c => new ShareUI(c.UIHub()));
-        services.AddScoped(c => new SignInRequesterUI(c));
         services.AddScoped(_ => new ToastUI());
         fusion.AddService<LiveTime>(ServiceLifetime.Scoped);
 

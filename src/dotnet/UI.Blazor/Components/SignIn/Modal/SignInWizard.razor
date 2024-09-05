@@ -1,13 +1,13 @@
 @namespace ActualChat.UI.Blazor.Components
+@{
+    var reason = Reason.NullIfEmpty() ?? "to ActualChat";
+}
 
 <Stepper Context="stepper">
     <Header>
         @if (!stepper.CanMoveBack) {
             <div class="sign-in-modal-header-wrapper">
-                <div class="sign-in-modal-header">Sign-in to Actual Chat</div>
-                @if (!Reason.IsNullOrEmpty()) {
-                    <div class="sign-in-modal-reason">@Reason</div>
-                }
+                <div class="sign-in-modal-header">Sign-in @reason</div>
             </div>
         } else {
             <HeaderButton

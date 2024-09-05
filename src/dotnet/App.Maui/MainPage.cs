@@ -20,6 +20,7 @@ public class MainPage : ContentPage
     public void RecreateWebView()
         => Content = new MauiWebView().BlazorWebView;
 
+    // NOTE(AY): Currently unused
     public void Reload()
     {
         var mauiWebView = MauiWebView.Current;

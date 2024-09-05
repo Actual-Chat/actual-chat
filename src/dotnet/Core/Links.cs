@@ -30,10 +30,15 @@ public static class Links
     public static LocalUrl Invite(string format, string inviteId)
         => string.Format(CultureInfo.InvariantCulture, format, inviteId.UrlEncode());
 
-    public static LocalUrl CloseFlow(string flowName, string? redirectUrl = null)
-        => redirectUrl.IsNullOrEmpty()
-            ? $"/fusion/close?flow={flowName.UrlEncode()}"
-            : $"/fusion/close?flow={flowName.UrlEncode()}&redirectUrl={redirectUrl.UrlEncode()}";
+    public static LocalUrl CloseFlow(string flowName, bool mustClose = true, string? redirectUrl = null)
+    {
+        var url = $"/fusion/close?flow={flowName.UrlEncode()}";
+        if (!mustClose)
+            url += "&mustClose=0"; // "must close" is the default
+        if (!redirectUrl.IsNullOrEmpty())
+            url += $"&redirectUrl={redirectUrl.UrlEncode()}";
+        return url;
+    }
 
     private static string ChatEntryQuery(long entryLid)
         => $"?{ChatEntryLidQueryParameterName}={entryLid.Format()}";

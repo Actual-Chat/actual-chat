@@ -41,18 +41,21 @@ public sealed class ServerAuth
             AllowSignIn = AllowAnywhere;
     }
 
-    public bool IsCloseFlow(HttpContext httpContext, out string flowName, out string redirectUrl)
+    public bool IsCloseFlow(HttpContext httpContext, out string flowName, out string redirectUrl, out bool mustClose)
     {
         var request = httpContext.Request;
         var result =
             OrdinalEquals(request.Path.Value, CloseFlowRequestPath)
             || OrdinalEquals(request.Path.Value, AppCloseFlowRequestPath);
         flowName = "";
-        if (result && request.Query.TryGetValue("flow", out var flows))
-            flowName = (flows.FirstOrDefault() ?? "").Capitalize();
+        if (result && request.Query.TryGetValue("flow", out var flowValues))
+            flowName = (flowValues.FirstOrDefault() ?? "").Capitalize();
         redirectUrl = "";
-        if (result && request.Query.TryGetValue("redirectUrl", out var returnUrls))
-            redirectUrl = returnUrls.FirstOrDefault() ?? "";
+        if (result && request.Query.TryGetValue("redirectUrl", out var returnUrlValues))
+            redirectUrl = returnUrlValues.FirstOrDefault() ?? "";
+        mustClose = true;
+        if (result && request.Query.TryGetValue("mustClose", out var mustCloseValues))
+            mustClose = int.TryParse(mustCloseValues.FirstOrDefault(), CultureInfo.InvariantCulture, out var x) && x != 0;
         return result;
     }
 
@@ -270,5 +273,5 @@ public sealed class ServerAuth
         => true;
 
     private static bool AllowOnCloseFlow(ServerAuth h, HttpContext httpContext)
-        => h.IsCloseFlow(httpContext, out _, out _);
+        => h.IsCloseFlow(httpContext, out _, out _, out _);
 }

@@ -110,10 +110,8 @@
         return phone.IsValid;
     }
 
-    private void OnSignInWith(string schema) {
-        Modal.Close();
-        _ = AccountUI.SignIn(schema);
-    }
+    private void OnSignInWith(string schema)
+        => _ = AccountUI.SignIn(schema);
 
     private Task OnSignInWithPhone()
         => Stepper.TryMoveForward().AsTask();

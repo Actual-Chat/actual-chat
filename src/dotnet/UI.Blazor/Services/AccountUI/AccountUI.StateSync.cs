@@ -74,12 +74,8 @@ public partial class AccountUI
 
         // We were signed out -> it's a sign-in
         _ = OnboardingUI.TryShow();
-        if (SignInRequesterUI.Request is { } signInRequest) {
-            SignInRequesterUI.Clear();
-            if (!signInRequest.RedirectTo.IsNullOrEmpty())
-                _ = History.NavigateTo(signInRequest.RedirectTo, true);
-            return;
-        }
+        if (_activeSignInRequest.Value != null)
+            return; // No auto-navigation in this case
 
         if (!History.LocalUrl.IsChatOrChatRoot() && !History.LocalUrl.IsSettings() )
             _ = AutoNavigationUI.NavigateTo(Links.Chats, AutoNavigationReason.SignIn);

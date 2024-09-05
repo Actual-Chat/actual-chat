@@ -35,11 +35,8 @@
     [Parameter, EditorRequired] public PhoneSignInModel PhoneSignInModel { get; set; } = null!;
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
-    protected override Task<bool> Save() {
-        Modal.Close();
-        _ = History.NavigateTo(Links.Chats);
-        return TaskExt.TrueTask;
-    }
+    protected override Task<bool> Save()
+        => TaskExt.TrueTask;
 
     protected override Task<bool> Validate()
         => TaskExt.TrueTask;

@@ -24,7 +24,7 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
     {
         var session = SecureTokensBackend.ParseSessionToken(sessionToken);
         HttpContext.AddSessionCookie(session);
-        var closeFlowUrl = UrlMapper.ToAbsolute(Links.CloseFlow(flowName, redirectUrl));
+        var closeFlowUrl = UrlMapper.ToAbsolute(Links.CloseFlow(flowName, false, redirectUrl));
         if (!endpoint.OrdinalStartsWith("/"))
             endpoint = $"/{endpoint}";
         return Redirect($"{endpoint}?returnUrl={closeFlowUrl.UrlEncode()}");
@@ -41,7 +41,7 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
         var session = SecureTokensBackend.ParseSessionToken(sessionToken);
         HttpContext.AddSessionCookie(session);
         if (returnUrl.IsNullOrEmpty())
-            returnUrl = UrlMapper.ToAbsolute(Links.CloseFlow("Sign-in"));
+            returnUrl = UrlMapper.ToAbsolute(Links.CloseFlow("Sign-in", false));
         var syncUrl = UrlMapper.ToAbsolute(
             $"{Route}/sync?s={sessionToken.UrlEncode()}&returnUrl={returnUrl.UrlEncode()}");
         return Redirect($"/signIn/{scheme}?returnUrl={syncUrl.UrlEncode()}");
@@ -56,7 +56,7 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
         var session = SecureTokensBackend.ParseSessionToken(sessionToken);
         HttpContext.AddSessionCookie(session);
         if (returnUrl.IsNullOrEmpty())
-            returnUrl = UrlMapper.ToAbsolute(Links.CloseFlow("Sign-out"));
+            returnUrl = UrlMapper.ToAbsolute(Links.CloseFlow("Sign-out", false));
         var syncUrl = UrlMapper.ToAbsolute(
             $"{Route}/sync?s={sessionToken.UrlEncode()}&returnUrl={returnUrl.UrlEncode()}");
         return Redirect($"/signOut?returnUrl={syncUrl.UrlEncode()}");

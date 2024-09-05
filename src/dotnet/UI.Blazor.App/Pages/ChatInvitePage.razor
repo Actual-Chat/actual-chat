@@ -3,7 +3,7 @@
 
 <MainHeader>Joining via invite link</MainHeader>
 
-@if (_navigateRequested) {
+@if (_signInFromHomeRequested) {
     return;
 }
 
@@ -16,7 +16,7 @@
 }
 
 @code {
-    private bool _navigateRequested;
+    private bool _signInFromHomeRequested;
     private Result<Invite>? _useResult;
     private AccountFull? _account;
     private ILogger? _log;
@@ -29,7 +29,6 @@
     private History History => Hub.History;
     private AccountUI AccountUI => Hub.AccountUI;
     private IPlaces Places => Hub.Places;
-    private SignInRequesterUI SignInRequesterUI => Hub.GetRequiredService<SignInRequesterUI>();
     private ILogger Log => _log ??= Hub.LogFor(GetType());
 
     [Parameter] public string InviteId { get; set; } = "";
@@ -37,8 +36,8 @@
     protected override async Task OnParametersSetAsync() {
         _account = await AccountUI.OwnAccount.Use();
         if (_account.IsGuestOrNone || !_account.IsActive()) {
-            _navigateRequested = true;
-            _ = SignInRequesterUI.SignInFromHomeAndRedirect("You must sign-in to use this chat invite", History.LocalUrl);
+            _signInFromHomeRequested = true;
+            _ = AccountUI.RequestSignInFromHomePage("to use this chat invite", History.LocalUrl);
             return;
         }
 
