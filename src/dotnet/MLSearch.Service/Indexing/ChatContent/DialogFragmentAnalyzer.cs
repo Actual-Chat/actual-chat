@@ -2,6 +2,7 @@ using System.Text;
 using Anthropic.SDK;
 using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
+using Cysharp.Text;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;
 
@@ -27,7 +28,7 @@ internal partial class DialogFragmentAnalyzer(DialogFragmentAnalyzer.Options opt
 
     public async Task<int> ChooseOption(string phrase, string[] fragments)
     {
-        var sb = new StringBuilder();
+        using var sb = ZString.CreateStringBuilder();
         sb.Append("Choose more relevant continuation to the phrase below from given options.");
         if (!IsDiagnosticsEnabled)
             sb.Append(" Answer with option name only.");
@@ -62,7 +63,7 @@ internal partial class DialogFragmentAnalyzer(DialogFragmentAnalyzer.Options opt
 
     public async Task<int> ChooseMoreProbableDialog(string[] dialogs)
     {
-        var sb = new StringBuilder();
+        using var sb = ZString.CreateStringBuilder();
         var dialogWithKeys = new Dictionary<string, int>(StringComparer.Ordinal);
         var alphabet = Alphabet.AlphaLower;
         var i = 0;
