@@ -185,7 +185,7 @@
             }
             if (stream.Length > Constants.Attachments.FileSizeLimit) {
                 Log.LogWarning("File size limit exceeded for '{Url}'. Actual size is {FileSize}", file.Url, stream.Length);
-                fileSizeLimitError ??= AttachmentList.FileToBigError();
+                fileSizeLimitError ??= AttachmentList.FileTooBigError();
                 continue;
             }
             filesDownloader.TryExtractFileName(file.Url, out var fileName);

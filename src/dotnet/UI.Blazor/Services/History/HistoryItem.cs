@@ -5,7 +5,7 @@ namespace ActualChat.UI.Blazor.Services;
 public sealed record HistoryItem(
     History History,
     long BackItemId,
-    string Uri,
+    string Url, // Relative
     ImmutableDictionary<Type, HistoryState> States,
     NavigationAction OnNavigation = default
     ) : IEnumerable<KeyValuePair<Type, HistoryState>>
@@ -35,14 +35,14 @@ public sealed record HistoryItem(
     public bool IsIdenticalTo(HistoryItem other)
     {
         if (ReferenceEquals(States, other.States)) // Quick way to check if they're 100% equal
-            return OrdinalEquals(Uri, other.Uri);
+            return OrdinalEquals(Url, other.Url);
 
         foreach (var (stateType, state) in States) {
             var otherState = other[stateType];
             if (!ReferenceEquals(state, otherState) && !Equals(state, otherState))
                 return false;
         }
-        return OrdinalEquals(Uri, other.Uri);
+        return OrdinalEquals(Url, other.Url);
     }
 
     public int CompareBackStepCount(HistoryItem otherItem)
@@ -88,10 +88,10 @@ public sealed record HistoryItem(
 
     // "With" helpers
 
-    public HistoryItem WithUri(NavigationManager nav)
-        => WithUri(nav.GetLocalUrl().Value);
-    public HistoryItem WithUri(string uri)
-        => OrdinalEquals(uri, Uri) ? this : this with { Uri = uri };
+    public HistoryItem WithUrl(NavigationManager nav)
+        => WithUrl(nav.GetLocalUrl().Value);
+    public HistoryItem WithUrl(string url)
+        => OrdinalEquals(url, Url) ? this : this with { Url = url };
 
     public HistoryItem With<TState>(TState state)
         where TState : HistoryState

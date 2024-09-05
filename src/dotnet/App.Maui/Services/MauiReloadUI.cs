@@ -3,11 +3,9 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Services;
 
-public class MauiReloadUI : ReloadUI
+[method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiReloadUI))]
+public class MauiReloadUI(IServiceProvider services) : ReloadUI(services)
 {
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiReloadUI))]
-    public MauiReloadUI(IServiceProvider services) : base(services) { }
-
     public override void Reload(bool clearCaches = false, bool clearLocalSettings = false)
     {
         Log.LogInformation("Reload requested");
@@ -15,7 +13,7 @@ public class MauiReloadUI : ReloadUI
             Log.LogInformation("Reloading...");
             try {
                 await Clear(clearCaches, clearLocalSettings).ConfigureAwait(true);
-                MainPage.Current.Reload();
+                MainPage.Current.RecreateWebView();
             }
             catch (Exception e) {
                 Log.LogError(e, "Reload failed, terminating");

@@ -49,7 +49,7 @@ internal sealed class MauiAuth(UIHub hub) : IClientAuth
         }
 #endif
 
-        await WebSignInOrSignOut($"sign-in/{schema}").ConfigureAwait(false);
+        await WebSignInOrSignOut($"/signIn/{schema}", "Sign-in").ConfigureAwait(false);
     }
 
     public async Task SignOut()
@@ -60,29 +60,31 @@ internal sealed class MauiAuth(UIHub hub) : IClientAuth
             await googleAuth.SignOut().ConfigureAwait(true);
 #endif
 
-        await WebSignInOrSignOut("sign-out").ConfigureAwait(false);
+        await WebSignInOrSignOut("/signOut", "Sign-out").ConfigureAwait(false);
     }
 
     // Private methods
 
-    private async Task WebSignInOrSignOut(string endpoint)
+    private async Task WebSignInOrSignOut(string endpoint, string flowName)
     {
         var isSignIn = endpoint.OrdinalIgnoreCaseStartsWith("sign-in");
         try {
             var sessionToken = await SessionTokens.Get().ConfigureAwait(true);
-            var url = $"{MauiSettings.BaseUrl}maui-auth/{endpoint}?s={sessionToken.Token.UrlEncode()}";
+            var url = $"{MauiSettings.BaseUrl}maui-auth/start"
+                + $"?s={sessionToken.Token.UrlEncode()}"
+                + $"&e={endpoint.UrlEncode()}"
+                + $"&flow={flowName.UrlEncode()}"
+                + $"&appKind={HostInfo.AppKind:G}";
             if (MauiSettings.WebAuth.UseSystemBrowser) {
-                await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred).ConfigureAwait(false);
-                // NOTE(AY): WebView crashes on the call below in Android:
-                // await History.OpenNewWindow(url).ConfigureAwait(false);
+                _ = MauiBrowser.Open(url);
                 return;
             }
 
             // WebView-based authentication
-            var returnUrl = Hub.UrlMapper().ToAbsolute( isSignIn ? Links.Chats : Links.Home);
+            var redirectUrl = Hub.UrlMapper().ToAbsolute( isSignIn ? Links.Chats : Links.Home);
             // NOTE(AY): returnUrl here points to https://[xxx.]actual.chat/xxx ,
             // but MauiNavigationInterceptor will correct it to the local one anyway.
-            url = $"{url}&returnUrl={returnUrl.UrlEncode()}";
+            url = $"{url}&redirectUrl={redirectUrl.UrlEncode()}";
             Hub.Nav.NavigateTo(url);
         }
         catch (Exception ex) {

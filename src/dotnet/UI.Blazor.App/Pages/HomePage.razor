@@ -4,4 +4,14 @@
 
 <Landing/>
 
-<SignInRequester />
+@code {
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private AccountUI AccountUI => Hub.AccountUI;
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        _ = AccountUI.ActiveSignInRequest.Value?.Show();
+    }
+}

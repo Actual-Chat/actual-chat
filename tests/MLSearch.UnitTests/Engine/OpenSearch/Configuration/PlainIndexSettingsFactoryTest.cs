@@ -10,7 +10,7 @@ public class PlainIndexSettingsFactoryTest(ITestOutputHelper @out) : TestBase(@o
     private const int EmbeddingDimension = 1024;
     private const string ModelAllConfig = "__SOME_CONTENT__";
 
-    private readonly IndexNames _indexNames = new();
+    private readonly OpenSearchNames _openSearchNames = new();
     private readonly ClusterSetupResult _setupResult =
         new(new EmbeddingModelProps(ModelId, EmbeddingDimension, ModelAllConfig));
 
@@ -18,7 +18,7 @@ public class PlainIndexSettingsFactoryTest(ITestOutputHelper @out) : TestBase(@o
     public void SettingsPropertiesSetAsExpected()
     {
         const string indexName = "test-index";
-        var factory = new PlainIndexSettingsFactory(_indexNames, MockClusterSetup());
+        var factory = new PlainIndexSettingsFactory(_openSearchNames, MockClusterSetup());
         var settings = factory.Create(indexName);
         Assert.Contains(indexName, settings.IndexName, StringComparison.Ordinal);
     }
@@ -26,7 +26,7 @@ public class PlainIndexSettingsFactoryTest(ITestOutputHelper @out) : TestBase(@o
     [Fact]
     public void NullOrEmptyIndexNameIsNotAllowed()
     {
-        var factory = new PlainIndexSettingsFactory(_indexNames, MockClusterSetup());
+        var factory = new PlainIndexSettingsFactory(_openSearchNames, MockClusterSetup());
 #pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         Assert.Throws<ArgumentNullException>(() => factory.Create(null));
 #pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.

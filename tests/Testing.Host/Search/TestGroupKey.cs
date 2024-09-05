@@ -1,6 +1,6 @@
 namespace ActualChat.Testing.Host;
 
-public sealed record TestChatKey(
+public sealed record TestGroupKey(
     TestPlaceKey? PlaceKey,
     int Index,
     bool IsPublic,

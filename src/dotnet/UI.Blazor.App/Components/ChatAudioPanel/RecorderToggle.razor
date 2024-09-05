@@ -22,6 +22,7 @@
     var tooltipText = showStatus ? "" : statusText;
     var tooltipPosition = showStatus ? FloatingPosition.None : FloatingPosition.Top;
     _oldRecordingLanguage = language;
+    var recordingIconSize = ScreenSize.IsNarrow() ? 10 : 8;
 }
 
 @if (m.HasMicrophonePermission != false) {
@@ -62,7 +63,11 @@
             @ontouchcancel="@OnPointerUp"
             @oncontextmenu="@OnContextMenu"
             data-context-menu-delay="200">
-            <i class="icon-stop-fill recorder-icon"></i>
+            @if (m is { IsVoiceActive: true }) {
+                <active-recording-svg size="@recordingIconSize"/>
+            } else {
+                <i class="icon-stop-fill recorder-icon"></i>
+            }
         </ButtonRound>
     </div>
 } else {
@@ -88,6 +93,7 @@
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
+    private Features Features => Hub.Features();
     private IJSRuntime JS => Hub.JSRuntime();
 
     private ChatId RecordingChatId => ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId;
@@ -138,6 +144,7 @@
         var isTransitioning =
             recordingChatId == chatId // The recorder records in this chat
             && recorderState.IsRecording != isRecordingHere; // AND it's state is not in sync with the expected one here
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
         return new (
             Chat,
             language,
@@ -146,7 +153,8 @@
             recorderState.IsConnected,
             recorderState.IsVoiceActive,
             hasMicrophonePermission,
-            isTransitioning);
+            isTransitioning,
+            enableIncompleteUI);
     }
 
     private void OnClick()
@@ -215,8 +223,9 @@
         bool IsConnected = false,
         bool IsVoiceActive = false,
         bool? HasMicrophonePermission = null,
-        bool IsTransitioning = false
+        bool IsTransitioning = false,
+        bool EnableIncompleteUI = false
     ) {
-        public static readonly Model Loading = new(SpecialChat.Loading, Language.None, default, false, true);
+        public static readonly Model Loading = new(SpecialChat.Loading, Language.None, default, false, true, false);
     }
 }

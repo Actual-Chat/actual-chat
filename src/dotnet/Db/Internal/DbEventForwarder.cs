@@ -31,50 +31,52 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
         // Forwards everything to Queues
         switch (value) {
         case ICommand command: {
-                using var activity = DbInstruments.ActivitySource
-                    .StartActivity(ProcessActivityName, ActivityKind.Internal);
+            using var activity = DbInstruments.ActivitySource
+                .StartActivity(ProcessActivityName, ActivityKind.Internal);
 
-                Log.LogInformation("-> {CommandType}: {Info}", command.GetType().GetName(), info);
-                try {
-                    await Queues.Enqueue(command, cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception e) when (e.IsCancellationOf(cancellationToken)) {
-                    activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
-                    throw;
-                }
-                catch (Exception e) {
-                    activity?.SetStatus(ActivityStatusCode.Error, e.Message);
-                    throw new RetryRequiredException("Queues.Enqueue failed, retry required.", e);
-                }
+            Log.LogInformation("-> {CommandType}: {Info}", command.GetType().GetName(), info);
+            try {
+                await Queues.Enqueue(command, cancellationToken).ConfigureAwait(false);
             }
+            catch (Exception e) when (e.IsCancellationOf(cancellationToken)) {
+                activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
+                throw;
+            }
+            catch (Exception e) {
+                activity?.SetStatus(ActivityStatusCode.Error, e.Message);
+                throw new RetryRequiredException("Queues.Enqueue failed, retry required.", e);
+            }
+        }
             break;
         case QueuedCommand queuedCommand: {
-                ActivityContext senderContext = default;
-                IEnumerable<ActivityLink>? links = null;
-                var propagationContext = Propagators.DefaultTextMapPropagator
-                    .Extract(default, queuedCommand.Headers, static (headers, name) => headers.TryGetValue(name, out var value) ? value : []);
-                if (propagationContext != default) {
-                    senderContext = propagationContext.ActivityContext;
-                    Baggage.Current = propagationContext.Baggage;
-                    links = [new ActivityLink(senderContext)];
-                }
-
-                using var activity = DbInstruments.ActivitySource
-                    .StartActivity(ProcessActivityName, ActivityKind.Consumer, senderContext, links: links);
-
-                Log.LogInformation("-> {CommandType}: {Info}", queuedCommand.UntypedCommand.GetType().GetName(), info);
-                try {
-                    await Queues.Enqueue(queuedCommand, cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception e) when (e.IsCancellationOf(cancellationToken)) {
-                    activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
-                    throw;
-                }
-                catch (Exception e) {
-                    activity?.SetStatus(ActivityStatusCode.Error, e.Message);
-                    throw new RetryRequiredException("Queues.Enqueue failed, retry required.", e);
-                }
+            ActivityContext senderContext = default;
+            IEnumerable<ActivityLink>? links = null;
+            var propagationContext = Propagators.DefaultTextMapPropagator
+                .Extract(default,
+                    queuedCommand.Headers,
+                    static (headers, name) => headers.TryGetValue(name, out var value) ? value : []);
+            if (propagationContext != default) {
+                senderContext = propagationContext.ActivityContext;
+                Baggage.Current = propagationContext.Baggage;
+                links = [new ActivityLink(senderContext)];
             }
+
+            using var activity = DbInstruments.ActivitySource
+                .StartActivity(ProcessActivityName, ActivityKind.Consumer, senderContext, links: links);
+
+            Log.LogInformation("-> {CommandType}: {Info}", queuedCommand.UntypedCommand.GetType().GetName(), info);
+            try {
+                await Queues.Enqueue(queuedCommand, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e.IsCancellationOf(cancellationToken)) {
+                activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
+                throw;
+            }
+            catch (Exception e) {
+                activity?.SetStatus(ActivityStatusCode.Error, e.Message);
+                throw new RetryRequiredException("Queues.Enqueue failed, retry required.", e);
+            }
+        }
             break;
         default:
             var eventType = value?.GetType().GetName() ?? "null";

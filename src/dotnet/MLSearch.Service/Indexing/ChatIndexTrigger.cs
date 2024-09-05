@@ -28,8 +28,11 @@ internal class ChatIndexTrigger(
     // [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        var e = new MLSearch_TriggerChatIndexing(eventCommand.Entry.ChatId, IndexingKind.ChatContent);
-        await queues.Enqueue(e, cancellationToken).ConfigureAwait(false);
+        var indexContentCmd = new MLSearch_TriggerChatIndexing(eventCommand.Entry.ChatId, IndexingKind.ChatContent);
+        await queues.Enqueue(indexContentCmd, cancellationToken).ConfigureAwait(false);
+
+        var indexEntriesCmd = new MLSearch_TriggerChatIndexing(eventCommand.Entry.ChatId, IndexingKind.ChatEntries);
+        await queues.Enqueue(indexEntriesCmd, cancellationToken).ConfigureAwait(false);
     }
 
     // ReSharper disable once UnusedMember.Global

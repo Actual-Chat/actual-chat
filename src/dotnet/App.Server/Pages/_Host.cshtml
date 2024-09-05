@@ -22,7 +22,7 @@
     SessionResolver.Session = session;
     if (isNewSession)
         HttpContext.Response.Cookies.Delete(BlazorModeEndpoint.Cookie.Name!);
-    var isCloseFlow = ServerAuth.IsCloseFlow(HttpContext, out var flowName, out var redirectUrl);
+    var isCloseFlow = ServerAuth.IsCloseFlow(HttpContext, out var flowName, out var redirectUrl, out var mustClose);
     if (isCloseFlow && !redirectUrl.IsNullOrEmpty()) {
         HttpContext.Response.Redirect(redirectUrl, false);
         return;
@@ -208,11 +208,13 @@
 }
 
 @if (isCloseFlow) {
-    <script nonce="@closeLoginNonce">
-        setTimeout(function () {
-            window.open('','_self').close();
-        }, 500)
-    </script>
+    @if (mustClose) {
+        <script nonce="@closeLoginNonce">
+            setTimeout(function () {
+                window.open('','_self').close();
+            }, 500)
+        </script>
+    }
     <div class="fusion-close" data-flow-name="@(flowName)">
         <div class="c-content">
             <img draggable="false" src="/dist/images/landing/checkmark-checked.svg" alt="Checked">

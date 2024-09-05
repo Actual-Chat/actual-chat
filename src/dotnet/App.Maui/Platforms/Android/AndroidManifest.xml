@@ -45,5 +45,15 @@
     <intent>
       <action android:name="android.media.action.VIDEO_CAPTURE" />
     </intent>
+    <!-- See https://github.com/dotnet/maui/issues/20182 -->
+    <intent>
+      <action android:name="android.intent.action.VIEW"/>
+      <data android:scheme="http"/>
+    </intent>
+    <!-- See https://github.com/dotnet/maui/issues/20182 -->
+    <intent>
+      <action android:name="android.intent.action.VIEW"/>
+      <data android:scheme="https"/>
+    </intent>
   </queries>
 </manifest>

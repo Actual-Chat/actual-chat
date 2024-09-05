@@ -35,7 +35,6 @@ public static partial class Constants
         // UI services
         public static readonly bool History = false;
         public static readonly bool ChatUI = false;
-        public static readonly bool ContactsUI = false;
 
         // UI components
         public static readonly bool ChatListComponents = false;
@@ -56,7 +55,7 @@ public static partial class Constants
         public static readonly bool TranscriberGoogle = false;
 
         // Search
-        public static readonly bool OpenSearchRequest = false;
+        public static readonly bool OpenSearchRequest = true;
 
         // Database
         public static readonly bool Npgsql = false;

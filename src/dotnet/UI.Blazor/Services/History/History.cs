@@ -44,7 +44,7 @@ public partial class History : ScopedServiceBase<UIHub>, IDisposable
     public IState<HistoryItem> State => _state;
 
     public string Uri => LocalUrl.Value;
-    public LocalUrl LocalUrl => new(_uri, ParseOrNone.Option);
+    public LocalUrl LocalUrl => new(_url, ParseOrNone.Option);
     public event EventHandler<LocationChangedEventArgs>? LocationChanged;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(History))]
@@ -59,10 +59,10 @@ public partial class History : ScopedServiceBase<UIHub>, IDisposable
         _locationChangeRegion = new NoRecursionRegion("LocationChange", Lock, Log);
         var isTestServer = HostInfo.HostKind.IsServer() && HostInfo.IsTested;
         if (isTestServer)
-            _uri = Links.Home;
+            _url = Links.Home;
         else
-            _uri = Nav.GetLocalUrl().Value;
-        _defaultItem = new HistoryItem(this, 0, _uri, ImmutableDictionary<Type, HistoryState>.Empty);
+            _url = Nav.GetLocalUrl().Value;
+        _defaultItem = new HistoryItem(this, 0, _url, ImmutableDictionary<Type, HistoryState>.Empty);
         _currentItem = RegisterItem(_defaultItem with { Id = NewItemId() });
         _state = StateFactory.NewMutable(_currentItem, StateCategories.Get(GetType(), nameof(State)));
 

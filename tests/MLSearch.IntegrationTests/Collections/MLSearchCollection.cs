@@ -48,9 +48,9 @@ internal sealed class OpenSearchCleanup(IOpenSearchClient openSearch) : IAsyncDi
     public async ValueTask DisposeAsync()
     {
         await openSearch.LowLevel.DoRequestAsync<StringResponse>(
-            HttpMethod.DELETE, $"/{IndexNames.MLTestIndexPattern}", CancellationToken.None);
+            HttpMethod.DELETE, $"/{OpenSearchNames.MLTestIndexPattern}", CancellationToken.None);
         await openSearch.LowLevel.DoRequestAsync<StringResponse>(
-            HttpMethod.DELETE, $"/_ingest/pipeline/{IndexNames.MLTestIndexPattern}", CancellationToken.None);
+            HttpMethod.DELETE, $"/_ingest/pipeline/{OpenSearchNames.MLTestIndexPattern}", CancellationToken.None);
     }
 }
 

@@ -1,5 +1,4 @@
 using System.Linq.Expressions;
-using ActualChat.Search;
 using OpenSearch.Client;
 using OpenSearch.Net;
 
@@ -175,13 +174,24 @@ internal static class OpenSearchClientExt
     }
 
     public static SearchDescriptor<T> Log<T>(this SearchDescriptor<T> descriptor, IOpenSearchClient client, ILogger? log, string description = "") where T : class
+        => LogRequest(descriptor, client, log, description);
+
+    public static ICreateIndexRequest Log(this ICreateIndexRequest request, IOpenSearchClient client, ILogger? log, string description = "")
+        => LogRequest(request, client, log, description);
+
+    private static T LogRequest<T>(T request, IOpenSearchClient client, ILogger? log, string description)
     {
         if (log == null)
-            return descriptor;
+            return request;
 
-        var s = client.RequestResponseSerializer.SerializeToString(descriptor);
-        log.LogDebug("{Message}: {Request}", description, s);
-        return descriptor;
+        try {
+            var s = client.RequestResponseSerializer.SerializeToString(request);
+            log.LogDebug("{Description}: {Request}", description, s);
+        }
+        catch (Exception e) {
+            log.LogWarning(e, "Could not log {Description}", description);
+        }
+        return request;
     }
 
     public static MultiMatchQueryDescriptor<TDocument> Fields<TDocument, TValue>(

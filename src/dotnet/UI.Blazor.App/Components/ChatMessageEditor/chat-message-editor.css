@@ -313,6 +313,16 @@ body.wide .attachment-mode .post-panel-btn.post-message {
     @apply bg-01;
     @apply border-y border-bg-02;
 }
+.chat-message-editor:not(.narrow-panel) .attachment-list-wrapper .close-keyboard-btn,
+.chat-message-editor:not(.narrow-panel) .attachment-list-wrapper .remove-all-btn {
+    @apply hidden;
+}
+.attachment-list-wrapper .close-keyboard-btn {
+    transform: rotate(180deg);
+}
+.narrow-panel .attachment-list-wrapper {
+    @apply flex-x items-center gap-x-2;
+}
 .attachment-list-wrapper > .c-btn-group {
     @apply flex-1 flex-x justify-between;
     @apply px-2;
@@ -320,10 +330,16 @@ body.wide .attachment-mode .post-panel-btn.post-message {
 body.narrow .attachment-list-wrapper > .c-btn-group {
     @apply pb-1;
 }
+.narrow-panel .attachment-list-wrapper > .c-btn-group {
+    @apply hidden;
+}
 .attachment-list {
     @apply flex-1 flex-x justify-start gap-x-4;
     @apply p-1 md:p-2;
     @apply overflow-x-auto;
+}
+.narrow-panel .attachment-list {
+    @apply gap-x-1;
 }
 
 .attachment-list-btn.btn {
@@ -352,6 +368,9 @@ body.narrow .attachment-list-btn.btn {
 body.narrow .attachment-wrapper.last-element {
     @apply min-w-30;
 }
+.narrow-panel .attachment-wrapper.last-element:has(.add-attachment) {
+    @apply hidden;
+}
 .attachment-wrapper > .c-content {
     @apply relative;
     @apply flex-y;
@@ -363,6 +382,9 @@ body.narrow .attachment-wrapper.last-element {
     @apply rounded-t-lg;
     @apply overflow-hidden;
 }
+.narrow-panel .attachment-item {
+    @apply rounded-lg;
+}
 .attachment-item > img, .attachment-item > video {
     @apply h-34;
     @apply object-cover;
@@ -370,8 +392,15 @@ body.narrow .attachment-wrapper.last-element {
 body.narrow .attachment-item {
     @apply h-30 w-30;
 }
+body.narrow .narrow-panel .attachment-item {
+    @apply h-10 w-10;
+}
 body.narrow .attachment-item > img, .attachment-item > video {
     @apply min-h-30;
+}
+body.narrow .narrow-panel .attachment-item > img,
+.narrow-panel .attachment-item > video {
+    @apply min-h-10;
 }
 .remove-attachment-btn.btn {
     @apply absolute;
@@ -380,6 +409,9 @@ body.narrow .attachment-item > img, .attachment-item > video {
     @apply top-0 right-0;
     @apply z-10;
     @apply opacity-60;
+}
+.narrow-panel .remove-attachment-btn.btn {
+    @apply hidden;
 }
 .attachment-item > .c-file {
     @apply flex items-center justify-center;
@@ -401,11 +433,17 @@ body.narrow .attachment-item > img, .attachment-item > video {
 body.narrow .attachment-filename {
     @apply max-w-30;
 }
+body.narrow .narrow-panel .attachment-filename {
+    @apply hidden;
+}
 .attachment-upload-progress {
     @apply h-[5px];
     @apply bg-05;
     @apply rounded-md;
     transition: all 150ms ease-in-out;
+}
+.narrow-panel .attachment-upload-progress {
+    @apply hidden;
 }
 .attachment-upload-completed {
     @apply bg-success;
@@ -543,13 +581,13 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
 }
 
 .rounded-sub-footer {
-    @apply absolute portrait:top-3 landscape:-top-8;
+    @apply absolute portrait:top-4 landscape:-top-8;
     @apply flex;
     @apply h-0 inset-x-0;
     background: linear-gradient(to top, var(--background-01), transparent);
 }
 .narrow-panel .rounded-sub-footer {
-    @apply portrait:top-3;
+    @apply portrait:top-4;
 }
 .rounded-sub-footer::before {
     content: '';

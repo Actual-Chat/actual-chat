@@ -27,12 +27,12 @@ public partial class History
     }
 
     [JSInvokable]
-    public async Task NavigateTo(string uri, bool mustReplace = false, bool force = false, bool addInFront = false)
+    public async Task NavigateTo(string url, bool mustReplace = false, bool force = false, bool addInFront = false)
     {
         Dispatcher.AssertAccess();
         await WhenNavigationCompletedOrTimeout().ConfigureAwait(true);
 
-        var localUrl = new LocalUrl(uri);
+        var localUrl = new LocalUrl(url);
         var fixedUriLogLevel = LogLevel.Warning;
         if (localUrl.IsChat(out var chatId, out var query, out var hash)
             && !hash.IsNullOrEmpty()
@@ -43,21 +43,21 @@ public partial class History
             fixedUriLogLevel = LogLevel.Information;
         }
         var fixedUri = localUrl.Value;
-        if (!OrdinalEquals(uri, fixedUri)) {
-            Log.Log(fixedUriLogLevel, "NavigateTo: {Uri} is fixed to {FixedUri}", uri, fixedUri);
-            uri = fixedUri;
+        if (!OrdinalEquals(url, fixedUri)) {
+            Log.Log(fixedUriLogLevel, "NavigateTo: {Uri} is fixed to {FixedUri}", url, fixedUri);
+            url = fixedUri;
         }
 
-        var title = $"NavigateTo: {(mustReplace ? "*>" : "->")} {uri}{(force ? " + force" : "")}";
+        var title = $"NavigateTo: {(mustReplace ? "*>" : "->")} {url}{(force ? " + force" : "")}";
         var entry = NavigationQueue.Enqueue(addInFront, title, () => {
-            if (!force && OrdinalEquals(uri, _uri)) {
+            if (!force && OrdinalEquals(url, _url)) {
                 DebugLog?.LogDebug("{Entry} - skipped (same URI + no force option)", title);
                 return null;
             }
 
             DebugLog?.LogDebug("{Entry}", title);
             var itemId = mustReplace ? _currentItem.Id : NewItemId();
-            Nav.NavigateTo(uri, new NavigationOptions() {
+            Nav.NavigateTo(url, new NavigationOptions() {
                 ForceLoad = force,
                 ReplaceHistoryEntry = mustReplace,
                 HistoryEntryState = ItemIdFormatter.Format(itemId),
@@ -92,7 +92,7 @@ public partial class History
         // Back item is either found or generated
         RegisterItem(backItem);
         RegisterCurrentItem(currentItem with { BackItemId = backItem.Id });
-        Nav.NavigateTo(backItem.Uri, new NavigationOptions() {
+        Nav.NavigateTo(backItem.Url, new NavigationOptions() {
             ForceLoad = false,
             HistoryEntryState = ItemIdFormatter.Format(backItem.Id),
             ReplaceHistoryEntry = true,
@@ -124,7 +124,7 @@ public partial class History
 
     private Task AddHistoryEntry(HistoryItem item, bool addInFront = false)
         => NavigationQueue.Enqueue(addInFront,  $"AddHistoryEntry: {item}", () => {
-            Nav.NavigateTo(item.Uri,
+            Nav.NavigateTo(item.Url,
                 new NavigationOptions {
                     ForceLoad = false,
                     ReplaceHistoryEntry = false,
@@ -135,7 +135,7 @@ public partial class History
 
     private Task ReplaceHistoryEntry(HistoryItem item, bool addInFront = false)
         => NavigationQueue.Enqueue(addInFront, $"ReplaceHistoryEntry: {item}", () => {
-            Nav.NavigateTo(item.Uri,
+            Nav.NavigateTo(item.Url,
                 new NavigationOptions {
                     ForceLoad = false,
                     ReplaceHistoryEntry = true,

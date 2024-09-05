@@ -30,7 +30,7 @@ class ChatViewFooterSkeleton extends LitElement {
         align-items: center;
         justify-content: center;
         column-gap: 1.5rem;
-        height: 6rem;
+        height: 3rem;
         width: 100%;
         background-color: var(--background-01);
         border-bottom-left-radius: 2rem;
@@ -64,6 +64,8 @@ class ChatViewFooterSkeleton extends LitElement {
         width: 3rem;
     }
     .panel-buttons > .footer-button.record {
+        position: absolute;
+        top: 0.25rem;
         width: 5rem;
         height: 5rem;
     }
@@ -94,9 +96,7 @@ class ChatViewFooterSkeleton extends LitElement {
             </div>
             <div class="narrow-footer-container">
                 <div class="panel-buttons">
-                    <div class="footer-button"></div>
                     <div class="footer-button record"></div>
-                    <div class="footer-button"></div>
                 </div>
                 <div class="panel-editor">
 

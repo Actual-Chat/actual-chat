@@ -40,10 +40,10 @@ public class PanelsUI : ScopedWorkerBase<UIHub>
         if (transition.LocationChangeKind != LocationChangeKind.NewUri || IsWide())
             return;
 
-        var url = new LocalUrl(transition.Item.Uri);
+        var url = new LocalUrl(transition.Item.Url);
         if (!url.IsChatRoot()) {
             if (url.IsChat(out var chatId, out long entryLid)) {
-                var oldUrl = new LocalUrl(transition.BaseItem.Uri);
+                var oldUrl = new LocalUrl(transition.BaseItem.Url);
                 if (oldUrl.IsChat(out var oldChatId, out long oldEntryLid) && chatId == oldChatId) {
                     // Same chat
                     if (entryLid == 0 && oldEntryLid != 0)

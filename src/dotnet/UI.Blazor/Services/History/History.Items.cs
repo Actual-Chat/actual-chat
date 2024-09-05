@@ -6,16 +6,16 @@ namespace ActualChat.UI.Blazor.Services;
 public partial class History
 {
     private long _nextItemId;
-    private volatile string _uri;
+    private volatile string _url; // Relative
     private volatile HistoryItem _currentItem;
     private volatile HistoryItem _defaultItem;
     private readonly LruCache<long, HistoryItem> _itemById = new(MaxItemCount);
 
-    private HistoryItem NewItem(string? uri = null)
-        => NewItem(NewItemId(), uri);
+    private HistoryItem NewItem(string? url = null)
+        => NewItem(NewItemId(), url);
 
-    private HistoryItem NewItem(long itemId, string? uri = null)
-        => new(this, _currentItem.Id, uri ?? _uri, _currentItem.States) { Id = itemId };
+    private HistoryItem NewItem(long itemId, string? url = null)
+        => new(this, _currentItem.Id, url ?? _url, _currentItem.States) { Id = itemId };
 
     private HistoryItem? GetItemById(long id)
         => _itemById.GetValueOrDefault(id);

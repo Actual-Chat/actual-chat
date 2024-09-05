@@ -11,8 +11,9 @@ namespace ActualChat.UI.Blazor.App.Components;
 public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessage>, IDisposable
 {
     public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
-    public static readonly long HalfLoadLimit = 2 * IdTileStack.Layers[1].TileSize; // 40
-    public static readonly long LoadLimit = 4 * IdTileStack.Layers[1].TileSize; // 80
+    public static readonly long SecondTileSize = IdTileStack.Layers[1].TileSize; // 20
+    public static readonly long HalfLoadLimit = 2 * SecondTileSize; // 40
+    public static readonly long LoadLimit = 4 * SecondTileSize; // 80
     public static readonly TimeSpan FastUpdateRecency = TimeSpan.FromMilliseconds(100);
     public static readonly TimeSpan FastUpdateDelay = TimeSpan.FromMilliseconds(20);
     public static readonly TimeSpan SlowUpdateDelay = TimeSpan.FromMilliseconds(100);
@@ -158,7 +159,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 }
             },
             CancellationToken.None);
-        History.CancelWhen(cts, x => !OrdinalEquals(x.Uri, sUri));
+        History.CancelWhen(cts, x => !OrdinalEquals(x.Url, sUri));
         await NavigateTo(entryId, true);
     }
 
@@ -305,6 +306,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var idRangeToLoad = GetIdRangeToLoad(query, renderedData, nav, chatIdRange);
         var hasVeryFirstItem = idRangeToLoad.Start <= chatIdRange.Start;
         var hasVeryLastItem = idRangeToLoad.End >= chatIdRange.End;
+        var hasAllItems = hasVeryFirstItem && hasVeryLastItem;
         if (idRangeToLoad.End + HalfLoadLimit >= chatIdRange.End)
             await cChatIdRange.Use(cancellationToken); // Add dependency on chatIdRange
 
@@ -376,6 +378,17 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     ItemVisibilityState = itemVisibility,
                 };
         }
+        else if (query.ExpectedCount > tiles.SelectMany(t => t.Items).Count() / 2 && !hasAllItems) {
+            var startOffset = (int)(query.MoveRange.Start - SecondTileSize);
+            var endOffset = (int)(query.MoveRange.End + SecondTileSize);
+            var extendedQuery = new VirtualListDataQuery(query.KeyRange, query.VirtualRange, new Range<int>(startOffset, endOffset)) {
+                ExpectedCount = query.ExpectedCount,
+            };
+            return await ((IVirtualListDataSource<ChatMessage>)this)
+                .GetData(extendedQuery, renderedData, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         if (tryUpdateShownReadEntryLid
             && !ReferenceEquals(itemVisibility, renderedData.ItemVisibilityState)
             && TryUpdateShownReadEntryLid(tiles, itemVisibility)) {

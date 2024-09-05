@@ -1,5 +1,3 @@
-using ActualLab.Diagnostics;
-
 namespace ActualChat.UI.Blazor.Services;
 
 public enum AutoNavigationReason
@@ -36,7 +34,11 @@ public abstract class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub
             Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: navigation candidates are reset");
 
             var url = candidates.Count > 0
-                ? candidates.MaxBy(t => (int)t.Reason).Url
+                ? candidates
+                    .Select((t, i) => new { t.Reason, t.Url, Index = i })
+                    .OrderByDescending(t => t.Reason)
+                    .ThenByDescending(t => t.Index)
+                    .First().Url
                 : defaultUrl;
             Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: {{AutoNavigationUrl}}", url);
             return url;

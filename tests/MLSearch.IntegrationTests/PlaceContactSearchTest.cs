@@ -140,7 +140,7 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         var updatedContacts = updated.Select(x => x.ToIndexedPlaceContact()).ToApiArray();
         var deletedContacts = (deleted ?? []).Select(x => x.ToIndexedPlaceContact()).ToApiArray();
         await Commander.Call(new SearchBackend_PlaceContactBulkIndex(updatedContacts, deletedContacts));
-        await Commander.Call(new SearchBackend_Refresh(refreshPlaces: true));
+        await Commander.Call(new SearchBackend_Refresh(RefreshPlaces: true));
     }
 
     private Task<ApiArray<ContactSearchResult>> Find(string criteria, bool own)

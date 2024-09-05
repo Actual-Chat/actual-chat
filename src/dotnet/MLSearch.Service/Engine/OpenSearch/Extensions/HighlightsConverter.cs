@@ -1,5 +1,6 @@
 using ActualChat.Search;
 using OpenSearch.Client;
+using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 
@@ -9,6 +10,7 @@ public static class HighlightsConverter
     public const string PostTag = "</em>";
     private static readonly string FullNameField = "fullName";
     private static readonly string TitleField = "title";
+    private static readonly string ContentField = "content";
 
     public static SearchMatch GetSearchMatch(this IHit<IndexedUserContact> hit)
     {
@@ -35,6 +37,15 @@ public static class HighlightsConverter
             return SearchMatch.New(hit.Source.Title);
 
         return ToSearchMatch(hit.Source.Title, highlight, hit.Score ?? 0.1);
+    }
+
+    public static SearchMatch GetSearchMatch(this IHit<IndexedEntry> hit)
+    {
+        var highlight = hit.Highlight[ContentField].FirstOrDefault(x => !x.IsNullOrEmpty());
+        if (highlight.IsNullOrEmpty())
+            return SearchMatch.New(hit.Source.Content);
+
+        return ToSearchMatch(hit.Source.Content, highlight, hit.Score ?? 0.1);
     }
 
     public static SearchMatch ToSearchMatch(string plain, string highlight, double score)

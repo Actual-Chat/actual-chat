@@ -9,7 +9,6 @@
     DataSource="@this"
     Identity="@Chat.Id"
     DefaultEdge="@VirtualListEdge.End"
-    KeyComparer="@LongAsStringKeyComparer.Default"
     ItemVisibilityChanged="@OnItemVisibilityChanged">
     <Item>
         <ChatMessageView ChatContext="@ChatContext" Message="@context" />

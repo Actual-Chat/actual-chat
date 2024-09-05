@@ -71,7 +71,7 @@ public class LeftPanel : IDisposable
             return false;
 
         var currentItem = await History.State.Use(cancellationToken).ConfigureAwait(false);
-        var localUrl = new LocalUrl(currentItem.Uri);
+        var localUrl = new LocalUrl(currentItem.Url);
         if (localUrl.IsDocsOrDocsRoot())
             return true; // This panel isn't used in narrow mode in /docs
 

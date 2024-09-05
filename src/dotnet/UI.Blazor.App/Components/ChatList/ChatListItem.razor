@@ -81,7 +81,7 @@
                 @if (audioState.IsRecording) {
                     <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="blackout"/>
                 }
-                <div class="@(hasMenu ? "" : "pr-1")">
+                <div class="listen-wrapper">
                     <ChatListListenToggle AudioState="@audioState" Class="blackout"/>
                 </div>
             }

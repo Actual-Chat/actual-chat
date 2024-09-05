@@ -50,14 +50,8 @@ public static partial class MauiProgram
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddAndroid(android => {
             AndroidLifecycleLogger.Activate(android);
-            var incomingShare = new IncomingShareHandler();
-            var notificationTapHandler = new NotificationViewActionHandler();
-            android.OnPostCreate((_, _) => ChatAttentionService.Instance.Init());
             android.OnCreate(OnCreate);
-            android.OnPostCreate(incomingShare.OnPostCreate);
-            android.OnNewIntent(incomingShare.OnNewIntent);
-            android.OnPostCreate(notificationTapHandler.OnPostCreate);
-            android.OnNewIntent(notificationTapHandler.OnNewIntent);
+            android.OnPostCreate(OnPostCreate);
             android.OnResume(_ => MauiWebView.LogResume());
             android.OnPause(_ => MauiLivenessProbe.CancelCheck());
             android.OnActivityResult(AndroidActivityResultHandlers.Invoke);
@@ -65,6 +59,7 @@ public static partial class MauiProgram
                 _ = OnBackPressed(activity);
                 return true; // We handle it in HandleBackPressed
             });
+            IntentHandler.Activate(android);
         });
 
     private static async Task OnBackPressed(Activity activity)
@@ -80,5 +75,11 @@ public static partial class MauiProgram
         FirebaseAnalyticsImplementation.Initialize(activity);
         var isAnalyticsEnabled = Preferences.Default.Get(Constants.Preferences.EnableDataCollectionKey, false);
         CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isAnalyticsEnabled;
+    }
+
+    private static void OnPostCreate(Activity activity, Bundle? savedInstanceState)
+    {
+        NotificationHelper.EnsureDefaultNotificationChannelExist(activity, NotificationHelper.Constants.DefaultChannelId);
+        ChatAttentionService.Instance.Init();
     }
 }

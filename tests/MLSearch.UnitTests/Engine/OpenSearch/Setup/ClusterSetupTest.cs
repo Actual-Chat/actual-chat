@@ -11,7 +11,7 @@ namespace ActualChat.MLSearch.UnitTests.Engine.OpenSearch.Setup;
 
 public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    private readonly IndexNames _indexNames = new();
+    private readonly OpenSearchNames _openSearchNames = new();
     private readonly OpenSearchSettings _openSearchSettings = new() {
         ClusterUri = "some://uri",
         ModelGroup = "setup-test-group",
@@ -29,7 +29,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             Mock.Of<IOptions<OpenSearchSettings>>(),
             [],
             Mock.Of<ILogger<ClusterSetup>>(),
-            _indexNames,
+            _openSearchNames,
             Tracer.None);
         Assert.Throws<InvalidOperationException>(() => clusterSetup.Result);
     }
@@ -47,7 +47,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             openSearchSettings.Object,
             [],
             Mock.Of<ILogger<ClusterSetup>>(),
-            _indexNames,
+            _openSearchNames,
             Tracer.None);
 
         var cancellationSource = new CancellationTokenSource();
@@ -61,23 +61,23 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
 
         // Check if initializer verifies validness of all needed templates
         setupActions.Verify(actions => actions.IsTemplateValidAsync(
-                It.Is<string>(name => name == IndexNames.MLTemplateName),
-                It.Is<string>(pattern => pattern == IndexNames.MLIndexPattern),
+                It.Is<string>(name => name == OpenSearchNames.MLTemplateName),
+                It.Is<string>(pattern => pattern == OpenSearchNames.MLIndexPattern),
                 It.Is<int?>(numReplicas => numReplicas == _openSearchSettings.DefaultNumberOfReplicas),
                 It.Is<CancellationToken>(t => t == cancellationSource.Token)
             ), Times.Once());
 
         // Check if initializer verifies existence of all needed ingestion pipelines
-        var pipelineName = _indexNames.GetFullIngestPipelineName(IndexNames.ChatContent, _setupResult.EmbeddingModelProps);
+        var pipelineName = _openSearchNames.GetFullIngestPipelineName(OpenSearchNames.ChatContent, _setupResult.EmbeddingModelProps);
         setupActions.Verify(actions => actions.IsPipelineExistsAsync(
                 It.Is<string>(name => name == pipelineName),
                 It.Is<CancellationToken>(t => t == cancellationSource.Token)
             ), Times.Once());
 
         // Check if initializer verifies existence of all needed indexes
-        var indexShortNames = new[] { IndexNames.ChatContent, IndexNames.ChatContentCursor, IndexNames.ChatCursor };
+        var indexShortNames = new[] { OpenSearchNames.ChatContent, OpenSearchNames.ChatContentCursor, OpenSearchNames.ChatCursor };
         var indexNames = indexShortNames
-            .Select(name => _indexNames.GetFullName(name, _setupResult.EmbeddingModelProps));
+            .Select(name => _openSearchNames.GetFullName(name, _setupResult.EmbeddingModelProps));
         foreach (var indexName in indexNames) {
             setupActions.Verify(actions => actions.IsIndexExistsAsync(
                     It.Is<string>(name => name == indexName),
@@ -94,11 +94,11 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
 
     public enum EntityType { Template, Pipeline, Index }
     public static TheoryData<EntityType, string> FailedChecks => new() {
-        { EntityType.Template, IndexNames.MLTemplateName},
-        { EntityType.Pipeline, IndexNames.ChatContent},
-        { EntityType.Index, IndexNames.ChatContent},
-        { EntityType.Index, IndexNames.ChatContentCursor},
-        { EntityType.Index, IndexNames.ChatCursor},
+        { EntityType.Template, OpenSearchNames.MLTemplateName},
+        { EntityType.Pipeline, OpenSearchNames.ChatContent},
+        { EntityType.Index, OpenSearchNames.ChatContent},
+        { EntityType.Index, OpenSearchNames.ChatContentCursor},
+        { EntityType.Index, OpenSearchNames.ChatCursor},
     };
 
     [Theory]
@@ -115,7 +115,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             openSearchSettings.Object,
             [],
             Mock.Of<ILogger<ClusterSetup>>(),
-            _indexNames,
+            _openSearchNames,
             Tracer.None);
 
         var cancellationSource = new CancellationTokenSource();
@@ -142,7 +142,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             openSearchSettings.Object,
             [],
             Mock.Of<ILogger<ClusterSetup>>(),
-            _indexNames,
+            _openSearchNames,
             Tracer.None);
 
         await clusterSetup.InitializeAsync(CancellationToken.None);
@@ -192,7 +192,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             openSearchSettings.Object,
             [settingChangeSource.Object],
             Mock.Of<ILogger<ClusterSetup>>(),
-            _indexNames,
+            _openSearchNames,
             Tracer.None);
 
         await clusterSetup.InitializeAsync(CancellationToken.None);
@@ -234,7 +234,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
                 It.IsAny<CancellationToken>()
             ))
             .Returns<string, CancellationToken>((name, _)
-                => Task.FromResult(!isPipeline || name!=_indexNames.GetFullIngestPipelineName(shortName, modelProps)))
+                => Task.FromResult(!isPipeline || name!=_openSearchNames.GetFullIngestPipelineName(shortName, modelProps)))
             .Verifiable();
 
         setupActions
@@ -243,7 +243,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
                 It.IsAny<CancellationToken>()
             ))
             .Returns<string, CancellationToken>((name, _)
-                => Task.FromResult(!isIndex || name!=_indexNames.GetFullName(shortName, modelProps)))
+                => Task.FromResult(!isIndex || name!=_openSearchNames.GetFullName(shortName, modelProps)))
             .Verifiable();
         return setupActions;
     }
