@@ -1,7 +1,7 @@
 import { AUDIO_REC as AR, AUDIO_VAD as AV } from '_constants';
 import { clamp, lerp, RunningUnitMedian, RunningEMA } from 'math';
 import { Versioning } from 'versioning';
-import * as ort from 'onnxruntime-web';
+import * as ort from 'onnxruntime-web/wasm';
 import wasm from 'onnxruntime-web/dist/ort-wasm.wasm';
 import wasmThreaded from 'onnxruntime-web/dist/ort-wasm-threaded.wasm';
 import wasmSimd from 'onnxruntime-web/dist/ort-wasm-simd.wasm';
@@ -183,19 +183,9 @@ export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
         this.modelUri = modelUri;
         this.resetInternal();
 
-        const wasmPath = Versioning.mapPath(wasm);
-        const wasmThreadedPath = Versioning.mapPath(wasmThreaded);
-        const wasmSimdPath = Versioning.mapPath(wasmSimd);
-        const wasmSimdThreadedPath = Versioning.mapPath(wasmSimdThreaded);
-
         ort.env.wasm.numThreads = 4;
         ort.env.wasm.simd = true;
-        ort.env.wasm.wasmPaths = {
-            'ort-wasm.wasm': wasmPath,
-            'ort-wasm-threaded.wasm': wasmThreadedPath,
-            'ort-wasm-simd.wasm': wasmSimdPath,
-            'ort-wasm-simd-threaded.wasm': wasmSimdThreadedPath,
-        };
+        ort.env.wasm.wasmPaths = '/dist/wasm/';
     }
 
     public async init(): Promise<void> {
