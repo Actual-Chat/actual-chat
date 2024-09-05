@@ -15,7 +15,7 @@ export class BrowserInfo {
     private static backendRef: DotNet.DotNetObject = null;
     private static isWebSplashRemoved: boolean;
 
-    public static appKind: AppKind = window.location.host === '0.0.0.0'
+    public static appKind: AppKind = window.location.host === 'localhost' || window.location.host === '0.0.0.0'
         ? 'MauiApp'
         : ('MONO' in window)
             ? 'WasmApp'

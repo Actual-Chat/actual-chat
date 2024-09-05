@@ -115,10 +115,10 @@ public class IosPushNotifications : IDeviceTokenRetriever, INotificationsPermiss
         //     await notificationUI.HandleNotificationNavigation(url).ConfigureAwait(false);
         // }, Log, "Failed to handle notification tap"));
 
-        // Dirty hack as we have BaseUrl - https://actual.chat/ but local url should be app://0.0.0.0/
+        // Dirty hack as we have BaseUrl - https://actual.chat/ but local url should be app://localhost/
         var localUrl = url
             .Replace(UrlMapper.BaseUrl, "")
-            .Replace("app://0.0.0.0/", "");
+            .Replace($"app://{MauiSettings.LocalHost}/", "");
 
         Log.LogInformation("OnNotificationTapped: navigating to {LocalUrl}", localUrl);
 

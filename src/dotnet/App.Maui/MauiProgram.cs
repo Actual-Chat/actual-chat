@@ -1,25 +1,16 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
-using Microsoft.AspNetCore.Components.WebView.Maui;
-using Microsoft.Extensions.Configuration;
 using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
-using ActualChat.Module;
 using ActualChat.Security;
-using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Diagnostics;
-using ActualLab.Fusion.Client.Caching;
 using banditoth.MAUI.DeviceId;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.JSInterop;
-using Sentry;
-using Sentry.Maui.Internal;
-using Serilog;
-using ActualLab.Rpc;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 #if IOS
 using Foundation;
@@ -47,6 +38,7 @@ public static partial class MauiProgram
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
 #if IOS
+        FixIosBaseAddress();
         NSHttpCookieStorage.SharedStorage.AcceptPolicy = NSHttpCookieAcceptPolicy.Always;
 #endif
 #if ANDROID || WINDOWS

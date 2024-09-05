@@ -2,13 +2,14 @@ import { Observable } from 'rxjs';
 import { ResolvedPromise } from 'promises';
 import { EventHandlerSet } from 'event-handling';
 import { Log } from 'logging';
+import { BrowserInfo } from '../../dotnet/UI.Blazor/Services/BrowserInfo/browser-info';
 
 const { debugLog } = Log.get('Interactive');
 
 export class Interactive {
     private static _isInitialized = false;
-    private static _isInteractive = window.location.host === '0.0.0.0';
-    private static _isAlwaysInteractive = window.location.host === '0.0.0.0';
+    private static _isInteractive = BrowserInfo.appKind === 'MauiApp';
+    private static _isAlwaysInteractive = BrowserInfo.appKind === 'MauiApp';
 
     public static interactionEvents: EventHandlerSet<Event>;
     public static readonly interactionEvent$ = new Observable<Event>(subject => {

@@ -20,7 +20,6 @@ import { OpusEncoderWorklet } from './worklets/opus-encoder-worklet-contract';
 import { Versioning } from 'versioning';
 import { Log } from 'logging';
 import { RecorderStateChanged, RecorderStateEventHandler } from "./opus-media-recorder-contracts";
-import * as signalR from "@microsoft/signalr";
 import { AudioInitializer } from "../../Services/audio-initializer";
 import { BrowserInit } from "../../../UI.Blazor/Services/BrowserInit/browser-init";
 import { AudioDiagnosticsState } from "./audio-recorder";
@@ -202,7 +201,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
             this.vadWorker = rpcClientServer<AudioVadWorker>(`${logScope}.vadWorker`, this.vadWorkerInstance, this);
         }
 
-        if (this.origin.includes('0.0.0.0')) {
+        if (BrowserInfo.appKind === 'MauiApp') {
             // Use server address if the app is MAUI
             this.origin = baseUri;
         }
@@ -555,9 +554,8 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         }
         // retry init again
         const origin = window.location.origin;
-        const isMaui = origin.includes('0.0.0.0');
         let baseUri = origin.replace(/\/?$/, '/');
-        if (isMaui) {
+        if (BrowserInfo.appKind === 'MauiApp') {
             await BrowserInit.whenInitialized;
             baseUri = BrowserInit.baseUri;
         }
