@@ -251,7 +251,7 @@ module.exports = (env, args) => {
                     test: /\.onnx$/i,
                     type: 'asset/resource',
                     generator: {
-                        filename: 'wasm/[name].bin',
+                        filename: 'wasm/[name].[hash].bin',
                     },
                 },
                 {
