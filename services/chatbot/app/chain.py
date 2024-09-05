@@ -174,6 +174,7 @@ def create(*,
         "final_answer",
         should_summarize
     )
+    graph_builder.add_edge("summarize_conversation", "human_input")
     graph_builder.add_edge("tools", "agent")
     graph_builder.add_edge("human_input", "agent")
 
