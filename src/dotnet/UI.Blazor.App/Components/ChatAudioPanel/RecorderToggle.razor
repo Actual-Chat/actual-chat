@@ -63,11 +63,7 @@
             @ontouchcancel="@OnPointerUp"
             @oncontextmenu="@OnContextMenu"
             data-context-menu-delay="200">
-            @if (m is { IsVoiceActive: true }) {
-                <active-recording-svg size="@recordingIconSize"/>
-            } else {
-                <i class="icon-stop-fill recorder-icon"></i>
-            }
+            <active-recording-svg size="@recordingIconSize" isVoiceActive="@m.IsVoiceActive" class="recorder-icon"/>
         </ButtonRound>
     </div>
 } else {
