@@ -1,4 +1,5 @@
 // All crucial constants are here
+// !DELAYER means it affects on audio delay.
 
 const REC_SAMPLES_PER_MS = 16; // 16KHz
 export const AUDIO_REC = {
@@ -18,18 +19,17 @@ export const AUDIO_PLAY = {
     SAMPLES_PER_WINDOW: 20 * PLAY_SAMPLES_PER_MS, // 20ms
     // In seconds:
     SAMPLE_DURATION: 0.001 / PLAY_SAMPLES_PER_MS,
-    BUFFER_TO_PLAY_DURATION: 0.15,
-    BUFFER_TO_STARVE_DURATION: 10.0,
-    STATE_UPDATE_PERIOD: 0.2,
+    BUFFER_TO_PLAY_DURATION: 0.1, // !DELAYER: How much to buffer before we start playing
+    BUFFER_LOW_DURATION: 10.0, // Buffer is "low" while it's less than this
+    STATE_UPDATE_PERIOD: 0.2, // The period between feeder state update signals
 }
 
 export const AUDIO_ENCODER = {
     BIT_RATE: 32 * 1024, // 32Kbps
     FRAME_SIZE: REC_SAMPLES_PER_MS * 20, // 20ms
-    BUFFER_FRAMES: 6, // = 120ms
-    FADE_FRAMES: 3, // = 6ms
-    FRAMES_TO_SEND_ON_RESUME: 5, // = 100ms
-    FRAMES_TO_SEND_ON_RECONNECT: 1000, // = 20s
+    BUFFER_FRAMES: 5, // 100ms - !DELAYER: encoder won't proceed unless that much is buffered
+    FADE_FRAMES: 3, // 60ms
+    MAX_FRAMES: 1500, // 30s
     DEFAULT_PRE_SKIP_FRAMES: 312, // Encoder provides this value, buy
 }
 

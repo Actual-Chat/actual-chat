@@ -233,16 +233,13 @@ const serverImpl: OpusEncoderWorker = {
         if (buffer.byteLength === 0)
             return;
 
-        const isConnected = hubConnection.state === HubConnectionState.Connected;
         if (state === 'encoding') {
-            queue.push(buffer);
             // debugLog?.log(`onEncoderWorkletSamples(${buffer.byteLength}):`, vadState);
+            queue.push(buffer);
+            while (queue.length > AE.MAX_FRAMES)
+                queue.shift();
             if (vadState === 'voice')
                 processQueue();
-            else if (isConnected && queue.length > AE.FRAMES_TO_SEND_ON_RESUME)
-                queue.shift();
-            else if (!isConnected && queue.length > AE.FRAMES_TO_SEND_ON_RECONNECT)
-                queue.shift();
         }
     },
 

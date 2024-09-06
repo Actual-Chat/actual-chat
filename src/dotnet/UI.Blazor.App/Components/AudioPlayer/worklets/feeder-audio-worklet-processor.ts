@@ -201,7 +201,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         if (this.isEnding)
             this.bufferState = 'ok';
         else {
-            this.bufferState = bufferedDuration < AP.BUFFER_TO_STARVE_DURATION ? 'low' : 'ok';
+            this.bufferState = bufferedDuration < AP.BUFFER_LOW_DURATION ? 'low' : 'ok';
         }
 
         const state: FeederState = {
