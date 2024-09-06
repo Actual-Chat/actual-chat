@@ -36,19 +36,13 @@ class ActiveRecordingSvg extends LitElement {
                 opacity: 0;
             }
         }
-        rect#record-rect-1.in-rest {
-            animation: in-rest 1.25s linear infinite 1s;
-        }
         rect#record-rect-2.in-rest {
-            animation: in-rest 1.25s linear infinite 0.80s;
-        }
-        rect#record-rect-3.in-rest {
             animation: in-rest 1.25s linear infinite 0.60s;
         }
-        rect#record-rect-4.in-rest {
+        rect#record-rect-3.in-rest {
             animation: in-rest 1.25s linear infinite 0.40s;
         }
-        rect#record-rect-5.in-rest {
+        rect#record-rect-4.in-rest {
             animation: in-rest 1.25s linear infinite 0.20s;
         }
 
@@ -84,25 +78,31 @@ class ActiveRecordingSvg extends LitElement {
     edgeDotCls = "";
     @property()
     centerDotCls = "";
+    @property({ type: Boolean })
+    isFirstLoading = true;
 
     protected render(): unknown {
         const size = this.size;
         const width = 10;
         const minHeight = 20;
         const maxHeight = 100;
-        const signalPower$ = OpusMediaRecorder.audioPowerChanged$
+        let signalPower$ = OpusMediaRecorder.audioPowerChanged$
             .pipe(throttleTime(0, animationFrameScheduler));
         let maxPower = 0;
 
         this.edgeDotCls = this.isVoiceActive ? "active" : "non-active";
         this.centerDotCls = this.isVoiceActive ? "" : "in-rest";
 
+        if (this.isFirstLoading && this.isVoiceActive) {
+            this.isFirstLoading = false;
+        }
+
         // height$ in percent
         const height1$ = signalPower$
             .pipe(map(p => {
                 if (p > maxPower)
                     maxPower = p;
-                let height = Math.floor((translate(p, [0, maxPower], [minHeight, maxHeight]))) / maxHeight * 100;
+                let height = Math.floor((translate(p, [0, maxPower], [minHeight, maxHeight]))) / maxHeight * 90;
                 if (this.isVoiceActive && height > minHeight) {
                     return isNaN(height) ? minHeight : height;
                 } else {
@@ -111,30 +111,32 @@ class ActiveRecordingSvg extends LitElement {
             }));
 
         const height2$ = signalPower$
-            .pipe(delay(150),
+            .pipe(
+                delay(150),
                 map(p => {
-                if (p > maxPower)
-                    maxPower = p;
-                let height = Math.floor((translate(p, [0, 0.8*maxPower], [minHeight, maxHeight]))) / maxHeight * 70;
-                if (this.isVoiceActive && height > minHeight) {
-                    return isNaN(height) ? minHeight : height;
-                } else {
-                    return minHeight;
-                }
-            }));
+                    if (p > maxPower)
+                        maxPower = p;
+                    let height = Math.floor((translate(p, [0, 0.8 * maxPower], [minHeight, maxHeight]))) / maxHeight * 70;
+                    if (this.isVoiceActive && height > minHeight) {
+                        return isNaN(height) ? minHeight : height;
+                    } else {
+                        return minHeight;
+                    }
+                }));
 
         const height3$ = signalPower$
-            .pipe(delay(300),
+            .pipe(
+                delay(300),
                 map(p => {
-                if (p > maxPower)
-                    maxPower = p;
-                let height = Math.floor((translate(p, [0, 0.8*maxPower], [minHeight, maxHeight]))) / maxHeight * 50;
-                if (this.isVoiceActive && height > minHeight) {
-                    return isNaN(height) ? minHeight : height;
-                } else {
-                    return minHeight;
-                }
-            }));
+                    if (p > maxPower)
+                        maxPower = p;
+                    let height = Math.floor((translate(p, [0, 0.8*maxPower], [minHeight, maxHeight]))) / maxHeight * 50;
+                    if (this.isVoiceActive && height > minHeight) {
+                        return isNaN(height) ? minHeight : height;
+                    } else {
+                        return minHeight;
+                    }
+                }));
 
         // offsets in percent
         const offset1$ = height1$
@@ -162,15 +164,40 @@ class ActiveRecordingSvg extends LitElement {
                  preserveAspectRatio="none"
                  viewBox="0 0 24 24" fill="none" stroke="var(--white)"
                  stroke-width="${width}%" stroke-linecap="round" stroke-linejoin="bevel">
-                <rect id="record-rect-1" class="${this.edgeDotCls}" x="${width / 2}%" y="${offset3}%" width="${width}%" height="${height3}%" fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
+                <rect id="record-rect-1" class="${this.edgeDotCls}"
+                      x="${width / 2}%"
+                      y="${this.isFirstLoading ? 50 - minHeight / 2 : offset3}%"
+                      width="${width}%"
+                      height="${this.isFirstLoading ? minHeight : height3}%"
+                      fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
                 </rect>
-                <rect id="record-rect-2" class="${this.centerDotCls}" x="${width * 2.5}%" y="${offset2}%" width="${width}%" height="${height2}%" fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
+                <rect id="record-rect-2" class="${this.centerDotCls}"
+                      x="${width * 2.5}%"
+                      y="${this.isFirstLoading ? 50 - minHeight / 2 : offset2}%"
+                      width="${width}%"
+                      height="${this.isFirstLoading ? minHeight : height2}%"
+                      fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
                 </rect>
-                <rect id="record-rect-3" class="${this.centerDotCls}" x="${width * 4.5}%" y="${offset1}%" width="${width}%" height="${height1}%" fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
+                <rect id="record-rect-3" class="${this.centerDotCls}"
+                      x="${width * 4.5}%"
+                      y="${this.isFirstLoading ? 50 - minHeight / 2 : offset1}%"
+                      width="${width}%"
+                      height="${this.isFirstLoading ? minHeight : height1}%"
+                      fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
                 </rect>
-                <rect id="record-rect-4" class="${this.centerDotCls}" x="${width * 6.5}%" y="${offset2}%" width="${width}%" height="${height2}%" fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
+                <rect id="record-rect-4" class="${this.centerDotCls}"
+                      x="${width * 6.5}%"
+                      y="${this.isFirstLoading ? 50 - minHeight / 2 : offset2}%"
+                      width="${width}%"
+                      height="${this.isFirstLoading ? minHeight : height2}%"
+                      fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
                 </rect>
-                <rect id="record-rect-5" class="${this.edgeDotCls}" x="${width * 8.5}%" y="${offset3}%" width="${width}%" height="${height3}%" fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
+                <rect id="record-rect-5" class="${this.edgeDotCls}"
+                      x="${width * 8.5}%"
+                      y="${this.isFirstLoading ? 50 - minHeight / 2 : offset3}%"
+                      width="${width}%"
+                      height="${this.isFirstLoading ? minHeight : height3}%"
+                      fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
                 </rect>
             </svg>
         `;

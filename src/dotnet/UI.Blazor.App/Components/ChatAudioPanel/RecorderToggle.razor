@@ -23,6 +23,13 @@
     var tooltipPosition = showStatus ? FloatingPosition.None : FloatingPosition.Top;
     _oldRecordingLanguage = language;
     var recordingIconSize = ScreenSize.IsNarrow() ? 10 : 8;
+    var recBtnCls = "rec-btn ";
+    if (m.IsRecordingHere)
+        recBtnCls += "record-on-btn";
+    else
+        recBtnCls += "record-off-btn";
+    var tooltip = m.IsRecordingHere ? "Stop recording" : "Start recording";
+    var mustKeepAwake = !m.IsRecordingHere;
 }
 
 @if (m.HasMicrophonePermission != false) {
@@ -43,27 +50,30 @@
             <div class="selected-language">@language.ShortTitle</div>
         }
         <ButtonRound
-            Class="record-off-btn"
+            Class="@recBtnCls"
             Click="@OnClick"
-            MustKeepAwake="true"
-            Tooltip="Start recording"
+            MustKeepAwake="@mustKeepAwake"
+            Tooltip="@tooltip"
             TooltipPosition="FloatingPosition.Top"
             @onmouseup="@OnPointerUp"
             @ontouchend="@OnPointerUp"
             @ontouchcancel="@OnPointerUp"
             @oncontextmenu="@OnContextMenu"
             data-context-menu-delay="200">
-            <i class="icon-talking recorder-icon"></i>
-        </ButtonRound>
-        <ButtonRound
-            Class="record-on-btn"
-            Click="@OnClick"
-            @onmouseup="@OnPointerUp"
-            @ontouchend="@OnPointerUp"
-            @ontouchcancel="@OnPointerUp"
-            @oncontextmenu="@OnContextMenu"
-            data-context-menu-delay="200">
-            <active-recording-svg size="@recordingIconSize" isVoiceActive="@m.IsVoiceActive" class="recorder-icon"/>
+
+            @* Icon for OFF state *@
+            <i class="icon-talking rec-icon off"></i>
+
+            @* Icon for transition state *@
+            <active-recording-svg
+                size="@recordingIconSize"
+                class="rec-icon middle"/>
+
+            @* Icon for ON state *@
+            <active-recording-svg
+                size="@recordingIconSize"
+                isVoiceActive="@m.IsVoiceActive"
+                class="rec-icon on"/>
         </ButtonRound>
     </div>
 } else {
