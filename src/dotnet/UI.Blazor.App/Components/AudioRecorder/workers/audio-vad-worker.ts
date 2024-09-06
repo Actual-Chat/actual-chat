@@ -32,7 +32,7 @@ let webrtcVoiceDetector: VoiceActivityDetector = null;
 let isVadRunning = false;
 let isActive = false;
 let isNNVadInitialized = false;
-let audioPowerEma = new RunningEMA(10, 0);
+let audioPowerEma = new RunningEMA(0, 10);
 let canUseNNVad = false;
 let lastVadEventProcessedAt = 0;
 

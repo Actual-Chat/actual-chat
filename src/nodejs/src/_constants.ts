@@ -36,10 +36,10 @@ export const AUDIO_ENCODER = {
 export const AUDIO_VAD = {
     // All durations here are in seconds
     MIN_SILENCE: 0.20, // Min silence duration that triggers pause
+    MAX_SILENCE: 2, // Max silence duration that triggers pause
+    MAX_CONV_SILENCE: 1.35, // 1.35 s - max silence duration that triggers pause in "conversation" mode
     MIN_SPEECH: 0.5, // ?
-    MAX_SILENCE: 1.35, // 1.35 s - max silence duration that triggers pause
     MAX_SPEECH: 60 * 2, // max speech duration, it will be split by zero pause afterward
-    MAX_MONOLOGUE_SILENCE: 3, // max silence when you're the only one talking
-    MAX_SILENCE_VARIES_FROM: 45, // Once you talk for 45 seconds, max silence starts to decrease
-    NON_MONOLOGUE_DURATION: 30, // A period from conversationSignal to the moment VAD assumes it's a monologue again
+    CONV_DURATION: 30, // A period from conversationSignal to the moment VAD assumes the conversation ended
+    SILENCE_THRESHOLD_VARIES_FROM: 45, // Once you talk for 45 seconds, max silence starts to decrease
 };

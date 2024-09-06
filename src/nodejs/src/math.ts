@@ -44,10 +44,15 @@ export function clamp(n: number, min: number, max: number) {
     return Math.max(min, Math.min(max, n));
 }
 
+export function lerp(x: number, y: number, alpha: number) {
+    return x + alpha*(y - x);
+}
+
 export interface RunningCounter {
     readonly sampleCount: number;
     readonly value: number;
 
+    reset(): void;
     appendSample(value: number): void;
 }
 
@@ -66,6 +71,11 @@ export class RunningAverage implements RunningCounter {
         return this._sampleCount <= 0
             ? this.defaultValue
             : this._sum / this.sampleCount;
+    }
+
+    public reset(): void {
+        this._sampleCount = 0;
+        this._sum = 0;
     }
 
     public appendSample(value: number): void {
@@ -93,8 +103,6 @@ export class RunningUnitMedian implements RunningCounter {
         private readonly defaultValue = 0.5
     ) {
         this._buckets = new Int32Array(bucketCount).fill(0);
-        for (let index = 0; index < this._buckets.length; index++)
-            this._buckets[index] = 0;
         this._halfBucketSize = 0.5 / bucketCount;
     }
 
@@ -116,6 +124,12 @@ export class RunningUnitMedian implements RunningCounter {
             }
         }
         return this._value = this.defaultValue;
+    }
+
+    public reset(): void {
+        this._buckets.fill(0);
+        this._sampleCount = 0;
+        this._value = null;
     }
 
     public appendSample(value: number): void {
@@ -145,6 +159,11 @@ export class RunningMA implements RunningCounter {
         return this._average.value;
     }
 
+    public reset(): void {
+        this._samples.clear();
+        this._average.reset();
+    }
+
     public appendSample(value: number): void {
         const samples = this._samples;
         const average = this._average;
@@ -161,11 +180,11 @@ export class RunningEMA implements RunningCounter {
     private _value: number | null = null;
 
     constructor(
-        private readonly minSampleCount: number, // Uses RunningMA unless sampleCount > minSampleCount
         defaultValue: number,
-        public smoothingFactor = NaN,
+        private readonly minSampleCount: number, // Uses RunningMA unless sampleCount > minSampleCount
+        private readonly smoothingFactor: number = null,
     ) {
-        if (isNaN(smoothingFactor))
+        if (smoothingFactor === null)
             this.smoothingFactor = 2 / (minSampleCount + 1);
         this._average = new RunningAverage(defaultValue);
     }
@@ -176,6 +195,12 @@ export class RunningEMA implements RunningCounter {
 
     public get value(): number {
         return this._value ?? this._average.value;
+    }
+
+    public reset(): void {
+        this._sampleCount = 0;
+        this._average.reset();
+        this._value = null;
     }
 
     public appendSample(value: number): void {
