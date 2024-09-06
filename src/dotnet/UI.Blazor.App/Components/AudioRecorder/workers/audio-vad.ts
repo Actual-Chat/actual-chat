@@ -19,12 +19,13 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     protected readonly probMedian = new RunningUnitMedian();
     protected readonly minSpeechSamples: number;
     protected readonly maxSpeechSamples: number;
+    protected readonly maxPauseCancelSamples: number;
     // private readonly results =  new Array<number>();
 
     protected sampleCount = 0;
-    protected endOffset?: number = null;
     protected lastTriggeredProb: number | null = null;
-    protected endResetCounter: number = 0;
+    protected pauseOffset?: number = null;
+    protected pauseCancelSamples: number = 0;
     protected lastConversationSignalAtSample: number | null = null;
     protected whenTalkingProbMedian: RunningUnitMedian | null = null;
     protected maxPauseSamples: number;
@@ -37,6 +38,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
         this.minSpeechSamples = sampleRate * AV.MIN_SPEECH;
         this.maxSpeechSamples = sampleRate * AV.MAX_SPEECH;
         this.maxPauseSamples = sampleRate * AV.MAX_PAUSE;
+        this.maxPauseCancelSamples = sampleRate * AV.MIN_SPEECH_TO_CANCEL_PAUSE;
     }
 
     public abstract init(): Promise<void>;
@@ -44,8 +46,8 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     public reset(): void {
         this.lastActivityEvent = { kind: 'end', offset: 0, speechProb: 0 };
         this.sampleCount = 0;
-        this.endOffset = null;
-        this.endResetCounter = 0;
+        this.pauseOffset = null;
+        this.pauseCancelSamples = 0;
         this.lastConversationSignalAtSample = null;
         this.resetInternal && this.resetInternal();
     }
@@ -69,13 +71,13 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
         const probMedian = this.probMedian.value;
         const currentOffset = this.sampleCount;
         const speechProbTrigger = 0.67 * probMedian;
-        const silenceProbTrigger = 0.15 * probMedian;
+        const pauseProbTrigger = 0.15 * probMedian;
 
         if (currentEvent.kind === 'end'
             && probEma >= longProbEma
             && ((this.isNeural ? prob : probEma) >= speechProbTrigger)
         ) {
-            // Speech start detected
+            // speech start detected
             const offset = Math.max(0, currentOffset - monoPcm.length);
             const duration = offset - currentEvent.offset;
             currentEvent = { kind: 'start', offset, speechProb: probEma, duration };
@@ -83,11 +85,11 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
             this.whenTalkingProbMedian = new RunningUnitMedian();
             this.maxPauseSamples = this.sampleRate * AV.MAX_PAUSE;
         }
-        else if (currentEvent.kind === 'start' && probEma < longProbEma && probEma < silenceProbTrigger) {
-            // Speech end detected
-            this.endResetCounter = 0;
-            if (this.endOffset === null)
-                this.endOffset = currentOffset;
+        else if (currentEvent.kind === 'start' && probEma < longProbEma && probEma < pauseProbTrigger) {
+            // pause start detected
+            this.pauseCancelSamples = 0;
+            if (this.pauseOffset === null)
+                this.pauseOffset = currentOffset;
 
             if (this.whenTalkingProbMedian !== null) {
                 // adjust speech boundary triggers if current period was speech with high probabilities
@@ -105,37 +107,41 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
         if (currentEvent.kind === 'start') {
             const currentSpeechSamples = currentOffset - currentEvent.offset;
 
-            if (this.endOffset > 0) {
-                // silence boundary has been detected
+            if (this.pauseOffset !== null) {
+                // we detected pause earlier - should we "materialize" it?
                 if (probEma >= speechProbTrigger) {
-                    if (this.endResetCounter++ > 10) {
-                        // silence period is too short - cleanup silence boundary
-                        this.endOffset = null;
-                        this.endResetCounter = 0;
+                    // and it's speech now
+                    this.pauseCancelSamples += monoPcm.length;
+                    if (this.pauseCancelSamples >= this.maxPauseCancelSamples) {
+                        // which continues for
+                        this.pauseOffset = null;
+                        this.pauseCancelSamples = 0;
                     }
-                } else if (probEma < silenceProbTrigger) {
-                    const currentSilenceSamples = currentOffset - this.endOffset;
+                } else if (probEma < pauseProbTrigger) {
+                    // it's still a pause
+                    const currentSilenceSamples = currentOffset - this.pauseOffset;
                     if (currentSilenceSamples > this.maxPauseSamples && currentSpeechSamples > this.minSpeechSamples) {
-                        const offset = this.endOffset + monoPcm.length;
+                        // "materializing" the pause
+                        const offset = this.pauseOffset + monoPcm.length;
                         const duration = offset - currentEvent.offset;
                         currentEvent = { kind: 'end', offset, speechProb: probEma, duration };
-                        this.endOffset = null;
+                        this.pauseOffset = null;
                     }
                 }
             }
 
             if (currentEvent.kind === 'start' && currentSpeechSamples > this.maxSpeechSamples) {
                 // break long speech regardless of speech probability
-                const offset = this.endOffset ?? currentOffset;
+                const offset = this.pauseOffset ?? currentOffset;
                 const duration = offset - currentEvent.offset;
                 currentEvent = { kind: 'end', offset: currentOffset, speechProb: probEma, duration };
-                this.endOffset = null;
+                this.pauseOffset = null;
             }
 
             if (this.whenTalkingProbMedian !== null && prob > 0.08)
                 this.whenTalkingProbMedian.appendSample(prob);
 
-            // adjust max silence for long speech - break more aggressively, but keep longer pauses for monologue
+            // adjust max pause for long speech - break more aggressively, but keep longer pauses for monologue
             const isConversation = this.lastConversationSignalAtSample !== null
                 && (this.sampleCount - this.lastConversationSignalAtSample) <= this.sampleRate * AV.CONV_DURATION;
             const maxPause = isConversation ? AV.MAX_CONV_PAUSE : AV.MAX_PAUSE;
