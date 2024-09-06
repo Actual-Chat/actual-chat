@@ -66,7 +66,7 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover {
     @apply text-06;
     @apply duration-250 delay-250 ease-in-out;
     background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
-    transition-property: transform, opacity, filter;
+    transition-property: filter;
 }
 .chat-audio-panel .language-button,
 .chat-audio-panel .playback-wrapper,
@@ -92,23 +92,7 @@ body.narrow .chat-audio-panel .playback-wrapper .btn.btn-round {
 .chat-audio-panel .recorder-wrapper.applying-changes .record-on-btn.btn {
     filter: brightness(0.8);
 }
-.recorder-icon {
-    @apply opacity-100;
-    @apply transition-opacity duration-250 ease-in-out;
-}
-.record-off-btn.btn .recorder-icon {
-    @apply scale-100;
-}
-.chat-audio-panel .recorder-wrapper.applying-changes .record-off-btn.btn .recorder-icon {
-    animation: hide-icon 0.4s linear;
-}
-.chat-audio-panel .recorder-wrapper.applying-changes .record-on-btn.btn .recorder-icon {
-    @apply transition-none duration-0 delay-0;
-}
-.recorder-wrapper .recorder-icon {
-    @apply always-white;
-    @apply text-2xl;
-}
+
 .recorder-wrapper .mic-disabled.btn .btn-content,
 body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply bg-05;
@@ -245,13 +229,6 @@ body.narrow .chat-audio-panel .recorder-wrapper .btn {
         @apply min-w-20 max-w-20 min-h-20 max-h-20;
         @apply text-06;
     }
-    body.narrow .chat-message-editor .chat-audio-panel .recorder-wrapper .recorder-icon {
-        @apply text-3.5xl;
-    }
-    body.narrow .text-mode .chat-audio-panel .recorder-wrapper .recorder-icon,
-    body.narrow .narrow-panel .chat-audio-panel .recorder-wrapper .recorder-icon {
-        @apply text-2xl;
-    }
     body.narrow .chat-audio-panel .recorder-button .btn.recorder-skeleton .btn-content {
         @apply min-w-20 min-h-20;
     }
@@ -262,13 +239,6 @@ body.narrow .chat-audio-panel .recorder-wrapper .btn {
     }
     body.narrow .to-thick.smooth .chat-audio-panel .recorder-wrapper {
         transition: all 100ms ease-in-out;
-    }
-    body.narrow .to-thick:not(.text-mode) .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content {
-        @apply min-w-20 max-w-20 min-h-20 max-h-20;
-        transition: all 0ms;
-    }
-    body.narrow .to-thick.smooth .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content {
-        transition: all 150ms ease-in-out;
     }
     body.narrow .to-thick .chat-audio-panel .recorder-wrapper {
         border-width: 1px;
@@ -374,9 +344,6 @@ body.narrow .base-panel .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-
         @apply min-w-20 max-w-20 min-h-10 max-h-10;
         transition: all 0ms;
     }
-    body.narrow .to-thin.smooth .chat-audio-panel .recorder-wrapper .btn.btn-round {
-        transition: all 150ms ease-in-out;
-    }
 }
 
 /* Language, Mobile View, Text Mode */
@@ -477,16 +444,12 @@ body.narrow .chat-audio-panel .recorder-wrapper {
 .chat-audio-panel .recorder-wrapper.record-off-to-on .record-off-btn.btn {
     @apply opacity-0;
 }
-.chat-audio-panel .recorder-wrapper.record-off-to-on .record-on-btn.btn {
-    @apply opacity-100;
-}
 .chat-audio-panel .recorder-wrapper.record-off-to-on.applying-changes .record-on-btn.btn {
-    filter: brightness(0.7);
+    filter: brightness(0.8);
 }
 .chat-audio-panel .recorder-wrapper.record-off-to-on.applying-changes .record-on-btn.btn .btn-content {
-    @apply duration-250 delay-250 ease-in-out;
     transition-property: filter;
-    filter: blur(3px);
+    filter: blur(2px);
 }
 
 /* From "on" state */
@@ -497,38 +460,18 @@ body.narrow .chat-audio-panel .recorder-wrapper {
     @apply opacity-100;
 }
 .chat-audio-panel .recorder-wrapper.record-on.applying-changes .record-on-btn.btn {
-    filter: brightness(0.7);
-}
-.chat-audio-panel .recorder-wrapper.record-on.applying-changes .record-on-btn.btn .recorder-icon {
-    opacity: 1;
+    filter: brightness(0.8);
 }
 .chat-audio-panel .recorder-wrapper.record-on.applying-changes .record-on-btn.btn .btn-content {
-    @apply duration-250 delay-250 ease-in-out;
     transition-property: filter;
-    filter: blur(3px);
+    filter: blur(2px);
 }
 .chat-audio-panel .recorder-wrapper.record-on-to-off .record-on-btn.btn {
     @apply opacity-0;
     @apply transition-opacity delay-250;
 }
-.chat-audio-panel .recorder-wrapper.record-on-to-off .record-on-btn.btn .recorder-icon {
-    animation: hide-icon-linear 0.25s linear;
-    opacity: 0;
-    transition-duration: 0.25s;
-    @starting-style {
-        opacity: 1;
-    }
-}
 .chat-audio-panel .recorder-wrapper.record-on-to-off .record-off-btn.btn {
     @apply opacity-100;
-}
-.chat-audio-panel .recorder-wrapper.record-on-to-off.applying-changes .record-off-btn.btn {
-    @apply opacity-100;
-    opacity: 1;
-    transition-duration: 0.25s;
-    @starting-style {
-        opacity: 0;
-    }
 }
 
 .modal-frame.menu-styled-modal {
@@ -693,43 +636,110 @@ body.narrow .selected-language {
     }
 }
 
+/*Recorder icon*/
+.rec-icon {
+    @apply absolute;
+    @apply flex-none flex items-center justify-center;
+    @apply w-10 h-10;
+    @apply opacity-100;
+    @apply always-white text-2xl;
+    transition-behavior: allow-discrete;
+}
+body.narrow .rec-icon {
+    @apply text-3.5xl;
+}
+body.narrow .text-mode .rec-icon,
+body.narrow .narrow-panel .rec-icon {
+    @apply text-2xl;
+}
+
+/*Record OFF*/
+.record-off .rec-icon.off {
+    @apply opacity-100;
+    @apply scale-100;
+}
+.record-off .rec-icon.on {
+    @apply opacity-0;
+    @apply scale-0;
+}
+.record-off .rec-icon.middle {
+    @apply opacity-0;
+    @apply scale-0;
+}
+/*Record ON*/
+.record-on .rec-icon.off {
+    @apply opacity-0;
+    @apply scale-0;
+}
+.record-on .rec-icon.on {
+    @apply opacity-100;
+    @apply scale-100;
+}
+.record-on .rec-icon.middle {
+    @apply opacity-0;
+    @apply scale-0;
+}
+/*Record OFF to ON*/
+.record-off-to-on .rec-icon.off {
+    opacity: 0;
+    transform: scale(0);
+    transition-duration: 0.15s;
+    transition-property: opacity, transform;
+    transition-timing-function: ease-in-out;
+    @starting-style {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+.record-off-to-on .rec-icon.middle {
+    @apply opacity-100;
+}
+/*Record ON to OFF*/
+.record-on-to-off .rec-icon.on {
+    opacity: 0;
+}
+.record-on-to-off .rec-icon.off {
+    @apply opacity-100;
+    @apply scale-100;
+    transition-property: transform, opacity;
+    transition-duration: 0.2s;
+    transition-delay: 0.2s;
+    transition-timing-function: ease-in-out;
+    @starging-style {
+        opacity: 0;
+        transform: scale(0.1);
+    }
+}
+.record-on-to-off .rec-icon.middle {
+    @apply opacity-100;
+}
+.record-on-to-off.applying-changes .rec-icon.off {
+    @apply opacity-100;
+}
+
 @keyframes hide-icon {
     0% {
         transform: scale(1);
+        opacity: 1;
     }
     20% {
         transform: scale(1.25);
+        opacity: 0.8;
     }
     40% {
         transform: scale(0.9);
+        opacity: 0.6;
     }
     60% {
         transform: scale(0.5);
+        opacity: 0.4;
     }
     80% {
         transform: scale(0.1);
+        opacity: 0.2;
     }
     100% {
         transform: scale(0);
-    }
-}
-@keyframes hide-icon-linear {
-    0% {
-        transform: scale(1);
-    }
-    20% {
-        transform: scale(0.9);
-    }
-    40% {
-        transform: scale(0.7);
-    }
-    60% {
-        transform: scale(0.4);
-    }
-    80% {
-        transform: scale(0.1);
-    }
-    100% {
-        transform: scale(0);
+        opacity: 0.1;
     }
 }
