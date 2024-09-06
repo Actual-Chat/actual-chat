@@ -1,4 +1,4 @@
-import { AUDIO_STREAMER as AS, AUDIO_ENCODER as AR } from '_constants';
+import { AUDIO_STREAMER as AS, AUDIO_ENCODER as AE } from '_constants';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { EventHandlerSet } from 'event-handling';
@@ -11,32 +11,29 @@ import { ObjectPool } from 'object-pool';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('AudioStreamer');
 const bufferPool: ObjectPool<ArrayBuffer> = new ObjectPool<ArrayBuffer>(
-    () => new ArrayBuffer(AR.FRAME_BYTES * 2)
+    () => new ArrayBuffer(AE.FRAME_BYTES * 2)
 ).expandTo(20);
 
 export class AudioStream implements Disposable {
     public static totalCount = 0;
-    public static lastStream: AudioStream | null = null;
 
-    private prevStream: AudioStream | null = null;
     private readonly frames = new Denque<Uint8Array>();
     private readonly frameAdded = new EventHandlerSet<void>();
 
     public readonly name: string;
     public isCompleted = false;
     public isDisposed = false;
-    public readonly whenDisposed: PromiseSource<void> = null;
+    public readonly whenDisposed: Promise<void> = null;
 
     constructor(
         private readonly sessionToken: string,
         private readonly preSkip: number,
         private readonly chatId: string,
         private repliedChatEntryId: string,
+        private streamAfter: Promise<void> = null,
     ) {
         this.name = `AudioStream(${chatId}).${AudioStream.totalCount++}`
-        this.prevStream = AudioStream.lastStream;
-        AudioStream.lastStream = this;
-        void this.stream();
+        this.whenDisposed = this.stream().catch(_ => undefined);
     }
 
     public dispose() {
@@ -50,7 +47,6 @@ export class AudioStream implements Disposable {
         const index = AudioStreamer.streams.indexOf(this)
         if (index >= 0)
             AudioStreamer.streams.splice(index, 1);
-        this.whenDisposed.resolve(undefined);
     }
 
     public complete(): void {
@@ -87,16 +83,16 @@ export class AudioStream implements Disposable {
     }
 
     private async stream(): Promise<void> {
-        while (!this.isCompleted && this.frames.length <= AS.DELAY_FRAMES)
-            await this.frameAdded.whenNext();
-
-        if (this.prevStream != null) {
+        if (this.streamAfter != null) {
             // We want audio streams to go in order, otherwise the streams buffered
             // while the client was disconnected may come out of order, and thus create
             // out-of-order messages.
-            await this.prevStream.whenDisposed;
-            this.prevStream = null;
+            await this.streamAfter;
+            this.streamAfter = null;
         }
+
+        while (!this.isCompleted && this.frames.length <= AS.DELAY_FRAMES)
+            await this.frameAdded.whenNext();
 
         let subject: signalR.Subject<Array<Uint8Array>> = null;
         const framesToSend = new Array<Uint8Array>();
@@ -136,11 +132,16 @@ export class AudioStream implements Disposable {
                         if (framesToSend.length !== 0) {
                             debugLog?.log(`${this.name}.stream: sending ${framesToSend.length} frame(s)`);
                             subject.next(framesToSend);
+                            // We don't want to send this too quickly, otherwise buffered
+                            // streams may come out of order too.
+                            await delayAsync(framesToSend.length * AE.FRAME_DURATION_MS / 4);
                         }
                     }
                     finally {
-                        framesToSend.forEach(f => bufferPool.release(f.buffer))
-                        framesToSend.length = 0;
+                        if (framesToSend.length !== 0) {
+                            framesToSend.forEach(f => bufferPool.release(f.buffer))
+                            framesToSend.length = 0;
+                        }
                     }
 
                     // Try complete streaming
@@ -161,6 +162,7 @@ export class AudioStream implements Disposable {
 export class AudioStreamer {
     public static connection: signalR.HubConnection = null;
     public static readonly streams = new Array<AudioStream>();
+    public static lastStream: AudioStream | null = null;
     public static connectionStateChangedEvents = new EventHandlerSet<boolean>()
 
     public static init(hubUrl: string): void {
@@ -242,11 +244,16 @@ export class AudioStreamer {
     }
 
     public static addStream(sessionToken: string, preSkip: number, chatId: string, repliedChatEntryId: string): AudioStream {
-        const stream = new AudioStream(sessionToken, preSkip, chatId, repliedChatEntryId);
-        this.streams.push(stream)
-        while (this.streams.length > AS.MAX_STREAMS) {
-            const removedStream = this.streams[0];
-            removedStream?.dispose(); // Dispose removes it from this.streams immediately
+        let stream: AudioStream;
+        if (this.streams.length < AS.MAX_STREAMS) {
+            stream = new AudioStream(sessionToken, preSkip, chatId, repliedChatEntryId, this.lastStream?.whenDisposed);
+            this.lastStream = stream;
+            this.streams.push(stream)
+        }
+        else {
+            // Fake stream that won't stream anything
+            stream = new AudioStream(sessionToken, preSkip, chatId, repliedChatEntryId, delayAsync(100));
+            stream.dispose()
         }
         return stream;
     }
