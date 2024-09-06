@@ -19,7 +19,6 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     protected readonly probMedian = new RunningUnitMedian();
     protected readonly minSpeechSamples: number;
     protected readonly maxSpeechSamples: number;
-    protected readonly silenceThresholdVariesFromSamples: number;
     // private readonly results =  new Array<number>();
 
     protected sampleCount = 0;
@@ -27,8 +26,8 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     protected lastTriggeredProb: number | null = null;
     protected endResetCounter: number = 0;
     protected lastConversationSignalAtSample: number | null = null;
-    protected silenceThresholdSamples: number;
     protected whenTalkingProbMedian: RunningUnitMedian | null = null;
+    protected maxPauseSamples: number;
 
     protected constructor(
         private isNeural: boolean,
@@ -37,8 +36,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     ) {
         this.minSpeechSamples = sampleRate * AV.MIN_SPEECH;
         this.maxSpeechSamples = sampleRate * AV.MAX_SPEECH;
-        this.silenceThresholdVariesFromSamples = sampleRate * AV.SILENCE_THRESHOLD_VARIES_FROM;
-        this.silenceThresholdSamples = sampleRate * AV.MAX_SILENCE;
+        this.maxPauseSamples = sampleRate * AV.MAX_PAUSE;
     }
 
     public abstract init(): Promise<void>;
@@ -83,7 +81,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
             currentEvent = { kind: 'start', offset, speechProb: probEma, duration };
             this.lastTriggeredProb = prob;
             this.whenTalkingProbMedian = new RunningUnitMedian();
-            this.silenceThresholdSamples = this.sampleRate * AV.MAX_SILENCE;
+            this.maxPauseSamples = this.sampleRate * AV.MAX_PAUSE;
         }
         else if (currentEvent.kind === 'start' && probEma < longProbEma && probEma < silenceProbTrigger) {
             // Speech end detected
@@ -117,7 +115,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
                     }
                 } else if (probEma < silenceProbTrigger) {
                     const currentSilenceSamples = currentOffset - this.endOffset;
-                    if (currentSilenceSamples > this.silenceThresholdSamples && currentSpeechSamples > this.minSpeechSamples) {
+                    if (currentSilenceSamples > this.maxPauseSamples && currentSpeechSamples > this.minSpeechSamples) {
                         const offset = this.endOffset + monoPcm.length;
                         const duration = offset - currentEvent.offset;
                         currentEvent = { kind: 'end', offset, speechProb: probEma, duration };
@@ -140,12 +138,14 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
             // adjust max silence for long speech - break more aggressively, but keep longer pauses for monologue
             const isConversation = this.lastConversationSignalAtSample !== null
                 && (this.sampleCount - this.lastConversationSignalAtSample) <= this.sampleRate * AV.CONV_DURATION;
-            const maxSilence = isConversation ? AV.MAX_CONV_SILENCE : AV.MAX_SILENCE;
-            const silenceThresholdAlpha =
-                (currentSpeechSamples - this.silenceThresholdVariesFromSamples) /
-                (this.maxSpeechSamples - this.silenceThresholdVariesFromSamples);
-            const silenceThreshold = lerp(maxSilence, AV.MIN_SILENCE, clamp(silenceThresholdAlpha, 0, 1));
-            this.silenceThresholdSamples = Math.floor(this.sampleRate * silenceThreshold);
+            const maxPause = isConversation ? AV.MAX_CONV_PAUSE : AV.MAX_PAUSE;
+            const maxPauseVariesFromSamples = this.sampleRate * AV.PAUSE_VARIES_FROM;
+            let maxPauseAlpha =
+                (currentSpeechSamples - maxPauseVariesFromSamples) /
+                (this.maxSpeechSamples - maxPauseVariesFromSamples);
+            maxPauseAlpha = clamp(Math.pow(maxPauseAlpha, AV.PAUSE_VARY_POWER), 0, 1);
+            const silenceThreshold = lerp(maxPause, AV.MIN_PAUSE, maxPauseAlpha);
+            this.maxPauseSamples = Math.floor(this.sampleRate * silenceThreshold);
         }
 
         this.sampleCount += monoPcm.length;
