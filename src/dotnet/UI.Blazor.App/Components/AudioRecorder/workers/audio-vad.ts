@@ -6,12 +6,10 @@ import wasm from 'onnxruntime-web/dist/ort-wasm.wasm';
 import wasmThreaded from 'onnxruntime-web/dist/ort-wasm-threaded.wasm';
 import wasmSimd from 'onnxruntime-web/dist/ort-wasm-simd.wasm';
 import wasmSimdThreaded from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm';
-import { VoiceActivityChange, VoiceActivityDetector } from './audio-vad-contract';
+import { VoiceActivityChange, VoiceActivityDetector, NO_VOICE_ACTIVITY } from './audio-vad-contract';
 import { Log } from 'logging';
 
 const { logScope, debugLog } = Log.get('AudioVadWorker');
-
-export const noVoiceActivity: VoiceActivityChange = { kind: 'end', offset: 0, speechProb: 0 };
 
 export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector {
     protected readonly probEMA = new RunningEMA(0.5, 5); // 32ms*5 ~ 150ms
@@ -33,7 +31,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     protected constructor(
         private isNeural: boolean,
         protected sampleRate: number,
-        public lastActivityEvent: VoiceActivityChange = noVoiceActivity,
+        public lastActivityEvent: VoiceActivityChange = NO_VOICE_ACTIVITY,
     ) {
         this.minSpeechSamples = sampleRate * AV.MIN_SPEECH;
         this.maxSpeechSamples = sampleRate * AV.MAX_SPEECH;

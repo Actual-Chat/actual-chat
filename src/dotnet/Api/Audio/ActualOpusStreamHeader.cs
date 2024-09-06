@@ -28,7 +28,7 @@ public record ActualOpusStreamHeader(Moment CreatedAt, AudioFormat Format)
             if (!skip.HasValue)
                 throw new InvalidOperationException("Unable to read PreSkipFrames.");
 
-            format = format with { PreSkipFrames = skip.Value };
+            format = format with { PreSkip = skip.Value };
             sequence = sequence.Slice(headerPrefixLength + 1 + 2);
         }
         else if (version == 3) {
@@ -42,7 +42,7 @@ public record ActualOpusStreamHeader(Moment CreatedAt, AudioFormat Format)
                 throw new InvalidOperationException("Unable to read CreatedAt ticks.");
 
             createdAt = new Moment(createdAtTicks.Value);
-            format = format with { PreSkipFrames = skip.Value };
+            format = format with { PreSkip = skip.Value };
             sequence = sequence.Slice(headerPrefixLength + 1 + 2 + 8);
         }
         else
@@ -56,7 +56,7 @@ public record ActualOpusStreamHeader(Moment CreatedAt, AudioFormat Format)
         var header = new byte[ActualOpusStreamFormat.Length + 2 + 8];
         var spanWriter = new SpanWriter(header);
         spanWriter.Write(ActualOpusStreamFormat, ActualOpusStreamFormat.Length);
-        spanWriter.Write((ushort)Format.PreSkipFrames);
+        spanWriter.Write((ushort)Format.PreSkip);
         spanWriter.Write(CreatedAt.EpochOffsetTicks);
         return header;
     }

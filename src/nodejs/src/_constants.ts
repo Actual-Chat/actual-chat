@@ -24,13 +24,31 @@ export const AUDIO_PLAY = {
     STATE_UPDATE_PERIOD: 0.2, // The period between feeder state update signals
 }
 
+const ENC_FRAME_DURATION_MS = 20; // 20ms
+const ENC_BIT_RATE = 32 * 1024; // 32Kbps = 4KB/s = ~80 bytes per frame
 export const AUDIO_ENCODER = {
-    BIT_RATE: 32 * 1024, // 32Kbps
-    FRAME_SIZE: REC_SAMPLES_PER_MS * 20, // 20ms
-    BUFFER_FRAMES: 5, // 100ms - !DELAYER: encoder won't proceed unless that much is buffered
+    FRAME_DURATION_MS: ENC_FRAME_DURATION_MS,
+    BIT_RATE: ENC_BIT_RATE,
+    BYTE_RATE: Math.round(ENC_BIT_RATE / 8),
+    FRAME_SAMPLES: REC_SAMPLES_PER_MS * ENC_FRAME_DURATION_MS,
+    FRAME_BYTES: Math.ceil(ENC_BIT_RATE * ENC_FRAME_DURATION_MS / 1000),
     FADE_FRAMES: 3, // 60ms
-    MAX_FRAMES: 1500, // 30s
-    DEFAULT_PRE_SKIP_FRAMES: 312, // Encoder provides this value, buy
+    MAX_BUFFERED_FRAMES: 100, // 2s
+    DEFAULT_PRE_SKIP: 312, // Pre-skip / codec delay in samples. Used when codec doesn't provide it.
+}
+
+export const AUDIO_STREAMER = {
+    MAX_STREAMS: 3, // Max streams to keep sending
+    DELAY_FRAMES: 5, // 100ms - !DELAYER: streamer won't start sending until it gets these frames (~400 bytes)
+    MIN_PACK_FRAMES: 3, // 40ms - min. # of frames to send at once (~240 bytes)
+    MAX_PACK_FRAMES: 10, // 200ms - max. # of frames to send at once (~800 bytes)
+    MAX_BUFFERED_FRAMES: 1500, // 30s (~120KB)
+    // In seconds:
+    MAX_QUICK_CONNECT_DURATION: 0.5,
+    MAX_CONNECT_DURATION: 5,
+    DEBUG: {
+        RANDOM_DISCONNECTS: false,
+    }
 }
 
 export const AUDIO_VAD = {

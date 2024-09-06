@@ -9,22 +9,19 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 import { AUDIO_REC as AR, AUDIO_ENCODER as AE } from '_constants';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
-import { delayAsync, retry } from 'promises';
+import { retry } from 'promises';
 import { rpcClientServer, rpcNoWait, RpcNoWait, RpcTimeout } from 'rpc';
 import { Versioning } from 'versioning';
-import * as signalR from '@microsoft/signalr';
-import { HubConnectionState, IStreamResult } from '@microsoft/signalr';
-import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 
+import { AudioStream, AudioStreamer } from './audio-streamer';
 import { AudioVadWorker } from './audio-vad-worker-contract';
 import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from '../worklets/opus-encoder-worklet-contract';
 import { VoiceActivityChange } from './audio-vad-contract';
-import { RecorderStateEventHandler } from '../opus-media-recorder-contracts';
-import { Log } from 'logging';
+import { RecorderStateServer } from '../opus-media-recorder-contracts';
 import { AudioDiagnosticsState } from '../audio-recorder';
-import { ObjectPool } from 'object-pool';
+import { Log } from 'logging';
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
@@ -41,8 +38,6 @@ let codecModule: Codec | null = null;
 /** buffer or callbackId: number of `end` message */
 const queue = new Denque<ArrayBuffer>();
 const worker = self as unknown as Worker;
-const bufferPool: ObjectPool<ArrayBuffer> = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(2048)).expandTo(4);
-const currentResult = new Array<Uint8Array>();
 const systemCodecConfig: AudioEncoderConfig = {
     codec: 'opus',
     numberOfChannels: 1,
@@ -50,133 +45,74 @@ const systemCodecConfig: AudioEncoderConfig = {
     bitrate: AE.BIT_RATE,
 };
 
-let hubConnection: signalR.HubConnection = null;
-let recordingSubject: signalR.Subject<Array<Uint8Array>> = null;
-let state: 'inactive' | 'created' | 'encoding' | 'ended' = 'inactive';
-let vadState: 'voice' | 'silence' = 'silence';
+let state: 'initial' | 'created' | 'encoding' | 'ended' = 'initial';
+let isVoiceDetected: boolean = false;
 let encoderWorklet: OpusEncoderWorklet & Disposable = null;
 let vadWorker: AudioVadWorker & Disposable = null;
 let encoder: Encoder | null;
 let systemEncoder: AudioEncoder | null;
-let lastInitArguments: { chatId: string, repliedChatEntryId: string } | null = null;
+let lastStartArguments: { chatId: string, repliedChatEntryId: string } | null = null;
 let lastSessionToken = '';
-let isEncoding = false;
 let kbdWindow: Float32Array | null = null;
 let pinkNoiseChunk: Float32Array | null = null;
 let chunkTimeOffset: number = 0;
 let lastFrameProcessedAt = 0;
+let audioStream: AudioStream | null = null;
 
 const serverImpl: OpusEncoderWorker = {
     create: async (artifactVersions: Map<string, string>, hubUrl: string, _timeout?: RpcTimeout): Promise<void> => {
-        // DEBUG - uncomment to test reconnect during recording with chaos monkey approach
-        // if (!encoder) {
-        //     const originalSend = WebSocket.prototype.send;
-        //     WebSocket.prototype.send = function(...args) {
-        //         if (sockets.indexOf(this) === -1)
-        //             sockets.push(this);
-        //         return originalSend.call(this, ...args);
-        //     };
-        //     setInterval(() => {
-        //         // or create a button which, when clicked, does something with the sockets
-        //         console.log(sockets);
-        //         sockets.forEach(s => {
-        //            s.close(3666, 'KILLED!');
-        //         });
-        //     }, 10000);
-        // }
-
-        if (encoder) {
-            if (hubConnection.state !== HubConnectionState.Connected)
-                await serverImpl.reconnect();
-
-            return;
-        }
+        if (state !== 'initial')
+            return; // Already created
 
         debugLog?.log(`-> create`);
-        if (!hubConnection) {
-            Versioning.init(artifactVersions);
-
-            // Connect to SignalR Hub
-            hubConnection = new signalR.HubConnectionBuilder()
-                .withUrl(hubUrl, {
-                    skipNegotiation: true,
-                    transport: signalR.HttpTransportType.WebSockets,
-                })
-                // We use fixed number of attempts here, because the reconnection is anyway
-                // triggered after SSB / Stl.Rpc reconnect. See:
-                // - C#: ChatAudioUI.ReconnectOnRpcReconnect
-                // - TS: AudioRecorder.ctor.
-                // Some extra attempts are needed, coz there is a chance that the primary connection
-                // stays intact, while this one drops somehow.
-                .withAutomaticReconnect([50, 350, 500, 1000, 1000, 1000])
-                .withHubProtocol(new MessagePackHubProtocol())
-                .configureLogging(signalR.LogLevel.Information)
-                .build();
-            // stateful reconnect doesn't work with skipNegotiation and moreover provides glitches
-            hubConnection.onreconnected(() => onReconnect());
-            hubConnection.onreconnecting(() => void server.onConnectionStateChanged(
-                hubConnection.state === HubConnectionState.Connected,
-                rpcNoWait));
-            hubConnection['_launchStreams'] = _launchStreams.bind(hubConnection);
-            debugLog?.log(`create: hub created`);
-        }
+        Versioning.init(artifactVersions);
+        AudioStreamer.init(hubUrl);
+        AudioStreamer.connectionStateChangedEvents.add(x => stateServer.onConnectionStateChanged(x, rpcNoWait));
 
         // Get fade-in window
-        kbdWindow = KaiserBesselDerivedWindow(AE.FRAME_SIZE * AE.FADE_FRAMES, 2.55);
+        kbdWindow = KaiserBesselDerivedWindow(AE.FRAME_SAMPLES * AE.FADE_FRAMES, 2.55);
         pinkNoiseChunk = getPinkNoiseBuffer(1.0);
 
         if (!systemEncoder && globalThis.AudioEncoder) {
             const configSupport = await AudioEncoder.isConfigSupported(systemCodecConfig);
             if (configSupport.supported) {
+                infoLog?.log(`create: will use AudioEncoder`);
                 systemEncoder = new AudioEncoder({
                     error: onSystemEncoderError,
-                    output: onEncodedAudioChunk,
+                    output: onSystemEncoderChunk,
                 });
-                systemEncoder.configure(systemCodecConfig);
             }
         }
 
         if (!systemEncoder && !encoder) {
+            infoLog?.log(`create: will use WASM codec`);
             // Loading codec
             codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
-            debugLog?.log(`create: codec loaded`);
-
             // Warming up codec
-            encoder = new codecModule.Encoder(AR.SAMPLE_RATE, AE.BIT_RATE);
+            encoder = new codecModule.Encoder(AR.SAMPLE_RATE as (48000 | 16000), AE.BIT_RATE);
             for (let i = 0; i < 2; i++)
                 encoder.encode(pinkNoiseChunk.buffer);
             encoder.reset();
+            debugLog?.log(`create: WASM codec is ready`);
         }
 
-        // Connecting to the server
-        debugLog?.log(`create: hub connecting...`);
-        if (hubConnection.state === 'Disconnected') {
-            await hubConnection.start();
-            void onReconnect();
-        }
-
-        debugLog?.log(`<- create`);
         state = 'created';
+        debugLog?.log(`<- create`);
     },
 
     init: async (workletPort: MessagePort, vadPort: MessagePort): Promise<void> => {
         encoderWorklet = rpcClientServer<OpusEncoderWorklet>(`${logScope}.encoderWorklet`, workletPort, serverImpl);
         vadWorker = rpcClientServer<AudioVadWorker>(`${logScope}.vadWorker`, vadPort, serverImpl);
-
         state = 'ended';
     },
 
     start: async (chatId: string, repliedChatEntryId: string): Promise<void> => {
-        lastInitArguments = { chatId, repliedChatEntryId };
+        lastStartArguments = { chatId, repliedChatEntryId };
         debugLog?.log(`start`);
 
         state = 'encoding';
-        if (hubConnection.state !== HubConnectionState.Connected)
-            await serverImpl.reconnect();
-
-        if (vadState === 'voice')
+        if (isVoiceDetected)
             await startRecording();
-        // do not set vadState there - it's independent from the recording state
     },
 
     setSessionToken: async (sessionToken: string, _noWait?: RpcNoWait): Promise<void> => {
@@ -187,120 +123,62 @@ const serverImpl: OpusEncoderWorker = {
         debugLog?.log(`stop`);
 
         state = 'ended';
-        vadState = 'silence';
+        isVoiceDetected = false;
         await stopRecording();
     },
 
-    reconnect: async (_noWait?: RpcNoWait): Promise<void> => {
-        infoLog?.log(`reconnect: `, hubConnection.state);
-        if (hubConnection.state === HubConnectionState.Connected)
-            return;
-
-        if (hubConnection.state == HubConnectionState.Connecting) {
-            // Waiting 1s for connection to happen
-            for (let i = 0; i < 10; i++) {
-                await delayAsync(100);
-                // @ts-ignore
-                if (hubConnection.state === HubConnectionState.Connected)
-                    return;
-            }
-        }
-
-        // Reconnect
-        if (hubConnection.state === HubConnectionState.Disconnected) {
-            await hubConnection.start();
-        }
-        else {
-            await hubConnection.stop();
-            await hubConnection.start();
-        }
-        void onReconnect();
+    ensureConnected: (quickReconnect: boolean, _noWait?: RpcNoWait): Promise<void> => {
+        return AudioStreamer.ensureConnected(quickReconnect);
     },
 
-    disconnect: async (_noWait?: RpcNoWait): Promise<void> => {
-        infoLog?.log(`disconnect: `, hubConnection.state);
-        await hubConnection.stop();
+    disconnect: (_noWait?: RpcNoWait): Promise<void> => {
+        return AudioStreamer.disconnect();
     },
 
     runDiagnostics: async (diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> => {
-        diagnosticsState.isConnected = hubConnection.state === HubConnectionState.Connected;
+        diagnosticsState.isConnected = AudioStreamer.isConnected;
         diagnosticsState.lastVadFrameProcessedAt = lastFrameProcessedAt;
         warnLog?.log('runDiagnostics: ', diagnosticsState);
         return diagnosticsState;
     },
 
     onEncoderWorkletSamples: async (buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void> => {
-        if (buffer.byteLength === 0)
+        if (buffer.byteLength === 0 || state !== 'encoding' || !isVoiceDetected)
             return;
 
-        if (state === 'encoding') {
-            // debugLog?.log(`onEncoderWorkletSamples(${buffer.byteLength}):`, vadState);
-            queue.push(buffer);
-            while (queue.length > AE.MAX_FRAMES)
-                queue.shift();
-            if (vadState === 'voice')
-                processQueue();
-        }
+        // debugLog?.log(`onEncoderWorkletSamples(${buffer.byteLength}):`, vadState);
+        queue.push(buffer);
+        while (queue.length > AE.MAX_BUFFERED_FRAMES)
+            queue.shift();
+        processQueue();
     },
 
     onVoiceActivityChange: async (change: VoiceActivityChange, _noWait?: RpcNoWait) => {
-        const newVadState = change.kind === 'end' ? 'silence' : 'voice';
-        if (vadState === newVadState)
+        const nextIsVoiceDetected = change.kind !== 'end';
+        if (isVoiceDetected === nextIsVoiceDetected)
             return;
 
         debugLog?.log(`onVoiceActivityChange:`, change);
-
-        if (state !== 'encoding') {
-            // set state, then leave since we are not recording
-            vadState = newVadState;
+        isVoiceDetected = nextIsVoiceDetected;
+        if (state !== 'encoding')
             return;
-        }
 
-        if (newVadState === 'silence') {
-            // set state, then complete the stream, but we are still ready to start new one (state === 'encoding'!)
-            vadState = 'silence'
-            await stopRecording();
-        }
-        else {
-            // set state, then start new stream - several audio chunks can be buffered at the recordingSubject
-            // while hubConnection.send is being processed
-            vadState = newVadState;
-
-            if (!lastInitArguments)
-                throw new Error('Unable to resume streaming lastNewStreamMessage is null');
-
+        if (isVoiceDetected)
             await startRecording();
-        }
+        else
+            await stopRecording();
     },
 }
-const server = rpcClientServer<RecorderStateEventHandler>(`${logScope}.server`, worker, serverImpl);
+const stateServer = rpcClientServer<RecorderStateServer>(`${logScope}.stateServer`, worker, serverImpl);
 
-// systemEncoder handlers
+// System encoder handlers
 
 function onSystemEncoderError(error: DOMException): void {
-    errorLog?.log(`onSystemEncoderError: `, error, state, hubConnection.state)
+    errorLog?.log(`onSystemEncoderError:`, error, state)
 }
 
-function onEncodedAudioChunk(output: EncodedAudioChunk, metadata: EncodedAudioChunkMetadata): void {
-    const encodedChunkBuffer = bufferPool.get();
-    const encodedChunk = encodedChunkBuffer.byteLength > output.byteLength
-         ? new Uint8Array(encodedChunkBuffer, 0, output.byteLength)
-         : new Uint8Array(output.byteLength);
-
-    output.copyTo(encodedChunk);
-
-    currentResult.push(encodedChunk);
-    ensureCurrentResultIsSent();
-}
-
-function ensureCurrentResultIsSent(): void {
-    if (currentResult.length >= AE.BUFFER_FRAMES) {
-        recordingSubject?.next(currentResult);
-        // release buffers for reuse
-        currentResult.forEach(chunk => bufferPool.release(chunk.buffer));
-        // reset result buffer
-        currentResult.length = 0;
-    }
+function onSystemEncoderChunk(output: EncodedAudioChunk, metadata: EncodedAudioChunkMetadata): void {
+    audioStream?.addFrame(output, true);
 }
 
 // Helpers
@@ -325,43 +203,39 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
 }
 
 async function startRecording(): Promise<void> {
-    const { chatId, repliedChatEntryId } = lastInitArguments;
-    infoLog?.log(`startRecording: `, state, hubConnection.state);
+    if (!lastStartArguments)
+        throw new Error('Unable to start recording: start(...) must be called first.');
 
-    const isConnected = hubConnection.state === HubConnectionState.Connected;
-    if (!isConnected)
-        return;
+    infoLog?.log(`startRecording: `, lastStartArguments);
+    const { chatId, repliedChatEntryId } = lastStartArguments;
+    lastStartArguments.repliedChatEntryId = ""; // We reset it for the next message here
+    if (audioStream !== null)
+        await stopRecording();
 
-    lastInitArguments.repliedChatEntryId = ""; // We must set it for the first message only
-
-    recordingSubject?.complete(); // Just in case
-    recordingSubject = new signalR.Subject<Array<Uint8Array>>();
     systemEncoder?.configure(systemCodecConfig);
-    const preSkip = encoder?.preSkip ?? AE.DEFAULT_PRE_SKIP_FRAMES;
-    await hubConnection.send('ProcessAudioChunks', lastSessionToken, chatId, repliedChatEntryId, Date.now() / 1000, preSkip, recordingSubject);
+    const preSkip = encoder?.preSkip ?? AE.DEFAULT_PRE_SKIP;
+    audioStream = AudioStreamer.addStream(lastSessionToken, preSkip, chatId, repliedChatEntryId);
     processQueue('in');
 }
 
+async function stopRecording(): Promise<void> {
+    processQueue('out');
+    if (systemEncoder && systemEncoder.state === 'configured')
+        await systemEncoder.flush();
+
+    audioStream?.complete();
+    audioStream = null;
+    encoder?.reset();
+    systemEncoder?.reset();
+    chunkTimeOffset = 0;
+}
+
 function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
-    const isConnected = hubConnection.state === HubConnectionState.Connected;
-    // debugLog?.log(`processQueue:(${fade}): isConnected:`, isConnected);
-    if (!isConnected)
-        return;
-
-    if (isEncoding)
-        return;
-
     if (!encoder && !systemEncoder)
-        return;
+        return; // No encoder = there is nothing we can do
 
-    if (queue.length < AE.BUFFER_FRAMES)
-        return;
-
-    if (systemEncoder && systemEncoder.state === 'unconfigured')
-        systemEncoder.configure(systemCodecConfig);
-
+    // debugLog?.log(`processQueue:`, fade);
     try {
-        isEncoding = true;
         let fadeWindowIndex: number | null = null;
         if (fade === 'in' || fade === 'out')
             fadeWindowIndex = 0;
@@ -378,7 +252,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
                         samples[i] *= kbdWindow[kbdWindow.length - 1 - fadeWindowIndex - i];
 
                 fadeWindowIndex += samples.length;
-                if (fadeWindowIndex >= AE.FADE_FRAMES * AE.FRAME_SIZE)
+                if (fadeWindowIndex >= AE.FADE_FRAMES * AE.FRAME_SAMPLES)
                     fadeWindowIndex = null;
             }
 
@@ -394,21 +268,16 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
                     format: 'f32-planar',
                     sampleRate: AR.SAMPLE_RATE,
                     numberOfChannels: 1,
-                    numberOfFrames: AE.FRAME_SIZE,
+                    numberOfFrames: AE.FRAME_SAMPLES,
                     timestamp: chunkTimeOffset * 1000, // microseconds instead of ms
                     data: samples,
                 });
                 systemEncoder.encode(audioChunk);
             }
             else {
-                const encodedChunkBuffer = bufferPool.get();
-                const typedViewEncodedChunk = encoder.encode(samplesBuffer);
-                // typedViewEncodedChunk is a typed_memory_view to Decoder internal buffer - so you have to copy data
-                const encodedChunk = encodedChunkBuffer.byteLength > typedViewEncodedChunk.byteLength
-                    ? new Uint8Array(encodedChunkBuffer, 0, typedViewEncodedChunk.byteLength)
-                    : new Uint8Array(typedViewEncodedChunk.length);
-                encodedChunk.set(typedViewEncodedChunk);
-                currentResult.push(encodedChunk);
+                // frameView is a typed_memory_view to Decoder internal buffer, so we have to copy it
+                const frameView = encoder.encode(samplesBuffer);
+                audioStream?.addFrame(frameView);
             }
 
             lastFrameProcessedAt = Date.now();
@@ -416,40 +285,14 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
 
             chunkTimeOffset += 20;
         }
-        ensureCurrentResultIsSent();
     }
     catch (error) {
         errorLog?.log(`processQueue: unhandled error:`, error);
     }
-    finally {
-        isEncoding = false;
-    }
-}
-
-async function stopRecording(): Promise<void> {
-    processQueue('out');
-    if (systemEncoder && systemEncoder.state === 'configured') {
-        await systemEncoder.flush();
-        ensureCurrentResultIsSent();
-    }
-    recordingSubject?.complete();
-    recordingSubject = null;
-    encoder?.reset();
-    systemEncoder?.reset();
-    chunkTimeOffset = 0;
-}
-
-async function onReconnect(): Promise<void> {
-    infoLog?.log(`onReconnect: `, hubConnection.state);
-    const isConnected = hubConnection.state === HubConnectionState.Connected;
-    void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait);
-    if (isConnected && state === 'encoding') {
-        await startRecording();
-    }
 }
 
 function getPinkNoiseBuffer(gain: number = 1): Float32Array {
-    const buffer = new Float32Array(AE.FRAME_SIZE);
+    const buffer = new Float32Array(AE.FRAME_SAMPLES);
     let b0: number, b1: number, b2: number, b3: number, b4: number, b5: number, b6: number;
     b0 = b1 = b2 = b3 = b4 = b5 = b6 = 0.0;
     for (let i = 0; i < buffer.length; i++) {
@@ -466,43 +309,4 @@ function getPinkNoiseBuffer(gain: number = 1): Float32Array {
         b6 = white * 0.115926;
     }
     return buffer;
-}
-
-// Override HubConnection._launchStreams
-function _launchStreams(streams: IStreamResult<any>[], promiseQueue: Promise<void>): void {
-    if (streams.length === 0) {
-        return;
-    }
-
-    // Synchronize stream data so they arrive in-order on the server
-    if (!promiseQueue) {
-        promiseQueue = Promise.resolve();
-    }
-
-    // We want to iterate over the keys, since the keys are the stream ids
-    // eslint-disable-next-line guard-for-in
-    for (const streamId in streams) {
-        streams[streamId].subscribe({
-            complete: () => {
-                promiseQueue = promiseQueue.then(() => this._sendWithProtocol(this._createCompletionMessage(streamId)));
-            },
-            error: (err) => {
-                let message: string;
-                if (err instanceof Error) {
-                    message = err.message;
-                } else if (err && err.toString) {
-                    message = err.toString();
-                } else {
-                    message = "Unknown error";
-                }
-
-                const protocolMessage = this._protocol.writeMessage(this._createCompletionMessage(streamId, message));
-                promiseQueue = promiseQueue.then(() => this._sendMessage(protocolMessage));
-            },
-            next: (item) => {
-                const protocolMessage = this._protocol.writeMessage(this._createStreamItemMessage(streamId, item));
-                promiseQueue = promiseQueue.then(() => this._sendMessage(protocolMessage));
-            },
-        });
-    }
 }

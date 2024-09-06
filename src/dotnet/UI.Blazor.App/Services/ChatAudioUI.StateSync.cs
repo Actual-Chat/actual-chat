@@ -379,7 +379,7 @@ public partial class ChatAudioUI
             await rpcDependentReconnectDelayer.WhenDisconnected(cancellationToken).ConfigureAwait(false);
             await rpcDependentReconnectDelayer.WhenConnected(cancellationToken).ConfigureAwait(false);
             // AudioRecorder.Reconnect does nothing if the connection is already there
-            await AudioRecorder.Reconnect(cancellationToken).ConfigureAwait(false);
+            await AudioRecorder.EnsureConnected(quickReconnect: true, cancellationToken).ConfigureAwait(false);
         }
     }
 

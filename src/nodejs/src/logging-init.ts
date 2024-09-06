@@ -61,6 +61,7 @@ export type LogScope =
     | 'SoundsPlayer'
     // Audio recording
     | 'AudioRecorder'
+    | 'AudioStreamer'
     | 'OpusMediaRecorder'
     | 'AudioVadWorker'
     | 'AudioVadWorkletProcessor'
@@ -196,6 +197,7 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('OpusDecoderWorker', LogLevel.Debug);
     // minLevels.set('FeederProcessor', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
+    // minLevels.set('AudioStreamer', LogLevel.Debug);
     minLevels.set('OpusMediaRecorder', LogLevel.Debug);
     minLevels.set('AudioVadWorker', LogLevel.Debug);
     // minLevels.set('AudioVadWorkletProcessor', LogLevel.Debug);

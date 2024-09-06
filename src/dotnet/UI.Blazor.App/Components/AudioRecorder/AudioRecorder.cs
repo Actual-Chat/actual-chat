@@ -138,10 +138,10 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         return await StopRecordingUnsafe().ConfigureAwait(false);
     }
 
-    public async ValueTask Reconnect(CancellationToken cancellationToken)
+    public async ValueTask EnsureConnected(bool quickReconnect, CancellationToken cancellationToken)
     {
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        await _jsRef.InvokeVoidAsync("reconnect", CancellationToken.None)
+        await _jsRef.InvokeVoidAsync("ensureConnected", CancellationToken.None, quickReconnect)
             .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 

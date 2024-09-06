@@ -55,7 +55,7 @@ export class AudioInitializer {
         if (backgroundState === 'Foreground' || backgroundState === 'BackgroundActive') {
             await audioContextSource.resumeAudio();
             await recordingAudioContextSource.resumeAudio();
-            await opusMediaRecorder.reconnect();
+            await opusMediaRecorder.ensureConnected(true);
         } else {
             await audioContextSource.suspendAudio();
             await recordingAudioContextSource.suspendAudio();

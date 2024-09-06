@@ -10,13 +10,14 @@ import { RunningEMA } from 'math';
 import OnnxModel from './vad.onnx';
 import { rpcClientServer, RpcNoWait, rpcNoWait, RpcTimeout } from 'rpc';
 import { AudioVadWorklet } from '../worklets/audio-vad-worklet-contract';
-import { NNVoiceActivityDetector, noVoiceActivity } from './audio-vad';
+import { NO_VOICE_ACTIVITY } from './audio-vad-contract';
+import { NNVoiceActivityDetector } from './audio-vad';
 import { AudioVadWorker } from './audio-vad-worker-contract';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { VoiceActivityChange, VoiceActivityDetector } from './audio-vad-contract';
 import { delayAsync, retry } from 'promises';
 import { WebRtcVoiceActivityDetector } from './audio-vad-webrtc';
-import { RecorderStateEventHandler } from "../opus-media-recorder-contracts";
+import { RecorderStateServer } from "../opus-media-recorder-contracts";
 import { AudioDiagnosticsState } from "../audio-recorder";
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('AudioVadWorker');
@@ -112,7 +113,7 @@ const serverImpl: AudioVadWorker = {
         }
     }
 };
-const server = rpcClientServer<RecorderStateEventHandler>(`${logScope}.server`, worker, serverImpl);
+const stateServer = rpcClientServer<RecorderStateServer>(`${logScope}.stateServer`, worker, serverImpl);
 
 async function processQueue(): Promise<void> {
     if (isVadRunning)
@@ -124,9 +125,8 @@ async function processQueue(): Promise<void> {
     try {
         isVadRunning = true;
         while (true) {
-            if (queue.isEmpty()) {
+            if (queue.isEmpty())
                 return;
-            }
 
             const buffer = queue.shift();
             let vadEvent: VoiceActivityChange | number;
@@ -153,7 +153,7 @@ async function processQueue(): Promise<void> {
             if (typeof vadEvent === 'number') {
                 audioPowerEma.appendSample(vadEvent);
                 // debugLog?.log(`processQueue: lastAverage:`, audioPowerAverage.value);
-                void server.onAudioPowerChange(audioPowerEma.value, rpcNoWait);
+                void stateServer.onAudioPowerChange(audioPowerEma.value, rpcNoWait);
             }
             else {
                 if (vadEvent.kind === "start") {
@@ -166,7 +166,7 @@ async function processQueue(): Promise<void> {
                     }
                 }
                 void encoderWorker.onVoiceActivityChange(vadEvent, rpcNoWait);
-                void server.onVoiceStateChanged(vadEvent.kind === 'start', rpcNoWait);
+                void stateServer.onVoiceStateChanged(vadEvent.kind === 'start', rpcNoWait);
             }
         }
     }
@@ -231,7 +231,7 @@ async function initNNVad(): Promise<void> {
     if (isNNVadInitialized)
         return;
 
-    const currentActivityEvent: VoiceActivityChange = webrtcVoiceDetector.lastActivityEvent ?? noVoiceActivity;
+    const currentActivityEvent: VoiceActivityChange = webrtcVoiceDetector.lastActivityEvent ?? NO_VOICE_ACTIVITY;
     const vad = new NNVoiceActivityDetector(OnnxModel as unknown as URL, currentActivityEvent);
     await vad.init();
 

@@ -8,7 +8,7 @@ export interface OpusEncoderWorker {
     start(chatId: string, repliedChatEntryId: string): Promise<void>;
     setSessionToken(sessionToken: string, noWait?: RpcNoWait): Promise<void>;
     stop(): Promise<void>;
-    reconnect(noWait?: RpcNoWait): Promise<void>;
+    ensureConnected(quickReconnect: boolean, noWait?: RpcNoWait): Promise<void>;
     disconnect(noWait?: RpcNoWait): Promise<void>;
     runDiagnostics(diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState>;
 

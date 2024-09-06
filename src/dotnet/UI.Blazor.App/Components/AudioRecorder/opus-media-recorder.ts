@@ -23,7 +23,7 @@ import { OpusEncoderWorklet } from './worklets/opus-encoder-worklet-contract';
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
 import { AudioInitializer } from "../../Services/audio-initializer";
 import { AudioDiagnosticsState } from "./audio-recorder";
-import { RecorderStateChanged, RecorderStateEventHandler } from "./opus-media-recorder-contracts";
+import { RecorderStateChanged, RecorderStateServer } from "./opus-media-recorder-contracts";
 import { Log } from 'logging';
 
 /*
@@ -53,7 +53,7 @@ import { Log } from 'logging';
 const { logScope, infoLog, debugLog, warnLog, errorLog } = Log.get('OpusMediaRecorder');
 const RecordingFailedInterval = 500;
 
-export class OpusMediaRecorder implements RecorderStateEventHandler {
+export class OpusMediaRecorder implements RecorderStateServer {
     private static readonly audioPowerChangedSubject: Subject<number> = new Subject<number>();
 
     public static get audioPowerChanged$(): Observable<number> {
@@ -454,8 +454,8 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         AudioInitializer.isRecorderInitialized = false;
     }
 
-    public async reconnect(): Promise<void> {
-        await this.encoderWorker?.reconnect(rpcNoWait);
+    public async ensureConnected(quickReconnect: boolean): Promise<void> {
+        await this.encoderWorker?.ensureConnected(quickReconnect, rpcNoWait);
     }
 
     public async disconnect(): Promise<void> {

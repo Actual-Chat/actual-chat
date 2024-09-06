@@ -31,7 +31,7 @@ public class OggOpusStreamConverter(OggOpusStreamConverter.Options? options = nu
             new OpusHead {
                 Version = 1,
                 OutputChannelCount = 1,
-                PreSkip = (ushort)source.Format.PreSkipFrames,
+                PreSkip = (ushort)source.Format.PreSkip,
                 InputSampleRate = 48000,
                 OutputGain = 0,
                 ChannelMapping = 0,

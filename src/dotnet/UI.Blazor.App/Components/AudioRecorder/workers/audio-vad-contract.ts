@@ -15,3 +15,9 @@ export interface VoiceActivityDetector {
     conversationSignal(): void;
     appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChange | number> ;
 }
+
+export const NO_VOICE_ACTIVITY: VoiceActivityChange = {
+    kind: 'end',
+    offset: 0,
+    speechProb: 0
+};

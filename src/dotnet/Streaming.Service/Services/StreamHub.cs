@@ -57,7 +57,7 @@ public class StreamHub(IServiceProvider services) : Hub
         string chatId,
         string repliedChatEntryId,
         double clientStartOffset,
-        int preSkipFrames,
+        int preSkip,
         IAsyncEnumerable<byte[][]> audioStream)
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
         => ProcessAudio(
@@ -65,7 +65,7 @@ public class StreamHub(IServiceProvider services) : Hub
             chatId,
             repliedChatEntryId,
             clientStartOffset,
-            preSkipFrames,
+            preSkip,
             audioStream.SelectMany(c => c.AsAsyncEnumerable()));
 
     public async Task ProcessAudio(
@@ -73,7 +73,7 @@ public class StreamHub(IServiceProvider services) : Hub
         string chatId,
         string repliedChatEntryId,
         double clientStartOffset,
-        int preSkipFrames,
+        int preSkip,
         IAsyncEnumerable<byte[]> audioStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
@@ -107,7 +107,7 @@ public class StreamHub(IServiceProvider services) : Hub
             .SuppressCancellation(stopCts.Token);
         var frameStream = RpcStream.New(frames);
         await Backend
-            .ProcessAudio(audioRecord, preSkipFrames, frameStream, CancellationToken.None)
+            .ProcessAudio(audioRecord, preSkip, frameStream, CancellationToken.None)
             .SilentAwait(false);
     }
 

@@ -17,7 +17,7 @@ public interface IStreamingBackend : IRpcService, IBackendService
 
     Task ProcessAudio(
         AudioRecord record,
-        int preSkipFrames,
+        int preSkip,
         RpcStream<AudioFrame> frameStream,
         CancellationToken cancellationToken);
 }

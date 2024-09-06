@@ -116,7 +116,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
             DocTypeReadVersion = 2,
         };
         position += WriteModel(header, buffer.Span[position..]);
-        var preSkipFrames = source.Format.PreSkipFrames;
+        var preSkip = source.Format.PreSkip;
         var segment = new Segment {
             Info = new Info {
                 TimestampScale = 1000000,
@@ -133,8 +133,8 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
                         CodecPrivate = new byte[] {
                             0x4F, 0x70, 0x75, 0x73, 0x48, 0x65, 0x61, 0x64,
                             0x01, 0x01,
-                            (byte)(0xFF & preSkipFrames),
-                            (byte)(0xFF & (preSkipFrames >> 8)),
+                            (byte)(0xFF & preSkip),
+                            (byte)(0xFF & (preSkip >> 8)),
                             0x80, 0xBB, 0x00, 0x00,
                             0x00, 0x00, 0x00,
                         },
@@ -143,10 +143,10 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
                             Channels = 1,
                             BitDepth = 32,
                         },
-                        CodecDelay = preSkipFrames == 0
+                        CodecDelay = preSkip == 0
                             ? null
-                            :((ulong)preSkipFrames) * 1_000_000_000 / 48_000,
-                        SeekPreRoll = preSkipFrames == 0
+                            :((ulong)preSkip) * 1_000_000_000 / 48_000,
+                        SeekPreRoll = preSkip == 0
                             ? 0UL
                             : 80000000UL,
                     },
@@ -307,7 +307,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
             },
             SampleRate = (int) audio.SamplingFrequency,
             CodecSettings = Convert.ToBase64String(rawHeader),
-            PreSkipFrames = (int)(trackEntry.CodecDelay ?? 0),
+            PreSkip = (int)(trackEntry.CodecDelay ?? 0),
         };
     }
 }

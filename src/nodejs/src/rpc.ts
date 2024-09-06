@@ -312,9 +312,9 @@ export function rpcClientServer<TClient extends object>(
     }
 
     const client = rpcClient<TClient>(name, messagePort, timeoutMs, onDispose);
-    const clientOnMessage = messagePort.onmessage;
+    const clientOnMessage = messagePort.onmessage; // rpcClient(...) call sets it
     const server = rpcServer(name, messagePort, serverImpl, onUnhandledMessage);
-    const serverOnMessage = messagePort.onmessage;
+    const serverOnMessage = messagePort.onmessage; // rpcServer(...) call sets it
 
     messagePort.onmessage = async (event: MessageEvent<RpcCall | RpcResult>): Promise<void> => {
         const data = event.data;

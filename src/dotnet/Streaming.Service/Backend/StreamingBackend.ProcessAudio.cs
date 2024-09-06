@@ -16,7 +16,7 @@ public partial class StreamingBackend
 
     public virtual async Task ProcessAudio(
         AudioRecord record,
-        int preSkipFrames,
+        int preSkip,
         RpcStream<AudioFrame> frames,
         CancellationToken cancellationToken)
     {
@@ -36,7 +36,7 @@ public partial class StreamingBackend
             var augmentedFrames = frames.AsAsyncEnumerable();
             if (Constants.DebugMode.AudioRecordingStream)
                 augmentedFrames = augmentedFrames.WithLog(Log, nameof(ProcessAudio), cancellationToken);
-            await ProcessAudio(record, preSkipFrames, augmentedFrames, delayedCancellationToken).ConfigureAwait(false);
+            await ProcessAudio(record, preSkip, augmentedFrames, delayedCancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "Error processing audio stream {StreamId}", record.StreamId);
@@ -56,7 +56,7 @@ public partial class StreamingBackend
 
     public async Task ProcessAudio(
         AudioRecord record,
-        int preSkipFrames,
+        int preSkip,
         IAsyncEnumerable<AudioFrame> frames,
         CancellationToken cancellationToken)
     {
@@ -80,7 +80,7 @@ public partial class StreamingBackend
         var recordedAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
         var audio = new AudioSource(
             new Moment(recordedAt),
-            AudioSource.DefaultFormat with { PreSkipFrames = preSkipFrames },
+            AudioSource.DefaultFormat with { PreSkip = preSkip },
             frames,
             TimeSpan.Zero,
             AudioSourceLog,

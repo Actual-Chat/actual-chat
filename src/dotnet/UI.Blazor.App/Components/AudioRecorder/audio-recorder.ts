@@ -48,7 +48,7 @@ export class AudioRecorder {
 
     public constructor(blazorRef: DotNet.DotNetObject) {
         this.blazorRef = blazorRef;
-        this.onReconnected = BrowserInit.reconnectedEvents.add(() => this.reconnect());
+        this.onReconnected = BrowserInit.reconnectedEvents.add(() => this.ensureConnected(true));
         opusMediaRecorder.subscribeToStateChanges((isRecording, isConnected, isVoiceActive) =>
             this.onRecordingStateChange(isRecording, isConnected, isVoiceActive));
     }
@@ -182,9 +182,9 @@ export class AudioRecorder {
     }
 
     /** Called from Blazor */
-    public reconnect(): Promise<void> {
-        debugLog?.log(`reconnect()`);
-        return opusMediaRecorder.reconnect();
+    public ensureConnected(quickReconnect: boolean): Promise<void> {
+        debugLog?.log(`ensureConnected(${quickReconnect})`);
+        return opusMediaRecorder.ensureConnected(quickReconnect);
     }
 
     /** Called from Blazor */

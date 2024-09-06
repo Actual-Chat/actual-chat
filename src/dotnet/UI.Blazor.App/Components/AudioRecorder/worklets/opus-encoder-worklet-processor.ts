@@ -7,7 +7,7 @@ import { AudioRingBuffer } from './audio-ring-buffer';
 import { AudioDiagnosticsState } from "../audio-recorder";
 import { OpusEncoderWorklet } from './opus-encoder-worklet-contract';
 import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';
-import { RecorderStateEventHandler } from "../opus-media-recorder-contracts";
+import { RecorderStateServer } from "../opus-media-recorder-contracts";
 import { Log } from 'logging';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorkletProcessor');
@@ -22,7 +22,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     private readonly buffer: AudioRingBuffer;
     private readonly bufferPool: ObjectPool<ArrayBuffer>;
     private state: 'running' | 'stopped' | 'inactive' = 'inactive';
-    private server: RecorderStateEventHandler & Disposable;
+    private stateServer: RecorderStateServer & Disposable;
     private worker: OpusEncoderWorker & Disposable;
     private samplesSinceLastReporting = 0;
     private frameCount: number = 0;
@@ -42,7 +42,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
         this.samplesPerWindow = timeSlice * AR.SAMPLES_PER_MS;
         this.buffer = new AudioRingBuffer(8192, 1);
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(this.samplesPerWindow * 4)).expandTo(4);
-        this.server = rpcClientServer<RecorderStateEventHandler>(`${logScope}.server`, this.port, this);
+        this.stateServer = rpcClientServer<RecorderStateServer>(`${logScope}.stateServer`, this.port, this);
     }
 
     public async init(workerPort: MessagePort): Promise<void> {
@@ -100,7 +100,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
             this.samplesSinceLastReporting += input[0].length;
             if (this.samplesSinceLastReporting > AR.SAMPLES_PER_RECORDING_IN_PROGRESS_CALL) {
                 this.samplesSinceLastReporting = 0;
-                void this.server.recordingInProgress(rpcNoWait);
+                void this.stateServer.recordingInProgress(rpcNoWait);
             }
         }
         catch (error) {
