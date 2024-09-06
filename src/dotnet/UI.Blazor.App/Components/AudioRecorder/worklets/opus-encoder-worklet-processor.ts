@@ -1,18 +1,16 @@
-import { AudioRingBuffer } from './audio-ring-buffer';
+import { AUDIO_REC as AR } from '_constants';
 import { Disposable } from 'disposable';
 import { ObjectPool } from 'object-pool';
-import { OpusEncoderWorklet } from './opus-encoder-worklet-contract';
-import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';
 import { rpcClientServer, RpcNoWait, rpcNoWait, rpcServer } from 'rpc';
 import { timerQueue } from 'timerQueue';
-import { Log } from 'logging';
+import { AudioRingBuffer } from './audio-ring-buffer';
+import { AudioDiagnosticsState } from "../audio-recorder";
+import { OpusEncoderWorklet } from './opus-encoder-worklet-contract';
+import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';
 import { RecorderStateEventHandler } from "../opus-media-recorder-contracts";
-import {AudioDiagnosticsState} from "../audio-recorder";
-import { SAMPLES_PER_MS } from '../constants';
+import { Log } from 'logging';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorkletProcessor');
-
-const SAMPLES_PER_RECORDING_REPORT_CALL = SAMPLES_PER_MS * 200; // 200ms
 
 export interface ProcessorOptions {
     timeSlice: number;
@@ -41,7 +39,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
             throw new Error(`OpusEncoderWorkletProcessor supports only ${ allowedTimeSliceJson } options as timeSlice argument.`);
         }
 
-        this.samplesPerWindow = timeSlice * SAMPLES_PER_MS;
+        this.samplesPerWindow = timeSlice * AR.SAMPLES_PER_MS;
         this.buffer = new AudioRingBuffer(8192, 1);
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(this.samplesPerWindow * 4)).expandTo(4);
         this.server = rpcClientServer<RecorderStateEventHandler>(`${logScope}.server`, this.port, this);
@@ -100,7 +98,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
             }
 
             this.samplesSinceLastReporting += input[0].length;
-            if (this.samplesSinceLastReporting > SAMPLES_PER_RECORDING_REPORT_CALL) {
+            if (this.samplesSinceLastReporting > AR.SAMPLES_PER_RECORDING_IN_PROGRESS_CALL) {
                 this.samplesSinceLastReporting = 0;
                 void this.server.recordingInProgress(rpcNoWait);
             }

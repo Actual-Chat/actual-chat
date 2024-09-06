@@ -1,13 +1,13 @@
-import { AudioRingBuffer } from './audio-ring-buffer';
-import { AudioVadWorker } from '../workers/audio-vad-worker-contract';
-import { AudioVadWorklet } from './audio-vad-worklet-contract';
+import { AUDIO_REC as AR } from '_constants';
 import { Disposable } from 'disposable';
 import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
 import { timerQueue } from 'timerQueue';
 import { ObjectPool } from 'object-pool';
+import { AudioRingBuffer } from './audio-ring-buffer';
+import { AudioVadWorker } from '../workers/audio-vad-worker-contract';
+import { AudioVadWorklet } from './audio-vad-worklet-contract';
+import { AudioDiagnosticsState } from "../audio-recorder";
 import { Log } from 'logging';
-import {AudioDiagnosticsState} from "../audio-recorder";
-import { SAMPLES_PER_WINDOW_30, SAMPLES_PER_WINDOW_32 } from '../constants';
 
 const { logScope, debugLog, warnLog } = Log.get('AudioVadWorkletProcessor');
 
@@ -15,7 +15,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
     private readonly buffer: AudioRingBuffer;
 
     private state: 'running' | 'stopped' | 'inactive' = 'inactive';
-    private samplesPerWindow: number = SAMPLES_PER_WINDOW_32;
+    private samplesPerWindow: number = AR.SAMPLES_PER_WINDOW_32;
     private bufferPool: ObjectPool<ArrayBuffer>;
     private server: Disposable;
     private worker: AudioVadWorker & Disposable;
@@ -35,8 +35,8 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
 
     public async start(windowSizeMs: 30 | 32, noWait?: RpcNoWait): Promise<void> {
         this.samplesPerWindow = windowSizeMs == 30
-           ? SAMPLES_PER_WINDOW_30
-           : SAMPLES_PER_WINDOW_32;
+           ? AR.SAMPLES_PER_WINDOW_30
+           : AR.SAMPLES_PER_WINDOW_32;
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(this.samplesPerWindow * 4)).expandTo(4);
         this.state = 'running';
     }

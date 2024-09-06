@@ -1,12 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import { AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
-import { recordingAudioContextSource } from '../../Services/audio-context-source';
-import { AudioVadWorker } from './workers/audio-vad-worker-contract';
-import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
+import { AUDIO_REC as AR } from '_constants';
 import { Disposable } from 'disposable';
-import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
-import { Observable, Subject } from 'rxjs';
-import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
+import { Versioning } from 'versioning';
 import {
     catchErrors,
     debounce,
@@ -15,17 +10,21 @@ import {
     PromiseSource,
     retry
 } from 'promises';
+import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
+import { Observable, Subject } from 'rxjs';
+import { BrowserInit } from "../../../UI.Blazor/Services/BrowserInit/browser-init";
+import { BrowserInfo } from "../../../UI.Blazor/Services/BrowserInfo/browser-info";
+import { recordingAudioContextSource } from '../../Services/audio-context-source';
+import { AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
+import { AudioVadWorker } from './workers/audio-vad-worker-contract';
+import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
 import { OpusEncoderWorker } from './workers/opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from './worklets/opus-encoder-worklet-contract';
-import { Versioning } from 'versioning';
-import { Log } from 'logging';
-import { RecorderStateChanged, RecorderStateEventHandler } from "./opus-media-recorder-contracts";
-import * as signalR from "@microsoft/signalr";
+import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
 import { AudioInitializer } from "../../Services/audio-initializer";
-import { BrowserInit } from "../../../UI.Blazor/Services/BrowserInit/browser-init";
 import { AudioDiagnosticsState } from "./audio-recorder";
-import { BrowserInfo } from "../../../UI.Blazor/Services/BrowserInfo/browser-info";
-import { SAMPLE_RATE } from './constants';
+import { RecorderStateChanged, RecorderStateEventHandler } from "./opus-media-recorder-contracts";
+import { Log } from 'logging';
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -119,7 +118,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
                 return {
                     audio: {
                         channelCount: 1,
-                        sampleRate: SAMPLE_RATE,
+                        sampleRate: AR.SAMPLE_RATE,
                         sampleSize: 32,
                         echoCancellation: true,
                         autoGainControl: true,
@@ -202,7 +201,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
             this.vadWorker = rpcClientServer<AudioVadWorker>(`${logScope}.vadWorker`, this.vadWorkerInstance, this);
         }
 
-        if (this.origin.includes('0.0.0.0')) {
+        if (BrowserInfo.appKind === 'MauiApp') {
             // Use server address if the app is MAUI
             this.origin = baseUri;
         }
@@ -555,9 +554,8 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         }
         // retry init again
         const origin = window.location.origin;
-        const isMaui = origin.includes('0.0.0.0');
         let baseUri = origin.replace(/\/?$/, '/');
-        if (isMaui) {
+        if (BrowserInfo.appKind === 'MauiApp') {
             await BrowserInit.whenInitialized;
             baseUri = BrowserInit.baseUri;
         }

@@ -12,13 +12,13 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #code import codecWasm from '@actual-chat/codec/codec.wasm';
 /// #endif
 
+import { AUDIO_PLAY as AP } from '_constants';
 import { OpusDecoder } from './opus-decoder';
 import { OpusDecoderWorker } from './opus-decoder-worker-contract';
 import { RpcNoWait, rpcServer, RpcTimeout } from 'rpc';
 import { retry } from 'promises';
 import { Versioning } from 'versioning';
 import { Log } from 'logging';
-import { SAMPLE_RATE } from '../constants';
 
 const { logScope, debugLog, errorLog } = Log.get('OpusDecoderWorker');
 
@@ -33,7 +33,7 @@ const decoders = new Map<string, OpusDecoder>();
 const systemCodecConfig: AudioEncoderConfig = {
     codec: 'opus',
     numberOfChannels: 1,
-    sampleRate: SAMPLE_RATE,
+    sampleRate: AP.SAMPLE_RATE,
 };
 
 const serverImpl: OpusDecoderWorker = {
@@ -52,7 +52,7 @@ const serverImpl: OpusDecoderWorker = {
         if (!useSystemDecoder) {
             // Load & warm-up codec
             codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
-            const decoder = new codecModule.Decoder(SAMPLE_RATE);
+            const decoder = new codecModule.Decoder(AP.SAMPLE_RATE);
             decoder.delete();
         }
 
@@ -63,7 +63,7 @@ const serverImpl: OpusDecoderWorker = {
         debugLog?.log(`-> #${streamId}.create`);
         const decoder: Decoder | null = useSystemDecoder
             ? null
-            : new codecModule.Decoder(SAMPLE_RATE);
+            : new codecModule.Decoder(AP.SAMPLE_RATE);
         const opusDecoder = await OpusDecoder.create(streamId, decoder, feederWorkletPort);
         opusDecoder.init();
         decoders.set(streamId, opusDecoder);
@@ -149,5 +149,3 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
         },
     };
 }
-
-

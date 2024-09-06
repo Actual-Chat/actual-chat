@@ -40,7 +40,7 @@ export class AsyncProcessor<T> {
         try {
             for (;;) {
                 while (this.queue.length) {
-                    const item = this.queue.pop();
+                    const item = this.queue.shift();
                     this._isRunning &&= await this.process(item);
                     if (!this._isRunning) {
                         debugLog?.log(`${this.name} stopped.`);

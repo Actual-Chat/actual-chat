@@ -1,5 +1,5 @@
 import { RpcNoWait } from 'rpc';
-import {AudioDiagnosticsState} from "../audio-recorder";
+import { AudioDiagnosticsState } from "../audio-recorder";
 
 export interface AudioVadWorklet {
     init(workerPort: MessagePort, noWait?: RpcNoWait): Promise<void>;

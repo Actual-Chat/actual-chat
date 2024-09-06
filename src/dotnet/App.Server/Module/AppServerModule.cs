@@ -161,6 +161,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             "http://0.0.0.0",
             "https://0.0.0.0",
             "app://0.0.0.0",
+            "http://localhost",
+            "https://localhost",
+            "app://localhost",
         };
         if (Env.IsDevelopment()) {
             origins.Add("https://local.actual.chat");

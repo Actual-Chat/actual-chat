@@ -8,9 +8,10 @@ export interface VoiceActivityChange {
 }
 
 export interface VoiceActivityDetector {
-    appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChange | number> ;
+    lastActivityEvent: VoiceActivityChange;
+
     init(): Promise<void>;
     reset(): void;
     conversationSignal(): void;
-    lastActivityEvent: VoiceActivityChange;
+    appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChange | number> ;
 }

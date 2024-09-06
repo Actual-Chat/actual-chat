@@ -16,7 +16,7 @@
     "@types/dom-webcodecs": "^0.1.11",
     "@types/swiftclick": "^1.2.27",
     "@typescript-eslint/eslint-plugin": "^5.48.0",
-    "@typescript-eslint/parser": "^5.48.0",
+    "@typescript-eslint/parser": "^6.6.0",
     "@typescript/lib-dom": "npm:@types/web@^0.0.142",
     "autoprefixer": "^10.4.13",
     "copy-webpack-plugin": "^11.0.0",

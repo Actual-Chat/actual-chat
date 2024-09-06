@@ -6,14 +6,15 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #code import codec, { Encoder, Codec } from '@actual-chat/codec';
 /// #code import codecWasm from '@actual-chat/codec/codec.wasm';
 /// #endif
+import { AUDIO_REC as AR, AUDIO_ENCODER as AE } from '_constants';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { delayAsync, retry } from 'promises';
 import { rpcClientServer, rpcNoWait, RpcNoWait, RpcTimeout } from 'rpc';
+import { Versioning } from 'versioning';
 import * as signalR from '@microsoft/signalr';
 import { HubConnectionState, IStreamResult } from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
-import { Versioning } from 'versioning';
 
 import { AudioVadWorker } from './audio-vad-worker-contract';
 import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
@@ -24,7 +25,6 @@ import { RecorderStateEventHandler } from '../opus-media-recorder-contracts';
 import { Log } from 'logging';
 import { AudioDiagnosticsState } from '../audio-recorder';
 import { ObjectPool } from 'object-pool';
-import { BIT_RATE, SAMPLE_RATE, SAMPLES_PER_MS } from '../constants';
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
@@ -38,13 +38,6 @@ let codecModule: Codec | null = null;
 // DEBUG - required for a chaos monkey
 // const sockets: WebSocket[] = [];
 
-const CHUNKS_WILL_BE_SENT_ON_RESUME = 5; // 20ms * 5 = 100ms
-const CHUNKS_WILL_BE_SENT_ON_RECONNECT = 1000; // 20ms * 1000 = 20s
-const FADE_CHUNKS = 3;
-const BUFFER_CHUNKS = 6; // 120ms
-const CHUNK_SIZE = SAMPLES_PER_MS * 20; // 20ms at SAMPLE_RATE
-const DEFAULT_PRE_SKIP = 312;
-
 /** buffer or callbackId: number of `end` message */
 const queue = new Denque<ArrayBuffer>();
 const worker = self as unknown as Worker;
@@ -53,8 +46,8 @@ const currentResult = new Array<Uint8Array>();
 const systemCodecConfig: AudioEncoderConfig = {
     codec: 'opus',
     numberOfChannels: 1,
-    sampleRate: SAMPLE_RATE,
-    bitrate: BIT_RATE,
+    sampleRate: AR.SAMPLE_RATE,
+    bitrate: AE.BIT_RATE,
 };
 
 let hubConnection: signalR.HubConnection = null;
@@ -129,7 +122,7 @@ const serverImpl: OpusEncoderWorker = {
         }
 
         // Get fade-in window
-        kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE * FADE_CHUNKS, 2.55);
+        kbdWindow = KaiserBesselDerivedWindow(AE.FRAME_SIZE * AE.FADE_FRAMES, 2.55);
         pinkNoiseChunk = getPinkNoiseBuffer(1.0);
 
         if (!systemEncoder && globalThis.AudioEncoder) {
@@ -149,7 +142,7 @@ const serverImpl: OpusEncoderWorker = {
             debugLog?.log(`create: codec loaded`);
 
             // Warming up codec
-            encoder = new codecModule.Encoder(SAMPLE_RATE, BIT_RATE);
+            encoder = new codecModule.Encoder(AR.SAMPLE_RATE, AE.BIT_RATE);
             for (let i = 0; i < 2; i++)
                 encoder.encode(pinkNoiseChunk.buffer);
             encoder.reset();
@@ -246,9 +239,9 @@ const serverImpl: OpusEncoderWorker = {
             // debugLog?.log(`onEncoderWorkletSamples(${buffer.byteLength}):`, vadState);
             if (vadState === 'voice')
                 processQueue();
-            else if (isConnected && queue.length > CHUNKS_WILL_BE_SENT_ON_RESUME)
+            else if (isConnected && queue.length > AE.FRAMES_TO_SEND_ON_RESUME)
                 queue.shift();
-            else if (!isConnected && queue.length > CHUNKS_WILL_BE_SENT_ON_RECONNECT)
+            else if (!isConnected && queue.length > AE.FRAMES_TO_SEND_ON_RECONNECT)
                 queue.shift();
         }
     },
@@ -304,7 +297,7 @@ function onEncodedAudioChunk(output: EncodedAudioChunk, metadata: EncodedAudioCh
 }
 
 function ensureCurrentResultIsSent(): void {
-    if (currentResult.length >= BUFFER_CHUNKS) {
+    if (currentResult.length >= AE.BUFFER_FRAMES) {
         recordingSubject?.next(currentResult);
         // release buffers for reuse
         currentResult.forEach(chunk => bufferPool.release(chunk.buffer));
@@ -347,7 +340,7 @@ async function startRecording(): Promise<void> {
     recordingSubject?.complete(); // Just in case
     recordingSubject = new signalR.Subject<Array<Uint8Array>>();
     systemEncoder?.configure(systemCodecConfig);
-    const preSkip = encoder?.preSkip ?? DEFAULT_PRE_SKIP;
+    const preSkip = encoder?.preSkip ?? AE.DEFAULT_PRE_SKIP_FRAMES;
     await hubConnection.send('ProcessAudioChunks', lastSessionToken, chatId, repliedChatEntryId, Date.now() / 1000, preSkip, recordingSubject);
     processQueue('in');
 }
@@ -364,7 +357,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
     if (!encoder && !systemEncoder)
         return;
 
-    if (queue.length < BUFFER_CHUNKS)
+    if (queue.length < AE.BUFFER_FRAMES)
         return;
 
     if (systemEncoder && systemEncoder.state === 'unconfigured')
@@ -388,7 +381,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
                         samples[i] *= kbdWindow[kbdWindow.length - 1 - fadeWindowIndex - i];
 
                 fadeWindowIndex += samples.length;
-                if (fadeWindowIndex >= FADE_CHUNKS * CHUNK_SIZE)
+                if (fadeWindowIndex >= AE.FADE_FRAMES * AE.FRAME_SIZE)
                     fadeWindowIndex = null;
             }
 
@@ -402,9 +395,9 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
             if (systemEncoder) {
                 const audioChunk = new AudioData({
                     format: 'f32-planar',
-                    sampleRate: SAMPLE_RATE,
+                    sampleRate: AR.SAMPLE_RATE,
                     numberOfChannels: 1,
-                    numberOfFrames: CHUNK_SIZE,
+                    numberOfFrames: AE.FRAME_SIZE,
                     timestamp: chunkTimeOffset * 1000, // microseconds instead of ms
                     data: samples,
                 });
@@ -459,7 +452,7 @@ async function onReconnect(): Promise<void> {
 }
 
 function getPinkNoiseBuffer(gain: number = 1): Float32Array {
-    const buffer = new Float32Array(CHUNK_SIZE);
+    const buffer = new Float32Array(AE.FRAME_SIZE);
     let b0: number, b1: number, b2: number, b3: number, b4: number, b5: number, b6: number;
     b0 = b1 = b2 = b3 = b4 = b5 = b6 = 0.0;
     for (let i = 0; i < buffer.length; i++) {
