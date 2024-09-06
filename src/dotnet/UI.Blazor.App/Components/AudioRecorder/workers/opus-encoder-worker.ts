@@ -89,7 +89,7 @@ const serverImpl: OpusEncoderWorker = {
             // Loading codec
             codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
             // Warming up codec
-            encoder = new codecModule.Encoder(AR.SAMPLE_RATE as (48000 | 16000), AE.BIT_RATE);
+            encoder = new codecModule.Encoder(AR.SAMPLE_RATE, AE.BIT_RATE);
             for (let i = 0; i < 2; i++)
                 encoder.encode(pinkNoiseChunk.buffer);
             encoder.reset();

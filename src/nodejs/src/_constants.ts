@@ -1,9 +1,11 @@
 // All crucial constants are here
 // !DELAYER means it affects on audio delay.
 
+type AllowedSampleRate = 48000 | 16000;
+
 const REC_SAMPLES_PER_MS = 16; // 16KHz
 export const AUDIO_REC = {
-    SAMPLE_RATE: 1000 * REC_SAMPLES_PER_MS,
+    SAMPLE_RATE: 1000 * REC_SAMPLES_PER_MS as AllowedSampleRate,
     SAMPLES_PER_MS: REC_SAMPLES_PER_MS,
     SAMPLES_PER_WINDOW_32: REC_SAMPLES_PER_MS * 32,
     SAMPLES_PER_WINDOW_30: REC_SAMPLES_PER_MS * 30,
@@ -14,7 +16,7 @@ export const AUDIO_REC = {
 
 const PLAY_SAMPLES_PER_MS = 48; // 48KHz
 export const AUDIO_PLAY = {
-    SAMPLE_RATE: 1000 * PLAY_SAMPLES_PER_MS,
+    SAMPLE_RATE: 1000 * PLAY_SAMPLES_PER_MS as AllowedSampleRate,
     SAMPLES_PER_MS: PLAY_SAMPLES_PER_MS,
     SAMPLES_PER_WINDOW: 20 * PLAY_SAMPLES_PER_MS, // 20ms
     // In seconds:
