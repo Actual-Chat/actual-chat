@@ -2,12 +2,12 @@ import { AUDIO_STREAMER as AS, AUDIO_ENCODER as AE } from '_constants';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { EventHandlerSet } from 'event-handling';
+import { ObjectPool } from 'object-pool';
+import { delayAsync } from 'promises';
 import * as signalR from '@microsoft/signalr';
 import { HubConnectionState, IStreamResult } from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 import { Log } from 'logging';
-import { delayAsync, PromiseSource } from 'promises';
-import { ObjectPool } from 'object-pool';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('AudioStreamer');
 const bufferPool: ObjectPool<ArrayBuffer> = new ObjectPool<ArrayBuffer>(
@@ -33,7 +33,12 @@ export class AudioStream implements Disposable {
         private streamAfter: Promise<void> = null,
     ) {
         this.name = `AudioStream(${chatId}).${AudioStream.totalCount++}`
-        this.whenDisposed = this.stream().catch(_ => undefined);
+        this.whenDisposed = (async () => {
+            try {
+                await this.stream();
+            } catch { }
+            await delayAsync(AS.INTER_STREAM_DELAY * 1000);
+        })();
     }
 
     public dispose() {
@@ -132,9 +137,8 @@ export class AudioStream implements Disposable {
                         if (framesToSend.length !== 0) {
                             debugLog?.log(`${this.name}.stream: sending ${framesToSend.length} frame(s)`);
                             subject.next(framesToSend);
-                            // We don't want to send this too quickly, otherwise buffered
-                            // streams may come out of order too.
-                            await delayAsync(framesToSend.length * AE.FRAME_DURATION_MS / 4);
+                            // We don't want to send frames too quickly, otherwise streams may overlap
+                            await delayAsync(framesToSend.length * AE.FRAME_DURATION_MS / AS.MAX_SPEED);
                         }
                     }
                     finally {
@@ -153,7 +157,9 @@ export class AudioStream implements Disposable {
                 }
             }
             catch (error) {
-                subject = null; // This will trigger retry sending
+                subject = null; // This triggers retry sending
+                warnLog?.log(`stream: error:`, error);
+                delayAsync(AS.STREAM_ERROR_DELAY * 1000);
             }
         }
     }
@@ -170,8 +176,7 @@ export class AudioStreamer {
             return;
 
         debugLog?.log(`init`, hubUrl);
-        if (AS.DEBUG.RANDOM_DISCONNECTS)
-            beginRandomDisconnects();
+        debugBeginRandomDisconnects(AS.DEBUG.RANDOM_DISCONNECT_PERIOD_MS);
 
         const c = new signalR.HubConnectionBuilder()
             .withUrl(hubUrl, {
@@ -219,27 +224,33 @@ export class AudioStreamer {
         const c = this.connection;
         infoLog?.log(`ensureConnected(${quickReconnect}): connection.state:`, c.state);
         while (!this.isConnected) {
-            if (c.state === HubConnectionState.Disconnecting)
+            try {
+                if (c.state === HubConnectionState.Disconnecting)
+                    await c.stop();
+                if (c.state === HubConnectionState.Disconnected) {
+                    await c.start();
+                    continue;
+                }
+
+                // c.State === HubConnectionState.Connecting or Reconnecting
+                const maxConnectDuration = quickReconnect
+                    ? AS.MAX_QUICK_CONNECT_DURATION
+                    : AS.MAX_CONNECT_DURATION;
+                quickReconnect = false; // We use MAX_QUICK_CONNECT_DURATION just once
+                for (let t = 0; t < maxConnectDuration; t += 0.1) {
+                    await delayAsync(100);
+                    if (this.isConnected)
+                        return;
+                }
+
+                // And if the connection wasn't established, we reconnect
                 await c.stop();
-            if (c.state === HubConnectionState.Disconnected) {
                 await c.start();
-                continue;
             }
-
-            // c.State === HubConnectionState.Connecting or Reconnecting
-            const maxConnectDuration = quickReconnect
-                ? AS.MAX_QUICK_CONNECT_DURATION
-                : AS.MAX_CONNECT_DURATION;
-            quickReconnect = false; // We use MAX_QUICK_CONNECT_DURATION just once
-            for (let t = 0; t < maxConnectDuration; t += 0.1) {
-                await delayAsync(100);
-                if (this.isConnected)
-                    return;
+            catch (error) {
+                warnLog?.log(`ensureConnected: error:`, error);
+                delayAsync(AS.CONNECT_ERROR_DELAY * 1000);
             }
-
-            // And if the connection wasn't established, we reconnect
-            await c.stop();
-            await c.start();
         }
     }
 
@@ -266,7 +277,7 @@ function updateConnectionState(): void {
         return;
 
     lastIsConnected = isConnected;
-    infoLog?.log(`updateConnectionState: ->`, isConnected);
+    infoLog?.log(`isConnected:`, isConnected);
     AudioStreamer.connectionStateChangedEvents.trigger(isConnected);
 }
 
@@ -307,20 +318,32 @@ function _launchStreams(streams: IStreamResult<any>[], promiseQueue: Promise<voi
     }
 }
 
-const openWebSockets: WebSocket[] = [];
+function debugBeginRandomDisconnects(periodMs: number) {
+    if (!periodMs || periodMs <= 0)
+        return;
 
-function beginRandomDisconnects() {
     const originalSend = WebSocket.prototype.send;
+    const sockets: WebSocket[] = [];
+
     WebSocket.prototype.send = function(...args) {
-        if (openWebSockets.indexOf(this) === -1)
-            openWebSockets.push(this);
+        if (sockets.indexOf(this) === -1)
+            sockets.push(this);
         return originalSend.call(this, ...args);
     };
-    setInterval(() => {
-        // or create a button which, when clicked, does something with the sockets
-        console.log(openWebSockets);
-        openWebSockets.forEach(s => {
-           s.close(3666, 'KILLED!'); // 3666 is just a code
-        });
-    }, 3000);
+
+    (async () => {
+        // noinspection InfiniteLoopJS
+        while (true) {
+            await delayAsync(periodMs * (1 + Math.random()) / 2);
+            if (sockets.length == 0)
+                continue;
+
+            warnLog.log(`Killing ${sockets.length} WebSocket connection(s)...`);
+            try {
+                sockets.forEach(x => x.close(3666, 'KILLED!')); // 3666 is just an error code
+            }
+            catch { }
+            sockets.length = 0;
+        }
+    })();
 }
