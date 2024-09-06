@@ -3,6 +3,8 @@ import { Decoder } from '@actual-chat/codec/codec.debug';
 /// #else
 /// #code import { Decoder } from '@actual-chat/codec';
 /// #endif
+
+import { AUDIO_PLAY as AP } from '_constants';
 import { AsyncDisposable, Disposable } from 'disposable';
 import { AsyncProcessor } from 'async-processor';
 import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
@@ -10,7 +12,6 @@ import { FeederAudioWorklet } from '../worklets/feeder-audio-worklet-contract';
 import { ObjectPool } from 'object-pool';
 import { Log } from 'logging';
 import { BufferHandler } from "./opus-decoder-worker-contract";
-import { SAMPLE_RATE, SAMPLES_PER_WINDOW } from '../constants';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusDecoder');
 const enableFrequentDebugLog = false;
@@ -22,7 +23,7 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 const systemCodecConfig: AudioDecoderConfig = {
     codec: 'opus',
     numberOfChannels: 1,
-    sampleRate: SAMPLE_RATE,
+    sampleRate: AP.SAMPLE_RATE,
 };
 
 
@@ -47,8 +48,8 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         this.streamId = streamId;
         this.processor = new AsyncProcessor<Uint8Array | 'end'>('OpusDecoder', item => this.process(item));
         this.feederWorklet = rpcClientServer<FeederAudioWorklet>(`${logScope}.feederNode`, feederWorkletPort, this);
-        this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(SAMPLES_PER_WINDOW * 4)).expandTo(4);
-        this.largeBufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(SAMPLES_PER_WINDOW * 4 * 3)).expandTo(2);
+        this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(AP.SAMPLES_PER_WINDOW * 4)).expandTo(4);
+        this.largeBufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(AP.SAMPLES_PER_WINDOW * 4 * 3)).expandTo(2);
         this.decoder = decoder;
         if (!this.decoder) {
             // use system decoder
@@ -99,7 +100,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     }
 
     public async releaseBuffer(buffer: ArrayBuffer, _rpcNoWait: RpcNoWait): Promise<void> {
-        if (buffer.byteLength <= SAMPLES_PER_WINDOW * 4)
+        if (buffer.byteLength <= AP.SAMPLES_PER_WINDOW * 4)
             this.bufferPool.release(buffer);
         else
             this.largeBufferPool.release(buffer);
@@ -133,7 +134,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
                     return true;
                 }
 
-                const samplesBuffer = typedViewSamples.length == SAMPLES_PER_WINDOW
+                const samplesBuffer = typedViewSamples.length == AP.SAMPLES_PER_WINDOW
                     ? this.bufferPool.get()
                     : this.largeBufferPool.get();
                 const samples = new Float32Array(samplesBuffer, 0, typedViewSamples.length);
@@ -158,7 +159,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     }
 
     private onDecodedAudioChunk = (output: AudioData): void => {
-        const samplesBuffer = output.numberOfFrames == SAMPLES_PER_WINDOW
+        const samplesBuffer = output.numberOfFrames == AP.SAMPLES_PER_WINDOW
             ? this.bufferPool.get()
             : this.largeBufferPool.get();
         const samples = new Float32Array(samplesBuffer, 0, output.numberOfFrames);

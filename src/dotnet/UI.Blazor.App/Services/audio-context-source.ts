@@ -1,4 +1,4 @@
-import { BrowserInfo } from '../../UI.Blazor/Services/BrowserInfo/browser-info';
+import { AUDIO_PLAY as AP, AUDIO_REC as AR } from '_constants';
 import {
     Cancelled,
     debounce,
@@ -11,13 +11,12 @@ import {
 import { EventHandler } from 'event-handling';
 import { Interactive } from 'interactive';
 import { OnDeviceAwake } from 'on-device-awake';
-import { Log } from 'logging';
-import { Versioning } from 'versioning';
-import { AudioContextRef, AudioContextRefOptions } from './audio-context-ref';
 import { firstValueFrom, Observable, Subject } from 'rxjs';
+import { Versioning } from 'versioning';
+import { BrowserInfo } from '../../UI.Blazor/Services/BrowserInfo/browser-info';
+import { AudioContextRef, AudioContextRefOptions } from './audio-context-ref';
 import { AudioContextDestinationFallback } from './audio-context-destination-fallback';
-import * as playerConstants from '../Components/AudioPlayer/constants';
-import * as recorderConstants from '../Components/AudioRecorder/constants';
+import { Log } from 'logging';
 
 const { logScope, infoLog, debugLog, warnLog } = Log.get('AudioContextSource');
 
@@ -451,7 +450,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         // It might be in suspended state in this case.
         const context: OverridenAudioContext = new AudioContext({
             latencyHint: 'balanced',
-            sampleRate: this.purpose === 'playback' ? playerConstants.SAMPLE_RATE : recorderConstants.SAMPLE_RATE,
+            sampleRate: this.purpose === 'playback' ? AP.SAMPLE_RATE : AR.SAMPLE_RATE,
         });
         this._contextCreated$.next(context);
         try {
@@ -700,7 +699,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
     }
 
     private createSilenceBuffer(context: AudioContext): AudioBuffer {
-        return context.createBuffer(1, 1, this.purpose === 'playback' ? playerConstants.SAMPLE_RATE : recorderConstants.SAMPLE_RATE);
+        return context.createBuffer(1, 1, this.purpose === 'playback' ? AP.SAMPLE_RATE : AR.SAMPLE_RATE);
     }
 
     private throwIfUnused(): void {
@@ -811,7 +810,7 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
 
         const context = new AudioContext({
             latencyHint: 'balanced',
-            sampleRate: this.purpose === 'playback' ? playerConstants.SAMPLE_RATE : recorderConstants.SAMPLE_RATE,
+            sampleRate: this.purpose === 'playback' ? AP.SAMPLE_RATE : AR.SAMPLE_RATE,
         });
         Interactive.isInteractive = true;
         await context.resume();
@@ -841,4 +840,3 @@ export const recordingAudioContextSource: AudioContextSource = BrowserInfo.appKi
     ? new MauiAudioContextSource('recording')
     : new WebAudioContextSource('recording');
 globalThis['recordingAudioContextSource'] = recordingAudioContextSource;
-

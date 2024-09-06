@@ -1,3 +1,4 @@
+import { AUDIO_PLAY as AP } from '_constants';
 import Denque from 'denque';
 import { timerQueue } from 'timerQueue';
 import {
@@ -12,14 +13,8 @@ import { Disposable } from 'disposable';
 import { ResolvedPromise } from 'promises';
 import { Log } from 'logging';
 import { BufferHandler } from '../workers/opus-decoder-worker-contract';
-import { SAMPLE_RATE } from '../constants';
 
 const { logScope, debugLog, warnLog } = Log.get('FeederProcessor');
-
-const SampleDuration = 1.0 / SAMPLE_RATE;
-const PlayableBufferSize = 0.15; // In seconds, 1s = 5 * 20ms OPUS frames
-const OkBufferSize = 10.0; // In seconds
-const StateUpdatePeriod = 0.2;
 
 /** Part of the feeder that lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */
 class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements FeederAudioWorklet {
@@ -39,7 +34,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private bufferState: BufferState = 'ok';
     private lastReportedState: FeederState = null;
     private isEnding = false;
-    private bufferSizeToStartPlayback = PlayableBufferSize;
+    private bufferSizeToStartPlayback = AP.BUFFER_TO_PLAY_DURATION;
     private lastStarvingEventAt: number = 0;
 
     constructor(options: AudioWorkletNodeOptions) {
@@ -48,7 +43,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     }
 
     private get bufferedDuration(): number {
-        return this.bufferedSampleCount * SampleDuration;
+        return this.bufferedSampleCount * AP.SAMPLE_DURATION;
     }
 
     private get bufferedSampleCount(): number {
@@ -152,7 +147,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
                 if (time - this.lastStarvingEventAt > 1000)
                     // increase buffer size to prevent starving if previous event has happened earlier than 1s before
-                    this.bufferSizeToStartPlayback += PlayableBufferSize;
+                    this.bufferSizeToStartPlayback += AP.BUFFER_TO_PLAY_DURATION;
                 this.lastStarvingEventAt = time;
                 break;
             }
@@ -160,8 +155,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             // decrease buffer size when there were no starving events during last 5s
             if (time - this.lastStarvingEventAt > 5000)
                 this.bufferSizeToStartPlayback = Math.max(
-                    this.bufferSizeToStartPlayback - PlayableBufferSize,
-                    PlayableBufferSize);
+                    this.bufferSizeToStartPlayback - AP.BUFFER_TO_PLAY_DURATION,
+                    AP.BUFFER_TO_PLAY_DURATION);
 
             if (chunk === 'end') {
                 channel.fill(0, channelOffset);
@@ -189,7 +184,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             channel.set(samples, channelOffset);
             this.chunkOffset += length;
             channelOffset += length;
-            this.playingAt += length * SampleDuration;
+            this.playingAt += length * AP.SAMPLE_DURATION;
             if (available < remaining) {
                 this.chunkOffset = 0;
                 this.chunks.shift();
@@ -206,7 +201,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         if (this.isEnding)
             this.bufferState = 'ok';
         else {
-            this.bufferState = bufferedDuration < OkBufferSize ? 'low' : 'ok';
+            this.bufferState = bufferedDuration < AP.BUFFER_TO_STARVE_DURATION ? 'low' : 'ok';
         }
 
         const state: FeederState = {
@@ -219,7 +214,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             this.lastReportedState
             && state.playbackState === this.lastReportedState.playbackState
             && state.bufferState === this.lastReportedState.bufferState
-            && Math.abs(state.playingAt - this.lastReportedState.playingAt) < StateUpdatePeriod;
+            && Math.abs(state.playingAt - this.lastReportedState.playingAt) < AP.STATE_UPDATE_PERIOD;
         if (mustSkip)
             return;
 

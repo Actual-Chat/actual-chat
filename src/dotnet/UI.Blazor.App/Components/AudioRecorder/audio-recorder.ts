@@ -1,13 +1,12 @@
-import { Log } from 'logging';
 import { DeviceInfo } from 'device-info';
+import { EventHandler } from 'event-handling';
 import { OpusMediaRecorder, opusMediaRecorder } from './opus-media-recorder';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
-import { EventHandler } from 'event-handling';
 import { AudioPlayer } from '../AudioPlayer/audio-player';
 import { recordingAudioContextSource } from '../../Services/audio-context-source';
 import { VoiceActivityChange } from './workers/audio-vad-contract';
-
+import { Log } from 'logging';
 
 const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
 

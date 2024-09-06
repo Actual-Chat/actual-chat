@@ -1,23 +1,23 @@
 import webRtcVadModule, { WebRtcVadModule } from '@actual-chat/webrtc-vad';
 import WebRtcVadWasm from '@actual-chat/webrtc-vad/webrtc-vad.wasm';
 
+import { AUDIO_REC as AR } from '_constants';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { Log } from 'logging';
 import { Versioning } from 'versioning';
+import { RunningEMA } from 'math';
 import OnnxModel from './vad.onnx';
 import { rpcClientServer, RpcNoWait, rpcNoWait, RpcTimeout } from 'rpc';
 import { AudioVadWorklet } from '../worklets/audio-vad-worklet-contract';
-import { NNVoiceActivityDetector } from './audio-vad';
+import { NNVoiceActivityDetector, noVoiceActivity } from './audio-vad';
 import { AudioVadWorker } from './audio-vad-worker-contract';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { VoiceActivityChange, VoiceActivityDetector } from './audio-vad-contract';
 import { delayAsync, retry } from 'promises';
 import { WebRtcVoiceActivityDetector } from './audio-vad-webrtc';
 import { RecorderStateEventHandler } from "../opus-media-recorder-contracts";
-import { ExponentialMovingAverage } from "./streamed-moving-average";
 import { AudioDiagnosticsState } from "../audio-recorder";
-import { SAMPLE_RATE, SAMPLES_PER_WINDOW_30, SAMPLES_PER_WINDOW_32 } from '../constants';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('AudioVadWorker');
 
@@ -32,7 +32,7 @@ let webrtcVoiceDetector: VoiceActivityDetector = null;
 let isVadRunning = false;
 let isActive = false;
 let isNNVadInitialized = false;
-let audioPowerAverage = new ExponentialMovingAverage(10);
+let audioPowerEma = new RunningEMA(10, 0);
 let canUseNNVad = false;
 let lastVadEventProcessedAt = 0;
 
@@ -55,7 +55,7 @@ const serverImpl: AudioVadWorker = {
 
         // Loading WebRtc VAD module
         vadModule = await retry(3, () => webRtcVadModule(getEmscriptenLoaderOptions()));
-        webrtcVoiceDetector = new WebRtcVoiceActivityDetector(new vadModule.WebRtcVad(SAMPLE_RATE, 0));
+        webrtcVoiceDetector = new WebRtcVoiceActivityDetector(new vadModule.WebRtcVad(AR.SAMPLE_RATE, 0));
 
         debugLog?.log(`<- onCreate`);
 
@@ -133,12 +133,12 @@ async function processQueue(): Promise<void> {
             const hasNNVad = nnVoiceDetector != null;
 
             // might be switched to NN Vad, but still has queue with wrong buffers
-            if (hasNNVad && buffer.byteLength == SAMPLES_PER_WINDOW_32 * 4) {
-                const monoPcm = new Float32Array(buffer, 0, SAMPLES_PER_WINDOW_32);
+            if (hasNNVad && buffer.byteLength == AR.SAMPLES_PER_WINDOW_32 * 4) {
+                const monoPcm = new Float32Array(buffer, 0, AR.SAMPLES_PER_WINDOW_32);
                 vadEvent = await nnVoiceDetector!.appendChunk(monoPcm);
             }
-            else if (buffer.byteLength == SAMPLES_PER_WINDOW_30 * 4) {
-                const monoPcm = new Float32Array(buffer, 0, SAMPLES_PER_WINDOW_30);
+            else if (buffer.byteLength == AR.SAMPLES_PER_WINDOW_30 * 4) {
+                const monoPcm = new Float32Array(buffer, 0, AR.SAMPLES_PER_WINDOW_30);
                 vadEvent = await webrtcVoiceDetector.appendChunk(monoPcm);
             }
             else {
@@ -151,9 +151,9 @@ async function processQueue(): Promise<void> {
             void vadWorklet.releaseBuffer(buffer, rpcNoWait);
             // debugLog?.log(`processQueue: vadEvent:`, vadEvent, ', hasNNVad:', hasNNVad);
             if (typeof vadEvent === 'number') {
-                audioPowerAverage.append(vadEvent);
-                // debugLog?.log(`processQueue: lastAverage:`, audioPowerAverage.lastAverage);
-                void server.onAudioPowerChange(audioPowerAverage.lastAverage, rpcNoWait);
+                audioPowerEma.appendSample(vadEvent);
+                // debugLog?.log(`processQueue: lastAverage:`, audioPowerAverage.value);
+                void server.onAudioPowerChange(audioPowerEma.value, rpcNoWait);
             }
             else {
                 if (vadEvent.kind === "start") {
@@ -231,7 +231,7 @@ async function initNNVad(): Promise<void> {
     if (isNNVadInitialized)
         return;
 
-    const currentActivityEvent: VoiceActivityChange = webrtcVoiceDetector.lastActivityEvent ?? NNVoiceActivityDetector.DefaultVoiceActivity;
+    const currentActivityEvent: VoiceActivityChange = webrtcVoiceDetector.lastActivityEvent ?? noVoiceActivity;
     const vad = new NNVoiceActivityDetector(OnnxModel as unknown as URL, currentActivityEvent);
     await vad.init();
 
