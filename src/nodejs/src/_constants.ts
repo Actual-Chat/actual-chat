@@ -37,8 +37,8 @@ export const AUDIO_VAD = {
     // All durations here are in seconds
     MIN_SPEECH: 0.5, // When the speech is detected, it will always send at this much at least
     MAX_SPEECH: 60 * 2, // Max speech duration - if it takes longer, VAD will generate a hard split anyway
-    MIN_SPEECH_TO_CANCEL_PAUSE: 0.1, // Min. speech duration required to cancel non-materialized pause
-    MIN_PAUSE: 0.20, // Min pause duration that triggers split
+    MIN_SPEECH_TO_CANCEL_PAUSE: 0.15, // Min. speech duration required to cancel non-materialized pause
+    MIN_PAUSE: 0.2, // Min pause duration that triggers split
     MAX_PAUSE: 2.7, // Max pause duration that triggers split
     MAX_CONV_PAUSE: 1.35, // Max pause duration that triggers pause in "conversation" mode
     CONV_DURATION: 30, // A period from conversationSignal to the moment VAD assumes the conversation ended
