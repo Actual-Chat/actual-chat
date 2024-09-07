@@ -1,17 +1,6 @@
-using System.Text;
-using ActualChat.Hashing;
-using ActualChat.Security;
-using ActualChat.Users;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ActualChat.MLSearch.Engine;
-using ActualChat.MLSearch.Documents;
 using ActualChat.Chat;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Cors;
 using ActualChat.MLSearch.Bot.Tools.Context;
-using Microsoft.IdentityModel.Tokens;
 
 namespace ActualChat.MLSearch.Bot.Tools;
 
@@ -28,11 +17,10 @@ public sealed class ConversationToolsController(ICommander commander, IBotToolsC
     public sealed class ForwardLocalLinks {
         public string? Comment { get; set; }
         public required List<string> Links { get; init; }
-        
+
         [JsonIgnore]
         public IEnumerable<LocalUrl> LocalUrls => Links.Select(e => new LocalUrl(e));
     }
-
 
     [HttpPost("reply")]
     public async Task ReplyAction([FromBody]Reply reply, CancellationToken cancellationToken) {
@@ -80,7 +68,7 @@ public sealed class ConversationToolsController(ICommander commander, IBotToolsC
                     format: "{0}\n{1}",
                     reply.Comment,
                     string.Join(
-                        '\n', 
+                        '\n',
                         reply.LocalUrls.Select(e => e.ToAbsolute(urlMapper))
                     )
                 ),
@@ -88,6 +76,4 @@ public sealed class ConversationToolsController(ICommander commander, IBotToolsC
         await commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         return;
     }
-
-
 }

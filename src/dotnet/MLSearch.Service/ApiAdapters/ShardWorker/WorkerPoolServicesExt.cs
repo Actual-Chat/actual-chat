@@ -9,12 +9,11 @@ internal static class WorkerPoolServicesExt
     {
         services.AddSingleton(typeof(IShardIndexResolver<>), typeof(ShardIndexResolver<>));
         services.AddSingleton(typeof(IWorkerPoolShardFactory<,,,>), typeof(WorkerPoolShardFactory<,,,>));
-
         return services;
     }
 
     public static IServiceCollection AddWorkerPool<TWorker, TJob, TJobId, TShardKey>(
-        this IServiceCollection serviceCollection,
+        this IServiceCollection services,
         DuplicateJobPolicy duplicateJobPolicy,
         int shardConcurrencyLevel
     )
@@ -23,12 +22,11 @@ internal static class WorkerPoolServicesExt
         where TJobId : notnull
         where TShardKey : notnull
     {
-        serviceCollection.AddSingleton(
+        services.AddSingleton(
                 c => c.CreateInstance<WorkerPool<TWorker, TJob, TJobId, TShardKey>>(
                     duplicateJobPolicy, shardConcurrencyLevel))
             .AddAlias<IWorkerPool<TJob, TJobId, TShardKey>, WorkerPool<TWorker, TJob, TJobId, TShardKey>>()
             .AddAlias<IHostedService, WorkerPool<TWorker, TJob, TJobId, TShardKey>>();
-
-        return serviceCollection;
+        return services;
     }
 }

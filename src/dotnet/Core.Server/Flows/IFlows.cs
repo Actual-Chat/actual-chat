@@ -8,7 +8,7 @@ using MemoryPack;
 namespace ActualChat.Flows;
 
 [BackendService(nameof(HostRole.OneServer), ServiceMode.Local, Priority = 1)]
-[BackendService(nameof(HostRole.FlowsBackend), ServiceMode.Server)] // TBD: -> Hybrid
+[BackendService(nameof(HostRole.FlowsBackend), ServiceMode.Server)] // TBD: -> Distributed
 [BackendClient(nameof(HostRole.FlowsBackend))]
 public interface IFlows : IComputeService, IBackendService
 {

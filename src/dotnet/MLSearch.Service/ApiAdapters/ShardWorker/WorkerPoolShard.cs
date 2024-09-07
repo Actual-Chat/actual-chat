@@ -101,8 +101,8 @@ internal sealed class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
                     break;
                 }
             }
-            catch (Exception e){
-                log.LogError(e.Message);
+            catch (Exception e) {
+                log.LogError(e, "UseAsync failed: {Message}", e.Message);
                 throw;
             }
         }

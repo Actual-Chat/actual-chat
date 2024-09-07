@@ -8,6 +8,12 @@ public static class ChatIndexInitializerShardKey
     public static string Value => nameof(ChatIndexInitializerShardKey);
 }
 
+public interface IChatIndexInitializerTrigger: IComputeService, IBackendService
+{
+    [CommandHandler]
+    Task OnCommand(MLSearch_TriggerChatIndexingCompletion e, CancellationToken cancellationToken);
+}
+
 /// <summary>
 /// This command carries chat init completion event to the active shard
 /// of the chat index initializer.
@@ -21,10 +27,4 @@ public sealed partial record MLSearch_TriggerChatIndexingCompletion(
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string ShardKey => ChatIndexInitializerShardKey.Value;
-}
-
-public interface IChatIndexInitializerTrigger: IComputeService, IBackendService
-{
-    [CommandHandler]
-    Task OnCommand(MLSearch_TriggerChatIndexingCompletion e, CancellationToken cancellationToken);
 }

@@ -1,20 +1,9 @@
-using System.Text;
-using ActualChat.Hashing;
-using ActualChat.Security;
-using ActualChat.Users;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Documents;
-using ActualChat.Chat;
 using ActualChat.MLSearch.Bot.Tools.Context;
-using ActualChat.MLSearch.Bot.Tools;
-using Microsoft.AspNetCore.Authorization.Infrastructure;
-using Google.Apis.Util;
 
 namespace ActualChat.MLSearch.Bot.Tools;
-
 
 [BotTools]
 [ApiController]
@@ -28,7 +17,7 @@ public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine,
         public int? Limit { get; set; } = 1;
     }
 
-    // Note: 
+    // Note:
     // Check if we want to use M6T.Core.TupleModelBinder.
     // The issue of using it right now: no swagger support.
     public sealed class SearchQueryDocumentResult {
@@ -67,7 +56,7 @@ public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine,
         return searchResult.Documents
             .Where(e => !e.IsNone && !e.Document.Metadata.ChatEntries.IsDefaultOrEmpty)
             .Select(e => {
-                // This must throw if result 
+                // This must throw if result
                 var chatEntryId = e.Document.Metadata.ChatEntries[0].Id;
                 var link = Links.Chat(chatEntryId);
                 return new SearchQueryDocumentResult {
@@ -100,14 +89,13 @@ public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine,
                 new ChatFilter() {
                     PublicChatInclusion = InclusionMode.Include,
                     SearchBotChatInclusion = InclusionMode.Exclude,
-                }
+                },
             ],
-            Limit = limit
+            Limit = limit,
         };
         var searchResult = await searchEngine.Find(query, cancellationToken).ConfigureAwait(false);
         var documents = searchResult.Documents;
         // TODO: Error handling
-        
         return documents.Select(e=>e).ToList();
     }
 }

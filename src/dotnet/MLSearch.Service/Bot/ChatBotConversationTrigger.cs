@@ -5,7 +5,6 @@ using Microsoft.Extensions.Options;
 
 namespace ActualChat.MLSearch.Bot;
 
-
 public class ChatBotConversationTriggerOptions {
     public bool AllowPeerBotChat { get; set; }
 }
@@ -31,9 +30,9 @@ internal class ChatBotConversationTrigger(
             return;
 
         if (eventCommand.Entry.IsSystemEntry)
-            // Skip system messages.
-            return;
-        // The chat must have either have a correct tag
+            return; // Skip system messages
+
+        // The chat must either have a correct tag
         if (!OrdinalEquals(Constants.Chat.SystemTags.Bot, chat.SystemTag)) {
             // Or it must be 1-on-1 chat with the bot with the setting set to allow that.
             var allowPeerBotChat = options.CurrentValue.AllowPeerBotChat;

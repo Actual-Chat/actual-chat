@@ -5,11 +5,12 @@ namespace ActualChat.MLSearch.IntegrationTests;
 
 [Trait("Category", "Slow")]
 [Collection(nameof(MLSearchCollection))]
-public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutputHelper @out)
+public class MLSearchCreateChatCommandTests(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
-    public async Task UserCanCreateMultipleMLSearchChats(){
+    public async Task UserCanCreateMultipleMLSearchChats()
+    {
         // Arrange
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
@@ -32,7 +33,8 @@ public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutpu
     }
 
     [Fact]
-    public async Task ItCreates1To1ChatWithAUserAndABotOnly(){
+    public async Task ItCreates1To1ChatWithAUserAndABotOnly()
+    {
         // Arrange
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
@@ -55,7 +57,8 @@ public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutpu
     }
 
     [Fact]
-    public async Task UserCanReadAndWriteIntoTheSearchChat(){
+    public async Task UserCanReadAndWriteIntoTheSearchChat()
+    {
         // Arrange
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
@@ -75,7 +78,8 @@ public class MLSearch_CreateChat_CommandTests(AppHostFixture fixture, ITestOutpu
     }
 
     [Fact]
-    public async Task UserCanNotKickOutABotFromTheChat(){
+    public async Task UserCanNotKickOutABotFromTheChat()
+    {
         // Arrange
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
