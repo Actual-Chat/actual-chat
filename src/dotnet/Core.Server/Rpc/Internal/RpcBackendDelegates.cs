@@ -38,7 +38,7 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
         var serverSideServiceDef = BackendServiceDefs[serviceDef.Type];
         var serviceMode = serverSideServiceDef.ServiceMode;
         if (serviceMode is not ServiceMode.Client and not ServiceMode.Distributed)
-            throw StandardError.Internal($"{serviceDef} must be a ServiceMode.Client or ServiceMode.Distributed mode service.");
+            throw StandardError.Internal($"{serviceDef} must be a ServiceMode.Client or Distributed mode service.");
 
         if (_whenRoutingStarted is { Task.IsCompleted: false })
             return RpcPeerRef.Local;
@@ -51,15 +51,23 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
 
     public Uri? GetConnectionUri(RpcWebSocketClient client, RpcClientPeer peer)
     {
-        if (peer.Ref is not RpcMeshPeerRef meshPeerRef)
-            return null; // This causes RPC connection to hang waiting for RpcPeerRef.RerouteToken cancellation
+        if (peer.Ref is not RpcMeshPeerRef peerRef)
+            throw new RpcReconnectFailedException($"Unsupported RpcPeerRef type: {peer.Ref}.");
 
-        var target = meshPeerRef.Target;
-        if (target.Node is not { } node)
-            return null; // This causes RPC connection to hang waiting for RpcPeerRef.RerouteToken cancellation
-
-        if (!target.ShardRef.IsNone && meshPeerRef.IsRerouted)
-            throw RpcReconnectFailedException.ReconnectFailed(); // Peer transfers its calls to the new one in this case
+        var target = peerRef.Target;
+        if (target.Node is not { } node) {
+            // No node -> the node is offline or dead
+            if (target.ShardRef.IsNone) {
+                // It's a NodeRef target
+                if (target.State == MeshNodeState.Dead)
+                    throw new RpcReconnectFailedException($"Node {target.NodeRef} is dead."); // Causes peer to terminate
+                return null; // Causes RPC connection to hang waiting for RpcPeerRef.RerouteToken cancellation
+            }
+            // It's a ShardRef target
+            if (peerRef.IsRerouted)
+                throw new RpcReconnectFailedException("Rerouted."); // Causes peer to terminate + reroute calls
+            return null; // Causes RPC connection to hang waiting for RpcPeerRef.RerouteToken cancellation
+        }
 
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append("ws://");

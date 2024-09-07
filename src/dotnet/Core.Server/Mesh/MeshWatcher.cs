@@ -5,9 +5,9 @@ namespace ActualChat.Mesh;
 
 public sealed class MeshWatcher : WorkerBase
 {
-    private static readonly TimeSpan DefaultChangeTimeout = TimeSpan.FromMinutes(3);
-    private static readonly TimeSpan DefaultChangeTimeoutIfDev = TimeSpan.FromMinutes(10);
-    private static readonly TimeSpan DefaultChangeTimeoutIfTested = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan DefaultNodeTimeout = TimeSpan.FromMinutes(3);
+    private static readonly TimeSpan DefaultNodeTimeoutIfDev = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan DefaultNodeTimeoutIfTested = TimeSpan.FromSeconds(2);
 
     private readonly MutableState<MeshState> _state;
 
@@ -30,9 +30,9 @@ public sealed class MeshWatcher : WorkerBase
         NodeLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NodeLocks));
         _state = services.StateFactory().NewMutable(new MeshState());
         var hostInfo = services.GetRequiredService<HostInfo>();
-        NodeTimeout = hostInfo.IsTested ? DefaultChangeTimeoutIfTested
-            : hostInfo.IsDevelopmentInstance ? DefaultChangeTimeoutIfDev
-            : DefaultChangeTimeout;
+        NodeTimeout = hostInfo.IsTested ? DefaultNodeTimeoutIfTested
+            : hostInfo.IsDevelopmentInstance ? DefaultNodeTimeoutIfDev
+            : DefaultNodeTimeout;
         if (mustStart)
             this.Start();
     }
