@@ -70,11 +70,13 @@ public sealed class RpcMeshPeerRefCache
                     _offlineNodeRefs.Remove(nodeRef, out _);
                 }
                 else {
-                    var offlineAt = _offlineNodeRefs.GetOrAdd(nodeRef, _ => new CpuTimestamp());
+                    var offlineAt = _offlineNodeRefs.GetOrAdd(nodeRef, static _ => CpuTimestamp.Now);
                     if (target.State == MeshNodeState.Offline) {
                         var diesAt = offlineAt + NodeOfflineToDeadTimeout;
                         cts.CancelAfter((diesAt - CpuTimestamp.Now).Positive());
                     }
+                    else // Already dead
+                        cts.CancelAfter(0);
                 }
             }
 
