@@ -34,7 +34,7 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
         var bob = await _tester.SignInAsUniqueBob();
         await _tester.SignInAsAlice();
         var places = await _tester.CreatePlaceContacts(bob, 1);
-        var chats = await _tester.CreateGroupContacts(bob, places, 1, 1);
+        var chats = await _tester.CreateGroupContacts(bob, places, nonPlaceChatIndexCount: 1, placeChatIndexCount: 1);
 
         // act
         await _tester.SignIn(bob);
@@ -42,7 +42,7 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
         // assert
         var expected = chats.JoinedGroups1();
         await ComputedTest.When(async ct => {
-                var chatIds = await ListGroupsForContactSearch(ContactSearchScope.Groups, ct);
+                var chatIds = await ListGroupsForContactSearch(SearchScope.Groups, ct);
                 chatIds.Should().BeEquivalentTo(expected, o => o.IdTitle());
             },
             TimeSpan.FromSeconds(10));
@@ -63,7 +63,7 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         await ComputedTest.When(async ct => {
-                var foundPeerChats = await ListGroupsForContactSearch(ContactSearchScope.People, ct);
+                var foundPeerChats = await ListGroupsForContactSearch(SearchScope.People, ct);
                 var expected = accounts[..5]
                     .Select(x => new Chat.Chat(new PeerChatId(bob.Id, x.Id).ToChatId()) {
                         Title = x.FullName,
@@ -73,10 +73,10 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
             TimeSpan.FromSeconds(10));
     }
 
-    private async Task<List<Chat.Chat>> ListGroupsForContactSearch(ContactSearchScope scope, CancellationToken cancellationToken = default)
+    private async Task<List<Chat.Chat>> ListGroupsForContactSearch(SearchScope scope, CancellationToken cancellationToken = default)
     {
         var account = await _accounts.GetOwn(_tester.Session, cancellationToken);
-        var contactIds = scope == ContactSearchScope.People
+        var contactIds = scope == SearchScope.People
             ? await _contactsBackend.ListIdsForUserContactSearch(account.Id, cancellationToken)
             : await _contactsBackend.ListIdsForGroupContactSearch(account.Id, null, cancellationToken);
         var chats = await contactIds.Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId))

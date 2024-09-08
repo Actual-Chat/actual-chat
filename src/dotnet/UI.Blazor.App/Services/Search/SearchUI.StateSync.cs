@@ -44,43 +44,36 @@ public partial class SearchUI
         Criteria criteria,
         CancellationToken cancellationToken)
     {
-        List<FoundContact> foundContacts;
+        List<FoundItem> foundItems = [];
         var isSearchModeOn = !criteria.Text.IsNullOrEmpty();
         _isSearchModeOn.Value = isSearchModeOn;
         if (isSearchModeOn) {
-            var searchResultMap = await FindContacts(criteria, cancellationToken).ConfigureAwait(false);
-            foundContacts = new List<FoundContact>(searchResultMap.Sum(x => x.Value.Count));
-            var expandableScopes =
-                searchResultMap.Where(x => x.Value.Count >= Constants.Search.ContactSearchDefaultPageSize)
-                    .Select(x => x.Key.Scope)
-                    .Distinct()
-                    .ToHashSet();
+            var searchResultMap = await Find(criteria, cancellationToken).ConfigureAwait(false);
+            foundItems = new List<FoundItem>(searchResultMap.Sum(x => x.Value.Count));
 
             foreach (var scope in Scopes) {
-                var own = searchResultMap.GetValueOrDefault(new (scope, true));
-                var other = searchResultMap.GetValueOrDefault(new (scope, false));
+                var own = searchResultMap.GetValueOrDefault(new (scope, true)) ?? [];
+                var other = searchResultMap.GetValueOrDefault(new (scope, false)) ?? [];
                 var scopeResults = own.Concat(other).ToList();
                 for (int i = 0; i < scopeResults.Count; i++) {
                     var searchResult = scopeResults[i];
-                    foundContacts.Add(new (searchResult,
+                    foundItems.Add(new (searchResult,
                         scope,
                         i == 0,
                         i == scopeResults.Count - 1,
-                        own.Count >= Constants.Search.ContactSearchDefaultPageSize
-                        || other.Count >= Constants.Search.ContactSearchDefaultPageSize));
+                        own.Count >= Constants.Search.DefaultPageSize
+                        || other.Count >= Constants.Search.DefaultPageSize));
                 }
             }
         }
-        else
-            foundContacts = [];
-        _cached = new Cached(criteria, foundContacts);
+        _cached = new Cached(criteria, foundItems);
         using (Invalidation.Begin()) {
+            _ = GetSearchResults();
             _ = GetContactSearchResults();
-            _ = PseudoGetSearchMatch();
         }
     }
 
-    private async Task<Dictionary<SubgroupKey, ApiArray<ContactSearchResult>>> FindContacts(
+    private async Task<Dictionary<SubgroupKey, IReadOnlyList<SearchResult>>> Find(
         Criteria criteria,
         CancellationToken cancellationToken)
     {
@@ -90,20 +83,35 @@ public partial class SearchUI
         var session = Session;
         var scopes = criteria.PlaceId.IsNone
             ? Scopes
-            : Scopes.Where(x => x is not ContactSearchScope.Places);
+            : Scopes.Where(x => x is not SearchScope.Places);
         var subgroups = ToSubgroups(scopes);
-        var allSearchResults = await subgroups.Select(Find)
+        var allSearchResults = await subgroups.Select(FindSubgroup)
             .CollectResults()
             .ConfigureAwait(false);
         return subgroups.Zip(allSearchResults)
             .Where(x => x.Second.HasValue)
-            .ToDictionary(x => x.First, x => x.Second.Value.Hits);
+            .ToDictionary(x => x.First, x => x.Second.Value);
 
-        Task<ContactSearchResultPage> Find(SubgroupKey key)
-            // TODO: reuse cached data for scope
-            => Search.FindContacts(session, criteria.ToQuery(key), cancellationToken);
+        async Task<IReadOnlyList<SearchResult>> FindSubgroup(SubgroupKey key) // TODO: reuse cached data for scope
+        {
+            switch (key.Scope) {
+            case SearchScope.People:
+            case SearchScope.Groups:
+            case SearchScope.Places:
+                var contactResponse = await Search.FindContacts(session, criteria.ToContactQuery(key), cancellationToken)
+                    .ConfigureAwait(false);
+                return contactResponse.Hits;
+            case SearchScope.Messages:
+                var entryResponse = await Search.FindEntries(session, criteria.ToEntryQuery(key), cancellationToken).ConfigureAwait(false);
+                return entryResponse.Hits;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(key.Scope), key.Scope, null);
+            }
+        }
     }
 
-    private static SubgroupKey[] ToSubgroups(IEnumerable<ContactSearchScope> scopes)
-        => scopes.SelectMany(x => new SubgroupKey[] { new (x, true), new (x, false) }).ToArray();
+    private static SubgroupKey[] ToSubgroups(IEnumerable<SearchScope> scopes)
+        => scopes.SelectMany(x => new SubgroupKey[] { new (x, true), new (x, false) })
+            .Except([new SubgroupKey(SearchScope.Messages, false)]) // searching for messages only in own chats
+            .ToArray();
 }

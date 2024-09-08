@@ -30,46 +30,54 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         var bob = await Tester.SignInAsUniqueBob();
         await Tester.SignInAsUniqueAlice();
         var places = await Tester.CreatePlaceContacts(bob, UniquePart);
-        var chats = await Tester.CreateGroupContacts(bob, places, uniquePart: UniquePart);
+        var groups = await Tester.CreateGroupContacts(bob, places, uniquePart: UniquePart);
         var people = await Tester.CreateUserContacts(bob, places, UniquePart);
+        var entries = await Tester.CreateEntries(bob, groups, people, UniquePart);
 
         // act
         await Tester.SignIn(bob);
         var expectedFriends = people.Friends().Where(x => x.FullName.OrdinalIgnoreCaseContains("one")).ToArray();
         var expectedStrangers = people.Strangers().Where(x => x.FullName.OrdinalIgnoreCaseContains("one")).ToArray();
-        var expectedJoinedGroups = chats.Joined().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
-        var expectedOtherGroups = chats.OtherPublic().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
+        var expectedJoinedGroups = groups.Joined().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
+        var expectedOtherGroups = groups.OtherPublic().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
         var expectedJoinedPlaces = places.Joined().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
         var expectedOtherPlaces = places.OtherPublic().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
+        var expectedEntries = entries.Accessible().ToArray();
         await WaitUntilIndexed("one", expectedFriends, expectedStrangers, expectedJoinedGroups, expectedOtherGroups, expectedJoinedPlaces, expectedOtherPlaces);
         SearchUI.Text.Value = $"{UniquePart} one";
 
         // assert
-        var expectedTotalCount = expectedFriends.Length.Clamp(0, Constants.Search.ContactSearchDefaultPageSize)
-            + expectedStrangers.Length.Clamp(0, Constants.Search.ContactSearchDefaultPageSize)
-            + expectedJoinedGroups.Length.Clamp(0, Constants.Search.ContactSearchDefaultPageSize)
-            + expectedOtherGroups.Length.Clamp(0, Constants.Search.ContactSearchDefaultPageSize)
-            + expectedJoinedPlaces.Length.Clamp(0, Constants.Search.ContactSearchDefaultPageSize)
-            + expectedOtherPlaces.Length.Clamp(0, Constants.Search.ContactSearchDefaultPageSize);
-        var foundContacts = await GetSearchResults(expectedTotalCount);
-        AssertFoundContacts(0,
+        var expectedTotalCount = expectedFriends.Length.Clamp(0, Constants.Search.DefaultPageSize)
+            + expectedStrangers.Length.Clamp(0, Constants.Search.DefaultPageSize)
+            + expectedJoinedGroups.Length.Clamp(0, Constants.Search.DefaultPageSize)
+            + expectedOtherGroups.Length.Clamp(0, Constants.Search.DefaultPageSize)
+            + expectedJoinedPlaces.Length.Clamp(0, Constants.Search.DefaultPageSize)
+            + expectedOtherPlaces.Length.Clamp(0, Constants.Search.DefaultPageSize)
+            + expectedEntries.Length.Clamp(0, Constants.Search.DefaultPageSize);
+        var foundItems = await GetSearchResults(expectedTotalCount);
+        AssertFoundItems(0,
             bob.BuildFoundContacts(expectedFriends).ToList(),
             bob.BuildFoundContacts(expectedStrangers).ToList());
-        AssertFoundContacts(6,
+        AssertFoundItems(6,
             bob.BuildFoundContacts(expectedJoinedGroups).ToList(),
             bob.BuildFoundContacts(expectedOtherGroups).ToList());
-        AssertFoundContacts(12,
+        AssertFoundItems(12,
             bob.BuildFoundContacts(expectedJoinedPlaces).ToList(),
             bob.BuildFoundContacts(expectedOtherPlaces).ToList());
+        AssertFoundItems(15, expectedEntries.BuildFoundEntries().ToArray(), []);
 
-        void AssertFoundContacts(int iStart, IReadOnlyCollection<FoundContact> expectedOwn, IReadOnlyCollection<FoundContact> expectedOther)
+        void AssertFoundItems(int iStart, IReadOnlyCollection<FoundItem> expectedOwn, IReadOnlyCollection<FoundItem> expectedOther)
         {
             var expected = expectedOwn.Concat(expectedOther).ToList();
-            var expectedCount = expectedOwn.Count.Clamp(0, Constants.Search.ContactSearchDefaultPageSize) + expectedOther.Count.Clamp(0, Constants.Search.ContactSearchDefaultPageSize);
+            var expectedCount = expectedOwn.Count.Clamp(0, Constants.Search.DefaultPageSize) + expectedOther.Count.Clamp(0, Constants.Search.DefaultPageSize);
             for (int i = iStart; i < iStart + expectedCount; i++) {
-                expected.Should().ContainEquivalentOf(foundContacts[i], o => o.ExcludingSearchMatch().ExcludingBorders());
-                foundContacts[i].IsFirstInGroup.Should().Be(i == iStart, $"iStart={i}, i={i}, count={expectedCount}");
-                foundContacts[i].IsLastInGroup.Should().Be(i == iStart + expectedCount - 1, $"iStart={i}, i={i}, count={expectedCount}");
+                var foundItem = foundItems[i];
+                expected.Should()
+                    .ContainEquivalentOf(foundItem,
+                        o => o.ExcludingSearchMatch().ExcludingBorders(),
+                        $"iStart={iStart}, i={i}, count={expectedCount}");
+                foundItem.IsFirstInGroup.Should().Be(i == iStart, $"iStart={iStart}, i={i}, count={expectedCount}");
+                foundItem.IsLastInGroup.Should().Be(i == iStart + expectedCount - 1, $"iStart={iStart}, i={i}, count={expectedCount}");
             }
         }
     }
@@ -104,11 +112,11 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
             },
             TimeSpan.FromSeconds(30));
 
-    private async Task<List<FoundContact>> GetSearchResults(int expectedCount)
+    private async Task<List<FoundItem>> GetSearchResults(int expectedCount)
     {
-        IReadOnlyList<FoundContact> results = [];
+        IReadOnlyList<FoundItem> results = [];
         await TestExt.When(async () => {
-                results = await SearchUI.GetContactSearchResults();
+                results = await SearchUI.GetSearchResults();
                 results.Should().HaveCount(expectedCount);
             },
             TimeSpan.FromSeconds(10));

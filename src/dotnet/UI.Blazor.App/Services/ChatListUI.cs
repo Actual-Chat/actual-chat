@@ -30,7 +30,6 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     private SearchUI SearchUI => Hub.SearchUI;
     private TuneUI TuneUI => Hub.TuneUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
-    private UICommander UICommander => Hub.UICommander();
     private new ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
 #pragma warning disable CA1721 // Confusing w/ GetUnreadChatCount
@@ -148,7 +147,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         DebugLog?.LogDebug("-> ListAll (PlaceId={PlaceId})", placeId);
         if (await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false)) {
             var searchResults = await SearchUI.GetContactSearchResults().ConfigureAwait(false);
-            var foundChats = await searchResults.Select(x => ChatUI.Get(x.SearchResult.ContactId.ChatId, cancellationToken))
+            var foundChats = await searchResults.Select(x => ChatUI.Get(x.ChatId, cancellationToken))
                 .Collect()
                 .ConfigureAwait(false);
             return foundChats.SkipNullItems().ToList();

@@ -352,7 +352,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
             => accounts.Select(x => x.ToIndexedUserContact()).ToApiArray();
     }
 
-    private Task Index(IReadOnlyDictionary<TestPlaceKey, Place> places, IReadOnlyDictionary<TestUserKey, AccountFull> people)
+    private Task Index(IReadOnlyDictionary<TestPlaceKey, Place> places, IReadOnlyDictionary<TestChatKey, AccountFull> people)
         => Index(people.ToIndexedUserContacts(places).ToApiArray(), []);
 
     private async Task Index(ApiArray<IndexedUserContact> updated, ApiArray<IndexedUserContact> deleted)
