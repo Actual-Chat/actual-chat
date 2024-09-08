@@ -40,12 +40,14 @@ public static class AssertOptionsExt
         this EquivalencyAssertionOptions<Notification.Notification> options)
         => options.Including(x => x.Title).Including(x => x.Content);
 
-    public static EquivalencyAssertionOptions<FoundContact> ExcludingSearchMatch(
-        this EquivalencyAssertionOptions<FoundContact> options)
-        => options.Excluding(x => x.SearchResult.SearchMatch);
+    public static EquivalencyAssertionOptions<FoundItem> ExcludingSearchMatch(
+        this EquivalencyAssertionOptions<FoundItem> options)
+        => options.Excluding(x => x.SearchResult.SearchMatch)
+            .Excluding(x => x.ContactSearchMatch)
+            .Excluding(x => x.MessageSearchMatch);
 
-    public static EquivalencyAssertionOptions<FoundContact> ExcludingBorders(
-        this EquivalencyAssertionOptions<FoundContact> options)
+    public static EquivalencyAssertionOptions<FoundItem> ExcludingBorders(
+        this EquivalencyAssertionOptions<FoundItem> options)
         => options.Excluding(x => x.IsFirstInGroup)
             .Excluding(x => x.IsLastInGroup)
             .Excluding(x => x.CanScopeBeExpanded);

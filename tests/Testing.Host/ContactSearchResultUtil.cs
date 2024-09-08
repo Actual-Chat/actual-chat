@@ -8,40 +8,40 @@ namespace ActualChat.Testing.Host;
 
 public static class ContactSearchResultUtil
 {
-    public static List<FoundContact> BuildFoundContacts(
+    public static List<FoundItem> BuildFoundContacts(
         this Account owner,
         IReadOnlyList<AccountFull> otherUsers,
         IReadOnlyList<Chat.Chat> publicChats,
         IReadOnlyList<Chat.Chat> privateChats)
     {
-        var foundContacts = new List<FoundContact>();
+        var foundContacts = new List<FoundItem>();
         foundContacts.AddRange(otherUsers.Select(owner.BuildFoundContact));
         foundContacts.AddRange(publicChats.Select(owner.BuildFoundContact));
         foundContacts.AddRange(publicChats.Select(owner.BuildFoundContact));
         return foundContacts;
     }
 
-    public static IEnumerable<FoundContact> BuildFoundContacts(this Account owner, params AccountFull[] others)
+    public static IEnumerable<FoundItem> BuildFoundContacts(this Account owner, params AccountFull[] others)
         => others.Select(owner.BuildFoundContact);
 
-    public static IEnumerable<FoundContact> BuildFoundContacts(
+    public static IEnumerable<FoundItem> BuildFoundContacts(
         this Account owner,
         params Chat.Chat[] chats)
         => chats.Select(owner.BuildFoundContact);
 
-    public static IEnumerable<FoundContact> BuildFoundContacts(
+    public static IEnumerable<FoundItem> BuildFoundContacts(
         this Account owner,
         params Place[] places)
         => places.Select(owner.BuildFoundContact);
 
-    public static FoundContact BuildFoundContact(this Account owner, AccountFull other)
-        => new (owner.BuildSearchResult(other), ContactSearchScope.People);
+    public static FoundItem BuildFoundContact(this Account owner, AccountFull other)
+        => new (owner.BuildSearchResult(other), SearchScope.People);
 
-    public static FoundContact BuildFoundContact(this Account owner, Chat.Chat chat)
-        => new (owner.BuildSearchResult(chat), ContactSearchScope.Groups);
+    public static FoundItem BuildFoundContact(this Account owner, Chat.Chat chat)
+        => new (owner.BuildSearchResult(chat), SearchScope.Groups);
 
-    public static FoundContact BuildFoundContact(this Account owner, Place place)
-        => new (owner.BuildSearchResult(place), ContactSearchScope.Places);
+    public static FoundItem BuildFoundContact(this Account owner, Place place)
+        => new (owner.BuildSearchResult(place), SearchScope.Places);
 
     public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params Chat.Chat[] chats)
         => chats.Select(x => owner.BuildSearchResult(x));

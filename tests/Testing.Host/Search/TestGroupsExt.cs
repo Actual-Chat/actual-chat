@@ -1,6 +1,6 @@
 namespace ActualChat.Testing.Host;
 
-public static class TestChatsExt
+public static class TestGroupsExt
 {
     // TODO: generate code
     public static Chat.Chat JoinedPublicChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)

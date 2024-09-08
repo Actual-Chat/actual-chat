@@ -2,11 +2,12 @@ using ActualChat.Chat;
 using ActualChat.Users;
 using ITestGroupChatMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestGroupKey, ActualChat.Chat.Chat>;
 using ITestPlaceMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestPlaceKey, ActualChat.Chat.Place>;
-using ITestUserMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestUserKey, ActualChat.Users.AccountFull>;
+using ITestUserMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestChatKey, ActualChat.Users.AccountFull>;
+using ITestEntryMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestEntryKey, ActualChat.Chat.ChatEntry>;
 
 namespace ActualChat.Testing.Host;
 
-public static class TestContactUtil
+public static class TestSearchDataGenerator
 {
     public static Task<ITestPlaceMap> CreatePlaceContacts(
         this IWebTester tester,
@@ -33,7 +34,13 @@ public static class TestContactUtil
         return places;
     }
 
-    public static async Task<ITestGroupChatMap> CreateGroupContacts(this IWebTester tester, AccountFull contactOwner, ITestPlaceMap places, int nonPlaceChatIndexCount = 2, int placeChatIndexCount = 2, string uniquePart = "")
+    public static async Task<ITestGroupChatMap> CreateGroupContacts(
+        this IWebTester tester,
+        AccountFull contactOwner,
+        ITestPlaceMap places,
+        string uniquePart = "",
+        int nonPlaceChatIndexCount = 2,
+        int placeChatIndexCount = 2)
     {
         var chats = new Dictionary<TestGroupKey, Chat.Chat>();
         await GenerateChats(null, nonPlaceChatIndexCount, null);
@@ -83,13 +90,13 @@ public static class TestContactUtil
         int indexCount = 2)
     {
         var placeAdmin = await tester.GetOwnAccount();
-        var users = new Dictionary<TestUserKey, AccountFull>();
+        var users = new Dictionary<TestChatKey, AccountFull>();
         for (int i = 0; i < indexCount; i++)
             foreach (var isExistingContact in new[] { true, false })
             foreach (var isPlacePublic in new[] { true, false })
                 for (int placeIndex = 0; placeIndex < places.Size(); placeIndex++) {
                     var placeKey = new TestPlaceKey(placeIndex, isPlacePublic, true);
-                    var key = new TestUserKey(placeKey, i, isExistingContact);
+                    var key = new TestChatKey(placeKey, i, isExistingContact);
                     var name = string.Join(" ",
                         isExistingContact ? "Friend" : "Stranger",
                         "User",
@@ -113,9 +120,33 @@ public static class TestContactUtil
         async Task CreatePeerContacts()
         {
             await tester.SignIn(contactOwner);
-            var friends = users.Where(x => x.Key.IsExistingContact).Select(x => x.Value).OfType<Account>().ToArray();
+            var friends = users.Where(x => x.Key.MustJoin).Select(x => x.Value).OfType<Account>().ToArray();
             await tester.CreatePeerContacts(contactOwner, friends);
         }
+    }
+
+    public static async Task<ITestEntryMap> CreateEntries(
+        this IWebTester tester,
+        AccountFull contactOwner,
+        ITestGroupChatMap groups,
+        ITestUserMap users,
+        string uniquePart = "",
+        int entryIndexCount = 2)
+    {
+        var map = new Dictionary<TestEntryKey, ChatEntry>();
+        for (int i = 0; i < entryIndexCount; i++)
+            foreach (var group in groups)
+                map[new TestEntryKey(group.Key, i)] = await tester.CreateTextEntry(group.Value.Id, $"{uniquePart} Message {GetIndexString(i)} in chat #{group.Value.Id}");
+        var userToRestore = await tester.GetOwnAccount();
+        await tester.SignIn(contactOwner);
+        for (int i = 0; i < entryIndexCount; i++)
+            foreach (var user in users.Where(x => x.Key.MustJoin)) {
+                var chatId = new PeerChatId(contactOwner.Id, user.Value.Id);
+                map[new TestEntryKey(user.Key, i)] =
+                    await tester.CreateTextEntry(chatId, $"{uniquePart} Message {GetIndexString(i)}");
+            }
+        await tester.SignIn(userToRestore);
+        return map;
     }
 
     private static string GetPlaceTitle(AccountFull contactOwner, TestPlaceKey? key, string uniquePart = "")

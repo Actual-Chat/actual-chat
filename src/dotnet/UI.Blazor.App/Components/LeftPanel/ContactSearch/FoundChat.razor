@@ -8,36 +8,36 @@
         return;
 
     var chatState = m.ChatState;
-    var chat = chatState.Chat;
-    var chatInfo = chatState.Info;
-    var lastTextEntry = chatInfo.LastTextEntry;
+    var url = Links.Chat(m.ChatState.Id, m.Entry?.LocalId);
 }
 @* TODO: merge with ChatListItem or at least refactor and extract common parts *@
 @if (m == Model.Loading) {
     <ChatListItemSkeleton />
 } else {
     <div class="navbar-item found-chat">
-        <div class="navbar-item-content" data-href="@($"/chat/{chat.Id}")">
+        <div class="navbar-item-content" data-href="@url">
             <div class="c-container">
                 <ChatIcon Chat="chatState.Chat"/>
                 <div class="c-description">
                     <span class="c-title">
-                        <SearchMatchHighlighter Match="@m.SearchMatch"/>
+                        <SearchMatchHighlighter Match="@m.TitleMatch"/>
                     </span>
-                    @if (lastTextEntry != null) {
+                    @if (m.Entry != null) {
                         <div class="c-last-message">
-                            @if (chatState.Chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
+                            @if (chatState.Chat.Kind != ChatKind.Peer && !m.Entry.IsSystemEntry) {
                                 <span class="c-name">
-                                    <AuthorName AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
+                                    <AuthorName AuthorSid="@m.Entry.AuthorId" ShowDetailsOnClick="false"/>
+                                    <span class="c-colon">:</span>
                                 </span>
                             }
-                            @if (lastTextEntry.IsStreaming) {
+                            @if (m.Entry.IsStreaming) {
                                 <chat-activity-svg size="4" isActive="true"/>
                             } else {
                                 <span class="c-text">
-                                    @chatInfo.LastTextEntryText
+                                    <SearchMatchHighlighter Match="@m.MessageMatch"/>
                                 </span>
                             }
+                            <div class="c-incut"></div>
                         </div>
                     }
                 </div>
@@ -61,7 +61,9 @@
     private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
-    [Parameter] public SearchMatch SearchMatch { get; set; } = SearchMatch.Empty;
+    [Parameter] public TextEntryId EntryId { get; set; } = TextEntryId.None;
+    [Parameter] public SearchMatch TitleSearchMatch { get; set; } = SearchMatch.Empty;
+    [Parameter] public SearchMatch MessageSearchMatch { get; set; } = SearchMatch.Empty;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -75,15 +77,20 @@
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.
         var chatId = ChatId;
-        var searchMatch = SearchMatch;
+        var titleMatch = TitleSearchMatch;
+        var messageMatch = MessageSearchMatch;
+        var entryId = EntryId;
 
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
         if (chatState == null)
             return Model.None;
 
+        var entry = entryId.IsNone ? chatState.Info.LastTextEntry : await ChatUI.GetEntry(entryId, cancellationToken);
         return new() {
             ChatState = chatState,
-            SearchMatch = searchMatch.IsEmpty ? SearchMatch.New(chatState.Chat.Title) : searchMatch,
+            TitleMatch = titleMatch.IsEmpty ? SearchMatch.New(chatState.Chat.Title) : titleMatch,
+            MessageMatch = messageMatch.IsEmpty ? SearchMatch.New(chatState.Info.LastTextEntryText) : messageMatch,
+            Entry = entry,
         };
     }
 
@@ -94,6 +101,8 @@
         public static readonly Model None = new() { ChatState = ChatState.None };
 
         public ChatState ChatState { get; init; } = ChatState.None;
-        public SearchMatch SearchMatch { get; init; } = SearchMatch.Empty;
+        public SearchMatch TitleMatch { get; init; } = SearchMatch.Empty;
+        public SearchMatch MessageMatch { get; init; } = SearchMatch.Empty;
+        public ChatEntry? Entry { get; init; }
     }
 }

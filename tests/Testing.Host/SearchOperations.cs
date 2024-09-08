@@ -10,7 +10,7 @@ public static class SearchOperations
         bool isExistingContact,
         PlaceId? placeId = null,
         int? limit = null)
-        => FindContacts(tester, ContactSearchScope.People, isExistingContact, criteria, limit, placeId);
+        => FindContacts(tester, SearchScope.People, isExistingContact, criteria, limit, placeId);
 
 
     public static Task<ApiArray<ContactSearchResult>> FindGroups(
@@ -19,7 +19,7 @@ public static class SearchOperations
         bool own,
         PlaceId? placeId = null,
         int? limit = null)
-        => FindContacts(tester, ContactSearchScope.Groups, own, criteria, limit, placeId);
+        => FindContacts(tester, SearchScope.Groups, own, criteria, limit, placeId);
 
 
     public static Task<ApiArray<ContactSearchResult>> FindPlaces(
@@ -27,7 +27,7 @@ public static class SearchOperations
         string criteria,
         bool own,
         int? limit = null)
-        => FindContacts(tester, ContactSearchScope.Places, own, criteria, limit);
+        => FindContacts(tester, SearchScope.Places, own, criteria, limit);
 
 
     public static async Task<ApiArray<EntrySearchResult>> FindEntries(
@@ -39,7 +39,7 @@ public static class SearchOperations
     {
         var response = await tester.Search.FindEntries(tester.Session, new EntrySearchQuery {
             Criteria = criteria,
-            Limit = limit ?? 20,
+            Limit = limit ?? 50,
             PlaceId = placeId,
             ChatId = chatId,
         }, CancellationToken.None);
@@ -48,7 +48,7 @@ public static class SearchOperations
 
     private static async Task<ApiArray<ContactSearchResult>> FindContacts(
         IWebTester tester,
-        ContactSearchScope scope,
+        SearchScope scope,
         bool own,
         string criteria,
         int? limit,

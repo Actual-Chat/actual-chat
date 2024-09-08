@@ -132,7 +132,7 @@ body.hoverable .left-search-panel.chat-search .c-ai-btn.search-btn.btn-round:hov
     @apply overflow-y-auto;
     @apply custom-scrollbar;
 }
-.left-search-panel.chat-search .own-chats-list {
+.left-search-panel.chat-search .own-chat-list {
     @apply px-2;
 }
 .left-search-panel.chat-search .chat-list .c-header .btn-h {

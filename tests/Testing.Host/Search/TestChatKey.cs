@@ -1,6 +1,6 @@
 namespace ActualChat.Testing.Host;
 
-public sealed record TestUserKey(
+public record TestChatKey(
     TestPlaceKey? PlaceKey,
     int Index,
-    bool IsExistingContact);
+    bool MustJoin);

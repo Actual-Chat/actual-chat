@@ -42,7 +42,7 @@ public class GroupContactIndexingTest(ITestOutputHelper @out)
         var bob = await _tester.SignInAsUniqueBob();
         await _tester.SignInAsAlice();
         var places = await _tester.CreatePlaceContacts(bob, 1);
-        var chats = await _tester.CreateGroupContacts(bob, places, 1, 1);
+        var chats = await _tester.CreateGroupContacts(bob, places, nonPlaceChatIndexCount: 1, placeChatIndexCount: 1);
 
         // act
         await _tester.SignIn(bob);

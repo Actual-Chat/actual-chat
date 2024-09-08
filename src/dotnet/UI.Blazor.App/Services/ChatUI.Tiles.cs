@@ -122,6 +122,12 @@ public partial class ChatUI
         return new VirtualListTile<ChatMessage>($"tile:{idRange.Format()}", messages);
     }
 
+    [ComputeMethod]
+    public virtual ValueTask<ChatEntry?> GetEntry(
+        ChatEntryId id,
+        CancellationToken cancellationToken = default)
+        => Chats.GetEntry(Session, id, cancellationToken);
+
     private async Task<bool> GetShowIndexDocId(ChatId chatId, CancellationToken cancellationToken)
     {
         var account = AccountUI.OwnAccount.Value;

@@ -5,13 +5,13 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
 {
-    private static readonly ContactSearchScope[] Scopes = [ContactSearchScope.People, ContactSearchScope.Groups, ContactSearchScope.Places ];
+    private static readonly SearchScope[] Scopes = [SearchScope.People, SearchScope.Groups, SearchScope.Places, SearchScope.Messages ];
     private Cached _cached = Cached.None;
     private readonly MutableState<string> _text;
     private readonly MutableState<bool> _isSearchModeOn;
 
     public IMutableState<string> Text => _text;
-    private IMutableState<ImmutableHashSet<ContactSearchScope>> ExtendedLimits { get; }
+    private IMutableState<ImmutableHashSet<SearchScope>> ExtendedLimits { get; }
     private ISearch Search => Hub.Search;
     private ChatListUI ChatListUI => Hub.ChatListUI;
 
@@ -21,7 +21,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         _text = stateFactory.NewMutable("", StateCategories.Get(GetType(), nameof(Text)));
         _isSearchModeOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchModeOn)));
         ExtendedLimits = stateFactory
-            .NewMutable(ImmutableHashSet<ContactSearchScope>.Empty, StateCategories.Get(GetType(), nameof(ExtendedLimits)));
+            .NewMutable(ImmutableHashSet<SearchScope>.Empty, StateCategories.Get(GetType(), nameof(ExtendedLimits)));
     }
 
     void INotifyInitialized.Initialized()
@@ -32,19 +32,14 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         => _isSearchModeOn.Use(cancellationToken).AsTask();
 
     [ComputeMethod] // Synced
-    public virtual async Task<SearchMatch> GetSearchMatch(ChatId chatId)
-    {
-        await PseudoGetSearchMatch().ConfigureAwait(false);
-        return _cached.SearchMatches.GetValueOrDefault(chatId, SearchMatch.Empty);
-    }
-
-    [ComputeMethod]
-    protected virtual Task<Unit> PseudoGetSearchMatch()
-        => ActualLab.Async.TaskExt.UnitTask;
+    public virtual Task<IReadOnlyList<FoundItem>> GetContactSearchResults()
+        => Task.FromResult<IReadOnlyList<FoundItem>>(_cached.FoundItems
+            .Where(x => x.SearchResult is ContactSearchResult)
+            .ToList());
 
     [ComputeMethod] // Synced
-    public virtual Task<IReadOnlyList<FoundContact>> GetContactSearchResults()
-        => Task.FromResult(_cached.FoundContacts);
+    public virtual Task<IReadOnlyList<FoundItem>> GetSearchResults()
+        => Task.FromResult(_cached.FoundItems);
 
     [ComputeMethod]
     protected virtual async Task<Criteria> GetCriteria(CancellationToken cancellationToken)
@@ -58,45 +53,47 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         return new (text, chatListView.PlaceId, extendedLimits);
     }
 
-    public async Task ShowMore(ContactSearchScope scope, CancellationToken cancellationToken = default)
+    public async Task ShowMore(SearchScope scope, CancellationToken cancellationToken = default)
     {
         var current = await ExtendedLimits.Use(cancellationToken).ConfigureAwait(false);
         ExtendedLimits.Value = current.Add(scope);
     }
 
-    public async Task ShowLess(ContactSearchScope chatKind, CancellationToken cancellationToken = default)
+    public async Task ShowLess(SearchScope chatKind, CancellationToken cancellationToken = default)
     {
         var current = await ExtendedLimits.Use(cancellationToken).ConfigureAwait(false);
         ExtendedLimits.Value = current.Remove(chatKind);
     }
 
-    private sealed record Cached(Criteria Criteria, IReadOnlyList<FoundContact> FoundContacts)
+    private sealed record Cached(Criteria Criteria, IReadOnlyList<FoundItem> FoundItems)
     {
-        public IReadOnlyDictionary<ChatId, SearchMatch> SearchMatches { get; } =
-            FoundContacts
-                .Select(x => x.SearchResult)
-                .Where(x => !x.ContactId.IsNone)
-                .DistinctBy(x => x.ContactId.ChatId)
-                .ToDictionary(x => x.ContactId.ChatId, x => x.SearchMatch);
-
         public static readonly Cached None = new (Criteria.None, []);
     }
 
-    protected sealed record Criteria(string Text, PlaceId PlaceId, ImmutableHashSet<ContactSearchScope> ExtendedLimits)
+    protected sealed record Criteria(string Text, PlaceId PlaceId, ImmutableHashSet<SearchScope> ExtendedLimits)
     {
         public static readonly Criteria None = new ("", PlaceId.None, []);
 
-        public ContactSearchQuery ToQuery(SubgroupKey key)
+        public ContactSearchQuery ToContactQuery(SubgroupKey key)
             => new () {
                 Criteria = Text,
                 PlaceId = PlaceId == PlaceId.None ? null : PlaceId, // search in places if None
                 Scope = key.Scope,
                 Limit = ExtendedLimits.Contains(key.Scope)
-                    ? Constants.Search.ContactSearchExtendedPageSize
-                    : Constants.Search.ContactSearchDefaultPageSize,
+                    ? Constants.Search.ExtendedPageSize
+                    : Constants.Search.DefaultPageSize,
                 Own = key.Own,
+            };
+
+        public EntrySearchQuery ToEntryQuery(SubgroupKey key)
+            => new () {
+                Criteria = Text,
+                PlaceId = PlaceId == PlaceId.None ? null : PlaceId, // search in places if None
+                Limit = ExtendedLimits.Contains(key.Scope)
+                    ? Constants.Search.ExtendedPageSize
+                    : Constants.Search.DefaultPageSize,
             };
     }
 
-    protected sealed record SubgroupKey(ContactSearchScope Scope, bool Own);
+    protected sealed record SubgroupKey(SearchScope Scope, bool Own);
 }

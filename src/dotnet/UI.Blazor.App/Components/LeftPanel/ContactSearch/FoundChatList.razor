@@ -1,0 +1,51 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Search
+@inherits ComputedStateComponent<IReadOnlyList<FoundItem>>
+@{
+    var foundItems = State.ValueOrDefault;
+    if (foundItems == null)
+        // TODO: loading view
+        return;
+
+    var canExpandOrCollapse = foundItems.Count >= Constants.Search.DefaultPageSize;
+}
+
+<div class="chat-list own-chat-list">
+    @foreach (var foundItem in foundItems) {
+        @if (foundItem.IsFirstInGroup) {
+            <SearchResultGroupHeader
+                Title="@foundItem.Scope.ToString()"
+                CanExpandOrCollapse="canExpandOrCollapse"
+                Expand="@(() => OnExpand(foundItem.Scope))"
+                Collapse="@(() => OnCollapse(foundItem.Scope))"/>
+        }
+
+        <FoundChat @key="@foundItem.SearchResult.Id"
+                   ChatId="foundItem.ChatId"
+                   EntryId="foundItem.EntryId"
+                   TitleSearchMatch="foundItem.ContactSearchMatch"
+                   MessageSearchMatch="foundItem.MessageSearchMatch" />
+        @if (foundItem.IsLastInGroup) {
+            <Divider Class="mx-1 my-1.5"/>
+        }
+    }
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private SearchUI SearchUI => Hub.SearchUI;
+
+    protected override async Task<IReadOnlyList<FoundItem>> ComputeState(CancellationToken cancellationToken) {
+        var isOn = await SearchUI.IsSearchModeOn(cancellationToken);
+        if (!isOn)
+            return [];
+
+        return await SearchUI.GetSearchResults();
+    }
+
+    private Task OnExpand(SearchScope scope)
+        => SearchUI.ShowMore(scope);
+
+    private Task OnCollapse(SearchScope scope)
+        => SearchUI.ShowLess(scope);
+}

@@ -10,7 +10,6 @@ using ActualChat.Queues;
 using ActualChat.Search;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.AspNetCore.Http;
-using Microsoft.IdentityModel.Tokens;
 using OpenSearch.Client;
 using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
 
@@ -46,9 +45,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
         query = query.Clamp();
         return query.Scope switch {
-            ContactSearchScope.People => await FindPeople(ownerId, query, cancellationToken).ConfigureAwait(false),
-            ContactSearchScope.Groups => await FindGroups(ownerId, query, cancellationToken).ConfigureAwait(false),
-            ContactSearchScope.Places => await FindPlaces(ownerId, query, cancellationToken).ConfigureAwait(false),
+            SearchScope.People => await FindPeople(ownerId, query, cancellationToken).ConfigureAwait(false),
+            SearchScope.Groups => await FindGroups(ownerId, query, cancellationToken).ConfigureAwait(false),
+            SearchScope.Places => await FindPlaces(ownerId, query, cancellationToken).ConfigureAwait(false),
             _ => throw new ArgumentOutOfRangeException(nameof(query), query.Scope, "Contact search scope has unexpected value"),
         };
     }
@@ -476,14 +475,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     {
         if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
-        // TODO: filter by placeId and chatId
-        IReadOnlyCollection<ChatId> chatIds = [];
-        if (!query.ChatId.IsNone)
-            chatIds = [query.ChatId];
-        else if (query.PlaceId != null) {
-            var contactIds = await ContactsBackend.ListIdsForSearch(userId, query.PlaceId, cancellationToken).ConfigureAwait(false);
-            chatIds = contactIds.Select(x => x.ChatId).ToList();
-        }
+        var chatIds = await ListChatIds().ConfigureAwait(false);
 
         var searchResponse =
             await OpenSearchClient.SearchAsync<IndexedEntry>(s
@@ -515,5 +507,15 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                     ? qc => qc.HasParent<IndexedChat>(
                         p => p.Query(q => q.Terms(t => t.Field(x => x.Id).Terms(chatIds))))
                     : null);
+
+        async Task<List<ChatId>> ListChatIds()
+        {
+            if (!query.ChatId.IsNone)
+                return [query.ChatId];
+            else {
+                var contactIds = await ContactsBackend.ListIdsForSearch(userId, query.PlaceId, cancellationToken).ConfigureAwait(false);
+                return contactIds.Select(x => x.ChatId).ToList();
+            }
+        }
     }
 }

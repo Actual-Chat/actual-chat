@@ -37,7 +37,7 @@
 @import './Components/PlaceSettings/place-settings-modal.css';
 @import './Components/Notifications/notifications.css';
 @import './Components/LeftPanel/left-panel.css';
-@import './Components/LeftPanel/ContactSearch/found-contact-list.css';
+@import './Components/LeftPanel/ContactSearch/found-chat-list.css';
 @import './Components/LeftPanel/ContactSearch/found-chat.css';
 @import './Components/LeftPanel/ContactSearch/search-result-group-header.css';
 @import './Components/LeftPanel/LeftSearchPanel/left-search-panel.css';

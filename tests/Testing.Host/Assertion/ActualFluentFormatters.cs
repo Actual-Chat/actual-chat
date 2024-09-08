@@ -22,7 +22,7 @@ public static class ActualFluentFormatters
             Add<ChatFormatter>();
             Add<ContactFormatter>();
             Add<ContactSearchResultFormatter>();
-            Add<FoundContactFormatter>();
+            Add<FoundItemFormatter>();
             Add<EntrySearchResultFormatter>();
             _isUsed = true;
         }
@@ -41,7 +41,7 @@ public static class ActualFluentFormatters
             Remove<ChatFormatter>();
             Remove<ContactFormatter>();
             Remove<ContactSearchResultFormatter>();
-            Remove<FoundContactFormatter>();
+            Remove<FoundItemFormatter>();
             Remove<EntrySearchResultFormatter>();
             _isUsed = false;
         }

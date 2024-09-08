@@ -4,7 +4,7 @@ public sealed record TestGroupKey(
     TestPlaceKey? PlaceKey,
     int Index,
     bool IsPublic,
-    bool MustJoin)
+    bool MustJoin) : TestChatKey(PlaceKey, Index, MustJoin)
 {
     public bool NeedsExplicitJoin => MustJoin && (!IsPublic || PlaceKey == null);
 }
