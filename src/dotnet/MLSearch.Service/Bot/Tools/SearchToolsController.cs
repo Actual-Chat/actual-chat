@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Bot.Tools.Context;
+using ActualChat.Chat;
 
 namespace ActualChat.MLSearch.Bot.Tools;
 
