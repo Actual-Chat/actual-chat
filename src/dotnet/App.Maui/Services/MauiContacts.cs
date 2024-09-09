@@ -3,11 +3,11 @@ using System.Net.Mail;
 using System.Text;
 using ActualChat.Contacts;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.Core.NonWasm;
 using ActualChat.Hashing;
 using ActualChat.Permissions;
 using ActualChat.Users;
 using banditoth.MAUI.DeviceId.Interfaces;
+using PhoneNumbers;
 using MauiContact = Microsoft.Maui.ApplicationModel.Communication.Contact;
 
 namespace ActualChat.App.Maui.Services;
@@ -41,12 +41,12 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
             }
 
             var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
-            var verifiedPhone = account.HasVerifiedPhone() ? account.Phone.ToInternational() : "";
-            var phoneNumberExtractor = PhoneNumberExtractor.CreateFor(verifiedPhone);
+            var ownPhone = account.HasVerifiedPhone() ? account.Phone.ToInternational() : "";
+            var phoneParser = PhoneParser.ForOwnPhone(ownPhone);
             var deviceContacts = (await Microsoft.Maui.ApplicationModel.Communication.Contacts
                 .GetAllAsync(cancellationToken)
                 .ConfigureAwait(false)).ToList();
-            return deviceContacts.Select(x => ToExternalContact(account.Id, phoneNumberExtractor, x)).ToApiArray();
+            return deviceContacts.Select(x => ToExternalContact(account.Id, phoneParser, x)).ToApiArray();
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to read device contacts");
@@ -70,7 +70,7 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
 
     private ExternalContactFull ToExternalContact(
         UserId ownerId,
-        PhoneNumberExtractor phoneNumberExtractor,
+        PhoneParser phoneParser,
         MauiContact mauiContact)
         => new ExternalContactFull(new ExternalContactId(new UserDeviceId(ownerId, DeviceId),
             mauiContact.Id.Replace(':', '_'))) {
@@ -80,23 +80,23 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
             MiddleName = mauiContact.MiddleName ?? "",
             NamePrefix = mauiContact.NamePrefix ?? "",
             NameSuffix = mauiContact.NameSuffix ?? "",
-            PhoneHashes = mauiContact.Phones.Select(p => GetPhoneHash(p, phoneNumberExtractor))
+            PhoneHashes = mauiContact.Phones.Select(p => GetPhoneHash(p, phoneParser))
                 .SkipNullItems()
                 .ToApiSet(),
             EmailHashes = mauiContact.Emails.Select(GetEmailHash).SkipNullItems().ToApiSet(),
         }.WithHash(ExternalContactHasher);
 
-    private static string? GetPhoneHash(ContactPhone mauiPhone, PhoneNumberExtractor phoneNumberExtractor)
+    private static string? GetPhoneHash(ContactPhone contactPhone, PhoneParser phoneParser)
     {
-        var phone = phoneNumberExtractor.GetFromNumber(mauiPhone.PhoneNumber);
+        var phone = phoneParser.Parse(contactPhone.PhoneNumber);
         return !phone.IsValid ? null : phone.Hash(Encoding.UTF8).SHA256().Base64();
     }
 
-    private static string? GetEmailHash(ContactEmail mauiEmail)
+    private static string? GetEmailHash(ContactEmail contactEmail)
     {
-        if (mauiEmail.EmailAddress.IsNullOrEmpty() || !MailAddress.TryCreate(mauiEmail.EmailAddress, out _))
+        if (contactEmail.EmailAddress.IsNullOrEmpty() || !MailAddress.TryCreate(contactEmail.EmailAddress, out _))
             return null;
 
-        return mauiEmail.EmailAddress.ToLowerInvariant().Hash(Encoding.UTF8).SHA256().Base64();
+        return contactEmail.EmailAddress.ToLowerInvariant().Hash(Encoding.UTF8).SHA256().Base64();
     }
 }

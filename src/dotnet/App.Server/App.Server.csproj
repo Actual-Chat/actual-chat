@@ -74,6 +74,11 @@
     <Watch Remove="wwwroot\**\*.woff2" />
   </ItemGroup>
 
+  <!-- Copy "data\**" to output folder -->
+  <ItemGroup>
+    <None Update="data\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- Copy ActualLab* pdb to the output folder -->
   <Target Name="_CopyNuGetPackagesPdbs" AfterTargets="ResolveReferences">
     <ItemGroup>

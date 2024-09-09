@@ -13,7 +13,6 @@
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
     <PackageReference Include="Microsoft.JSInterop" />
     <PackageReference Include="Microsoft.Toolkit.HighPerformance" />
-    <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
     <PackageReference Include="ActualLab.Fusion" />
     <PackageReference Include="ActualLab.Fusion.Ext.Contracts" />
     <PackageReference Include="ActualLab.Rpc" />

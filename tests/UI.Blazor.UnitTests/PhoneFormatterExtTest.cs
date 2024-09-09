@@ -2,7 +2,7 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.UnitTests;
 
-public class PhoneFormatterExtTest
+public class PhoneNumberExtTest
 {
     [Theory]
     [InlineData("", "")]

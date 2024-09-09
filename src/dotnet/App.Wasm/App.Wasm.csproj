@@ -31,7 +31,8 @@ Use:
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>partial</TrimMode>
+    <TrimMode Condition="!$(UseAppPack)">partial</TrimMode>
+    <TrimMode Condition="$(UseAppPack)">full</TrimMode>
     <IsTrimmable>true</IsTrimmable>
     <RunAOTCompilation>false</RunAOTCompilation>
     <!-- Broken for now:
@@ -44,6 +45,7 @@ Use:
   <!-- Trimming -->
   <ItemGroup>
     <TrimmerRootAssembly Include="ActualChat.App.Wasm" RootMode="EntryPoint" />
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.AppPack" RootMode="All" />
   </ItemGroup>
 
   <!-- References -->

@@ -1,4 +1,4 @@
-using ActualChat.Core.NonWasm;
+using PhoneNumbers;
 
 namespace ActualChat.Users;
 
@@ -6,5 +6,5 @@ public class Phones : IPhones
 {
     // [ComputeMethod]
     public virtual Task<Phone> Parse(string phone, CancellationToken cancellationToken)
-        => Task.FromResult(PhoneFormatterExt.FromReadable(phone));
+        => Task.FromResult(PhoneExt.Parse(phone, null));
 }

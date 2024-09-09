@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\dotnet\Core.NonWasm\Core.NonWasm.csproj" />
-    <ProjectReference Include="..\Testing\Testing.csproj" />
-  </ItemGroup>
-
-</Project>

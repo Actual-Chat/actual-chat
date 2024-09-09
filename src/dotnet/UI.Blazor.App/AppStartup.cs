@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.WebSockets;
 using ActualChat.UI.Blazor.App.Module;
-using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Security;
@@ -18,29 +17,7 @@ namespace ActualChat.UI.Blazor.App;
 
 public static class AppStartup
 {
-    // ActualLab.Interception, ActualLab.Rpc, ActualLab.CommandR, ActualLab.Fusion dependencies are referenced
-    // by [DynamicDependency] on FusionBuilder from v6.7.2.
-    // Libraries
     [RequiresUnreferencedCode(UnreferencedCode.Reflection)]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PriorityQueue<,>))] // MemoryPack uses it
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Range<>))] // JS dependency
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ImmutableOptionSet))] // Media.MetadataJson
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OptionSet))] // Maybe some other JSON
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NewtonsoftJsonSerialized<>))] // Media.MetadataJson
-    // Blazor
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DotNetObjectReference<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EventCallback<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
-        "Microsoft.JSInterop.Infrastructure.ArrayBuilder`1", "Microsoft.JSInterop")]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
-        "Microsoft.JSInterop.Infrastructure.DotNetObjectReferenceJsonConverter`1", "Microsoft.JSInterop")]
-    // Diffs
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MissingDiffHandler<,>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CloneDiffHandler<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NullableDiffHandler<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RecordDiffHandler<,>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OptionDiffHandler<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SetDiffHandler<,>))]
     public static void ConfigureServices(
         IServiceCollection services,
         HostKind hostKind,

@@ -11,6 +11,7 @@
     <PackageReference Include="CliWrap" />
     <PackageReference Include="FFMpegCore" />
     <PackageReference Include="Google.Cloud.Storage.V1" />
+    <PackageReference Include="libphonenumber-csharp" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" />
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
     <PackageReference Include="NATS.Net" />

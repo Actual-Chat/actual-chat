@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Threading.Tasks.Sources;
+using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualLab.Fusion.Client;
 using ActualLab.Fusion.Client.Caching;
@@ -8,6 +10,7 @@ using ActualLab.Interception.Trimming;
 using ActualLab.Internal;
 using ActualLab.Rpc;
 using ActualLab.Trimming;
+using MemoryPack.Formatters;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
@@ -15,11 +18,43 @@ namespace ActualChat.UI.Blazor.App;
 
 public static class ClientAppStartup
 {
+    // Libraries
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PriorityQueue<,>))] // MemoryPack uses it
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Range<>))] // JS dependency
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ImmutableOptionSet))] // Media.MetadataJson
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OptionSet))] // Maybe some other JSON
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NewtonsoftJsonSerialized<>))] // Media.MetadataJson
+    // Blazor
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DotNetObjectReference<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EventCallback<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
+        "Microsoft.JSInterop.Infrastructure.ArrayBuilder`1", "Microsoft.JSInterop")]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
+        "Microsoft.JSInterop.Infrastructure.DotNetObjectReferenceJsonConverter`1", "Microsoft.JSInterop")]
+    // Diffs
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MissingDiffHandler<,>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CloneDiffHandler<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NullableDiffHandler<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RecordDiffHandler<,>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OptionDiffHandler<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SetDiffHandler<,>))]
     public static void Initialize()
     {
+        // AppContext feature switches
+        // AppContext.SetSwitch("System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported", false);
+        AppContext.SetSwitch("Switch.System.Reflection.ForceInterpretedInvoke", false);
+        AppContext.SetSwitch("Microsoft.Extensions.DependencyInjection.DisableDynamicEngine", true);
+
         // CodeKeeper actions
+        CodeKeeper.AddFakeAction(() => {
+            // Extra "keep code" calls should be added here
+            CodeKeeper.FakeCallSilently(() => _ = new DefaultLayout());
+            CodeKeeper.CallSilently(() => _ = new InterfaceImmutableDictionaryFormatter<PlaceId, ChatId>());
+            // TODO: Add support for parameter comparers
+        });
         CodeKeeper.Set<ProxyCodeKeeper, FusionProxyCodeKeeper>();
-        if (RuntimeCodegen.NativeMode != RuntimeCodegenMode.DynamicMethods) {
+        if (OSInfo.IsWindows) {
+            // NativeAOT is used only on Windows app in our case
             var now = CpuTimestamp.Now;
             CodeKeeper.RunActions();
             Tracer.Default[nameof(CodeKeeper)].Point($"RunActions took {now.Elapsed.ToShortString()}");

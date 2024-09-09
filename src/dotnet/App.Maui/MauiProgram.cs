@@ -1,4 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Sockets;
+using System.Net.WebSockets;
+using System.Runtime.ExceptionServices;
+using System.Threading.Tasks.Sources;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
@@ -9,9 +13,12 @@ using Microsoft.Maui.LifecycleEvents;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Diagnostics;
 using banditoth.MAUI.DeviceId;
+using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.JSInterop;
+using OpenTelemetry.Trace;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
+using Tracer = ActualChat.Performance.Tracer;
 #if IOS
 using Foundation;
 #endif
@@ -28,14 +35,39 @@ public static partial class MauiProgram
     private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiProgram)];
     private static ILogger Log => _log ??= StaticLog.For(typeof(MauiProgram));
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiDiagnostics))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiProgram))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiDiagnostics))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WebViewManager))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Editor))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
+        "Microsoft.AspNetCore.Components.WebView.Maui.AndroidWebKitWebViewManager", "Microsoft.AspNetCore.Components.WebView.Maui")]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
+        "Microsoft.AspNetCore.Components.WebView.IpcCommon", "Microsoft.AspNetCore.Components.WebView")]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
+        "Microsoft.AspNetCore.Components.WebView.IpcCommon.IncomingMessageType", "Microsoft.AspNetCore.Components.WebView")]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
+        "Microsoft.AspNetCore.Components.WebView.IpcCommon.OutgoingMessageType", "Microsoft.AspNetCore.Components.WebView")]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
+        "Microsoft.AspNetCore.Components.WebView.IpcSender", "Microsoft.AspNetCore.Components.WebView")]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
+        "Microsoft.AspNetCore.Components.WebView.IpcReceiver", "Microsoft.AspNetCore.Components.WebView")]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
+        "Microsoft.AspNetCore.Components.WebView.IpcReceiver", "Microsoft.AspNetCore.Components.WebView")]
+#if false // Trying to fix the issue w/ WebSockets & LLVM
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Socket))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ClientWebSocket))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ManualResetValueTaskSourceCore<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
+        "System.Net.WebSockets.WebSocketHandle", "System.Net.WebSockets")]
+#endif
     public static MauiApp CreateMauiApp()
     {
         using var _1 = Tracer.Region();
 
         ClientAppStartup.Initialize();
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+        // Uncomment to log EVERY thrown exception:
+        // AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
         MauiThreadPoolSettings.Apply();
 #if IOS
         FixIosBaseAddress();
@@ -211,7 +243,7 @@ public static partial class MauiProgram
             ConfigureNonLazyServicesVisibleFromLazyServices(services);
 
         // All other (module) services
-        MauiAppStartup.ConfigureServices(services);
+        AppStartup.ConfigureServices(services, HostKind.MauiApp, c => [new Module.MauiAppModule(c)]);
 
         // Platform services
         services.AddPlatformServices();
@@ -290,4 +322,11 @@ public static partial class MauiProgram
         => Log.LogInformation("Unhandled exception, isTerminating={IsTerminating}.\n{Exception}",
             e.IsTerminating,
             e.ExceptionObject);
+
+    // This method should be used only for debugging.
+    private static void OnFirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
+    {
+        var error = e.Exception;
+        Log.LogWarning(error, "FCE: {Type}, {Message}", error.GetType().Name, error.Message);
+    }
 }
