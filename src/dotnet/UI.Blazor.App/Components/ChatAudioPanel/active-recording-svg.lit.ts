@@ -2,9 +2,18 @@ import { AsyncDirective } from 'lit/async-directive.js';
 import { directive } from 'lit/directive.js';
 import { customElement, property } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
-import { animationFrameScheduler, map, Observable, Subscription } from 'rxjs';
-import { delay, throttleTime } from 'rxjs/operators';
+import { animationFrameScheduler, map, scan, Observable, Subscription } from 'rxjs';
+import { delayWhen, throttleTime, skip, take, distinctUntilChanged } from 'rxjs/operators';
 import { OpusMediaRecorder } from '../AudioRecorder/opus-media-recorder';
+import { clamp, RunningMax } from 'math';
+
+const SIGNAL_COUNT_TO_CALCULATE_MAX = 200; // 200 * 30ms = 6s
+
+type Result = {
+    runningMax: RunningMax;
+    p: number;
+    i: number;
+}
 
 @customElement('active-recording-svg')
 class ActiveRecordingSvg extends LitElement {
@@ -72,131 +81,114 @@ class ActiveRecordingSvg extends LitElement {
 
     @property()
     size = 10;
-    @property({ type: Boolean })
-    isVoiceActive = false;
-    @property()
-    edgeDotCls = "";
-    @property()
-    centerDotCls = "";
-    @property({ type: Boolean })
-    isFirstLoading = true;
+
+    private isVoiceActive = false;
+    private isRecording = false;
+    private lastIsRecording = false;
 
     protected render(): unknown {
-        const size = this.size;
+        const { size } = this;
         const width = 10;
-        const minHeight = 20;
+        const minHeight = 10;
         const maxHeight = 100;
-        let signalPower$ = OpusMediaRecorder.audioPowerChanged$
+        const isVoiceActive$ = OpusMediaRecorder.recorderStateChanged$
+            .pipe(map(s => s.isVoiceActive), distinctUntilChanged());
+        const isRecording$ = OpusMediaRecorder.recorderStateChanged$
+            .pipe(map(s => s.isRecording), distinctUntilChanged());
+        const signalPower$ = OpusMediaRecorder.audioPowerChanged$
             .pipe(throttleTime(0, animationFrameScheduler));
-        let maxPower = 0;
 
-        this.edgeDotCls = this.isVoiceActive ? "active" : "non-active";
-        this.centerDotCls = this.isVoiceActive ? "" : "in-rest";
+        isVoiceActive$.subscribe(b => this.isVoiceActive = b);
+        isRecording$.subscribe(b => this.isRecording = b);
 
-        if (this.isFirstLoading && this.isVoiceActive) {
-            this.isFirstLoading = false;
-        }
-
-        // height$ in percent
+        const edgeDotCls = observe(isVoiceActive$.pipe(map(b => b ? "active" : "non-active")));
+        const centerDotCls = observe(isVoiceActive$.pipe(map(b => b ? "" : "in-rest")));
         const height1$ = signalPower$
-            .pipe(map(p => {
-                if (p > maxPower)
-                    maxPower = p;
-                let height = Math.floor((translate(p, [0, maxPower], [minHeight, maxHeight]))) / maxHeight * 90;
-                if (this.isVoiceActive && height > minHeight) {
-                    return isNaN(height) ? minHeight : height;
-                } else {
-                    return minHeight;
+            .pipe(scan<number, Result, RunningMax>((runningMaxOrResult, p, i) => {
+                const runningMax: RunningMax = runningMaxOrResult['runningMax'] || runningMaxOrResult;
+                const { isRecording, isVoiceActive, lastIsRecording } = this;
+                if (isRecording != lastIsRecording) {
+                    // cleanup state on start/stop recording
+                    this.lastIsRecording = isRecording;
+                    runningMax.reset();
                 }
+                if (!isVoiceActive)
+                    return { runningMax, p, i };
+
+                runningMax.appendSample(p);
+                return { runningMax, p, i };
+            }, new RunningMax(SIGNAL_COUNT_TO_CALCULATE_MAX, 0)))
+            .pipe(map(({ runningMax, p }) => {
+                const maxPower = runningMax.value;
+                const maxSampleCount = runningMax.sampleCount;
+                if (maxSampleCount < SIGNAL_COUNT_TO_CALCULATE_MAX / 2) // beginning of recording
+                    return Math.floor(minHeight + Math.random() * minHeight);
+
+                const height = Math.floor((translate(p, [0, 0.8 * maxPower], [minHeight, maxHeight]))) * 100 / maxHeight;
+                return (!this.isVoiceActive || isNaN(height))
+                    ? minHeight
+                    : height;
             }));
 
-        const height2$ = signalPower$
-            .pipe(
-                delay(150),
-                map(p => {
-                    if (p > maxPower)
-                        maxPower = p;
-                    let height = Math.floor((translate(p, [0, 0.8 * maxPower], [minHeight, maxHeight]))) / maxHeight * 70;
-                    if (this.isVoiceActive && height > minHeight) {
-                        return isNaN(height) ? minHeight : height;
-                    } else {
-                        return minHeight;
-                    }
-                }));
-
-        const height3$ = signalPower$
-            .pipe(
-                delay(300),
-                map(p => {
-                    if (p > maxPower)
-                        maxPower = p;
-                    let height = Math.floor((translate(p, [0, 0.8*maxPower], [minHeight, maxHeight]))) / maxHeight * 50;
-                    if (this.isVoiceActive && height > minHeight) {
-                        return isNaN(height) ? minHeight : height;
-                    } else {
-                        return minHeight;
-                    }
-                }));
+        const height2$ = height1$
+            .pipe(map(h => clamp(0.7 * h, minHeight, maxHeight)))
+            .pipe(delayWhen(() => height1$.pipe(skip(5), take(1)))); // with 150 ms delay
+        const height3$ = height1$
+            .pipe(map(h => clamp(0.4 * h, minHeight, maxHeight)))
+            .pipe(delayWhen(() => height1$.pipe(skip(10), take(1)))); // with 300 ms delay
 
         // offsets in percent
         const offset1$ = height1$
-            .pipe(map(h => {
-                return isNaN(h) ? 50 - minHeight / 2 : 50 - h / 2;
-            }));
+            .pipe(map(h => 50 - h / 2));
         const offset2$ = height2$
-            .pipe(map(h => {
-                return isNaN(h) ? 50 - minHeight / 2 : 50 - h / 2;
-            }));
+            .pipe(map(h => 50 - h / 2));
         const offset3$ = height3$
-            .pipe(map(h => {
-                return isNaN(h) ? 50 - minHeight / 2 : 50 - h / 2;
-            }));
-
-        let height1 = observe(height1$);
-        let height2 = observe(height2$);
-        let height3 = observe(height3$);
-        let offset1 = observe(offset1$);
-        let offset2 = observe(offset2$);
-        let offset3 = observe(offset3$);
+            .pipe(map(h => 50 - h / 2));
+        const height1 = observe(height1$);
+        const height2 = observe(height2$);
+        const height3 = observe(height3$);
+        const offset1 = observe(offset1$);
+        const offset2 = observe(offset2$);
+        const offset3 = observe(offset3$);
 
         return html`
             <svg xmlns="http://www.w3.org/2000/svg" width="${size * 4}" height="${size * 4}"
                  preserveAspectRatio="none"
                  viewBox="0 0 24 24" fill="none" stroke="var(--white)"
                  stroke-width="${width}%" stroke-linecap="round" stroke-linejoin="bevel">
-                <rect id="record-rect-1" class="${this.edgeDotCls}"
+                <rect id="record-rect-1" class="${edgeDotCls}"
                       x="${width / 2}%"
-                      y="${this.isFirstLoading ? 50 - minHeight / 2 : offset3}%"
+                      y="${offset3}%"
                       width="${width}%"
-                      height="${this.isFirstLoading ? minHeight : height3}%"
+                      height="${height3}%"
                       fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
                 </rect>
-                <rect id="record-rect-2" class="${this.centerDotCls}"
+                <rect id="record-rect-2" class="${centerDotCls}"
                       x="${width * 2.5}%"
-                      y="${this.isFirstLoading ? 50 - minHeight / 2 : offset2}%"
+                      y="${offset2}%"
                       width="${width}%"
-                      height="${this.isFirstLoading ? minHeight : height2}%"
+                      height="${height2}%"
                       fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
                 </rect>
-                <rect id="record-rect-3" class="${this.centerDotCls}"
+                <rect id="record-rect-3" class="${centerDotCls}"
                       x="${width * 4.5}%"
-                      y="${this.isFirstLoading ? 50 - minHeight / 2 : offset1}%"
+                      y="${offset1}%"
                       width="${width}%"
-                      height="${this.isFirstLoading ? minHeight : height1}%"
+                      height="${height1}%"
                       fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
                 </rect>
-                <rect id="record-rect-4" class="${this.centerDotCls}"
+                <rect id="record-rect-4" class="${centerDotCls}"
                       x="${width * 6.5}%"
-                      y="${this.isFirstLoading ? 50 - minHeight / 2 : offset2}%"
+                      y="${offset2}%"
                       width="${width}%"
-                      height="${this.isFirstLoading ? minHeight : height2}%"
+                      height="${height2}%"
                       fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
                 </rect>
-                <rect id="record-rect-5" class="${this.edgeDotCls}"
+                <rect id="record-rect-5" class="${edgeDotCls}"
                       x="${width * 8.5}%"
-                      y="${this.isFirstLoading ? 50 - minHeight / 2 : offset3}%"
+                      y="${offset3}%"
                       width="${width}%"
-                      height="${this.isFirstLoading ? minHeight : height3}%"
+                      height="${height3}%"
                       fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
                 </rect>
             </svg>
