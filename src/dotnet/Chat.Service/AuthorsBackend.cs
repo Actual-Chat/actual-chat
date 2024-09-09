@@ -107,12 +107,13 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         if (chatId.IsNone || chatId.IsPlaceChat)
             return default;
 
-        if (chatId.IsPeerChat(out var peerChatId))
-            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id).ToApiArray();
+        var ownerAuthors = chatId.IsPeerChat(out var peerChatId)
+            ? GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id)
+            // Group chat
+            : await ListOwnerAuthorIdsInternal(chatId, cancellationToken).ConfigureAwait(false);
 
-        // Group chat
-
-        return await ListOwnerAuthorIdsInternal(chatId, cancellationToken).ConfigureAwait(false);
+        var searchBotId = Bots.GetMLSearchBotId(chatId);
+        return ownerAuthors.Where(a => a.Id != searchBotId).ToApiArray();
     }
 
     // [ComputeMethod]

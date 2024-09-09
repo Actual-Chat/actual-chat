@@ -123,6 +123,32 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return sChatIds.Select(x => new ChatId(x)).Where(x => !x.IsPlaceRootChat).ToApiArray();
     }
 
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<ChatId>> GetPrivateChatIdsForUser(UserId userId, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var peerChats = dbContext.Chats
+            .Where(c => c.Kind == ChatKind.Peer
+                && !c.IsPublic && !c.IsArchived
+                && dbContext.Authors.Any(a => a.UserId == userId && a.ChatId == c.Id && !a.HasLeft));
+
+        var otherChats = dbContext.Chats
+            .Where(c => (c.Kind == ChatKind.Group || c.Kind == ChatKind.Place)
+                && !c.IsPublic && !c.IsArchived
+                && dbContext.Authors.Any(a => a.UserId == userId && a.ChatId == c.Id && !a.HasLeft
+                    && dbContext.Roles.Any(r => r.CanRead && dbContext.AuthorRoles.Any(ar => ar.DbRoleId==r.Id && ar.DbAuthorId==a.Id))));
+
+        var chatIds = peerChats.Union(otherChats)
+            .Select(chat => chat.Id)
+            .OrderBy(chatId => chatId)
+            .AsAsyncEnumerable();
+
+        return await chatIds.Select(x => new ChatId(x)).ToApiArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     // Non-compute methods
     public virtual async Task<ApiArray<ChatId>> ListPlaceChatIds(PlaceId placeId, CancellationToken cancellationToken)
     {

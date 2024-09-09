@@ -9,7 +9,11 @@ namespace ActualChat.MLSearch.Bot.Tools;
 [ApiController]
 [Route("api/bot/search")]
 [Produces("application/json")]
-public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine, IBotToolsContextHandler botToolsContext) : ControllerBase
+public sealed class SearchToolsController(
+    IAuthorsBackend authors,
+    IChatsBackend chats,
+    ISearchEngine<ChatSlice> searchEngine,
+    IBotToolsContextHandler botToolsContext) : ControllerBase
 {
     public sealed class SearchQueryRequest {
         public const int MaxLimit = 3;
@@ -71,9 +75,25 @@ public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine,
     public async Task<ActionResult<List<RankedDocument<ChatSlice>>>> PrivateChatsText([FromBody]SearchQueryRequest search, CancellationToken cancellationToken)
     {
         var context = botToolsContext.GetContext(Request);
-        if (!context.IsValid) {
+        if (!context.IsValid || (context.ConversationId is var conversationId && string.IsNullOrEmpty(conversationId))) {
             throw new UnauthorizedAccessException();
         }
+        if (!ChatId.TryParse(conversationId, out var chatId)) {
+            throw new InvalidOperationException("Malformed conversation id detected.");
+        }
+
+        var ownerAuthorIds = await authors.ListOwnerAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+        var ownerAuthorId = ownerAuthorIds.OrderBy(authorId => authorId.LocalId).FirstOrDefault(AuthorId.None);
+        if (ownerAuthorId.IsNone) {
+            throw new InvalidOperationException("No owner author found for the search chat.");
+        }
+        var ownerAuthor = await authors
+            .Get(chatId, ownerAuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+            .ConfigureAwait(false);
+        var ownerAuthorUserId = ownerAuthor!.UserId;
+
+        var privateChatIds = await chats.GetPrivateChatIdsForUser(ownerAuthorUserId, cancellationToken).ConfigureAwait(false);
+
         var limit = search.Limit;
         // Add limit constraints.
         if (limit < 1) {
@@ -96,6 +116,7 @@ public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine,
         var searchResult = await searchEngine.Find(query, cancellationToken).ConfigureAwait(false);
         var documents = searchResult.Documents;
         // TODO: Error handling
+
         return documents.Select(e=>e).ToList();
     }
 }
