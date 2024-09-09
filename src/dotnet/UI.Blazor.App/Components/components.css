@@ -144,6 +144,13 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply flex-none flex-x items-center gap-x-3;
     @apply px-0.5;
 }
+
+.chat-header-center .chat-activity-border {
+    @apply flex-none;
+    @apply h-8 w-0.5;
+    @apply bg-03;
+}
+
 .chat-header-control-panel {
     @apply flex-x items-center gap-x-3;
     @apply md:pr-1.5;

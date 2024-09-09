@@ -56,7 +56,3 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
 .chat-activity-banner .author-circle-group {
     @apply pr-0 md:pr-3;
 }
-.chat-activity-banner .author-circle-group-item {
-    @apply mr-0 md:-mr-2;
-    @apply border border-bg-02 rounded-full;
-}

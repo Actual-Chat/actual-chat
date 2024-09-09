@@ -7,17 +7,24 @@
         return;
 
     var maxCount = ScreenSize.IsNarrow() ? 3 : 2;
+    var iconSize = ScreenSize.IsNarrow() ? 6 : 5;
 }
 
+@if (!ScreenSize.IsNarrow()) {
+    <div class="chat-activity-border"></div>
+}
 <div class="chat-activity-panel">
     <div class="c-icon">
-        <chat-activity-svg size="6" isActive="@m.IsAnyoneTalking" activeColor="primary" inactiveColor="text-03"/>
+        <chat-activity-svg size="@iconSize" isActive="@m.IsAnyoneTalking" activeColor="primary" inactiveColor="text-03"/>
     </div>
     @if (m.IsAnyoneTalking) {
         <ChatActivities @key="@Chat.Id.Value" Chat="@Chat" MaxIconCount="@maxCount"/>
     } else {
-        <div class="silence-text">No one is talking</div>
+        @if (ScreenSize.IsNarrow()) {
+            <div class="silence-text">No one is talking</div>
+        }
     }
+    <div class="c-incut"></div>
     <div class="c-buttons">
         @if (!IsListening) {
             <Button
@@ -38,6 +45,9 @@
                 StopPropagation="true"
                 PreventDefault="true"
                 Click="@OnListenClick">
+                <Icon>
+                    <i class="icon-not-listening text-xl text-03"></i>
+                </Icon>
                 <Title>
                     Mute
                 </Title>
