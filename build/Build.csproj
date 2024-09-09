@@ -19,6 +19,5 @@
   </ItemGroup>
   <ItemGroup>
     <UpToDateCheckInput Condition="Exists('..\version.json')" Include="..\version.json" />
-    <None Remove="Directory.Build.props" />
   </ItemGroup>
 </Project>
