@@ -12,3 +12,9 @@ export interface RecorderStateServer {
 export interface RecorderStateChanged {
     (isRecording: boolean, isConnected: boolean, isVoiceActive: boolean): Promise<void>;
 }
+export interface RecorderState {
+    isRecording: boolean;
+    isConnected: boolean;
+    isVoiceActive: boolean;
+}
+

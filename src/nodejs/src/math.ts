@@ -215,3 +215,39 @@ export class RunningEMA implements RunningCounter {
         }
     }
 }
+
+export class RunningMax implements RunningCounter {
+    private readonly defaultValue: number;
+    private readonly samples = new Array<number>();
+    private max: number;
+
+    constructor(
+        private readonly windowSize: number,
+        defaultValue: number,
+    ) {
+        this.defaultValue = defaultValue;
+        this.max = defaultValue;
+    }
+
+    public get sampleCount(): number {
+        return this.samples.length;
+    }
+
+    public get value(): number {
+        return this.max;
+    }
+
+    public reset(): void {
+        this.samples.length = 0;
+        this.max = this.defaultValue;
+    }
+
+    public appendSample(value: number): void {
+        if (value > this.max)
+            this.max = value;
+        this.samples.push(value);
+
+        if (this.samples.length > this.windowSize)
+            this.samples.shift();
+    }
+}

@@ -72,7 +72,6 @@
             @* Icon for ON state *@
             <active-recording-svg
                 size="@recordingIconSize"
-                isVoiceActive="@m.IsVoiceActive"
                 class="rec-icon on"/>
         </ButtonRound>
     </div>
@@ -150,17 +149,14 @@
         var isTransitioning =
             recordingChatId == chatId // The recorder records in this chat
             && recorderState.IsRecording != isRecordingHere; // AND it's state is not in sync with the expected one here
-        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
         return new (
             Chat,
             language,
             isRecordingHere,
             recorderState.IsRecording,
             recorderState.IsConnected,
-            recorderState.IsVoiceActive,
             hasMicrophonePermission,
-            isTransitioning,
-            enableIncompleteUI);
+            isTransitioning);
     }
 
     private void OnClick()
@@ -227,10 +223,8 @@
         bool IsRecordingHere = false,
         bool IsMicrophoneCaptured = false,
         bool IsConnected = false,
-        bool IsVoiceActive = false,
         bool? HasMicrophonePermission = null,
-        bool IsTransitioning = false,
-        bool EnableIncompleteUI = false
+        bool IsTransitioning = false
     ) {
         public static readonly Model Loading = new(SpecialChat.Loading, Language.None, default, false, true, false);
     }

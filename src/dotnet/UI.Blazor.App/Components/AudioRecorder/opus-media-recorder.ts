@@ -23,7 +23,7 @@ import { OpusEncoderWorklet } from './worklets/opus-encoder-worklet-contract';
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
 import { AudioInitializer } from "../../Services/audio-initializer";
 import { AudioDiagnosticsState } from "./audio-recorder";
-import { RecorderStateChanged, RecorderStateServer } from "./opus-media-recorder-contracts";
+import { RecorderState, RecorderStateChanged, RecorderStateServer } from "./opus-media-recorder-contracts";
 import { Log } from 'logging';
 
 /*
@@ -55,11 +55,17 @@ const RecordingFailedInterval = 500;
 
 export class OpusMediaRecorder implements RecorderStateServer {
     private static readonly audioPowerChangedSubject: Subject<number> = new Subject<number>();
+    private static readonly recorderStateChangedSubject: Subject<RecorderState> = new Subject<RecorderState>();
 
     public static get audioPowerChanged$(): Observable<number> {
         return OpusMediaRecorder.audioPowerChangedSubject.asObservable();
     }
 
+    public static get recorderStateChanged$(): Observable<RecorderState> {
+        return OpusMediaRecorder.recorderStateChangedSubject.asObservable();
+    }
+
+    private lastState: RecorderState = { isRecording: false, isConnected: false, isVoiceActive: false };
     private whenInitialized: PromiseSource<void>;
     private initStarted = false;
 
@@ -228,16 +234,11 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
     public subscribeToStateChanges(onStateChanged: RecorderStateChanged): void {
         this.onStateChanged = onStateChanged;
-        // set current state
-        if (onStateChanged)
-            void onStateChanged(this.isRecording, this.isConnected, this.isVoiceActive);
+        this.stateChanged();
     }
 
     public async start(chatId: string, repliedChatEntryId: string): Promise<void> {
-        const onStateChanged = this.onStateChanged;
-        // set current state
-        if (onStateChanged)
-            void onStateChanged(this.isRecording, this.isConnected, this.isVoiceActive);
+        this.stateChanged();
 
         debugLog?.log('-> start(): #', chatId);
         if (!chatId)
@@ -493,11 +494,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
             return Promise.resolve(undefined);
 
         this.isConnected = isConnected;
-
-        const onStateChanged = this.onStateChanged;
-        if (onStateChanged)
-            void onStateChanged(this.isRecording, this.isConnected, this.isVoiceActive);
-
+        this.stateChanged();
         return Promise.resolve(undefined);
     }
 
@@ -506,11 +503,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
             return Promise.resolve(undefined);
 
         this.isRecording = isRecording;
-
-        const onStateChanged = this.onStateChanged;
-        if (onStateChanged)
-            void onStateChanged(this.isRecording, this.isConnected, this.isVoiceActive);
-
+        this.stateChanged();
         return Promise.resolve(undefined);
     }
 
@@ -519,11 +512,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
             return Promise.resolve(undefined);
 
         this.isVoiceActive = isVoiceActive;
-
-        const onStateChanged = this.onStateChanged;
-        if (onStateChanged)
-            void onStateChanged(this.isRecording, this.isConnected, this.isVoiceActive);
-
+        this.stateChanged();
         return Promise.resolve(undefined);
     }
 
@@ -560,6 +549,22 @@ export class OpusMediaRecorder implements RecorderStateServer {
             baseUri = BrowserInit.baseUri;
         }
         await this.init(baseUri, true);
+    }
+
+    private stateChanged(): void {
+        const onStateChanged = this.onStateChanged;
+        // set current state
+        if (onStateChanged)
+            void onStateChanged(this.isRecording, this.isConnected, this.isVoiceActive);
+
+
+        const lastState = this.lastState;
+        const state = { isRecording: this.isRecording, isConnected: this.isConnected, isVoiceActive: this.isVoiceActive };
+        if (!state.isRecording == lastState.isRecording && state.isConnected == lastState.isConnected && state.isVoiceActive == lastState.isVoiceActive)
+            return;
+
+        this.lastState = state;
+        OpusMediaRecorder.recorderStateChangedSubject.next(state);
     }
 
     private recordingFailedDebounced = debounce(() => this.recordingFailed(), RecordingFailedInterval);
