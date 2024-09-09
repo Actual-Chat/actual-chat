@@ -58,7 +58,7 @@
                 @m.Place.Title
             </div>
             <div class="c-info">
-                <span>@m.MembersCount @("Member".Pluralize(m.MembersCount))</span>
+                <span>@m.MemberCount @("Member".Pluralize(m.MemberCount))</span>
                 <DotSeparator/>
                 <span>@(isPublic ? "Public" : "Private")</span>
                 @if (isPublic) {
@@ -150,7 +150,7 @@
             AuthorIds = allAuthorIds,
             OwnerIds = ownerIds,
             OwnAuthorId = ownAuthor!.Id,
-            MembersCount = allAuthorIds.Count,
+            MemberCount = allAuthorIds.Count,
             EnableIncompleteUI = enableIncompleteUI,
         };
     }
@@ -161,7 +161,7 @@
         public static readonly Model Loading = new();
 
         public Place? Place { get; init; }
-        public int MembersCount { get; init; }
+        public int MemberCount { get; init; }
         public ApiArray<AuthorId> AuthorIds { get; init; }
         public ApiArray<AuthorId> OwnerIds { get; init; }
         public AuthorId OwnAuthorId { get; init; }

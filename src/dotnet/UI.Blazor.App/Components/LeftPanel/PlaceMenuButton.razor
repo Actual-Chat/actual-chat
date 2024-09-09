@@ -13,7 +13,7 @@
         <i class="icon-chevron-right flex-none"></i>
     </div>
     <div class="c-bottom">
-        <span>@m.MembersCount @("Member".Pluralize(m.MembersCount))</span>
+        <span>@m.MemberCount @("Member".Pluralize(m.MemberCount))</span>
         <DotSeparator/>
         <span>@(m.Place.IsPublic ? "Public" : "Private")</span>
     </div>
@@ -54,7 +54,7 @@
 
         return new() {
             Place = place,
-            MembersCount = allAuthorIds.Count,
+            MemberCount = allAuthorIds.Count,
             IsMember = isMember,
         };
     }
@@ -68,7 +68,7 @@
         public static readonly Model Loading = new();
 
         public Place? Place { get; init; }
-        public int MembersCount { get; init; }
+        public int MemberCount { get; init; }
         public bool IsMember { get; init; }
     }
 }

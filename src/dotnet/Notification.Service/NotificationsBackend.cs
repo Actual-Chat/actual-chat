@@ -108,7 +108,7 @@ public class NotificationsBackend(IServiceProvider services)
             if (throttleInterval is { } vThrottleInterval) {
                 var delta = notification.SentAt - similar.SentAt;
                 if (delta <= vThrottleInterval) {
-                    DebugLog?.LogInformation("OnNotify. Skipping (Throttling). EntryId={EntryId}, UserId={UserIdsCount}, NotificationId={NotificationId}",
+                    DebugLog?.LogInformation("OnNotify. Skipping (Throttling). EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}",
                         notification.EntryId, userId, notification.Id);
                     return;
                 }
@@ -119,7 +119,7 @@ public class NotificationsBackend(IServiceProvider services)
         var upsertCommand = new NotificationsBackend_Upsert(notification);
         var hasUpserted = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         if (!hasUpserted) {
-            DebugLog?.LogInformation("OnNotify. Skipping (Upsert failed). EntryId={EntryId}, UserId={UserIdsCount}, NotificationId={NotificationId}",
+            DebugLog?.LogInformation("OnNotify. Skipping (Upsert failed). EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}",
                 notification.EntryId, userId, notification.Id);
             return;
         }
@@ -283,7 +283,7 @@ public class NotificationsBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var removedDevicesCount = await dbContext.Devices
+        var removedDeviceCount = await dbContext.Devices
             .Where(a => a.UserId == userId)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -293,7 +293,7 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("Removed {Count} devices", removedDevicesCount);
+        Log.LogInformation("Removed {Count} devices", removedDeviceCount);
     }
 
     // [CommandHandler]
@@ -436,10 +436,10 @@ public class NotificationsBackend(IServiceProvider services)
         var account = await AccountsBackend.Get(userId, cancellationToken1).ConfigureAwait(false);
         var isAdmin = account is { IsAdmin: true };
         var deviceIds = devices.Select(d => d.DeviceId).ToList();
-        DebugLog?.LogInformation("-> Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdsCount}",
+        DebugLog?.LogInformation("-> Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdCount}",
             notification.EntryId, userId, notification.Id, deviceIds.Count);
         await FirebaseMessagingClient.SendMessage(notification, deviceIds, isAdmin, cancellationToken1).ConfigureAwait(false);
-        DebugLog?.LogInformation("<- Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdsCount}",
+        DebugLog?.LogInformation("<- Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdCount}",
             notification.EntryId, userId, notification.Id, deviceIds.Count);
     }
 
@@ -453,7 +453,7 @@ public class NotificationsBackend(IServiceProvider services)
         IReadOnlyCollection<UserId> userIds,
         CancellationToken cancellationToken)
     {
-        DebugLog?.LogInformation("-> EnqueueMessageRelatedNotifications. ChatId={ChatId}, EntryId={EntryId}, Kind={Kind}, UserIds#={UserIdsCount}",
+        DebugLog?.LogInformation("-> EnqueueMessageRelatedNotifications. ChatId={ChatId}, EntryId={EntryId}, Kind={Kind}, UserIds#={UserIdCount}",
             chatId, entryId, kind, userIds.Count);
 
         if (entryId.HasValue && entryId.Value.ChatId != chatId)

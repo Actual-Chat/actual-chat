@@ -588,24 +588,24 @@ public class Chats(IServiceProvider services) : IChats
             var textEntryRange = await Backend.GetIdRange(newChatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
             var maxEntryId = textEntryRange.End > 0 ? textEntryRange.End - 1 : 0;
             var userIds = await AuthorsBackend.ListUserIds(newChatId, cancellationToken).ConfigureAwait(false);
-            var updateUserChatSettingsCount = 0;
+            var updateUserChatSettingCount = 0;
             var updateChatPositionCount = 0;
             foreach (var userId in userIds) {
                 var updateUserChatSettingsTask = UpdateUserChatSettings(userId);
                 var updateChatPositionsTask = UpdateChatPosition(userId, maxEntryId);
                 await Task.WhenAll(updateUserChatSettingsTask, updateUserChatSettingsTask).ConfigureAwait(false);
                 if (await updateUserChatSettingsTask.ConfigureAwait(false))
-                    updateUserChatSettingsCount++;
+                    updateUserChatSettingCount++;
                 if (await updateChatPositionsTask.ConfigureAwait(false))
                     updateChatPositionCount++;
             }
 
             Log.LogInformation("OnCopyChat({CorrelationId}): Updated {Count} UserChatSettings kvas records",
-                correlationId, updateUserChatSettingsCount);
+                correlationId, updateUserChatSettingCount);
             Log.LogInformation("OnCopyChat({CorrelationId}): Updated {Count} ChatPositions records",
                 correlationId, updateChatPositionCount);
 
-            hasChanges |= updateUserChatSettingsCount > 0;
+            hasChanges |= updateUserChatSettingCount > 0;
             hasChanges |= updateChatPositionCount > 0;
         }
 
