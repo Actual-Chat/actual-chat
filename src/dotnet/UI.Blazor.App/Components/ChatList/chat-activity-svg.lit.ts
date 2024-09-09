@@ -20,7 +20,7 @@ class ChatActivitySvg extends LitElement {
     protected render(): unknown {
         if (this.isActive) {
             return html`
-                <svg xmlns="http://www.w3.org/2000/svg" width="${this.size * 4}" height="${this.size * 4}" viewBox="-2 -2 30 30" fill="none" stroke="var(--${this.activeColor})" stroke-width="2" stroke-linecap="butt" stroke-linejoin="bevel">
+                <svg xmlns="http://www.w3.org/2000/svg" width="${this.size * 4}" height="${this.size * 4}" viewBox="0 0 24 24" fill="none" stroke="var(--${this.activeColor})" stroke-width="2" stroke-linecap="butt" stroke-linejoin="bevel">
                     <polygon id="stream-svg-polygon" points="11 5 6 9 2 9 2 15 6 15 11 19 11 5">
                         <animate
                             href="#stream-svg-polygon"
@@ -51,7 +51,7 @@ class ChatActivitySvg extends LitElement {
             `;
         } else {
             return html`
-                <svg xmlns="http://www.w3.org/2000/svg" width="${this.size * 4}" height="${this.size * 4}" viewBox="-2 -2 30 30" fill="none" stroke="var(--${this.inactiveColor})" stroke-width="2" stroke-linecap="butt" stroke-linejoin="bevel">
+                <svg xmlns="http://www.w3.org/2000/svg" width="${this.size * 4}" height="${this.size * 4}" viewBox="0 0 24 24" fill="none" stroke="var(--${this.inactiveColor})" stroke-width="2" stroke-linecap="butt" stroke-linejoin="bevel">
                     <polygon id="stream-svg-polygon" points="11 5 6 9 2 9 2 15 6 15 11 19 11 5">
                         <animate
                             href="#stream-svg-polygon"

@@ -3,29 +3,46 @@
 @{
     List<string> circles = ["bg-red-400", "bg-green-400", "bg-blue-400", "bg-yellow-400", "bg-gray-400", "bg-yellow-400", "bg-purple-400"];
     var size = Size == SquareSize.Size6 ? "w-6 h-6" : "w-8 h-8";
+    var backSize = Size == SquareSize.Size6 ? "w-8 h-8" : "w-10 h-10";
     var maxLength = MaxIconCount > circles.Count ? circles.Count : MaxIconCount;
     var currentCount = circles.Count;
 }
 
 <div class="author-circle-group @Class">
-    @{
-        var zIndex = 1;
-        for (var i = 0; i < maxLength; i++) {
-            var color = circles[i];
-            <div class="@size @color rounded-full overflow-hidden author-circle-group-item" style="z-index: @zIndex;"></div>
-            zIndex++;
+    <div class="c-container back">
+        @{
+            for (var i = 0; i < maxLength; i++) {
+                var lastAuthorCls = i == maxLength - 1 ? "last-author" : "";
+                <div class="@backSize @lastAuthorCls author-circle-group-item"></div>
+            }
+
+            if (currentCount > MaxIconCount) {
+                <div class="@backSize author-circle-group-item last" style="z-index: @(maxLength + 1);"></div>
+            }
         }
-        if (currentCount > MaxIconCount) {
-            <div class="author-circle-group-item" style="z-index: @(maxLength + 1);">
-                @{
-                    var avatarText = circles.Count < 11
-                    ? "+" + (circles.Count - MaxIconCount)
-                    : "...";
-                }
-                <AvatarText Size="@Size" Text="@avatarText" />
-            </div>
+    </div>
+    <div class="c-container">
+        @{
+            var zIndex = 10;
+            for (var i = 0; i < maxLength; i++) {
+                var color = circles[i];
+                var lastAuthorCls = i == maxLength - 1 ? "last-author" : "";
+                <div class="@size @color @lastAuthorCls author-circle-group-item" style="z-index: @zIndex;"></div>
+                zIndex--;
+            }
+
+            if (currentCount > MaxIconCount) {
+                <div class="@size author-circle-group-item last" style="z-index: @(maxLength + 1);">
+                    @{
+                        var avatarText = circles.Count < 11
+                            ? "+" + (circles.Count - MaxIconCount)
+                            : "...";
+                    }
+                    <AvatarText Size="@Size" Text="@avatarText"/>
+                </div>
+            }
         }
-    }
+    </div>
 </div>
 
 @code {

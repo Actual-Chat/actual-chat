@@ -1,6 +1,53 @@
 .author-circle-group {
+    @apply relative;
+    @apply flex-x;
+    @apply h-14 md:h-10;
+}
+.author-circle-group > .c-container {
+    @apply absolute right-0 top-3 md:top-2 z-20;
     @apply flex-x;
 }
+.author-circle-group > .c-container.back {
+    @apply top-2 md:top-1 z-10;
+}
 .author-circle-group-item {
-    @apply border border-bg-02 rounded-full;
+    @apply flex-none;
+    @apply -mr-3;
+    @apply rounded-full;
+    @apply outline outline-[var(--background-02)] outline-1;
+    @apply overflow-visible;
+}
+.back .author-circle-group-item {
+    @apply -mr-5;
+    @apply border-0;
+    background: linear-gradient(180deg, #2970FF 0.32%, #C60077 133.76%);
+    filter: blur(2px);
+    animation: back-circle-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.back .author-circle-group-item.last-author {
+    @apply -mr-5;
+}
+.author-circle-group-item.last {
+    @apply ml-5 mr-1;
+}
+.author-circle-group-item.last > .avatar-text {
+    @apply bg-01 text-01;
+}
+.back .author-circle-group-item.last {
+    @apply mr-0;
+}
+.author-circle-group > .c-container.back:not(:has(.last)) .author-circle-group-item.last-author {
+    @apply mr-0;
+}
+.author-circle-group > .c-container:not(:has(.last)) .author-circle-group-item.last-author {
+    @apply mr-1;
+}
+
+@keyframes back-circle-pulse {
+    0%, 100% {
+        opacity: 0.8;
+    }
+    50% {
+        opacity: .6;
+    }
 }

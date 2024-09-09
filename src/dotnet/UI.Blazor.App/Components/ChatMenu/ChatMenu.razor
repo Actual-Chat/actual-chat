@@ -10,15 +10,21 @@
 }
 
 <CascadingValue Value="m">
-    @if (rules.CanWrite()) {
+    @if (rules.CanWrite() && m.IsRecording) {
         <ChatMenuRecord/>
     }
+    @if (m.IsListening) {
+        <ChatMenuListen/>
+    }
+    @if (m.IsRecording || m.IsListening) {
+        <MenuEntrySeparator />
+    }
+
     @if (isPeerChat) {
         <ChatMenuStartAnonymous />
     }
     <ChatMenuPin/>
     <ChatMenuNavbarPin/>
-    <ChatMenuListen/>
     <ChatMenuAddMember/>
     @if (_listKind == ChatListKind.Active) {
         <ChatMenuRemoveFromActiveChats/>
