@@ -10,19 +10,27 @@ namespace ActualChat.MLSearch.Indexing;
 
 internal class ChatIndexTrigger(
     IQueues queues,
-    IWorkerPool<MLSearch_TriggerChatIndexing,
-    (ChatId, IndexingKind), ChatId> workerPool
+    IEnumerable<IWorkerPool<MLSearch_TriggerChatIndexing, (ChatId, IndexingKind), ChatId>> workerPools
     ) : IChatIndexTrigger
 {
     // ReSharper disable once UnusedMember.Global
     // [CommandHandler]
     public virtual async Task OnCommand(MLSearch_TriggerChatIndexing e, CancellationToken cancellationToken)
-        => await workerPool.PostAsync(e, cancellationToken).ConfigureAwait(false);
+    {
+        foreach (var workers in workerPools) {
+            await workers.PostAsync(e, cancellationToken).ConfigureAwait(false);
+        }
+    }
 
     // ReSharper disable once UnusedMember.Global
     // [CommandHandler]
     public virtual async Task OnCancelCommand(MLSearch_CancelChatIndexing e, CancellationToken cancellationToken)
-        => await workerPool.CancelAsync(e, cancellationToken).ConfigureAwait(false);
+    {
+        foreach (var workers in workerPools) {
+            await workers.CancelAsync(e, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
 
     // ReSharper disable once UnusedMember.Global
     // [EventHandler]
