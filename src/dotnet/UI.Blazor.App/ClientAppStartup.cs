@@ -3,8 +3,11 @@ using ActualChat.Hosting;
 using ActualLab.Fusion.Client;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.Fusion.Client.Interception;
+using ActualLab.Fusion.Trimming;
+using ActualLab.Interception.Trimming;
 using ActualLab.Internal;
 using ActualLab.Rpc;
+using ActualLab.Trimming;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
@@ -14,6 +17,14 @@ public static class ClientAppStartup
 {
     public static void Initialize()
     {
+        // CodeKeeper actions
+        CodeKeeper.Set<ProxyCodeKeeper, FusionProxyCodeKeeper>();
+        if (RuntimeCodegen.NativeMode != RuntimeCodegenMode.DynamicMethods) {
+            var now = CpuTimestamp.Now;
+            CodeKeeper.RunActions();
+            Tracer.Default[nameof(CodeKeeper)].Point($"RunActions took {now.Elapsed.ToShortString()}");
+        }
+
         // Rpc & Fusion defaults
         RpcDefaults.Mode = RpcMode.Client;
         FusionDefaults.Mode = FusionMode.Client;
