@@ -11,7 +11,7 @@
         return;
     }
 
-    Context.ModalDataBag.Set(nameof(ComputedModel.MembersCount), m.MembersCount);
+    Context.ModalDataBag.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
     var isOwner = m.IsOwner;
     var status = m.Place.IsPublic ? "Public" : "Private";
 }
@@ -146,7 +146,7 @@
 
         return new() {
             Place = place,
-            MembersCount = allAuthorIds.Count,
+            MemberCount = allAuthorIds.Count,
             IsOwner = place.Rules.IsOwner(),
             EnableIncompleteUI = enableIncompleteUI,
         };
@@ -164,7 +164,7 @@
         public static readonly ComputedModel Loading = new();
 
         public Place? Place { get; init; }
-        public int MembersCount { get; init; }
+        public int MemberCount { get; init; }
         public bool IsOwner { get; init; }
         public bool EnableIncompleteUI { get; init; }
     }

@@ -18,8 +18,8 @@ export class MentionList {
         })
     }
 
-    private scrollToCurrentItem = (mutationsList, observer) => {
-        for (const mutation of mutationsList) {
+    private scrollToCurrentItem = (mutations, observer) => {
+        for (const mutation of mutations) {
             if (mutation.type === 'attributes' && mutation.target.classList.contains('selected')) {
                 const item = mutation.target as HTMLElement;
                 const rect = item.getBoundingClientRect();

@@ -15,7 +15,7 @@
     if (_form == null)
         return;
 
-    Context.ModalDataBag.Set(nameof(ComputedModel.MembersCount), m.MembersCount);
+    Context.ModalDataBag.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
     Context.ModalDataBag.Set(nameof(ComputedModel.IsPublic), m.IsPublic);
     var isPlaceChat = m.IsPlace;
     var publicChatLabel = !isPlaceChat ? "Public" : "Place";
@@ -105,7 +105,7 @@
                         <i class="icon-people"></i>
                     </Icon>
                     <Content>
-                        @m.MembersCount Members
+                        @m.MemberCount Members
                     </Content>
                     <Right>
                         <i class="icon-chevron-right text-3xl"></i>
@@ -117,7 +117,7 @@
                         <i class="icon-people"></i>
                     </Icon>
                     <Content>
-                        @m.MembersCount Members
+                        @m.MemberCount Members
                     </Content>
                     <Caption>
                         Use place settings to edit members
@@ -219,7 +219,7 @@
         return new() {
             Chat = chat,
             IsOwner = chat.Rules.IsOwner(),
-            MembersCount = allAuthorIds.Count,
+            MemberCount = allAuthorIds.Count,
             IsPublic = isPublic,
             IsPlace = isPlace,
             EnableIncompleteUI = enableIncompleteUI,
@@ -299,7 +299,7 @@
 
         public Chat? Chat { get; init; }
         public bool IsOwner { get; init; }
-        public int MembersCount { get; init; }
+        public int MemberCount { get; init; }
         public bool IsPublic { get; init; }
         public bool IsPlace { get; init; }
         public bool EnableIncompleteUI { get; init; }

@@ -4,8 +4,8 @@
 
 @{
     var m = State.Value;
-    Context.Title = $"{m.MembersCount} members";
-    Context.ModalDataBag.Set(nameof(PlaceSettingsStartModalPage.ComputedModel.MembersCount), m.MembersCount);
+    Context.Title = $"{m.MemberCount} members";
+    Context.ModalDataBag.Set(nameof(PlaceSettingsStartModalPage.ComputedModel.MemberCount), m.MemberCount);
 }
 
 <TileItem Click="@OnInviteClick">
@@ -75,7 +75,7 @@
         => new() {
             InitialValue = new ComputedModel {
                 // Try to use stored members count to avoid header title blinking.
-                MembersCount = Context.ModalDataBag.Get(nameof(PlaceSettingsStartModalPage.ComputedModel.MembersCount), 1),
+                MemberCount = Context.ModalDataBag.Get(nameof(PlaceSettingsStartModalPage.ComputedModel.MemberCount), 1),
             },
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
@@ -110,7 +110,7 @@
         }
 
         return new() {
-            MembersCount = allAuthorIds.Count,
+            MemberCount = allAuthorIds.Count,
             AuthorIds = authors.Select(c => c.Item1).ToApiArray(),
             OwnerIds = ownerIds,
             OwnAuthorId = ownAuthor!.Id,
@@ -134,7 +134,7 @@
     // Nested types
 
     public sealed record ComputedModel {
-        public int MembersCount { get; init; }
+        public int MemberCount { get; init; }
         public ApiArray<AuthorId> AuthorIds { get; init; }
         public ApiArray<AuthorId> OwnerIds { get; init; }
         public AuthorId OwnAuthorId { get; init; }

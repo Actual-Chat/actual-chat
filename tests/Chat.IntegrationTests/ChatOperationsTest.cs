@@ -474,7 +474,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
     }
 
     [Fact]
-    public async Task RemovingChatShouldRemoveItFromContactsList()
+    public async Task RemovingChatShouldRemoveItFromContactList()
     {
         var appHost = AppHost;
         var services = appHost.Services;

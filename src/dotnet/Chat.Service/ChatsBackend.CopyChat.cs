@@ -135,7 +135,7 @@ public partial class ChatsBackend
                             batchLimit,
                             cancellationToken)
                         .ConfigureAwait(false);
-                    if (result.ProcessedChatEntriesCount == 0)
+                    if (result.ProcessedChatEntryCount == 0)
                         proceed = false;
                     else {
                         hasChanges = true;
@@ -915,5 +915,5 @@ public partial class ChatsBackend
         string CorrelationId,
         MigratedAuthors MigratedAuthors);
 
-    public sealed record CopyChatEntriesResult(long ProcessedChatEntriesCount, ChatEntryId LastEntryId, Range<long> AudioEntryId);
+    public sealed record CopyChatEntriesResult(long ProcessedChatEntryCount, ChatEntryId LastEntryId, Range<long> AudioEntryId);
 }

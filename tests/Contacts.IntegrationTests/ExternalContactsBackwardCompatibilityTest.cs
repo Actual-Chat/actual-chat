@@ -43,7 +43,7 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
     public void ShouldExposeCorrectRpcLegacyMethods()
     {
         var serviceRegistry = AppHost.Services.RpcHub().ServiceRegistry;
-        var mExternalContactsList = (Service: (Symbol)nameof(IExternalContacts), Method: (Symbol)"List");
+        var mExternalContactList = (Service: (Symbol)nameof(IExternalContacts), Method: (Symbol)"List");
 
         var r = serviceRegistry.GetServerMethodResolver(new VersionSet($"Api={Constants.Api.StringVersion}"));
         Out.WriteLine(r.ToString());
@@ -53,12 +53,12 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
         foreach (var version in testedVersions) {
             r = serviceRegistry.GetServerMethodResolver(new VersionSet(version));
             Out.WriteLine(r.ToString());
-            r.LegacyMethods.SingleOrDefault(x => x.Key == mExternalContactsList).Should().NotBeNull();
+            r.LegacyMethods.SingleOrDefault(x => x.Key == mExternalContactList).Should().NotBeNull();
         }
 
         r = serviceRegistry.GetServerMethodResolver(new VersionSet("Api=1.11"));
         Out.WriteLine(r.ToString());
-        (r.LegacyMethods?.SingleOrDefault(x => x.Key == mExternalContactsList) ?? null).Should().BeNull();
+        (r.LegacyMethods?.SingleOrDefault(x => x.Key == mExternalContactList) ?? null).Should().BeNull();
     }
 
     [Fact]

@@ -83,7 +83,7 @@
                     NewInviteId="@_newInviteId"
                     AllowRevoke="true"/>
             }
-            <Button IsDisabled="@(m.Invites.Count >= MaxInvitesCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
+            <Button IsDisabled="@(m.Invites.Count >= MaxInviteCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
                 <Icon><i class="icon-plus text-xl"></i></Icon>
                 <Title>New private join link</Title>
             </Button>
@@ -146,7 +146,7 @@
 
 
 @code {
-    private const int MaxInvitesCount = 5;
+    private const int MaxInviteCount = 5;
     private Form?_formRef;
     private FormModel? _form;
     private Symbol _newInviteId = Symbol.Empty;

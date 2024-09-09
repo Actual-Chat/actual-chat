@@ -3,8 +3,8 @@
 @inherits ComputedStateComponent<EditChatMembersModalPage.ComputedModel>
 @{
     var m = State.Value;
-    Context.Title = $"{m.MembersCount} members";
-    Context.ModalDataBag.Set(nameof(ChatSettingsStartModalPage.ComputedModel.MembersCount), m.MembersCount);
+    Context.Title = $"{m.MemberCount} members";
+    Context.ModalDataBag.Set(nameof(ChatSettingsStartModalPage.ComputedModel.MemberCount), m.MemberCount);
 }
 
 <TileItem Click="@OnInviteClick">
@@ -77,7 +77,7 @@
         => new() {
             InitialValue = new ComputedModel {
                 // Try to use stored members count to avoid header title blinking.
-                MembersCount = Context.ModalDataBag.Get(nameof(ChatSettingsStartModalPage.ComputedModel.MembersCount), 1),
+                MemberCount = Context.ModalDataBag.Get(nameof(ChatSettingsStartModalPage.ComputedModel.MemberCount), 1),
             },
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
@@ -101,9 +101,7 @@
             .ToList();
 
         if (searchPhrase.IsEmpty) {
-            Comparison<(AuthorId, string)> comparison = (info1, info2)
-                => OrdinalCompare(info1.Item2, info2.Item2);
-            authors.Sort(comparison);
+            authors.Sort((Comparison<(AuthorId, string)>)Compare);
         } else {
             authors = authors
                 .WithSearchMatchRank(searchPhrase, c => c.authorName)
@@ -114,11 +112,14 @@
         }
 
         return new() {
-            MembersCount = allAuthorIds.Count,
+            MemberCount = allAuthorIds.Count,
             AuthorIds = authors.Select(c => c.Item1).ToApiArray(),
             OwnerIds = ownerIds,
             OwnAuthorId = ownAuthor!.Id,
         };
+
+        int Compare((AuthorId, string) info1, (AuthorId, string) info2)
+            => OrdinalCompare(info1.Item2, info2.Item2);
     }
 
     private void OnInviteClick()
@@ -138,7 +139,7 @@
     // Nested types
 
     public sealed record ComputedModel {
-        public int MembersCount { get; init; }
+        public int MemberCount { get; init; }
         public ApiArray<AuthorId> AuthorIds { get; init; }
         public ApiArray<AuthorId> OwnerIds { get; init; }
         public AuthorId OwnAuthorId { get; init; }
