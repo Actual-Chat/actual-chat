@@ -15,7 +15,8 @@ internal class ChatIndexTrigger(
 {
     // ReSharper disable once UnusedMember.Global
     // [CommandHandler]
-    public virtual async Task OnCommand(MLSearch_TriggerChatIndexing e, CancellationToken cancellationToken) {
+    public virtual async Task OnCommand(MLSearch_TriggerChatIndexing e, CancellationToken cancellationToken)
+    {
         foreach (var workers in workerPools) {
             await workers.PostAsync(e, cancellationToken).ConfigureAwait(false);
         }
@@ -23,12 +24,13 @@ internal class ChatIndexTrigger(
 
     // ReSharper disable once UnusedMember.Global
     // [CommandHandler]
-    public virtual async Task OnCancelCommand(MLSearch_CancelChatIndexing e, CancellationToken cancellationToken) {
+    public virtual async Task OnCancelCommand(MLSearch_CancelChatIndexing e, CancellationToken cancellationToken)
+    {
         foreach (var workers in workerPools) {
             await workers.CancelAsync(e, cancellationToken).ConfigureAwait(false);
         }
     }
-        
+
 
     // ReSharper disable once UnusedMember.Global
     // [EventHandler]
