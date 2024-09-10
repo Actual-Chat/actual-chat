@@ -2,10 +2,6 @@ import { AUDIO_REC as AR, AUDIO_VAD as AV } from '_constants';
 import { clamp, lerp, RunningUnitMedian, RunningEMA } from 'math';
 import { Versioning } from 'versioning';
 import * as ort from 'onnxruntime-web/wasm';
-import wasm from 'onnxruntime-web/dist/ort-wasm.wasm';
-import wasmThreaded from 'onnxruntime-web/dist/ort-wasm-threaded.wasm';
-import wasmSimd from 'onnxruntime-web/dist/ort-wasm-simd.wasm';
-import wasmSimdThreaded from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm';
 import { VoiceActivityChange, VoiceActivityDetector, NO_VOICE_ACTIVITY } from './audio-vad-contract';
 import { Log } from 'logging';
 
@@ -171,9 +167,12 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     protected abstract appendChunkInternal(monoPcm: Float32Array): Promise<number|null>;
 }
 
+const CONTEXT_SAMPLES = 64;
 export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
     private readonly modelUri: URL;
 
+    private readonly context: Float32Array;
+    private readonly buffer: Float32Array;
     private session: ort.InferenceSession = null;
     private state: ort.Tensor;
 
@@ -181,6 +180,8 @@ export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
         super(true, AR.SAMPLE_RATE, lastActivityEvent);
 
         this.modelUri = modelUri;
+        this.context = new Float32Array(CONTEXT_SAMPLES).fill(0);
+        this.buffer = new Float32Array(AR.SAMPLES_PER_WINDOW_32 + CONTEXT_SAMPLES).fill(0);
         this.resetInternal();
 
         ort.env.wasm.numThreads = 4;
@@ -202,7 +203,7 @@ export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
     }
 
     protected async appendChunkInternal(monoPcm: Float32Array): Promise<number | null> {
-        const { state } = this;
+        const { state, buffer, context } = this;
         if (this.session == null) {
             // skip processing until initialized
             return null;
@@ -212,13 +213,16 @@ export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
             throw new Error(`appendChunk() accepts ${AR.SAMPLES_PER_WINDOW_32} sample audio windows only.`);
         }
 
-        const tensor = new ort.Tensor(monoPcm, [1, AR.SAMPLES_PER_WINDOW_32]);
+        buffer.set(context);
+        buffer.set(monoPcm, context.length);
+        const tensor = new ort.Tensor(buffer, [1, buffer.length]);
         const srArray = new BigInt64Array(1).fill(BigInt(16000));
         const sr = new ort.Tensor(srArray);
         const feeds = { input: tensor, state: state, sr: sr };
         const result = await this.session.run(feeds);
         const { output, stateN } = result;
         this.state = stateN;
+        this.context.set(monoPcm.slice(-context.length));
         return output.data[0] as number;
     }
 
