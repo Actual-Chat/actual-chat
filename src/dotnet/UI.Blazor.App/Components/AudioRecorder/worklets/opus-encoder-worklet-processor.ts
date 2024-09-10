@@ -24,7 +24,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     private state: 'running' | 'stopped' | 'inactive' = 'inactive';
     private stateServer: RecorderStateServer & Disposable;
     private worker: OpusEncoderWorker & Disposable;
-    private samplesSinceLastReporting = 0;
+    private samplesSinceLastReporting = -1;
     private frameCount: number = 0;
     private lastFrameProcessedAt: number = 0;
     private promiseQueue: Promise<void> = Promise.resolve();
@@ -48,10 +48,17 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     public async init(workerPort: MessagePort): Promise<void> {
         this.worker = rpcClientServer<OpusEncoderWorker>(`${logScope}.worker`, workerPort, this);
         this.state = 'running';
+        this.samplesSinceLastReporting = -1;
+        this.frameCount = 0;
+        this.lastFrameProcessedAt = 0;
     }
 
     public async stop(_noWait?: RpcNoWait): Promise<void> {
         this.state = 'stopped';
+        this.samplesSinceLastReporting = -1;
+        this.frameCount = 0;
+        this.lastFrameProcessedAt = 0;
+        this.buffer.reset();
     }
 
     public async releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
@@ -97,6 +104,10 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
                 }
             }
 
+            if (this.samplesSinceLastReporting == -1) {
+                this.samplesSinceLastReporting = 0;
+                void this.server.recordingInProgress(rpcNoWait);
+            }
             this.samplesSinceLastReporting += input[0].length;
             if (this.samplesSinceLastReporting > AR.SAMPLES_PER_RECORDING_IN_PROGRESS_CALL) {
                 this.samplesSinceLastReporting = 0;

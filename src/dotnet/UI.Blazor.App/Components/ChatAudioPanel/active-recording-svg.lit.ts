@@ -82,28 +82,36 @@ class ActiveRecordingSvg extends LitElement {
     @property()
     size = 10;
 
+    private readonly height1$: Observable<number>;
+    private readonly height2$: Observable<number>;
+    private readonly height3$: Observable<number>;
+    private readonly offset1$: Observable<number>;
+    private readonly offset2$: Observable<number>;
+    private readonly offset3$: Observable<number>;
+    private readonly isVoiceActive$: Observable<boolean>;
+    private readonly recorderStateChangedSubscription: Subscription;
+
     private isVoiceActive = false;
     private isRecording = false;
     private lastIsRecording = false;
 
-    protected render(): unknown {
-        const { size } = this;
-        const width = 10;
+
+    constructor() {
+        super();
+
         const minHeight = 10;
         const maxHeight = 100;
-        const isVoiceActive$ = OpusMediaRecorder.recorderStateChanged$
+        this.isVoiceActive$ = OpusMediaRecorder.recorderStateChanged$
             .pipe(map(s => s.isVoiceActive), distinctUntilChanged());
-        const isRecording$ = OpusMediaRecorder.recorderStateChanged$
-            .pipe(map(s => s.isRecording), distinctUntilChanged());
         const signalPower$ = OpusMediaRecorder.audioPowerChanged$
             .pipe(throttleTime(0, animationFrameScheduler));
 
-        isVoiceActive$.subscribe(b => this.isVoiceActive = b);
-        isRecording$.subscribe(b => this.isRecording = b);
+        this.recorderStateChangedSubscription = OpusMediaRecorder.recorderStateChanged$.subscribe(s => {
+           this.isVoiceActive = s.isVoiceActive;
+           this.isRecording = s.isRecording;
+        });
 
-        const edgeDotCls = observe(isVoiceActive$.pipe(map(b => b ? "active" : "non-active")));
-        const centerDotCls = observe(isVoiceActive$.pipe(map(b => b ? "" : "in-rest")));
-        const height1$ = signalPower$
+        this.height1$ = signalPower$
             .pipe(scan<number, Result, RunningMax>((runningMaxOrResult, p, i) => {
                 const runningMax: RunningMax = runningMaxOrResult['runningMax'] || runningMaxOrResult;
                 const { isRecording, isVoiceActive, lastIsRecording } = this;
@@ -130,26 +138,40 @@ class ActiveRecordingSvg extends LitElement {
                     : height;
             }));
 
-        const height2$ = height1$
+        this.height2$ = this.height1$
             .pipe(map(h => clamp(0.7 * h, minHeight, maxHeight)))
-            .pipe(delayWhen(() => height1$.pipe(skip(5), take(1)))); // with 150 ms delay
-        const height3$ = height1$
+            .pipe(delayWhen(() => this.height1$.pipe(skip(5), take(1)))); // with 150 ms delay
+        this.height3$ = this.height1$
             .pipe(map(h => clamp(0.4 * h, minHeight, maxHeight)))
-            .pipe(delayWhen(() => height1$.pipe(skip(10), take(1)))); // with 300 ms delay
+            .pipe(delayWhen(() => this.height1$.pipe(skip(10), take(1)))); // with 300 ms delay
 
         // offsets in percent
-        const offset1$ = height1$
+        this.offset1$ = this.height1$
             .pipe(map(h => 50 - h / 2));
-        const offset2$ = height2$
+        this.offset2$ = this.height2$
             .pipe(map(h => 50 - h / 2));
-        const offset3$ = height3$
+        this.offset3$ = this.height3$
             .pipe(map(h => 50 - h / 2));
-        const height1 = observe(height1$);
-        const height2 = observe(height2$);
-        const height3 = observe(height3$);
-        const offset1 = observe(offset1$);
-        const offset2 = observe(offset2$);
-        const offset3 = observe(offset3$);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+
+        this.recorderStateChangedSubscription.unsubscribe();
+    }
+
+    protected render(): unknown {
+        const { size } = this;
+        const width = 10;
+
+        const height1 = observe(this.height1$);
+        const height2 = observe(this.height2$);
+        const height3 = observe(this.height3$);
+        const offset1 = observe(this.offset1$);
+        const offset2 = observe(this.offset2$);
+        const offset3 = observe(this.offset3$);
+        const edgeDotCls = observe(this.isVoiceActive$.pipe(map(b => b ? "active" : "non-active")));
+        const centerDotCls = observe(this.isVoiceActive$.pipe(map(b => b ? "" : "in-rest")));
 
         return html`
             <svg xmlns="http://www.w3.org/2000/svg" width="${size * 4}" height="${size * 4}"
