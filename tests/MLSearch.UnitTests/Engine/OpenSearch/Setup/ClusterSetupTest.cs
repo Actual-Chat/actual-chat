@@ -311,7 +311,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
         var meshLocks = new Mock<IMeshLocks>();
         meshLocks
             .SetupGet(x => x.LockOptions)
-            .Returns(MeshLocksBase.DefaultLockOptions);
+            .Returns(MeshLockOptions.Default);
         meshLocks
             .Setup(locks => locks.Lock(
                 It.IsAny<string>(),
