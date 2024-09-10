@@ -2,19 +2,25 @@ using MemoryPack;
 
 namespace ActualChat.Mesh;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record MeshLockOptions(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] TimeSpan ExpirationPeriod,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] float RenewalPeriodRatio = 0.5f
+public sealed record MeshLockOptions(
+    TimeSpan ExpirationPeriod,
+    float RenewalPeriodRatio = 0.5f
 ) {
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    public static MeshLockOptions Default { get; set; } =
+#if DEBUG
+        new(TimeSpan.FromSeconds(60)) { WarningDelay = TimeSpan.FromSeconds(65) };
+#else
+        new(TimeSpan.FromSeconds(15)) { WarningDelay = TimeSpan.FromSeconds(20) };
+#endif
+
+    public TimeSpan UnconditionalCheckPeriod { get; init; } = TimeSpan.FromSeconds(10);
     public TimeSpan WarningDelay { get; init; } // Negative or zero = no warning
 
     // Computed properties
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public TimeSpan RenewalPeriod => ExpirationPeriod * RenewalPeriodRatio;
 
-    public virtual void AssertValid()
+    public void RequireValid()
     {
         if (ExpirationPeriod <= TimeSpan.Zero)
             throw StandardError.Constraint<MeshLockOptions>($"{nameof(ExpirationPeriod)} is zero or negative.");

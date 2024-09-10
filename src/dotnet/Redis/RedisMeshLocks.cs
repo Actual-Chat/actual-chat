@@ -196,17 +196,12 @@ public class RedisMeshLocks : MeshLocksBase
 
     public override IMeshLocks With(string? keyPrefix, MeshLockOptions? lockOptions)
     {
-        if (!keyPrefix.IsNullOrEmpty())
-            return new RedisMeshLocks(RedisDb, keyPrefix, Clock, Log) {
-                LockOptions = lockOptions ?? LockOptions,
-            };
+        if (keyPrefix.IsNullOrEmpty() && ReferenceEquals(lockOptions, null))
+            return this;
 
-        if (!ReferenceEquals(lockOptions, null) && lockOptions != LockOptions)
-            return new RedisMeshLocks(RedisDb, "", Clock, Log) {
-                LockOptions = lockOptions,
-            };
-
-        return this;
+        return new RedisMeshLocks(RedisDb, keyPrefix ?? "", Clock, Log) {
+            LockOptions = lockOptions ?? LockOptions,
+        };
     }
 
     // Protected methods

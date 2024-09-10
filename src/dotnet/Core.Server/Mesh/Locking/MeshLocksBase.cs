@@ -7,14 +7,6 @@ public abstract class MeshLocksBase(MomentClock? clock = null, ILogger? log = nu
 {
     private static bool DebugMode => Constants.DebugMode.MeshLocks;
 
-    public static readonly MeshLockOptions DefaultLockOptions =
-#if DEBUG
-        new(TimeSpan.FromSeconds(60)) { WarningDelay = TimeSpan.FromSeconds(65) };
-#else
-        new(TimeSpan.FromSeconds(15)) { WarningDelay = TimeSpan.FromSeconds(20) };
-#endif
-    public static readonly TimeSpan DefaultUnconditionalCheckPeriod = TimeSpan.FromSeconds(10);
-
     protected readonly string HolderKeyPrefix = Alphabet.AlphaNumeric.Generator8.Next() + "-";
     protected long LastHolderId;
     protected ILogger? Log { get; init; } = log;
@@ -22,8 +14,7 @@ public abstract class MeshLocksBase(MomentClock? clock = null, ILogger? log = nu
     ILogger? IMeshLocksBackend.Log => Log;
     ILogger? IMeshLocksBackend.DebugLog => DebugLog;
 
-    public MeshLockOptions LockOptions { get; init; } = DefaultLockOptions;
-    public TimeSpan UnconditionalCheckPeriod { get; init; } = DefaultUnconditionalCheckPeriod;
+    public MeshLockOptions LockOptions { get; init; } = MeshLockOptions.Default;
     public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.5, 10);
 
     public MomentClock Clock { get; init; } = clock ?? MomentClockSet.Default.SystemClock;
@@ -92,7 +83,7 @@ public abstract class MeshLocksBase(MomentClock? clock = null, ILogger? log = nu
                 try {
                     consumeTask ??= changes.Reader.WaitToReadAndConsumeAsync(CancellationToken.None);
                     var canRead = await consumeTask
-                        .WaitAsync(UnconditionalCheckPeriod, cancellationToken)
+                        .WaitAsync(lockOptions.UnconditionalCheckPeriod, cancellationToken)
                         .ConfigureAwait(false);
                     // It's important to throw on cancellation here: canRead may return false exactly due to this
                     cancellationToken.ThrowIfCancellationRequested();

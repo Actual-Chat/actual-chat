@@ -45,15 +45,15 @@ public class ShardWorkerTest(ITestOutputHelper @out)
 
     // Nested types
 
-    public class ShardWorker1(IServiceProvider services, ITestOutputHelper @out1, string name)
+    public class ShardWorker1(IServiceProvider services, ITestOutputHelper @out, string name)
         : ShardWorker(services, ShardScheme.TestBackend)
     {
         private static readonly object?[] ShardOwners = new object?[ShardScheme.TestBackend.ShardCount];
         private static readonly RandomTimeSpan WaitDelay = TimeSpan.FromSeconds(0.1).ToRandom(0.5);
-        private ITestOutputHelper Out { get; } = @out1;
+        private ITestOutputHelper Out { get; } = @out;
 
         public Channel<int> Channel { get; } = System.Threading.Channels.Channel.CreateUnbounded<int>(new UnboundedChannelOptions() {
-            SingleReader = true,
+            SingleReader = false,
             SingleWriter = false,
         });
 

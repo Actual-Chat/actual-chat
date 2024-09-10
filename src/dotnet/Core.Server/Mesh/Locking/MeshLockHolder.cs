@@ -34,7 +34,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
         if (key.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(key));
 
-        options.AssertValid();
+        options.RequireValid();
 
         Backend = backend;
         Id = id;

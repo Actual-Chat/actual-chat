@@ -5,6 +5,7 @@ using ActualChat.Mesh;
 using ActualChat.Module;
 using StackExchange.Redis;
 using ActualLab.Redis;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.Redis.Module;
 
@@ -40,17 +41,20 @@ public sealed class RedisModule(IServiceProvider moduleServices)
         var cfg = ConfigurationOptions.Parse(configuration);
         cfg.SocketManager = SocketManager.ThreadPool;
         services.AddRedisDb<TContext>(cfg, keyPrefix);
-        services.AddSingleton<IMeshLocks<TContext>>(c => {
-            var isTested = c.HostInfo().IsTested;
-            return !isTested
-                ? new RedisMeshLocks<TContext>(c)
-                : new RedisMeshLocks<TContext>(c) {
-                    // To speedup tests relying on this
-                    UnconditionalCheckPeriod = TimeSpan.FromSeconds(3),
-                };
-        });
+        services.AddSingleton<IMeshLocks<TContext>>(
+            c => new RedisMeshLocks<TContext>(c) {
+                LockOptions = c.GetRequiredService<MeshLockOptions>(),
+            });
     }
 
     protected override void InjectServices(IServiceCollection services)
-    { }
+        => services.TryAddSingleton(c => {
+            var lockOptions = MeshLockOptions.Default;
+            if (c.HostInfo().IsTested)
+                lockOptions = lockOptions with {
+                    ExpirationPeriod = TimeSpan.FromSeconds(10),
+                    UnconditionalCheckPeriod = TimeSpan.FromSeconds(3),
+                };
+            return lockOptions;
+        });
 }

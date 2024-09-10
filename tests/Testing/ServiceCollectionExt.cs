@@ -30,7 +30,7 @@ public static class ServiceCollectionExt
     {
         services.AddTracers(outputAccessor.Output.NewTracer(), useScopedTracers: true);
         services.AddLogging(logging => {
-            // Overriding default logging to more test-friendly one
+            // Overriding default logging to more test-friendly setup
             logging.ClearProviders();
             logging.SetMinimumLevel(LogLevel.Debug);
             // Set Constants.DebugMode.Npgsql to true, to enable Npgsql logging
@@ -42,8 +42,10 @@ public static class ServiceCollectionExt
             logging.AddFilter("ActualLab.Fusion", LogLevel.Information);
             logging.AddFilter("ActualLab.Fusion.Diagnostics", LogLevel.Information);
             logging.AddFilter("ActualLab.Fusion.Operations", LogLevel.Information);
-            logging.AddFilter("ActualChat.Redis", LogLevel.Information);
-            logging.AddFilter("ActualChat.Mesh", LogLevel.Information);
+            if (!Constants.DebugMode.MeshLocks)
+                logging.AddFilter("ActualChat.Redis", LogLevel.Information);
+            if (!Constants.DebugMode.ShardWorker)
+                logging.AddFilter("ActualChat.Mesh", LogLevel.Information);
             // logging.AddFilter("ActualLab.Fusion.EntityFramework", LogLevel.Debug);
             // logging.AddFilter("ActualLab.Fusion.EntityFramework.Operations", LogLevel.Debug);
             // logging.AddFilter(LogFilter);

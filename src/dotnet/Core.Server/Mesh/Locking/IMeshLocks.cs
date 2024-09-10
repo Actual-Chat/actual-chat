@@ -5,7 +5,6 @@ public interface IMeshLocks<TContext> : IMeshLocks;
 public interface IMeshLocks
 {
     MeshLockOptions LockOptions { get; }
-    TimeSpan UnconditionalCheckPeriod { get; }
     RetryDelaySeq RetryDelays { get; }
 
     MomentClock Clock { get; }

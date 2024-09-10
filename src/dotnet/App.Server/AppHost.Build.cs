@@ -77,7 +77,7 @@ public partial class AppHost
         // Logging
         services.AddLogging(logging => {
             logging.ClearProviders();
-            if (coreServicesOnly)
+            if (coreServicesOnly || isTested)
                 return;
 
             logging.ConfigureServerFilters(env.EnvironmentName);

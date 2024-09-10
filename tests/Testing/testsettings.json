@@ -45,12 +45,14 @@
   },
   "Logging": {
     "LogLevel": {
+      // If test uses TestAppHosts, settings here won't work:
+      // AddTestLogging overrides it for TestAppHosts.
       "Default": "Trace",
       "Microsoft": "Warning",
       "Microsoft.AspNetCore.SignalR.Internal": "Warning",
       "Microsoft.EntityFrameworkCore.Database": "Warning",
       // "Microsoft.EntityFrameworkCore.Database.Command": "Debug",
-      "Stl": "Warning",
+      "ActualLab": "Warning",
       "Microsoft.Hosting.Lifetime": "Warning",
       "NATS.Client.Core": "Warning",
       "NATS.Client": "Warning"

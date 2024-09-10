@@ -76,7 +76,7 @@ public sealed class MeshWatcher : WorkerBase
                 try {
                     consumeTask ??= changes.Reader.WaitToReadAndConsumeAsync(CancellationToken.None);
                     var canReadResult = await consumeTask
-                        .WaitResultAsync(NodeLocks.UnconditionalCheckPeriod, cancellationToken)
+                        .WaitResultAsync(NodeLocks.LockOptions.UnconditionalCheckPeriod, cancellationToken)
                         .ConfigureAwait(false);
                     if (canReadResult.IsValue(out var canRead, out var error)) {
                         // It's important to throw on cancellation here: canRead may return false exactly due to this
