@@ -42,7 +42,7 @@ public class FileUploader(Hub hub)
                 return result!;
             }
             var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            throw new Exception(error);
+            throw StandardError.External(error);
         } catch(Exception) when (cancellationToken.IsCancellationRequested) {
             throw new TaskCanceledException();
         }

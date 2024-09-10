@@ -10,7 +10,6 @@ public class AndroidWebViewClient(
     ILogger log
     ) : WebViewClient
 {
-    private const string AppHostAddress = MauiSettings.LocalHost;
     private ILogger? _log;
 
     private ILogger Log => _log ??= StaticLog.Factory.CreateLogger(GetType());
@@ -65,7 +64,7 @@ public class AndroidWebViewClient(
 
         var requestUrl = request?.Url;
         if (request != null && requestUrl != null
-            && OrdinalEquals(requestUrl.Host, AppHostAddress)
+            && OrdinalEquals(requestUrl.Host, MauiSettings.LocalHost)
             && ContentDownloader.CanHandlePath(requestUrl.EncodedPath)) {
             var (stream, mimeType) = ContentDownloader.OpenInputStream(requestUrl.EncodedPath!);
             if (stream == null)
@@ -82,7 +81,7 @@ public class AndroidWebViewClient(
         if (resourceResponse == null)
             return null;
 
-        if (!OrdinalEquals(requestUrl?.Host, AppHostAddress))
+        if (!OrdinalEquals(requestUrl?.Host, MauiSettings.LocalHost))
             return resourceResponse;
 
         resourceResponse.ResponseHeaders?.Remove(cacheControlKey);

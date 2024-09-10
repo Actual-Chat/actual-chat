@@ -208,7 +208,7 @@ public partial class AppHost
             .ToList();
         if (transientDisposables.Count != 0) {
             var transientDisposablesString = string.Join("", transientDisposables.Select(x => $"{Environment.NewLine}- {x}"));
-            throw new Exception($"Disposable transient services are not allowed: {transientDisposablesString}");
+            throw StandardError.Internal($"Disposable transient services are not allowed: {transientDisposablesString}");
         }
 
         Type? AsDisposable(Type? type) => type?.IsAssignableTo(typeof(IDisposable)) == true
