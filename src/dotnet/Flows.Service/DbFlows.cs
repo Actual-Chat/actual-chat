@@ -1,6 +1,7 @@
 using ActualChat.Flows.Db;
 using ActualChat.Flows.Infrastructure;
 using ActualLab.Fusion.EntityFramework;
+using ActualLab.Interception;
 using ActualLab.IO;
 using ActualLab.Resilience;
 using ActualLab.Versioning;
@@ -50,7 +51,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         }, retryLogger, cancellationToken);
     }
 
-    // Regular method!
+    [ProxyIgnore] // Regular method!
     public virtual Task<long> OnEvent(FlowId flowId, object? evt, CancellationToken cancellationToken = default)
         => FlowHost.HandleEvent(flowId, evt, cancellationToken);
 
