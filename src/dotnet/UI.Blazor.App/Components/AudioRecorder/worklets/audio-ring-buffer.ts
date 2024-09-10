@@ -99,4 +99,10 @@ export class AudioRingBuffer {
 
         return true;
     }
+
+    public reset(): void {
+        this.readIndex = 0;
+        this.writeIndex = 0;
+        this._framesAvailable = 0;
+    }
 }

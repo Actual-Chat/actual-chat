@@ -227,6 +227,7 @@ async function stopRecording(): Promise<void> {
     audioStream = null;
     encoder?.reset();
     systemEncoder?.reset();
+    queue.clear();
     chunkTimeOffset = 0;
 }
 
