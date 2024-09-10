@@ -216,10 +216,10 @@ public class LinkPreviewsBackend(MediaSettings settings, IChatsBackend chatsBack
         return dbLinkPreview?.ToModel();
     }
 
-    private HashSet<string> ExtractUrls(ChatEntry entry)
+    private IEnumerable<string> ExtractUrls(ChatEntry entry)
     {
         var markup = markupParser.Parse(entry.Content);
-        return new LinkExtractor().GetLinks(markup);
+        return new LinkExtractor().GetLinks(markup).Where(x => Uri.TryCreate(x, UriKind.Absolute, out _));
     }
 
     // redis helpers
