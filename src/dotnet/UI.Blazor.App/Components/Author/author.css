@@ -10,44 +10,49 @@
 .author-circle-group > .c-container.back {
     @apply top-2 md:top-1 z-10;
 }
+
 .author-circle-group-item {
     @apply flex-none;
-    @apply -mr-3;
+    @apply -mr-2;
     @apply rounded-full;
-    @apply outline outline-[var(--background-02)] outline-1;
+    @apply outline outline-[var(--background-02)] outline-2;
     @apply overflow-visible;
 }
 .back .author-circle-group-item {
-    @apply -mr-5;
-    @apply border-0;
+    @apply -mr-4;
+    @apply outline-none;
     background: linear-gradient(180deg, #2970FF 0.32%, #C60077 133.76%);
-    filter: blur(2px);
+    filter: blur(1px);
     animation: back-circle-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
-.back .author-circle-group-item.last-author {
-    @apply -mr-5;
+
+.author-circle-group-item.last-author {
+    @apply mr-1;
 }
-.author-circle-group-item.last {
-    @apply ml-5 mr-1;
+.back .author-circle-group-item.last-author {
+    @apply mr-0;
+}
+
+.back .author-circle-group-item.last {
+    @apply -ml-3 mr-0;
+    @apply animate-none;
+}
+.forward .author-circle-group-item.last {
+    @apply -ml-2 mr-1;
+    @apply bg-transparent;
 }
 .author-circle-group-item.last > .avatar-text {
-    @apply bg-01 text-01;
-}
-.back .author-circle-group-item.last {
-    @apply mr-0;
-}
-.author-circle-group > .c-container.back:not(:has(.last)) .author-circle-group-item.last-author {
-    @apply mr-0;
-}
-.author-circle-group > .c-container:not(:has(.last)) .author-circle-group-item.last-author {
-    @apply mr-1;
+    @apply justify-end;
+    @apply pr-2 md:pr-1;
+    @apply bg-transparent;
+    @apply always-white text-caption-3 md:text-caption-6;
 }
 
 @keyframes back-circle-pulse {
     0%, 100% {
-        opacity: 0.8;
+        opacity: 0.9;
     }
     50% {
-        opacity: .6;
+        opacity: 0.7;
     }
 }
