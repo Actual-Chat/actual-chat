@@ -50,7 +50,14 @@ public sealed class ChatMessage(ChatEntry entry) : IVirtualListItem, IEquatable<
     }
 
     public override int GetHashCode()
-        => HashCode.Combine(Entry, ReplacementKind, Date, Flags, Entry.Attachments.Count);
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        => Entry != null
+            ? HashCode.Combine(Entry,
+                ReplacementKind,
+                Date,
+                Flags,
+                Entry.Attachments.Count)
+            : 0;
 
     public static bool operator ==(ChatMessage? left, ChatMessage? right) => Equals(left, right);
     public static bool operator !=(ChatMessage? left, ChatMessage? right) => !Equals(left, right);

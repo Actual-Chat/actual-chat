@@ -66,6 +66,7 @@ public static partial class MauiProgram
         // Uncomment to log EVERY thrown exception:
         // AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
         MauiThreadPoolSettings.Apply();
+        FixStaticContentProvider();
 #if IOS
         FixIosBaseAddress();
         NSHttpCookieStorage.SharedStorage.AcceptPolicy = NSHttpCookieAcceptPolicy.Always;
@@ -130,6 +131,28 @@ public static partial class MauiProgram
             Log.LogCritical(ex, "Failed to build MAUI app");
             throw;
         }
+    }
+
+    private static void FixStaticContentProvider()
+    {
+        // Type.GetType("Microsoft.AspNetCore.Components.WebAssembly.StaticContentProvider, Microsoft.AspNetCore.Components.WebAssembly")
+        var staticContentProviderType = Type.GetType(
+            "Microsoft.AspNetCore.Components.WebView.Maui.StaticContentProvider, Microsoft.AspNetCore.Components.WebView.Maui");
+        if (staticContentProviderType == null)
+            throw StandardError.Constraint("Static content provider not found.");
+
+        var contentTypeProviderFieldInfo = staticContentProviderType.GetField("ContentTypeProvider", BindingFlags.Static | BindingFlags.NonPublic);
+        if (contentTypeProviderFieldInfo == null)
+            throw StandardError.Constraint("Static content provider does not have a 'ContentTypeProvider' field.");
+
+        var contentTypeProviderType = contentTypeProviderFieldInfo.FieldType;
+        var contentTypeProvider = contentTypeProviderFieldInfo.GetValue(null);
+        if (contentTypeProvider == null)
+            throw StandardError.Constraint("'ContentTypeProvider' field has null value.");
+
+        var mappingsPropertyInfo = contentTypeProviderType.GetProperty("Mappings", BindingFlags.Instance | BindingFlags.Public);
+        var mapping = (IDictionary<string,string>)mappingsPropertyInfo!.GetValue(contentTypeProvider)!;
+        mapping[".mjs"] = "text/javascript";
     }
 
     private static void ConfigureApp(MauiAppBuilder builder, bool isEarlyApp)
