@@ -240,6 +240,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 }
 .fusion-close > .c-content {
     @apply flex-1 flex-y items-center justify-center gap-y-4;
+    min-width: calc(100vw);
     @apply text-white;
 }
 .fusion-close > .c-content > .c-title {
@@ -248,8 +249,40 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 }
 .fusion-close > .c-content > .c-footer {
     @apply flex-y items-center;
+    max-width: calc(80vw);
     @apply text-lg;
 }
+.fusion-close .a0, .fusion-close .a1, .fusion-close .a2, .fusion-close .a3, .fusion-close .a4,
+.fusion-close .a5, .fusion-close .a6, .fusion-close .a7, .fusion-close .a8, .fusion-close .a9 {
+    display: inline-block;
+    animation: a-fusion-close 2s ease-in-out infinite;
+}
+.fusion-close .a0 { animation-delay: -2.0s; }
+.fusion-close .a1 { animation-delay: -1.8s; }
+.fusion-close .a2 { animation-delay: -1.6s; }
+.fusion-close .a3 { animation-delay: -1.4s; }
+.fusion-close .a4 { animation-delay: -1.2s; }
+.fusion-close .a5 { animation-delay: -1.0s; }
+.fusion-close .a6 { animation-delay: -0.8s; }
+.fusion-close .a7 { animation-delay: -0.6s; }
+.fusion-close .a8 { animation-delay: -0.4s; }
+.fusion-close .a9 { animation-delay: -0.2s; }
+
+@keyframes a-fusion-close {
+    0% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    50% {
+        opacity: 0.5;
+        transform: translateX(0.05rem);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
 
 /* Page with header and footer */
 
