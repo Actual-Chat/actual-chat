@@ -106,7 +106,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
 
             if (this.samplesSinceLastReporting == -1) {
                 this.samplesSinceLastReporting = 0;
-                void this.server.recordingInProgress(rpcNoWait);
+                void this.stateServer.recordingInProgress(rpcNoWait);
             }
             this.samplesSinceLastReporting += input[0].length;
             if (this.samplesSinceLastReporting > AR.SAMPLES_PER_RECORDING_IN_PROGRESS_CALL) {
