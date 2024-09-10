@@ -19,6 +19,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     private IOnboardingUI OnboardingUI => Hub.OnboardingUI;
     private INotificationUI NotificationUI => Hub.NotificationUI;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
+    private ReloadUI ReloadUI => Hub.ReloadUI;
     private History History => Hub.History;
     private Dispatcher Dispatcher => Hub.Dispatcher;
     private MomentClock CpuClock { get; }
