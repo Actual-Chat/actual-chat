@@ -1,0 +1,38 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<SearchableChatList.Model>
+@{
+    var m = State.Value;
+}
+
+@if (m is { IsSearchOn: true, EnableIncompleteUI: true }) {
+    <FoundChatList @key="@(m.PlaceId.Value + "-found")"/>
+} else {
+    <ChatList @key="@m.PlaceId.Value" PlaceId="@PlaceId" Kind="ChatListKind.All"/>
+}
+
+@code {
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Features Features => Hub.Features();
+    private SearchUI SearchUI => Hub.SearchUI;
+
+    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var placeId = PlaceId;
+        var isSearchOn = await SearchUI.IsSearchModeOn(cancellationToken);
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        return new Model(placeId, isSearchOn, enableIncompleteUI);
+    }
+
+    public sealed record Model(PlaceId PlaceId = default, bool IsSearchOn = false, bool EnableIncompleteUI = false) {
+        public static readonly Model Loading = new();
+    }
+}

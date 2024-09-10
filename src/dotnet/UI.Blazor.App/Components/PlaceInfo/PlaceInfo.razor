@@ -139,7 +139,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var placeId = PlaceId;
-        var place = await Hub.Places.Get(Hub.Session(), placeId, default).Require().ConfigureAwait(false);
+        var place = await Places.Get(Hub.Session(), placeId, default).Require().ConfigureAwait(false);
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
         var ownerIds = await Places.ListOwnerIds(Session, placeId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = await Places.GetOwn(Session, placeId, cancellationToken).ConfigureAwait(false);
