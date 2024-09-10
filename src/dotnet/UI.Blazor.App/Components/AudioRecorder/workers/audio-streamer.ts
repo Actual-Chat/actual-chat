@@ -184,7 +184,7 @@ export class AudioStreamer {
                 transport: signalR.HttpTransportType.WebSockets,
             })
             // We use fixed number of attempts here, because the reconnection is anyway
-            // triggered after SSB / Stl.Rpc reconnect. See:
+            // triggered after SSB / ActualLab.Rpc reconnect. See:
             // - C#: ChatAudioUI.ReconnectOnRpcReconnect
             // - TS: AudioRecorder.ctor.
             // Some extra attempts are needed, coz there is a chance that the primary connection
