@@ -32,6 +32,7 @@ export enum Tune
     ChangeLanguage,
     ShowMenu,
     React,
+    DragStart,
 }
 
 export type TuneName = keyof typeof Tune;
@@ -60,6 +61,7 @@ const cooldownMap = new Map<Tune, number>([
         [Tune.ChangeLanguage, 1],
         [Tune.ShowMenu, 1],
         [Tune.React, 1],
+        [Tune.DragStart, 1],
     ]);
 
 export class TuneUI {
