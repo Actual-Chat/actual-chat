@@ -238,6 +238,7 @@ body.hoverable .chat-list .navbar-item:hover .navbar-item-ending .slot.hoverable
 }
 .navbar-chats .tab-panel .tab-panel-tabs .message-counter-badge {
     @apply h-4 min-w-6;
+    @apply mx-0;
     @apply text-primary-title;
 }
 
