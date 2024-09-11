@@ -41,6 +41,9 @@
     @apply ml-0.5;
 }
 
+.author-circle-group-item.last {
+    @apply z-0;
+}
 .back .author-circle-group-item.last {
     @apply -ml-3 mr-0.5;
     @apply animate-none;

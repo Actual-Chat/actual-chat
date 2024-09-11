@@ -18,7 +18,7 @@
             }
 
             if (currentCount > MaxIconCount) {
-                <div class="@backSize author-circle-group-item last" style="z-index: @(maxLength + 1);"></div>
+                <div class="@backSize author-circle-group-item last"></div>
             }
         }
     </div>
@@ -33,7 +33,7 @@
             }
 
             if (currentCount > MaxIconCount) {
-                <div class="@size author-circle-group-item last" style="z-index: @(maxLength + 1);">
+                <div class="@size author-circle-group-item last">
                     @{
                         var avatarText = circles.Count < 11
                             ? "+" + (circles.Count - MaxIconCount)

@@ -6,14 +6,14 @@
     if (!isVisible)
         return;
 
-    var maxCount = ScreenSize.IsNarrow() ? 3 : 2;
+    var maxCount = 5;
     var iconSize = ScreenSize.IsNarrow() ? 6 : 5;
 }
 
 @if (!ScreenSize.IsNarrow()) {
     <div class="chat-activity-border"></div>
 }
-<div class="chat-activity-panel">
+<div class="chat-activity-panel" @onclick:preventDefault="true" @onclick:stopPropagation="true">
     <div class="c-icon">
         <chat-activity-svg size="@iconSize" isActive="@m.IsAnyoneTalking" activeColor="primary" inactiveColor="text-03"/>
     </div>

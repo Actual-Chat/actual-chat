@@ -37,7 +37,7 @@
             }
 
             if (authorSids.Count > MaxIconCount) {
-                <div class="@size author-circle-group-item last" style="z-index: @(maxLength + 1);">
+                <div class="@size author-circle-group-item last">
                     @{
                         var avatarText = authorSids.Count < 11
                             ? "+" + (authorSids.Count - MaxIconCount)

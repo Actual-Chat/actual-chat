@@ -100,6 +100,9 @@ body.hoverable .tab-panel-tabs .tab-btn.on:hover .btn-content {
     @apply py-1.5 px-2;
     @apply rounded-xl;
 }
+.tab-panel-tabs .tab-btn .btn-content:has(.c-badge) {
+    @apply pr-1.5;
+}
 .tab-panel-tabs .tab-btn .btn-content .message-counter-badge {
     @apply ml-1;
 }
