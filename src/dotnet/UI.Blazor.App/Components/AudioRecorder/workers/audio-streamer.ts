@@ -82,8 +82,11 @@ export class AudioStream implements Disposable {
             frame.set(source as Uint8Array, 0);
 
         this.frames.push(frame);
-        while (this.frames.length > AS.MAX_BUFFERED_FRAMES)
-            this.frames.shift();
+        while (this.frames.length > AS.MAX_BUFFERED_FRAMES) {
+            const oldFrame = this.frames.shift();
+            if (oldFrame.buffer.byteLength >= buffer.byteLength)
+                bufferPool.release(oldFrame.buffer);
+        }
         this.frameAdded.trigger();
     }
 

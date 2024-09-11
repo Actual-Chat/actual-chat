@@ -64,7 +64,7 @@ export const AUDIO_VAD = {
     MIN_SPEECH_TO_CANCEL_PAUSE: 0.15, // Min. speech duration required to cancel non-materialized pause
     MIN_PAUSE: 0.2, // Min pause duration that triggers split
     MAX_PAUSE: 2.7, // Max pause duration that triggers split
-    MAX_CONV_PAUSE: 1.35, // Max pause duration that triggers pause in "conversation" mode
+    MAX_CONV_PAUSE: 0.65, // Max pause duration that triggers pause in "conversation" mode
     CONV_DURATION: 30, // A period from conversationSignal to the moment VAD assumes the conversation ended
     PAUSE_VARIES_FROM: 10, // Pause starts to vary from (MAX_PAUSE or MAX_CONV_PAUSE) to MIN_PAUSE at this speech duration
     PAUSE_VARY_POWER: Math.sqrt(2), // The power used in max_pause = lerp(MAX_PAUSE, MIN_PAUSE, pow(alpha, THIS_VALUE))

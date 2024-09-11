@@ -9,7 +9,7 @@ import { Log } from 'logging';
 const { logScope, debugLog } = Log.get('AudioVadWorker');
 
 export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector {
-    protected readonly probEMA = new RunningEMA(0.5, 5); // 32ms*5 ~ 150ms
+    protected readonly probEMA = new RunningEMA(0.5, 3); // 32ms*3 ~ 100ms
     protected readonly longProbEMA = new RunningEMA(0.5, 64); // 32ms*64 ~ 2s
     protected readonly probMedian = new RunningUnitMedian();
     protected readonly minSpeechSamples: number;
