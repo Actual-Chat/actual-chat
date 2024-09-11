@@ -31,6 +31,7 @@ public sealed class FlowsServiceModule(IServiceProvider moduleServices)
 
         // Internal services
         services.AddSingleton(c => new FlowHost(c));
+        services.AddHostedService(c => c.GetRequiredService<FlowHost>());
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
