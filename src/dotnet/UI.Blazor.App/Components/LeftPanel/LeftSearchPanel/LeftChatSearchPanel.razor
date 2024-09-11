@@ -1,9 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.MLSearch
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<LeftChatSearchPanel.Model>
 @{
-    var enableIncompleteUI = State.Value;
-    var cls = _isOpen ? "open" : "closed";
+    var m = State.Value;
+    var cls = m.IsOpen ? "open" : "closed";
 }
 
 <div class="left-search-panel chat-search @cls">
@@ -19,7 +19,7 @@
                     TextChanged="OnSearchInputTextChanged">
                 </TextInput>
 
-                @if (enableIncompleteUI) {
+                @if (m.EnableIncompleteUI) {
                     <ButtonRound Click="@OnAISearchClicked" Class="c-ai-btn">
                         <i class="icon-ai-search text-xl"></i>
                     </ButtonRound>
@@ -34,7 +34,7 @@
             </label>
         </div>
     </div>
-    @if (enableIncompleteUI) {
+    @if (m.EnableIncompleteUI) {
         <div class="c-content height-anchor">
             <TabPanel
                 @key="@("left-chat-search-panel")"
@@ -75,7 +75,7 @@
 </div>
 
 @code {
-    private bool _isOpen;
+    private IMutableState<bool> _isOpen = null!;
 
     TextInput? _inputRef = null;
 
@@ -93,27 +93,40 @@
     [Parameter] public string Placeholder { get; set; } = "Search";
     [Parameter] public int? MaxLength { get; set; }
 
-    protected override ComputedState<bool>.Options GetStateOptions()
-        => new() {
-            InitialValue = false,
-            Category = ComputedStateComponent.GetStateCategory(GetType()),
-        };
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        _isOpen = StateFactory.NewMutable<bool>();
+    }
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
-        => await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isOpen = await SearchUI.IsSearchModeOn(cancellationToken) || await _isOpen.Use(cancellationToken);
+        var enableIncompleteUI =  await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        return new Model(isOpen, enableIncompleteUI);
+    }
 
     private void OnClick(bool openPanel) {
         if (!openPanel)
             Cancel();
-        _isOpen = openPanel;
+        _isOpen.Value = openPanel;
+        SearchUI.PlaceId.Value = PlaceId.None;
         StateHasChanged();
     }
 
     private void OnSearchButtonClick()
         => _inputRef?.Focus();
 
-    private void OnSearchInputTextChanged(string text)
-        => SearchUI.Text.Value = text;
+    private void OnSearchInputTextChanged(string text) {
+        SearchUI.PlaceId.Value = PlaceId.None;
+        SearchUI.Text.Value = text;
+    }
 
     private ValueTask Cancel()
         => _inputRef?.Clear() ?? default;
@@ -137,5 +150,9 @@
             return null;
 
         return searchChat.Id;
+    }
+
+    public sealed record Model(bool IsOpen, bool EnableIncompleteUI) {
+        public static readonly Model None = new(false, false);
     }
 }

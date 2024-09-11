@@ -635,6 +635,25 @@ public static class AsyncEnumerableExt
             yield return item;
     }
 
+    public static async IAsyncEnumerable<T> DeduplicateNeighbors<T>(
+        this IAsyncEnumerable<T> source,
+        IEqualityComparer<T>? comparer = null)
+    {
+        comparer ??= EqualityComparer<T>.Default;
+        T prev = default!;
+        var isFirst = true;
+        await foreach (var item in source.ConfigureAwait(false)) {
+            if (isFirst) {
+                isFirst = false;
+                yield return item;
+            }
+            else if (!comparer.Equals(prev, item))
+                yield return item;
+
+            prev = item;
+        }
+    }
+
     public static IAsyncEnumerable<TSource> AsAsyncEnumerable<TSource>(this IList<TSource> source)
     {
         if (source == null)
