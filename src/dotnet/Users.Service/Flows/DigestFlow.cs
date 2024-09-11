@@ -52,7 +52,8 @@ public partial class DigestFlow : Flow
             return null;
 
         if (!TZConvert.TryGetTimeZoneInfo(account.TimeZone, out var timeZoneInfo)) {
-            Host.Log.LogWarning("Unable to find time zone info. Time zone: '{TimeZone}'.", account.TimeZone);
+            var log = Host.Services.LogFor<DigestFlow>();
+            log.LogWarning("Unable to find time zone info. Time zone: '{TimeZone}'.", account.TimeZone);
             return null;
         }
 
