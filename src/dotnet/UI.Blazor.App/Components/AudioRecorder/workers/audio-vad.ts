@@ -1,6 +1,7 @@
 import { AUDIO_REC as AR, AUDIO_VAD as AV } from '_constants';
 import { clamp, lerp, RunningUnitMedian, RunningEMA } from 'math';
 import { Versioning } from 'versioning';
+// @ts-ignore - it works, but fails validation
 import * as ort from 'onnxruntime-web/wasm';
 import { VoiceActivityChange, VoiceActivityDetector, NO_VOICE_ACTIVITY } from './audio-vad-contract';
 import { Log } from 'logging';
