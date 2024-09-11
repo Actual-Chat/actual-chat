@@ -98,6 +98,7 @@
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
+    private SearchUI SearchUI => Hub.SearchUI;
     private Features Features => Hub.Features();
     private IJSRuntime JS => Hub.JSRuntime();
 
@@ -178,6 +179,7 @@
     }
 
     private void StartRecording(bool isPushToTalk = false) {
+        SearchUI.Clear();
         isPushToTalk = IsPushToTalk |= isPushToTalk;
         if (!IsValidAction())
             return;

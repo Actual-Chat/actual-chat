@@ -7,7 +7,8 @@
     var m = State.Value;
 }
 
-<OnUIEvent TEvent="@SelectedChatChangedEvent" Handler="@OnSelectedChatChangedEvent" />
+<OnUIEvent TEvent="SearchClearedEvent" Handler="OnSearchCleared" />
+
 <div class="left-panel-content-header place">
     <div class="c-content">
         <ChatSearchBox
@@ -17,7 +18,8 @@
             Placeholder="Search"
             ShowSpinner="true"
             MaxLength="@Constants.Chat.MaxSearchFilterLength"
-            TextChanged="@OnSearchBoxTextChanged"/>
+            TextChanged="@OnSearchBoxTextChanged"
+            Cancelled="@OnSearchBoxCancelled"/>
         <div class="c-icon">
 
             @if (m.Place.Background != null) {
@@ -80,15 +82,19 @@
         return new (place, isMember);
     }
 
-    private void OnSearchBoxTextChanged(string text)
-        => SearchUI.Text.Value = text;
+    private void OnSearchBoxTextChanged(string text) {
+        SearchUI.PlaceId.Value = Place.Id;
+        SearchUI.Text.Value = text;
+    }
 
-    private async Task OnSelectedChatChangedEvent(SelectedChatChangedEvent @event, CancellationToken cancellationToken) {
-        if (_searchBoxRef != null)
+    private void OnSearchBoxCancelled()
+        => SearchUI.Clear();
+
+    private async Task OnSearchCleared(SearchClearedEvent e, CancellationToken cancellationToken) {
+        if (_searchBoxRef != null) {
             await _searchBoxRef.Cancel();
-        if (!string.IsNullOrEmpty(SearchUI.Text.Value))
-            SearchUI.Text.Value = string.Empty;
-        State.Invalidate();
+            StateHasChanged();
+        }
     }
 
     // Nested types
