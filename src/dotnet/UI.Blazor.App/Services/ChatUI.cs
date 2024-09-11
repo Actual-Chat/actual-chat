@@ -94,7 +94,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     void INotifyInitialized.Initialized()
         => this.Start();
 
-    [ComputeMethod(MinCacheDuration = 300, InvalidationDelay = 0.1)]
+    [ComputeMethod(MinCacheDuration = 300)]
     public virtual async Task<ChatInfo?> Get(ChatId chatId, CancellationToken cancellationToken = default)
     {
         DebugLog?.LogDebug("Get: {ChatId}", chatId.Value);
@@ -257,27 +257,6 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     }
 
     // SetXxx & Add/RemoveXxx
-
-    public ValueTask Pin(ChatId chatId) => SetPinState(chatId, true);
-    public ValueTask Unpin(ChatId chatId) => SetPinState(chatId, false);
-    public async ValueTask SetPinState(ChatId chatId, bool mustPin)
-    {
-        if (chatId.IsNone)
-            return;
-
-        var contact = await Contacts.GetForChat(Session, chatId, default).Require().ConfigureAwait(false);
-        if (contact.IsPinned == mustPin)
-            return;
-
-        var changedContact = contact with { IsPinned = mustPin };
-        var change = contact.IsStored()
-            ? new Change<Contact>() { Update = changedContact }
-            : new Change<Contact>() { Create = changedContact };
-        var command = new Contacts_Change(Session, contact.Id, contact.Version, change);
-        _ = TuneUI.Play(Tune.PinUnpinChat);
-        await UICommander.Run(command).ConfigureAwait(false);
-    }
-
     public void SetNavbarPinState(ChatId chatId, bool mustPin)
     {
         if (chatId.IsNone)

@@ -30,6 +30,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     private SearchUI SearchUI => Hub.SearchUI;
     private TuneUI TuneUI => Hub.TuneUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
+    private UICommander UICommander => Hub.UICommander();
     private new ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
 #pragma warning disable CA1721 // Confusing w/ GetUnreadChatCount
@@ -253,6 +254,26 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         }
 
         return new VirtualListTile<ChatListItemModel>(longRange, result);
+    }
+
+    public ValueTask Pin(ChatId chatId) => SetPinState(chatId, true);
+    public ValueTask Unpin(ChatId chatId) => SetPinState(chatId, false);
+    public async ValueTask SetPinState(ChatId chatId, bool mustPin)
+    {
+        if (chatId.IsNone)
+            return;
+
+        var contact = await Contacts.GetForChat(Session, chatId, default).Require().ConfigureAwait(false);
+        if (contact.IsPinned == mustPin)
+            return;
+
+        var changedContact = contact with { IsPinned = mustPin };
+        var change = contact.IsStored()
+            ? new Change<Contact>() { Update = changedContact }
+            : new Change<Contact>() { Create = changedContact };
+        var command = new Contacts_Change(Session, contact.Id, contact.Version, change);
+        _ = TuneUI.Play(Tune.PinUnpinChat);
+        await UICommander.Run(command).ConfigureAwait(false);
     }
 
     // Protected methods

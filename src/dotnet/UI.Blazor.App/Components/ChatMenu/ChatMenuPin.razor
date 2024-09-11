@@ -8,10 +8,10 @@
 </MenuEntry>
 
 @code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
     private void OnClick()
-        => _ = ChatUI.SetPinState(ChatState.Id, !ChatState.Contact.IsPinned);
+        => _ = ChatListUI.SetPinState(ChatState.Id, !ChatState.Contact.IsPinned);
 }
