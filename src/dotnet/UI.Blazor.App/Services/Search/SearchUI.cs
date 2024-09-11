@@ -1,4 +1,5 @@
 using ActualChat.Search;
+using ActualChat.UI.Blazor.App.Events;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -8,17 +9,20 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     private static readonly SearchScope[] Scopes = [SearchScope.People, SearchScope.Groups, SearchScope.Places, SearchScope.Messages ];
     private Cached _cached = Cached.None;
     private readonly MutableState<string> _text;
+    private readonly MutableState<PlaceId> _placeId;
     private readonly MutableState<bool> _isSearchModeOn;
 
     public IMutableState<string> Text => _text;
+    public IMutableState<PlaceId> PlaceId => _placeId;
     private IMutableState<ImmutableHashSet<SearchScope>> ExtendedLimits { get; }
     private ISearch Search => Hub.Search;
-    private ChatListUI ChatListUI => Hub.ChatListUI;
+    private UIEventHub UIEventHub => Hub.UIEventHub();
 
     public SearchUI(ChatUIHub uiHub) : base(uiHub)
     {
         var stateFactory = uiHub.StateFactory();
         _text = stateFactory.NewMutable("", StateCategories.Get(GetType(), nameof(Text)));
+        _placeId = stateFactory.NewMutable(ActualChat.PlaceId.None, StateCategories.Get(GetType(), nameof(_placeId)));
         _isSearchModeOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchModeOn)));
         ExtendedLimits = stateFactory
             .NewMutable(ImmutableHashSet<SearchScope>.Empty, StateCategories.Get(GetType(), nameof(ExtendedLimits)));
@@ -49,8 +53,18 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
             return Criteria.None;
 
         var extendedLimits = await ExtendedLimits.Use(cancellationToken).ConfigureAwait(false);
-        var chatListView = ChatListUI.GetChatListView();
-        return new (text, chatListView.PlaceId, extendedLimits);
+        var placeId = await _placeId.Use(cancellationToken).ConfigureAwait(false);
+        return new (text, placeId, extendedLimits);
+    }
+
+    public void Clear()
+    {
+        if (Text.Value.IsNullOrEmpty())
+            return;
+
+        Text.Value = "";
+        PlaceId.Value = ActualChat.PlaceId.None;
+        _ = UIEventHub.Publish(new SearchClearedEvent());
     }
 
     public async Task ShowMore(SearchScope scope, CancellationToken cancellationToken = default)

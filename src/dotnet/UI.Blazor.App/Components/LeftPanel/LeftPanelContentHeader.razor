@@ -20,7 +20,8 @@
 
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
+    private PanelsUI PanelsUI => Hub.PanelsUI;
+    private SearchUI SearchUI => Hub.SearchUI;
 
     private NavbarUI NavbarUI => Hub.NavbarUI;
     private Session Session => Hub.Session();
@@ -44,6 +45,12 @@
         };
 
     protected override async Task<Place?> ComputeState(CancellationToken cancellationToken) {
+        var session = Session;
+        var searchPlaceId = await SearchUI.PlaceId.Use(cancellationToken).ConfigureAwait(false);
+        var isSearchOn = await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false);
+        if (isSearchOn && searchPlaceId.IsNone)
+            return null;
+
         var placeId = NavbarUI.IsPlaceSelected(out var selectedPlaceId)
             ? selectedPlaceId
             : NavbarUI.IsPinnedChatSelected(out var pinnedChatId)
@@ -51,7 +58,7 @@
                 : PlaceId.None;
         var place = placeId.IsNone
             ? null
-            : await Places.Get(Session, placeId, default).ConfigureAwait(false);
+            : await Places.Get(session, placeId, default).ConfigureAwait(false);
         return place;
     }
 

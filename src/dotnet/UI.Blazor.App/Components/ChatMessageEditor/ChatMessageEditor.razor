@@ -104,6 +104,7 @@
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private PanelsUI PanelsUI => Hub.PanelsUI;
     private TuneUI TuneUI => Hub.TuneUI;
+    private SearchUI SearchUI => Hub.SearchUI;
     private UICommander UICommander => Hub.UICommander();
     private MomentClockSet Clocks => Hub.Clocks();
     private HostInfo HostInfo => Hub.HostInfo();
@@ -210,6 +211,7 @@
             if (ReadPositionState != null && ReadPositionState.Value.EntryLid < readEntryLid)
                 ReadPositionState.Value = new (Chat.Id, readEntryLid);
             await AttachmentListRef.Clear();
+            SearchUI.Clear();
         }
         catch (Exception e) {
             UICommander.ShowError(e);

@@ -91,6 +91,7 @@
     {
         if (!OrdinalEquals(_text, "")) {
             _text = "";
+            await _inputRef.Clear();
             await TextChanged.InvokeAsync(_text).ConfigureAwait(false);
         }
         if (IsCollapsed)

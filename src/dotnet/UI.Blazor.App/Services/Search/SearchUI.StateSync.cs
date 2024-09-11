@@ -25,7 +25,8 @@ public partial class SearchUI
             .ConfigureAwait(false);
         var criteriaChanges = cCriteria.Changes(cancellationToken)
             .Where(x => !x.HasError)
-            .Select(x => x.Value);
+            .Select(x => x.Value)
+            .DeduplicateNeighbors();
         DelegatingWorker? activeSearchJob = null;
         try {
             await foreach (var criteria in criteriaChanges.ConfigureAwait(false)) {
