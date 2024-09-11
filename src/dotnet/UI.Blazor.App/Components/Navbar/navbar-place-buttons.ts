@@ -1,6 +1,7 @@
 import { Subject } from 'rxjs';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { DeviceInfo } from 'device-info';
+import { Tune, TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
 
 export class NavbarPlaceButtons {
     private readonly disposed$: Subject<void> = new Subject<void>();
@@ -18,21 +19,26 @@ export class NavbarPlaceButtons {
 
         const options: Sortable.Options = DeviceInfo.isTouchCapable
             ? {
+                dataIdAttr: 'data-place-id',
                 animation: 150,
                 delay: 500,
                 dragClass: 'sortable-target',
                 chosenClass: 'sortable-target',
                 delayOnTouchOnly: true,
                 onUpdate: (_: SortableEvent) => {
-                    const places = Array.from(this.list.children).map((x: HTMLElement) => x.dataset['placeId']);
+                    const places = this.sortable.toArray();
                     void this.blazorRef.invokeMethodAsync('OnOrderChanged', places);
+                },
+                onChoose: (_: SortableEvent) => {
+                    TuneUI.play(Tune.DragStart);
                 },
             }
             : {
+                dataIdAttr: 'data-place-id',
                 animation: 150,
                 handle: '.c-dots',
                 onUpdate: (_: SortableEvent) => {
-                    const places = Array.from(this.list.children).map((x: HTMLElement) => x.dataset['placeId']);
+                    const places = this.sortable.toArray();
                     void this.blazorRef.invokeMethodAsync('OnOrderChanged', places);
                 },
             };
