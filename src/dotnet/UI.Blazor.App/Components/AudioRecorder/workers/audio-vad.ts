@@ -185,7 +185,9 @@ export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
         this.buffer = new Float32Array(AR.SAMPLES_PER_WINDOW_32 + CONTEXT_SAMPLES).fill(0);
         this.resetInternal();
 
-        ort.env.wasm.numThreads = 4;
+        // multithreading requires Cross origin Isolation - see https://web.dev/articles/cross-origin-isolation-guide
+        // ort.env.wasm.numThreads = 4;
+        ort.env.wasm.numThreads = 1;
         ort.env.wasm.simd = true;
         ort.env.wasm.wasmPaths = '/dist/wasm/';
     }

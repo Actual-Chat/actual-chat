@@ -20,7 +20,7 @@ import { WebRtcVoiceActivityDetector } from './audio-vad-webrtc';
 import { RecorderStateServer } from "../opus-media-recorder-contracts";
 import { AudioDiagnosticsState } from "../audio-recorder";
 
-const { logScope, debugLog, warnLog, errorLog } = Log.get('AudioVadWorker');
+const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('AudioVadWorker');
 
 const worker = globalThis as unknown as Worker;
 const queue = new Denque<ArrayBuffer>();
@@ -49,7 +49,7 @@ const serverImpl: AudioVadWorker = {
             return;
         }
 
-        debugLog?.log(`-> onCreate`);
+        infoLog?.log(`-> onCreate`, canUseNNVad_, _timeout);
         Versioning.init(artifactVersions);
 
         queue.clear();
@@ -58,14 +58,14 @@ const serverImpl: AudioVadWorker = {
         vadModule = await retry(3, () => webRtcVadModule(getEmscriptenLoaderOptions()));
         webrtcVoiceDetector = new WebRtcVoiceActivityDetector(new vadModule.WebRtcVad(AR.SAMPLE_RATE, 0));
 
-        debugLog?.log(`<- onCreate`);
-
         // Init NNVad with delay to avoid excessive load during startup
         const isSimdSupported = canUseNNVad && _isSimdSupported();
         if (isSimdSupported && !isNNVadInitialized) {
+            infoLog?.log(`onCreate: SIMD is supported will load NN VAD module`);
             // Load NN VAD Module with delay
             delayAsync(2000).then(_ => initNNVad());
         }
+        infoLog?.log(`<- onCreate`);
     },
 
     init: async (workletPort: MessagePort, encoderWorkerPort: MessagePort): Promise<void> => {
@@ -231,6 +231,7 @@ async function initNNVad(): Promise<void> {
     if (isNNVadInitialized)
         return;
 
+    infoLog?.log(`-> initNNVad`);
     const currentActivityEvent: VoiceActivityChange = webrtcVoiceDetector.lastActivityEvent ?? NO_VOICE_ACTIVITY;
     const vad = new NNVoiceActivityDetector(OnnxModel as unknown as URL, currentActivityEvent);
     await vad.init();
@@ -238,6 +239,7 @@ async function initNNVad(): Promise<void> {
     nnVoiceDetector = vad;
     isNNVadInitialized = true;
     startWorklet();
+    infoLog?.log(`<- initNNVad`);
 }
 
 function startWorklet(): void {

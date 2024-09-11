@@ -130,8 +130,8 @@ module.exports = (env, args) => {
                     { from: _('../../firebase.config.json'), to: 'config/firebase.config.js', noErrorOnMissing: true },
                     { from: 'images', to: 'images' },
                     { from: './../dotnet/UI.Blazor/Services/TuneUI/sounds', to: 'sounds' },
-                    { from: 'node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm', to: 'wasm/[name][ext]' },
-                    { from: 'node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs', to: 'wasm/[name][ext]' },
+                    { from: 'node_modules/onnxruntime-web/dist/ort-wasm-simd.wasm', to: 'wasm/[name][ext]' },
+                    { from: 'node_modules/onnxruntime-web/dist/ort.wasm.min.js', to: 'wasm/[name][ext]' },
                 ],
             }),
             // @ts-ignore
