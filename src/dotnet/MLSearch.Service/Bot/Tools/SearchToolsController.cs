@@ -37,6 +37,14 @@ public sealed class SearchToolsController(
     [HttpPost("public-chats")]
     public async Task<ActionResult<List<SearchQueryDocumentResult>>> PublicChatsText([FromBody]SearchQueryRequest search, CancellationToken cancellationToken)
     {
+        var context = botToolsContext.GetContext(Request);
+        if (!context.IsValid || (context.ConversationId is var conversationId && string.IsNullOrEmpty(conversationId))) {
+            throw new UnauthorizedAccessException();
+        }
+        if (!ChatId.TryParse(conversationId, out var chatId)) {
+            throw new InvalidOperationException("Malformed conversation id detected.");
+        }
+
         var limit = search.Limit ?? 1;
         // Add limit constraints.
         if (limit < 1) {
@@ -49,7 +57,7 @@ public sealed class SearchToolsController(
             Filters = [
                 await filters.Semantic(search.Text, cancellationToken).ConfigureAwait(false),
                 await filters.Keyword(search.Text, cancellationToken).ConfigureAwait(false),
-                await filters.Chat(chats => chats.Public(), cancellationToken).ConfigureAwait(false),
+                await filters.Chat(chats => chats.Public().Exclude([chatId]), cancellationToken).ConfigureAwait(false),
             ],
             Limit = limit,
         };
@@ -102,7 +110,10 @@ public sealed class SearchToolsController(
             Filters = [
                 await filters.Semantic(search.Text, cancellationToken).ConfigureAwait(false),
                 await filters.Keyword(search.Text, cancellationToken).ConfigureAwait(false),
-                await filters.Chat(chats => chats.Private(ownerAuthorUserId), cancellationToken).ConfigureAwait(false),
+                await filters.Chat(
+                    chats => chats.Private(ownerAuthorUserId).Exclude([chatId]),
+                    cancellationToken
+                ).ConfigureAwait(false),
             ],
             Limit = limit,
         };

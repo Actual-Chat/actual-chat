@@ -52,12 +52,19 @@ internal sealed class ChatFilterBuilder(IChatsBackend chats)
         var privateChatIds = await chats.GetPrivateChatIdsForUser(userId, placeId, cancellationToken).ConfigureAwait(false);
         ChatFilter.ChatIds.UnionWith(privateChatIds);
     }
+
+    internal ValueTask ExcludeChats(IEnumerable<ChatId> exclusions)
+    {
+        ChatFilter.ExcludedChatIds.UnionWith(exclusions);
+        return ValueTask.CompletedTask;
+    }
 }
 
 public abstract class ChatSet(ChatSet? next)
 {
     public ChatSet Public(PlaceId? placeId = default) => new PublicChatSet(this, placeId);
     public ChatSet Private(UserId userId, PlaceId? placeId = default) => new PrivateChatSet(this, userId, placeId);
+    public ChatSet Exclude(IEnumerable<ChatId> exclusions) => new ExcludeChatSet(this, exclusions);
 
     internal ChatSet? Next => next;
     internal abstract ValueTask Apply(ChatFilterBuilder filterBuilder, CancellationToken cancellationToken = default);
@@ -79,4 +86,10 @@ internal sealed class PrivateChatSet(ChatSet next, UserId userId, PlaceId? place
 {
     internal override ValueTask Apply(ChatFilterBuilder filterBuilder, CancellationToken cancellationToken = default)
         => filterBuilder.IncludePrivate(userId, placeId, cancellationToken);
+}
+
+internal sealed class ExcludeChatSet(ChatSet next, IEnumerable<ChatId> exclusions) : ChatSet(next)
+{
+    internal override ValueTask Apply(ChatFilterBuilder filterBuilder, CancellationToken cancellationToken = default)
+        => filterBuilder.ExcludeChats(exclusions);
 }
