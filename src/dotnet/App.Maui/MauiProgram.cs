@@ -66,7 +66,9 @@ public static partial class MauiProgram
         // Uncomment to log EVERY thrown exception:
         // AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
         MauiThreadPoolSettings.Apply();
+#if WINDOWS
         FixStaticContentProvider();
+#endif
 #if IOS
         FixIosBaseAddress();
         NSHttpCookieStorage.SharedStorage.AcceptPolicy = NSHttpCookieAcceptPolicy.Always;
@@ -133,9 +135,9 @@ public static partial class MauiProgram
         }
     }
 
+#if WINDOWS
     private static void FixStaticContentProvider()
     {
-        // Type.GetType("Microsoft.AspNetCore.Components.WebAssembly.StaticContentProvider, Microsoft.AspNetCore.Components.WebAssembly")
         var staticContentProviderType = Type.GetType(
             "Microsoft.AspNetCore.Components.WebView.Maui.StaticContentProvider, Microsoft.AspNetCore.Components.WebView.Maui");
         if (staticContentProviderType == null)
@@ -154,6 +156,7 @@ public static partial class MauiProgram
         var mapping = (IDictionary<string,string>)mappingsPropertyInfo!.GetValue(contentTypeProvider)!;
         mapping[".mjs"] = "text/javascript";
     }
+#endif
 
     private static void ConfigureApp(MauiAppBuilder builder, bool isEarlyApp)
     {
