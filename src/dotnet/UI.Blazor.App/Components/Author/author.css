@@ -4,55 +4,56 @@
     @apply h-14 md:h-10;
 }
 .author-circle-group > .c-container {
-    @apply absolute right-0 top-3 md:top-2 z-20;
-    @apply flex-x;
+    @apply absolute inset-x-0 top-3 md:top-1 z-20;
+    @apply flex-x items-center;
+    @apply h-8;
 }
 .author-circle-group > .c-container.back {
-    @apply top-2 md:top-1 z-10;
+    @apply top-3 md:top-1 z-10;
 }
 
 .author-circle-group-item {
-    @apply flex-none;
+    @apply flex-none flex-x items-center;
     @apply -mr-2;
     @apply rounded-full;
-    @apply outline outline-[var(--background-02)] outline-2;
-    @apply overflow-visible;
+    @apply overflow-hidden;
 }
 .back .author-circle-group-item {
-    @apply -mr-4;
+    @apply -mr-3;
     @apply outline-none;
-    background: linear-gradient(180deg, #2970FF 0.32%, #C60077 133.76%);
-    filter: blur(1px);
-    animation: back-circle-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    @apply overflow-hidden;
+    background-image: linear-gradient(180deg, #2970FF 0.32%, #C60077 133.76%);
+}
+.forward .author-circle-group-item {
+    @apply border-2 border-bg-01;
 }
 
 .author-circle-group-item.last-author {
-    @apply mr-1;
+    @apply mr-0.5;
+}
+.forward:has(.last) .author-circle-group-item.last-author {
+    @apply mr-0;
 }
 .back .author-circle-group-item.last-author {
     @apply mr-0;
 }
+.forward .author-circle-group-item:first-child {
+    @apply ml-0.5;
+}
 
 .back .author-circle-group-item.last {
-    @apply -ml-3 mr-0;
+    @apply -ml-3 mr-0.5;
     @apply animate-none;
+    background-image: linear-gradient(180deg, #2970FF 0.32%, #C60077 133.76%);
 }
 .forward .author-circle-group-item.last {
     @apply -ml-2 mr-1;
-    @apply bg-transparent;
+    @apply bg-01;
+
 }
 .author-circle-group-item.last > .avatar-text {
-    @apply justify-end;
-    @apply pr-2 md:pr-1;
-    @apply bg-transparent;
+    @apply w-full h-full;
+    @apply pl-1;
     @apply always-white text-caption-3 md:text-caption-6;
-}
-
-@keyframes back-circle-pulse {
-    0%, 100% {
-        opacity: 0.9;
-    }
-    50% {
-        opacity: 0.7;
-    }
+    background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
 }

@@ -11,7 +11,7 @@ body.wide .chat-activity-panel {
     @apply text-headline-1 text-03;
 }
 .chat-activity-panel > .author-circle-group {
-    @apply flex-1 justify-start md:justify-end gap-x-1;
+    @apply flex-1 justify-start gap-x-1;
 }
 .chat-activity-panel .c-incut {
     @apply flex-1;
