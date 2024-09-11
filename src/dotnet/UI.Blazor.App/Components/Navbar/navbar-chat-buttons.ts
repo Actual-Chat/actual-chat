@@ -1,6 +1,7 @@
 import { Subject } from 'rxjs';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { DeviceInfo } from 'device-info';
+import { Tune, TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
 
 export class NavbarChatButtons {
     private readonly disposed$: Subject<void> = new Subject<void>();
@@ -26,6 +27,9 @@ export class NavbarChatButtons {
                 onUpdate: (_: SortableEvent) => {
                     const chats = Array.from(this.list.children).map((x: HTMLElement) => x.dataset['chatId']);
                     void this.blazorRef.invokeMethodAsync('OnOrderChanged', chats);
+                },
+                onChoose: (_: SortableEvent) => {
+                    TuneUI.play(Tune.DragStart);
                 },
             }
             : {

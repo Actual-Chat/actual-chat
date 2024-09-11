@@ -178,24 +178,6 @@ body.hoverable .navbar-chat-buttons .navbar-button .btn.btn-square:hover:focus:a
     @apply w-[5px];
 }
 
-@keyframes twitch {
-    0% {
-        transform: rotate(0);
-    }
-    25% {
-        transform: rotate(10deg);
-    }
-    50% {
-        transform: rotate(0);
-    }
-    75% {
-        transform: rotate(-10deg);
-    }
-    100% {
-        transform: rotate(0);
-    }
-}
-
 .sortable-target {
-    animation: twitch 200ms 2 forwards;
+    scale: 1.2;
 }
