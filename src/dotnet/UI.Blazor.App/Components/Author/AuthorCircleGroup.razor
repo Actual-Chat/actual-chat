@@ -5,8 +5,9 @@
     if (authorSids.Count == 0)
         return;
 
-    var size = Size == SquareSize.Size6 ? "w-6 h-6" : "w-8 h-8";
-    var backSize = Size == SquareSize.Size6 ? "w-8 h-8" : "w-10 h-10";
+    var avatarSize = SquareSize.Size7;
+    var size = "w-7 h-7";
+    var backSize = "w-8 h-8";
     var maxLength = MaxIconCount > authorSids.Count ? authorSids.Count : MaxIconCount;
 }
 
@@ -30,19 +31,19 @@
                 var authorSid = authorSids[i];
                 var lastAuthorCls = i == maxLength - 1 ? "last-author" : "";
                 <div class="@size @lastAuthorCls author-circle-group-item" style="z-index: @zIndex;">
-                    <AuthorCircle AuthorSid="@authorSid" Size="@Size"/>
+                    <AuthorCircle AuthorSid="@authorSid" Size="@avatarSize"/>
                 </div>
                 zIndex--;
             }
 
             if (authorSids.Count > MaxIconCount) {
-                <div class="author-circle-group-item last" style="z-index: @(maxLength + 1);">
+                <div class="@size author-circle-group-item last" style="z-index: @(maxLength + 1);">
                     @{
                         var avatarText = authorSids.Count < 11
                             ? "+" + (authorSids.Count - MaxIconCount)
                             : "...";
                     }
-                    <AvatarText Size="@Size" Text="@avatarText"/>
+                    <AvatarText Size="@avatarSize" Text="@avatarText"/>
                 </div>
             }
         }

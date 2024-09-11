@@ -2,8 +2,9 @@
 @inherits FusionComponentBase
 @{
     List<string> circles = ["bg-red-400", "bg-green-400", "bg-blue-400", "bg-yellow-400", "bg-gray-400", "bg-yellow-400", "bg-purple-400"];
-    var size = Size == SquareSize.Size6 ? "w-6 h-6" : "w-8 h-8";
-    var backSize = Size == SquareSize.Size6 ? "w-8 h-8" : "w-10 h-10";
+    var avatarSize = SquareSize.Size7;
+    var size = "w-7 h-7";
+    var backSize = "w-8 h-8";
     var maxLength = MaxIconCount > circles.Count ? circles.Count : MaxIconCount;
     var currentCount = circles.Count;
 }
@@ -38,7 +39,7 @@
                             ? "+" + (circles.Count - MaxIconCount)
                             : "...";
                     }
-                    <AvatarText Size="@Size" Text="@avatarText"/>
+                    <AvatarText Size="@avatarSize" Text="@avatarText"/>
                 </div>
             }
         }
