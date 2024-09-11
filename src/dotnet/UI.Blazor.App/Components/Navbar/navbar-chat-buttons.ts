@@ -19,13 +19,14 @@ export class NavbarChatButtons {
 
         const options: Sortable.Options = DeviceInfo.isTouchCapable
             ? {
+                dataIdAttr: 'data-chat-id',
                 animation: 150,
                 delay: 500,
                 dragClass: 'sortable-target',
                 chosenClass: 'sortable-target',
                 delayOnTouchOnly: true,
                 onUpdate: (_: SortableEvent) => {
-                    const chats = Array.from(this.list.children).map((x: HTMLElement) => x.dataset['chatId']);
+                    const chats = this.sortable.toArray();
                     void this.blazorRef.invokeMethodAsync('OnOrderChanged', chats);
                 },
                 onChoose: (_: SortableEvent) => {
@@ -33,10 +34,11 @@ export class NavbarChatButtons {
                 },
             }
             : {
+                dataIdAttr: 'data-chat-id',
                 animation: 150,
                 handle: '.c-dots',
                 onUpdate: (_: SortableEvent) => {
-                    const chats = Array.from(this.list.children).map((x: HTMLElement) => x.dataset['chatId']);
+                    const chats = this.sortable.toArray();
                     void this.blazorRef.invokeMethodAsync('OnOrderChanged', chats);
                 },
             };
