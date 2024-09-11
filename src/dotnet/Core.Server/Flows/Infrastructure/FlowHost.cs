@@ -2,56 +2,58 @@ using ActualLab.Internal;
 
 namespace ActualChat.Flows.Infrastructure;
 
-public class FlowHost : ProcessorBase, IHasServices
+public sealed class FlowHost : ShardWorker, IHasServices
 {
+    private static readonly Requester Requester = new(typeof(FlowHost));
     private IFlows? _flows;
 
-    public IServiceProvider Services { get; }
+    public new IServiceProvider Services => base.Services;
     public FlowRegistry Registry { get; }
     public IFlows Flows => _flows ??= Services.GetRequiredService<IFlows>();
     public ICommander Commander { get; }
     public MomentClockSet Clocks { get; }
-    public ILogger Log { get; }
 
-    public ConcurrentDictionary<FlowId, FlowWorklet> Worklets { get; } = new();
+    public TimeSpan HandleEventRetryDelay { get; init; } = TimeSpan.FromSeconds(0.5);
+
+    private FlowHostShard[] Shards { get; }
+
+    public FlowHost(IServiceProvider services)
+        : base(services, ShardScheme.FlowsBackend)
+    {
+        Registry = services.GetRequiredService<FlowRegistry>();
+        Commander = services.Commander();
+        Clocks = services.Clocks();
+
+        using var cancelledCts = new CancellationTokenSource();
+        cancelledCts.Cancel();
+        Shards = Enumerable.Range(0, ShardScheme.ShardCount)
+            .Select(i => new FlowHostShard(this, i, cancelledCts.Token))
+            .ToArray();
+    }
 
     public FlowWorklet this[FlowId flowId] {
         get {
-            if (Worklets.TryGetValue(flowId, out var result))
+            flowId.Require();
+            var shardKey = ShardKeyResolvers.Get<FlowId>(Requester).Invoke(flowId);
+            var shardIndex = ShardScheme.GetShardIndex(shardKey);
+
+            var shard = Shards[shardIndex];
+            if (shard.Worklets.TryGetValue(flowId, out var result))
                 return result;
 
-            lock (Lock) {
-                if (Worklets.TryGetValue(flowId, out result))
+            lock (Shards) {
+                shard = Shards[shardIndex];
+                if (shard.Worklets.TryGetValue(flowId, out result))
                     return result;
-                if (WhenDisposed != null)
-                    throw Errors.AlreadyDisposed(GetType());
 
-                flowId.Require();
-                result = Create(flowId).Start();
-                Worklets[flowId] = result;
+                result = shard.NewWorklet(flowId).Start();
+                shard.Worklets[flowId] = result;
                 return result;
             }
         }
     }
 
-    public FlowHost(IServiceProvider services)
-    {
-        Services = services;
-        Log = services.LogFor(GetType());
-
-        Registry = services.GetRequiredService<FlowRegistry>();
-        Commander = services.Commander();
-        Clocks = services.Clocks();
-    }
-
-    protected override Task DisposeAsyncCore()
-    {
-        var disposeTasks = new List<Task>();
-        foreach (var (_, worker) in Worklets)
-            disposeTasks.Add(worker.DisposeAsync().AsTask());
-        return Task.WhenAll(disposeTasks);
-    }
-
+    // The `long` it returns is DbFlow/FlowData.Version
     public async Task<long> HandleEvent(FlowId flowId, object? evt, CancellationToken cancellationToken)
     {
         while (true) {
@@ -63,16 +65,26 @@ public class FlowHost : ProcessorBase, IHasServices
             catch (ChannelClosedException) {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!worklet.StopToken.IsCancellationRequested)
-                    throw;
+                    throw; // It's some other ChannelClosedException - worklet.Channel isn't closed yet
 
-                // runner is disposing - let's wait for its completion before requesting a new one
+                // FlowWorklet.OnRun implements a graceful stop, so it may take a while for it to complete.
                 await worklet.WhenRunning!.ConfigureAwait(false);
+                // Once the worklet is gone, we still want to wait a bit before we try use the next one -
+                // that's because its new FlowHostShard may need to be re-locked & allocated, etc.
+                await Task.Delay(HandleEventRetryDelay, cancellationToken).ConfigureAwait(false);
             }
         }
     }
 
     // Protected methods
 
-    protected virtual FlowWorklet Create(FlowId flowId)
-        => new(this, flowId);
+    protected override Task OnRun(int shardIndex, CancellationToken cancellationToken)
+    {
+        FlowHostShard shard;
+        lock (Shards) {
+            shard = new FlowHostShard(this, shardIndex, cancellationToken);
+            Shards[shardIndex] = shard;
+        }
+        return shard.OnRun(cancellationToken); // Delegate
+    }
 }

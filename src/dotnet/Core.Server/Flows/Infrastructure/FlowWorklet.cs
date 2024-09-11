@@ -9,16 +9,18 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
     protected Channel<QueueEntry> Queue { get; set; }
     protected ChannelWriter<QueueEntry> Writer { get; init; }
 
-    public FlowHost Host { get; }
+    public FlowHostShard Shard { get; }
+    public FlowHost Host => Shard.Host;
     public FlowId FlowId { get; }
     public ILogger Log { get; }
 
-    public FlowWorklet(FlowHost host, FlowId flowId)
+    public FlowWorklet(FlowHostShard shard, FlowId flowId)
+        : base(shard.StopToken.CreateLinkedTokenSource())
     {
-        Host = host;
+        Shard = shard;
         FlowId = flowId;
-        var flowType = host.Registry.Types[flowId.Name];
-        Log = host.Services.LogFor(flowType);
+        var flowType = Host.Registry.Types[flowId.Name];
+        Log = Host.Services.LogFor(flowType);
 
         Queue = Channel.CreateUnbounded<QueueEntry>(new() {
             SingleReader = true,
@@ -37,11 +39,12 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
     public override string ToString()
         => $"{GetType().Name}('{FlowId}')";
 
+    // The `long` it returns is DbFlow/FlowData.Version
     public Task<long> HandleEvent(object? evt, CancellationToken cancellationToken)
     {
         var entry = new QueueEntry(evt, cancellationToken);
         bool couldWrite;
-        lock (Lock)
+        lock (Queue)
             couldWrite = Writer.TryWrite(entry);
         if (!couldWrite)
             entry.ResultSource.TrySetException(ChannelClosedExceptionInstance);
@@ -71,16 +74,25 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
                         return;
                 }
                 else {
+                    // Enlist this worklet for timeout-based removal
                     Timeouts.Generic.AddOrUpdateToLater(this, clock.Now + options.KeepAliveFor);
                     if (!await canReadTask.ConfigureAwait(false))
                         return;
+
+                    // Un-enlist this worklet for timeout-based removal
                     Timeouts.Generic.Remove(this);
                 }
                 if (!reader.TryRead(out var entry))
                     continue;
 
                 if (entry.CancellationToken.IsCancellationRequested) {
+                    // Entry is cancelled by the moment we dequeue it
                     entry.ResultSource.TrySetCanceled(entry.CancellationToken);
+                    continue;
+                }
+                if (cancellationToken.IsCancellationRequested) {
+                    // The worklet is already terminating
+                    entry.ResultSource.TrySetException(new ChannelClosedException());
                     continue;
                 }
 
@@ -115,22 +127,26 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
         finally {
             gracefulStopCts.CancelAndDisposeSilently();
             try {
-                // Cancel remaining queued entries
+                // Cancel remaining entries
                 await foreach (var entry in reader.ReadAllAsync(CancellationToken.None).ConfigureAwait(false))
                     entry.ResultSource.TrySetException(ChannelClosedExceptionInstance);
             }
             catch {
                 // Intended
             }
-            Host.Worklets.TryRemove(FlowId, this);
+            Shard.Worklets.TryRemove(FlowId, this);
         }
     }
 
     void IGenericTimeoutHandler.OnTimeout()
     {
-        lock (Lock) {
-            if (!Queue.Reader.TryPeek(out _)) // Don't shut down when there are queued items
-                _ = DisposeAsync();
+        lock (Queue) {
+            // If there are any queued items, we aren't shutting ourselves down
+            if (Queue.Reader.TryPeek(out _))
+                return;
+
+            // OnRun implements a graceful stop, so any in-progress items will still be processed
+            _ = DisposeAsync();
         }
     }
 

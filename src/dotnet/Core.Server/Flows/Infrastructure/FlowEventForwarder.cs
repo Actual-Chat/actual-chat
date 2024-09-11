@@ -13,7 +13,7 @@ public sealed class FlowEventForwarder : ICommandHandler<IFlowEvent>
         Commander = services.Commander();
     }
 
-    [CommandHandler(IsFilter = false)]
+    [CommandHandler]
     public Task OnCommand(IFlowEvent command, CommandContext context, CancellationToken cancellationToken)
         => Flows.OnEvent(command.FlowId, command, cancellationToken);
 }

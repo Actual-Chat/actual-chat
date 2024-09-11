@@ -8,7 +8,7 @@ using MemoryPack;
 namespace ActualChat.Flows;
 
 [BackendService(nameof(HostRole.OneServer), ServiceMode.Local, Priority = 1)]
-[BackendService(nameof(HostRole.FlowsBackend), ServiceMode.Server)] // TBD: -> Distributed
+[BackendService(nameof(HostRole.FlowsBackend), ServiceMode.Distributed)]
 [BackendClient(nameof(HostRole.FlowsBackend))]
 public interface IFlows : IComputeService, IBackendService
 {
@@ -19,6 +19,7 @@ public interface IFlows : IComputeService, IBackendService
     // Regular method!
     Task<Flow> GetOrStart(FlowId flowId, CancellationToken cancellationToken = default);
 
+    // The `long` any of methods below return is DbFlow/FlowData.Version
     // Regular method!
     Task<long> OnEvent(FlowId flowId, object? evt, CancellationToken cancellationToken = default);
     [CommandHandler]

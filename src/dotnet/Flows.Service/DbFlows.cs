@@ -51,10 +51,12 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         }, retryLogger, cancellationToken);
     }
 
+    // The `long` it returns is DbFlow/FlowData.Version
     [ProxyIgnore] // Regular method!
     public virtual Task<long> OnEvent(FlowId flowId, object? evt, CancellationToken cancellationToken = default)
         => FlowHost.HandleEvent(flowId, evt, cancellationToken);
 
+    // The `long` it returns is DbFlow/FlowData.Version
     // [CommandHandler]
     public virtual async Task<long> OnStore(Flows_Store command, CancellationToken cancellationToken = default)
     {

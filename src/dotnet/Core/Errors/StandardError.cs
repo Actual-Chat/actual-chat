@@ -50,7 +50,11 @@ public static partial class StandardError
     public static Exception Timeout(string target)
         => new TimeoutException($"{target} has timed out.");
     public static Exception Postpone(TimeSpan delay)
-        => new PostponeException($"Postponed for: {delay.ToShortString()}.") { Delay = delay };
+        => new PostponeException($"Postponed for {delay.ToShortString()}.") { Delay = delay };
+    public static Exception WrongShard<TTarget>()
+        => WrongShard(typeof(TTarget).GetName());
+    public static Exception WrongShard(string target)
+        => new WrongShardException($"The shard for specified {target} is served by another host.");
 
     public static Exception Unavailable(string message)
         => new InvalidOperationException(message);
