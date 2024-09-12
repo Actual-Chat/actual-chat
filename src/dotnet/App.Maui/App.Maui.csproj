@@ -10,11 +10,12 @@
 
     <!-- MAUI properties -->
     <UseMaui>true</UseMaui>
-    <MauiVersion>8.0.70</MauiVersion>
+    <MauiVersion>9.0.0-rc.1.24453.9</MauiVersion>
     <SingleProject>true</SingleProject>
     <IsPublishable>true</IsPublishable>
     <UseMauiNuGets>false</UseMauiNuGets>
     <SkipValidateMauiImplicitPackageReferences>true</SkipValidateMauiImplicitPackageReferences>
+    <EnableDefaultXamlItems>false</EnableDefaultXamlItems>
 
     <!-- Other build properties -->
     <EnableDefaultCssItems>false</EnableDefaultCssItems>
@@ -102,7 +103,6 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="RestEase" />
     <PackageReference Include="SauceControl.Blake2Fast" />
-    <PackageReference Include="Sentry.OpenTelemetry" />
     <PackageReference Include="System.Linq.Async" />
     <PackageReference Include="System.Reactive" />
     <PackageReference Include="Ulid" />
@@ -140,6 +140,9 @@
     <PackageReference Include="Xamarin.AndroidX.Collection" />
     <PackageReference Include="Xamarin.AndroidX.Collection.Ktx" />
     <PackageReference Include="Xamarin.AndroidX.Fragment.Ktx" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.Process" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.Runtime" />
     <PackageReference Include="Plugin.Firebase.Analytics" />
     <PackageReference Include="Xamarin.Firebase.Analytics" />
     <PackageReference Include="Xamarin.Firebase.Crashlytics" />
@@ -166,26 +169,15 @@
     <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
 
-  <!--
-  <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
-  -->
-  <!--
-  <PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
-    <GenerateAppxPackageOnBuild>true</GenerateAppxPackageOnBuild>
-    <AppxPackageSigningEnabled>true</AppxPackageSigningEnabled>
-    <PackageCertificateThumbprint>0BFF799D82CC03E61A65584D31D800924149453A</PackageCertificateThumbprint>
-  </PropertyGroup>
-  -->
-
   <!-- Common Windows, iOS and Android build properties -->
   <PropertyGroup>
     <UseInterpreter Condition="'$(Configuration)' == 'Debug'">true</UseInterpreter>
     <UseInterpreter Condition="'$(Configuration)' == 'Release'">false</UseInterpreter>
   </PropertyGroup>
+
   <!-- Trimming -->
   <ItemGroup>
-    <TrimmerRootAssembly Include="ActualChat" RootMode="All" /> <!-- EntryPoint seems to be a weaker option here -->
-    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.AppPack" RootMode="All" />
+    <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" />
   </ItemGroup>
 
   <!-- Common iOS and Android build properties -->
@@ -242,7 +234,7 @@
     <AndroidLinkTool>r8</AndroidLinkTool>
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode Condition="!$(UseAppPack)">partial</TrimMode>
-    <TrimMode Condition="$(UseAppPack)">partial</TrimMode> <!-- Will be "full" w/ .NET 9 -->
+    <TrimMode Condition="$(UseAppPack)">full</TrimMode> <!-- Will be "full" w/ .NET 9 -->
     <RunAOTCompilation>true</RunAOTCompilation>
     <!-- Disabled for now, see https://github.com/dotnet/runtime/issues/101135 -->
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
@@ -396,6 +388,21 @@
     <UseInterpreter>true</UseInterpreter>
     <!--<MTouchInterpreter>-ActualChat,ActualChat.Chat.Contracts,ActualChat.Users.Contracts,ActualChat.Contacts.Contracts,ActualLab.Interception</MTouchInterpreter>-->
     <CreatePackage>false</CreatePackage>
+  </PropertyGroup>
+
+  <!-- Windows build properties -->
+
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
+    <PublishAot>true</PublishAot>
+    <TrimMode Condition="!$(UseAppPack)">partial</TrimMode>
+    <TrimMode Condition="$(UseAppPack)">full</TrimMode> <!-- Will be "full" w/ .NET 9 -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <!-- <TrimmerSingleWarn>false</TrimmerSingleWarn>-->
+    <IlcGenerateStackTraceData>true</IlcGenerateStackTraceData>
+    <IlcDisableReflection>false</IlcDisableReflection>
+    <NativeDebugSymbols>false</NativeDebugSymbols>
+    <StripSymbols>false</StripSymbols>
   </PropertyGroup>
 
   <!-- Resources -->

@@ -6,7 +6,7 @@
 
   <!-- Version constants -->
   <PropertyGroup>
-    <ActualLabFusionVersion>9.3.8</ActualLabFusionVersion>
+    <ActualLabFusionVersion>9.3.9</ActualLabFusionVersion>
     <AspNetCoreVersion>9.0.0-rc.1.24452.1</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>8.0.4</EntityFrameworkCoreVersion>
@@ -25,6 +25,7 @@
     <!-- NOTE(AY): v1.20.X is broken, please don't upgrade to it! -->
     <MemoryPackVersion>1.10.0</MemoryPackVersion>
     <MessagePackVersion>2.4.59</MessagePackVersion>
+    <XamarinAndroidLifecycle>2.8.5</XamarinAndroidLifecycle>
   </PropertyGroup>
 
   <!--
@@ -46,20 +47,24 @@
     <PackageVersion Include="Plugin.Firebase.Crashlytics" Version="3.0.0" />
     <PackageVersion Include="Serilog.Sinks.Xamarin" Version="1.0.0" />
     <PackageVersion Include="sqlite-net-pcl" Version="1.9.172" />
-    <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.8" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.10" />
     <!-- Android -->
     <PackageVersion Include="Mono.Profiler.Android" Version="7.0.0" />
-    <PackageVersion Include="Mono.AotProfiler.Android" Version="7.0.0-preview1" />
-    <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.12.0.3" />
-    <PackageVersion Include="Xamarin.AndroidX.Collection" Version="1.4.0.3" />
-    <PackageVersion Include="Xamarin.AndroidX.Collection.Ktx" Version="1.4.0.2" />
-    <PackageVersion Include="Xamarin.AndroidX.Fragment.Ktx" Version="1.6.0.1" />
-    <PackageVersion Include="Xamarin.Firebase.Analytics" Version="121.3.0.5" />
-    <PackageVersion Include="Xamarin.Firebase.Crashlytics" Version="118.5.1.1" />
-    <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.3.1.2" />
-    <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="121.0.0.1" />
-    <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="118.0.1.9" />
-    <PackageVersion Include="Xamarin.Google.Dagger" Version="2.48.1.2" />
+    <PackageVersion Include="Mono.AotProfiler.Android" Version="9.0.0-preview1" />
+    <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.13.1.4" />
+    <PackageVersion Include="Xamarin.AndroidX.Collection" Version="1.4.3" />
+    <PackageVersion Include="Xamarin.AndroidX.Collection.Ktx" Version="1.4.3" />
+    <PackageVersion Include="Xamarin.AndroidX.Fragment.Ktx" Version="1.8.3" />
+    <PackageVersion Include="Xamarin.AndroidX.Lifecycle.LiveData" Version="$(XamarinAndroidLifecycle)" />
+    <PackageVersion Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" Version="$(XamarinAndroidLifecycle)" />
+    <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Process" Version="$(XamarinAndroidLifecycle)" />
+    <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Runtime" Version="$(XamarinAndroidLifecycle)" />
+    <PackageVersion Include="Xamarin.Firebase.Analytics" Version="122.0.2" />
+    <PackageVersion Include="Xamarin.Firebase.Crashlytics" Version="119.0.3.1" />
+    <PackageVersion Include="Xamarin.Firebase.Messaging" Version="124.0.0.1" />
+    <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="121.2.0.1" />
+    <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="118.1.0.1" />
+    <PackageVersion Include="Xamarin.Google.Dagger" Version="2.52.0" />
     <PackageVersion Include="Xamarin.Twilio.AudioSwitch" Version="1.1.4" />
     <!-- iOS -->
     <PackageVersion Include="Xamarin.Build.Download" Version="0.11.4" />
@@ -164,7 +169,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="7.5.1" />
-    <PackageVersion Include="Microsoft.IO.RecyclableMemoryStream" Version="3.0.0" />
+    <PackageVersion Include="Microsoft.IO.RecyclableMemoryStream" Version="3.0.1" />
     <PackageVersion Include="Microsoft.JSInterop" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.JSInterop.WebAssembly" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.Toolkit.HighPerformance" Version="7.1.2" />

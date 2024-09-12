@@ -12,7 +12,7 @@ public class App : Application
     private IServiceProvider Services { get; }
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
-    public App(MainPage mainPage, IServiceProvider services)
+    public App(IServiceProvider services)
     {
         Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific.Application.SetWindowSoftInputModeAdjust(
             this,
@@ -24,7 +24,6 @@ public class App : Application
             "--disable-features=AutoupgradeMixedContent");
 #endif
         Services = services;
-        MainPage = mainPage;
     }
 
     protected override Window CreateWindow(IActivationState? activationState)
@@ -32,6 +31,7 @@ public class App : Application
         var window = base.CreateWindow(activationState);
         window.Destroying += (_, _) => FlushSentryData();
         window.Title = MauiSettings.IsDevApp ? "Actual Chat (Dev)" : "Actual Chat";
+        window.Page = new MainPage();
         return window;
     }
 
