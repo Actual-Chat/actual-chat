@@ -25,40 +25,25 @@ public static class Program
         ClientAppStartup.Initialize();
         AppUIOtelSetup.SetupConditionalPropagator();
         // NOTE(AY): This thing takes 1 second on Windows!
-        var isSentryEnabled = Constants.Sentry.EnabledFor.Contains(HostKind.WasmApp);
-        IDisposable? traceProvider = null;
-        try {
-            var builder = WebAssemblyHostBuilder.CreateDefault(args);
-            builder.RootComponents.Add<Microsoft.AspNetCore.Components.Web.HeadOutlet>("head::after");
-            var baseUrl = builder.HostEnvironment.BaseAddress;
-            var services = builder.Services;
-            services.AddTracers(Tracer.Default, useScopedTracers: false);
-            var hostInfo = Constants.HostInfo = ClientAppStartup.CreateHostInfo(
-                builder.Configuration,
-                builder.HostEnvironment.Environment,
-                "Browser",
-                HostKind.WasmApp,
-                AppKind.Wasm,
-                baseUrl);
-            ClientAppStartup.ConfigureServices(services, hostInfo);
-            var host = builder.Build();
+        var builder = WebAssemblyHostBuilder.CreateDefault(args);
+        builder.RootComponents.Add<Microsoft.AspNetCore.Components.Web.HeadOutlet>("head::after");
+        var baseUrl = builder.HostEnvironment.BaseAddress;
+        var services = builder.Services;
+        services.AddTracers(Tracer.Default, useScopedTracers: false);
+        var hostInfo = Constants.HostInfo = ClientAppStartup.CreateHostInfo(
+            builder.Configuration,
+            builder.HostEnvironment.Environment,
+            "Browser",
+            HostKind.WasmApp,
+            AppKind.Wasm,
+            baseUrl);
+        ClientAppStartup.ConfigureServices(services, hostInfo);
+        var host = builder.Build();
 
-            StaticLog.Factory = host.Services.LoggerFactory();
-            if (Constants.DebugMode.WebMReader)
-                WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
+        StaticLog.Factory = host.Services.LoggerFactory();
+        if (Constants.DebugMode.WebMReader)
+            WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
 
-            await host.RunAsync().ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            if (!isSentryEnabled)
-                throw;
-
-            // SentrySdk.CaptureException(e);
-            // await SentrySdk.FlushAsync().ConfigureAwait(false);
-            throw;
-        }
-        finally {
-            traceProvider.DisposeSilently();
-        }
+        await host.RunAsync().ConfigureAwait(false);
     }
 }
