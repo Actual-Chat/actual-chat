@@ -2,7 +2,7 @@
 using OpenTelemetry;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using Sentry.OpenTelemetry;
+// using Sentry.OpenTelemetry;
 
 namespace ActualChat.UI.Blazor.Diagnostics;
 
@@ -30,6 +30,6 @@ public static class AppUIOtelSetup
                     resource.AddService(
                         serviceName: serviceName,
                         serviceVersion: AppUIInstruments.ActivitySource.Version))
-            .AddSentry() // <-- Configure OpenTelemetry to send traces to Sentry
+            // .AddSentry() // <-- Configure OpenTelemetry to send traces to Sentry
             .Build();
 }

@@ -52,11 +52,8 @@ Use:
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
-    <PackageReference Include="Sentry" />
-    <PackageReference Include="Sentry.Extensions.Logging" />
-    <!-- <workaround of https://github.com/dotnet/aspnetcore/issues/37141> -->
+    <!-- Workaround of https://github.com/dotnet/aspnetcore/issues/37141>: -->
     <ProjectCapability Include="AspNetCore" />
-    <!-- </workaround of https://github.com/dotnet/aspnetcore/issues/37141> -->
   </ItemGroup>
 
   <!-- UseAppPack == false -->
@@ -82,7 +79,6 @@ Use:
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="RestEase" />
     <PackageReference Include="SauceControl.Blake2Fast" />
-    <PackageReference Include="Sentry.OpenTelemetry" />
     <PackageReference Include="System.Linq.Async" />
     <PackageReference Include="System.Reactive" />
     <PackageReference Include="Ulid" />

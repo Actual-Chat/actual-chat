@@ -1,6 +1,6 @@
 using ActualChat.UI.Blazor.Diagnostics;
-using Sentry;
-using Sentry.OpenTelemetry;
+// using Sentry;
+// using Sentry.OpenTelemetry;
 
 namespace ActualChat.UI.Blazor;
 
@@ -8,6 +8,7 @@ public static class SentryExt
 {
     private const string UIDsn = "https://7bcdf3ac9a774dfab54df0e0a9865a20@o4504632882233344.ingest.sentry.io/4504639283789824";
 
+#if false // Sentry-specific code is commented out
     public static void ConfigureForApp(this SentryOptions options, bool useOpenTelemetry)
     {
         options.Dsn = UIDsn;
@@ -23,12 +24,13 @@ public static class SentryExt
             options.UseOpenTelemetry();
         }
     }
+#endif
 
     private static HttpMessageHandler CreateHttpMessageHandler()
     {
         // We use ConditionalPropagatorHandler as custom transport
         // to disable telemetry context propagation during posting telemetry data to Sentry.
-        // Otherwise it causes CORS request failure in WebAssembly mode.
+        // Otherwise, it causes CORS request failure in WebAssembly mode.
         // Error:
         // Access to fetch at 'https://o4504632882233344.ingest.sentry.io/api/4504639283789824/envelope/'
         // from origin 'https://*.actual.chat'
