@@ -143,6 +143,8 @@
     <AnalysisLevel>preview</AnalysisLevel>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     <WarningLevel>4</WarningLevel>
+    <!-- NU1902, NU1903, NU1904: Package 'X' has a known moderate/high/critical security vulnerability -->
+    <NoWarn>$(NoWarn);NU1902;NU1903;NU1904</NoWarn>
     <!-- NuGet & libraries / frameworks -->
     <!-- NU5048: The 'PackageIconUrl'/'iconUrl' element is deprecated -->
     <!-- NU5105: The package version uses SemVer 2.0.0 or components of SemVer 1.0.0 that are not supported on legacy clients -->
