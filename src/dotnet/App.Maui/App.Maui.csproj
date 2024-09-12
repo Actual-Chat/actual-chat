@@ -124,6 +124,7 @@
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
     <PackageReference Include="Sentry.Serilog" />
     <PackageReference Include="Sentry.Extensions.Logging" />
+    <PackageReference Include="Sentry.OpenTelemetry" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="sqlite-net-pcl" />

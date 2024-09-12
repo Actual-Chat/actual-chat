@@ -1,14 +1,12 @@
 using ActualChat.UI.Blazor.Diagnostics;
-// using Sentry;
-// using Sentry.OpenTelemetry;
+using Sentry.OpenTelemetry;
 
-namespace ActualChat.UI.Blazor;
+namespace ActualChat.App.Maui.Sentry;
 
 public static class SentryExt
 {
     private const string UIDsn = "https://7bcdf3ac9a774dfab54df0e0a9865a20@o4504632882233344.ingest.sentry.io/4504639283789824";
 
-#if false // Sentry-specific code is commented out
     public static void ConfigureForApp(this SentryOptions options, bool useOpenTelemetry)
     {
         options.Dsn = UIDsn;
@@ -24,7 +22,6 @@ public static class SentryExt
             options.UseOpenTelemetry();
         }
     }
-#endif
 
     private static HttpMessageHandler CreateHttpMessageHandler()
     {
