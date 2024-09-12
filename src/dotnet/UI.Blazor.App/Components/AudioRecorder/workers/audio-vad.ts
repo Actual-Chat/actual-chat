@@ -1,5 +1,5 @@
 import { AUDIO_REC as AR, AUDIO_VAD as AV } from '_constants';
-import { clamp, lerp, RunningUnitMedian, RunningEMA } from 'math';
+import { clamp, lerp, RunningUnitMedian, RunningEMA, approximateGain } from 'math';
 import { Versioning } from 'versioning';
 // @ts-ignore - it works, but fails validation
 import * as ort from 'onnxruntime-web/wasm';
@@ -9,7 +9,7 @@ import { Log } from 'logging';
 const { logScope, debugLog } = Log.get('AudioVadWorker');
 
 export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector {
-    protected readonly probEMA = new RunningEMA(0.5, 3); // 32ms*3 ~ 100ms
+    protected readonly probEMA = new RunningEMA(0.5, 5); // 32ms*5 ~ 150ms
     protected readonly longProbEMA = new RunningEMA(0.5, 64); // 32ms*64 ~ 2s
     protected readonly probMedian = new RunningUnitMedian();
     protected readonly minSpeechSamples: number;
@@ -18,7 +18,6 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     // private readonly results =  new Array<number>();
 
     protected sampleCount = 0;
-    protected lastTriggeredProb: number | null = null;
     protected pauseOffset?: number = null;
     protected pauseCancelSamples: number = 0;
     protected lastConversationSignalAtSample: number | null = null;
@@ -51,7 +50,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
         let currentEvent = this.lastActivityEvent;
         const gain = approximateGain(monoPcm);
         // debugLog?.log('appendChunk:', currentEvent, gain);
-        if (gain < 0.0025 && currentEvent.kind === 'end')
+        if (gain < 0.0015 && currentEvent.kind === 'end')
             return gain; // do not try to check VAD at low gain input
 
         const prob = await this.appendChunkInternal(monoPcm);
@@ -70,13 +69,12 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
 
         if (currentEvent.kind === 'end'
             && probEma >= longProbEma
-            && ((this.isNeural ? prob : probEma) >= speechProbTrigger)
+            && (probEma >= speechProbTrigger)
         ) {
             // speech start detected
             const offset = Math.max(0, currentOffset - monoPcm.length);
             const duration = offset - currentEvent.offset;
             currentEvent = { kind: 'start', offset, speechProb: probEma, duration };
-            this.lastTriggeredProb = prob;
             this.whenTalkingProbMedian = new RunningUnitMedian();
             this.maxPauseSamples = this.sampleRate * AV.MAX_PAUSE;
         }
@@ -85,18 +83,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
             this.pauseCancelSamples = 0;
             if (this.pauseOffset === null)
                 this.pauseOffset = currentOffset;
-
-            if (this.whenTalkingProbMedian !== null) {
-                // adjust speech boundary triggers if current period was speech with high probabilities
-                const offset = currentOffset + monoPcm.length;
-                const duration = offset - currentEvent.offset
-                const durationS = duration / this.sampleRate;
-                const speechRatio = this.whenTalkingProbMedian.sampleCount / (duration / monoPcm.length);
-                if (this.lastTriggeredProb > 0.6 && speechRatio > 0.5 &&  durationS > 2)
-                    this.probMedian.appendSample(this.lastTriggeredProb)
-                this.whenTalkingProbMedian = null;
-                this.lastTriggeredProb = null;
-            }
+            this.whenTalkingProbMedian = null;
         }
 
         if (currentEvent.kind === 'start') {
@@ -124,6 +111,15 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
                     }
                 }
             }
+            else if (this.whenTalkingProbMedian !== null) {
+                // adjust speech boundary triggers if current period was speech with high probabilities
+                const offset = currentOffset + monoPcm.length;
+                const duration = offset - currentEvent.offset;
+                const durationS = duration / this.sampleRate;
+                const speechRatio = this.whenTalkingProbMedian.sampleCount / duration;
+                if (speechRatio > 0.5 && durationS > 2)
+                    this.probMedian.appendSample(probEma);
+            }
 
             if (currentEvent.kind === 'start' && currentSpeechSamples > this.maxSpeechSamples) {
                 // break long speech regardless of speech probability
@@ -133,7 +129,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
                 this.pauseOffset = null;
             }
 
-            if (this.whenTalkingProbMedian !== null && prob > 0.08)
+            if (this.whenTalkingProbMedian !== null && prob > 0.25)
                 this.whenTalkingProbMedian.appendSample(prob);
 
             // adjust max pause for long speech - break more aggressively, but keep longer pauses for monologue
@@ -141,9 +137,9 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
                 && (this.sampleCount - this.lastConversationSignalAtSample) <= this.sampleRate * AV.CONV_DURATION;
             const maxPause = isConversation ? AV.MAX_CONV_PAUSE : AV.MAX_PAUSE;
             const maxPauseVariesFromSamples = this.sampleRate * AV.PAUSE_VARIES_FROM;
-            let maxPauseAlpha =
+            let maxPauseAlpha = Math.abs(
                 (currentSpeechSamples - maxPauseVariesFromSamples) /
-                (this.maxSpeechSamples - maxPauseVariesFromSamples);
+                (this.maxSpeechSamples - maxPauseVariesFromSamples));
             maxPauseAlpha = clamp(Math.pow(maxPauseAlpha, AV.PAUSE_VARY_POWER), 0, 1);
             const silenceThreshold = lerp(maxPause, AV.MIN_PAUSE, maxPauseAlpha);
             this.maxPauseSamples = Math.floor(this.sampleRate * silenceThreshold);
@@ -235,16 +231,6 @@ export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
 }
 
 // Helpers
-
-function approximateGain(monoPcm: Float32Array, stride = 5): number {
-    let sum = 0;
-    // every 5th sample as usually it's enough to assess speech gain
-    for (let i = 0; i < monoPcm.length; i+=stride) {
-        const e = monoPcm[i];
-        sum += e * e;
-    }
-    return Math.sqrt(sum / Math.floor(monoPcm.length / stride));
-}
 
 function adjustChangeEventsToSeconds(event: VoiceActivityChange, sampleRate: number): VoiceActivityChange {
     return {

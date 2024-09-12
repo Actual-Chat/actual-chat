@@ -115,12 +115,15 @@ export class RunningUnitMedian implements RunningCounter {
             return this._value;
 
         const halfSampleCount = this._sampleCount / 2;
-        let runningCount = 0;
-        for (let i = 0; i < this._buckets.length; i++) {
-            runningCount += this._buckets[i];
-            if (runningCount >= halfSampleCount) {
-                // Ideally we should distribute the weight here
-                return this._value = i / this._buckets.length + this._halfBucketSize;
+        if (halfSampleCount) {
+            // there are samples to calc median
+            let runningCount = 0;
+            for (let i = 0; i < this._buckets.length; i++) {
+                runningCount += this._buckets[i];
+                if (runningCount >= halfSampleCount) {
+                    // Ideally we should distribute the weight here
+                    return this._value = i / this._buckets.length + this._halfBucketSize;
+                }
             }
         }
         return this._value = this.defaultValue;
@@ -250,4 +253,36 @@ export class RunningMax implements RunningCounter {
         if (this.samples.length > this.windowSize)
             this.samples.shift();
     }
+}
+
+const BESSEL_I0_ITER = 50;
+
+export function KaiserBesselDerivedWindow(windowSize: number, alpha: number): Float32Array {
+    const window = new Float32Array(windowSize);
+    const alpha2 = (alpha * Math.PI / windowSize) * (alpha * Math.PI / windowSize);
+
+    let sum = 0.0;
+    for (let i = 0; i < windowSize; i++) {
+        const tmp = i * (windowSize - i) * alpha2;
+        let bessel = 1.0;
+        for (let j = BESSEL_I0_ITER; j > 0; j--)
+            bessel = bessel * tmp / (j * j) + 1;
+        sum += bessel;
+        window[i] = sum;
+    }
+    sum++;
+    for (let i = 0; i < windowSize; i++)
+        window[i] = Math.sqrt(window[i] / sum);
+
+    return window;
+}
+
+export function approximateGain(monoPcm: Float32Array, stride = 5): number {
+    let sum = 0;
+    // every 5th sample as usually it's enough to assess speech gain
+    for (let i = 0; i < monoPcm.length; i+=stride) {
+        const e = monoPcm[i];
+        sum += e * e;
+    }
+    return Math.sqrt(sum / Math.floor(monoPcm.length / stride));
 }

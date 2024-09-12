@@ -133,12 +133,15 @@ public sealed class ChatEntryPlayer : ProcessorBase
         };
         var now = Clocks.SystemClock.Now;
         var latency = now - audio.CreatedAt;
-        _ = BackgroundTask.Run(() => {
+        _ = BackgroundTask.Run(async () => {
             _ = StreamClient.ReportAudioLatency(latency, cancellationToken).ConfigureAwait(false);
             var recorderState = AudioRecorder.State.LastNonErrorValue;
-            if (recorderState.IsRecording && recorderState.ChatId == audioEntry.ChatId)
+            if (!recorderState.IsRecording || recorderState.ChatId != audioEntry.ChatId)
+                return;
+
+            var ownAuthor = await Hub.Authors.GetOwn(Hub.Session(), audioEntry.ChatId, cancellationToken).ConfigureAwait(false);
+            if (audioEntry.AuthorId != (ownAuthor?.Id ?? AuthorId.None))
                 _ = AudioRecorder.ConversationSignal(cancellationToken).ConfigureAwait(false);
-            return Task.CompletedTask;
         }, cancellationToken);
         return Playback.Play(trackInfo, audio, playAt, cancellationToken);
     }
