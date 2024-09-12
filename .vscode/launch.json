@@ -5,6 +5,13 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "App.Maui (Windows)",
+      "type": "maui",
+      "request": "launch",
+      "preLaunchTask": "maui: Build",
+      "program": "${workspaceFolder}/artifacts/bin/App.Maui/debug_net9.0-windows10.0.22000.0/ActualChat.exe"
+    },
+    {
       "name": "App.Server Debug",
       "type": "coreclr",
       "request": "launch",
