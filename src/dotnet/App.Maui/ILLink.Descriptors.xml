@@ -1,9 +1,12 @@
 <linker>
-  <!-- Entry point -->
   <assembly fullname="ActualChat" preserve="all" />
-  <assembly fullname="ActualChat.AppPack" preserve="all" />
 
-  <!-- Trimmed types -->
+  <assembly fullname="ActualChat.UI.Blazor.AppPack">
+    <!-- ArgumentList is auto-configured to use ArgumentListS* types in AOT apps -->
+    <type fullname="ActualLab.Interception.ArgumentListS*" preserve="all" />
+    <!-- And ArgumentListG* types aren't used -->
+    <type fullname="ActualLab.Interception.ArgumentListG*" preserve="nothing" />
+  </assembly>
   <assembly fullname="ActualLab.Interception">
     <!-- ArgumentList is auto-configured to use ArgumentListS* types in AOT apps -->
     <type fullname="ActualLab.Interception.ArgumentListS*" preserve="all" />
