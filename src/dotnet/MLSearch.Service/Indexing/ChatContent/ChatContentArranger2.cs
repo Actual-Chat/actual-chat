@@ -20,22 +20,14 @@ internal sealed class ChatContentArranger2(
         if (bufferedEntries.Count == 0)
             yield break;
 
-        // TODO: we want to select document depending on the content
-        var builders = new List<SourceEntriesBuilder>();
+        var builders = new List<DocumentBuilder>();
         // Preload document tails
         foreach (var tailDocument in tailDocuments) {
-            var builder = new SourceEntriesBuilder(tailDocument);
-            builders.Add(builder);
-        }
-
-        foreach (var builder in builders) {
-            if (builder is { RelatedChatSlice: not null, HasInitializedEntries: false }) {
-                var tailEntries = await LoadTailEntries(builder.RelatedChatSlice, cancellationToken)
-                    .ConfigureAwait(false);
-                builder.Entries.AddRange(tailEntries);
-                builder.HasInitializedEntries = true;
-                builder.Dialog = await chatDialogFormatter.BuildUpDialog(tailEntries).ConfigureAwait(false);
-            }
+            var builder = new DocumentBuilder(tailDocument);
+            var tailEntries = await LoadTailEntries(tailDocument, cancellationToken)
+                .ConfigureAwait(false);
+            builder.Entries.AddRange(tailEntries);
+            builder.Dialog = await chatDialogFormatter.BuildUpDialog(tailEntries).ConfigureAwait(false);
         }
 
         foreach (var entry in bufferedEntries) {
@@ -45,8 +37,7 @@ internal sealed class ChatContentArranger2(
                 continue;
 
             if (builders.Count == 0) {
-                var builder = new SourceEntriesBuilder(null) {
-                    HasInitializedEntries = true,
+                var builder = new DocumentBuilder(null) {
                     HasModified = true
                 };
                 builders.Add(builder);
@@ -54,8 +45,8 @@ internal sealed class ChatContentArranger2(
                 builder.Dialog = await chatDialogFormatter.BuildUpDialog(builder.Entries).ConfigureAwait(false);
             }
             else {
-                SourceEntriesBuilder? builderToAdd = null;
-                var candidates = new List<SourceEntriesBuilder>();
+                DocumentBuilder? builderToAdd = null;
+                var candidates = new List<DocumentBuilder>();
 
                 if (entry.RepliedEntryLid is { } repliedEntryLocalId) {
                     foreach (var builder in builders) {
@@ -67,7 +58,7 @@ internal sealed class ChatContentArranger2(
                 }
 
                 if (builderToAdd is null) {
-                    List<SourceEntriesBuilder>? buildersToClose = null;
+                    List<DocumentBuilder>? buildersToClose = null;
                     foreach (var builder in builders) {
                         var lastEntry = builder.Entries.Last();
                         var timeDistance = entry.BeginsAt - lastEntry.BeginsAt;
@@ -79,7 +70,7 @@ internal sealed class ChatContentArranger2(
                             || (idDistance > 10 && timeDistance > TimeSpan.FromMinutes(240))
                             || timeDistance > TimeSpan.FromHours(12);
                         if (shouldCloseBuilder) {
-                            buildersToClose ??= new List<SourceEntriesBuilder>();
+                            buildersToClose ??= new List<DocumentBuilder>();
                             buildersToClose.Add(builder);
                         }
                     }
@@ -118,8 +109,7 @@ internal sealed class ChatContentArranger2(
                     builderToAdd.Dialog = builderToAdd.PossibleDialog;
                 }
                 else {
-                    var builder = new SourceEntriesBuilder(null) {
-                        HasInitializedEntries = true,
+                    var builder = new DocumentBuilder(null) {
                         HasModified = true
                     };
                     builder.Entries.Add(entry);
@@ -128,10 +118,10 @@ internal sealed class ChatContentArranger2(
                 }
             }
 
-            List<SourceEntriesBuilder>? buildersToSplit = null;
+            List<DocumentBuilder>? buildersToSplit = null;
             foreach (var builder in builders) {
                 if (builder.HasModified && builder.Entries.Count > MaxEntriesPerDocument) {
-                    buildersToSplit ??= new List<SourceEntriesBuilder>();
+                    buildersToSplit ??= new List<DocumentBuilder>();
                     buildersToSplit.Add(builder);
                 }
             }
@@ -139,16 +129,19 @@ internal sealed class ChatContentArranger2(
             if (buildersToSplit is not null) {
                 var splitDocumentEntriesNumber = (int)Math.Floor(MaxEntriesPerDocument * DocumentSplitFactor);
                 foreach (var builder in buildersToSplit) {
-                    yield return new SourceEntries(null, null, builder.Entries.Take(splitDocumentEntriesNumber).ToArray());
-                    var builder1 = new SourceEntriesBuilder(null) {
-                        HasInitializedEntries = true,
+                    var entriesHead = builder.Entries.Take(splitDocumentEntriesNumber).ToArray();
+                    var entriesTail = builder.Entries.Skip(splitDocumentEntriesNumber).ToArray();
+                    yield return new SourceEntries(null, null, entriesHead);
+
+                    var tailBuilder = new DocumentBuilder(null) {
                         HasModified = true,
                     };
-                    builder1.Entries.AddRange(builder.Entries.Skip(splitDocumentEntriesNumber).ToArray());
-                    builder1.Dialog = await chatDialogFormatter.BuildUpDialog(builder1.Entries).ConfigureAwait(false);
+
+                    tailBuilder.Entries.AddRange(entriesTail);
+                    tailBuilder.Dialog = await chatDialogFormatter.BuildUpDialog(tailBuilder.Entries).ConfigureAwait(false);
                     var index = builders.IndexOf(builder);
                     builders.Remove(builder);
-                    builders.Insert(index, builder1);
+                    builders.Insert(index, tailBuilder);
                 }
             }
         }
@@ -168,10 +161,9 @@ internal sealed class ChatContentArranger2(
         return await chatsBackend.GetEntries(tailEntryIds, false, cancellationToken).ConfigureAwait(false);
     }
 
-    private class SourceEntriesBuilder(ChatSlice? relatedChatSlice)
+    private class DocumentBuilder(ChatSlice? relatedChatSlice)
     {
         public ChatSlice? RelatedChatSlice { get; } = relatedChatSlice;
-        public bool HasInitializedEntries { get; set; }
         public bool HasModified { get; set; }
         public List<ChatEntry> Entries { get; } = [];
         public string Dialog { get; set; } = "";
