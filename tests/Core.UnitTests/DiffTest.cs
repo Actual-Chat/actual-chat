@@ -23,7 +23,7 @@ public class DiffTest(ITestOutputHelper @out) : TestBase(@out)
         var diff = engine.Diff<Animal, AnimalDiff>(animal1, animal1);
         Out.WriteLine($"Diff 1: {diff}");
         diff.Name.Should().BeNull();
-        diff.AltName.Should().Be(Option.None<string>());
+        diff.AltName.Should().Be(Option.None<string?>());
         diff.LegCount.Should().Be(null);
         diff.Tags.AddedItems.Count.Should().Be(0);
         diff.Tags.RemovedItems.Count.Should().Be(0);

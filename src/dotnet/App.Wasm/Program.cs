@@ -59,7 +59,7 @@ public static class Program
 
             await host.RunAsync().ConfigureAwait(false);
         }
-        catch (Exception e) {
+        catch (Exception) {
             if (!isSentryEnabled)
                 throw;
 

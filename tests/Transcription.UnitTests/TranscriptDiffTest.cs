@@ -76,7 +76,7 @@ public class TranscriptDiffTest(ITestOutputHelper @out) : TestBase(@out)
             var t = transcripts[i];
             var r = restored.GetValueOrDefault(i);
             Out.WriteLine($"- {t} -> {r}");
-            r.IsIdenticalTo(t).Should().BeTrue();
+            r!.IsIdenticalTo(t).Should().BeTrue();
         }
         restored.Count.Should().Be(transcripts.Count);
 

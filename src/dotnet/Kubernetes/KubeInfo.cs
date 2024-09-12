@@ -16,7 +16,7 @@ public sealed class KubeInfo(IServiceProvider services) : IKubeInfo, IAsyncDispo
 
     private IServiceProvider Services { get; } = services;
 
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private volatile CachedKube? _cachedInfo;
     private volatile KubeToken? _token;
     private Task? _disposeTask;
