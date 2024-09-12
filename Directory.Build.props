@@ -67,7 +67,7 @@
     <RootNamespace Condition="$(AssemblyName.EndsWith('.Api'))">$(AssemblyName.Replace('.Api',''))</RootNamespace>
 
     <!-- C# / language settings -->
-    <TargetFramework Condition="!$(IsMauiProject)">net8.0</TargetFramework>
+    <TargetFramework Condition="!$(IsMauiProject)">net9.0</TargetFramework>
     <LangVersion>preview</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

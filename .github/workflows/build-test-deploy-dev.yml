@@ -680,7 +680,7 @@ jobs:
       - name: Build app package
         run: |-
           ./run-build.cmd publish-ios --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}"
-          pushd artifacts/publish/App.Maui/release_net8.0-ios_ios-arm64
+          pushd artifacts/publish/App.Maui/release_net9.0-ios_ios-arm64
           unzip ActualChat.ipa
           rm -r Payload/ActualChat.app/_CodeSignature
           rm -r Payload/ActualChat.app/Frameworks/*/_CodeSignature
@@ -693,7 +693,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.ipa
-          path: artifacts/publish/App.Maui/release_net8.0-ios_ios-arm64/${{env.PACKAGE_FILE_NAME}}
+          path: artifacts/publish/App.Maui/release_net9.0-ios_ios-arm64/${{env.PACKAGE_FILE_NAME}}
           if-no-files-found: error
           compression-level: 0
           retention-days: 10
@@ -799,7 +799,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.aab
-          path: artifacts/publish/App.Maui/release_net8.0-android/${{env.PACKAGE_FILE_NAME}}
+          path: artifacts/publish/App.Maui/release_net9.0-android/${{env.PACKAGE_FILE_NAME}}
           if-no-files-found: error
           compression-level: 0
           retention-days: 10
@@ -924,15 +924,15 @@ jobs:
           ./run-build.cmd publish-win --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}"
 
       - run: |-
-          ls artifacts\bin\App.Maui\release_net8.0-windows10.0.22000.0\AppPackages\
+          ls artifacts\bin\App.Maui\release_net9.0-windows10.0.22000.0\AppPackages\
           echo v=${{steps.build-app-pkg.outputs.AppVersion}}
-          ls artifacts\bin\App.Maui\release_net8.0-windows10.0.22000.0\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\
+          ls artifacts\bin\App.Maui\release_net9.0-windows10.0.22000.0\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\
 
       - name: Upload package to artifacts
         uses: actions/upload-artifact@v4
         with:
           name: chat.actual.app.${{steps.build-app-pkg.outputs.AppVersion}}.msix
-          path: artifacts\bin\App.Maui\release_net8.0-windows10.0.22000.0\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_x64.msix
+          path: artifacts\bin\App.Maui\release_net9.0-windows10.0.22000.0\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_x64.msix
           if-no-files-found: error
           compression-level: 0
           retention-days: 2

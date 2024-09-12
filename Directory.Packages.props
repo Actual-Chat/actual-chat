@@ -3,16 +3,18 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
+
+  <!-- Version constants -->
   <PropertyGroup>
-    <ActualLabFusionVersion>9.3.4</ActualLabFusionVersion>
-    <AspNetCoreVersion>8.0.4</AspNetCoreVersion>
+    <ActualLabFusionVersion>9.3.5</ActualLabFusionVersion>
+    <AspNetCoreVersion>9.0.0-rc.1.24452.1</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>8.0.4</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>8.0.4</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreCheckConstraintsVersion>8.0.1</EntityFrameworkCoreCheckConstraintsVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
-    <MicrosoftExtensionsVersion>8.0.1</MicrosoftExtensionsVersion>
-    <MicrosoftExtensionsBaseVersion>8.0.0</MicrosoftExtensionsBaseVersion>
+    <MicrosoftExtensionsVersion>[9.0.0-rc.1.24431.7,)</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsBaseVersion>[9.0.0-rc.1.24431.7,)</MicrosoftExtensionsBaseVersion>
     <NpgsqlVersion>8.0.1</NpgsqlVersion>
     <RedisVersion>2.8.12</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
@@ -163,7 +165,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="7.5.1" />
     <PackageVersion Include="Microsoft.IO.RecyclableMemoryStream" Version="3.0.0" />
-    <PackageVersion Include="Microsoft.JSInterop" Version="8.0.4" />
+    <PackageVersion Include="Microsoft.JSInterop" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.JSInterop.WebAssembly" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.Toolkit.HighPerformance" Version="7.1.2" />
     <PackageVersion Include="MimeKit" Version="4.5.0" />
@@ -242,7 +244,7 @@
     <PackageVersion Include="Moq" Version="4.20.70" />
     <PackageVersion Include="Moq.Autocomplete" Version="0.0.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.6.133" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <PackageVersion Include="xunit" Version="2.7.1" />
+    <PackageVersion Include="xunit" Version="2.9.0" />
     <PackageVersion Include="Xunit.DependencyInjection" Version="8.7.2" />
     <PackageVersion Include="Xunit.DependencyInjection.Logging" Version="8.1.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.5.8" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
@@ -251,7 +253,7 @@
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.9.28" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Meziantou.Analyzer" Version="2.0.163" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Roslynator.Analyzers" Version="4.12.4" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <PackageVersion Include="xunit.analyzers" Version="1.12.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="xunit.analyzers" Version="1.15.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Generators -->
     <PackageVersion Include="RestEase.SourceGenerator" Version="1.6.4" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="ActualLab.Generators" Version="$(ActualLabFusionVersion)" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
