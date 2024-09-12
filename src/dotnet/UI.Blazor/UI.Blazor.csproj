@@ -6,10 +6,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
-    <PackageReference Include="Sentry" />
     <PackageReference Include="OpenTelemetry" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
-    <PackageReference Include="Sentry.OpenTelemetry" />
     <PackageReference Include="ActualLab.Core" />
     <PackageReference Include="ActualLab.Fusion.Blazor" />
     <PackageReference Include="ActualLab.Fusion.Blazor.Authentication" />

@@ -31,9 +31,9 @@ public static class Program
         AppUIOtelSetup.SetupConditionalPropagator();
         // NOTE(AY): This thing takes 1 second on Windows!
         var isSentryEnabled = Constants.Sentry.EnabledFor.Contains(HostKind.WasmApp);
-        var sentrySdkDisposable = isSentryEnabled
-            ? SentrySdk.Init(options => options.ConfigureForApp(true))
-            : null;
+        var sentrySdkDisposable = (IDisposable?)null; // isSentryEnabled
+            // ? SentrySdk.Init(options => options.ConfigureForApp(true))
+            // : null;
         IDisposable? traceProvider = null;
         try {
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -63,8 +63,8 @@ public static class Program
             if (!isSentryEnabled)
                 throw;
 
-            SentrySdk.CaptureException(e);
-            await SentrySdk.FlushAsync().ConfigureAwait(false);
+            // SentrySdk.CaptureException(e);
+            // await SentrySdk.FlushAsync().ConfigureAwait(false);
             throw;
         }
         finally {
