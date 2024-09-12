@@ -1,3 +1,4 @@
+using System.Globalization;
 using ActualChat.Chat;
 using ActualChat.MLSearch.Indexing.ChatContent;
 
@@ -25,6 +26,34 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
         sourceGroups.Count.Should().Be(2);
         sourceGroups[0].Entries.Select(c => c.Id.LocalId).Should().BeEquivalentTo(dialog1EntryIds);
         sourceGroups[1].Entries.Select(c => c.Id.LocalId).Should().BeEquivalentTo(dialog2EntryIds);
+    }
+
+    [Theory]
+    [InlineData(8, 8, 1)]
+    [InlineData(9, 8, 2)]
+    [InlineData(14, 8, 2)]
+    [InlineData(15, 8, 3)]
+    [InlineData(20, 8, 3)]
+    public async Task SplitEntriesFromTheSameTopicIntoGroups(int messageCount, int maxEntriesPerDocument, int expectedGroupCount)
+    {
+        var messages = Enumerable.Range(1, messageCount)
+            .Select(c => c.ToString(CultureInfo.InvariantCulture))
+            .ToArray();
+        var entries = GetEntries(messages).ToList();
+
+        var dialogFragmentAnalyzer = new Mock<IDialogFragmentAnalyzer>();
+        dialogFragmentAnalyzer
+            .Setup(c => c.IsDialogAboutTheSameTopic(It.IsAny<string>()))
+            .Returns(Task.FromResult(Option.Some(true)));
+        var contentArranger = new ChatContentArranger2(
+            Mock.Of<IChatsBackend>(),
+            dialogFragmentAnalyzer.Object,
+            Mock.Of<IChatDialogFormatter>()) {
+            MaxEntriesPerDocument = maxEntriesPerDocument,
+        };
+        var sourceGroups = await contentArranger.ArrangeAsync(entries, [], CancellationToken.None).ToListAsync();
+        Assert.Equal(expectedGroupCount, sourceGroups.Count);
+        Assert.True(sourceGroups.All(se => se.Entries.Count > 0 && se.Entries.Count <= maxEntriesPerDocument));
     }
 
     private IDialogFragmentAnalyzer CreateDialogFragmentAnalyzer(long[][] supposedDialogs, IList<ChatEntry> entries)
@@ -59,5 +88,18 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
             });
 
         return mock.Object;
+    }
+
+    private static IEnumerable<ChatEntry> GetEntries(IEnumerable<string> messages)
+    {
+        var chatId = new ChatId(Generate.Option);
+        var localId = 1L;
+        var version = DateTime.Now.Ticks;
+        foreach (var msg in messages) {
+            var entryId = new ChatEntryId(chatId, ChatEntryKind.Text, localId++, AssumeValid.Option);
+            yield return new ChatEntry(entryId, version++) {
+                Content = msg,
+            };
+        }
     }
 }

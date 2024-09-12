@@ -143,7 +143,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IDialogFragmentAnalyzer>(c => new DialogFragmentAnalyzer(
             c.GetRequiredService<DialogFragmentAnalyzer.Options>(),
             c.LogFor<DialogFragmentAnalyzer>()));
-        services.AddSingleton<ChatDialogFormatter>();
+        services.AddSingleton<IChatDialogFormatter, ChatDialogFormatter>();
         services.AddSingleton<ChatContentArranger>();
         services.AddSingleton<ChatContentArranger2>();
         services.AddAlias<IChatContentArranger, ChatContentArranger>(ServiceLifetime.Scoped);
