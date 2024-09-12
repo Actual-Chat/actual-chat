@@ -53,7 +53,7 @@ public static class MauiDiagnostics
                 .WithDelay(SentryStartDelay)
                 .ContinueWith(_ => {
                     InitSentrySdk(_sentryOptions);
-                    var _1 = CreateClientSentryTraceProvider();
+                    var _1 = CreateSentryTraceProvider();
                 }, TaskScheduler.Default);
     }
 
@@ -148,7 +148,7 @@ public static class MauiDiagnostics
         disposer.Register(disposable);
     }
 
-    private static async Task CreateClientSentryTraceProvider()
+    private static async Task CreateSentryTraceProvider()
     {
         // Initialize client trace provider only in development environment or for admin users.
         var urlMapper = AppServices.UrlMapper();
@@ -160,7 +160,7 @@ public static class MauiDiagnostics
             if (!ownAccount.IsAdmin)
                 return;
         }
-        TracerProvider = AppUIOtelSetup.CreateClientSentryTraceProvider("MauiApp");
+        TracerProvider = SentryExt.CreateSentryTraceProvider("MauiApp");
     }
 
     public static ILoggingBuilder AddFilteringSerilog(

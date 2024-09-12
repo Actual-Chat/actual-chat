@@ -1,4 +1,8 @@
+using ActualChat.Diagnostics;
 using ActualChat.UI.Blazor.Diagnostics;
+using OpenTelemetry;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Sentry.OpenTelemetry;
 
 namespace ActualChat.App.Maui.Sentry;
@@ -13,7 +17,6 @@ public static class SentryExt
         options.AddExceptionFilterForType<OperationCanceledException>();
         options.Debug = false;
         options.DiagnosticLevel = SentryLevel.Error;
-
         options.CreateHttpMessageHandler = CreateHttpMessageHandler;
 
         if (useOpenTelemetry) {
@@ -22,6 +25,23 @@ public static class SentryExt
             options.UseOpenTelemetry();
         }
     }
+
+    /// <summary>
+    /// Create a trace provider that exports Actual.Chat telemetry to sentry
+    /// </summary>
+    /// <param name="serviceName"></param>
+    /// <returns></returns>
+    public static TracerProvider CreateSentryTraceProvider(string serviceName)
+        => Sdk.CreateTracerProviderBuilder()
+            .AddSource(AppUIInstruments.ActivitySource.Name)
+            .AddHttpClientInstrumentation(cfg => cfg.RecordException = true)
+            .ConfigureResource(
+                resource =>
+                    resource.AddService(
+                        serviceName: serviceName,
+                        serviceVersion: AppUIInstruments.ActivitySource.Version))
+            // .AddSentry() // <-- Configure OpenTelemetry to send traces to Sentry
+            .Build();
 
     private static HttpMessageHandler CreateHttpMessageHandler()
     {
