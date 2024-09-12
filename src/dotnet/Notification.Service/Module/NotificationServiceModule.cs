@@ -5,7 +5,6 @@ using ActualChat.Hosting;
 using ActualChat.Redis.Module;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
-using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Notification.Module;
 
@@ -13,7 +12,7 @@ namespace ActualChat.Notification.Module;
 public sealed class NotificationServiceModule(IServiceProvider moduleServices)
     : HostModule(moduleServices), IServerModule
 {
-    private static readonly object FirebaseAppFactoryLock = new();
+    private static readonly Lock FirebaseAppFactoryLock = new();
 
     protected override void InjectServices(IServiceCollection services)
     {

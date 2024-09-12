@@ -6,7 +6,7 @@ namespace ActualChat.Testing.Host.Assertion;
 
 public static class ActualFluentFormatters
 {
-    private static readonly object Lock = new ();
+    private static readonly Lock Lock = new ();
     private static volatile bool _isUsed;
 
     public static void Use()
