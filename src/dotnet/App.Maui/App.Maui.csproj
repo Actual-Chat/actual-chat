@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>net9.0-android;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.22000.0</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.22621.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <AssemblyName>$(BaseName)</AssemblyName>
     <RootNamespace>$(BaseName).$(MSBuildProjectName)</RootNamespace>
@@ -13,7 +13,6 @@
     <MauiVersion>9.0.0-rc.1.24453.9</MauiVersion>
     <SingleProject>true</SingleProject>
     <IsPublishable>true</IsPublishable>
-    <UseMauiNuGets>false</UseMauiNuGets>
     <SkipValidateMauiImplicitPackageReferences>true</SkipValidateMauiImplicitPackageReferences>
     <EnableDefaultXamlItems>false</EnableDefaultXamlItems>
 
@@ -94,6 +93,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
@@ -177,7 +177,11 @@
 
   <!-- Trimming -->
   <ItemGroup>
+    <!--
     <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" />
+    -->
+    <TrimmerRootAssembly Include="ActualChat" RootMode="EntryPoint" />
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.AppPack" RootMode="All" />
   </ItemGroup>
 
   <!-- Common iOS and Android build properties -->
@@ -234,7 +238,7 @@
     <AndroidLinkTool>r8</AndroidLinkTool>
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode Condition="!$(UseAppPack)">partial</TrimMode>
-    <TrimMode Condition="$(UseAppPack)">full</TrimMode> <!-- Will be "full" w/ .NET 9 -->
+    <TrimMode Condition="$(UseAppPack)">full</TrimMode>
     <RunAOTCompilation>true</RunAOTCompilation>
     <!-- Disabled for now, see https://github.com/dotnet/runtime/issues/101135 -->
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
@@ -392,13 +396,21 @@
 
   <!-- Windows build properties -->
 
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
+    <WindowsSdkPackageVersion>10.0.22621.38</WindowsSdkPackageVersion>
+  </PropertyGroup>
+
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
-    <PublishAot>true</PublishAot>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+<!--    <PublishReadyToRun>false</PublishReadyToRun>-->
+<!--    <PublishSingleFile>true</PublishSingleFile>-->
+<!--    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>-->
+<!--    <SelfContained>false</SelfContained>-->
+<!--    <PublishAot>true</PublishAot>-->
+<!--    <PublishTrimmed>true</PublishTrimmed>-->
     <TrimMode Condition="!$(UseAppPack)">partial</TrimMode>
-    <TrimMode Condition="$(UseAppPack)">full</TrimMode> <!-- Will be "full" w/ .NET 9 -->
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <TrimMode Condition="$(UseAppPack)">partial</TrimMode>
     <OptimizationPreference>Size</OptimizationPreference>
-    <!-- <TrimmerSingleWarn>false</TrimmerSingleWarn>-->
     <IlcGenerateStackTraceData>true</IlcGenerateStackTraceData>
     <IlcDisableReflection>false</IlcDisableReflection>
     <NativeDebugSymbols>false</NativeDebugSymbols>

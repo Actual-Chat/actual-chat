@@ -9,7 +9,7 @@
       "type": "maui",
       "request": "launch",
       "preLaunchTask": "maui: Build",
-      "program": "${workspaceFolder}/artifacts/bin/App.Maui/debug_net9.0-windows10.0.22000.0/ActualChat.exe"
+      "program": "${workspaceFolder}/artifacts/bin/App.Maui/debug_net9.0-windows10.0.22621.0/ActualChat.exe"
     },
     {
       "name": "App.Server Debug",

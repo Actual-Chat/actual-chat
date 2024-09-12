@@ -924,15 +924,15 @@ jobs:
           ./run-build.cmd publish-win --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}"
 
       - run: |-
-          ls artifacts\bin\App.Maui\release_net9.0-windows10.0.22000.0\AppPackages\
+          ls artifacts\bin\App.Maui\release_net9.0-windows10.0.22621.0\AppPackages\
           echo v=${{steps.build-app-pkg.outputs.AppVersion}}
-          ls artifacts\bin\App.Maui\release_net9.0-windows10.0.22000.0\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\
+          ls artifacts\bin\App.Maui\release_net9.0-windows10.0.22621.0\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\
 
       - name: Upload package to artifacts
         uses: actions/upload-artifact@v4
         with:
           name: chat.actual.app.${{steps.build-app-pkg.outputs.AppVersion}}.msix
-          path: artifacts\bin\App.Maui\release_net9.0-windows10.0.22000.0\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_x64.msix
+          path: artifacts\bin\App.Maui\release_net9.0-windows10.0.22621.0\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_x64.msix
           if-no-files-found: error
           compression-level: 0
           retention-days: 2

@@ -112,11 +112,11 @@ The instructions below imply you're on Windows.
   - run `dotnet build` from repo root.
 - Run this command from repo root:
   ```bash
-  dotnet publish src/dotnet/App.Maui/App.Maui.csproj -f net9.0-windows10.0.22000.0 -c Debug-MAUI --no-restore -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=true -p:PackageCertificateThumbprint=0BFF799D82CC03E61A65584D31D800924149453A
+  dotnet publish src/dotnet/App.Maui/App.Maui.csproj -f net9.0-windows10.0.22621.0 -c Debug --no-restore -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=true -p:PackageCertificateThumbprint=0BFF799D82CC03E61A65584D31D800924149453A
   ```  
 
 Possible issues:
-- `"artefacts\obj\ClientApp\project.assets.json' doesn't have a target for 'net7.0-windows10.0.22000.0"` error: try to build everything in IDE and run `dotnet publish` with `--no-restore`.
+- `"artefacts\obj\ClientApp\project.assets.json' doesn't have a target for 'net9.0-windows10.0.22621.0"` error: try to build everything in IDE and run `dotnet publish` with `--no-restore`.
 
 ### Android app
 
