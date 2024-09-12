@@ -33,7 +33,6 @@ Use:
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode Condition="!$(UseAppPack)">partial</TrimMode>
     <TrimMode Condition="$(UseAppPack)">full</TrimMode>
-    <IsTrimmable>true</IsTrimmable>
     <RunAOTCompilation>false</RunAOTCompilation>
     <!-- Broken for now:
     - https://github.com/dotnet/runtime/issues/92238
@@ -44,6 +43,7 @@ Use:
 
   <!-- Trimming -->
   <ItemGroup>
+    <!-- <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" />-->
     <TrimmerRootAssembly Include="ActualChat.App.Wasm" RootMode="EntryPoint" />
     <TrimmerRootAssembly Include="ActualChat.UI.Blazor.AppPack" RootMode="All" />
   </ItemGroup>
@@ -70,6 +70,7 @@ Use:
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
