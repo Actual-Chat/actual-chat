@@ -1,18 +1,17 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Security.Claims;
-using System.Text.Encodings.Web;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace ActualChat.MLSearch.Bot.Tools.Context;
+
 public class BotToolsContextHandlerOptions
 {
-    public SigningCredentials SigningCredentials { get; set; }
-    public string Audience { get; set; }
-    public string Issuer { get; set; }
+    public SigningCredentials? SigningCredentials { get; set; }
+    public string Audience { get; set; } = "";
+    public string Issuer { get; set; } = "";
     public TimeSpan ContextLifetime { get; set; }
 }
 
@@ -27,7 +26,7 @@ public class BotToolsContext(ClaimsPrincipal? claims) : IBotToolsContext
 
 public class BotToolsContextHandler(IOptionsMonitor<BotToolsContextHandlerOptions> options) : IBotToolsContextHandler
 {
-    private const string BEARER_PREFIX = "Bearer ";
+    private const string BearerPrefix = "Bearer ";
 
     public IBotToolsContext GetContext(HttpRequest request) => new BotToolsContext(GetValidatedClaims(request));
     public void SetContext(HttpRequestMessage request, string conversationId)
@@ -52,11 +51,11 @@ public class BotToolsContextHandler(IOptionsMonitor<BotToolsContextHandlerOption
     private ClaimsPrincipal? GetValidatedClaims(HttpRequest request)
     {
         string? bearerToken = request.Headers.Authorization
-            .FirstOrDefault(e => e?.StartsWith(BEARER_PREFIX, StringComparison.Ordinal) == true);
+            .FirstOrDefault(e => e?.StartsWith(BearerPrefix, StringComparison.Ordinal) == true);
         if (bearerToken == null) {
             return null;
         }
-        var claims = VerifyToken(bearerToken.Substring(BEARER_PREFIX.Length));
+        var claims = VerifyToken(bearerToken.Substring(BearerPrefix.Length));
         if (claims == null) {
             return null;
         }
@@ -68,6 +67,7 @@ public class BotToolsContextHandler(IOptionsMonitor<BotToolsContextHandlerOption
     private ClaimsPrincipal? VerifyToken(string signedToken)
     {
         var config = options.CurrentValue;
+        var signingCredentials = config.SigningCredentials.Require();
         var validationParameters = new TokenValidationParameters() {
             ValidAudience = config.Audience,
             ValidIssuer = config.Issuer,
@@ -75,7 +75,7 @@ public class BotToolsContextHandler(IOptionsMonitor<BotToolsContextHandlerOption
             ValidateAudience = true,
             ValidateIssuer = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = config.SigningCredentials.Key,
+            IssuerSigningKey = signingCredentials?.Key,
             ClockSkew = TimeSpan.Zero
         };
 
