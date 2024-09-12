@@ -3,22 +3,14 @@ using ActualChat.Chat;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;
 
-public class ChatDialogFormatter(IAuthorsBackend authorsBackend, bool displayTimestamp = false)
+public interface IChatDialogFormatter
+{
+    Task<string> EntryToText(ChatEntry entry, ChatEntry? prevChatEntry);
+}
+
+public class ChatDialogFormatter(IAuthorsBackend authorsBackend, bool displayTimestamp = false) : IChatDialogFormatter
 {
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
-
-    public async Task<string> BuildUpDialog(IEnumerable<ChatEntry> chatEntries)
-    {
-        var sb = new StringBuilder();
-        ChatEntry? prevChatEntry = null;
-        foreach (var chatEntry in chatEntries) {
-            if (sb.Length > 0)
-                sb.AppendLine();
-            var entryText = await EntryToText(chatEntry, prevChatEntry).ConfigureAwait(false);
-            sb.Append(entryText);
-        }
-        return sb.ToString();
-    }
 
     public async Task<string> EntryToText(ChatEntry entry, ChatEntry? prevChatEntry)
     {
@@ -55,7 +47,7 @@ public class ChatDialogFormatter(IAuthorsBackend authorsBackend, bool displayTim
         return authorName;
     }
 
-    private Task<string> ContentToText(string markup)
+    private static Task<string> ContentToText(string markup)
         => Task.FromResult(markup); // TODO: add markup parsing
 
     private static bool IsBlockStart(ChatEntry? prevEntry, ChatEntry entry)

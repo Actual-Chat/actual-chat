@@ -6,9 +6,12 @@ namespace ActualChat.MLSearch.Indexing.ChatContent;
 internal sealed class ChatContentArranger2(
     IChatsBackend chatsBackend,
     IDialogFragmentAnalyzer fragmentAnalyzer,
-    ChatDialogFormatter chatDialogFormatter
+    IChatDialogFormatter chatDialogFormatter
 ) : IChatContentArranger
 {
+    public int MaxEntriesPerDocument { get; init; } = 12;
+    public decimal DocumentSplitFactor { get; init; } = 0.75m;
+
     public async IAsyncEnumerable<SourceEntries> ArrangeAsync(
         IReadOnlyCollection<ChatEntry> bufferedEntries,
         IReadOnlyCollection<ChatSlice> tailDocuments,
@@ -19,10 +22,12 @@ internal sealed class ChatContentArranger2(
 
         // TODO: we want to select document depending on the content
         var builders = new List<SourceEntriesBuilder>();
-        foreach (var tailDocument in tailDocuments)
-            builders.Add(new SourceEntriesBuilder(tailDocument));
-
         // Preload document tails
+        foreach (var tailDocument in tailDocuments) {
+            var builder = new SourceEntriesBuilder(tailDocument);
+            builders.Add(builder);
+        }
+
         foreach (var builder in builders) {
             if (builder is { RelatedChatSlice: not null, HasInitializedEntries: false }) {
                 var tailEntries = await LoadTailEntries(builder.RelatedChatSlice, cancellationToken)
@@ -122,6 +127,30 @@ internal sealed class ChatContentArranger2(
                     builders.Add(builder);
                 }
             }
+
+            List<SourceEntriesBuilder>? buildersToSplit = null;
+            foreach (var builder in builders) {
+                if (builder.HasModified && builder.Entries.Count > MaxEntriesPerDocument) {
+                    buildersToSplit ??= new List<SourceEntriesBuilder>();
+                    buildersToSplit.Add(builder);
+                }
+            }
+
+            if (buildersToSplit is not null) {
+                var splitDocumentEntriesNumber = (int)Math.Floor(MaxEntriesPerDocument * DocumentSplitFactor);
+                foreach (var builder in buildersToSplit) {
+                    yield return new SourceEntries(null, null, builder.Entries.Take(splitDocumentEntriesNumber).ToArray());
+                    var builder1 = new SourceEntriesBuilder(null) {
+                        HasInitializedEntries = true,
+                        HasModified = true,
+                    };
+                    builder1.Entries.AddRange(builder.Entries.Skip(splitDocumentEntriesNumber).ToArray());
+                    builder1.Dialog = await chatDialogFormatter.BuildUpDialog(builder1.Entries).ConfigureAwait(false);
+                    var index = builders.IndexOf(builder);
+                    builders.Remove(builder);
+                    builders.Insert(index, builder1);
+                }
+            }
         }
 
         foreach (var builder in builders) {
@@ -139,8 +168,9 @@ internal sealed class ChatContentArranger2(
         return await chatsBackend.GetEntries(tailEntryIds, false, cancellationToken).ConfigureAwait(false);
     }
 
-    private record SourceEntriesBuilder(ChatSlice? RelatedChatSlice)
+    private class SourceEntriesBuilder(ChatSlice? relatedChatSlice)
     {
+        public ChatSlice? RelatedChatSlice { get; } = relatedChatSlice;
         public bool HasInitializedEntries { get; set; }
         public bool HasModified { get; set; }
         public List<ChatEntry> Entries { get; } = [];
