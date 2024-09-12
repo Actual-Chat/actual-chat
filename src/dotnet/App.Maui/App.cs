@@ -29,7 +29,7 @@ public class App : Application
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
-        var window = base.CreateWindow(activationState);
+		var window = new Window(new MainPage());
         window.Destroying += (_, _) => FlushSentryData();
         window.Title = MauiSettings.IsDevApp ? "Actual Chat (Dev)" : "Actual Chat";
         return window;
