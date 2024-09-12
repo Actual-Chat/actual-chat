@@ -6,7 +6,7 @@
 
   <!-- Version constants -->
   <PropertyGroup>
-    <ActualLabFusionVersion>9.3.5</ActualLabFusionVersion>
+    <ActualLabFusionVersion>9.3.8</ActualLabFusionVersion>
     <AspNetCoreVersion>9.0.0-rc.1.24452.1</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>8.0.4</EntityFrameworkCoreVersion>

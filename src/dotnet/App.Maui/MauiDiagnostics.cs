@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Sentry;
 using ActualChat.App.Maui.Services;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
