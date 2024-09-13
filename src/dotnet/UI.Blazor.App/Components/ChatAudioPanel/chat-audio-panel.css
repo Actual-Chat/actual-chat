@@ -9,11 +9,12 @@
 /* ChatAudioPanel Mobile */
 @media (orientation: portrait) {
     body.narrow .chat-audio-panel {
-        @apply relative z-10 overflow-visible;
+        @apply absolute inset-x-1/2 bottom-0 z-10;
         @apply self-stretch items-center gap-x-8;
-        @apply h-12;
+        @apply h-14;
         @apply p-0;
         @apply rounded-b-4xl;
+        @apply overflow-visible;
         background: linear-gradient(to top, var(--background-01) 40%, transparent);
     }
 }
@@ -159,14 +160,6 @@ body.narrow .chat-audio-panel .recorder-wrapper:active {
     body.narrow .chat-audio-panel .language-button {
         @apply hidden;
     }
-    body.narrow .chat-audio-panel:has(.record-on) .language-button {
-        @apply flex;
-        @apply absolute;
-        @apply -translate-x-1/2;
-        @apply top-1;
-        left: calc(50% + 6rem);
-    }
-
     body.narrow .chat-audio-panel .language-button .btn.btn-round {
         @apply h-10 w-20;
     }
@@ -218,7 +211,7 @@ body.narrow .chat-audio-panel .recorder-wrapper .btn {
 }
 @media (orientation: portrait) {
     body.narrow .chat-audio-panel .recorder-button {
-        @apply absolute top-1;
+        @apply absolute bottom-4;
     }
     body.narrow .chat-audio-panel .recorder-wrapper {
         @apply flex;
@@ -327,22 +320,51 @@ body.narrow .base-panel .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-
     @apply min-w-20 max-w-20 min-h-20 max-h-20;
 }
 @media (orientation: portrait) {
+    body.narrow .text-mode .chat-audio-panel .recorder-button,
+    body.narrow .to-thin .chat-audio-panel .recorder-button {
+        @apply bottom-2.5;
+        @apply min-w-8 min-h-8 max-w-8 max-h-8;
+        @apply border-none;
+    }
     body.narrow .text-mode .chat-audio-panel .recorder-wrapper,
     body.narrow .to-thin .chat-audio-panel .recorder-wrapper {
         @apply flex justify-center;
-        @apply h-10 w-20;
+        @apply h-8 w-8;
         transition: all 0ms;
     }
     body.narrow .to-thin.smooth .chat-audio-panel .recorder-wrapper {
         transition: all 100ms ease-in-out;
     }
+    body.narrow .text-mode .chat-audio-panel .recorder-wrapper,
     body.narrow .to-thin .chat-audio-panel .recorder-wrapper {
-        border-width: 0;
+        @apply border-none;
+        @apply shadow-none;
     }
     body.narrow .text-mode .chat-audio-panel .recorder-wrapper .btn.btn-round,
     body.narrow .to-thin .chat-audio-panel .recorder-wrapper .btn.btn-round {
-        @apply min-w-20 max-w-20 min-h-10 max-h-10;
+        @apply min-w-8 max-w-8 min-h-8 max-h-8;
+        @apply bg-transparent;
+        background: transparent;
         transition: all 0ms;
+    }
+    body.narrow .text-mode .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content,
+    body.narrow .to-thin .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content {
+        @apply min-w-8 max-w-8 min-h-8 max-h-8;
+    }
+    body.narrow .text-mode .rec-icon,
+    body.narrow .to-thin .rec-icon {
+        @apply w-8 h-8;
+    }
+    body.narrow .text-mode .rec-icon.off i.left,
+    body.narrow .to-thin .rec-icon.off i.left,
+    body.narrow .text-mode .rec-icon.off i.right,
+    body.narrow .to-thin .rec-icon.off i.right {
+        @apply text-1.5xl text-mobile-landscape-audio-panel-button-text;
+        @apply opacity-100;
+    }
+    body.narrow .text-mode .rec-icon.text-mode-on,
+    body.narrow .to-thin .rec-icon.text-mode-on {
+        @apply text-2xl text-danger;
     }
 }
 
@@ -617,24 +639,6 @@ body.narrow .selected-language {
     @apply w-7 h-5;
     @apply text-caption-1;
 }
-@media (orientation: landscape) {
-    body.narrow .recorder-button .selected-language {
-        @apply hidden;
-    }
-}
-@media (orientation: portrait) {
-    body.narrow .recorder-button .selected-language {
-        @apply top-1 right-0.5;
-        @apply bg-primary;
-    }
-    body.narrow .text-mode .recorder-button .selected-language,
-    body.narrow .narrow-panel .recorder-button .selected-language {
-        @apply -top-1.5 -right-0.5;
-    }
-    body.narrow .recorder-button:has(.record-on, .record-on-to-off, .record-off-to-on) .selected-language {
-        @apply hidden;
-    }
-}
 
 /*Recorder icon*/
 .rec-icon {
@@ -645,11 +649,23 @@ body.narrow .selected-language {
     @apply always-white text-2xl;
     transition-behavior: allow-discrete;
 }
-body.narrow .rec-icon {
-    @apply text-3.5xl;
+.rec-icon i.left {
+    @apply -mr-0.5;
+    @apply text-2xl;
+    @apply opacity-60;
+}
+.rec-icon i.right {
+    @apply -ml-0.5;
+    @apply text-2xl;
+}
+body.narrow .rec-icon,
+body.narrow .rec-icon i {
+    @apply portrait:text-3.5xl landscape:text-2xl;
 }
 body.narrow .text-mode .rec-icon,
-body.narrow .narrow-panel .rec-icon {
+body.narrow .text-mode .rec-icon i,
+body.narrow .narrow-panel .rec-icon,
+body.narrow .narrow-panel .rec-icon i {
     @apply text-2xl;
 }
 
@@ -662,10 +678,7 @@ body.narrow .narrow-panel .rec-icon {
     @apply opacity-0;
     @apply scale-0;
 }
-.record-off .rec-icon.middle {
-    @apply opacity-0;
-    @apply scale-0;
-}
+
 /*Record ON*/
 .record-on .rec-icon.off {
     @apply opacity-0;
@@ -675,10 +688,7 @@ body.narrow .narrow-panel .rec-icon {
     @apply opacity-100;
     @apply scale-100;
 }
-.record-on .rec-icon.middle {
-    @apply opacity-0;
-    @apply scale-0;
-}
+
 /*Record OFF to ON*/
 .record-off-to-on .rec-icon.off {
     opacity: 0;
@@ -691,9 +701,7 @@ body.narrow .narrow-panel .rec-icon {
         transform: scale(1);
     }
 }
-.record-off-to-on .rec-icon.middle {
-    @apply opacity-100;
-}
+
 /*Record ON to OFF*/
 .record-on-to-off .rec-icon.on {
     opacity: 0;
@@ -710,12 +718,33 @@ body.narrow .narrow-panel .rec-icon {
         transform: scale(0.1);
     }
 }
-.record-on-to-off .rec-icon.middle {
-    @apply opacity-100;
-}
 .record-on-to-off.applying-changes .rec-icon.off {
     @apply opacity-100;
 }
+
+/*Text-mode and Narrow-panel */
+body.wide .rec-icon.text-mode-on {
+    @apply hidden;
+}
+body.narrow .rec-icon.text-mode-on {
+    @apply landscape:hidden;
+}
+@media (orientation: portrait) {
+    body.narrow .text-mode .rec-icon.text-mode-on,
+    body.narrow .to-thin .rec-icon.text-mode-on {
+        @apply flex;
+        @apply pt-0.5;
+    }
+    body.narrow .text-mode .rec-icon.text-mode-off,
+    body.narrow .to-thin .rec-icon.text-mode-off {
+        @apply hidden;
+    }
+    body.narrow .to-thick:not(.text-mode) .rec-icon.text-mode-on,
+    body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .rec-icon.text-mode-on {
+        @apply hidden;
+    }
+}
+
 
 @keyframes hide-icon {
     0% {
