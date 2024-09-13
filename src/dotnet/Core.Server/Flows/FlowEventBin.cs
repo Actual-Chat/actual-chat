@@ -1,11 +1,11 @@
 namespace ActualChat.Flows;
 
 [StructLayout(LayoutKind.Auto)]
-public struct FlowEventSource(Flow flow, object? @event)
+public sealed class FlowEventBin(Flow flow, IFlowEvent @event)
 {
     public Flow Flow { get; } = flow;
-    public object? Event { get; private set; } = @event;
-    public bool IsUsed => ReferenceEquals(Event, null);
+    public bool IsUsed { get; private set; }
+    public IFlowEvent Event { get; } = @event;
 
     public TEvent Require<TEvent>()
         where TEvent : class
@@ -32,7 +32,6 @@ public struct FlowEventSource(Flow flow, object? @event)
         return false;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void MarkUsed()
-        => Event = null;
+    public bool MarkUsed(bool isUsed = true)
+        => IsUsed = isUsed;
 }

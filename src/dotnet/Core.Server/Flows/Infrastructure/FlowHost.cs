@@ -52,7 +52,7 @@ public sealed class FlowHost : ShardWorker, IHasServices
     }
 
     // The `long` it returns is DbFlow/FlowData.Version
-    public async Task<long> HandleEvent(FlowId flowId, object? evt, CancellationToken cancellationToken)
+    public async Task<long> HandleEvent(FlowId flowId, IFlowEvent evt, CancellationToken cancellationToken)
     {
         while (true) {
             var worklet = this[flowId];

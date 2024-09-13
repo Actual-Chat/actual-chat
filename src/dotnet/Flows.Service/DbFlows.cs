@@ -53,7 +53,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
 
     // The `long` it returns is DbFlow/FlowData.Version
     [ProxyIgnore] // Regular method!
-    public virtual Task<long> OnEvent(FlowId flowId, object? evt, CancellationToken cancellationToken = default)
+    public virtual Task<long> OnEvent(FlowId flowId, IFlowEvent evt, CancellationToken cancellationToken = default)
         => FlowHost.HandleEvent(flowId, evt, cancellationToken);
 
     // The `long` it returns is DbFlow/FlowData.Version
@@ -81,7 +81,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
             .ConfigureAwait(false);
         VersionChecker.RequireExpected(dbFlow?.Version ?? 0, expectedVersion);
 
-        switch (dbFlow != null, flow.Step != FlowSteps.MustRemove) {
+        switch (dbFlow != null, flow.Step != FlowSteps.OnRemove) {
         case (false, false): // Removed -> Removed
             break;
         case (false, true): // Create

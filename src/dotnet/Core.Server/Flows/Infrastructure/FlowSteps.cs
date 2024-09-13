@@ -1,23 +1,19 @@
-using ActualChat.Flows.Internal;
-
 namespace ActualChat.Flows.Infrastructure;
 
 public static class FlowSteps
 {
     public static readonly Symbol OnStart = nameof(OnStart);
-    public static readonly Symbol OnRecover = nameof(OnRecover);
-    public static readonly Symbol OnMissingStep = nameof(OnMissingStep);
-    public static readonly Symbol MustRemove = "-";
+    public static readonly Symbol OnReset = nameof(OnReset);
+    public static readonly Symbol OnKill = nameof(OnKill);
+    public static readonly Symbol OnEnd = nameof(OnEnd);
+    public static readonly Symbol OnRemove = nameof(OnRemove);
 
     private static readonly MethodInfo ToUntypedMethod = typeof(FlowSteps)
         .GetMethod(nameof(ToUntyped), BindingFlags.Static | BindingFlags.NonPublic)!;
-    private static readonly ConcurrentDictionary<(Type, Symbol), Func<Flow, CancellationToken, Task<FlowTransition>>>
+    private static readonly ConcurrentDictionary<(Type, Symbol), Func<Flow, CancellationToken, Task<FlowTransition>>?>
         Cache = new();
 
-    public static Task<FlowTransition> Invoke(Flow flow, Symbol step, CancellationToken cancellationToken)
-        => Get(flow.GetType(), step).Invoke(flow, cancellationToken);
-
-    public static Func<Flow, CancellationToken, Task<FlowTransition>> Get(Type flowType, Symbol step)
+    public static Func<Flow, CancellationToken, Task<FlowTransition>>? Get(Type flowType, Symbol step)
         => Cache.GetOrAdd((flowType, step), static key => {
             var (flowType1, step1) = key;
             if (step1.IsEmpty)
@@ -45,9 +41,7 @@ public static class FlowSteps
                     .Invoke(null, [stepFn])!;
                 return result;
             }
-            return step1 == OnMissingStep
-                ? throw Errors.NoStepImplementation(flowType1, step1.Value)
-                : Get(flowType1, OnMissingStep);
+            return null;
         });
 
     private static Func<Flow, CancellationToken, Task<FlowTransition>> ToUntyped<TFlow>(Delegate stepFn)
