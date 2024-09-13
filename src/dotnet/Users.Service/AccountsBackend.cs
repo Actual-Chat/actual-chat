@@ -2,8 +2,10 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net.Mail;
 using ActualChat.Chat;
 using ActualChat.Flows;
+using ActualChat.Flows.Infrastructure;
 using ActualChat.Users.Db;
 using ActualChat.Users.Flows;
+using ActualLab.CommandR.Operations;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -17,6 +19,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private IServerKvasBackend? _serverKvasBackend;
     private ContactGreeter? _contactGreeter;
     private IFlows? _flows;
+    private FlowRegistry? _flowsRegistry;
     private IDbEntityResolver<string, DbAccount>? _dbAccountResolver;
     private const string AdminEmailDomain = "actual.chat";
     private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) {
@@ -30,6 +33,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private IServerKvasBackend ServerKvasBackend => _serverKvasBackend ??= Services.GetRequiredService<IServerKvasBackend>();
     private ContactGreeter ContactGreeter => _contactGreeter ??= Services.GetRequiredService<ContactGreeter>();
     private IFlows Flows => _flows ??= Services.GetRequiredService<IFlows>();
+    private FlowRegistry FlowRegistry => _flowsRegistry ??= Services.GetRequiredService<FlowRegistry>();
     private IDbEntityResolver<string, DbAccount> DbAccountResolver => _dbAccountResolver ??= Services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
 
     // [ComputeMethod]
@@ -162,8 +166,11 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             new AccountChangedEvent(dbAccount.ToModel(account.User), existing, ChangeKind.Update));
         if (mustGreet)
             ContactGreeter.Activate();
-        if (mustStartDigestFlow)
-            await Flows.GetOrStart<DigestFlow>(account.Id.Id, cancellationToken).ConfigureAwait(false);
+
+        if (mustStartDigestFlow) {
+            var e = new FlowResetEvent(FlowRegistry.NewId<DigestFlow>(account.Id), "Account change");
+            CommandContext.GetCurrent().Operation.AddEvent(e);
+        }
     }
 
     // [CommandHandler]

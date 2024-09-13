@@ -18,7 +18,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
 
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<DigestFlow>(f0.Id.Arguments, ct);
-            flow?.Step.Should().Be(FlowSteps.OnRemove);
+            flow!.Step.Should().Be(FlowSteps.OnRemove);
         }, TimeSpan.FromSeconds(30));
 
         await ComputedTest.When(async ct => {
@@ -44,7 +44,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<DigestFlow>(userId, ct);
             flow.Should().NotBeNull();
-            flow?.Step.Should().Be("OnCheck");
+            flow!.Step.Should().Be("OnCheck");
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -65,7 +65,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<DigestFlow>(userId, ct);
             flow.Should().NotBeNull();
-            flow?.Step.Should().Be("OnCheck");
+            flow!.Step.Should().Be("OnCheck");
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -81,6 +81,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         });
 
         var commander = h.Services.Commander();
+        var flows = h.Services.GetRequiredService<IFlows>();
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
         var serverKvasBackend = h.Services.GetRequiredService<IServerKvasBackend>();
 
@@ -93,14 +94,15 @@ public class DigestFlowTest(ITestOutputHelper @out)
             },
             default);
         var account = await accountsBackend.Get(userId, default).Require();
-        var updateCmd = new AccountsBackend_Update(account with { TimeZone = TimeZoneInfo.Local.Id, }, null);
+        var updateCmd = new AccountsBackend_Update(account with {
+            TimeZone = TimeZoneInfo.Local.Id,
+        }, null);
         await commander.Call(updateCmd, true);
 
-        await ComputedTest.When(async _ => {
-            emailsBackend.Verify(
-                x => x.OnSendDigest(It.IsAny<EmailsBackend_SendDigest>(), It.IsAny<CancellationToken>()),
-                Times.Once);
-            await Task.CompletedTask;
+        await ComputedTest.When(async ct => {
+            var flow = await flows.Get<DigestFlow>(userId, ct);
+            flow.Should().NotBeNull();
+            flow!.SendCount.Should().BeGreaterThan(0);
         }, TimeSpan.FromSeconds(30));
     }
 }
