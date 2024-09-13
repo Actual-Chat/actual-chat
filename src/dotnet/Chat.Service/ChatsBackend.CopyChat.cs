@@ -32,11 +32,11 @@ public partial class ChatsBackend
             return default!;
         }
 
-        Log.LogInformation("-> OnCopyChat({CorrelationId}): copy chat '{ChatId}' to place '{PlaceId}'",
+        Log.LogInformation("-> OnCopyChat({CorrelationId}): coping chat '{ChatId}' to place '{PlaceId}'",
             correlationId, chatId.Value, placeId);
 
         var ctRegistration = cancellationToken.Register(() => {
-            Log.LogWarning("OnCopyChat({CorrelationId}) canceled from `{StackTrace}`",
+            Log.LogWarning("OnCopyChat({CorrelationId}): canceled from `{StackTrace}`",
                 correlationId, Environment.StackTrace);
         });
         await using var ___ = ctRegistration.ConfigureAwait(false);
@@ -81,7 +81,7 @@ public partial class ChatsBackend
                     textEntryRange = new Range<long>(startEntryId, endEntryId);
             }
 
-            Log.LogInformation("OnCopyChat({CorrelationId}: Text range is [{Start},{End})",
+            Log.LogInformation("OnCopyChat({CorrelationId}: text range is [{Start},{End})",
                 correlationId, textEntryRange.Start, textEntryRange.End);
 
             var migratedRoles = new List<MigratedRole>();
@@ -146,7 +146,8 @@ public partial class ChatsBackend
                 catch (Exception e) {
                     proceed = false;
                     hasErrors = true;
-                    Log.LogWarning(e, "OnCopyChat({CorrelationId}) failed to proceed chat entries insertion for range [{Start}, {End})",
+                    Log.LogWarning(e,
+                        "OnCopyChat({CorrelationId}): failed to proceed chat entries insertion for range [{Start}, {End})",
                         correlationId, batchRange.Start, batchRange.End);
                 }
             }
@@ -166,11 +167,13 @@ public partial class ChatsBackend
             var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             dbContext.Database.SetCommandTimeout(commandTimeout);
             await using var __ = dbContext.ConfigureAwait(false);
-            Log.LogInformation("OnCopyChat({CorrelationId}): LastProcessedEntryId is {EntryId}", correlationId, lastProcessedEntryId);
+            Log.LogInformation(
+                "OnCopyChat({CorrelationId}): LastProcessedEntryId is {EntryId}", correlationId, lastProcessedEntryId);
             context.Operation.Items[typeof(ChatEntryId)] = lastProcessedEntryId.Value;
         }
 
-        Log.LogInformation("<- OnCopyChat({CorrelationId})", correlationId);
+        Log.LogInformation(
+            "<- OnCopyChat({CorrelationId})", correlationId);
         return new ChatBackend_CopyChatResult(hasChanges, hasErrors, !lastProcessedEntryId.IsNone ? 0L : lastProcessedEntryId.LocalId);
     }
 
@@ -206,7 +209,8 @@ public partial class ChatsBackend
             newChat = dbChat.ToModel();
         }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("OnCopyChat({CorrelationId}) updated chat record", correlationId);
+        Log.LogInformation(
+            "OnCopyChat({CorrelationId}): updated chat record", correlationId);
         return newChat;
     }
 
@@ -251,7 +255,9 @@ public partial class ChatsBackend
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("OnCopyChat({CorrelationId}) updated {Count} role records", correlationId, dbRoles.Count);
+        Log.LogInformation(
+            "OnCopyChat({CorrelationId}): updated {Count} role records",
+            correlationId, dbRoles.Count);
         return hasChanges;
     }
 
@@ -296,7 +302,9 @@ public partial class ChatsBackend
                     .AnyAsync(cancellationToken)
                     .ConfigureAwait(false);
                 if (!hasChatEntries)
-                    log.LogWarning("Anonymous author will be registered as removed. Author is '{Author}'", originalAuthor);
+                    log.LogWarning(
+                        "Anonymous author will be registered as removed. Original author is {OriginalAuthor}",
+                        originalAuthor);
                 migratedAuthors.RegisterRemoved(originalAuthor);
                 continue; // Skip anonymous author if there were no messages from them.
             }
@@ -320,7 +328,8 @@ public partial class ChatsBackend
         if (entryIdRange.IsEmpty)
             return new CopyChatEntriesResult(0, ChatEntryId.None, new Range<long>());
 
-        Log.LogInformation("-> CopyChatEntries({CorrelationId}). EntryId range is [{Start},{End})",
+        Log.LogInformation(
+            "-> CopyChatEntries({CorrelationId}), entry Id range is [{Start},{End})",
             context.CorrelationId, entryIdRange.Start, entryIdRange.End);
 
         var dbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
@@ -349,7 +358,8 @@ public partial class ChatsBackend
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        Log.LogInformation("<- CopyChatEntries({CorrelationId}). EntryId range is [{Start},{End})",
+        Log.LogInformation(
+            "<- CopyChatEntries({CorrelationId}), entry Id range is [{Start},{End})",
             context.CorrelationId, entryIdRange.Start, entryIdRange.End);
 
         return textEntriesResult;
@@ -394,7 +404,8 @@ public partial class ChatsBackend
 
         var lastFetchedEntry = entries[^1];
 
-        Log.LogInformation("OnCopyChat({CorrelationId}) is about to process {Kind} chat entries with range [{From},{To})",
+        Log.LogInformation(
+            "OnCopyChat({CorrelationId}): about to process {Kind} chat entry range [{From},{To})",
             correlationId, entryKind, minLocalId, lastFetchedEntry.LocalId + 1);
 
         List<long> chatEntryWithMentionIds = new List<long>();
@@ -441,7 +452,8 @@ public partial class ChatsBackend
                 var migratedAuthor = migratedAuthors.DemandMigratedAuthor(authorSid);
                 if (migratedAuthor.IsRemoved) {
                     skip = true;
-                    Log.LogWarning("OnCopyChat({CorrelationId}) skips chat entry '{ChatEntryId}' because author '{AuthorSid}' is registered as removed",
+                    Log.LogWarning(
+                        "OnCopyChat({CorrelationId}): skipping chat entry {ChatEntryId}: the author {AuthorSid} is marked as removed",
                         correlationId, dbChatEntry.Id, authorId);
                 }
                 newAuthorId = migratedAuthor.NewId;
@@ -450,7 +462,7 @@ public partial class ChatsBackend
                      || authorId.LocalId == Constants.User.MLSearchBot.AuthorLocalId)
                 newAuthorId = new AuthorId(newChatId, authorId.LocalId, AssumeValid.Option);
             else
-                throw StandardError.Internal($"Unexpected author local id. Local id is '{authorId.LocalId}'.");
+                throw StandardError.Internal($"Unexpected author's local ID: {authorId.LocalId}.");
 
             dbChatEntry.AuthorId = newAuthorId;
 
@@ -515,7 +527,7 @@ public partial class ChatsBackend
             await InsertReactions(correlationId, dbContext, chatSid, newChatId, reactionIds, migratedAuthors, cancellationToken).ConfigureAwait(false);
 
         Log.LogInformation(
-            "OnCopyChat({CorrelationId}) inserted {Count} {Kind} chat entry records with local ids [{From},{To})",
+            "OnCopyChat({CorrelationId}): inserted {Count} {Kind} chat entry records with local Ids [{From},{To})",
             correlationId,
             entries.Count,
             entryKind,
@@ -523,11 +535,13 @@ public partial class ChatsBackend
             maxLocalId);
 
         if (mentionUpdatesInsideContent > 0)
-            Log.LogInformation("OnCopyChat({CorrelationId}) updated author mentions inside DbChatEntry.Content. {Count} records are affected",
+            Log.LogInformation(
+                "OnCopyChat({CorrelationId}): updated author mentions inside DbChatEntry.Content, {Count} records affected",
                 correlationId, mentionUpdatesInsideContent);
 
         if (mentionUpdatesInSystemEntries > 0)
-            Log.LogInformation("OnCopyChat({CorrelationId}) updated MembersChangedOption inside system chat entries. {Count} records are affected",
+            Log.LogInformation(
+                "OnCopyChat({CorrelationId}): updated MembersChangedOption inside system chat entries, {Count} records affected",
                 correlationId, mentionUpdatesInSystemEntries);
 
         var lastEntryId = lastProcessedEntry != null ? ChatEntryId.Parse(lastProcessedEntry.Id) : ChatEntryId.None;
@@ -637,7 +651,8 @@ public partial class ChatsBackend
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        Log.LogInformation("OnCopyChat({CorrelationId}) inserted {Count} text entry attachment records for entries from range [{From},{To})",
+        Log.LogInformation(
+            "OnCopyChat({CorrelationId}): inserted {Count} text entry attachment records for entries from range [{From},{To})",
             correlationId, attachments.Count, firstId, lastId + 1);
         return;
 
@@ -680,7 +695,7 @@ public partial class ChatsBackend
             var authorSid = dbReaction.AuthorId;
             var migratedAuthor = migratedAuthors.DemandMigratedAuthor(authorSid);
             if (migratedAuthor.IsRemoved) {
-                Log.LogWarning("OnCopyChat({CorrelationId}) skips reaction '{ReactionId}' because author '{AuthorSid}' is registered as removed",
+                Log.LogWarning("OnCopyChat({CorrelationId}): skipping reaction {ReactionId} because the author {AuthorSid} is marked as removed",
                      correlationId, dbReaction.Id, authorSid);
                 continue;
             }
@@ -696,7 +711,7 @@ public partial class ChatsBackend
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("OnCopyChat({CorrelationId}) inserted {Count} reaction records",
+        Log.LogInformation("OnCopyChat({CorrelationId}): inserted {Count} reaction records",
             correlationId, reactions.Count);
 
         var reactionSummaries = await dbContext.ReactionSummaries
@@ -724,13 +739,15 @@ public partial class ChatsBackend
                     isCorrupted = true;
                     // During original migration 'Actual Chat - Dev' chat to 'Actual chat' place FirstAuthorIds collection transformation
                     // was not performed properly. Ignore these records.
-                    Log.LogWarning("OnCopyChat({CorrelationId}) ReactionSummary with id='{Id}' refer to invalid author id '{AuthorId}'",
+                    Log.LogWarning(
+                        "OnCopyChat({CorrelationId}) reaction summary for entry {Id} references invalid AuthorId: {AuthorId}",
                         correlationId, entryId, authorId);
                     continue;
                 }
                 var migratedAuthor = migratedAuthors.DemandMigratedAuthor(authorId);
                 if (migratedAuthor.IsRemoved) {
-                    Log.LogWarning("OnCopyChat({CorrelationId}) excludes author on reaction summary '{ReactionSummaryId}' because author '{AuthorSid}' is registered as removed",
+                    Log.LogWarning(
+                        "OnCopyChat({CorrelationId}): excluding author for reaction summary {ReactionSummaryId}: author {AuthorSid} is marked as removed",
                         correlationId, dbSummary.Id, authorId);
                     continue;
                 }
@@ -741,7 +758,8 @@ public partial class ChatsBackend
                 continue;
 
             if (newAuthorIds.Count == 0) {
-                Log.LogWarning("OnCopyChat({CorrelationId}) skips reaction summary '{ReactionSummaryId}' because author list is empty",
+                Log.LogWarning(
+                    "OnCopyChat({CorrelationId}): skipping reaction summary {ReactionSummaryId}: author list is empty",
                     correlationId, dbSummary.Id);
                 continue;
             }
@@ -753,7 +771,8 @@ public partial class ChatsBackend
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        Log.LogInformation("OnCopyChat({CorrelationId}) updated AuthorIds for {Count} reaction summary records",
+        Log.LogInformation(
+            "OnCopyChat({CorrelationId}): updated AuthorIds for {Count} reaction summary records",
             correlationId, reactionSummaries.Count);
     }
 
@@ -790,7 +809,7 @@ public partial class ChatsBackend
             if (mentionSid.StartsWith(mentionIdAuthorPrefix, StringComparison.Ordinal)) {
                 var authorSid = mentionSid.Substring(mentionIdAuthorPrefix.Length);
                 if (!AuthorId.TryParse(authorSid, out var tempAuthorId)) {
-                    Log.LogWarning("OnCopyChat({CorrelationId}) skips mention with id '{ID}'. Reason: invalid author id",
+                    Log.LogWarning("OnCopyChat({CorrelationId}): skipping mention {MentionId}: invalid AuthorId",
                         correlationId, mention.Id);
                     continue;
                 }
@@ -798,12 +817,14 @@ public partial class ChatsBackend
                 if (tempAuthorId.ChatId == chatId) {
                     var migratedAuthor = migratedAuthors.FindMigratedAuthor(authorSid);
                     if (migratedAuthor == null) {
-                        Log.LogWarning("OnCopyChat({CorrelationId}) skips mention with id '{ID}'. Reason: migrated author not found",
+                        Log.LogWarning(
+                            "OnCopyChat({CorrelationId}): skipping mention {MentionId}: copied author not found",
                             correlationId, mention.Id);
                         continue;
                     }
                     if (migratedAuthor.IsRemoved) {
-                        Log.LogWarning("OnCopyChat({CorrelationId}) skips mention with id '{ID}'. Reason: migrated author is registered as removed",
+                        Log.LogWarning(
+                            "OnCopyChat({CorrelationId}): skipping mention {MentionId}: copied author is marked as removed",
                             correlationId, mention.Id);
                         continue;
                     }
@@ -812,13 +833,15 @@ public partial class ChatsBackend
                 }
                 else {
                     mentionId = new MentionId(new AuthorId(authorSid), AssumeValid.Option);
-                    Log.LogWarning("OnCopyChat({CorrelationId}) another chat author mention detected with id '{ID}'",
+                    Log.LogWarning(
+                        "OnCopyChat({CorrelationId}): another author's mention with Id {MentionId} is found",
                         correlationId, mention.Id);
                 }
             }
             else {
                 if (!MentionId.TryParse(mentionSid, out mentionId)) {
-                    Log.LogWarning("OnCopyChat({CorrelationId}) skips mention with id '{ID}'. Reason: invalid mention id",
+                    Log.LogWarning(
+                        "OnCopyChat({CorrelationId}): skipping mention {MentionId}: invalid MentionId",
                         correlationId, mention.Id);
                     continue;
                 }
@@ -830,7 +853,7 @@ public partial class ChatsBackend
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("OnCopyChat({CorrelationId}) updated ChatId and Id for {Count} mention records",
+        Log.LogInformation("OnCopyChat({CorrelationId}): updated ChatId and Id for {Count} mention records",
             correlationId, mentions.Count);
 
         string FixMentionAuthorSid(DbMention mention, string authorSid)
@@ -855,8 +878,8 @@ public partial class ChatsBackend
             }
             if (!hasFixedMentionId)
                 throw StandardError.Constraint(
-                    $"OnCopyChat({correlationId}) failed to process mention with Id '{mention.Id}' and MentionId '{mention.MentionId}'."
-                    + " Reason: MentionId mismatch.");
+                    $"OnCopyChat({correlationId}): failed to process mention {mention.Id} / {mention.MentionId}' "
+                    + $"due to MentionId mismatch.");
 
             return authorSid;
         }
@@ -884,7 +907,7 @@ public partial class ChatsBackend
         {
             var migratedAuthor = DemandMigratedAuthor(authorSid);
             if (migratedAuthor.IsRemoved)
-                throw StandardError.Constraint($"Migrated author for id '{authorSid}' is registered as removed");
+                throw StandardError.Constraint($"Copied author for Id {authorSid} is marked as removed");
             return migratedAuthor.NewId;
         }
 
@@ -895,7 +918,7 @@ public partial class ChatsBackend
         {
             var migratedAuthor = FindMigratedAuthor(authorSid);
             if (migratedAuthor == null)
-                throw StandardError.Constraint($"Migrated author for id '{authorSid}' is not registered");
+                throw StandardError.Constraint($"Copied author for Id {authorSid} is not found");
             return migratedAuthor;
         }
 
