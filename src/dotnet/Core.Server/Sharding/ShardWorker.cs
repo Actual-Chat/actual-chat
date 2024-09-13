@@ -99,14 +99,14 @@ public abstract class ShardWorker : WorkerBase
     {
         var failureCount = 0;
         while (!cancellationToken.IsCancellationRequested) {
-            Log.LogInformation("Shard #{ShardIndex}: ?? {ThisNodeId}", shardIndex, ThisNode.Ref);
+            DebugLog?.LogDebug("Shard #{ShardIndex}: ?? {ThisNodeId}", shardIndex, ThisNode.Ref);
             var lockHolder = await ShardLocks.Lock(shardIndex.Format(), "", cancellationToken).ConfigureAwait(false);
             var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
             var lockToken = lockCts.Token;
             var lockIsLost = false;
             Exception? error = null;
             try {
-                Log.LogInformation("Shard #{ShardIndex}: ++ {ThisNodeId}", shardIndex, ThisNode.Ref);
+                DebugLog?.LogDebug("Shard #{ShardIndex}: ++ {ThisNodeId}", shardIndex, ThisNode.Ref);
                 await OnRun(shardIndex, lockToken).ConfigureAwait(false);
                 failureCount = 0;
             }
@@ -126,7 +126,7 @@ public abstract class ShardWorker : WorkerBase
                 if (lockIsLost)
                     Log.LogWarning("Shard #{ShardIndex}: -- {ThisNodeId} (shard lock is lost)", shardIndex, ThisNode.Ref);
                 else
-                    Log.LogInformation("Shard #{ShardIndex} -- {ThisNode}", shardIndex, ThisNode.Ref);
+                    DebugLog?.LogDebug("Shard #{ShardIndex} -- {ThisNode}", shardIndex, ThisNode.Ref);
             }
 
             if (error != null) {
