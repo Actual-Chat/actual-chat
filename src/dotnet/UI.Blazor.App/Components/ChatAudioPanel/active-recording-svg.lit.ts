@@ -95,7 +95,6 @@ class ActiveRecordingSvg extends LitElement {
     private isRecording = false;
     private lastIsRecording = false;
 
-
     constructor() {
         super();
 

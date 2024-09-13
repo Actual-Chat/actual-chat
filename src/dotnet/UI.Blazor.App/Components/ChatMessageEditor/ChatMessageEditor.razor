@@ -32,7 +32,7 @@
                  data-bubble-priority="150"
                  data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
                 <ButtonRound Class="post-panel-btn attach-btn btn-transparent btn-xs unhovered">
-                    <i class="icon-attach-2 text-2xl"></i>
+                    <i class="icon-plus text-2xl"></i>
                 </ButtonRound>
                 <label for="message-input" class="message-input-label">
                     <MarkupEditor
@@ -49,6 +49,7 @@
                         OpenPrevious="OnOpenPrevious"/>
                 </label>
                 <div class="c-buttons">
+                    <VolumeSettingsButton Chat="@Chat"/>
                     @if (_enableIncompleteUI) {
                         <ButtonRound
                             Class="post-panel-btn btn-transparent btn-xs"
@@ -62,7 +63,7 @@
                     <button class="post-panel-btn post-message btn btn-round btn-transparent btn-xs unhovered"
                             @onmousedown="@(_ => Post())"
                             @onmousedown:preventDefault="true">
-                        <i class="icon-paper-plane text-2xl"></i>
+                        <i class="icon-paper-plane"></i>
                     </button>
                 </div>
             </div>

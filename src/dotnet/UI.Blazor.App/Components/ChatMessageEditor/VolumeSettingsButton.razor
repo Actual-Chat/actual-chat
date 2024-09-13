@@ -1,0 +1,33 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<Language>
+@{
+    var language = State.Value;
+}
+
+<ButtonRound
+    Click="@OnClick"
+    Class="post-panel-btn volume-settings-btn btn-transparent btn-xs">
+    <i class="icon-volume-settings text-2xl"></i>
+    <span class="c-text">@language.ShortTitle</span>
+</ButtonRound>
+
+@code {
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private LanguageUI LanguageUI => Hub.LanguageUI;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<Language>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Language>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override Task<Language> ComputeState(CancellationToken cancellationToken)
+        => LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).AsTask();
+
+    private void OnClick()
+        => ModalUI.Show(new VoiceSettingsModal.Model(Chat.Id));
+}

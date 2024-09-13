@@ -46,9 +46,6 @@
                 <div class="c-tooltip-arrow"></div>
             </div>
         }
-        @if (ScreenSize.IsNarrow()) {
-            <div class="selected-language">@language.ShortTitle</div>
-        }
         <ButtonRound
             Class="@recBtnCls"
             Click="@OnClick"
@@ -62,17 +59,18 @@
             data-context-menu-delay="200">
 
             @* Icon for OFF state *@
-            <i class="icon-talking rec-icon off"></i>
+            <div class="rec-icon off">
+                <i class="icon-recorder-left-half left"></i>
+                <i class="icon-recorder-right-half right"></i>
+            </div>
 
-            @* Icon for transition state *@
-            <active-recording-svg
-                size="@recordingIconSize"
-                class="rec-icon middle"/>
+            @* Icon for narrow-panel and text-mode *@
+            <narrow-recording-svg class="rec-icon on text-mode-on"/>
 
             @* Icon for ON state *@
             <active-recording-svg
                 size="@recordingIconSize"
-                class="rec-icon on"/>
+                class="rec-icon on text-mode-off"/>
         </ButtonRound>
     </div>
 } else {

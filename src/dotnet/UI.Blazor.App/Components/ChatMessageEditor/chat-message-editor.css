@@ -153,6 +153,9 @@ body.narrow .btn.post-panel-btn.post-message {
 .btn.post-panel-btn.post-message {
     @apply text-primary;
 }
+.post-message > i {
+    @apply text-2.5xl md:text-2xl;
+}
 body.hoverable .post-panel-btn:hover {
     @apply text-02;
 }
@@ -581,13 +584,13 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
 }
 
 .rounded-sub-footer {
-    @apply absolute portrait:top-4 landscape:-top-8;
+    @apply absolute portrait:-top-8 landscape:-top-8;
     @apply flex;
-    @apply h-0 inset-x-0;
-    background: linear-gradient(to top, var(--background-01), transparent);
+    @apply h-8 inset-x-0;
+    background: linear-gradient(to top, var(--background-01), 80%, transparent);
 }
 .narrow-panel .rounded-sub-footer {
-    @apply portrait:top-4;
+    @apply portrait:-top-8;
 }
 .rounded-sub-footer::before {
     content: '';
@@ -601,3 +604,26 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply w-8 h-8;
     background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 60%)
 }
+
+.post-panel-btn.volume-settings-btn {
+    @apply landscape:hidden md:hidden;
+}
+@media (orientation: portrait) {
+    .post-panel-btn.volume-settings-btn {
+        @apply absolute;
+        @apply pt-0.5;
+        right: calc(50% - 4.75rem);
+    }
+    body.narrow .text-mode .post-panel-btn.volume-settings-btn,
+    body.narrow .to-thin .post-panel-btn.volume-settings-btn {
+        right: calc(50% - 2.5rem);
+    }
+    .post-panel-btn.volume-settings-btn > .btn-content {
+        @apply relative;
+    }
+    .post-panel-btn.volume-settings-btn > .btn-content .c-text {
+        @apply absolute top-0 left-1/2;
+        @apply text-xxs font-semibold;
+    }
+}
+
