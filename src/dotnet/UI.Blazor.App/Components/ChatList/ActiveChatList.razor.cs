@@ -2,7 +2,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtualListDataSource<ChatListItemModel>, IDisposable
+public partial class ActiveChatList : ComputedStateComponent<ActiveChatList.Model>, IVirtualListDataSource<ChatListItemModel>, IDisposable
 {
     private volatile VirtualListItemVisibility? _visibility;
 

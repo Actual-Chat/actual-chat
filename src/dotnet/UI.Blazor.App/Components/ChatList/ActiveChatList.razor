@@ -1,6 +1,6 @@
 @using ActualChat.Comparison
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatList.Model>
+@inherits ComputedStateComponent<ActiveChatList.Model>
 @{
     var m = State.Value;
     var searchModeTriggered = m.IsSearchModeOn && !_rendered.IsSearchModeOn;
