@@ -1,3 +1,4 @@
+using System.Globalization;
 using ActualChat.Flows;
 using MemoryPack;
 
@@ -8,33 +9,36 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class TimerFlow : Flow
 {
+    [DataMember(Order = 1), MemoryPackOrder(1)]
+    public int RemainingCount { get; private set; }
+
     public override FlowOptions GetOptions()
         => new() { RemoveDelay = TimeSpan.FromSeconds(1) };
 
     protected override ValueTask ApplyTransition(FlowTransition transition, CancellationToken cancellationToken)
     {
         var output = Host.Services.GetRequiredService<ITestOutputHelper>();
-        output.WriteLine($"'{Step}' {transition}");
+        output.WriteLine($"`{Id}` transition @ '{Step}': {transition}");
         return base.ApplyTransition(transition, cancellationToken);
     }
 
     protected override async Task<FlowTransition> OnStart(CancellationToken cancellationToken)
     {
+        var sRemainingCount = Id.Arguments.Split(':', 2).ElementAtOrDefault(1) ?? "1";
+        RemainingCount = int.Parse(sRemainingCount, CultureInfo.InvariantCulture);
+
         var output = Host.Services.GetRequiredService<ITestOutputHelper>();
-        output.WriteLine(nameof(OnStart));
-        // return Goto(nameof(OnEnd)) with { IsStored = false, IsEventual = false };
-        return Wait(nameof(OnTimer)).AddTimerEvent(TimeSpan.FromSeconds(3), "+");
+        output.WriteLine($"`{Id}`.{nameof(OnStart)}: {RemainingCount}");
+        return Wait(nameof(OnTimer)).AddTimerEvent(TimeSpan.FromSeconds(3));
     }
 
     protected async Task<FlowTransition> OnTimer(CancellationToken cancellationToken)
     {
-        var timerEvent = Event.Require<FlowTimerEvent>();
+        Event.Require<FlowTimerEvent>();
         var output = Host.Services.GetRequiredService<ITestOutputHelper>();
-        output.WriteLine($"{nameof(OnTimer)}: {timerEvent}");
-
-        var nextTag = timerEvent.Tag + "+";
-        return nextTag.Length <= 2
-            ? Wait(nameof(OnTimer)).AddTimerEvent(TimeSpan.FromSeconds(5), nextTag)
-            : GotoToEnd();
+        output.WriteLine($"`{Id}`.{nameof(OnTimer)}: {RemainingCount--}");
+        return RemainingCount > 0
+            ? Wait(nameof(OnTimer)).AddTimerEvent(TimeSpan.FromSeconds(5))
+            : GotoEnding();
     }
 }

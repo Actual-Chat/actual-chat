@@ -118,21 +118,18 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
     }
 
     protected virtual Task<FlowTransition> OnKill(CancellationToken cancellationToken)
-        => Task.FromResult(GotoToEnd());
+        => Task.FromResult(GotoEnding());
 
-    protected virtual Task<FlowTransition> OnEnd(CancellationToken cancellationToken)
+    protected virtual Task<FlowTransition> OnEnding(CancellationToken cancellationToken)
     {
         var removeDelay = GetOptions().RemoveDelay;
         return Task.FromResult(removeDelay <= TimeSpan.Zero
-            ? Goto(FlowSteps.OnRemove)
-            : Wait(nameof(OnRemove)).AddTimerEvent(removeDelay));
+            ? Goto(FlowSteps.OnEnded)
+            : Wait(FlowSteps.OnEnded).AddTimerEvent(removeDelay));
     }
 
-    protected virtual Task<FlowTransition> OnRemove(CancellationToken cancellationToken)
-    {
-        Event.MarkUsed();
-        return Task.FromResult(Goto(FlowSteps.OnRemove));
-    }
+    protected Task<FlowTransition> OnEnded(CancellationToken cancellationToken)
+        => Task.FromResult(Goto(FlowSteps.OnEnded));
 
     protected virtual Task<FlowTransition> OnMissingStep(CancellationToken cancellationToken)
         => throw Errors.NoStepImplementation(GetType(), Step);
@@ -151,8 +148,8 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
         => new(this, step) { MustStore = mustStore, MustWait = false };
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected FlowTransition GotoToEnd()
-        => Goto(nameof(OnEnd));
+    protected FlowTransition GotoEnding()
+        => Goto(nameof(OnEnding));
 
     protected virtual async ValueTask ApplyTransition(FlowTransition transition, CancellationToken cancellationToken)
     {

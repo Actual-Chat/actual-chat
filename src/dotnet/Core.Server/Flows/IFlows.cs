@@ -32,13 +32,10 @@ public interface IFlows : IComputeService, IBackendService
 public partial record Flows_Store(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] FlowId FlowId,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] long? ExpectedVersion = null
-) : ICommand<long>, IBackendCommand, IHasShardKey<FlowId>, INotLogged
+) : ICommand<long>, IBackendCommand, INotLogged
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Flow? Flow { get; init; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public OperationEvent[]? AddEvents { get; init; }
-
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    FlowId IHasShardKey<FlowId>.ShardKey => FlowId;
 }

@@ -130,8 +130,8 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
             var evt = entry.Event;
             while (true) {
                 var transition = await flow.HandleEvent(evt, gracefulStopToken).ConfigureAwait(false);
-                if (transition.Step == FlowSteps.OnRemove) {
-                    Log.LogInformation("`{Id}` is removed", flow.Id);
+                if (transition.Step == FlowSteps.OnEnded) {
+                    Log.LogInformation("`{Id}` is ended", flow.Id);
                     entry.ResultSource.TrySetResult(0);
                     return flow;
                 }
