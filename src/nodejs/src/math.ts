@@ -286,3 +286,7 @@ export function approximateGain(monoPcm: Float32Array, stride = 5): number {
     }
     return Math.sqrt(sum / Math.floor(monoPcm.length / stride));
 }
+
+export function translate(number: number, [inMin, inMax]: Array<number>, [outMin, outMax]: Array<number>) {
+    return (number - inMin) / (inMax - inMin) * (outMax - outMin) + outMin;
+}

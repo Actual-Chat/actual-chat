@@ -1,11 +1,10 @@
-import { AsyncDirective } from 'lit/async-directive.js';
-import { directive } from 'lit/directive.js';
 import { customElement } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
 import { animationFrameScheduler, map, scan, Observable, Subscription } from 'rxjs';
 import { throttleTime } from 'rxjs/operators';
 import { OpusMediaRecorder } from '../AudioRecorder/opus-media-recorder';
-import { RunningMax } from 'math';
+import { RunningMax, translate } from 'math';
+import { observe } from '../../Services/observe-directive-lit';
 
 const SIGNAL_COUNT_TO_CALCULATE_MAX = 200; // 200 * 30ms = 6s
 
@@ -82,7 +81,8 @@ class NarrowRecordingSvg extends LitElement {
     }
 
     protected render(): unknown {
-        const opacity = observe(this.opacity$);
+        const defaultOpacity = 60;
+        const opacity = observe(this.opacity$, defaultOpacity);
 
         return html`
             <svg width="24" height="24" viewBox="0 0 24 32"
@@ -92,22 +92,4 @@ class NarrowRecordingSvg extends LitElement {
             </svg>
         `;
     }
-}
-
-class ObserveDirective extends AsyncDirective {
-    #subscription: Subscription;
-
-    render(observable: Observable<unknown>) {
-        this.#subscription = observable.subscribe(value => this.setValue(value));
-        return ``;
-    }
-
-    disconnected() {
-        this.#subscription?.unsubscribe();
-    }
-}
-
-const observe = directive(ObserveDirective);
-const translate = (number: number, [inMin, inMax]: Array<number>, [outMin, outMax]: Array<number>) => {
-    return (number - inMin) / (inMax - inMin) * (outMax - outMin) + outMin;
 }
