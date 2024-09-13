@@ -29,7 +29,11 @@ public sealed class RpcMeshPeerRefCache
             throw new ArgumentOutOfRangeException(nameof(meshRef));
 
         var shardRef = meshRef.ShardRef;
-        if (!shardRef.IsNone)
+        if (shardRef.IsNone) {
+            if (meshRef.NodeRef == NodeRef.OwnNodeAlias)
+                meshRef = OwnNode.Ref;
+        }
+        else
             meshRef = shardRef.Normalize();
 
         // Double-check locking

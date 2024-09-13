@@ -20,6 +20,7 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
     {
         ShardKeyResolvers.Register<FlowId>(static x => ShardKeyResolvers.ForString(x.Value));
         ShardKeyResolvers.Register<IFlowEvent>(static x => ShardKeyResolvers.ForString(x.FlowId.Value));
+        MeshRefResolvers.Register<Flows_Store>(static _ => NodeRef.OwnNodeAlias);
     }
 
     protected override CoreServerSettings GetSettings()
