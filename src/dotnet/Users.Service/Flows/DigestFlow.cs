@@ -34,7 +34,7 @@ public partial class DigestFlow : Flow
         if (delayOpt is not { } delay)
             return GotoToEnd();
         if (delay > TimeSpan.Zero)
-            Wait(nameof(OnCheck)).AddTimerEvent(delay);
+            return Wait(nameof(OnCheck)).AddTimerEvent(delay);
 
         var userId = UserId.Parse(Id.Arguments);
         var sendDigestCommand = new EmailsBackend_SendDigest(userId);
