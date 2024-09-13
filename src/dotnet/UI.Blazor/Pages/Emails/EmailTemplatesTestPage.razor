@@ -65,7 +65,7 @@
 
     private void OnSelectedTemplateChanged(string name) {
         _model.SelectedTemplateName = name;
-        _model.SelectedTemplate = _model.Templates.FirstOrDefault(x => string.Equals(x.Name, name, StringComparison.Ordinal));
+        _model.SelectedTemplate = _model.Templates.FirstOrDefault(x => OrdinalEquals(x.Name, name));
     }
 
     private async Task SendDigest() {

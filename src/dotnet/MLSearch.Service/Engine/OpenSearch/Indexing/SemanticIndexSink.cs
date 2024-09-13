@@ -42,7 +42,7 @@ internal sealed class SemanticIndexSink<TDocument> : ISink<TDocument, string>, I
         _indexSettingsMonitor = indexSettingsMonitor;
         _log = log;
         _indexSettingsChangeSubscription = _indexSettingsMonitor.OnChange((_, indexName) => {
-            if (string.Equals(indexName, _docIndexName, StringComparison.Ordinal)) {
+            if (OrdinalEquals(indexName, _docIndexName)) {
                 _indexSettings = null;
             }
         });

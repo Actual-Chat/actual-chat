@@ -154,7 +154,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             Version = VersionGenerator.NextVersion(dbAccount.Version),
         };
         var mustGreet = dbAccount.IsGreetingCompleted && !account.IsGreetingCompleted;
-        var mustStartDigestFlow = !string.Equals(dbAccount.TimeZone, account.TimeZone, StringComparison.Ordinal);
+        var mustStartDigestFlow = !OrdinalEquals(dbAccount.TimeZone, account.TimeZone);
         dbAccount.UpdateFrom(account);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 

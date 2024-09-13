@@ -20,7 +20,7 @@ public class BotToolsContext(ClaimsPrincipal? claims) : IBotToolsContext
     public const string ConversationClaimType = "ConversationId";
     public string? ConversationId => claims?.FindFirstValue(ConversationClaimType);
     public bool IsValid => claims != null
-        && claims.HasClaim(e => string.Equals(e.Type, ConversationClaimType, StringComparison.Ordinal));
+        && claims.HasClaim(e => OrdinalEquals(e.Type, ConversationClaimType));
 
 }
 

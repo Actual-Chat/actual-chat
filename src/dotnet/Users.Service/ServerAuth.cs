@@ -111,8 +111,8 @@ public sealed class ServerAuth
         var sessionInfo = await GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         var mustSetupSession =
             sessionInfo == null
-            || !string.Equals(sessionInfo.IPAddress, ipAddress, StringComparison.Ordinal)
-            || !string.Equals(sessionInfo.UserAgent, userAgent, StringComparison.Ordinal)
+            || !OrdinalEquals(sessionInfo.IPAddress, ipAddress)
+            || !OrdinalEquals(sessionInfo.UserAgent, userAgent)
             || sessionInfo.LastSeenAt + SessionInfoUpdatePeriod < Clocks.SystemClock.Now;
         if (mustSetupSession || sessionInfo == null)
             sessionInfo = await SetupSession(session, sessionInfo, ipAddress, userAgent, cancellationToken)
