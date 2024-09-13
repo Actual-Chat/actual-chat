@@ -5,7 +5,7 @@ using MemoryPack;
 
 namespace ActualChat.Flows;
 
-public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
+public abstract class Flow : IHasId<FlowId>, IFlowImpl
 {
     private FlowWorklet? _worklet;
     private ILogger? _log;
@@ -16,7 +16,7 @@ public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
     [IgnoreDataMember, MemoryPackIgnore]
     public long Version { get; private set; }
     [IgnoreDataMember, MemoryPackIgnore]
-    public Symbol Step { get; private set; } = "";
+    public Symbol Step { get; private set; }
 
     // IWorkerFlow properties (shouldn't be persisted)
     protected FlowHost Host => Worklet.Host;
@@ -25,7 +25,7 @@ public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
     protected MomentClockSet Clocks => Host.Clocks;
     protected ILogger Log => _log ??= Host.Services.LogFor(GetType());
 
-    public void Initialize(FlowId id, long version, Symbol step, FlowWorklet? worklet = null)
+    public void Initialize(FlowId id, long version, Symbol step = default, FlowWorklet? worklet = null)
     {
         Id = id;
         Version = version;
@@ -163,16 +163,16 @@ public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
 
         var storeCommand = new Flows_Store(Id, Version) {
             Flow = Clone(),
-            EventBuilder = transition.EventBuilder,
+            AddEvents = transition.Events.IsEmpty ? null : transition.Events.ToArray(),
         };
         Version = await Worklet.Host.Commander.Call(storeCommand, cancellationToken).ConfigureAwait(false);
     }
 
     // IFlowImpl
 
-    FlowHost IHasFlowWorklet.Host => Worklet.Host;
-    FlowWorklet IHasFlowWorklet.Worklet => Worklet;
-    FlowEventBin IHasFlowWorklet.Event => Event;
+    FlowHost IFlowImpl.Host => Worklet.Host;
+    FlowWorklet IFlowImpl.Worklet => Worklet;
+    FlowEventBin IFlowImpl.Event => Event;
 
     // Other helpers
 
