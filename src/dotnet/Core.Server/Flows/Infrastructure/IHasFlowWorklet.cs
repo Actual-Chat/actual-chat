@@ -4,5 +4,5 @@ public interface IHasFlowWorklet
 {
     FlowHost Host { get; }
     FlowWorklet Worklet { get; }
-    FlowEventSource Event { get; }
+    FlowEventBin Event { get; }
 }

@@ -1,5 +1,5 @@
 using ActualChat.Flows.Infrastructure;
-using ActualLab.Internal;
+using ActualChat.Flows.Internal;
 using ActualLab.Versioning;
 using MemoryPack;
 
@@ -8,6 +8,7 @@ namespace ActualChat.Flows;
 public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
 {
     private FlowWorklet? _worklet;
+    private ILogger? _log;
 
     // Persisted to the DB directly
     [IgnoreDataMember, MemoryPackIgnore]
@@ -15,22 +16,21 @@ public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
     [IgnoreDataMember, MemoryPackIgnore]
     public long Version { get; private set; }
     [IgnoreDataMember, MemoryPackIgnore]
-    public Symbol Step { get; private set; } = FlowSteps.OnStart;
+    public Symbol Step { get; private set; } = "";
 
     // IWorkerFlow properties (shouldn't be persisted)
-    [IgnoreDataMember, MemoryPackIgnore]
     protected FlowHost Host => Worklet.Host;
-    [IgnoreDataMember, MemoryPackIgnore]
     protected FlowWorklet Worklet => RequireWorklet();
-    [IgnoreDataMember, MemoryPackIgnore]
-    protected FlowEventSource Event { get; private set; }
+    protected FlowEventBin Event { get; private set; } = null!;
+    protected MomentClockSet Clocks => Host.Clocks;
+    protected ILogger Log => _log ??= Host.Services.LogFor(GetType());
 
-    public void Initialize(FlowId id, long version, Symbol step, FlowWorklet? worker = null)
+    public void Initialize(FlowId id, long version, Symbol step, FlowWorklet? worklet = null)
     {
         Id = id;
         Version = version;
         Step = step;
-        _worklet = worker;
+        _worklet = worklet;
     }
 
     public override string ToString()
@@ -39,32 +39,44 @@ public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
     public virtual Flow Clone()
         => MemberwiseCloner.Invoke(this);
 
-    public virtual async Task<FlowTransition> HandleEvent(object? evt, CancellationToken cancellationToken)
+    public virtual async Task<FlowTransition> HandleEvent(IFlowEvent evt, CancellationToken cancellationToken)
     {
         RequireWorklet();
+        Event = new FlowEventBin(this, evt);
         var step = Step;
-        Event = new FlowEventSource(this, evt);
         FlowTransition transition;
         try {
-            transition = await FlowSteps.Invoke(this, step, cancellationToken).ConfigureAwait(false);
+            transition = Event.Is<ISystemFlowEvent>(out var systemFlowEvent)
+                ? await OnSystemEvent(systemFlowEvent, cancellationToken).ConfigureAwait(false)
+                : await InvokeStep(step, true, cancellationToken).ConfigureAwait(false);
             if (!Event.IsUsed)
                 Worklet.Log.LogWarning(
-                    "Flow '{FlowType}' ignored event {Event} on step '{Step}'",
-                    GetType().Name, Event.Event, step);
+                    "Flow {FlowType} ignored event {Event} on step '{Step}'",
+                    GetType().Name, evt, step);
         }
-        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-            if (FlowSteps.Get(GetType(), FlowSteps.OnRecover) is not { } resetStep)
-                throw;
-
+        catch (Exception ex) when (!ex.IsCancellationOf(cancellationToken)) {
             Step = step;
-            Event = new FlowEventSource(this, e);
-            transition = await resetStep.Invoke(this, cancellationToken).ConfigureAwait(false);
+            Event = new FlowEventBin(this, evt);
+            transition = await OnError(ex, cancellationToken).ConfigureAwait(false);
+            if (!Event.IsUsed)
+                throw;
         }
         finally {
-            Event = default;
+            Event = null!;
         }
         await ApplyTransition(transition, cancellationToken).ConfigureAwait(false);
         return transition;
+    }
+
+    protected virtual Task<FlowTransition> OnSystemEvent(ISystemFlowEvent evt, CancellationToken cancellationToken)
+    {
+        Event.MarkUsed();
+        return evt switch {
+            FlowStartEvent => Step.IsEmpty ? OnStart(cancellationToken) : Task.FromResult(Wait(Step, false)),
+            FlowResetEvent => OnReset(cancellationToken),
+            FlowKillEvent => OnKill(cancellationToken),
+            _ => throw new ArgumentOutOfRangeException(nameof(evt)),
+        };
     }
 
     // Default options
@@ -74,27 +86,59 @@ public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
 
     // Default steps
 
+    protected Func<Flow, CancellationToken, Task<FlowTransition>>? GetStepFunc(Symbol step)
+        => FlowSteps.Get(GetType(), step);
+
+    protected Task<FlowTransition> InvokeStep(Symbol step, bool useOnMissingStep, CancellationToken cancellationToken)
+    {
+        var stepFunc = GetStepFunc(step);
+        if (useOnMissingStep)
+            stepFunc ??= static (flow, ct) => flow.OnMissingStep(ct);
+        if (stepFunc == null)
+            throw Errors.NoStepImplementation(GetType(), step.Value);
+
+        return stepFunc.Invoke(this, cancellationToken);
+    }
+
     protected abstract Task<FlowTransition> OnStart(CancellationToken cancellationToken);
+
+    protected virtual Task<FlowTransition> OnReset(CancellationToken cancellationToken)
+    {
+        var (id, version, step, worklet) = (Id, Version, Step, Worklet);
+
+        // Copy every field from a new flow of the same type
+        var type = GetType();
+        var newFlow = type.CreateInstance();
+        foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            field.SetValue(this, field.GetValue(newFlow));
+
+        // Initialize & immediately jump to OnStart; Goto(...) isn't really necessary here
+        Initialize(id, version, step, worklet);
+        return OnStart(cancellationToken);
+    }
+
+    protected virtual Task<FlowTransition> OnKill(CancellationToken cancellationToken)
+        => Task.FromResult(GotoToEnd());
 
     protected virtual Task<FlowTransition> OnEnd(CancellationToken cancellationToken)
     {
-        Event.MarkUsed();
         var removeDelay = GetOptions().RemoveDelay;
         return Task.FromResult(removeDelay <= TimeSpan.Zero
-            ? Jump(FlowSteps.MustRemove)
+            ? Goto(FlowSteps.OnRemove)
             : Wait(nameof(OnRemove)).AddTimerEvent(removeDelay));
     }
 
     protected virtual Task<FlowTransition> OnRemove(CancellationToken cancellationToken)
     {
         Event.MarkUsed();
-        return Task.FromResult(Jump(FlowSteps.MustRemove));
+        return Task.FromResult(Goto(FlowSteps.OnRemove));
     }
 
     protected virtual Task<FlowTransition> OnMissingStep(CancellationToken cancellationToken)
-        => throw Internal.Errors.NoStepImplementation(GetType(), Step);
+        => throw Errors.NoStepImplementation(GetType(), Step);
 
-    // protected virtual Task<FlowTransition> OnRecover(CancellationToken cancellationToken);
+    protected virtual Task<FlowTransition> OnError(Exception error, CancellationToken cancellationToken)
+        => Task.FromResult(default(FlowTransition));
 
     // Transition helpers
 
@@ -103,12 +147,12 @@ public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
         => new(this, step) { MustStore = mustStore };
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected FlowTransition Jump(Symbol step, bool mustStore = false)
+    protected FlowTransition Goto(Symbol step, bool mustStore = false)
         => new(this, step) { MustStore = mustStore, MustWait = false };
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected FlowTransition JumpToEnd()
-        => Jump(nameof(OnEnd));
+    protected FlowTransition GotoToEnd()
+        => Goto(nameof(OnEnd));
 
     protected virtual async ValueTask ApplyTransition(FlowTransition transition, CancellationToken cancellationToken)
     {
@@ -128,20 +172,20 @@ public abstract class Flow : IHasId<FlowId>, IHasFlowWorklet
 
     FlowHost IHasFlowWorklet.Host => Worklet.Host;
     FlowWorklet IHasFlowWorklet.Worklet => Worklet;
-    FlowEventSource IHasFlowWorklet.Event => Event;
+    FlowEventBin IHasFlowWorklet.Event => Event;
 
     // Other helpers
 
     public static void RequireCorrectType(Type flowType)
     {
         if (!typeof(Flow).IsAssignableFrom(flowType))
-            throw Errors.MustBeAssignableTo<Flow>(flowType);
+            throw ActualLab.Internal.Errors.MustBeAssignableTo<Flow>(flowType);
     }
 
     private FlowWorklet RequireWorklet()
     {
         if (_worklet == null)
-            throw Errors.NotInitialized(nameof(Worklet));
+            throw ActualLab.Internal.Errors.NotInitialized(nameof(Worklet));
 
         return _worklet;
     }

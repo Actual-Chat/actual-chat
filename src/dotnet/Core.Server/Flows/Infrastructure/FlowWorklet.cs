@@ -6,6 +6,8 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
 {
     protected static readonly ChannelClosedException ChannelClosedExceptionInstance = new();
 
+    private int _nextResultEventIndex;
+
     protected Channel<QueueEntry> Queue { get; set; }
     protected ChannelWriter<QueueEntry> Writer { get; init; }
 
@@ -40,7 +42,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
         => $"{GetType().Name}('{FlowId}')";
 
     // The `long` it returns is DbFlow/FlowData.Version
-    public Task<long> HandleEvent(object? evt, CancellationToken cancellationToken)
+    public Task<long> HandleEvent(IFlowEvent evt, CancellationToken cancellationToken)
     {
         var entry = new QueueEntry(evt, cancellationToken);
         bool couldWrite;
@@ -57,6 +59,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
         flow = flow.Clone();
         flow.Initialize(flow.Id, flow.Version, flow.Step, this);
         var options = flow.GetOptions();
+        var nextResumeEventIndex = 0;
 
         var clock = Timeouts.Generic.Clock;
         var reader = Queue.Reader;
@@ -96,32 +99,12 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
                     continue;
                 }
 
-                var backup = flow.Clone();
-                try {
-                    var evt = entry.Event;
-                    while (true) {
-                        var transition = await flow.HandleEvent(evt, gracefulStopToken).ConfigureAwait(false);
-                        if (transition.Step == FlowSteps.MustRemove) {
-                            Log.LogInformation("'{Id}' is removed", flow.Id);
-                            entry.ResultSource.TrySetResult(0);
-                            return;
-                        }
-                        if (transition.MustWait)
-                            break;
-                        evt = null;
-                    }
-                    entry.ResultSource.TrySetResult(flow.Version);
+                if (flow.Step.IsEmpty && entry.Event is not FlowStartEvent) {
+                    // If somehow FlowStartEvent isn't first, we fake it
+                    var flowStartEntry = new QueueEntry(new FlowStartEvent(flow.Id), gracefulStopToken);
+                    flow = await HandleEvent(flow, flowStartEntry, gracefulStopToken).ConfigureAwait(false);
                 }
-                catch (Exception e) {
-                    flow = backup;
-                    if (e.IsCancellationOf(gracefulStopToken)) {
-                        entry.ResultSource.TrySetCanceled(gracefulStopToken);
-                        throw;
-                    }
-
-                    entry.ResultSource.TrySetException(e);
-                    Log.LogError("'{Id}' @ {NextStep} failed", flow.Id, flow.Step);
-                }
+                flow = await HandleEvent(flow, entry, gracefulStopToken).ConfigureAwait(false);
             }
         }
         finally {
@@ -136,6 +119,39 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
             }
             Shard.Worklets.TryRemove(FlowId, this);
         }
+    }
+
+    // Private methods
+
+    private async Task<Flow> HandleEvent(Flow flow, QueueEntry entry, CancellationToken gracefulStopToken)
+    {
+        var backup = flow.Clone();
+        try {
+            var evt = entry.Event;
+            while (true) {
+                var transition = await flow.HandleEvent(evt, gracefulStopToken).ConfigureAwait(false);
+                if (transition.Step == FlowSteps.OnRemove) {
+                    Log.LogInformation("`{Id}` is removed", flow.Id);
+                    entry.ResultSource.TrySetResult(0);
+                    return flow;
+                }
+                if (transition.MustWait)
+                    break;
+                evt = new FlowResumeEvent(flow.Id, _nextResultEventIndex++);
+            }
+            entry.ResultSource.TrySetResult(flow.Version);
+        }
+        catch (Exception e) {
+            flow = backup;
+            if (e.IsCancellationOf(gracefulStopToken)) {
+                entry.ResultSource.TrySetCanceled(gracefulStopToken);
+                throw;
+            }
+
+            entry.ResultSource.TrySetException(e);
+            Log.LogError("`{Id}` @ {NextStep} failed", flow.Id, flow.Step);
+        }
+        return flow;
     }
 
     void IGenericTimeoutHandler.OnTimeout()
@@ -153,7 +169,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
     // Nested types
 
     public readonly record struct QueueEntry(
-        object? Event,
+        IFlowEvent Event,
         CancellationToken CancellationToken
     ) {
         public TaskCompletionSource<long> ResultSource { get; init; } = new();

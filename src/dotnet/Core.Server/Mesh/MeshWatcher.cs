@@ -39,6 +39,9 @@ public sealed class MeshWatcher : WorkerBase
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
+        var cts = cancellationToken.LinkWith(HostApplicationLifetime?.ApplicationStopping ?? CancellationToken.None);
+        cancellationToken = cts.Token;
+
         var whenLockedSource = new TaskCompletionSource();
         var whenLocked = whenLockedSource.Task;
         _ = Task.Run(() => Announce(whenLockedSource, cancellationToken), CancellationToken.None);
@@ -148,8 +151,6 @@ public sealed class MeshWatcher : WorkerBase
         var key = OwnNode.ToString();
         Log.LogInformation("-> Announce: {MeshNode}", key);
 
-        var cts = cancellationToken.LinkWith(HostApplicationLifetime?.ApplicationStopping ?? CancellationToken.None);
-        cancellationToken = cts.Token;
         try {
             while (!cancellationToken.IsCancellationRequested) {
                 try {
@@ -170,7 +171,6 @@ public sealed class MeshWatcher : WorkerBase
         }
         finally {
             Log.LogInformation("<- Announce: {MeshNode}", key);
-            cts.Dispose();
         }
     }
 }

@@ -11,11 +11,11 @@ public readonly record struct FlowTransition(Flow Flow, Symbol Step)
     public Action<Operation>? EventBuilder { get; init; }
 
     public bool EffectiveMustStore
-        => MustStore || Step == FlowSteps.MustRemove || EventBuilder != null;
+        => MustStore || Step == FlowSteps.OnRemove || EventBuilder != null;
 
     public override string ToString()
     {
-        var flags = (EffectiveMustStore, MustWait) switch {
+        var flags = (EffectiveMustStore, MustWait: MustWait) switch {
             (true, true) => "store, wait",
             (true, false) => "store",
             (false, true) => "no-store, wait",
@@ -32,21 +32,19 @@ public readonly record struct FlowTransition(Flow Flow, Symbol Step)
             EventBuilder = operation => {
                 oldEventBuilder?.Invoke(operation);
                 eventBuilder.Invoke(operation);
-            }
+            },
         };
     }
 
     public FlowTransition AddTimerEvent(TimeSpan delay, string? tag = null)
     {
-        var uuid = ((IHasFlowWorklet)Flow).Worklet.Require().Host.Commander.Hub.UuidGenerator.Next();
-        var timerEvent = new FlowTimerEvent(uuid, Flow.Id, tag);
-        return AddEvents(o => o.AddEvent(timerEvent, delay, uuid));
+        var e = new FlowTimerEvent(Flow.Id, tag);
+        return AddEvents(o => o.AddEvent(e, delay));
     }
 
     public FlowTransition AddTimerEvent(Moment firesAt, string? tag = null)
     {
-        var uuid = ((IHasFlowWorklet)Flow).Worklet.Require().Host.Commander.Hub.UuidGenerator.Next();
-        var timerEvent = new FlowTimerEvent(uuid, Flow.Id, tag);
-        return AddEvents(o => o.AddEvent(timerEvent, firesAt, uuid));
+        var e = new FlowTimerEvent(Flow.Id, tag);
+        return AddEvents(o => o.AddEvent(e, firesAt));
     }
 }
