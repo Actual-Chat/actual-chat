@@ -5,8 +5,8 @@ public static class FlowSteps
     public static readonly Symbol OnStart = nameof(OnStart);
     public static readonly Symbol OnReset = nameof(OnReset);
     public static readonly Symbol OnKill = nameof(OnKill);
-    public static readonly Symbol OnEnd = nameof(OnEnd);
-    public static readonly Symbol OnRemove = nameof(OnRemove);
+    public static readonly Symbol OnEnding = nameof(OnEnding);
+    public static readonly Symbol OnEnded = nameof(OnEnded);
 
     private static readonly MethodInfo ToUntypedMethod = typeof(FlowSteps)
         .GetMethod(nameof(ToUntyped), BindingFlags.Static | BindingFlags.NonPublic)!;

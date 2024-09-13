@@ -79,25 +79,34 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         var dbFlow = await dbContext.Set<DbFlow>().ForUpdate()
             .FirstOrDefaultAsync(x => Equals(x.Id, flowId.Value), cancellationToken)
             .ConfigureAwait(false);
-        VersionChecker.RequireExpected(dbFlow?.Version ?? 0, expectedVersion);
+        var dbFlowExists = dbFlow != null;
+        var flowExists = flow.Step != FlowSteps.OnEnded;
+        if (dbFlowExists || flowExists) {
+            if (!VersionChecker.IsExpected(dbFlow?.Version ?? 0, expectedVersion))
+                VersionChecker.RequireExpected(dbFlow?.Version ?? 0, expectedVersion);
+        }
 
-        switch (dbFlow != null, flow.Step != FlowSteps.OnRemove) {
+        long version = 0;
+        switch (dbFlowExists, flowExists) {
         case (false, false): // Removed -> Removed
             break;
         case (false, true): // Create
+            version = VersionGenerator.NextVersion();
             dbContext.Add(new DbFlow() {
                 Id = flowId,
-                Version = VersionGenerator.NextVersion(),
+                Version = version,
                 Step = flow.Step,
                 Data = Serialize(flow),
             });
-            context.Operation.AddEvent(new FlowStartEvent(flowId));
+            if (flow.Step.IsEmpty)
+                context.Operation.AddEvent(new FlowStartEvent(flowId));
             break;
         case (true, false):  // Remove
             dbContext.Remove(dbFlow!);
             break;
         case (true, true):  // Update
-            dbFlow!.Version = VersionGenerator.NextVersion(dbFlow.Version);
+            version = VersionGenerator.NextVersion(dbFlow!.Version);
+            dbFlow.Version = version;
             dbFlow.Step = flow.Step;
             dbFlow.Data = Serialize(flow);
             break;
@@ -106,7 +115,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
             context.Operation.AddEvent(e);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return dbFlow?.Version ?? 0;
+        return version;
     }
 
     // Protected methods

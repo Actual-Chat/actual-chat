@@ -14,14 +14,19 @@ public class FlowsTest(ITestOutputHelper @out)
         using var h = await NewAppHost();
 
         var flows = h.Services.GetRequiredService<IFlows>();
-        var f0 = await flows.GetOrStart<TimerFlow>("1");
-        Out.WriteLine($"[+] {f0}");
+        var f0 = await flows.GetOrStart<TimerFlow>("f0:3");
+        var f1 = await flows.GetOrStart<TimerFlow>("f1:2");
+        await Task.WhenAll(
+            WhenEnded(flows, f0.Id),
+            WhenEnded(flows, f1.Id));
+    }
 
-        await ComputedTest.When(async ct => {
-            var flow = await flows.Get<TimerFlow>(f0.Id.Arguments, ct);
+    // Private methods
+
+    private Task WhenEnded(IFlows flows, FlowId flowId)
+        => ComputedTest.When(async ct => {
+            var flow = await flows.Get(flowId, ct);
             Out.WriteLine($"[*] {flow?.ToString() ?? "null"}");
             flow.Should().BeNull();
         }, TimeSpan.FromSeconds(30));
-        Out.WriteLine($"[-] {f0.Id}");
-    }
 }
