@@ -44,3 +44,4 @@ export * from './Services/audio-context-source';
 export * from './Services/audio-initializer';
 export * from './Services/web-rtc-aec';
 export * from './Services/audio-context-destination-fallback';
+export * from './Services/observe-directive-lit';
