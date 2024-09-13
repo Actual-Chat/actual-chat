@@ -11,9 +11,6 @@ namespace ActualChat.Users.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class MasterFlow : Flow
 {
-    public override FlowOptions GetOptions()
-        => new() { RemoveDelay = TimeSpan.FromSeconds(1) };
-
     protected override async Task<FlowTransition> OnStart(CancellationToken cancellationToken)
     {
         const int pageSize = 1000;
@@ -27,7 +24,6 @@ public partial class MasterFlow : Flow
             var userId = UserId.Parse(accountId);
             await Host.Flows.GetOrStart<DigestFlow>(userId.Id, cancellationToken).ConfigureAwait(false);
         }
-
-        return JumpToEnd();
+        return Wait(nameof(OnStart));
     }
 }

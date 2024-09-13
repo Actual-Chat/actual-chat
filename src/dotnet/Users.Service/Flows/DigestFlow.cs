@@ -10,58 +10,73 @@ namespace ActualChat.Users.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class DigestFlow : Flow
 {
+    [DataMember(Order = 0), MemoryPackOrder(0)]
+    public Moment? LastDigestAt { get; private set; }
+
     public override FlowOptions GetOptions()
         => new() { RemoveDelay = TimeSpan.FromSeconds(1) };
 
-    protected override async Task<FlowTransition> OnStart(CancellationToken cancellationToken)
+    protected override Task<FlowTransition> OnStart(CancellationToken cancellationToken)
+        => GetDefaultTransition(cancellationToken);
+
+    protected async Task<FlowTransition> OnCheck(CancellationToken cancellationToken)
     {
-        var userId = UserId.Parse(Id.Arguments);
+        Event.Require<FlowTimerEvent>();
+        var delayOpt = await GetNextDigestDelay(cancellationToken).ConfigureAwait(false);
+        if (delayOpt is not { } delay)
+            return GotoToEnd();
+        if (delay > TimeSpan.Zero)
+            Wait(nameof(OnCheck)).AddTimerEvent(delay);
 
-        var serverKvasBackend = Host.Services.GetRequiredService<IServerKvasBackend>();
-        var kvas = serverKvasBackend.GetUserClient(userId);
-        var userEmailsSettings = await kvas.GetUserEmailsSettings(cancellationToken).ConfigureAwait(false);
-        if (!userEmailsSettings.IsDigestEnabled)
-            return JumpToEnd();
-
-        var delay = await GetDelay(userId, cancellationToken).ConfigureAwait(false);
-        return delay is null
-            ? JumpToEnd()
-            : Wait(nameof(OnTimer)).AddTimerEvent(delay.Value);
-    }
-
-    protected async Task<FlowTransition> OnTimer(CancellationToken cancellationToken)
-    {
         var userId = UserId.Parse(Id.Id);
-
         var sendDigestCommand = new EmailsBackend_SendDigest(userId);
         var queues = Host.Services.Queues();
         await queues.Enqueue(sendDigestCommand, cancellationToken).ConfigureAwait(false);
-
-        var delay = await GetDelay(userId, cancellationToken).ConfigureAwait(false);
-        return delay is null
-            ? JumpToEnd()
-            : Wait(nameof(OnTimer)).AddTimerEvent(delay.Value);
+        LastDigestAt = Clocks.SystemClock.Now;
+        return await GetDefaultTransition(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<TimeSpan?> GetDelay(UserId userId, CancellationToken cancellationToken)
+    // Private methods
+
+    private async Task<FlowTransition> GetDefaultTransition(CancellationToken cancellationToken)
     {
+        var delayOpt = await GetNextDigestDelay(cancellationToken).ConfigureAwait(false);
+        return delayOpt is { } delay
+            ? Wait(nameof(OnCheck)).AddTimerEvent(delay + TimeSpan.FromSeconds(5))
+            : GotoToEnd();
+    }
+
+    private async Task<TimeSpan?> GetNextDigestDelay(CancellationToken cancellationToken)
+    {
+        var userId = UserId.Parse(Id.Id);
         var accounts = Host.Services.GetRequiredService<IAccountsBackend>();
         var account = await accounts.Get(userId, cancellationToken).ConfigureAwait(false);
-        account.Require(Account.MustExist);
-        if (account.TimeZone.IsNullOrEmpty())
+        if (account?.IsGuestOrNone != false) {
+            Log.LogWarning("`{Id}`: No account", Id);
             return null;
+        }
+
+        if (account.TimeZone.IsNullOrEmpty()) {
+            Log.LogInformation("`{Id}`: Account has no time zone", Id);
+            return null;
+        }
 
         if (!TZConvert.TryGetTimeZoneInfo(account.TimeZone, out var timeZoneInfo)) {
-            var log = Host.Services.LogFor<DigestFlow>();
-            log.LogWarning("Unable to find time zone info. Time zone: '{TimeZone}'.", account.TimeZone);
+            Log.LogWarning("`{Id}`: Can't find TimeZoneInfo for time zone: {TimeZone}", Id, account.TimeZone);
             return null;
         }
 
         var serverKvasBackend = Host.Services.GetRequiredService<IServerKvasBackend>();
         var kvas = serverKvasBackend.GetUserClient(userId);
         var userEmailsSettings = await kvas.GetUserEmailsSettings(cancellationToken).ConfigureAwait(false);
+        if (!userEmailsSettings.IsDigestEnabled) {
+            Log.LogInformation("`{Id}`: Digest is disabled for this account", Id);
+            return null;
+        }
 
-        var timeSpan = Host.Clocks.SystemClock.UtcNow.DelayTo(userEmailsSettings.DigestTime, timeZoneInfo);
-        return timeSpan;
+        var now = Clocks.SystemClock.Now;
+        LastDigestAt ??= now;
+        var delay = timeZoneInfo.NextTimeOfDay(userEmailsSettings.DigestTime, LastDigestAt.Value) - now;
+        return delay.Positive();
     }
 }
