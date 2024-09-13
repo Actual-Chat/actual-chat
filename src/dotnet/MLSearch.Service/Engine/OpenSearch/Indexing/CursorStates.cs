@@ -29,7 +29,7 @@ internal sealed class CursorStates<TState> : ICursorStates<TState>, IDisposable
         _openSearch = openSearch;
         _indexSettingsMonitor = indexSettingsMonitor;
         _indexSettingsChangeSubscription = _indexSettingsMonitor.OnChange((_, indexName) => {
-            if (string.Equals(indexName, _cursorIndexName, StringComparison.Ordinal)) {
+            if (OrdinalEquals(indexName, _cursorIndexName)) {
                 _indexSettings = null;
             }
         });

@@ -28,7 +28,7 @@ public class UpdateSqlGeneratorExtensions<TGenerator> : IDbContextOptionsExtensi
         public override string LogFragment => nameof(UpdateSqlGeneratorExtensions<TGenerator>);
 
         public override bool ShouldUseSameServiceProvider(DbContextOptionsExtensionInfo other)
-            => string.Equals(LogFragment, other.LogFragment, StringComparison.Ordinal);
+            => OrdinalEquals(LogFragment, other.LogFragment);
 
         public override int GetServiceProviderHashCode() => 0;
 

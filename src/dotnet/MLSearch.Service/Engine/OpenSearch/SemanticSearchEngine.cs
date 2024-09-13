@@ -29,7 +29,7 @@ internal sealed class SemanticSearchEngine<TDocument> : ISearchEngine<TDocument>
         _serviceCoordinator = serviceCoordinator;
         _log = log;
         _indexSettingsChangeSubscription = _indexSettingsMonitor.OnChange((_, indexName) => {
-            if (string.Equals(indexName, _docIndexName, StringComparison.Ordinal)) {
+            if (OrdinalEquals(indexName, _docIndexName)) {
                 _indexSettings = null;
             }
         });

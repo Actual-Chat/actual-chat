@@ -53,7 +53,7 @@ public sealed partial record LinkPreview : IHasId<Symbol>, IHasVersion<long>, IH
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsYouTubeVideo
-        => string.Equals(VideoSite, "YouTube", StringComparison.Ordinal) && !VideoUrl.IsNullOrEmpty();
+        => OrdinalEquals(VideoSite, "YouTube") && !VideoUrl.IsNullOrEmpty();
 
     public static Symbol ComposeId(string url)
         => url.IsNullOrEmpty()

@@ -98,7 +98,7 @@ internal sealed class ClusterSetupActions(
             throw new InvalidOperationException("model_state field is not found");
         }
         var modelState = (string) modelStateObj;
-        if (!string.Equals(modelState, "DEPLOYED", StringComparison.Ordinal)) {
+        if (!OrdinalEquals(modelState, "DEPLOYED")) {
             modelState = string.IsNullOrEmpty(modelState) ? "<Empty>" : modelState;
             // Throw standard external error as it is transient
             throw StandardError.External(
