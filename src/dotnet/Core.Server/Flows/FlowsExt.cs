@@ -11,8 +11,7 @@ public static class FlowsExt
     {
         var services = flows.GetServices();
         var flowRegistry = services.GetRequiredService<FlowRegistry>();
-        var name = flowRegistry.Names[typeof(TFlow)];
-        var flowId = new FlowId(name, arguments);
+        var flowId = flowRegistry.NewId<TFlow>(arguments);
         var flow = await flows.Get(flowId, cancellationToken).ConfigureAwait(false);
         return (TFlow?)flow;
     }
@@ -24,8 +23,7 @@ public static class FlowsExt
     {
         var services = flows.GetServices();
         var flowRegistry = services.GetRequiredService<FlowRegistry>();
-        var name = flowRegistry.Names[typeof(TFlow)];
-        var flowId = new FlowId(name, arguments);
+        var flowId = flowRegistry.NewId<TFlow>(arguments);
         var flow = await flows.GetOrStart(flowId, cancellationToken).ConfigureAwait(false);
         return (TFlow)flow;
     }

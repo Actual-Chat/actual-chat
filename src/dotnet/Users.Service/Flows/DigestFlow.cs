@@ -12,12 +12,20 @@ public partial class DigestFlow : Flow
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public Moment? LastDigestAt { get; private set; }
+    [DataMember(Order = 1), MemoryPackOrder(1)]
+    public int SendCount { get; private set; }
 
     public override FlowOptions GetOptions()
         => new() { RemoveDelay = TimeSpan.FromSeconds(1) };
 
     protected override Task<FlowTransition> OnStart(CancellationToken cancellationToken)
         => GetDefaultTransition(cancellationToken);
+
+    protected override Task<FlowTransition> OnReset(CancellationToken cancellationToken)
+    {
+        LastDigestAt = null;
+        return GetDefaultTransition(cancellationToken);
+    }
 
     protected async Task<FlowTransition> OnCheck(CancellationToken cancellationToken)
     {
@@ -28,11 +36,12 @@ public partial class DigestFlow : Flow
         if (delay > TimeSpan.Zero)
             Wait(nameof(OnCheck)).AddTimerEvent(delay);
 
-        var userId = UserId.Parse(Id.Id);
+        var userId = UserId.Parse(Id.Arguments);
         var sendDigestCommand = new EmailsBackend_SendDigest(userId);
         var queues = Host.Services.Queues();
         await queues.Enqueue(sendDigestCommand, cancellationToken).ConfigureAwait(false);
         LastDigestAt = Clocks.SystemClock.Now;
+        SendCount++;
         return await GetDefaultTransition(cancellationToken).ConfigureAwait(false);
     }
 
@@ -48,7 +57,7 @@ public partial class DigestFlow : Flow
 
     private async Task<TimeSpan?> GetNextDigestDelay(CancellationToken cancellationToken)
     {
-        var userId = UserId.Parse(Id.Id);
+        var userId = UserId.Parse(Id.Arguments);
         var accounts = Host.Services.GetRequiredService<IAccountsBackend>();
         var account = await accounts.Get(userId, cancellationToken).ConfigureAwait(false);
         if (account?.IsGuestOrNone != false) {

@@ -99,7 +99,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
                     continue;
                 }
 
-                if (flow.Step.IsEmpty && entry.Event is not FlowStartEvent) {
+                if (flow.Step.IsEmpty && entry.Event is not (FlowStartEvent or FlowResetEvent)) {
                     // If somehow FlowStartEvent isn't first, we fake it
                     var flowStartEntry = new QueueEntry(new FlowStartEvent(flow.Id), gracefulStopToken);
                     flow = await HandleEvent(flow, flowStartEntry, gracefulStopToken).ConfigureAwait(false);
