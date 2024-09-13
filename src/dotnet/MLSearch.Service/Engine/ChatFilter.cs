@@ -23,9 +23,9 @@ public enum InclusionMode
 public sealed class ChatFilter: IQueryFilter
 {
     // TODO: Think about better API for this filters.
-    // We probably shoud get rid of the InclusionMode as it looks confusing.
+    // We probably should get rid of the InclusionMode as it looks confusing.
     public InclusionMode PublicChatInclusion { get; init; }
-    public InclusionMode SearchBotChatInclusion { get; init; }
+    public InclusionMode BotChatInclusion { get; init; }
 
     public void Apply(IQueryBuilder queryBuilder) => queryBuilder.ApplyChatFilter(this);
 }

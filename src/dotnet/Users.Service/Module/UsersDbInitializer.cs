@@ -10,7 +10,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
     public override async Task InitializeData(CancellationToken cancellationToken)
     {
         await EnsureAdminExists(cancellationToken).ConfigureAwait(false);
-        await EnsureMLSearchBotExists(cancellationToken).ConfigureAwait(false);
+        await EnsureSherlockExists(cancellationToken).ConfigureAwait(false);
         if (HostInfo is { IsDevelopmentInstance: true, IsTested: false }) {
             await EnsureTestBotsExist(cancellationToken).ConfigureAwait(false);
             await EnsureTestUsersExist(cancellationToken).ConfigureAwait(false);
@@ -33,10 +33,10 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         await AddInternalAccount(new (userId, name), cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task EnsureMLSearchBotExists(CancellationToken cancellationToken)
+    private async Task EnsureSherlockExists(CancellationToken cancellationToken)
     => await EnsureUserExists(
-            Constants.User.MLSearchBot.UserId,
-            Constants.User.MLSearchBot.Name,
+            Constants.User.Sherlock.UserId,
+            Constants.User.Sherlock.Name,
             cancellationToken
         )
         .ConfigureAwait(false);

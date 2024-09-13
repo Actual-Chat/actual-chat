@@ -183,7 +183,7 @@ internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings)
     void IQueryBuilder.ApplyChatFilter(ChatFilter chatFilter)
     {
         var isPublic = ToBoolTermValue(chatFilter.PublicChatInclusion);
-        var isBotChat = ToBoolTermValue(chatFilter.SearchBotChatInclusion);
+        var isBotChat = ToBoolTermValue(chatFilter.BotChatInclusion);
 
         if (isPublic.HasValue || isBotChat.HasValue) {
             _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()

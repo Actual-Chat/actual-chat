@@ -42,7 +42,7 @@ internal class ChatBotConversationTrigger(
             if (!chat.Id.IsPeerChat(out var peerChatId))
                 // Ensure it's 1-on-1 chat
                 return;
-            if (!peerChatId.HasUser(Constants.User.MLSearchBot.UserId))
+            if (!peerChatId.HasUser(Constants.User.Sherlock.UserId))
                 // Ensure it's a chat with the bot.
                 return;
         }

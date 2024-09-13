@@ -58,7 +58,7 @@ public class MLSearchImpl (ICommander commander, IMLSearchBackend backend, IChat
         var upsertCommand = new AuthorsBackend_Upsert(
             chat.Id,
             default,
-            Constants.User.MLSearchBot.UserId,
+            Constants.User.Sherlock.UserId,
             null,
             new AuthorDiff()
         );

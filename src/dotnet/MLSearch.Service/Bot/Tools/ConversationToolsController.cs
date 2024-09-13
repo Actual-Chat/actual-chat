@@ -33,7 +33,7 @@ public sealed class ConversationToolsController(ICommander commander, IBotToolsC
             throw new UnauthorizedAccessException();
         }
         var chatId = ChatId.Parse(conversationId);
-        AuthorId botId = new(chatId, Constants.User.MLSearchBot.AuthorLocalId, AssumeValid.Option);
+        AuthorId botId = new(chatId, Constants.User.Sherlock.AuthorLocalId, AssumeValid.Option);
         var textEntryId = new TextEntryId(chatId, 0, AssumeValid.Option);
         var upsertCommand = new ChatsBackend_ChangeEntry(
             textEntryId,
@@ -57,7 +57,7 @@ public sealed class ConversationToolsController(ICommander commander, IBotToolsC
             throw new UnauthorizedAccessException();
         }
         var chatId = ChatId.Parse(conversationId);
-        AuthorId botId = new(chatId, Constants.User.MLSearchBot.AuthorLocalId, AssumeValid.Option);
+        AuthorId botId = new(chatId, Constants.User.Sherlock.AuthorLocalId, AssumeValid.Option);
         var textEntryId = new TextEntryId(chatId, 0, AssumeValid.Option);
         var upsertCommand = new ChatsBackend_ChangeEntry(
             textEntryId,

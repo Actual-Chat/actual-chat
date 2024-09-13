@@ -459,7 +459,7 @@ public partial class ChatsBackend
                 newAuthorId = migratedAuthor.NewId;
             }
             else if (authorId.LocalId == Constants.User.Walle.AuthorLocalId
-                     || authorId.LocalId == Constants.User.MLSearchBot.AuthorLocalId)
+                     || authorId.LocalId == Constants.User.Sherlock.AuthorLocalId)
                 newAuthorId = new AuthorId(newChatId, authorId.LocalId, AssumeValid.Option);
             else
                 throw StandardError.Internal($"Unexpected author's local ID: {authorId.LocalId}.");

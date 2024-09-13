@@ -53,7 +53,7 @@ public class MLSearchCreateChatCommandTests(AppHostFixture fixture, ITestOutputH
         var chatUsers = await authors.ListUserIds(chat.Id, default);
         Assert.True(chatUsers.Count == 2);
         Assert.Contains(someUserAccount.Id, chatUsers);
-        Assert.Contains(Constants.User.MLSearchBot.UserId, chatUsers);
+        Assert.Contains(Constants.User.Sherlock.UserId, chatUsers);
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public class MLSearchCreateChatCommandTests(AppHostFixture fixture, ITestOutputH
 
         // Act
         var chat = await commander.Call(command, default);
-        var botAuthor = await authors.GetByUserId(chat.Id, Constants.User.MLSearchBot.UserId, AuthorsBackend_GetAuthorOption.Full, default);
+        var botAuthor = await authors.GetByUserId(chat.Id, Constants.User.Sherlock.UserId, AuthorsBackend_GetAuthorOption.Full, default);
         botAuthor.Should().NotBeNull();
         var result = await commander.Run(new Authors_Exclude(session, botAuthor!.Id));
         // Assert

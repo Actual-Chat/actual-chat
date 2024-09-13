@@ -46,7 +46,7 @@ internal class ExternalChatBotConversationHandler(
             return;
 
         var chatId = lastUpdatedDocument.ChatId;
-        AuthorId botId = new(chatId, Constants.User.MLSearchBot.AuthorLocalId, AssumeValid.Option);
+        AuthorId botId = new(chatId, Constants.User.Sherlock.AuthorLocalId, AssumeValid.Option);
         if (lastUpdatedDocument.AuthorId == botId)
             return;
 
