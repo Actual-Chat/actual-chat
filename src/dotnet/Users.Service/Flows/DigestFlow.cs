@@ -15,9 +15,6 @@ public partial class DigestFlow : Flow
     [DataMember(Order = 1), MemoryPackOrder(1)]
     public int SendCount { get; private set; }
 
-    public override FlowOptions GetOptions()
-        => new() { RemoveDelay = TimeSpan.FromSeconds(1) };
-
     protected override Task<FlowTransition> OnStart(CancellationToken cancellationToken)
         => GetDefaultTransition(cancellationToken);
 
@@ -32,7 +29,7 @@ public partial class DigestFlow : Flow
         Event.Require<FlowTimerEvent>();
         var delayOpt = await GetNextDigestDelay(cancellationToken).ConfigureAwait(false);
         if (delayOpt is not { } delay)
-            return GotoToEnd();
+            return GotoEnding();
         if (delay > TimeSpan.Zero)
             return Wait(nameof(OnCheck)).AddTimerEvent(delay);
 
@@ -52,7 +49,7 @@ public partial class DigestFlow : Flow
         var delayOpt = await GetNextDigestDelay(cancellationToken).ConfigureAwait(false);
         return delayOpt is { } delay
             ? Wait(nameof(OnCheck)).AddTimerEvent(delay + TimeSpan.FromSeconds(5))
-            : GotoToEnd();
+            : GotoEnding();
     }
 
     private async Task<TimeSpan?> GetNextDigestDelay(CancellationToken cancellationToken)
