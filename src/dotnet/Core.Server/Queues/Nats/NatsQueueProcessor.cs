@@ -52,7 +52,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         try {
             Serialize(buffer, queuedCommand);
             var subjectName = GetSubjectName(shardIndex, Queues.GetTopic(queuedCommand.UntypedCommand));
-            var headers = queuedCommand.Headers is null
+            var headers = ReferenceEquals(queuedCommand.Headers, null)
                 ? null
                 : new NatsHeaders(queuedCommand.Headers.ToDictionary(StringComparer.Ordinal));
             var response = await context.PublishAsync(subjectName,
