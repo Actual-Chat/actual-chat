@@ -87,7 +87,7 @@ public static partial class MauiProgram
         try {
             _ = MauiSession.Start();
 
-            var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
+            var appBuilder = MauiApp.CreateBuilder().UseMauiBlazorApp<App>();
 #if DEBUG
             // NOTE: It's enabled in Debug mode only hence there is no performance penalties in Release mode.
             EnableContainerValidation(appBuilder);
