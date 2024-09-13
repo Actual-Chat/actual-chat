@@ -15,15 +15,21 @@ import { Versioning } from 'versioning';
 
 import { AudioStream, AudioStreamer } from './audio-streamer';
 import { AudioVadWorker } from './audio-vad-worker-contract';
-import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from '../worklets/opus-encoder-worklet-contract';
 import { VoiceActivityChange } from './audio-vad-contract';
 import { RecorderStateServer } from '../opus-media-recorder-contracts';
 import { AudioDiagnosticsState } from '../audio-recorder';
 import { Log } from 'logging';
+import { AudioStreamFader } from '../../../Services/audio-stream-fader';
+import { approximateGain, clamp } from 'math';
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
+
+interface TimestampedAudioFrame {
+    frame: ArrayBuffer;
+    timestamp: number;
+}
 
 /// #if MEM_LEAK_DETECTION
 debugLog?.log(`MEM_LEAK_DETECTION == true`);
@@ -32,11 +38,9 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 // TODO: create wrapper around module for all workers
 
 let codecModule: Codec | null = null;
-// DEBUG - required for a chaos monkey
-// const sockets: WebSocket[] = [];
-
 /** buffer or callbackId: number of `end` message */
 const queue = new Denque<ArrayBuffer>();
+const encodedAudioFrames = new Denque<TimestampedAudioFrame>();
 const worker = self as unknown as Worker;
 const systemCodecConfig: AudioEncoderConfig = {
     codec: 'opus',
@@ -44,6 +48,7 @@ const systemCodecConfig: AudioEncoderConfig = {
     sampleRate: AR.SAMPLE_RATE,
     bitrate: AE.BIT_RATE,
 };
+const audioStreamFader = new AudioStreamFader(AE.FRAME_SAMPLES * AE.FADE_FRAMES);
 
 let state: 'initial' | 'created' | 'encoding' | 'ended' = 'initial';
 let isVoiceDetected: boolean = false;
@@ -53,8 +58,6 @@ let encoder: Encoder | null;
 let systemEncoder: AudioEncoder | null;
 let lastStartArguments: { chatId: string, repliedChatEntryId: string } | null = null;
 let lastSessionToken = '';
-let kbdWindow: Float32Array | null = null;
-let pinkNoiseChunk: Float32Array | null = null;
 let chunkTimeOffset: number = 0;
 let lastFrameProcessedAt = 0;
 let audioStream: AudioStream | null = null;
@@ -68,10 +71,6 @@ const serverImpl: OpusEncoderWorker = {
         Versioning.init(artifactVersions);
         AudioStreamer.init(hubUrl);
         AudioStreamer.connectionStateChangedEvents.add(x => stateServer.onConnectionStateChanged(x, rpcNoWait));
-
-        // Get fade-in window
-        kbdWindow = KaiserBesselDerivedWindow(AE.FRAME_SAMPLES * AE.FADE_FRAMES, 2.55);
-        pinkNoiseChunk = getPinkNoiseBuffer(1.0);
 
         if (!systemEncoder && globalThis.AudioEncoder) {
             const configSupport = await AudioEncoder.isConfigSupported(systemCodecConfig);
@@ -88,11 +87,7 @@ const serverImpl: OpusEncoderWorker = {
             infoLog?.log(`create: will use WASM codec`);
             // Loading codec
             codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
-            // Warming up codec
             encoder = new codecModule.Encoder(AR.SAMPLE_RATE, AE.BIT_RATE);
-            for (let i = 0; i < 2; i++)
-                encoder.encode(pinkNoiseChunk.buffer);
-            encoder.reset();
             debugLog?.log(`create: WASM codec is ready`);
         }
 
@@ -143,13 +138,15 @@ const serverImpl: OpusEncoderWorker = {
     },
 
     onEncoderWorkletSamples: async (buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void> => {
-        if (buffer.byteLength === 0 || state !== 'encoding' || !isVoiceDetected)
+        if (buffer.byteLength === 0 || state !== 'encoding')
             return;
 
         // debugLog?.log(`onEncoderWorkletSamples(${buffer.byteLength}):`, vadState);
         queue.push(buffer);
-        while (queue.length > AE.MAX_BUFFERED_FRAMES)
-            queue.shift();
+        while (queue.length > AE.MAX_BUFFERED_FRAMES) {
+            const samplesBuffer = queue.shift();
+            void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
+        }
         processQueue();
     },
 
@@ -178,28 +175,14 @@ function onSystemEncoderError(error: DOMException): void {
 }
 
 function onSystemEncoderChunk(output: EncodedAudioChunk, metadata: EncodedAudioChunkMetadata): void {
+    const timestamp  = output.timestamp;
+    while (encodedAudioFrames.length && encodedAudioFrames.peekFront().timestamp <= timestamp) {
+        // release encoded buffers
+        const { frame } = encodedAudioFrames.shift();
+        void encoderWorklet.releaseBuffer(frame, rpcNoWait);
+    }
+
     audioStream?.addFrame(output, true);
-}
-
-// Helpers
-
-function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
-    return {
-        locateFile: (filename: string) => {
-            const codecWasmPath = Versioning.mapPath(codecWasm);
-            if (filename.slice(-4) === 'wasm')
-                return codecWasmPath;
-            /// #if MEM_LEAK_DETECTION
-            else if (filename.slice(-3) === 'map')
-                return codecWasmMap;
-                /// #endif
-                // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
-            // emscripten 1.37.25 loads memory initializers as data: URI
-            else if (filename.slice(0, 5) === 'data:')
-                return filename;
-            else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
-        },
-    };
 }
 
 async function startRecording(): Promise<void> {
@@ -227,7 +210,7 @@ async function stopRecording(): Promise<void> {
     audioStream = null;
     encoder?.reset();
     systemEncoder?.reset();
-    queue.clear();
+    clearQueue();
     chunkTimeOffset = 0;
 }
 
@@ -235,55 +218,65 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
     if (!encoder && !systemEncoder)
         return; // No encoder = there is nothing we can do
 
+    if (fade === 'in') {
+        audioStreamFader.fadeIn();
+        // calculate precise moment when speech starts - VAD may provide signals with delay
+        // we will try to filter out frames with gain significantly lower than most recent
+        const gains = new Float32Array(queue.length).fill(0);
+        if (gains.length) {
+            for (let i = 0; i < queue.length; i++) {
+                const samplesBuffer = queue.peekAt(i);
+                const samples = new Float32Array(samplesBuffer);
+                gains[i] = approximateGain(samples);
+            }
+            const speechGain = gains[gains.length - 1];
+            let startIndex = queue.length - 2;
+            while (startIndex > 0) {
+                const gain = gains[startIndex];
+                if (gain < speechGain/5)
+                    break;
+                startIndex--;
+            }
+            let framesToShift = clamp(startIndex - 1, 0, queue.length - 1);
+            console.log('framesToShift', framesToShift, [...gains]);
+            while (framesToShift-- > 0)            {
+                const samplesBuffer = queue.shift();
+                void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
+            }
+        }
+    }
+    else if (fade === 'out')
+        audioStreamFader.fadeOut();
+    else if (!isVoiceDetected)
+        return;
+
     // debugLog?.log(`processQueue:`, fade);
     try {
-        let fadeWindowIndex: number | null = null;
-        if (fade === 'in' || fade === 'out')
-            fadeWindowIndex = 0;
-
         while (!queue.isEmpty()) {
             const samplesBuffer = queue.shift();
             const samples = new Float32Array(samplesBuffer);
-            if (fadeWindowIndex !== null) {
-                if (fade === 'in')
-                    for (let i = 0; i < samples.length; i++)
-                        samples[i] *= kbdWindow[fadeWindowIndex + i];
-                else if (fade === 'out')
-                    for (let i = 0; i < samples.length; i++)
-                        samples[i] *= kbdWindow[kbdWindow.length - 1 - fadeWindowIndex - i];
-
-                fadeWindowIndex += samples.length;
-                if (fadeWindowIndex >= AE.FADE_FRAMES * AE.FRAME_SAMPLES)
-                    fadeWindowIndex = null;
-            }
-
-
-            // this fake chunk emulates clicky sound
-            // const typedViewFakeChunk = encoder.encode(silenceChunk.buffer);
-            // const fakeChunk = new Uint8Array(typedViewFakeChunk.length);
-            // fakeChunk.set(typedViewFakeChunk);
-            // recordingSubject?.next(fakeChunk);
-
+            const fadedSamples = audioStreamFader.process(samples);
+            const timestamp = chunkTimeOffset * 1000; // microseconds instead of ms
             if (systemEncoder) {
                 const audioChunk = new AudioData({
                     format: 'f32-planar',
                     sampleRate: AR.SAMPLE_RATE,
                     numberOfChannels: 1,
                     numberOfFrames: AE.FRAME_SAMPLES,
-                    timestamp: chunkTimeOffset * 1000, // microseconds instead of ms
-                    data: samples,
+                    timestamp: timestamp,
+                    data: fadedSamples,
                 });
                 systemEncoder.encode(audioChunk);
+                encodedAudioFrames.push({ frame: samplesBuffer, timestamp: timestamp });
             }
             else {
                 // frameView is a typed_memory_view to Decoder internal buffer, so we have to copy it
                 const frameView = encoder.encode(samplesBuffer);
                 audioStream?.addFrame(frameView);
+                void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
             }
 
             lastFrameProcessedAt = Date.now();
-            void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
-
             chunkTimeOffset += 20;
         }
     }
@@ -292,22 +285,36 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
     }
 }
 
-function getPinkNoiseBuffer(gain: number = 1): Float32Array {
-    const buffer = new Float32Array(AE.FRAME_SAMPLES);
-    let b0: number, b1: number, b2: number, b3: number, b4: number, b5: number, b6: number;
-    b0 = b1 = b2 = b3 = b4 = b5 = b6 = 0.0;
-    for (let i = 0; i < buffer.length; i++) {
-        const white = Math.random() * 2 - 1;
-        b0 = 0.99886 * b0 + white * 0.0555179;
-        b1 = 0.99332 * b1 + white * 0.0750759;
-        b2 = 0.96900 * b2 + white * 0.1538520;
-        b3 = 0.86650 * b3 + white * 0.3104856;
-        b4 = 0.55000 * b4 + white * 0.5329522;
-        b5 = -0.7616 * b5 - white * 0.0168980;
-        buffer[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
-        buffer[i] *= 0.11;
-        buffer[i] *= gain;
-        b6 = white * 0.115926;
+function clearQueue(): void {
+    while(queue.length) {
+        const samplesBuffer = queue.shift();
+        // release queued buffers
+        void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
     }
-    return buffer;
+    while (encodedAudioFrames.length) {
+        // release encoded buffers
+        const { frame } = encodedAudioFrames.shift();
+        void encoderWorklet.releaseBuffer(frame, rpcNoWait);
+    }
+}
+
+// Helpers
+
+function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
+    return {
+        locateFile: (filename: string) => {
+            const codecWasmPath = Versioning.mapPath(codecWasm);
+            if (filename.slice(-4) === 'wasm')
+                return codecWasmPath;
+            /// #if MEM_LEAK_DETECTION
+            else if (filename.slice(-3) === 'map')
+                return codecWasmMap;
+                /// #endif
+                // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
+            // emscripten 1.37.25 loads memory initializers as data: URI
+            else if (filename.slice(0, 5) === 'data:')
+                return filename;
+            else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
+        },
+    };
 }

@@ -5,6 +5,7 @@ using ActualChat.UI.Blazor.Services;
 using Foundation;
 using Photos;
 using ActualLab.Fusion.UI;
+using UIKit;
 
 namespace ActualChat.App.Maui;
 
@@ -44,12 +45,13 @@ public class IosMediaSaver(IServiceProvider services) : IMediaSaver
         var tcs = new TaskCompletionSource();
         PHPhotoLibrary.SharedPhotoLibrary.PerformChanges(
             () => {
-                var nsUrl = NSUrl.FromFilename(tempFilePath);
                 switch (type) {
                 case PHAssetResourceType.Photo:
-                    PHAssetChangeRequest.FromImage(nsUrl);
+                    var uiImage = UIImage.FromFile(tempFilePath);
+                    PHAssetChangeRequest.FromImage(uiImage!);
                     break;
                 case PHAssetResourceType.Video:
+                    var nsUrl = NSUrl.FromFilename(tempFilePath);
                     PHAssetChangeRequest.FromVideo(nsUrl);
                     break;
                 default:

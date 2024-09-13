@@ -1,11 +1,10 @@
-import { AsyncDirective } from 'lit/async-directive.js';
-import { directive } from 'lit/directive.js';
 import { customElement, property } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
 import { animationFrameScheduler, map, scan, Observable, Subscription } from 'rxjs';
 import { delayWhen, throttleTime, skip, take, distinctUntilChanged } from 'rxjs/operators';
 import { OpusMediaRecorder } from '../AudioRecorder/opus-media-recorder';
-import { clamp, RunningMax } from 'math';
+import { clamp, RunningMax, translate } from 'math';
+import { observe } from '../../Services/observe-directive-lit';
 
 const SIGNAL_COUNT_TO_CALCULATE_MAX = 200; // 200 * 30ms = 6s
 
@@ -82,6 +81,9 @@ class ActiveRecordingSvg extends LitElement {
     @property()
     size = 10;
 
+
+    private readonly minHeight = 10;
+    private readonly maxHeight = 100;
     private readonly height1$: Observable<number>;
     private readonly height2$: Observable<number>;
     private readonly height3$: Observable<number>;
@@ -95,12 +97,10 @@ class ActiveRecordingSvg extends LitElement {
     private isRecording = false;
     private lastIsRecording = false;
 
-
     constructor() {
         super();
 
-        const minHeight = 10;
-        const maxHeight = 100;
+        const { minHeight, maxHeight } = this;
         this.isVoiceActive$ = OpusMediaRecorder.recorderStateChanged$
             .pipe(map(s => s.isVoiceActive), distinctUntilChanged());
         const signalPower$ = OpusMediaRecorder.audioPowerChanged$
@@ -161,15 +161,17 @@ class ActiveRecordingSvg extends LitElement {
     }
 
     protected render(): unknown {
-        const { size } = this;
+        const { size, minHeight } = this;
         const width = 10;
+        const defaultHeight = minHeight;
+        const defaultOffset = 50 - minHeight / 2;
 
-        const height1 = observe(this.height1$);
-        const height2 = observe(this.height2$);
-        const height3 = observe(this.height3$);
-        const offset1 = observe(this.offset1$);
-        const offset2 = observe(this.offset2$);
-        const offset3 = observe(this.offset3$);
+        const height1 = observe(this.height1$, defaultHeight);
+        const height2 = observe(this.height2$, defaultHeight);
+        const height3 = observe(this.height3$, defaultHeight);
+        const offset1 = observe(this.offset1$, defaultOffset);
+        const offset2 = observe(this.offset2$, defaultOffset);
+        const offset3 = observe(this.offset3$, defaultOffset);
         const edgeDotCls = observe(this.isVoiceActive$.pipe(map(b => b ? "active" : "non-active")));
         const centerDotCls = observe(this.isVoiceActive$.pipe(map(b => b ? "" : "in-rest")));
 
@@ -216,22 +218,4 @@ class ActiveRecordingSvg extends LitElement {
             </svg>
         `;
     }
-}
-
-class ObserveDirective extends AsyncDirective {
-    #subscription: Subscription;
-
-    render(observable: Observable<unknown>) {
-        this.#subscription = observable.subscribe(value => this.setValue(value));
-        return ``;
-    }
-
-    disconnected() {
-        this.#subscription?.unsubscribe();
-    }
-}
-
-const observe = directive(ObserveDirective);
-const translate = (number: number, [inMin, inMax]: Array<number>, [outMin, outMax]: Array<number>) => {
-    return (number - inMin) / (inMax - inMin) * (outMax - outMin) + outMin;
 }

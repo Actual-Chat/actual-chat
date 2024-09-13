@@ -157,6 +157,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             throw new ArgumentOutOfRangeException(nameof(command), "Invalid AuthorId.");
         if (userId.IsNone && authorId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(command), "Either AuthorId or UserId must be provided.");
+        if (!authorId.IsNone && Bots.IsBot(authorId))
+            throw new ArgumentOutOfRangeException(nameof(command), "System authors cannot be modified.");
 
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
@@ -561,8 +563,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
         if (authorId == Bots.GetWalleId(chatId))
             return Bots.GetWalle(chatId);
-        if (authorId == Bots.GetMLSearchBotId(chatId))
-            return Bots.GetMLSearchBot(chatId);
+        if (authorId == Bots.GetSherlockId(chatId))
+            return Bots.GetSherlock(chatId);
 
         var dbAuthor = await DbAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
         AuthorFull? author;

@@ -42,7 +42,7 @@ export const AUDIO_ENCODER = {
 export const AUDIO_STREAMER = {
     MAX_STREAMS: 3, // Max streams to keep sending
     DELAY_FRAMES: 5, // 100ms - !DELAYER: streamer won't start sending until it gets these frames (~400 bytes)
-    MIN_PACK_FRAMES: 3, // 40ms - min. # of frames to send at once (~240 bytes)
+    MIN_PACK_FRAMES: 3, // 30ms - min. # of frames to send at once (~240 bytes)
     MAX_PACK_FRAMES: 10, // 200ms - max. # of frames to send at once (~800 bytes)
     MAX_BUFFERED_FRAMES: 1500, // 30s (~120KB)
     MAX_SPEED: 2, // Max streaming speed - relative to real-time; must be >1, but not too high to avoid queued stream overlap

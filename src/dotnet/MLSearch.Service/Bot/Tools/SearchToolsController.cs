@@ -46,7 +46,7 @@ public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine,
                 new KeywordFilter<ChatSlice>(search.Text.Split()),
                 new ChatFilter() {
                     PublicChatInclusion = InclusionMode.IncludeStrictly,
-                    SearchBotChatInclusion = InclusionMode.Exclude,
+                    BotChatInclusion = InclusionMode.Exclude,
                 }
             ],
             Limit = limit
@@ -88,7 +88,7 @@ public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine,
                 new KeywordFilter<ChatSlice>(search.Text.Split()),
                 new ChatFilter() {
                     PublicChatInclusion = InclusionMode.Include,
-                    SearchBotChatInclusion = InclusionMode.Exclude,
+                    BotChatInclusion = InclusionMode.Exclude,
                 },
             ],
             Limit = limit,

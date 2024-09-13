@@ -1,6 +1,5 @@
 using ActualChat.Chat.Db;
 using ActualChat.Testing.Host;
-using ActualChat.Testing.Host.Assertion;
 using ActualChat.Users;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
