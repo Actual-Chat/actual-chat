@@ -137,6 +137,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
                 }
                 if (transition.MustWait)
                     break;
+
                 evt = new FlowResumeEvent(flow.Id, _nextResultEventIndex++);
             }
             entry.ResultSource.TrySetResult(flow.Version);

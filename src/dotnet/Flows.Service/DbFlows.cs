@@ -12,7 +12,7 @@ namespace ActualChat.Flows;
 public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(services), IFlows
 {
     protected FlowRegistry Registry { get; } = services.GetRequiredService<FlowRegistry>();
-    protected FlowHost FlowHost { get; } = services.GetRequiredService<FlowHost>();
+    protected FlowHost Host { get; } = services.GetRequiredService<FlowHost>();
     protected IDbEntityResolver<string, DbFlow> EntityResolver { get; } = services.DbEntityResolver<string, DbFlow>();
     protected IByteSerializer Serializer { get; init; } = TypeDecoratingByteSerializer.Default;
 
@@ -33,20 +33,20 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
     // Regular method!
     public virtual Task<Flow> GetOrStart(FlowId flowId, CancellationToken cancellationToken = default)
     {
+        var flowType = Registry.Types[flowId.Name];
+        Flow.RequireCorrectType(flowType);
+
         var retryLogger = new RetryLogger(Log);
         return GetOrStartRetryPolicy.RunIsolated(async ct => {
             var flow = await Get(flowId, ct).ConfigureAwait(false);
             if (flow != null)
                 return flow;
 
-            var flowType = Registry.Types[flowId.Name];
-            Flow.RequireCorrectType(flowType);
             flow = (Flow)flowType.CreateInstance();
-            flow.Initialize(flowId, 0, flow.Step);
-
+            flow.Initialize(flowId, 0);
             var storeCommand = new Flows_Store(flow.Id, 0) { Flow = flow };
             var version = await Commander.Call(storeCommand, true, ct).ConfigureAwait(false);
-            flow.Initialize(flowId, version, flow.Step);
+            flow.Initialize(flowId, version);
             return flow;
         }, retryLogger, cancellationToken);
     }
@@ -54,7 +54,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
     // The `long` it returns is DbFlow/FlowData.Version
     [ProxyIgnore] // Regular method!
     public virtual Task<long> OnEvent(FlowId flowId, IFlowEvent evt, CancellationToken cancellationToken = default)
-        => FlowHost.HandleEvent(flowId, evt, cancellationToken);
+        => Host.HandleEvent(flowId, evt, cancellationToken);
 
     // The `long` it returns is DbFlow/FlowData.Version
     // [CommandHandler]
@@ -102,8 +102,9 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
             dbFlow.Data = Serialize(flow);
             break;
         }
+        foreach (var e in command.AddEvents ?? [])
+            context.Operation.AddEvent(e);
 
-        command.EventBuilder?.Invoke(context.Operation);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbFlow?.Version ?? 0;
     }

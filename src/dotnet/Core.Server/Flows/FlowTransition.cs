@@ -8,10 +8,10 @@ public readonly record struct FlowTransition(Flow Flow, Symbol Step)
 {
     public bool MustStore { get; init; } = true;
     public bool MustWait { get; init; } = true;
-    public Action<Operation>? EventBuilder { get; init; }
+    public ImmutableList<OperationEvent> Events { get; init; } = ImmutableList<OperationEvent>.Empty;
 
     public bool EffectiveMustStore
-        => MustStore || Step == FlowSteps.OnRemove || EventBuilder != null;
+        => MustStore || Step == FlowSteps.OnRemove || Events != null;
 
     public override string ToString()
     {
@@ -24,27 +24,27 @@ public readonly record struct FlowTransition(Flow Flow, Symbol Step)
         return $"->('{Step}', {flags})";
     }
 
-    public FlowTransition AddEvents(Action<Operation> eventBuilder)
-    {
-        var oldEventBuilder = EventBuilder;
-        return this with {
+    public FlowTransition AddEvent(OperationEvent @event)
+        => this with {
             MustStore = true,
-            EventBuilder = operation => {
-                oldEventBuilder?.Invoke(operation);
-                eventBuilder.Invoke(operation);
-            },
+            Events = Events.Add(@event),
         };
-    }
+
+    public FlowTransition AddEvents(params OperationEvent[] events)
+        => this with {
+            MustStore = true,
+            Events = Events.AddRange(events),
+        };
 
     public FlowTransition AddTimerEvent(TimeSpan delay, string? tag = null)
     {
-        var e = new FlowTimerEvent(Flow.Id, tag);
-        return AddEvents(o => o.AddEvent(e, delay));
+        var clock = ((IFlowImpl)Flow).Worklet.Host.Clocks.SystemClock;
+        return AddTimerEvent(clock.Now + delay, tag);
     }
 
     public FlowTransition AddTimerEvent(Moment firesAt, string? tag = null)
     {
         var e = new FlowTimerEvent(Flow.Id, tag);
-        return AddEvents(o => o.AddEvent(e, firesAt));
+        return AddEvents(new OperationEvent(firesAt, e));
     }
 }

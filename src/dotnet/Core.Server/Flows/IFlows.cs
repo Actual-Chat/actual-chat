@@ -37,7 +37,7 @@ public partial record Flows_Store(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Flow? Flow { get; init; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public Action<Operation>? EventBuilder { get; init; }
+    public OperationEvent[]? AddEvents { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     FlowId IHasShardKey<FlowId>.ShardKey => FlowId;
