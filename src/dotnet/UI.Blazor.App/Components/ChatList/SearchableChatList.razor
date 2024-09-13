@@ -7,7 +7,7 @@
 @if (m is { IsSearchOn: true, EnableIncompleteUI: true }) {
     <FoundChatList @key="@(m.PlaceId.Value + "-found")"/>
 } else {
-    <ChatList @key="@m.PlaceId.Value" PlaceId="@PlaceId" Kind="ChatListKind.All"/>
+    <AllChatList @key="@m.PlaceId.Value" PlaceId="@PlaceId" Kind="ChatListKind.All"/>
 }
 
 @code {
