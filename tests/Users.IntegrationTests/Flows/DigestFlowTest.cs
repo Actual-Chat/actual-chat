@@ -1,4 +1,5 @@
 using ActualChat.Flows;
+using ActualChat.Flows.Infrastructure;
 using ActualChat.Testing.Host;
 using ActualChat.Users.Flows;
 
@@ -17,7 +18,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
 
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<DigestFlow>(f0.Id.Arguments, ct);
-            flow?.Step.Should().Be("OnRemove");
+            flow?.Step.Should().Be(FlowSteps.OnRemove);
         }, TimeSpan.FromSeconds(30));
 
         await ComputedTest.When(async ct => {
@@ -37,13 +38,13 @@ public class DigestFlowTest(ITestOutputHelper @out)
 
         var userId = UserId.Parse("actual-admin");
         var account = await accountsBackend.Get(userId, default);
-        var accountUpdate = new AccountsBackend_Update(account! with { TimeZone = "America/New_York" }, account.Version);
-        await commander.Call(accountUpdate, true);
+        var updateCmd = new AccountsBackend_Update(account! with { TimeZone = "America/New_York" }, null);
+        await commander.Call(updateCmd, true);
 
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<DigestFlow>(userId, ct);
             flow.Should().NotBeNull();
-            flow?.Step.Should().Be("OnTimer");
+            flow?.Step.Should().Be("OnCheck");
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -57,14 +58,14 @@ public class DigestFlowTest(ITestOutputHelper @out)
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
 
         var userId = UserId.Parse("actual-admin");
-        var account = await accountsBackend.Get(userId, default);
-        var accountUpdate = new AccountsBackend_Update(account! with { TimeZone = "America/New_York" }, account.Version);
-        await commander.Call(accountUpdate, true);
+        var account = await accountsBackend.Get(userId, default).Require();
+        var updateCmd = new AccountsBackend_Update(account with { TimeZone = "America/New_York" }, null);
+        await commander.Call(updateCmd, true);
 
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<DigestFlow>(userId, ct);
             flow.Should().NotBeNull();
-            flow?.Step.Should().Be("OnTimer");
+            flow?.Step.Should().Be("OnCheck");
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -91,13 +92,9 @@ public class DigestFlowTest(ITestOutputHelper @out)
                 DigestTime = DateTime.Now.TimeOfDay.Add(new TimeSpan(0, 0, 10)),
             },
             default);
-        var account = await accountsBackend.Get(userId, default);
-        var accountUpdate = new AccountsBackend_Update(
-            account! with {
-                TimeZone = TimeZoneInfo.Local.Id,
-            },
-            account.Version);
-        await commander.Call(accountUpdate, true);
+        var account = await accountsBackend.Get(userId, default).Require();
+        var updateCmd = new AccountsBackend_Update(account with { TimeZone = TimeZoneInfo.Local.Id, }, null);
+        await commander.Call(updateCmd, true);
 
         await ComputedTest.When(async _ => {
             emailsBackend.Verify(
