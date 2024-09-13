@@ -1,4 +1,5 @@
 using ActualChat.Flows;
+using ActualChat.Flows.Infrastructure;
 using ActualChat.Testing.Host;
 using ActualChat.Users.Flows;
 
@@ -18,12 +19,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<DigestFlow>(f0.Id.Arguments, ct);
             flow.Should().NotBeNull();
-            flow!.Step.IsEmpty.Should().BeFalse();
-        }, TimeSpan.FromSeconds(30));
-
-        await ComputedTest.When(async ct => {
-            var flow = await flows.Get<DigestFlow>(f0.Id.Arguments, ct);
-            flow.Should().BeNull();
+            flow!.Step.Should().Be(FlowSteps.OnEnding);
         }, TimeSpan.FromSeconds(30));
     }
 
