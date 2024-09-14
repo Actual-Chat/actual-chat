@@ -1,3 +1,4 @@
+using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Module;
 using Microsoft.Extensions.Options;
@@ -14,6 +15,7 @@ internal sealed class SemanticSearchEngine<TDocument> : ISearchEngine<TDocument>
     private readonly IServiceCoordinator _serviceCoordinator;
     private readonly ILogger<SemanticSearchEngine<TDocument>> _log;
     private readonly IDisposable? _indexSettingsChangeSubscription;
+    private OpenSearchNamingPolicy _namingPolicy;
     private SemanticIndexSettings? _indexSettings;
 
     public SemanticSearchEngine(
@@ -21,12 +23,14 @@ internal sealed class SemanticSearchEngine<TDocument> : ISearchEngine<TDocument>
         IOpenSearchClient openSearch,
         IOptionsMonitor<SemanticIndexSettings> indexSettingsMonitor,
         IServiceCoordinator serviceCoordinator,
+        OpenSearchNamingPolicy namingPolicy,
         ILogger<SemanticSearchEngine<TDocument>> log)
     {
         _docIndexName = docIndexName;
         _openSearch = openSearch;
         _indexSettingsMonitor = indexSettingsMonitor;
         _serviceCoordinator = serviceCoordinator;
+        _namingPolicy = namingPolicy;
         _log = log;
         _indexSettingsChangeSubscription = _indexSettingsMonitor.OnChange((_, indexName) => {
             if (OrdinalEquals(indexName, _docIndexName)) {
@@ -45,7 +49,7 @@ internal sealed class SemanticSearchEngine<TDocument> : ISearchEngine<TDocument>
 
     private async Task<SearchResult<TDocument>> FindUnsafe(SearchQuery query, CancellationToken cancellationToken)
     {
-        var queryBuilder = new SemanticSearchQueryBuilder(IndexSettings);
+        var queryBuilder = new SemanticSearchQueryBuilder(_namingPolicy, IndexSettings);
         var searchRequest = queryBuilder.Build(query);
 
         // TODO: Make this serialization optional

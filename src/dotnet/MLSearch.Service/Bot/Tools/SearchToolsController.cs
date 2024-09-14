@@ -11,7 +11,7 @@ namespace ActualChat.MLSearch.Bot.Tools;
 [Produces("application/json")]
 public sealed class SearchToolsController(
     IAuthorsBackend authors,
-    IChatsBackend chats,
+    IFilters filters,
     ISearchEngine<ChatSlice> searchEngine,
     IBotToolsContextHandler botToolsContext) : ControllerBase
 {
@@ -36,7 +36,7 @@ public sealed class SearchToolsController(
     [HttpPost("public-chats")]
     public async Task<ActionResult<List<SearchQueryDocumentResult>>> PublicChatsText([FromBody]SearchQueryRequest search, CancellationToken cancellationToken)
     {
-        var limit = search.Limit.GetValueOrDefault(1);
+        var limit = search.Limit ?? 1;
         // Add limit constraints.
         if (limit < 1) {
             limit = 1;
@@ -46,14 +46,11 @@ public sealed class SearchToolsController(
         }
         var query = new SearchQuery() {
             Filters = [
-                new SemanticFilter<ChatSlice>(search.Text),
-                new KeywordFilter<ChatSlice>(search.Text.Split()),
-                new ChatFilter() {
-                    PublicChatInclusion = InclusionMode.IncludeStrictly,
-                    BotChatInclusion = InclusionMode.Exclude,
-                }
+                await filters.Semantic(search.Text, cancellationToken).ConfigureAwait(false),
+                await filters.Keyword(search.Text, cancellationToken).ConfigureAwait(false),
+                await filters.Chat(chats => chats.Public(), cancellationToken).ConfigureAwait(false),
             ],
-            Limit = limit
+            Limit = limit,
         };
         var searchResult = await searchEngine.Find(query, cancellationToken).ConfigureAwait(false);
         // TODO: (?) Error handling
@@ -65,7 +62,7 @@ public sealed class SearchToolsController(
                 var link = Links.Chat(chatEntryId);
                 return new SearchQueryDocumentResult {
                     LocalUrl = link,
-                    Document = e
+                    Document = e,
                 };
             })
             .ToList();
@@ -92,8 +89,6 @@ public sealed class SearchToolsController(
             .ConfigureAwait(false);
         var ownerAuthorUserId = ownerAuthor!.UserId;
 
-        var privateChatIds = await chats.GetPrivateChatIdsForUser(ownerAuthorUserId, cancellationToken).ConfigureAwait(false);
-
         var limit = search.Limit;
         // Add limit constraints.
         if (limit < 1) {
@@ -104,12 +99,9 @@ public sealed class SearchToolsController(
         }
         var query = new SearchQuery() {
             Filters = [
-                new SemanticFilter<ChatSlice>(search.Text),
-                new KeywordFilter<ChatSlice>(search.Text.Split()),
-                new ChatFilter() {
-                    PublicChatInclusion = InclusionMode.Include,
-                    BotChatInclusion = InclusionMode.Exclude,
-                },
+                await filters.Semantic(search.Text, cancellationToken).ConfigureAwait(false),
+                await filters.Keyword(search.Text, cancellationToken).ConfigureAwait(false),
+                await filters.Chat(chats => chats.Private(ownerAuthorUserId), cancellationToken).ConfigureAwait(false),
             ],
             Limit = limit,
         };
