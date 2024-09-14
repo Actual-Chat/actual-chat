@@ -7,6 +7,7 @@ public static class FlowSteps
     public static readonly Symbol OnKill = nameof(OnKill);
     public static readonly Symbol OnEnding = nameof(OnEnding);
     public static readonly Symbol OnEnded = nameof(OnEnded);
+    public static readonly Symbol Removed = "-";
 
     private static readonly MethodInfo ToUntypedMethod = typeof(FlowSteps)
         .GetMethod(nameof(ToUntyped), BindingFlags.Static | BindingFlags.NonPublic)!;

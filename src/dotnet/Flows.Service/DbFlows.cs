@@ -80,7 +80,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
             .FirstOrDefaultAsync(x => Equals(x.Id, flowId.Value), cancellationToken)
             .ConfigureAwait(false);
         var dbFlowExists = dbFlow != null;
-        var flowExists = flow.Step != FlowSteps.OnEnded;
+        var flowExists = flow.Step == FlowSteps.Removed;
         if (dbFlowExists || flowExists) {
             if (!VersionChecker.IsExpected(dbFlow?.Version ?? 0, expectedVersion))
                 VersionChecker.RequireExpected(dbFlow?.Version ?? 0, expectedVersion);

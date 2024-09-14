@@ -124,7 +124,7 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
     {
         if (!Event.IsHandled)
             Event.Require<FlowTimerEvent>();
-        return Task.FromResult(Goto(FlowSteps.OnEnded));
+        return Task.FromResult(Goto(FlowSteps.Removed, true));
     }
 
     protected virtual Task<FlowTransition> OnMissingStep(CancellationToken cancellationToken)
