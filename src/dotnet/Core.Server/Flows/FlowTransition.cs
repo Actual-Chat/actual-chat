@@ -11,7 +11,7 @@ public readonly record struct FlowTransition(Flow Flow, Symbol Step)
     public ImmutableList<OperationEvent> Events { get; init; } = ImmutableList<OperationEvent>.Empty;
 
     public bool EffectiveMustStore
-        => MustStore || Step == FlowSteps.OnEnded || Events != null;
+        => MustStore || Step == FlowSteps.Removed || Events != null;
 
     public override string ToString()
     {

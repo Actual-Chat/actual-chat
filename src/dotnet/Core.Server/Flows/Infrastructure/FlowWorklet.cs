@@ -127,14 +127,14 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
     {
         var backup = flow.Clone();
         try {
+            if (MustRemove(flow.Step))
+                return flow;
+
             var evt = entry.Event;
             while (true) {
                 var transition = await flow.HandleEvent(evt, gracefulStopToken).ConfigureAwait(false);
-                if (transition.Step == FlowSteps.OnEnded) {
-                    Log.LogInformation("`{Id}` is ended", flow.Id);
-                    entry.ResultSource.TrySetResult(0);
+                if (MustRemove(transition.Step))
                     return flow;
-                }
                 if (!transition.MustResume)
                     break;
 
@@ -153,6 +153,15 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
             Log.LogError("`{Id}` @ {NextStep} failed", flow.Id, flow.Step);
         }
         return flow;
+
+        bool MustRemove(Symbol step) {
+            if (step != FlowSteps.Removed)
+                return false;
+
+            Log.LogInformation("`{Id}` is ended", flow.Id);
+            entry.ResultSource.TrySetResult(0);
+            return true;
+        }
     }
 
     void IGenericTimeoutHandler.OnTimeout()
