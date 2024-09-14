@@ -1,11 +1,16 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat.Flows;
 
 [StructLayout(LayoutKind.Auto)]
 public sealed class FlowEventBin(Flow flow, IFlowEvent @event)
 {
     public Flow Flow { get; } = flow;
-    public bool IsUsed { get; private set; }
+    public bool IsHandled { get; private set; }
     public IFlowEvent Event { get; } = @event;
+
+    public bool MarkHandled(bool isUsed = true)
+        => IsHandled = isUsed;
 
     public TEvent Require<TEvent>()
         where TEvent : class
@@ -13,18 +18,28 @@ public sealed class FlowEventBin(Flow flow, IFlowEvent @event)
             ? @event
             : throw Internal.Errors.NoEvent(Flow.GetType(), Flow.Step, typeof(TEvent));
 
-    public TEvent? As<TEvent>()
-        where TEvent : class
-        => Is<TEvent>(out var @event)
-            ? @event
-            : null;
+    public IFlowEvent RequireAny<TEvent1, TEvent2>()
+        where TEvent1 : class
+        where TEvent2 : class
+        => Is<TEvent1>(out _) ? Event
+            : Is<TEvent2>(out _) ? Event
+            : throw Internal.Errors.NoEvent(Flow.GetType(), Flow.Step, typeof(TEvent1), typeof(TEvent2));
 
-    public bool Is<TEvent>(out TEvent @event)
+    public IFlowEvent RequireAny<TEvent1, TEvent2, TEvent3>()
+        where TEvent1 : class
+        where TEvent2 : class
+        where TEvent3 : class
+        => Is<TEvent1>(out _) ? Event
+            : Is<TEvent2>(out _) ? Event
+            : Is<TEvent3>(out _) ? Event
+            : throw Internal.Errors.NoEvent(Flow.GetType(), Flow.Step, typeof(TEvent1), typeof(TEvent2), typeof(TEvent3));
+
+    public bool Is<TEvent>([NotNullWhen(true)] out TEvent? @event)
         where TEvent : class
     {
         if (Event is TEvent e) {
             @event = e;
-            MarkUsed();
+            MarkHandled();
             return true;
         }
 
@@ -32,6 +47,26 @@ public sealed class FlowEventBin(Flow flow, IFlowEvent @event)
         return false;
     }
 
-    public bool MarkUsed(bool isUsed = true)
-        => IsUsed = isUsed;
+    public bool IsAny<TEvent1, TEvent2>([NotNullWhen(true)] out IFlowEvent? @event)
+        where TEvent1 : class
+        where TEvent2 : class
+    {
+        @event = Is<TEvent1>(out _) || Is<TEvent2>(out _) ? Event : null;
+        return @event != null;
+    }
+
+    public bool IsAny<TEvent1, TEvent2, TEvent3>([NotNullWhen(true)] out IFlowEvent? @event)
+        where TEvent1 : class
+        where TEvent2 : class
+        where TEvent3 : class
+    {
+        @event = Is<TEvent1>(out _) || Is<TEvent2>(out _) || Is<TEvent3>(out _) ? Event : null;
+        return @event != null;
+    }
+
+    public TEvent? As<TEvent>()
+        where TEvent : class
+        => Is<TEvent>(out var @event)
+            ? @event
+            : null;
 }

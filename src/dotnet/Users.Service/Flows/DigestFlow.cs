@@ -11,15 +11,15 @@ namespace ActualChat.Users.Flows;
 public partial class DigestFlow : Flow
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]
+    public UserId UserId { get; private set; }
+    [DataMember(Order = 10), MemoryPackOrder(10)]
     public Moment? LastDigestAt { get; private set; }
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 11), MemoryPackOrder(11)]
     public int SendCount { get; private set; }
-
-    protected override Task<FlowTransition> OnStart(CancellationToken cancellationToken)
-        => GetDefaultTransition(cancellationToken);
 
     protected override Task<FlowTransition> OnReset(CancellationToken cancellationToken)
     {
+        UserId = UserId.Parse(Id.Arguments);
         LastDigestAt = null;
         return GetDefaultTransition(cancellationToken);
     }
@@ -33,8 +33,7 @@ public partial class DigestFlow : Flow
         if (delay > TimeSpan.Zero)
             return Wait(nameof(OnCheck)).AddTimerEvent(delay);
 
-        var userId = UserId.Parse(Id.Arguments);
-        var sendDigestCommand = new EmailsBackend_SendDigest(userId);
+        var sendDigestCommand = new EmailsBackend_SendDigest(UserId);
         var queues = Host.Services.Queues();
         await queues.Enqueue(sendDigestCommand, cancellationToken).ConfigureAwait(false);
         LastDigestAt = Clocks.SystemClock.Now;
@@ -54,9 +53,8 @@ public partial class DigestFlow : Flow
 
     private async Task<TimeSpan?> GetNextDigestDelay(CancellationToken cancellationToken)
     {
-        var userId = UserId.Parse(Id.Arguments);
         var accounts = Host.Services.GetRequiredService<IAccountsBackend>();
-        var account = await accounts.Get(userId, cancellationToken).ConfigureAwait(false);
+        var account = await accounts.Get(UserId, cancellationToken).ConfigureAwait(false);
         if (account?.IsGuestOrNone != false) {
             Log.LogWarning("`{Id}`: No account", Id);
             return null;
@@ -73,7 +71,7 @@ public partial class DigestFlow : Flow
         }
 
         var serverKvasBackend = Host.Services.GetRequiredService<IServerKvasBackend>();
-        var kvas = serverKvasBackend.GetUserClient(userId);
+        var kvas = serverKvasBackend.GetUserClient(UserId);
         var userEmailsSettings = await kvas.GetUserEmailsSettings(cancellationToken).ConfigureAwait(false);
         if (!userEmailsSettings.IsDigestEnabled) {
             Log.LogInformation("`{Id}`: Digest is disabled for this account", Id);

@@ -6,10 +6,9 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
 {
     protected static readonly ChannelClosedException ChannelClosedExceptionInstance = new();
 
-    private int _nextResultEventIndex;
-
     protected Channel<QueueEntry> Queue { get; set; }
     protected ChannelWriter<QueueEntry> Writer { get; init; }
+    protected long EventCount { get; set; }
 
     public FlowHostShard Shard { get; }
     public FlowHost Host => Shard.Host;
@@ -46,8 +45,10 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
     {
         var entry = new QueueEntry(evt, cancellationToken);
         bool couldWrite;
-        lock (Queue)
+        lock (Queue) {
             couldWrite = Writer.TryWrite(entry);
+            EventCount++;
+        }
         if (!couldWrite)
             entry.ResultSource.TrySetException(ChannelClosedExceptionInstance);
         return entry.ResultSource.Task;
@@ -57,10 +58,9 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
     {
         var flow = await Host.Flows.GetOrStart(FlowId, cancellationToken).ConfigureAwait(false);
         flow = flow.Clone();
-        flow.Initialize(flow.Id, flow.Version, flow.Step, this);
-        var options = flow.GetOptions();
-        var nextResumeEventIndex = 0;
+        flow.Initialize(flow.Id, flow.Version, flow.CanResume, flow.Step, this);
 
+        var options = flow.GetOptions();
         var clock = Timeouts.Generic.Clock;
         var reader = Queue.Reader;
 
@@ -99,10 +99,10 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
                     continue;
                 }
 
-                if (flow.Step.IsEmpty && entry.Event is not (FlowStartEvent or FlowResetEvent)) {
-                    // If somehow FlowStartEvent isn't first, we fake it
-                    var flowStartEntry = new QueueEntry(new FlowStartEvent(flow.Id), gracefulStopToken);
-                    flow = await HandleEvent(flow, flowStartEntry, gracefulStopToken).ConfigureAwait(false);
+                if (flow.Step.IsEmpty && entry.Event is not FlowResetEvent) {
+                    // If somehow FlowResetEvent isn't the first one, we fake it
+                    var resetEntry = new QueueEntry(new FlowResetEvent(flow.Id), gracefulStopToken);
+                    flow = await HandleEvent(flow, resetEntry, gracefulStopToken).ConfigureAwait(false);
                 }
                 flow = await HandleEvent(flow, entry, gracefulStopToken).ConfigureAwait(false);
             }
@@ -135,10 +135,10 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
                     entry.ResultSource.TrySetResult(0);
                     return flow;
                 }
-                if (transition.MustWait)
+                if (!transition.MustResume)
                     break;
 
-                evt = new FlowResumeEvent(flow.Id, _nextResultEventIndex++);
+                evt = new FlowResumeEvent(flow.Id, false);
             }
             entry.ResultSource.TrySetResult(flow.Version);
         }
