@@ -151,7 +151,6 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     public virtual async Task<AuthorFull> OnUpsert(AuthorsBackend_Upsert command, CancellationToken cancellationToken)
     {
         var (chatId, authorId, userId, expectedVersion, diff, doNotNotify) = command;
-
         if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
         if (!authorId.IsNone && authorId.ChatId != chatId)
@@ -635,20 +634,6 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return authorSids.Select(x => new AuthorId(x)).ToApiArray();
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<ApiArray<AuthorId>> ListOwnerAuthorIdsInternal(
-        ChatId chatId,
-        CancellationToken cancellationToken)
-    {
-        var ownerRole = await RolesBackend
-            .GetSystem(chatId, SystemRole.Owner, cancellationToken)
-            .ConfigureAwait(false);
-
-        return ownerRole == null
-            ? ApiArray.Empty<AuthorId>()
-            : await RolesBackend.ListAuthorIds(chatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
