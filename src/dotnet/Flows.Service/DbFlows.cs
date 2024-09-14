@@ -80,11 +80,9 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
             .FirstOrDefaultAsync(x => Equals(x.Id, flowId.Value), cancellationToken)
             .ConfigureAwait(false);
         var dbFlowExists = dbFlow != null;
-        var flowExists = flow.Step == FlowSteps.Removed;
-        if (dbFlowExists || flowExists) {
-            if (!VersionChecker.IsExpected(dbFlow?.Version ?? 0, expectedVersion))
-                VersionChecker.RequireExpected(dbFlow?.Version ?? 0, expectedVersion);
-        }
+        var flowExists = flow.Step != FlowSteps.Removed;
+        if (dbFlowExists || flowExists)
+            VersionChecker.RequireExpected(dbFlow?.Version ?? 0, expectedVersion);
 
         long version = 0;
         switch (dbFlowExists, flowExists) {
@@ -99,7 +97,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
                 Step = flow.Step,
                 Data = Serialize(flow),
             });
-            if (flow.CanResume || flow.Step.IsEmpty)
+            if (flow.Step.IsEmpty)
                 context.Operation.AddEvent(new FlowResumeEvent(flowId, true));
             break;
         case (true, false):  // Remove
