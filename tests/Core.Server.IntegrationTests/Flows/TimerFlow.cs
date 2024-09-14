@@ -15,20 +15,13 @@ public partial class TimerFlow : Flow
     public override FlowOptions GetOptions()
         => new() { RemoveDelay = TimeSpan.FromSeconds(1) };
 
-    protected override ValueTask ApplyTransition(FlowTransition transition, CancellationToken cancellationToken)
-    {
-        var output = Host.Services.GetRequiredService<ITestOutputHelper>();
-        output.WriteLine($"`{Id}` transition @ '{Step}': {transition}");
-        return base.ApplyTransition(transition, cancellationToken);
-    }
-
-    protected override async Task<FlowTransition> OnStart(CancellationToken cancellationToken)
+    protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
     {
         var sRemainingCount = Id.Arguments.Split(':', 2).ElementAtOrDefault(1) ?? "1";
         RemainingCount = int.Parse(sRemainingCount, CultureInfo.InvariantCulture);
 
         var output = Host.Services.GetRequiredService<ITestOutputHelper>();
-        output.WriteLine($"`{Id}`.{nameof(OnStart)}: {RemainingCount}");
+        output.WriteLine($"`{Id}`.{nameof(OnReset)}: {RemainingCount}");
         return Wait(nameof(OnTimer)).AddTimerEvent(TimeSpan.FromSeconds(3));
     }
 
@@ -40,5 +33,13 @@ public partial class TimerFlow : Flow
         return RemainingCount > 0
             ? Wait(nameof(OnTimer)).AddTimerEvent(TimeSpan.FromSeconds(5))
             : GotoEnding();
+    }
+
+    protected override ValueTask ApplyTransition(
+        FlowTransition transition, IFlowEvent @event, CancellationToken cancellationToken)
+    {
+        var output = Host.Services.GetRequiredService<ITestOutputHelper>();
+        output.WriteLine($"`{Id}` transition @ '{Step}': {transition}");
+        return base.ApplyTransition(transition, @event, cancellationToken);
     }
 }

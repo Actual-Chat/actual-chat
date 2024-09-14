@@ -2,8 +2,8 @@ namespace ActualChat.Flows.Infrastructure;
 
 public static class FlowSteps
 {
-    public static readonly Symbol OnStart = nameof(OnStart);
     public static readonly Symbol OnReset = nameof(OnReset);
+    public static readonly Symbol OnExternalResume = nameof(OnExternalResume);
     public static readonly Symbol OnKill = nameof(OnKill);
     public static readonly Symbol OnEnding = nameof(OnEnding);
     public static readonly Symbol OnEnded = nameof(OnEnded);
@@ -12,6 +12,7 @@ public static class FlowSteps
         .GetMethod(nameof(ToUntyped), BindingFlags.Static | BindingFlags.NonPublic)!;
     private static readonly ConcurrentDictionary<(Type, Symbol), Func<Flow, CancellationToken, Task<FlowTransition>>?>
         Cache = new();
+
 
     public static Func<Flow, CancellationToken, Task<FlowTransition>>? Get(Type flowType, Symbol step)
         => Cache.GetOrAdd((flowType, step), static key => {

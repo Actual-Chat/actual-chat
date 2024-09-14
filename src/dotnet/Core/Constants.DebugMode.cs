@@ -31,6 +31,7 @@ public static partial class Constants
         public static readonly bool MeshLocks = false;
         public static readonly bool ShardWorker = false;
         public static readonly bool QueueProcessor = false;
+        public static readonly bool Flows = true;
 
         // UI services
         public static readonly bool History = false;

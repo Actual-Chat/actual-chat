@@ -1,3 +1,10 @@
+using MemoryPack;
+
 namespace ActualChat.Flows;
 
-public record FlowResumeEvent(FlowId FlowId, int Index) : IFlowEvent;
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+public partial record FlowResumeEvent(
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] FlowId FlowId,
+    [property: DataMember(Order = 1), MemoryPackOrder(1)] bool IsExternal
+) : ISystemFlowEvent;

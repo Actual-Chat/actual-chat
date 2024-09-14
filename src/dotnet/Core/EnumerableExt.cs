@@ -41,7 +41,7 @@ public static class EnumerableExt
         => first.Count == second.Count && second.All(first.Contains);
 
     // Constructs "a, b, and c" strings
-    public static string ToCommaPhrase(this IEnumerable<string> source)
+    public static string ToCommaPhrase(this IEnumerable<string> source, string op = "and")
     {
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         var prev = "";
@@ -60,10 +60,10 @@ public static class EnumerableExt
         case 1:
             break;
         case 2:
-            sb.Append(" and ");
+            sb.Append(' ').Append(op).Append(' ');
             break;
         default:
-            sb.Append(", and ");
+            sb.Append(", ").Append(op).Append(' ');
             break;
         }
         sb.Append(prev);

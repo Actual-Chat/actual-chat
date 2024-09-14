@@ -11,7 +11,7 @@ namespace ActualChat.Users.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class MasterFlow : Flow
 {
-    protected override async Task<FlowTransition> OnStart(CancellationToken cancellationToken)
+    protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
     {
         const int pageSize = 1000;
         var dbHub = Host.Services.DbHub<UsersDbContext>();
@@ -24,6 +24,6 @@ public partial class MasterFlow : Flow
             var userId = UserId.Parse(accountId);
             await Host.Flows.GetOrStart<DigestFlow>(userId.Id, cancellationToken).ConfigureAwait(false);
         }
-        return Wait(nameof(OnStart));
+        return Wait(nameof(OnReset));
     }
 }

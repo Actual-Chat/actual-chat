@@ -43,10 +43,10 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
                 return flow;
 
             flow = (Flow)flowType.CreateInstance();
-            flow.Initialize(flowId, 0);
+            flow.Initialize(flowId, 0, false, default);
             var storeCommand = new Flows_Store(flow.Id, 0) { Flow = flow };
             var version = await Commander.Call(storeCommand, true, ct).ConfigureAwait(false);
-            flow.Initialize(flowId, version);
+            flow.Initialize(flowId, version, false, default);
             return flow;
         }, retryLogger, cancellationToken);
     }
@@ -95,11 +95,12 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
             dbContext.Add(new DbFlow() {
                 Id = flowId,
                 Version = version,
+                CanResume = flow.CanResume,
                 Step = flow.Step,
                 Data = Serialize(flow),
             });
-            if (flow.Step.IsEmpty)
-                context.Operation.AddEvent(new FlowStartEvent(flowId));
+            if (flow.CanResume || flow.Step.IsEmpty)
+                context.Operation.AddEvent(new FlowResumeEvent(flowId, true));
             break;
         case (true, false):  // Remove
             dbContext.Remove(dbFlow!);
@@ -107,6 +108,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         case (true, true):  // Update
             version = VersionGenerator.NextVersion(dbFlow!.Version);
             dbFlow.Version = version;
+            dbFlow.CanResume = flow.CanResume;
             dbFlow.Step = flow.Step;
             dbFlow.Data = Serialize(flow);
             break;
@@ -127,7 +129,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         if (flow == null)
             return null;
 
-        flow.Initialize(flowId, dbFlow!.Version, dbFlow.Step);
+        flow.Initialize(flowId, dbFlow!.Version, dbFlow.CanResume, dbFlow.Step);
         return flow;
     }
 

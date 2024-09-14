@@ -7,7 +7,7 @@ namespace ActualChat.Flows;
 public readonly record struct FlowTransition(Flow Flow, Symbol Step)
 {
     public bool MustStore { get; init; } = true;
-    public bool MustWait { get; init; } = true;
+    public bool MustResume { get; init; } = false;
     public ImmutableList<OperationEvent> Events { get; init; } = ImmutableList<OperationEvent>.Empty;
 
     public bool EffectiveMustStore
@@ -15,13 +15,13 @@ public readonly record struct FlowTransition(Flow Flow, Symbol Step)
 
     public override string ToString()
     {
-        var flags = (EffectiveMustStore, MustWait) switch {
-            (true, true) => "store, wait",
+        var flags = (EffectiveMustStore, MustResume) switch {
+            (true, true) => "store, resume",
             (true, false) => "store",
-            (false, true) => "no-store, wait",
+            (false, true) => "no-store, resume",
             (false, false) => "no-store",
         };
-        return $"->('{Step}', {flags}, {Events.Count} event(s))";
+        return $"{nameof(FlowTransition)}('{Step}', {flags}, {Events.Count} event(s))";
     }
 
     public FlowTransition AddEvent(OperationEvent @event)
