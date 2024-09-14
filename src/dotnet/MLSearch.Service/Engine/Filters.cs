@@ -36,23 +36,28 @@ internal sealed class ChatFilterBuilder(IChatsBackend chats)
 {
     public ChatFilter ChatFilter { get; } = new ChatFilter();
 
-    internal ValueTask IncludePublic(CancellationToken _)
+    internal ValueTask IncludePublic(PlaceId? placeId, CancellationToken _)
     {
-        ChatFilter.IncludePublic = true;
+        if (placeId.HasValue) {
+            ChatFilter.PlaceIds.Add(placeId.Value);
+        }
+        else {
+            ChatFilter.IncludePublic = true;
+        }
         return ValueTask.CompletedTask;
     }
 
-    internal async ValueTask IncludePrivate(UserId userId, CancellationToken cancellationToken)
+    internal async ValueTask IncludePrivate(UserId userId, PlaceId? placeId, CancellationToken cancellationToken)
     {
-        var privateChatIds = await chats.GetPrivateChatIdsForUser(userId, cancellationToken).ConfigureAwait(false);
+        var privateChatIds = await chats.GetPrivateChatIdsForUser(userId, placeId, cancellationToken).ConfigureAwait(false);
         ChatFilter.ChatIds.UnionWith(privateChatIds);
     }
 }
 
 public abstract class ChatSet(ChatSet? next)
 {
-    public ChatSet Private(UserId ownerAuthorUserId) => new PrivateChatSet(this, ownerAuthorUserId);
-    public ChatSet Public() => new PublicChatSet(this);
+    public ChatSet Public(PlaceId? placeId = default) => new PublicChatSet(this, placeId);
+    public ChatSet Private(UserId userId, PlaceId? placeId = default) => new PrivateChatSet(this, userId, placeId);
 
     internal ChatSet? Next => next;
     internal abstract ValueTask Apply(ChatFilterBuilder filterBuilder, CancellationToken cancellationToken = default);
@@ -64,14 +69,14 @@ internal sealed class EmptyChatSet() : ChatSet(null)
         => ValueTask.CompletedTask;
 }
 
-internal sealed class PublicChatSet(ChatSet next) : ChatSet(next)
+internal sealed class PublicChatSet(ChatSet next, PlaceId? placeId) : ChatSet(next)
 {
     internal override ValueTask Apply(ChatFilterBuilder filterBuilder, CancellationToken cancellationToken = default)
-        => filterBuilder.IncludePublic(cancellationToken);
+        => filterBuilder.IncludePublic(placeId, cancellationToken);
 }
 
-internal sealed class PrivateChatSet(ChatSet next, UserId userId) : ChatSet(next)
+internal sealed class PrivateChatSet(ChatSet next, UserId userId, PlaceId? placeId) : ChatSet(next)
 {
     internal override ValueTask Apply(ChatFilterBuilder filterBuilder, CancellationToken cancellationToken = default)
-        => filterBuilder.IncludePrivate(userId, cancellationToken);
+        => filterBuilder.IncludePrivate(userId, placeId, cancellationToken);
 }

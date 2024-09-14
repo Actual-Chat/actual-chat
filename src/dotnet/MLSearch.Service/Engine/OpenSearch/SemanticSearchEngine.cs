@@ -15,7 +15,7 @@ internal sealed class SemanticSearchEngine<TDocument> : ISearchEngine<TDocument>
     private readonly IServiceCoordinator _serviceCoordinator;
     private readonly ILogger<SemanticSearchEngine<TDocument>> _log;
     private readonly IDisposable? _indexSettingsChangeSubscription;
-    private OpenSearchNamingPolicy _namingPolicy;
+    private readonly OpenSearchNamingPolicy _namingPolicy;
     private SemanticIndexSettings? _indexSettings;
 
     public SemanticSearchEngine(

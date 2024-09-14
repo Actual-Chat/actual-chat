@@ -57,8 +57,8 @@ public interface IChatsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ApiArray<ChatId>> GetPrivateChatIdsForUser(
         UserId userId,
+        PlaceId? placeId,
         CancellationToken cancellationToken);
-
 
     // Non-compute methods
 
