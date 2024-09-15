@@ -13,7 +13,6 @@ public class MasterFlowTest(ITestOutputHelper @out)
         using var h = await NewAppHost();
 
         var flows = h.Services.GetRequiredService<IFlows>();
-        await flows.GetOrStart<MasterFlow>("");
 
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<DigestFlow>("actual-admin", ct);
