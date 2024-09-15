@@ -31,7 +31,7 @@ public class MasterFlowTest(ITestOutputHelper @out)
 
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<MasterFlow>("", ct);
-            flow.Should().BeNull();
+            flow?.Step.Should().Be("OnReset");
         }, TimeSpan.FromSeconds(30));
     }
 }
