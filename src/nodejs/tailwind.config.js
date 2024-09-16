@@ -431,17 +431,12 @@ module.exports = {
       'decrease': 'decrease 500ms ease-in-out',
       'increase': 'increase 500ms ease-in-out',
       bounce: 'bounce 1s infinite',
-      'display-from-top': 'display-element-from-top 150ms ease-in-out',
       'opacity-from-0': 'opacity-from-0 150ms ease-in-out',
       'tooltip-vertical': 'tooltip-vertical 300ms ease-in-out forwards',
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
       'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
       'highlight': 'highlight 1.5s ease-in-out forwards',
-      'loud-show': 'loud-show 150ms ease-in-out',
-      'loud-show-text-mode': 'loud-show-text-mode 150ms ease-in-out',
-      'loud-hide': 'loud-hide 150ms ease-in-out',
-      'loud-hide-text-mode': 'loud-hide-text-mode 150ms ease-in-out',
       'notify-panel-opening': 'notify-panel-opening 150ms ease-in-out',
       'notify-panel-closing': 'notify-panel-closing 150ms ease-in-out',
       'notify-toggle-hide': 'notify-toggle-hide 150ms ease-in-out',
@@ -1019,38 +1014,6 @@ module.exports = {
           transform: 'translateX(0rem) scale(1)',
         },
       },
-      'loud-show': {
-        from: {
-          transform: 'translateX(1.5rem) scale(.05)',
-        },
-        to: {
-          transform: 'translateX(3rem) scale(1)',
-        },
-      },
-      'loud-show-text-mode': {
-        from: {
-          transform: 'translateX(1.5rem) scale(.05)',
-        },
-        to: {
-          transform: 'translateX(2.5rem) scale(1)',
-        },
-      },
-      'loud-hide': {
-        from: {
-          transform: 'translateX(3rem) scale(1)',
-        },
-        to: {
-          transform: 'translateX(1.5rem) scale(.05)',
-        },
-      },
-      'loud-hide-text-mode': {
-        from: {
-          transform: 'translateX(2.5rem) scale(1)',
-        },
-        to: {
-          transform: 'translateX(1.5rem) scale(.05)',
-        },
-      },
       'notify-panel-opening': {
         '0%': {
           transform: 'scale(0)',
@@ -1096,16 +1059,6 @@ module.exports = {
         },
         '100%': {
           transform: 'scale(1)',
-        },
-      },
-      'display-element-from-top': {
-        from: {
-          height: 0,
-          transform: 'translateY(-1.5rem)',
-        },
-        to: {
-          height: '100%',
-          transform: 'translateY(0rem)',
         },
       },
       'display-element-from-bottom': {

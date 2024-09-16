@@ -2,24 +2,27 @@
 @inherits FusionComponentBase
 
 <div class="chat-audio-panel">
-    <div class="playback-button"
-         data-bubble="@(BubbleRef.New<ListenButtonBubble>())"
-         data-bubble-priority="110"
-         data-bubble-placement="@(FloatingPosition.TopEnd.ToPositionString())">
-        <PlaybackToggle Chat="@Chat"/>
-    </div>
-    <div class="recorder-button">
-        <div data-bubble="@(BubbleRef.New<RecordButtonBubble>())"
-             data-bubble-priority="100"
-             data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
+    <div class="audio-panel-wrapper">
+        <div class="playback-button"
+             data-bubble="@(BubbleRef.New<ListenButtonBubble>())"
+             data-bubble-priority="110"
+             data-bubble-placement="@(FloatingPosition.TopEnd.ToPositionString())">
+            <PlaybackToggle Chat="@Chat"/>
         </div>
-        <RecorderToggle Chat="@Chat"/>
-    </div>
-    <div class="language-button"
-         data-bubble="@(BubbleRef.New<VoiceSettingsButtonBubble>())"
-         data-bubble-priority="120"
-         data-bubble-placement="@(FloatingPosition.TopStart.ToPositionString())">
-        <VoiceSettingsButton Chat="@Chat" />
+        <div class="recorder-button">
+            <div data-bubble="@(BubbleRef.New<RecordButtonBubble>())"
+                 data-bubble-priority="100"
+                 data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
+            </div>
+            <RecorderToggle Chat="@Chat"/>
+        </div>
+        <VolumeSettingsButton Chat="@Chat"/>
+        <div class="language-button"
+             data-bubble="@(BubbleRef.New<VoiceSettingsButtonBubble>())"
+             data-bubble-priority="120"
+             data-bubble-placement="@(FloatingPosition.TopStart.ToPositionString())">
+            <VoiceSettingsButton Chat="@Chat"/>
+        </div>
     </div>
 </div>
 

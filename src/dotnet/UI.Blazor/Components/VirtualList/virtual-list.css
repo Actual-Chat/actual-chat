@@ -23,9 +23,12 @@
 
 .virtual-list > .c-end-anchor {
     @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
-    @apply min-h-32 md:min-h-1;
+    @apply min-h-1;
     line-height: 0.25rem;
     overflow-anchor: none;
+}
+body.narrow .virtual-list > .c-end-anchor {
+    @apply portrait:min-h-32 landscape:min-h-22;
 }
 
 .virtual-list > .c-spacer-end {
