@@ -2,26 +2,23 @@ using ActualChat.Media;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Fusion.UI;
 using Foundation;
 using Photos;
-using ActualLab.Fusion.UI;
 using UIKit;
 
 namespace ActualChat.App.Maui;
 
-public class IosMediaSaver(IServiceProvider services) : IMediaSaver
+public class IosMediaSaver(UIHub uiHub) : IMediaSaver
 {
     private HttpClient? _httpClient;
-    private AddPhotoPermissionHandler? _permissionHandler;
-    private ToastUI? _toastUI;
-    private UICommander? _uiCommander;
     private ILogger? _log;
 
-    private HttpClient HttpClient => _httpClient ??= services.HttpClientFactory().CreateClient(GetType().Name);
-    private AddPhotoPermissionHandler PermissionHandler => _permissionHandler ??= services.GetRequiredService<AddPhotoPermissionHandler>();
-    private ToastUI ToastUI => _toastUI ??= services.GetRequiredService<ToastUI>();
-    private UICommander UICommander => _uiCommander ??= services.UICommander();
-    private ILogger Log => _log ??= services.LogFor(GetType());
+    private HttpClient HttpClient => _httpClient ??= uiHub.HttpClientFactory().CreateClient(GetType().Name);
+    private AddPhotoPermissionHandler PermissionHandler => uiHub.GetRequiredService<AddPhotoPermissionHandler>();
+    private ToastUI ToastUI => uiHub.ToastUI;
+    private UICommander UICommander => uiHub.UICommander();
+    private ILogger Log => _log ??= uiHub.LogFor(GetType());
 
     public async Task Save(string uri, string contentType)
     {
@@ -43,6 +40,7 @@ public class IosMediaSaver(IServiceProvider services) : IMediaSaver
     private Task Save(string tempFilePath, PHAssetResourceType type)
     {
         var tcs = new TaskCompletionSource();
+        var nsUrl = NSUrl.FromFilename(tempFilePath);
         PHPhotoLibrary.SharedPhotoLibrary.PerformChanges(
             () => {
                 switch (type) {
@@ -85,7 +83,7 @@ public class IosMediaSaver(IServiceProvider services) : IMediaSaver
 
         string GetFileExtension()
         {
-            var fileName = response.Content.Headers.ContentDisposition?.FileName;
+            var fileName = response.Content.Headers.ContentDisposition?.FileName?.Trim('"');
             if (!fileName.IsNullOrEmpty())
                 return Path.GetExtension(fileName);
 
