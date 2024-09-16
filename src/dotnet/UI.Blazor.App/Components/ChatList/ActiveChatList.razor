@@ -1,0 +1,62 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<ActiveChatList.Model>
+@{
+    var m = State.Value;
+    DebugLog?.LogDebug("Rendered: {List}", ChatListKind.Active);
+
+    if (m.IsLoading || m.Chats.Count == 0)
+        return;
+}
+
+<div class="c-delimiter"></div>
+<div class="active-chats">
+    <div class="c-title" data-tooltip="Chats where you are listening or recording right now">Active Chats</div>
+
+    <div class="chat-list chat-list-active">
+        @foreach(var chat in m.Chats) {
+            <ChatListItem ListKind="@ChatListKind.Active" Chat="@chat"/>
+        }
+    </div>
+</div>
+
+@code {
+    private ILogger? _log;
+
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
+    private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
+
+    protected override void OnInitialized()
+        => DebugLog?.LogDebug("OnInitialized: {List}", ChatListKind.Active);
+
+    protected override void OnParametersSet()
+        => DebugLog?.LogDebug("OnParametersSet: {List}", ChatListKind.Active);
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new(ImmutableList<Chat>.Empty, true),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        DebugLog?.LogDebug("-> ComputeState: {List}", ChatListKind.Active);
+        var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
+        var chats = (await activeChats
+                .Select(ac => Chats.Get(Session, ac.ChatId, cancellationToken))
+                .Collect()
+                .ConfigureAwait(false))
+            .SkipNullItems()
+            .ToList();
+        DebugLog?.LogDebug("<- ComputeState: {List}", ChatListKind.Active);
+        return new(chats);
+    }
+
+    // Nested types
+
+    public record struct Model(
+        IReadOnlyList<Chat> Chats,
+        bool IsLoading = false);
+}

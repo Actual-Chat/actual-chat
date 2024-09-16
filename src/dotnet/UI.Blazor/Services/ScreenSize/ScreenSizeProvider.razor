@@ -3,6 +3,8 @@
 @inherits ComputedStateComponent<ScreenSize>
 @{
     var m = State.Value;
+    _renderedScreenSize = m;
+    _renderedChildContent = ChildContent;
 }
 
 <CascadingValue Value="@m">
@@ -10,17 +12,27 @@
 </CascadingValue>
 
 @code {
-    [Inject] BrowserInfo BrowserInfo { get; set; } = null!;
+    private ScreenSize _renderedScreenSize;
+    private RenderFragment? _renderedChildContent;
+
+    [Inject] private UIHub Hub { get; set; } = null!;
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
+    private ILogger Log => Hub.LogFor(GetType());
 
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 
     protected override ComputedState<ScreenSize>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<ScreenSize>.Options() {
-                UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
-            });
+        => new() {
+            InitialValue = BrowserInfo.ScreenSize.Value,
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = ComputedStateComponent.GetStateCategory(typeof(ScreenSizeProvider)),
+        };
 
     protected override Task<ScreenSize> ComputeState(CancellationToken cancellationToken)
         => BrowserInfo.ScreenSize.Use(cancellationToken).AsTask();
+
+    protected override bool ShouldRender()
+        => !ReferenceEquals(ChildContent, _renderedChildContent)
+           || State.HasError
+           || !Equals(State.Value, _renderedScreenSize);
 }

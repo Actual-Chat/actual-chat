@@ -1,0 +1,52 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase
+@{
+    DebugLog?.LogDebug("Rendered: {List}", ChatListKind.All);
+}
+
+@* ChatListKind.All *@
+<VirtualList
+    @ref="_virtualListRef"
+    Class="chat-list chat-list-all"
+    DataSource="@this"
+    ExpandTriggerMultiplier="0.5"
+    ExpandMultiplier="0.7"
+    SkeletonCount="@_skeletonCount"
+    ItemVisibilityChanged="@OnItemVisibilityChanged"
+>
+    <Item>
+        <ChatListItem
+            ListKind="@ChatListKind.All"
+            Chat="@context.Chat"
+            IsLastItemInBlock="@context.IsLastItemInBlock"
+            IsFirstItem="@context.IsFirstItem"/>
+    </Item>
+    <Skeleton>
+        <ChatListItemSkeleton />
+    </Skeleton>
+</VirtualList>
+
+@code {
+    private VirtualList<ChatListItemModel>? _virtualListRef = null;
+    private ILogger? _log;
+    private int _skeletonCount;
+
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+    private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
+    private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
+
+    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
+
+    protected override void OnInitialized() {
+        DebugLog?.LogDebug("OnInitialized: {List}", ChatListKind.All);
+        _skeletonCount = ScreenSize.IsNarrow() ? 10 : 15;
+    }
+
+    protected override void OnParametersSet() {
+        DebugLog?.LogDebug("OnParametersSet: {List}", ChatListKind.All);
+        _ = _virtualListRef?.Reset();
+    }
+}

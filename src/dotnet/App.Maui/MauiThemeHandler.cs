@@ -68,15 +68,15 @@ public class MauiThemeHandler
                 var topBarColor = colors;
                 var bottomBarColor = colors;
                 if (items.Length >= 2) {
-                    topBarColor = items[0];
-                    bottomBarColor = items[1];
+                    topBarColor = items[0].Trim();
+                    bottomBarColor = items[1].Trim();
                 }
 
                 if (Apply(topBarColor, bottomBarColor, theme))
                     _appliedColors = colors;
             }
             catch (Exception e) {
-                Log.LogWarning(e, "ApplyColors failed, colors: {Colors}", colors);
+                Log.LogWarning(e, "ApplyColors failed, colors: '{Colors}'", colors);
             }
         });
     }

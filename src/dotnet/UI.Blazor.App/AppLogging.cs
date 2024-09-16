@@ -34,6 +34,10 @@ public static class AppLogging
             .AddFilter("System", LogLevel.Warning)
             .AddFilter("Microsoft", LogLevel.Warning)
             .AddFilter("ActualChat", MinLevel);
+        // Enable extra logging for profiling: web view creation and Blazor UI rendering.
+        // logging
+        //    .AddFilter("Microsoft.AspNetCore.Components.WebView", LogLevel.Debug) // WebView
+        //    .AddFilter("Microsoft.AspNetCore.Components.RenderTree.Renderer", LogLevel.Debug); // Blazor renderer
         return logging;
     }
 

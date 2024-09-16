@@ -1,21 +1,23 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits ComputedStateComponent<FailedRequirementSet>
-
-<CascadingValue Value="this">
-    @(Failures.Count == 0 ? Success : Failure(Failures))
+@{
+    var m = State.Value;
+    _renderedState = m;
+}
+<CascadingValue Value="this" IsFixed="true">
+    @(m.Count == 0 ? Success : Failure(m))
 </CascadingValue>
 
 @code {
     private EventHandler<LocationChangedEventArgs> _onLocationChanged = null!;
     private MutableDictionary<RequirementComponent, Unit> _requirements = new();
+    private FailedRequirementSet? _renderedState;
 
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private ILogger<RequirementChecker> Log { get; init; } = null!;
 
     [Parameter, EditorRequired] public RenderFragment Success { get; set; } = null!;
     [Parameter, EditorRequired] public RenderFragment<FailedRequirementSet> Failure { get; set; } = null!;
-
-    public FailedRequirementSet Failures => State.Value;
 
     protected override void OnInitialized() {
         _onLocationChanged = OnLocationChanged;
@@ -77,6 +79,11 @@
             ? new(failures)
             : FailedRequirementSet.Empty;
     }
+
+    protected override bool ShouldRender()
+        => !_renderedState.HasValue
+           || State.HasError
+           || !Equals(State.Value, _renderedState);
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
         Log.LogDebug("Reset on location change");
