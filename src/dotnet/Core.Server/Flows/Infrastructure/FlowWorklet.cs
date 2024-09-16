@@ -4,7 +4,8 @@ namespace ActualChat.Flows.Infrastructure;
 
 public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
 {
-    protected Channel<QueueEntry> Queue { get; set; }
+    protected readonly TaskCompletionSource WhenReadySource = new();
+    protected Channel<QueueEntry> Queue { get; init; }
     protected ChannelWriter<QueueEntry> Writer { get; init; }
 
     public FlowHostShard Shard { get; }
@@ -37,21 +38,41 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
     // The `long` it returns is DbFlow/FlowData.Version
     public Task<long> ProcessEvent(IFlowEvent evt, CancellationToken cancellationToken)
     {
+        var whenReady = WhenReadySource.Task;
+        if (!whenReady.IsCompleted)
+            return ProcessEventAsync();
+
         var entry = new QueueEntry(evt, cancellationToken);
         if (Writer.TryWrite(entry))
             return entry.ResultSource.Task;
 
         StopToken.ThrowIfCancellationRequested(); // Should always throw here
         throw new OperationCanceledException();
+
+        async Task<long> ProcessEventAsync()
+        {
+            await whenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+            var entry1 = new QueueEntry(evt, cancellationToken);
+            if (Writer.TryWrite(entry1))
+                return await entry1.ResultSource.Task.ConfigureAwait(false);
+
+            StopToken.ThrowIfCancellationRequested(); // Should always throw here
+            throw new OperationCanceledException();
+        }
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var flow = await Host.Flows.GetOrStart(FlowId, cancellationToken).ConfigureAwait(false);
         flow = flow.Clone();
-        flow.Initialize(flow.Id, flow.Version, flow.HardResumeAt, flow.Step, this);
+        flow.Initialize(flow.Id, flow.Version, flow.Step, flow.HardResumeAt, this);
+        if (flow.Step == FlowSteps.Starting) {
+            var entry = new QueueEntry(new FlowStartEvent(FlowId), cancellationToken);
+            if (!Writer.TryWrite(entry))
+                return; // Already stopped
+        }
+        WhenReadySource.TrySetResult();
 
-        var options = flow.GetOptions();
         var clock = Timeouts.Generic.Clock;
         var reader = Queue.Reader;
         do {
@@ -65,7 +86,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
             }
             else {
                 // Enlist this worklet for timeout-based removal
-                Timeouts.Generic.AddOrUpdateToLater(this, clock.Now + options.KeepAliveFor);
+                Timeouts.Generic.AddOrUpdateToLater(this, clock.Now + flow.KeepAliveFor);
                 if (!await canReadTask.ConfigureAwait(false))
                     return;
 
@@ -75,19 +96,13 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
             if (!reader.TryRead(out var entry))
                 continue;
 
-            if (flow.Step.IsEmpty && entry.Event is not FlowResetEvent) {
-                // If somehow FlowResetEvent isn't the first one, we fake it
-                var resetEntry = new QueueEntry(new FlowResetEvent(flow.Id), cancellationToken);
-                flow = await HandleEvent(flow, resetEntry, cancellationToken).ConfigureAwait(false);
-                if (entry.Event is FlowResumeEvent)
-                    continue; // In fact, we replace the very first FlowResumeEvent with FlowResetEvent
-            }
             flow = await HandleEvent(flow, entry, cancellationToken).ConfigureAwait(false);
         } while (flow.Step != FlowSteps.Removed);
     }
 
     protected override async Task OnStop()
     {
+        WhenReadySource.TrySetCanceled(StopToken);
         await foreach (var entry in Queue.Reader.ReadAllAsync(CancellationToken.None).ConfigureAwait(false))
             entry.ResultSource.TrySetCanceled(StopToken);
         Shard.Worklets.TryRemove(FlowId, this);
@@ -111,16 +126,13 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
 
         var backup = flow.Clone();
         try {
-            if (MustRemove(flow.Step))
-                return flow;
-
             var evt = entry.Event;
             while (true) {
                 var transition = await flow.HandleEvent(evt, cancellationToken).ConfigureAwait(false);
-                if (MustRemove(transition.Step))
-                    return flow;
+                if (transition.IsNone)
+                    break; // No transition
                 if (transition.HardResumeAt.HasValue)
-                    break;
+                    break; // Transition implies waiting for event
 
                 evt = new FlowResumeEvent(flow.Id);
             }
@@ -136,23 +148,14 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
             }
         }
         return flow;
-
-        bool MustRemove(Symbol step) {
-            if (step != FlowSteps.Removed)
-                return false;
-
-            Log.LogInformation("`{Id}` is ended", flow.Id);
-            entry.ResultSource.TrySetResult(0);
-            return true;
-        }
     }
 
     // Nested types
 
     public readonly record struct QueueEntry(
         IFlowEvent Event,
-        CancellationToken CancellationToken
-    ) {
-        public TaskCompletionSource<long> ResultSource { get; init; } = TaskCompletionSourceExt.New<long>();
+        CancellationToken CancellationToken)
+    {
+        public TaskCompletionSource<long> ResultSource { get; init; } = new ();
     }
 }

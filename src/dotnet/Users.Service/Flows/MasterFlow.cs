@@ -27,7 +27,7 @@ public partial class MasterFlow : Flow
             FlowSetVersion = nextFlowSetVersion;
             return StoreAndResume(nameof(OnReset));
         }
-        return await Hang(cancellationToken).ConfigureAwait(false);
+        return WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt);
     }
 
     private async Task MigrateToVersion1(CancellationToken cancellationToken)
@@ -43,14 +43,5 @@ public partial class MasterFlow : Flow
             var userId = UserId.Parse(accountId);
             await Host.Flows.GetOrStart<DigestFlow>(userId.Id, cancellationToken).ConfigureAwait(false);
         }
-    }
-
-    private async Task<FlowTransition> Hang(CancellationToken cancellationToken)
-    {
-        using var dTask = cancellationToken.ToTask();
-        await dTask.Resource.ConfigureAwait(false);
-
-        // !!! It should never land here
-        return Resume(nameof(OnReset));
     }
 }

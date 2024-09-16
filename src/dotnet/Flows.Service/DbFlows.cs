@@ -43,10 +43,10 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
                 return flow;
 
             flow = (Flow)flowType.CreateInstance();
-            flow.Initialize(flowId, 0, null, default);
+            flow.Initialize(flowId, 0, FlowSteps.Starting);
             var storeCommand = new Flows_Store(flow.Id, 0) { Flow = flow };
             var version = await Commander.Call(storeCommand, true, ct).ConfigureAwait(false);
-            flow.Initialize(flowId, version, null, default);
+            flow.Initialize(flowId, version, FlowSteps.Starting);
             return flow;
         }, retryLogger, cancellationToken);
     }
@@ -92,6 +92,9 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         case (false, false): // Removed -> Removed
             break;
         case (false, true): // Create
+            if (flow.Step != FlowSteps.Starting)
+                throw StandardError.Internal("New Flow's Step should be 'Starting'.");
+
             version = VersionGenerator.NextVersion();
             dbContext.Add(new DbFlow() {
                 Id = flowId,
@@ -100,8 +103,8 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
                 Step = flow.Step,
                 Data = Serialize(flow),
             });
-            if (flow.Step.IsEmpty)
-                context.Operation.AddEvent(new FlowResumeEvent(flowId));
+            if (flow.Step == FlowSteps.Starting)
+                context.Operation.AddEvent(new FlowStartEvent(flowId));
             break;
         case (true, false):  // Remove
             dbContext.Remove(dbFlow!);
@@ -130,7 +133,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         if (flow == null)
             return null;
 
-        flow.Initialize(flowId, dbFlow!.Version, dbFlow.HardResumeAt, dbFlow.Step);
+        flow.Initialize(flowId, dbFlow!.Version, dbFlow.Step, dbFlow.HardResumeAt);
         return flow;
     }
 

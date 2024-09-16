@@ -1,5 +1,4 @@
 using ActualChat.Db.Diagnostics;
-using ActualChat.Db.Module;
 using ActualChat.Queues;
 using ActualLab.CommandR.Operations;
 using ActualLab.Fusion.EntityFramework.Operations;

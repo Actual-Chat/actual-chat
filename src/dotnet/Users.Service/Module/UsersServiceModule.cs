@@ -176,10 +176,10 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 .AddHostedService(c => c.GetRequiredService<ContactGreeter>());
 
             services.AddFlows()
-                .Add<DigestFlow>()
-                .Add<MasterFlow>();
-            services.AddSingleton<FlowsWorker>()
-                .AddHostedService(c => c.GetRequiredService<FlowsWorker>());
+                .Add<MasterFlow>()
+                .Add<DigestFlow>();
+            services.AddSingleton<MasterFlowStarter>()
+                .AddHostedService(c => c.GetRequiredService<MasterFlowStarter>());
         }
 
         // TOTP codes - used by IPhoneAuth (API)

@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace ActualChat.Flows.Db;
 
 [Table("_Flows")]
-[Index(nameof(HardResumeAt))]
+[Index(nameof(Step), nameof(HardResumeAt))]
+[Index(nameof(HardResumeAt), nameof(Step))]
 public sealed class DbFlow
 {
     private DateTime? _hardResumeAt;

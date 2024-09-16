@@ -18,4 +18,7 @@ public readonly record struct Requester(
 
         return Target.GetType().NonProxyType().GetName();
     }
+
+    public static implicit operator Requester(string target) => new(target);
+    public static implicit operator Requester(Type target) => new(target.GetName());
 }

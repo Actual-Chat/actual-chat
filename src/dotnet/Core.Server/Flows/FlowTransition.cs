@@ -4,14 +4,18 @@ using ActualChat.Flows.Infrastructure;
 namespace ActualChat.Flows;
 
 [StructLayout(LayoutKind.Auto)]
-public readonly record struct FlowTransition
+public readonly record struct FlowTransition : ICanBeNone<FlowTransition>
 {
+    public static FlowTransition None => default;
+
     public Flow Flow { get; init; }
     public Symbol Step { get; init; }
     public bool MustStore { get; init; }
     public Moment? HardResumeAt { get; init; }
     public ImmutableList<OperationEvent> Events { get; init; } = ImmutableList<OperationEvent>.Empty;
 
+    public bool IsNone
+        => ReferenceEquals(Flow, null);
     public bool EffectiveMustStore
         => MustStore || Step == FlowSteps.Removed || Events.Count != 0;
 
@@ -37,6 +41,9 @@ public readonly record struct FlowTransition
 
     public override string ToString()
     {
+        if (IsNone)
+            return $"{nameof(FlowTransition)}.{nameof(None)}";
+
         var mustStore = EffectiveMustStore ? "store" : "no-store";
         var hardResumeDelay = HardResumeAt is { } hardResumeAt
             ? hardResumeAt - SystemClock.Instance.Now

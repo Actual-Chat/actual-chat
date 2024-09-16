@@ -12,9 +12,6 @@ public partial class TimerFlow : Flow
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public int RemainingCount { get; private set; }
 
-    public override FlowOptions GetOptions()
-        => new() { RemoveDelay = TimeSpan.FromSeconds(1) };
-
     protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
     {
         var sRemainingCount = Id.Arguments.Split(':', 2).ElementAtOrDefault(1) ?? "1";

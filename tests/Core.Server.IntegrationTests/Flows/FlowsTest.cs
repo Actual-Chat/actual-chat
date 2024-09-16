@@ -1,4 +1,5 @@
 using ActualChat.Flows;
+using ActualChat.Flows.Infrastructure;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
@@ -35,6 +36,7 @@ public class FlowsTest(ITestOutputHelper @out)
         => ComputedTest.When(async ct => {
             var flow = await flows.Get(flowId, ct);
             Out.WriteLine($"[*] {flow?.ToString() ?? "null"}");
-            flow.Should().BeNull();
+            flow.Should().NotBeNull();
+            flow!.Step.Should().Be(FlowSteps.OnEnd);
         }, TimeSpan.FromSeconds(30));
 }

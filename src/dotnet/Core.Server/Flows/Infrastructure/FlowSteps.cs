@@ -5,10 +5,13 @@ public static class FlowSteps
     public static readonly Symbol OnReset = nameof(OnReset);
     public static readonly Symbol OnHardResume = nameof(OnHardResume);
     public static readonly Symbol OnKill = nameof(OnKill);
-    public static readonly Symbol OnDelayedEnd = nameof(OnDelayedEnd);
+    public static readonly Symbol OnEnding = nameof(OnEnding);
     public static readonly Symbol OnEnd = nameof(OnEnd);
-    public static readonly Symbol Removed = "-";
     public static readonly Symbol OnMissingStep = nameof(OnMissingStep);
+
+    // Special steps - you should never use them in your flows
+    public static readonly Symbol Starting = nameof(Starting);
+    public static readonly Symbol Removed = nameof(Removed); // Normally this Step shouldn't be used
 
     private static readonly MethodInfo ToUntypedMethod = typeof(FlowSteps)
         .GetMethod(nameof(ToUntyped), BindingFlags.Static | BindingFlags.NonPublic)!;

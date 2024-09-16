@@ -21,7 +21,7 @@ public class MasterFlowTest(ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task ShouldBeRemoved()
+    public async Task ShouldBeHangingOnReset()
     {
         using var h = await NewAppHost();
 
@@ -30,7 +30,8 @@ public class MasterFlowTest(ITestOutputHelper @out)
 
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<MasterFlow>("", ct);
-            flow?.Step.Should().Be("OnReset");
+            flow!.Step.Should().Be("OnReset");
+            flow.HardResumeAt!.Value.ToDateTime().Year.Should().Be(2100);
         }, TimeSpan.FromSeconds(30));
     }
 }

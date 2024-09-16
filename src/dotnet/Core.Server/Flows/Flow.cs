@@ -9,6 +9,8 @@ namespace ActualChat.Flows;
 
 public abstract class Flow : IHasId<FlowId>, IFlowImpl
 {
+    public static Moment InfiniteHardResumeAt { get; } = new DateTime(2100, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
     private static readonly bool DebugMode = Constants.DebugMode.Flows;
     private FlowWorklet? _worklet;
     private ILogger? _log;
@@ -23,6 +25,10 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
     [IgnoreDataMember, MemoryPackIgnore]
     public Moment? HardResumeAt { get; private set; }
 
+    // Used by FlowWorklet
+    [IgnoreDataMember, MemoryPackIgnore]
+    public TimeSpan KeepAliveFor { get; set; } = TimeSpan.FromSeconds(10);
+
     protected FlowHost Host => Worklet.Host;
     protected FlowWorklet Worklet => RequireWorklet();
     protected FlowEventBin Event { get; private set; } = null!;
@@ -30,13 +36,15 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
     protected ILogger Log => _log ??= Host.Services.LogFor(GetType());
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, DebugMode);
 
-    public void Initialize(FlowId id, long version, Moment? resumesAt, Symbol step, FlowWorklet? worklet = null)
+    public void Initialize(FlowId id, long version, Symbol step, Moment? hardResumeAt = null, FlowWorklet? worklet = null)
     {
         Id = id;
         Version = version;
-        HardResumeAt = resumesAt;
         Step = step;
+        HardResumeAt = hardResumeAt;
         _worklet = worklet;
+        if (worklet != null)
+            OnInitialized();
     }
 
     public override string ToString()
@@ -51,15 +59,10 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
         var step = Step;
         FlowTransition transition;
         try {
-            if (Event.Is<IFlowSystemEvent>(out var systemEvent)) {
-                // Overriding current step for some IFlowSystemEvent-s
-                if (systemEvent is FlowKillEvent)
-                    step = FlowSteps.OnKill;
-                else if (systemEvent is FlowResetEvent || step.IsEmpty)
-                    step = FlowSteps.OnReset;
-                else if (systemEvent is FlowHardResumeEvent)
-                    step = FlowSteps.OnHardResume;
-                // There is also FlowResumeEvent, which doesn't require step change
+            if (Event.Is<IFlowControlEvent>(out var stepChangeEvent)) {
+                step = stepChangeEvent.GetNextStep(this);
+                if (step.IsEmpty)
+                    return default;
             }
             transition = await InvokeStep(step, cancellationToken).ConfigureAwait(false);
 
@@ -72,9 +75,8 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
             }
         }
         catch (Exception ex) when (!ex.IsCancellationOf(cancellationToken)) {
-            Step = step;
-            Event = new FlowEventBin(this, evt);
-            transition = await OnError(ex, cancellationToken).ConfigureAwait(false);
+            Event.MarkHandled(false);
+            transition = await HandleError(ex, cancellationToken).ConfigureAwait(false);
             if (!Event.IsHandled)
                 throw;
         }
@@ -85,39 +87,40 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
         return transition;
     }
 
-    // Default options
-
-    public virtual FlowOptions GetOptions()
-        => FlowOptions.Default;
-
     // Default steps
+
+    protected virtual void OnInitialized()
+    { }
 
     protected abstract Task<FlowTransition> OnReset(CancellationToken cancellationToken);
 
     protected virtual Task<FlowTransition> OnHardResume(CancellationToken cancellationToken)
         => InvokeStep(Step, cancellationToken);
 
-    protected virtual Task<FlowTransition> OnKill(CancellationToken cancellationToken)
-        => Task.FromResult(End(true));
-
-    protected virtual Task<FlowTransition> OnDelayedEnd(CancellationToken cancellationToken)
+    protected Task<FlowTransition> OnEnding(CancellationToken cancellationToken)
     {
-        var removeDelay = GetOptions().RemoveDelay;
-        return Task.FromResult(WaitForTimer(FlowSteps.OnEnd, removeDelay));
+        Event.MarkHandled();
+        Log.LogInformation("`{Id}`.OnEnding due to {Event}", Id, Event.Event);
+        return Task.FromResult(StoreAndResume(FlowSteps.OnEnd));
     }
 
     protected Task<FlowTransition> OnEnd(CancellationToken cancellationToken)
     {
-        if (!Event.IsHandled)
-            Event.Require<FlowTimerEvent>();
-        return Task.FromResult(StoreAndResume(FlowSteps.Removed));
+        Event.MarkHandled();
+        if (Event.Event is not FlowResumeEvent)
+            Log.LogInformation("`{Id}`.OnEnd: ignoring {Event}", Id, Event.Event);
+
+        var transition = HardResumeAt != InfiniteHardResumeAt
+            ? WaitForEvent(FlowSteps.OnEnd, InfiniteHardResumeAt)
+            : default;
+        return Task.FromResult(transition);
     }
 
     protected virtual Task<FlowTransition> OnMissingStep(CancellationToken cancellationToken)
         => throw Errors.NoStepImplementation(GetType(), Step);
 
-    protected virtual Task<FlowTransition> OnError(Exception error, CancellationToken cancellationToken)
-        => Task.FromResult(default(FlowTransition));
+    protected virtual Task<FlowTransition> HandleError(Exception error, CancellationToken cancellationToken)
+        => Task.FromResult(FlowTransition.None);
 
     // Transition helpers
 
@@ -159,9 +162,11 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
     protected FlowTransition Resume(Symbol nextStep)
         => new(this, nextStep);
 
-    protected FlowTransition End(bool instantly = false)
+    protected FlowTransition End()
     {
-        var nextStep = instantly ? FlowSteps.OnEnd : FlowSteps.OnDelayedEnd;
+        var nextStep = Step == FlowSteps.OnEnd
+            ? FlowSteps.OnEnd
+            : FlowSteps.OnEnding;
         return StoreAndResume(nextStep);
     }
 
@@ -181,6 +186,8 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
         DebugLog?.LogDebug(
             "`{Id}`: '{Step}' + {EventType} -> {Transition}",
             Id, Step, @event.GetType().GetName(), transition);
+        if (transition.IsNone)
+            return;
 
         Step = transition.Step;
         HardResumeAt = transition.HardResumeAt;
