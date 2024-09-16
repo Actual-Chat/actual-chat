@@ -36,8 +36,15 @@
 .historical-playback-subheader > .c-content > .c-info > .c-text {
     @apply overflow-hidden;
     @apply text-wrap-pretty;
-    @apply text-text-1 leading-4;
+    @apply text-text-1;
 }
 .historical-playback-subheader > .c-content > .c-info > .c-text > .c-moment {
     @apply font-normal;
+}
+
+.historical-playback-subheader .author-circle-group {
+    @apply flex-1;
+}
+.historical-playback-subheader .author-circle-group > .c-container {
+    @apply left-auto;
 }
