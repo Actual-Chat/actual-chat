@@ -24,14 +24,6 @@ body.narrow .chat-message-editor > .c-content {
 body.narrow .chat-message-editor > .c-content {
     @apply landscape:bg-post-panel;
 }
-body.narrow .audio-panel-wrapper {
-    @apply -mb-0.5;
-    background: linear-gradient(to bottom, var(--transparent) 70%, var(--audio-panel-gradient-bottom) 0%);
-}
-body.narrow .narrow-panel .audio-panel-wrapper {
-    @apply -mb-0.5;
-    background: linear-gradient(to bottom, var(--transparent) 50%, var(--audio-panel-gradient-bottom) 0%);
-}
 .post-panel {
     @apply relative;
     @apply flex-auto flex-x justify-between items-center;
@@ -604,26 +596,3 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply w-8 h-8;
     background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 60%)
 }
-
-.post-panel-btn.volume-settings-btn {
-    @apply landscape:hidden md:hidden;
-}
-@media (orientation: portrait) {
-    .post-panel-btn.volume-settings-btn {
-        @apply absolute;
-        @apply pt-0.5;
-        right: calc(50% - 4.75rem);
-    }
-    body.narrow .text-mode .post-panel-btn.volume-settings-btn,
-    body.narrow .to-thin .post-panel-btn.volume-settings-btn {
-        right: calc(50% - 2.5rem);
-    }
-    .post-panel-btn.volume-settings-btn > .btn-content {
-        @apply relative;
-    }
-    .post-panel-btn.volume-settings-btn > .btn-content .c-text {
-        @apply absolute top-0 left-1/2;
-        @apply text-xxs font-semibold;
-    }
-}
-

@@ -3,19 +3,24 @@
     @apply flex-x justify-center self-end items-end gap-x-2.5;
     @apply h-12;
     @apply rounded-none outline-none;
-    @apply bg-01;
 }
 
 /* ChatAudioPanel Mobile */
 @media (orientation: portrait) {
     body.narrow .chat-audio-panel {
-        @apply absolute inset-x-1/2 bottom-0 z-10;
+        @apply absolute bottom-3 z-10;
         @apply self-stretch items-center gap-x-8;
-        @apply h-14;
+        @apply h-auto;
         @apply p-0;
         @apply rounded-b-4xl;
         @apply overflow-visible;
-        background: linear-gradient(to top, var(--background-01) 40%, transparent);
+        left: calc(50% - 2.75rem);
+    }
+    body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel,
+    body.narrow .text-mode .chat-audio-panel,
+    body.narrow .narrow-panel .chat-audio-panel {
+        @apply bottom-2;
+        left: calc(50% - 1rem);
     }
 }
 @media (orientation: landscape) {
@@ -27,29 +32,10 @@
     body.narrow .to-thick:not(.text-mode) .chat-audio-panel {
         @apply z-button;
         @apply gap-x-8;
-        @apply h-12;
         @apply py-0;
-        background: linear-gradient(to top, var(--background-01) 5%, var(--background-01) 35%, transparent);
         transition: all 0ms;
     }
     body.narrow .to-thick.smooth .chat-audio-panel {
-        transition: all 150ms ease-in-out;
-    }
-}
-
-/* ChatAudioPanel, Mobile view, Text mode */
-@media (orientation: portrait) {
-    body.narrow .narrow-panel .chat-audio-panel {
-        @apply gap-x-2;
-        @apply py-2.5;
-        background: linear-gradient(to top, var(--background-01) 65%, transparent);
-    }
-    body.narrow .to-thin .chat-audio-panel {
-        @apply items-end gap-x-2;
-        background: linear-gradient(to top, var(--background-01) 60%, var(--background-01) 5%, transparent);
-        transition: all 0ms;
-    }
-    body.narrow .to-thin.smooth .chat-audio-panel {
         transition: all 150ms ease-in-out;
     }
 }
@@ -58,14 +44,14 @@
 .chat-audio-panel .record-off-btn.btn,
 body.hoverable .chat-audio-panel .record-off-btn.btn:hover {
     @apply text-06;
-    @apply duration-250 delay-250 ease-in-out;
+    @apply duration-0 ease-in-out;
     background: linear-gradient(180deg, #2970FF 0.32%, #C60077 133.76%);
     transition-property: transform, opacity, filter;
 }
 .chat-audio-panel .record-on-btn.btn,
 body.hoverable .chat-audio-panel .record-on-btn.btn:hover {
     @apply text-06;
-    @apply duration-250 delay-250 ease-in-out;
+    @apply duration-150 ease-in-out;
     background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
     transition-property: filter;
 }
@@ -133,7 +119,6 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply absolute z-button;
     @apply self-center;
     @apply m-0.5;
-    @apply transition-all ease-in-out duration-150;
 }
 .chat-audio-panel .recorder-wrapper {
     @apply border-none;
@@ -179,29 +164,6 @@ body.narrow .chat-audio-panel .recorder-wrapper:active {
     }
 }
 
-/* Playback, Mobile View */
-body.narrow .chat-audio-panel  .playback-wrapper.listen-on .btn.btn-round,
-body.narrow .chat-audio-panel .playback-wrapper.listen-off-to-on .btn.btn-round {
-    @apply portrait:bg-playback-on landscape:bg-mobile-landscape-audio-panel-playback-on;
-}
-body.narrow .chat-audio-panel .playback-wrapper.listen-off-to-on,
-body.narrow .chat-audio-panel .playback-wrapper.listen-on {
-    @apply outline outline-1 outline-primary outline-offset-0;
-    @apply bg-round-focus;
-}
-body.narrow .base-panel .chat-audio-panel .playback-wrapper {
-    @apply min-w-12 max-w-12 min-h-12 max-h-12;
-}
-@media (orientation: portrait) {
-    body.narrow .to-thick:not(.text-mode) .chat-audio-panel .playback-wrapper {
-        @apply min-w-12 max-w-12 min-h-12 max-h-12;
-        transition: all 0ms;
-    }
-    body.narrow .to-thick.smooth .chat-audio-panel .playback-wrapper {
-        transition: all 150ms ease-in-out;
-    }
-}
-
 /* Recorder, Mobile View */
 body.narrow .chat-audio-panel .recorder-wrapper:active {
     @apply translate-y-0;
@@ -210,9 +172,6 @@ body.narrow .chat-audio-panel .recorder-wrapper .btn {
     @apply self-center;
 }
 @media (orientation: portrait) {
-    body.narrow .chat-audio-panel .recorder-button {
-        @apply absolute bottom-4;
-    }
     body.narrow .chat-audio-panel .recorder-wrapper {
         @apply flex;
         @apply h-22 w-22;
@@ -230,9 +189,6 @@ body.narrow .chat-audio-panel .recorder-wrapper .btn {
         @apply h-22 w-22;
         transition: all 0ms;
     }
-    body.narrow .to-thick.smooth .chat-audio-panel .recorder-wrapper {
-        transition: all 100ms ease-in-out;
-    }
     body.narrow .to-thick .chat-audio-panel .recorder-wrapper {
         border-width: 1px;
     }
@@ -242,76 +198,14 @@ body.narrow .chat-audio-panel .recorder-wrapper .btn {
 body.narrow .chat-audio-panel .language-wrapper {
     @apply flex-x items-center justify-center;
 }
-body.narrow .chat-audio-panel .btn.chat-language-toggle {
-    @apply text-primary;
-}
-body.narrow .base-panel .chat-audio-panel .language-wrapper {
-    @apply min-w-20 max-w-20 min-h-10 max-h-10;
-}
-@media (orientation: portrait) {
-    body.narrow .to-thick .chat-audio-panel .language-wrapper {
-        @apply min-w-20 max-w-20 min-h-10 max-h-10;
-        transition: all 0ms;
-    }
-    body.narrow .to-thick.smooth .chat-audio-panel .language-wrapper {
-        transition: all 150ms ease-in-out;
-    }
-}
 
 /* Buttons, Mobile view, Text mode */
 @media (orientation: portrait) {
     body.narrow .narrow-panel .chat-audio-panel .btn.btn-round {
-        @apply min-w-20 max-w-20 min-h-10 max-h-10;
+        @apply min-w-8 max-w-8 min-h-8 max-h-8;
     }
     body.narrow .narrow-panel .chat-audio-panel .btn.btn-round svg {
         @apply h-6 w-6;
-    }
-}
-
-/* Playback, Mobile View, Text Mode */
-@media (orientation: portrait) {
-    body.narrow .to-thin .chat-audio-panel .playback-wrapper {
-        @apply min-w-22 max-w-22 min-h-12 max-h-12;
-        transition: all 0ms;
-    }
-    body.narrow .to-thin.smooth .chat-audio-panel .playback-wrapper {
-        transition: all 150ms ease-in-out;
-    }
-    body.narrow .narrow-panel .chat-audio-panel .playback-button {
-        @apply m-0;
-    }
-    body.narrow .narrow-panel .chat-audio-panel .playback-button .playback-wrapper,
-    body.narrow .narrow-panel .chat-audio-panel .playback-button .playback-wrapper.listen-on-to-off {
-        background: var(--audio-panel-button);
-    }
-    body.narrow .narrow-panel .chat-audio-panel .playback-button .playback-wrapper.listen-on,
-    body.narrow .narrow-panel .chat-audio-panel .playback-button .playback-wrapper.listen-off-to-on {
-        background: var(--playback-on);
-    }
-    body.narrow .narrow-panel .chat-audio-panel .playback-button .playback-wrapper .btn.btn-round .btn-content {
-        @apply min-w-12 max-w-12;
-        @apply bg-transparent;
-    }
-    body.narrow .narrow-panel .chat-audio-panel .playback-wrapper.listen-on .loud-btn.btn.btn-round {
-        @apply opacity-100;
-        @apply translate-x-10;
-    }
-    body.narrow .narrow-panel .chat-audio-panel .playback-wrapper.listen-off .loud-btn.btn.btn-round {
-        @apply absolute;
-        @apply opacity-0;
-        @apply translate-x-10;
-    }
-    body.narrow .narrow-panel .chat-audio-panel .playback-wrapper.listen-on-to-off .loud-btn.btn.btn-round {
-        @apply absolute;
-        @apply scale-0;
-        @apply opacity-0;
-        @apply animate-loud-hide-text-mode;
-        @apply transition duration-150;
-    }
-    body.narrow .narrow-panel .chat-audio-panel .playback-wrapper.listen-off-to-on .loud-btn.btn.btn-round {
-        @apply absolute;
-        @apply animate-loud-show-text-mode;
-        @apply translate-x-10;
     }
 }
 
@@ -320,12 +214,14 @@ body.narrow .base-panel .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-
     @apply min-w-20 max-w-20 min-h-20 max-h-20;
 }
 @media (orientation: portrait) {
+    body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel .recorder-button,
     body.narrow .text-mode .chat-audio-panel .recorder-button,
     body.narrow .to-thin .chat-audio-panel .recorder-button {
         @apply bottom-2.5;
         @apply min-w-8 min-h-8 max-w-8 max-h-8;
         @apply border-none;
     }
+    body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel .recorder-wrapper,
     body.narrow .text-mode .chat-audio-panel .recorder-wrapper,
     body.narrow .to-thin .chat-audio-panel .recorder-wrapper {
         @apply flex justify-center;
@@ -335,11 +231,13 @@ body.narrow .base-panel .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-
     body.narrow .to-thin.smooth .chat-audio-panel .recorder-wrapper {
         transition: all 100ms ease-in-out;
     }
+    body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel .recorder-wrapper,
     body.narrow .text-mode .chat-audio-panel .recorder-wrapper,
     body.narrow .to-thin .chat-audio-panel .recorder-wrapper {
         @apply border-none;
         @apply shadow-none;
     }
+    body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel .recorder-wrapper .btn.btn-round,
     body.narrow .text-mode .chat-audio-panel .recorder-wrapper .btn.btn-round,
     body.narrow .to-thin .chat-audio-panel .recorder-wrapper .btn.btn-round {
         @apply min-w-8 max-w-8 min-h-8 max-h-8;
@@ -347,21 +245,26 @@ body.narrow .base-panel .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-
         background: transparent;
         transition: all 0ms;
     }
+    body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content,
     body.narrow .text-mode .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content,
     body.narrow .to-thin .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content {
         @apply min-w-8 max-w-8 min-h-8 max-h-8;
     }
+    body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon,
     body.narrow .text-mode .rec-icon,
     body.narrow .to-thin .rec-icon {
         @apply w-8 h-8;
     }
+    body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon.off i.left,
     body.narrow .text-mode .rec-icon.off i.left,
     body.narrow .to-thin .rec-icon.off i.left,
+    body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon.off i.right,
     body.narrow .text-mode .rec-icon.off i.right,
     body.narrow .to-thin .rec-icon.off i.right {
         @apply text-1.5xl text-mobile-landscape-audio-panel-button-text;
         @apply opacity-100;
     }
+    body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon.text-mode-on,
     body.narrow .text-mode .rec-icon.text-mode-on,
     body.narrow .to-thin .rec-icon.text-mode-on {
         @apply text-2xl text-danger;
@@ -379,60 +282,6 @@ body.narrow .base-panel .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-
     }
 }
 
-/* Temporarily disabled switch between loud speaker and earpiece
-   to have single audio channel controlled with volume buttons
-*/
-/*
-.narrow .chat-audio-panel .playback-button {
-    @apply w-24;
-    @apply -mr-12;
-}
-.narrow .chat-audio-panel .playback-button .playback-wrapper {
-    @apply relative flex-x;
-    @apply h-12;
-    @apply bg-03;
-}
-.narrow .chat-audio-panel .playback-button .playback-wrapper .btn.btn-round {
-    @apply absolute;
-}
-.narrow .playback-wrapper .loud-btn {
-    @apply self-center;
-}
-.narrow .playback-wrapper.listen-on {
-    @apply w-24;
-}
-.narrow .playback-wrapper.listen-on .loud-btn.btn.btn-round {
-    @apply opacity-100;
-    @apply translate-x-12;
-}
-.narrow .playback-wrapper.listen-off {
-    @apply w-12;
-}
-.narrow .playback-wrapper.listen-off .loud-btn.btn.btn-round {
-    @apply absolute;
-    @apply opacity-0;
-    @apply translate-x-12;
-}
-.narrow .playback-wrapper.listen-on-to-off {
-    @apply w-12;
-}
-.narrow .playback-wrapper.listen-on-to-off .loud-btn.btn.btn-round {
-    @apply absolute;
-    @apply opacity-0;
-    @apply scale-0;
-    @apply animate-loud-hide;
-    @apply transition duration-300;
-}
-.narrow .playback-wrapper.listen-off-to-on {
-    @apply w-24;
-}
-.narrow .playback-wrapper.listen-off-to-on .loud-btn.btn.btn-round {
-    @apply absolute;
-    @apply translate-x-12;
-    @apply animate-loud-show;
-}
-*/
-
 /* Buttons, Desktop view */
 .chat-audio-panel .recorder-wrapper {
     @apply relative flex;
@@ -446,9 +295,6 @@ body.narrow .chat-audio-panel .recorder-wrapper {
 }
 .chat-language-toggle.btn {
     @apply font-semibold text-lg text-03 md:text-base;
-}
-.playback-wrapper .loud-btn {
-    @apply hidden;
 }
 .chat-audio-panel .playback-button .btn-content-inner > * {
     @apply relative top-[0.09rem] left-0; /* Fix headphones position */
@@ -490,7 +336,7 @@ body.narrow .chat-audio-panel .recorder-wrapper {
 }
 .chat-audio-panel .recorder-wrapper.record-on-to-off .record-on-btn.btn {
     @apply opacity-0;
-    @apply transition-opacity delay-250;
+    @apply transition-opacity;
 }
 .chat-audio-panel .recorder-wrapper.record-on-to-off .record-off-btn.btn {
     @apply opacity-100;
@@ -662,6 +508,8 @@ body.narrow .rec-icon,
 body.narrow .rec-icon i {
     @apply portrait:text-3.5xl landscape:text-2xl;
 }
+body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon,
+body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon i,
 body.narrow .text-mode .rec-icon,
 body.narrow .text-mode .rec-icon i,
 body.narrow .narrow-panel .rec-icon,
@@ -730,11 +578,13 @@ body.narrow .rec-icon.text-mode-on {
     @apply landscape:hidden;
 }
 @media (orientation: portrait) {
+    body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon.text-mode-on,
     body.narrow .text-mode .rec-icon.text-mode-on,
     body.narrow .to-thin .rec-icon.text-mode-on {
         @apply flex;
         @apply pt-0.5;
     }
+    body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon.text-mode-off,
     body.narrow .text-mode .rec-icon.text-mode-off,
     body.narrow .to-thin .rec-icon.text-mode-off {
         @apply hidden;
@@ -745,30 +595,47 @@ body.narrow .rec-icon.text-mode-on {
     }
 }
 
+/* Audio Panel Wrapper */
+.audio-panel-wrapper {
+    @apply relative;
+    @apply flex-x items-center gap-x-2.5;
+}
+@media (orientation: portrait) {
+    body.narrow .audio-panel-wrapper {
+        @apply items-end gap-x-0;
+    }
+    body.narrow .chat-message-editor:has(.related-chat-entry-panel) .audio-panel-wrapper,
+    body.narrow .text-mode .audio-panel-wrapper,
+    body.narrow .narrow-panel .audio-panel-wrapper {
+        @apply gap-x-2;
+    }
+}
+.audio-panel-wrapper .recorder-wrapper {
+    @apply -mt-2;
+}
+@media (orientation: portrait) {
+    body.narrow .audio-panel-wrapper .recorder-wrapper {
+        @apply m-0;
+    }
+}
 
-@keyframes hide-icon {
-    0% {
-        transform: scale(1);
-        opacity: 1;
+/* Volume Settings Button */
+.chat-audio-panel .volume-settings-btn {
+    @apply landscape:hidden md:hidden;
+}
+@media (orientation: portrait) {
+    .volume-settings-btn.btn-round {
+        @apply pt-1.5;
     }
-    20% {
-        transform: scale(1.25);
-        opacity: 0.8;
+    body.narrow .volume-settings-btn.btn.btn-round > .btn-content {
+        @apply relative;
+        @apply min-h-8 max-h-8 min-w-8 max-w-8;
     }
-    40% {
-        transform: scale(0.9);
-        opacity: 0.6;
+    body.narrow .volume-settings-btn.btn.btn-round > .btn-content i {
+        @apply text-2xl text-mobile-landscape-audio-panel-button-text;
     }
-    60% {
-        transform: scale(0.5);
-        opacity: 0.4;
-    }
-    80% {
-        transform: scale(0.1);
-        opacity: 0.2;
-    }
-    100% {
-        transform: scale(0);
-        opacity: 0.1;
+    .volume-settings-btn > .btn-content .c-text {
+        @apply absolute top-0.5 left-1/2;
+        @apply text-xxs font-semibold text-mobile-landscape-audio-panel-button-text;
     }
 }
