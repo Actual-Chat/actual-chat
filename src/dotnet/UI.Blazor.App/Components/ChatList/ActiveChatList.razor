@@ -3,27 +3,21 @@
 @{
     var m = State.Value;
     DebugLog?.LogDebug("Rendered: {List}", ChatListKind.Active);
-}
 
-@if (m.IsLoading) {
-    <div class="p-2">
-        <chat-list-skeleton count="2" rootCls="wide-left-skeleton-panel"></chat-list-skeleton>
-    </div>
-} else {
-    if (m.Chats.Count == 0)
+    if (m.IsLoading || m.Chats.Count == 0)
         return;
-
-    <div class="c-delimiter"></div>
-    <div class="active-chats">
-        <div class="c-title" data-tooltip="Chats where you are listening or recording right now">Active Chats</div>
-
-        <div class="chat-list chat-list-active">
-            @foreach (var chat in m.Chats) {
-                <ChatListItem ListKind="@ChatListKind.Active" Chat="@chat"/>
-            }
-        </div>
-    </div>
 }
+
+<div class="c-delimiter"></div>
+<div class="active-chats">
+    <div class="c-title" data-tooltip="Chats where you are listening or recording right now">Active Chats</div>
+
+    <div class="chat-list chat-list-active">
+        @foreach(var chat in m.Chats) {
+            <ChatListItem ListKind="@ChatListKind.Active" Chat="@chat"/>
+        }
+    </div>
+</div>
 
 @code {
     private ILogger? _log;
