@@ -2,7 +2,6 @@
 @inherits ComputedStateComponent<FailedRequirementSet>
 @{
     var m = State.Value;
-    _renderedState = m;
 }
 <CascadingValue Value="this" IsFixed="true">
     @(m.Count == 0 ? Success : Failure(m))
@@ -11,7 +10,6 @@
 @code {
     private EventHandler<LocationChangedEventArgs> _onLocationChanged = null!;
     private MutableDictionary<RequirementComponent, Unit> _requirements = new();
-    private FailedRequirementSet? _renderedState;
 
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private ILogger<RequirementChecker> Log { get; init; } = null!;
@@ -45,10 +43,8 @@
         State.Invalidate();
     }
 
-    public virtual void Reset() {
-        _requirements.Clear();
-        State.Invalidate();
-    }
+    public virtual void Reset()
+        => ResetInternal("manual reset");
 
     protected override ComputedState<FailedRequirementSet>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -80,13 +76,16 @@
             : FailedRequirementSet.Empty;
     }
 
-    protected override bool ShouldRender()
-        => !_renderedState.HasValue
-           || State.HasError
-           || !Equals(State.Value, _renderedState);
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+        => ResetInternal("location change");
 
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
-        Log.LogDebug("Reset on location change");
-        Reset();
+    private void ResetInternal(string reason)
+    {
+        if (_requirements.Count == 0)
+            return;
+
+        Log.LogDebug("Reset on {Reason}", reason);
+        _requirements.Clear();
+        State.Invalidate();
     }
 }
