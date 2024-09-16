@@ -36,6 +36,10 @@ public static class MauiHostBuilderExtensions
                 handlers.AddHandler<Application, ApplicationHandler>();
             });
 
+        typeof(VisualElement).GetMethod("RemapForControls", BindingFlags.Static | BindingFlags.NonPublic, [])!.Invoke(null, []);
+        typeof(ContentPage).GetMethod("RemapForControls", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, []);
+
+
         return builder;
     }
 }
