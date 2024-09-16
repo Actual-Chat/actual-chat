@@ -20,7 +20,7 @@ public partial class AllChatList : IVirtualListDataSource<ChatListItemModel>
 
         var firstItem = renderedData.FirstItem;
         var lastItem = renderedData.LastItem;
-        var isFirstRender = firstItem == null;
+        var isFirstRender = firstItem == null && query.IsNone;
         var hasQuery = !query.IsNone;
         var visibleIndices = _visibility?.VisibleKeys.Select(int.Parse).ToList() ?? [];
         var minVisibleIndex = visibleIndices.DefaultIfEmpty(firstItem?.Position ?? 0).Min();

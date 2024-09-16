@@ -287,7 +287,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         activity?.SetTag("AC." + nameof(ChatId), chatId);
 
         // Handling NavigateTo + default navigation
-        var isFirstRender = renderedData.IsNone;
+        var isFirstRender = renderedData.IsNone && query.IsNone;
         var readEntryLid = _readPosition.Value.EntryLid;
         var nav = await _nextNavigation.Use(cancellationToken)
             ?? (isFirstRender && readEntryLid != 0 ? new Navigation(readEntryLid, false) : null);
