@@ -40,16 +40,14 @@ public class IosMediaSaver(UIHub uiHub) : IMediaSaver
     private Task Save(string tempFilePath, PHAssetResourceType type)
     {
         var tcs = new TaskCompletionSource();
-        UIImage? uiImage = null;
+        var nsUrl = NSUrl.FromFilename(tempFilePath);
         PHPhotoLibrary.SharedPhotoLibrary.PerformChanges(
             () => {
                 switch (type) {
                 case PHAssetResourceType.Photo:
-                    uiImage = UIImage.FromFile(tempFilePath)!;
-                    PHAssetChangeRequest.FromImage(uiImage);
+                    PHAssetChangeRequest.FromImage(nsUrl);
                     break;
                 case PHAssetResourceType.Video:
-                    var nsUrl = NSUrl.FromFilename(tempFilePath);
                     PHAssetChangeRequest.FromVideo(nsUrl);
                     break;
                 default:
@@ -58,7 +56,6 @@ public class IosMediaSaver(UIHub uiHub) : IMediaSaver
             },
             (success, error) => {
                 File.Delete(tempFilePath);
-                uiImage?.Dispose();
                 if (success)
                     tcs.SetResult();
                 else {
@@ -84,7 +81,7 @@ public class IosMediaSaver(UIHub uiHub) : IMediaSaver
 
         string GetFileExtension()
         {
-            var fileName = response.Content.Headers.ContentDisposition?.FileName;
+            var fileName = response.Content.Headers.ContentDisposition?.FileName?.Trim('"');
             if (!fileName.IsNullOrEmpty())
                 return Path.GetExtension(fileName);
 
