@@ -5,7 +5,10 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 public class FlowsTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(FlowsTest)}", TestAppHostOptions.Default with {
-        ConfigureServices = (_, services) => services.AddFlows().Add<TimerFlow>(),
+        ConfigureServices = (_, services) => {
+            services.AddFlows().Add<TimerFlow>();
+            services.AddHostedService<HostDisposeTrackerTester>();
+        },
     }, @out)
 {
     [Fact]
@@ -23,6 +26,8 @@ public class FlowsTest(ITestOutputHelper @out)
         await Task.WhenAll(
             WhenEnded(flows, f0.Id),
             WhenEnded(flows, f1.Id));
+
+        Out.WriteLine("Test ended");
     }
 
     // Private methods
@@ -33,4 +38,20 @@ public class FlowsTest(ITestOutputHelper @out)
             Out.WriteLine($"[*] {flow?.ToString() ?? "null"}");
             flow.Should().BeNull();
         }, TimeSpan.FromSeconds(30));
+
+    // Nested types
+
+    public class HostDisposeTrackerTester(IServiceProvider services)
+        : WorkerBase(services.HostDisposeTracker().NewCancellationTokenSource())
+    {
+        private IServiceProvider Services { get; } = services;
+
+        protected override async Task OnRun(CancellationToken cancellationToken)
+        {
+            var @out = Services.GetRequiredService<ITestOutputHelper>();
+            @out.WriteLine("Started.");
+            await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced().WaitAsync(cancellationToken).SilentAwait();
+            @out.WriteLine("Stopping.");
+        }
+    }
 }

@@ -1,5 +1,4 @@
 using ActualChat.Hosting;
-using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Queues.Internal;
 
@@ -22,20 +21,19 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
 
     public IServiceProvider Services { get; }
     public HostInfo HostInfo { get; }
-    public IHostApplicationLifetime? HostLifetime { get; }
     public MomentClock Clock { get; }
 
     public TSettings Settings { get; }
     public IReadOnlyDictionary<QueueRef, IQueueProcessor> Processors { get; protected init; } = null!;
 
     protected QueuesBase(TSettings settings, IServiceProvider services, bool initProcessors = true)
+        : base(services.HostDisposeTracker().NewCancellationTokenSource())
     {
         Settings = settings;
         Services = services;
         Log = services.LogFor(GetType());
 
         HostInfo = services.HostInfo();
-        HostLifetime = services.GetService<IHostApplicationLifetime>();
         Clock = settings.Clock ?? services.Clocks().SystemClock;
         if (initProcessors)
             // ReSharper disable once VirtualMemberCallInConstructor
@@ -74,10 +72,6 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        // We want to stop processing queued events as quickly as possible on host stop signal
-        using var stopCts = HostLifetime?.ApplicationStopping.LinkWith(cancellationToken);
-        var stopToken = stopCts?.Token ?? cancellationToken;
-
         var queueProcessors = Processors
             .Select(p => p.Key.ShardScheme.Id.Value)
             .ToDelimitedString()
@@ -86,15 +80,12 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
         Log.LogInformation("Starting queue processors: {QueueProcessors}", queueProcessors);
         foreach (var processor in Processors.Values)
             processor.Start();
-        try {
-            await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced()
-                .WaitAsync(stopToken)
-                .ConfigureAwait(false);
-        }
-        finally {
-            Log.LogInformation("Stopping queue processors...");
-            var disposeTasks = Processors.Values.Select(p => p.DisposeSilentlyAsync().AsTask()).ToArray();
-            await Task.WhenAll(disposeTasks).ConfigureAwait(false);
-        }
+
+        using var dTask = cancellationToken.ToTask();
+        await dTask.Resource.SilentAwait(false); // Await for cancellation
+
+        Log.LogInformation("Stopping queue processors...");
+        var disposeTasks = Processors.Values.Select(p => p.DisposeSilentlyAsync().AsTask()).ToArray();
+        await Task.WhenAll(disposeTasks).ConfigureAwait(false);
     }
 }

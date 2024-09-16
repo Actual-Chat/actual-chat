@@ -43,10 +43,10 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
                 return flow;
 
             flow = (Flow)flowType.CreateInstance();
-            flow.Initialize(flowId, 0, false, default);
+            flow.Initialize(flowId, 0, null, default);
             var storeCommand = new Flows_Store(flow.Id, 0) { Flow = flow };
             var version = await Commander.Call(storeCommand, true, ct).ConfigureAwait(false);
-            flow.Initialize(flowId, version, false, default);
+            flow.Initialize(flowId, version, null, default);
             return flow;
         }, retryLogger, cancellationToken);
     }
@@ -54,7 +54,10 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
     // The `long` it returns is DbFlow/FlowData.Version
     [ProxyIgnore] // Regular method!
     public virtual Task<long> OnEvent(FlowId flowId, IFlowEvent evt, CancellationToken cancellationToken = default)
-        => Host.HandleEvent(flowId, evt, cancellationToken);
+    {
+        Log.LogInformation("OnEvent: `{FlowId}` <- {Event}", flowId, evt);
+        return Host.ProcessEvent(flowId, evt, cancellationToken);
+    }
 
     // The `long` it returns is DbFlow/FlowData.Version
     // [CommandHandler]
@@ -93,12 +96,12 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
             dbContext.Add(new DbFlow() {
                 Id = flowId,
                 Version = version,
-                CanResume = flow.CanResume,
+                HardResumeAt = flow.HardResumeAt,
                 Step = flow.Step,
                 Data = Serialize(flow),
             });
             if (flow.Step.IsEmpty)
-                context.Operation.AddEvent(new FlowResumeEvent(flowId, true));
+                context.Operation.AddEvent(new FlowResumeEvent(flowId));
             break;
         case (true, false):  // Remove
             dbContext.Remove(dbFlow!);
@@ -106,7 +109,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         case (true, true):  // Update
             version = VersionGenerator.NextVersion(dbFlow!.Version);
             dbFlow.Version = version;
-            dbFlow.CanResume = flow.CanResume;
+            dbFlow.HardResumeAt = flow.HardResumeAt;
             dbFlow.Step = flow.Step;
             dbFlow.Data = Serialize(flow);
             break;
@@ -127,7 +130,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         if (flow == null)
             return null;
 
-        flow.Initialize(flowId, dbFlow!.Version, dbFlow.CanResume, dbFlow.Step);
+        flow.Initialize(flowId, dbFlow!.Version, dbFlow.HardResumeAt, dbFlow.Step);
         return flow;
     }
 

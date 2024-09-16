@@ -43,7 +43,6 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
     }
 
-
     public Chat ToModel()
         => new(new ChatId(Id), Version) {
             Title = Title,

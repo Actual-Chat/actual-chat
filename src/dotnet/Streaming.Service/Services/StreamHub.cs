@@ -20,7 +20,7 @@ public class StreamHub(IServiceProvider services) : Hub
 
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
     private ISecureTokensBackend SecureTokensBackend { get; } = services.GetRequiredService<ISecureTokensBackend>();
-    private IHostApplicationLifetime HostLifetime { get; } = services.HostLifetime();
+    private HostDisposeTracker HostDisposeTracker { get; } = services.HostDisposeTracker();
     private IStreamingBackend Backend { get; } = services.GetRequiredService<IStreamingBackend>();
     private ILogger Log { get; } = services.LogFor<StreamHub>();
 
@@ -131,8 +131,8 @@ public class StreamHub(IServiceProvider services) : Hub
 
     private CancellationTokenSource NewStopTokenSource(HttpContext httpContext)
     {
-        var stopCts = httpContext.RequestAborted.LinkWith(HostLifetime.ApplicationStopping);
-        if (stopCts.IsCancellationRequested && HostLifetime.ApplicationStopping.IsCancellationRequested)
+        var stopCts = httpContext.RequestAborted.LinkWith(HostDisposeTracker.Token);
+        if (stopCts.IsCancellationRequested && HostDisposeTracker.Token.IsCancellationRequested)
             Context.Abort();
         return stopCts;
     }

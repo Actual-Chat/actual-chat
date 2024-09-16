@@ -1,3 +1,5 @@
+using ActualLab.Internal;
+
 namespace ActualChat.Flows.Infrastructure;
 
 public sealed class FlowHost : ShardWorker, IHasServices
@@ -36,38 +38,47 @@ public sealed class FlowHost : ShardWorker, IHasServices
             var shardIndex = ShardScheme.GetShardIndex(shardKey);
 
             var shard = Shards[shardIndex];
-            if (shard.Worklets.TryGetValue(flowId, out var result))
-                return result;
+            if (shard.Worklets.TryGetValue(flowId, out var worklet))
+                return worklet;
 
             lock (Shards) {
                 shard = Shards[shardIndex];
-                if (shard.Worklets.TryGetValue(flowId, out result))
-                    return result;
+                if (shard.Worklets.TryGetValue(flowId, out worklet))
+                    return worklet;
 
-                result = shard.NewWorklet(flowId).Start();
-                shard.Worklets[flowId] = result;
-                return result;
+                if (StopToken.IsCancellationRequested)
+                    throw Errors.AlreadyDisposed<FlowHost>();
+
+                worklet = shard.NewWorklet(flowId);
+                shard.Worklets[flowId] = worklet;
+                return worklet;
             }
         }
     }
 
     // The `long` it returns is DbFlow/FlowData.Version
-    public async Task<long> HandleEvent(FlowId flowId, IFlowEvent evt, CancellationToken cancellationToken)
+    public async Task<long> ProcessEvent(FlowId flowId, IFlowEvent evt, CancellationToken cancellationToken)
     {
         while (true) {
             var worklet = this[flowId];
-            var whenHandled = worklet.HandleEvent(evt, cancellationToken);
             try {
-                return await whenHandled.ConfigureAwait(false);
+                var version = await worklet
+                    .ProcessEvent(evt, cancellationToken)
+                    .WaitAsync(cancellationToken) // It's important to have it here, read below
+                    .ConfigureAwait(false);
+                // .WaitAsync ensures that even if queue is clogged,
+                // HandleEvent will instantly return on cancellationToken cancellation.
+                return version;
             }
-            catch (ChannelClosedException) {
-                cancellationToken.ThrowIfCancellationRequested();
+            catch (OperationCanceledException e) when (!e.IsCancellationOf(cancellationToken))  {
                 if (!worklet.StopToken.IsCancellationRequested)
-                    throw; // It's some other ChannelClosedException - worklet.Channel isn't closed yet
+                    throw;
 
-                // FlowWorklet.OnRun implements a graceful stop, so it may take a while for it to complete.
-                await worklet.WhenRunning!.ConfigureAwait(false);
-                // Once the worklet is gone, we still want to wait a bit before we try use the next one -
+                // Worklet is dead - e.g. because its shard has lost the lock.
+                // We'll try to spin up a new worklet here.
+                await worklet.WhenRunning!.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+                // Once the worklet is gone, we want to wait a bit before trying to spin up the next one -
                 // that's because its new FlowHostShard may need to be re-locked & allocated, etc.
                 await Task.Delay(HandleEventRetryDelay, cancellationToken).ConfigureAwait(false);
             }

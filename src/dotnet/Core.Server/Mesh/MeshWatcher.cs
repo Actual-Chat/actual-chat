@@ -1,5 +1,4 @@
 using ActualChat.Hosting;
-using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Mesh;
 
@@ -11,7 +10,6 @@ public sealed class MeshWatcher : WorkerBase
 
     private readonly MutableState<MeshState> _state;
 
-    private IHostApplicationLifetime? HostApplicationLifetime { get; }
     private IMeshLocks NodeLocks { get; }
     private MomentClock Clock => NodeLocks.Clock;
     private ILogger Log { get; }
@@ -23,9 +21,9 @@ public sealed class MeshWatcher : WorkerBase
     public TimeSpan NodeTimeout { get; init; }
 
     public MeshWatcher(IServiceProvider services, bool mustStart = true)
+        : base(services.HostDisposeTracker().NewCancellationTokenSource())
     {
         Log = services.LogFor(GetType());
-        HostApplicationLifetime = services.GetService<IHostApplicationLifetime>();
         OwnNode = services.GetRequiredService<MeshNode>();
         NodeLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NodeLocks));
         _state = services.StateFactory().NewMutable(new MeshState());
@@ -39,9 +37,6 @@ public sealed class MeshWatcher : WorkerBase
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var cts = cancellationToken.LinkWith(HostApplicationLifetime?.ApplicationStopping ?? CancellationToken.None);
-        cancellationToken = cts.Token;
-
         var whenLockedSource = new TaskCompletionSource();
         var whenLocked = whenLockedSource.Task;
         _ = Task.Run(() => Announce(whenLockedSource, cancellationToken), CancellationToken.None);
@@ -158,15 +153,15 @@ public sealed class MeshWatcher : WorkerBase
                     await using var _ = holder.ConfigureAwait(false);
                     whenLockedTcs.TrySetResult();
                     Log.LogInformation("[+] {MeshNode}", key);
-                    using var lts = cancellationToken.LinkWith(holder.StopToken);
-                    await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced()
-                        .WaitAsync(lts.Token)
-                        .ConfigureAwait(false);
+
+                    using var linkedTokenSource = cancellationToken.LinkWith(holder.StopToken);
+                    using var dTask = linkedTokenSource.Token.ToTask();
+                    await dTask.Resource.ConfigureAwait(false);
                 }
                 catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-                    // Intended: we keep the lock unless cancellationToken is cancelled
-                    Log.LogInformation("[-] {MeshNode} - lost the lock", key);
+                    // Intended
                 }
+                Log.LogInformation("[-] {MeshNode} - lost the lock", key);
             }
         }
         finally {

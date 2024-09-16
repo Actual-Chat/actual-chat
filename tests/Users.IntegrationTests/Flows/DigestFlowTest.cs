@@ -19,7 +19,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<DigestFlow>(f0.Id.Arguments, ct);
             flow.Should().NotBeNull();
-            flow!.Step.Should().Be(FlowSteps.OnEnded);
+            flow!.Step.Should().Be(FlowSteps.OnDelayedEnd);
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -98,7 +98,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<DigestFlow>(userId, ct);
             flow.Should().NotBeNull();
-            flow!.SendCount.Should().BeGreaterThan(0);
+            flow!.RunCount.Should().BeGreaterThan(0);
         }, TimeSpan.FromSeconds(30));
     }
 }

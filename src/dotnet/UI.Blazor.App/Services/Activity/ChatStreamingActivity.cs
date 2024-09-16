@@ -1,4 +1,5 @@
 using ActualLab.Fusion.Client;
+using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -75,6 +76,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
             ).ConfigureAwait(false);
     }
 
+    [ProxyIgnore]
     protected override Task OnStop()
     {
         foreach (var entry in _activeEntries)

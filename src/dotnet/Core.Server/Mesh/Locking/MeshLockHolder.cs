@@ -122,7 +122,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             if (dependencies.Length > 0) {
                 DebugLog?.LogDebug("[+-] {Key}: stopping {Count} dependent task(s)...", FullKey, dependencies.Length);
                 foreach (var dependency in dependencies)
-                    await dependency.SilentAwait();
+                    await dependency.SilentAwait(false);
             }
         }
         finally {

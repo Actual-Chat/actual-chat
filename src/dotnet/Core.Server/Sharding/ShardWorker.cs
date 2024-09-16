@@ -26,7 +26,7 @@ public abstract class ShardWorker : WorkerBase
     public MomentClock Clock => ShardLocks.Clock;
 
     protected ShardWorker(IServiceProvider services, ShardScheme shardScheme, string? keyPrefix = null)
-        : base(services.HostLifetime()?.ApplicationStopping.CreateLinkedTokenSource() ?? new CancellationTokenSource())
+        : base(services.HostDisposeTracker().NewCancellationTokenSource())
     {
         Services = services;
         ShardScheme = shardScheme;
@@ -91,7 +91,7 @@ public abstract class ShardWorker : WorkerBase
             }
         }
         finally {
-            await Task.WhenAll(ShardStates.Select(x => x.DisposeAsync().AsTask())).SilentAwait();
+            await Task.WhenAll(ShardStates.Select(x => x.DisposeAsync().AsTask())).SilentAwait(false);
         }
     }
 
@@ -156,7 +156,7 @@ public abstract class ShardWorker : WorkerBase
         {
             Worker = worker;
             Index = index;
-            StopTokenSource = new();
+            StopTokenSource = Worker.StopToken.CreateLinkedTokenSource();
             StopToken = StopTokenSource.Token;
         }
 
@@ -170,9 +170,9 @@ public abstract class ShardWorker : WorkerBase
             if (IsRunning)
                 return this;
 
-            var result = new ShardState(Worker, Index);
-            result.WhenStopped = Worker.Use(Index, result.StopToken);
-            return result;
+            var state = new ShardState(Worker, Index);
+            state.WhenStopped = Worker.Use(Index, state.StopToken);
+            return state;
         }
 
         private ShardState Stop()

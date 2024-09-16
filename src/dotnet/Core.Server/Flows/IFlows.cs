@@ -26,6 +26,8 @@ public interface IFlows : IComputeService, IBackendService
     Task<long> OnStore(Flows_Store command, CancellationToken cancellationToken = default);
 }
 
+// This is a special command that's always exercised locally (i.e. never goes to remote peers).
+// Search for "MeshRefResolvers.Register<Flows_Store>" to see how it works.
 // ReSharper disable once InconsistentNaming
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]

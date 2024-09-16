@@ -1,5 +1,6 @@
 using ActualChat.Flows.Infrastructure;
 using ActualChat.Flows.Internal;
+using ActualLab.CommandR.Operations;
 using ActualLab.Diagnostics;
 using ActualLab.Versioning;
 using MemoryPack;
@@ -18,9 +19,9 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
     [IgnoreDataMember, MemoryPackIgnore]
     public long Version { get; private set; }
     [IgnoreDataMember, MemoryPackIgnore]
-    public bool CanResume { get; private set; }
-    [IgnoreDataMember, MemoryPackIgnore]
     public Symbol Step { get; private set; }
+    [IgnoreDataMember, MemoryPackIgnore]
+    public Moment? HardResumeAt { get; private set; }
 
     protected FlowHost Host => Worklet.Host;
     protected FlowWorklet Worklet => RequireWorklet();
@@ -29,11 +30,11 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
     protected ILogger Log => _log ??= Host.Services.LogFor(GetType());
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, DebugMode);
 
-    public void Initialize(FlowId id, long version, bool canResume, Symbol step, FlowWorklet? worklet = null)
+    public void Initialize(FlowId id, long version, Moment? resumesAt, Symbol step, FlowWorklet? worklet = null)
     {
         Id = id;
         Version = version;
-        CanResume = canResume;
+        HardResumeAt = resumesAt;
         Step = step;
         _worklet = worklet;
     }
@@ -46,12 +47,22 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
 
     public virtual async Task<FlowTransition> HandleEvent(IFlowEvent evt, CancellationToken cancellationToken)
     {
-        RequireWorklet();
         Event = new FlowEventBin(this, evt);
         var step = Step;
         FlowTransition transition;
         try {
-            transition = await InvokeStep(step, true, cancellationToken).ConfigureAwait(false);
+            if (Event.Is<IFlowSystemEvent>(out var systemEvent)) {
+                // Overriding current step for some IFlowSystemEvent-s
+                if (systemEvent is FlowKillEvent)
+                    step = FlowSteps.OnKill;
+                else if (systemEvent is FlowResetEvent || step.IsEmpty)
+                    step = FlowSteps.OnReset;
+                else if (systemEvent is FlowHardResumeEvent)
+                    step = FlowSteps.OnHardResume;
+                // There is also FlowResumeEvent, which doesn't require step change
+            }
+            transition = await InvokeStep(step, cancellationToken).ConfigureAwait(false);
+
             if (!Event.IsHandled) {
                 var error = Errors.UnhandledEvent(GetType(), Step, evt.GetType());
                 Log.LogError(error,
@@ -81,50 +92,25 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
 
     // Default steps
 
-    protected Func<Flow, CancellationToken, Task<FlowTransition>>? GetStepFunc(Symbol step)
-        => FlowSteps.Get(GetType(), step);
-
-    protected Task<FlowTransition> InvokeStep(Symbol step, bool useOnMissingStep, CancellationToken cancellationToken)
-    {
-        if (Event.Is<ISystemFlowEvent>(out var systemFlowEvent)) {
-            if (systemFlowEvent is FlowKillEvent)
-                step = FlowSteps.OnKill;
-            else if (systemFlowEvent is FlowResetEvent || step.IsEmpty)
-                step = FlowSteps.OnReset;
-            else if (systemFlowEvent is FlowResumeEvent { IsExternal: true })
-                step = FlowSteps.OnExternalResume;
-        }
-
-        var stepFunc = GetStepFunc(step);
-        if (useOnMissingStep)
-            stepFunc ??= static (flow, ct) => flow.OnMissingStep(ct);
-        if (stepFunc == null)
-            throw Errors.NoStepImplementation(GetType(), step.Value);
-
-        return stepFunc.Invoke(this, cancellationToken);
-    }
-
     protected abstract Task<FlowTransition> OnReset(CancellationToken cancellationToken);
 
-    protected virtual Task<FlowTransition> OnExternalResume(CancellationToken cancellationToken)
-        => Task.FromResult(Wait(Step, false)); // "Do nothing"
+    protected virtual Task<FlowTransition> OnHardResume(CancellationToken cancellationToken)
+        => InvokeStep(Step, cancellationToken);
 
     protected virtual Task<FlowTransition> OnKill(CancellationToken cancellationToken)
-        => Task.FromResult(GotoEnding());
+        => Task.FromResult(End(true));
 
-    protected virtual Task<FlowTransition> OnEnding(CancellationToken cancellationToken)
+    protected virtual Task<FlowTransition> OnDelayedEnd(CancellationToken cancellationToken)
     {
         var removeDelay = GetOptions().RemoveDelay;
-        return Task.FromResult(removeDelay <= TimeSpan.Zero
-            ? Goto(FlowSteps.OnEnded)
-            : Wait(FlowSteps.OnEnded).AddTimerEvent(removeDelay));
+        return Task.FromResult(WaitForTimer(FlowSteps.OnEnd, removeDelay));
     }
 
-    protected Task<FlowTransition> OnEnded(CancellationToken cancellationToken)
+    protected Task<FlowTransition> OnEnd(CancellationToken cancellationToken)
     {
         if (!Event.IsHandled)
             Event.Require<FlowTimerEvent>();
-        return Task.FromResult(Goto(FlowSteps.Removed, true));
+        return Task.FromResult(StoreAndResume(FlowSteps.Removed));
     }
 
     protected virtual Task<FlowTransition> OnMissingStep(CancellationToken cancellationToken)
@@ -135,27 +121,69 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
 
     // Transition helpers
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected FlowTransition Wait(Symbol step, bool mustStore = true)
-        => new(this, step) { MustStore = mustStore };
+    protected FlowTransition WaitForEvent(Symbol nextStep, TimeSpan hardResumeDelay)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(hardResumeDelay, TimeSpan.Zero);
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected FlowTransition Goto(Symbol step, bool mustStore = false)
-        => new(this, step) { MustStore = mustStore, MustResume = true };
+        var hardResumeAt = Clocks.SystemClock.Now + hardResumeDelay;
+        return new(this, nextStep, hardResumeAt) { MustStore = true };
+    }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected FlowTransition GotoEnding()
-        => Goto(nameof(OnEnding));
+    protected FlowTransition WaitForEvent(Symbol nextStep, Moment hardResumeAt)
+        => new(this, nextStep, hardResumeAt) { MustStore = true };
+
+    protected FlowTransition WaitForTimer(Symbol nextStep, TimeSpan delay, string? tag = null)
+    {
+        if (delay <= TimeSpan.Zero)
+            return StoreAndResume(nextStep);
+
+        var resumeAt = Clocks.SystemClock.Now + delay;
+        var timerEvent = new OperationEvent(resumeAt, new FlowTimerEvent(Id, tag));
+        return new(this, nextStep, resumeAt, timerEvent);
+    }
+
+    protected FlowTransition WaitForTimer(Symbol nextStep, Moment resumeAt, string? tag = null)
+    {
+        var now = Clocks.SystemClock.Now;
+        var delay = resumeAt - now;
+        if (delay <= TimeSpan.Zero)
+            return StoreAndResume(nextStep);
+
+        var timerEvent = new OperationEvent(resumeAt, new FlowTimerEvent(Id, tag));
+        return new(this, nextStep, resumeAt, timerEvent);
+    }
+
+    protected FlowTransition StoreAndResume(Symbol nextStep)
+        => new(this, nextStep) { MustStore = true };
+
+    protected FlowTransition Resume(Symbol nextStep)
+        => new(this, nextStep);
+
+    protected FlowTransition End(bool instantly = false)
+    {
+        var nextStep = instantly ? FlowSteps.OnEnd : FlowSteps.OnDelayedEnd;
+        return StoreAndResume(nextStep);
+    }
+
+    // Other protected methods
+
+    protected Task<FlowTransition> InvokeStep(Symbol step, CancellationToken cancellationToken)
+    {
+        var stepFunc = FlowSteps.Get(GetType(), step, true)!;
+        var result = stepFunc.Invoke(this, cancellationToken);
+        return result as Task<FlowTransition>
+            ?? throw StandardError.Internal("Any flow step must return a Task<FlowTransition>.");
+    }
 
     protected virtual async ValueTask ApplyTransition(
         FlowTransition transition, IFlowEvent @event, CancellationToken cancellationToken)
     {
-        var worklet = RequireWorklet();
         DebugLog?.LogDebug(
             "`{Id}`: '{Step}' + {EventType} -> {Transition}",
             Id, Step, @event.GetType().GetName(), transition);
 
         Step = transition.Step;
+        HardResumeAt = transition.HardResumeAt;
         if (!transition.EffectiveMustStore)
             return;
 
@@ -163,7 +191,7 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
             Flow = Clone(),
             AddEvents = transition.Events.IsEmpty ? null : transition.Events.ToArray(),
         };
-        Version = await worklet.Host.Commander.Call(storeCommand, cancellationToken).ConfigureAwait(false);
+        Version = await Host.Commander.Call(storeCommand, cancellationToken).ConfigureAwait(false);
     }
 
     // IFlowImpl

@@ -11,6 +11,14 @@ public static class ServiceProviderExt
         => services.GetRequiredService<IHostApplicationLifetime>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IHostApplicationLifetime? HostLifetimeIfExist(this IServiceProvider services)
+        => services.GetService<IHostApplicationLifetime>();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static HostDisposeTracker HostDisposeTracker(this IServiceProvider services)
+        => services.GetRequiredService<HostDisposeTracker>();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IMeshLocks<TContext> MeshLocks<TContext>(this IServiceProvider services)
         => services.GetRequiredService<IMeshLocks<TContext>>();
 

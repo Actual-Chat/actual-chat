@@ -94,12 +94,16 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("OnRun: ShardScheme={ShardScheme}, ShardIndex={ShardIndex}", ShardScheme, shardIndex);
+
         var expireIn = Settings.IdleTimeout.ToRandom(0.25);
+        using var stopCts = cancellationToken.CreateLinkedTokenSource();
+        cancellationToken = stopCts.Token;
+
         while (!cancellationToken.IsCancellationRequested) {
             // retry pull until cancellation is requested
             using var expiringPullCts = cancellationToken.CreateLinkedTokenSource(expireIn.Next());
-            using var gracefulStopCts = expiringPullCts.Token.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
             var expiringPullToken = expiringPullCts.Token;
+            using var gracefulStopCts = expiringPullToken.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
             var gracefulStopToken = gracefulStopCts.Token;
 
             var consumer = await GetConsumer(shardIndex, cancellationToken).ConfigureAwait(false);
@@ -115,7 +119,9 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                 MaxDegreeOfParallelism = Settings.ConcurrencyLevel,
                 CancellationToken = cancellationToken,
             };
-            await Parallel.ForEachAsync(messages, parallelOptions, HandleMessage).ConfigureAwait(false);
+            await Parallel
+                .ForEachAsync(messages, parallelOptions, HandleMessage)
+                .SilentAwait(false); // We swallow all exceptions here
             continue;
 
             async ValueTask HandleMessage(NatsJSMsg<IMemoryOwner<byte>> message, CancellationToken _) {
@@ -124,6 +130,18 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                     // ReSharper disable once AccessToDisposedClosure
                     expiringPullCts.CancelAfter(expireIn.Next());
                     await Process(shardIndex, message, gracefulStopToken).ConfigureAwait(false);
+                }
+                catch (ObjectDisposedException) {
+                    // NOTE(AY): NatsQueueProcessor is sometimes disposed ~ at the very end
+                    // of container disposal, and thus it retries many times to process
+                    // queued events, even though it's already impossible, coz the Commander
+                    // can't create scope for any new command it runs, because the container
+                    // is already disposed.
+                    // So here we detect this & instantly abort the message reader.
+                    if (Services.IsDisposedOrDisposing())
+                        // ReSharper disable once AccessToDisposedClosure
+                        stopCts.CancelAndDisposeSilently();
+                    throw;
                 }
                 finally {
                     message.Data.DisposeSilently();

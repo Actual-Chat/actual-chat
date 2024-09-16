@@ -10,17 +10,22 @@ public sealed class FlowHostShard(FlowHost host, int shardIndex, CancellationTok
     public FlowWorklet NewWorklet(FlowId flowId)
         => StopToken.IsCancellationRequested
             ? throw StandardError.WrongShard<FlowId>()
-            : new FlowWorklet(this, flowId);
+            : new FlowWorklet(this, flowId).Start();
 
     public async Task OnRun(CancellationToken cancellationToken)
     {
+        // cancellationToken = StopToken here
         using var dTask = cancellationToken.ToTask();
-        await dTask.Resource.SilentAwait();
+        await dTask.Resource.SilentAwait(false); // Await for cancellation
 
-        // At this point
-        var disposeTasks = new List<Task>();
-        foreach (var (_, worklet) in Worklets)
-            disposeTasks.Add(worklet.DisposeAsync().AsTask());
-        await Task.WhenAll(disposeTasks).ConfigureAwait(false);
+        while (true) {
+            var disposeTasks = Worklets.Values
+                .Select(w => w.DisposeAsync().AsTask())
+                .ToList();
+            if (disposeTasks.Count == 0)
+                break;
+
+            await Task.WhenAll(disposeTasks).ConfigureAwait(false);
+        }
     }
 }

@@ -45,7 +45,7 @@ public abstract class ActivatedWorkerBase(IServiceProvider services) : WorkerBas
             if (isCompleted)
                 break;
         }
-        await whenResume.WaitAsync(UnconditionalActivationPeriod.Next(), cancellationToken).SilentAwait();
+        await whenResume.WaitAsync(UnconditionalActivationPeriod.Next(), cancellationToken).SilentAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
     }
 }

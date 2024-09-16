@@ -9,7 +9,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class TimerFlow : Flow
 {
-    [DataMember(Order = 1), MemoryPackOrder(1)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public int RemainingCount { get; private set; }
 
     public override FlowOptions GetOptions()
@@ -22,7 +22,7 @@ public partial class TimerFlow : Flow
 
         var output = Host.Services.GetRequiredService<ITestOutputHelper>();
         output.WriteLine($"`{Id}`.{nameof(OnReset)}: {RemainingCount}");
-        return Wait(nameof(OnTimer)).AddTimerEvent(TimeSpan.FromSeconds(3));
+        return WaitForTimer(nameof(OnTimer), TimeSpan.FromSeconds(3));
     }
 
     protected async Task<FlowTransition> OnTimer(CancellationToken cancellationToken)
@@ -31,8 +31,8 @@ public partial class TimerFlow : Flow
         var output = Host.Services.GetRequiredService<ITestOutputHelper>();
         output.WriteLine($"`{Id}`.{nameof(OnTimer)}: {RemainingCount--}");
         return RemainingCount > 0
-            ? Wait(nameof(OnTimer)).AddTimerEvent(TimeSpan.FromSeconds(5))
-            : GotoEnding();
+            ? WaitForTimer(nameof(OnTimer), TimeSpan.FromSeconds(3))
+            : End();
     }
 
     protected override ValueTask ApplyTransition(

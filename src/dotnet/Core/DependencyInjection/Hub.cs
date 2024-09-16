@@ -103,9 +103,10 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
     // Private methods
 
     private async Task DisposeAsyncCore() {
-        await Task.WhenAll(_tasks).SilentAwait(false);
+        // This type is used in UI scopes - that's why SilentAwait(true)
+        await Task.WhenAll(_tasks).SilentAwait(true);
         for (var i = _disposables.Count - 1; i >= 0; i--)
-            await Dispose(_disposables[i]).SilentAwait();
+            await Dispose(_disposables[i]).SilentAwait(true);
     }
 
     private static ValueTask Dispose(object? disposableOrAction)

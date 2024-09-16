@@ -16,14 +16,14 @@ public sealed class FlowEventBin(Flow flow, IFlowEvent @event)
         where TEvent : class
         => Is<TEvent>(out var @event)
             ? @event
-            : throw Internal.Errors.NoEvent(Flow.GetType(), Flow.Step, typeof(TEvent));
+            : throw Internal.Errors.NoEvent(Flow.GetType(), Flow.Step, Event.GetType(), typeof(TEvent));
 
     public IFlowEvent Require<TEvent1, TEvent2>()
         where TEvent1 : class
         where TEvent2 : class
         => Is<TEvent1>(out _) ? Event
             : Is<TEvent2>(out _) ? Event
-            : throw Internal.Errors.NoEvent(Flow.GetType(), Flow.Step, typeof(TEvent1), typeof(TEvent2));
+            : throw Internal.Errors.NoEvent(Flow.GetType(), Flow.Step, Event.GetType(), typeof(TEvent1), typeof(TEvent2));
 
     public IFlowEvent Require<TEvent1, TEvent2, TEvent3>()
         where TEvent1 : class
@@ -32,7 +32,7 @@ public sealed class FlowEventBin(Flow flow, IFlowEvent @event)
         => Is<TEvent1>(out _) ? Event
             : Is<TEvent2>(out _) ? Event
             : Is<TEvent3>(out _) ? Event
-            : throw Internal.Errors.NoEvent(Flow.GetType(), Flow.Step, typeof(TEvent1), typeof(TEvent2), typeof(TEvent3));
+            : throw Internal.Errors.NoEvent(Flow.GetType(), Flow.Step, Event.GetType(), typeof(TEvent1), typeof(TEvent2), typeof(TEvent3));
 
     public bool Is<TEvent>([NotNullWhen(true)] out TEvent? @event)
         where TEvent : class
@@ -43,7 +43,7 @@ public sealed class FlowEventBin(Flow flow, IFlowEvent @event)
             return true;
         }
 
-        @event = default!;
+        @event = null;
         return false;
     }
 
