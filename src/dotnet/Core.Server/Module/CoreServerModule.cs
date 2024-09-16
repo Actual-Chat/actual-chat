@@ -28,8 +28,6 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
-        services.AddSingleton(c => new HostDisposeTracker(c.HostLifetimeIfExist()));
-
         // RPC host
         services.AddRpcHost(HostInfo, Log);
 

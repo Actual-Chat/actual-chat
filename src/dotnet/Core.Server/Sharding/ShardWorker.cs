@@ -26,7 +26,7 @@ public abstract class ShardWorker : WorkerBase
     public MomentClock Clock => ShardLocks.Clock;
 
     protected ShardWorker(IServiceProvider services, ShardScheme shardScheme, string? keyPrefix = null)
-        : base(services.HostDisposeTracker().NewCancellationTokenSource())
+        : base(services.HostLifetimeIfExist()?.ApplicationStopping.CreateLinkedTokenSource())
     {
         Services = services;
         ShardScheme = shardScheme;

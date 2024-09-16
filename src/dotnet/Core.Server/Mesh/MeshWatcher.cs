@@ -21,7 +21,7 @@ public sealed class MeshWatcher : WorkerBase
     public TimeSpan NodeTimeout { get; init; }
 
     public MeshWatcher(IServiceProvider services, bool mustStart = true)
-        : base(services.HostDisposeTracker().NewCancellationTokenSource())
+        : base(services.HostLifetimeIfExist()?.ApplicationStopping.CreateLinkedTokenSource())
     {
         Log = services.LogFor(GetType());
         OwnNode = services.GetRequiredService<MeshNode>();
