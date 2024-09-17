@@ -134,6 +134,9 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 .chat-message-markup {
     @apply text-02 text-base;
 }
+.chat-message-markup:has(.chat-message-sending-status) .plain-text-markup {
+    @apply mr-1;
+}
 
 .chat-message.mention .chat-message-markup {
     @apply ml-0;

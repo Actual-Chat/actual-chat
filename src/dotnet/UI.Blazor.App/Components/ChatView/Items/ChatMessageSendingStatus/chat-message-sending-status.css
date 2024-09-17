@@ -1,15 +1,15 @@
 .chat-message-sending-status {
-    @apply relative -top-0.5;
+    @apply relative bottom-1;
     @apply flex-none inline-flex flex-row items-center gap-x-0.5;
     @apply h-4;
-    @apply px-1 ml-1;
+    @apply px-1;
     @apply rounded-full;
     @apply overflow-hidden;
     @apply bg-hover;
     @apply text-xs text-primary;
 }
 .chat-message-sending-status.only-dot {
-    @apply self-end;
+    @apply absolute;
     @apply pl-0;
     @apply bg-transparent;
 }
