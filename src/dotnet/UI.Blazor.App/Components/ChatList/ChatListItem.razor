@@ -55,13 +55,18 @@
                                 @m.LastTextEntryText
                             </span>
                         }
-                            <div class="c-incut"></div>
-                            @if (hasButtons && !isListeningOrRecording) {
-                                <UnreadCount
-                                    Value="@m.UnreadCount"
-                                    NotificationMode="@m.NotificationMode"
-                                    HasMentions="m.HasUnreadMentions"/>
-                            }
+                        <div class="c-incut"></div>
+                        @if (hasButtons && !isListeningOrRecording) {
+                            <UnreadCount
+                                Value="@m.UnreadCount"
+                                NotificationMode="@m.NotificationMode"
+                                HasMentions="m.HasUnreadMentions"/>
+                        }
+                        @if (m.IsUnreadByOthers) {
+                            <ChatMessageSendingStatus
+                                Status="@ChatMessageSendingStatus.MessageStatus.Unread"
+                                IsDotOnly="@true"/>
+                        }
                     </div>
                 }
             </div>
@@ -117,12 +122,16 @@
 
     private ILogger? _log;
     private Model? _renderedModel;
+    private ChatEntryId _hasBeenReadEntryId;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private SearchUI SearchUI => Hub.SearchUI;
     private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
+    private IAuthors Authors => Hub.Authors;
+    private IChats Chats => Hub.Chats;
+    private Session Session => Hub.Session();
 
     private ILogger Log => _log ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
@@ -172,6 +181,8 @@
         var chatId = chat.Id;
         var isLastItemInBlock = IsLastItemInBlock;
         var isFirstItem = IsFirstItem;
+        var ownAuthor = chat.Rules.Author;
+        var ownAuthorId = ownAuthor?.Id ?? AuthorId.None;
         DebugLog?.LogDebug("-> ComputeState: {ListKind} #{ChatTitle}", listKind, chatTitle);
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
         if (chatState == null) {
@@ -179,6 +190,11 @@
             return Model.None;
         }
         DebugLog?.LogDebug("<- ComputeState: {ListKind} #{ChatTitle}, OK, ChatId={ChatId}", listKind, chatTitle, chatId);
+        var lastEntry = chatState.Info.LastTextEntry;
+        var isUnreadByOthers = false;
+        if (lastEntry != null) {
+            isUnreadByOthers = await IsUnreadByOthers(lastEntry, ownAuthorId, cancellationToken);
+        }
         return new() {
             ListKind = listKind,
             Chat = chatState.Chat,
@@ -187,11 +203,50 @@
             IsSelected = chatState.IsSelected,
             UnreadCount = chatState.Info.UnreadCount,
             HasUnreadMentions = chatState.Info.HasUnreadMentions,
-            LastTextEntry = chatState.Info.LastTextEntry,
+            LastTextEntry = lastEntry,
             LastTextEntryText = chatState.Info.LastTextEntryText,
             IsLastItemInBlock = isLastItemInBlock,
             IsFirstItem = isFirstItem,
+            IsUnreadByOthers = isUnreadByOthers,
         };
+    }
+
+    private async Task<bool> IsUnreadByOthers(ChatEntry entry, AuthorId ownAuthorId, CancellationToken cancellationToken) {
+        if (_hasBeenReadEntryId == entry.Id)
+            return false;
+
+        var isOwnMessage = !ownAuthorId.IsNone && ownAuthorId == entry.AuthorId;
+        if (!isOwnMessage)
+            return false;
+
+        if (!await ChatSupportsUnreadStatus(cancellationToken).ConfigureAwait(false))
+            return false;
+
+        var readPositionsStat = await Chats.GetReadPositionsStat(Session, entry.ChatId, cancellationToken).ConfigureAwait(false);
+        var canCalculateHasRead = readPositionsStat.CanCalculateHasReadByAnotherAuthor(entry);
+        // Do not show `Unread` label for old messages (before the feature was introduced)
+        // until we have at least more or less good enough read positions stat.
+        if (!canCalculateHasRead)
+            return false;
+
+        var hasBeenRead = readPositionsStat.HasReadByAnotherAuthor(entry, ownAuthorId);
+        if (hasBeenRead)
+            _hasBeenReadEntryId = entry.Id; // Remember that message has been read, so we don't need to recalculate it on next ComputeState cycle.
+        return !hasBeenRead;
+    }
+
+    private async Task<bool> ChatSupportsUnreadStatus(CancellationToken cancellationToken) {
+        // NOTE(DF): move this check to ChatContext to share among all message views.
+        // ChatContext and Chat can be considered as immutable and used from any thread.
+        var chat = Chat;
+        if (chat.HasSingleAuthor)
+            return false;
+
+        var authors = await Authors.ListAuthorIds(Session, chat.Id, cancellationToken).ConfigureAwait(false);
+        if (authors.Count < 2)
+            return false; // It seems the current user is the only member in the chat hence it has no sense to check unread status.
+
+        return true;
     }
 
     // Nested types
@@ -210,5 +265,6 @@
         public bool IsSelected { get; init; }
         public bool IsLastItemInBlock { get; init; }
         public bool IsFirstItem { get; init; }
+        public bool IsUnreadByOthers { get; init; }
     }
 }
