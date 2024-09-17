@@ -123,52 +123,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return sChatIds.Select(x => new ChatId(x)).Where(x => !x.IsPlaceRootChat).ToApiArray();
     }
 
-    // [ComputeMethod]
-    public virtual async Task<ApiArray<ChatId>> GetPrivateChatIdsForUser(UserId userId, PlaceId? placeId, CancellationToken cancellationToken)
-    {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        if (placeId is PlaceId placeIdValue) {
-            var idPrefix = PlaceChatId.IdPrefix + placeId.Value;
-
-            var placeChatIds = dbContext.Chats
-                .Where(c => c.Id.StartsWith(idPrefix)
-                    && !c.IsPublic && !c.IsArchived
-                    && dbContext.AuthorRoles.Any(ar =>
-                        dbContext.Authors.Any(a => a.ChatId == c.Id && a.UserId == userId && ar.DbAuthorId == a.Id)
-                        && dbContext.Roles.Any(r => r.ChatId == c.Id && r.CanRead && ar.DbRoleId == r.Id)
-                    ))
-                .Select(chat => chat.Id)
-                .OrderBy(chatId => chatId)
-                .AsAsyncEnumerable();
-
-            return await placeChatIds.Select(x => new ChatId(x)).ToApiArrayAsync(cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        var peerChats = dbContext.Chats
-            .Where(c => c.Kind == ChatKind.Peer
-                && !c.IsPublic && !c.IsArchived
-                && dbContext.Authors.Any(a => a.UserId == userId && a.ChatId == c.Id && !a.HasLeft));
-
-        var otherChats = dbContext.Chats
-            .Where(c => (c.Kind == ChatKind.Group || c.Kind == ChatKind.Place)
-                && !c.IsPublic && !c.IsArchived
-                && dbContext.AuthorRoles.Any(ar =>
-                    dbContext.Authors.Any(a => a.ChatId == c.Id && a.UserId == userId && ar.DbAuthorId == a.Id)
-                    && dbContext.Roles.Any(r => r.ChatId == c.Id && r.CanRead && ar.DbRoleId == r.Id)
-                ));
-
-        var chatIds = peerChats.Union(otherChats)
-            .Select(chat => chat.Id)
-            .OrderBy(chatId => chatId)
-            .AsAsyncEnumerable();
-
-        return await chatIds.Select(x => new ChatId(x)).ToApiArrayAsync(cancellationToken)
-            .ConfigureAwait(false);
-    }
-
     // Non-compute methods
     public virtual async Task<ApiArray<ChatId>> ListPlaceChatIds(PlaceId placeId, CancellationToken cancellationToken)
     {

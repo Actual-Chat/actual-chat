@@ -1,5 +1,6 @@
 
 using ActualChat.Chat;
+using ActualChat.Contacts;
 using ActualChat.MLSearch.Documents;
 
 namespace ActualChat.MLSearch.Engine;
@@ -11,7 +12,7 @@ public interface IFilters
     ValueTask<IQueryFilter> Chat(Func<ChatSet, ChatSet> setBuilder, CancellationToken cancellationToken = default);
 }
 
-internal sealed class Filters(IChatsBackend chats) : IFilters
+internal sealed class Filters(IContactsBackend contacts) : IFilters
 {
     public ValueTask<IQueryFilter> Semantic(string text, CancellationToken cancellationToken = default)
         => ValueTask.FromResult<IQueryFilter>(new SemanticFilter<ChatSlice>(text));
@@ -23,7 +24,7 @@ internal sealed class Filters(IChatsBackend chats) : IFilters
     {
         var chatSet = setBuilder.Invoke(new EmptyChatSet());
 
-        var builder = new ChatFilterBuilder(chats);
+        var builder = new ChatFilterBuilder(contacts);
         while (chatSet is not null) {
             await chatSet.Apply(builder, cancellationToken).ConfigureAwait(false);
             chatSet = chatSet.Next;
@@ -32,7 +33,7 @@ internal sealed class Filters(IChatsBackend chats) : IFilters
     }
 }
 
-internal sealed class ChatFilterBuilder(IChatsBackend chats)
+internal sealed class ChatFilterBuilder(IContactsBackend contacts)
 {
     public ChatFilter ChatFilter { get; } = new ChatFilter();
 
@@ -49,8 +50,8 @@ internal sealed class ChatFilterBuilder(IChatsBackend chats)
 
     internal async ValueTask IncludePrivate(UserId userId, PlaceId? placeId, CancellationToken cancellationToken)
     {
-        var privateChatIds = await chats.GetPrivateChatIdsForUser(userId, placeId, cancellationToken).ConfigureAwait(false);
-        ChatFilter.ChatIds.UnionWith(privateChatIds);
+        var privateContacts = await contacts.ListIdsForSearch(userId, placeId, cancellationToken).ConfigureAwait(false);
+        ChatFilter.ChatIds.UnionWith(privateContacts.Select(c => c.ChatId));
     }
 
     internal ValueTask ExcludeChats(IEnumerable<ChatId> exclusions)
