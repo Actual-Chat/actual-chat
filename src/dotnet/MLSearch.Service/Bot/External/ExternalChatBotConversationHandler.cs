@@ -25,6 +25,7 @@ public sealed class ExternalChatbotSettings {
 **/
 internal class ExternalChatBotConversationHandler(
     IOptions<ExternalChatbotSettings> settings,
+    IAuthorsBackend authors,
     IBotToolsContextHandler botToolsContextHandler,
     IHttpClientFactory httpClientFactory)
     : IBotConversationHandler, IComputeService
@@ -46,9 +47,15 @@ internal class ExternalChatBotConversationHandler(
             return;
 
         var chatId = lastUpdatedDocument.ChatId;
-        AuthorId botId = new(chatId, Constants.User.Sherlock.AuthorLocalId, AssumeValid.Option);
-        if (lastUpdatedDocument.AuthorId == botId)
+        var authorId = lastUpdatedDocument.AuthorId;
+        var botId = new AuthorId(chatId, Constants.User.Sherlock.AuthorLocalId, AssumeValid.Option);
+        if (authorId == botId)
             return;
+
+        var author = await authors
+            .Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+            .ConfigureAwait(false);
+        var userId = author!.UserId;
 
         if (lastUpdatedDocument.Kind != ChatEntryKind.Text)
             // Can't react on anything besides text yet.
@@ -68,7 +75,7 @@ internal class ExternalChatBotConversationHandler(
                 input = lastUpdatedDocument.Content,
             }),
         };
-        botToolsContextHandler.SetContext(requestMessage, conversationId: chatId);
+        botToolsContextHandler.SetContext(requestMessage, conversationId: chatId, userId: userId);
         var response = await client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
         var resultContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         // Note: not expecting anything from the bot here. Might be worth logging.

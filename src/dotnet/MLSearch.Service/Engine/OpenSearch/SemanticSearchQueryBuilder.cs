@@ -12,6 +12,7 @@ internal sealed class SemanticSearchQueryBuilder(
 
     private readonly string ChatIdFieldName = $"{namingPolicy.ConvertName(nameof(ChatSlice.Metadata))}.{namingPolicy.ConvertName(nameof(ChatSliceMetadata.ChatId))}";
     private readonly string PlaceIdFieldName = $"{namingPolicy.ConvertName(nameof(ChatSlice.Metadata))}.{namingPolicy.ConvertName(nameof(ChatSliceMetadata.PlaceId))}";
+    private readonly Field NonExistentField = new("NON_EXISTING_FIELD");
 
     private List<QueryContainer> _queryFilters = [];
     private readonly List<QueryContainer> _queries = [];
@@ -241,7 +242,12 @@ internal sealed class SemanticSearchQueryBuilder(
             );
         }
 
-        if (chatQueryFilters.Count == 1) {
+        if (chatQueryFilters.Count == 0) {
+            // Add filter that never evaluates to true
+            _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
+                .Exists(q => q.Field(NonExistentField)));
+        }
+        else if (chatQueryFilters.Count == 1) {
             _queryFilters.AddRange(chatQueryFilters);
         }
         else {

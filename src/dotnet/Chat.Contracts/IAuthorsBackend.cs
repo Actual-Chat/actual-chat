@@ -12,8 +12,6 @@ public interface IAuthorsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ApiArray<AuthorId>> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<AuthorId>> ListOwnerAuthorIds(ChatId chatId, CancellationToken cancellationToken);
-    [ComputeMethod]
     Task<ApiArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken);
 
     // Not a [ComputeMethod]!
@@ -23,7 +21,6 @@ public interface IAuthorsBackend : IComputeService, IBackendService
         AuthorId lastId,
         int limit,
         CancellationToken cancellationToken);
-
 
     // Commands
 

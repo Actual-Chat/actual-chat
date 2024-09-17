@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Bot.Tools.Context;
-using ActualChat.Chat;
 
 namespace ActualChat.MLSearch.Bot.Tools;
 
@@ -11,7 +10,6 @@ namespace ActualChat.MLSearch.Bot.Tools;
 [Route("api/bot/search")]
 [Produces("application/json")]
 public sealed class SearchToolsController(
-    IAuthorsBackend authors,
     IFilters filters,
     ISearchEngine<ChatSlice> searchEngine,
     IBotToolsContextHandler botToolsContext) : ControllerBase
@@ -81,22 +79,14 @@ public sealed class SearchToolsController(
     public async Task<ActionResult<List<RankedDocument<ChatSlice>>>> PrivateChatsText([FromBody]SearchQueryRequest search, CancellationToken cancellationToken)
     {
         var context = botToolsContext.GetContext(Request);
-        if (!context.IsValid || (context.ConversationId is var conversationId && string.IsNullOrEmpty(conversationId))) {
+        if (!context.IsValid
+            || (context.ConversationId is var conversationId && string.IsNullOrEmpty(conversationId))
+            || (context.UserId is var contextUserId && string.IsNullOrEmpty(contextUserId))) {
             throw new UnauthorizedAccessException();
         }
-        if (!ChatId.TryParse(conversationId, out var chatId)) {
+        if (!ChatId.TryParse(conversationId, out var chatId) || !UserId.TryParse(contextUserId, out var userId)) {
             throw new InvalidOperationException("Malformed conversation id detected.");
         }
-
-        var ownerAuthorIds = await authors.ListOwnerAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-        var ownerAuthorId = ownerAuthorIds.OrderBy(authorId => authorId.LocalId).FirstOrDefault(AuthorId.None);
-        if (ownerAuthorId.IsNone) {
-            throw new InvalidOperationException("No owner author found for the search chat.");
-        }
-        var ownerAuthor = await authors
-            .Get(chatId, ownerAuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
-            .ConfigureAwait(false);
-        var ownerAuthorUserId = ownerAuthor!.UserId;
 
         var limit = search.Limit;
         // Add limit constraints.
@@ -111,7 +101,7 @@ public sealed class SearchToolsController(
                 await filters.Semantic(search.Text, cancellationToken).ConfigureAwait(false),
                 await filters.Keyword(search.Text, cancellationToken).ConfigureAwait(false),
                 await filters.Chat(
-                    chats => chats.Private(ownerAuthorUserId).Exclude([chatId]),
+                    chats => chats.Private(userId).Exclude([chatId]),
                     cancellationToken
                 ).ConfigureAwait(false),
             ],

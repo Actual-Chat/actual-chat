@@ -102,21 +102,6 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<AuthorId>> ListOwnerAuthorIds(ChatId chatId, CancellationToken cancellationToken)
-    {
-        if (chatId.IsNone || chatId.IsPlaceChat)
-            return default;
-
-        var ownerAuthors = chatId.IsPeerChat(out var peerChatId)
-            ? GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id)
-            // Group chat
-            : await ListOwnerAuthorIdsInternal(chatId, cancellationToken).ConfigureAwait(false);
-
-        var searchBotId = Bots.GetMLSearchBotId(chatId);
-        return ownerAuthors.Where(a => a.Id != searchBotId).ToApiArray();
-    }
-
-    // [ComputeMethod]
     public virtual async Task<ApiArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNone)
@@ -166,6 +151,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     public virtual async Task<AuthorFull> OnUpsert(AuthorsBackend_Upsert command, CancellationToken cancellationToken)
     {
         var (chatId, authorId, userId, expectedVersion, diff, doNotNotify) = command;
+
         if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
         if (!authorId.IsNone && authorId.ChatId != chatId)
