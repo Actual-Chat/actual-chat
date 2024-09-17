@@ -60,7 +60,7 @@ internal sealed class ClusterSetup(
         var numberOfReplicas = openSearchSettings.Value.DefaultNumberOfReplicas;
 
         var (templateName, pattern) = (OpenSearchNames.MLTemplateName, OpenSearchNames.MLIndexPattern);
-        var ingestPipelineName = openSearchNames.GetFullIngestPipelineName(OpenSearchNames.ChatContent, embeddingModelProps);
+        var ingestPipelineName = openSearchNames.GetIngestPipelineName(OpenSearchNames.ChatContent, embeddingModelProps);
         var indexShortNames = new[] { OpenSearchNames.ChatContent, OpenSearchNames.ChatContentCursor, OpenSearchNames.ChatCursor };
 
         var isTemplateValid = await actions.IsTemplateValidAsync(templateName, pattern, numberOfReplicas, cancellationToken)
@@ -69,7 +69,7 @@ internal sealed class ClusterSetup(
             .ConfigureAwait(false);
         var isAllIndexesExist = true;
         foreach (var name in indexShortNames) {
-            var fullIndexName = openSearchNames.GetFullName(name, embeddingModelProps);
+            var fullIndexName = openSearchNames.GetIndexName(name, embeddingModelProps);
             isAllIndexesExist &= await actions.IsIndexExistsAsync(fullIndexName, cancellationToken).ConfigureAwait(false);
         }
         return isTemplateValid && isIngestPipelineExists && isAllIndexesExist;
@@ -103,11 +103,11 @@ internal sealed class ClusterSetup(
         // It has to succeed once and only once to set up an OpenSearch cluster.
         // After the initial setup this would never be called again.
         using var _1 = _tracer.Region();
-        var contentIndexName = openSearchNames.GetFullName(OpenSearchNames.ChatContent, embeddingModelProps);
-        var contentCursorIndexName = openSearchNames.GetFullName(OpenSearchNames.ChatContentCursor, embeddingModelProps);
-        var chatsCursorIndexName = openSearchNames.GetFullName(OpenSearchNames.ChatCursor, embeddingModelProps);
+        var contentIndexName = openSearchNames.GetIndexName(OpenSearchNames.ChatContent, embeddingModelProps);
+        var contentCursorIndexName = openSearchNames.GetIndexName(OpenSearchNames.ChatContentCursor, embeddingModelProps);
+        var chatsCursorIndexName = openSearchNames.GetIndexName(OpenSearchNames.ChatCursor, embeddingModelProps);
 
-        var ingestPipelineName = openSearchNames.GetFullIngestPipelineName(OpenSearchNames.ChatContent, embeddingModelProps);
+        var ingestPipelineName = openSearchNames.GetIngestPipelineName(OpenSearchNames.ChatContent, embeddingModelProps);
 
         var modelId = embeddingModelProps.Id;
 

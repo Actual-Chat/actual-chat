@@ -68,7 +68,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             ), Times.Once());
 
         // Check if initializer verifies existence of all needed ingestion pipelines
-        var pipelineName = _openSearchNames.GetFullIngestPipelineName(OpenSearchNames.ChatContent, _setupResult.EmbeddingModelProps);
+        var pipelineName = _openSearchNames.GetIngestPipelineName(OpenSearchNames.ChatContent, _setupResult.EmbeddingModelProps);
         setupActions.Verify(actions => actions.IsPipelineExistsAsync(
                 It.Is<string>(name => name == pipelineName),
                 It.Is<CancellationToken>(t => t == cancellationSource.Token)
@@ -77,7 +77,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
         // Check if initializer verifies existence of all needed indexes
         var indexShortNames = new[] { OpenSearchNames.ChatContent, OpenSearchNames.ChatContentCursor, OpenSearchNames.ChatCursor };
         var indexNames = indexShortNames
-            .Select(name => _openSearchNames.GetFullName(name, _setupResult.EmbeddingModelProps));
+            .Select(name => _openSearchNames.GetIndexName(name, _setupResult.EmbeddingModelProps));
         foreach (var indexName in indexNames) {
             setupActions.Verify(actions => actions.IsIndexExistsAsync(
                     It.Is<string>(name => name == indexName),
@@ -234,7 +234,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
                 It.IsAny<CancellationToken>()
             ))
             .Returns<string, CancellationToken>((name, _)
-                => Task.FromResult(!isPipeline || name!=_openSearchNames.GetFullIngestPipelineName(shortName, modelProps)))
+                => Task.FromResult(!isPipeline || name!=_openSearchNames.GetIngestPipelineName(shortName, modelProps)))
             .Verifiable();
 
         setupActions
@@ -243,7 +243,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
                 It.IsAny<CancellationToken>()
             ))
             .Returns<string, CancellationToken>((name, _)
-                => Task.FromResult(!isIndex || name!=_openSearchNames.GetFullName(shortName, modelProps)))
+                => Task.FromResult(!isIndex || name!=_openSearchNames.GetIndexName(shortName, modelProps)))
             .Verifiable();
         return setupActions;
     }

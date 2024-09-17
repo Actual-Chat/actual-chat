@@ -12,7 +12,7 @@ internal sealed class PlainIndexSettingsFactory(OpenSearchNames openSearchNames,
         ArgumentException.ThrowIfNullOrEmpty(name);
 
         var setupResult = clusterSetup.Result;
-        var indexName = openSearchNames.GetFullName(name, setupResult.EmbeddingModelProps);
+        var indexName = openSearchNames.GetIndexName(name, setupResult.EmbeddingModelProps);
         return new PlainIndexSettings(indexName);
     }
 }
