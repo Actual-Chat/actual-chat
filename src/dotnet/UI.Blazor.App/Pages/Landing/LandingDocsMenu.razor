@@ -35,11 +35,16 @@
         Text="Go to Chats"
         Click="@(_ => NavigateTo(Links.Chats))">
     </MenuEntry>
-    <MenuEntry
-        Icon="icon-question-mark-circle"
-        Text="Support"
-        Click="@(_ => NavigateTo("mailto:support@actual.chat"))">
-    </MenuEntry>
+    <a class="ac-menu-item" href="mailto:support@actual.chat" target="_blank">
+        <div class="ac-menu-content">
+            <div class="ac-menu-icon">
+                <i class="icon-question-mark-circle"></i>
+            </div>
+            <div class="ac-menu-text">
+                Support
+            </div>
+        </div>
+    </a>
     <MenuEntry
         Icon="icon-log-out"
         Text="Sign out"
