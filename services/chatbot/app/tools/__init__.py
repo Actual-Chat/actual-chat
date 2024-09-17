@@ -15,12 +15,62 @@ class _Tools(object):
     REPLY = None
     FORWARD_CHAT_LINKS = None
     SEARCH_PUBLIC_CHATS = None
+    LIST_CHATS = None
+    READ_CHAT_LAST_MESSAGES = None
 
     @classmethod
     def init(cls, *, base_url):
         cls.REPLY = base_url + "/api/bot/conversation/reply"
         cls.FORWARD_CHAT_LINKS = base_url + "/api/bot/conversation/forward-chat-links"
         cls.SEARCH_PUBLIC_CHATS = base_url + "/api/bot/search/public-chats"
+        cls.LIST_CHATS = base_url + "/api/bot/chat/list"
+        cls.READ_CHAT_LAST_MESSAGES = base_url + "/api/bot/chat/read-last-messages"
+
+@tool(parse_docstring=True)
+def list_my_chats(
+    config: RunnableConfig
+) -> List[Any]:
+    """Lists chats this bot can have access to.
+    This tool is used together with read_chat tool to read chat updates in real time.
+
+    Args:
+
+    Returns:
+        List: chat identifiers
+    """
+    results = _post(
+        _Tools.LIST_CHATS,
+        {},
+        config
+    )
+
+    return results
+
+@tool(parse_docstring=True)
+def read_chat(
+    chat_id: str,
+    limit_messages_count: int,
+    config: RunnableConfig
+) -> List[Any]:
+    """Reads last messages in a chat.
+
+    Args:
+        chat_id: chat identifier.
+        limit_messages_count: limits the number of messages returned.
+
+    Returns:
+        List: Messages in the chat.
+    """
+    results = _post(
+        _Tools.READ_CHAT_LAST_MESSAGES,
+        {
+            "ChatId": chat_id,
+            "Limit": limit_messages_count
+        },
+        config
+    )
+
+    return results
 
 @tool(parse_docstring=True)
 def reply(
@@ -177,5 +227,7 @@ def all():
     return [
         reply,
         search_in_public_chats,
-        forward_search_results
+        forward_search_results,
+        list_my_chats,
+        read_chat
     ]

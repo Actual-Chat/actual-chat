@@ -50,6 +50,9 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task<long?> GetMaxEntryVersion(ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
+    Task<ApiArray<ChatId>> ListChatIdsForUser(UserId userId, PlaceId? placeId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
     Task<ApiArray<ChatId>> GetPublicChatIdsFor(
         PlaceId placeId,
         CancellationToken cancellationToken);
