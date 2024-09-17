@@ -18,7 +18,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
     {
         Shard = shard;
         FlowId = flowId;
-        var flowType = Host.Registry.Types[flowId.Name];
+        var flowType = Host.Registry.TypeByName[flowId.Name];
         Log = Host.Services.LogFor(flowType);
 
         Queue = Channel.CreateUnbounded<QueueEntry>(new() {
@@ -134,7 +134,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
                 if (transition.HardResumeAt.HasValue)
                     break; // Transition implies waiting for event
 
-                evt = new FlowResumeEvent(flow.Id);
+                evt = new FlowResumeEvent(flow.Id, false, transition.Tag);
             }
             entry.ResultSource.TrySetResult(flow.Version);
         }

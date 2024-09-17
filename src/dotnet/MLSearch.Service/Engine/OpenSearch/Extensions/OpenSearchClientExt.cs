@@ -77,10 +77,11 @@ internal static class OpenSearchClientExt
     where T: ILogger
     {
         foreach (var issue in response.ItemsWithErrors) {
+            // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
             log.LogTrace(issue.ToString());
         }
         if (response.OriginalException is { } exc) {
-            log.LogError(exc, "Failed to perform OpenSearch operation");
+            log.LogError(exc, "OpenSearch operation failed");
         }
         return log;
     }
@@ -116,11 +117,7 @@ internal static class OpenSearchClientExt
             ? responseBase.DebugInformation
             : apiCall?.DebugInformation ?? "Unknown reason";
 
-        throw StandardError.External(
-            $"OpenSearch request failed: {debugInformation}."
-                .TrimSuffix(":", ".")
-                .EnsureSuffix(".")
-        );
+        throw StandardError.External($"OpenSearch request failed: {debugInformation}");
     }
 
     public static async Task<string> ToJsonAsync<TRequest>(
@@ -150,27 +147,23 @@ internal static class OpenSearchClientExt
         // response received
         var error = response.ServerError;
         if (error != null)
-            throw StandardError.External($"OpenSearch request failed: {error.Error.Reason}.".TrimSuffix(":", ".")
-                .EnsureSuffix("."));
+            throw StandardError.External($"OpenSearch request failed: {error.Error.Reason}");
 
         log ??= StaticLog.For(typeof(OpenSearchClientExt));
         if (response is BulkResponse { IsValid: false } bulkResponse && bulkResponse.ItemsWithErrors.Count() is var failureCount and > 0) {
             var firstFailed = bulkResponse.ItemsWithErrors.FirstOrDefault();
             var firstFailedReason = firstFailed?.Error?.Reason ?? "N/A";
             log.LogError("OpenSearch Bulk request failed: {ItemsFailed}, {FailureReason}", failureCount, firstFailedReason);
-            throw StandardError.External($"OpenSearch bulk request failed for {failureCount} items: {firstFailedReason}."
-                .TrimSuffix(":", ".")
-                .Trim()
-                .EnsureSuffix("."));
+            throw StandardError.External(
+                $"OpenSearch bulk request failed for {failureCount} item(s): {firstFailedReason}");
         }
 
         // request sending failed
         if (response.ApiCall.OriginalException is { } exc) {
-            log.LogError(exc, "Failed to perform OpenSearch operation");
+            log.LogError(exc, "OpenSearch operation failed");
             throw StandardError.External($"OpenSearch request failed: {exc.Message}");
         }
-
-        throw StandardError.External("OpenSearch request failed");
+        throw StandardError.External("OpenSearch request failed.");
     }
 
     public static SearchDescriptor<T> Log<T>(this SearchDescriptor<T> descriptor, IOpenSearchClient client, ILogger? log, string description = "") where T : class

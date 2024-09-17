@@ -17,6 +17,8 @@ namespace ActualChat.Flows;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct FlowId : ISymbolIdentifier<FlowId>
 {
+    public static readonly ListFormat ArgumentListFormat = ListFormat.CommaSeparated;
+
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<FlowId>();
 
@@ -65,6 +67,24 @@ public readonly partial struct FlowId : ISymbolIdentifier<FlowId>
         Id = id;
         Name = name;
         Arguments = arguments;
+    }
+
+    // Arguments helpers
+
+    public static string CombineArguments(params ReadOnlySpan<string> arguments)
+        => arguments.Length == 0 ? ""
+            : ArgumentListFormat.Format(arguments);
+
+    public List<string> SplitArguments()
+        => ArgumentListFormat.Parse(Arguments);
+
+    public List<string> SplitArguments(params ReadOnlySpan<string> defaults)
+    {
+        var args = new List<string>(defaults.Length);
+        ArgumentListFormat.Parse(Arguments, args);
+        for (var i = args.Count; i < defaults.Length; i++)
+            args.Add(defaults[i]);
+        return args;
     }
 
     // Conversion

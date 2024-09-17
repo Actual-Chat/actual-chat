@@ -10,6 +10,9 @@ public sealed partial record FlowResetEvent(
     [property: DataMember(Order = 10), MemoryPackOrder(10)] string? Tag = null
 ) : IFlowControlEvent
 {
+    public override string ToString()
+        => $"{nameof(FlowResetEvent)}(`{FlowId}`{(Tag != null ? $", '{Tag}'" : "")})";
+
     public Symbol GetNextStep(Flow flow)
         => FlowSteps.OnReset;
 }

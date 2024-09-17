@@ -124,16 +124,16 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
 
     // Transition helpers
 
-    protected FlowTransition WaitForEvent(Symbol nextStep, TimeSpan hardResumeDelay)
+    protected FlowTransition WaitForEvent(Symbol nextStep, TimeSpan hardResumeDelay, string? tag = null)
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(hardResumeDelay, TimeSpan.Zero);
 
         var hardResumeAt = Clocks.SystemClock.Now + hardResumeDelay;
-        return new(this, nextStep, hardResumeAt) { MustStore = true };
+        return new(this, nextStep, tag, hardResumeAt) { MustStore = true };
     }
 
-    protected FlowTransition WaitForEvent(Symbol nextStep, Moment hardResumeAt)
-        => new(this, nextStep, hardResumeAt) { MustStore = true };
+    protected FlowTransition WaitForEvent(Symbol nextStep, Moment hardResumeAt, string? tag = null)
+        => new(this, nextStep, tag, hardResumeAt) { MustStore = true };
 
     protected FlowTransition WaitForTimer(Symbol nextStep, TimeSpan delay, string? tag = null)
     {
@@ -142,7 +142,7 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
 
         var resumeAt = Clocks.SystemClock.Now + delay;
         var timerEvent = new OperationEvent(resumeAt, new FlowTimerEvent(Id, tag));
-        return new(this, nextStep, resumeAt, timerEvent);
+        return new(this, nextStep, tag, resumeAt, timerEvent);
     }
 
     protected FlowTransition WaitForTimer(Symbol nextStep, Moment resumeAt, string? tag = null)
@@ -153,21 +153,21 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
             return StoreAndResume(nextStep);
 
         var timerEvent = new OperationEvent(resumeAt, new FlowTimerEvent(Id, tag));
-        return new(this, nextStep, resumeAt, timerEvent);
+        return new(this, nextStep, tag, resumeAt, timerEvent);
     }
 
-    protected FlowTransition StoreAndResume(Symbol nextStep)
-        => new(this, nextStep) { MustStore = true };
+    protected FlowTransition StoreAndResume(Symbol nextStep, string? tag = null)
+        => new(this, nextStep, tag) { MustStore = true };
 
-    protected FlowTransition Resume(Symbol nextStep)
-        => new(this, nextStep);
+    protected FlowTransition Resume(Symbol nextStep, string? tag = null)
+        => new(this, nextStep, tag);
 
-    protected FlowTransition End()
+    protected FlowTransition End(string? tag = null)
     {
         var nextStep = Step == FlowSteps.OnEnd
             ? FlowSteps.OnEnd
             : FlowSteps.OnEnding;
-        return StoreAndResume(nextStep);
+        return StoreAndResume(nextStep, tag);
     }
 
     // Other protected methods

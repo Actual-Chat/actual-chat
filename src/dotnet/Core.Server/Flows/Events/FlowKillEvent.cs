@@ -10,6 +10,9 @@ public sealed partial record FlowKillEvent(
     [property: DataMember(Order = 10), MemoryPackOrder(10)] string? Tag = null
 ) : IFlowControlEvent
 {
+    public override string ToString()
+        => $"{nameof(FlowKillEvent)}(`{FlowId}`{(Tag != null ? $", '{Tag}'" : "")})";
+
     public Symbol GetNextStep(Flow flow)
         => flow.Step != FlowSteps.OnEnding && flow.Step != FlowSteps.OnEnd
             ? FlowSteps.OnEnding

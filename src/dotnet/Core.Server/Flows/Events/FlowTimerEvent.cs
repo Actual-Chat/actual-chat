@@ -7,4 +7,8 @@ namespace ActualChat.Flows;
 public partial record FlowTimerEvent(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] FlowId FlowId,
     [property: DataMember(Order = 10), MemoryPackOrder(10)] string? Tag = null
-) : IFlowEvent;
+) : IFlowEvent
+{
+    public override string ToString()
+        => $"{nameof(FlowTimerEvent)}(`{FlowId}`{(Tag != null ? $", '{Tag}'" : "")})";
+}

@@ -11,15 +11,18 @@ public partial class TimerFlow : Flow
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public int RemainingCount { get; private set; }
+    [DataMember(Order = 1), MemoryPackOrder(1)]
+    public double Period { get; private set; }
 
     protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
     {
-        var sRemainingCount = Id.Arguments.Split(':', 2).ElementAtOrDefault(1) ?? "1";
-        RemainingCount = int.Parse(sRemainingCount, CultureInfo.InvariantCulture);
+        var args = Id.SplitArguments("", "1", "1");
+        RemainingCount = int.Parse(args[1], CultureInfo.InvariantCulture);
+        Period = double.Parse(args[2], CultureInfo.InvariantCulture);
 
         var output = Host.Services.GetRequiredService<ITestOutputHelper>();
         output.WriteLine($"`{Id}`.{nameof(OnReset)}: {RemainingCount}");
-        return WaitForTimer(nameof(OnTimer), TimeSpan.FromSeconds(3));
+        return WaitForTimer(nameof(OnTimer), TimeSpan.FromSeconds(Period));
     }
 
     protected async Task<FlowTransition> OnTimer(CancellationToken cancellationToken)
@@ -28,8 +31,8 @@ public partial class TimerFlow : Flow
         var output = Host.Services.GetRequiredService<ITestOutputHelper>();
         output.WriteLine($"`{Id}`.{nameof(OnTimer)}: {RemainingCount--}");
         return RemainingCount > 0
-            ? WaitForTimer(nameof(OnTimer), TimeSpan.FromSeconds(3))
-            : End();
+            ? WaitForTimer(nameof(OnTimer), TimeSpan.FromSeconds(Period))
+            : End($"{nameof(RemainingCount)} is 0");
     }
 
     protected override ValueTask ApplyTransition(

@@ -1,5 +1,6 @@
 using ActualChat.Flows.Db;
 using ActualChat.Flows.Infrastructure;
+using ActualLab.Diagnostics;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Interception;
 using ActualLab.IO;
@@ -15,6 +16,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
     protected FlowHost Host { get; } = services.GetRequiredService<FlowHost>();
     protected IDbEntityResolver<string, DbFlow> EntityResolver { get; } = services.DbEntityResolver<string, DbFlow>();
     protected IByteSerializer Serializer { get; init; } = TypeDecoratingByteSerializer.Default;
+    protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
     public IRetryPolicy GetOrStartRetryPolicy { get; init; } = new RetryPolicy(3, RetryDelaySeq.Exp(0.25, 1));
 
@@ -33,7 +35,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
     // Regular method!
     public virtual Task<Flow> GetOrStart(FlowId flowId, CancellationToken cancellationToken = default)
     {
-        var flowType = Registry.Types[flowId.Name];
+        var flowType = Registry.TypeByName[flowId.Name];
         Flow.RequireCorrectType(flowType);
 
         var retryLogger = new RetryLogger(Log);
