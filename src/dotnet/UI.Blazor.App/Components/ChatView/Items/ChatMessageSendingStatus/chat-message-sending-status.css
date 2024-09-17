@@ -21,3 +21,12 @@
     @apply rounded-full;
     @apply bg-primary;
 }
+.navbar-item .chat-message-sending-status {
+    @apply absolute bottom-1 right-4 top-auto;
+}
+.navbar-item .chat-message-sending-status .sending-circle {
+    @apply w-1.5 h-1.5;
+}
+body.hoverable .navbar-item:hover .chat-message-sending-status .sending-circle {
+    @apply hidden;
+}

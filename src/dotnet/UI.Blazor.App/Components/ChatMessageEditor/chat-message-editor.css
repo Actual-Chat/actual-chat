@@ -452,7 +452,7 @@ body.narrow .chat-message-editor:has(.related-chat-entry-panel) {
     @apply landscape:mt-16;
 }
 body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rounded-sub-footer {
-    @apply landscape:top-0;
+    @apply landscape:-top-20;
 }
 .related-chat-entry-panel {
     @apply flex-x;

@@ -69,6 +69,15 @@ export class MenuHost implements Disposable {
                     this.hide();
                 }
             });
+        window.screen.orientation.addEventListener('change', (event) => {
+            if (!this.menu)
+                return;
+            let menuRef = this.menu.menuRef;
+            let triggerElement = this.menu.triggerElement;
+            let isHover = this.menu.isHoverMenu;
+            const menu = this.create(menuRef, isHover, triggerElement, null, null);
+            void this.position(this.menu, menu);
+        });
     }
 
     public dispose(): void {
@@ -249,9 +258,24 @@ export class MenuHost implements Disposable {
                 placement: menu.placement ?? 'top',
                 middleware: middleware,
             });
+
+        let top = `${y}px`;
+        if (!this.isDesktopMode) {
+            const orientation = window.screen.orientation.type;
+            if (orientation == 'landscape-primary' || orientation == 'landscape-secondary') {
+                if (menuElement) {
+                    const menuElementBottom = menuElement.getBoundingClientRect().bottom;
+                    const heightDelta = window.screen.availHeight - menuElementBottom;
+                    top = `${y < 20 || heightDelta < 20 ? 20 : y}px`;
+                }
+            } else {
+                top = 'auto';
+            }
+        }
+
         Object.assign(menuElement.style, {
             left: `${x}px`,
-            top: `${y}px`,
+            top: top,
         });
     }
 

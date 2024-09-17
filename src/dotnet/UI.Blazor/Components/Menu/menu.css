@@ -30,8 +30,9 @@ body.wide .ac-menu {
     @apply shadow-modal-wide;
 }
 body.narrow .ac-menu {
-    @apply !left-4 !top-auto right-4 bottom-10;
+    @apply !left-4 right-4 bottom-10;
     @apply p-3;
+    @apply overflow-hidden;
     @apply shadow-modal-narrow;
 }
 
@@ -62,6 +63,12 @@ body.narrow .ac-menu {
 
 /* Item list */
 .ac-menu-list {
+    @apply h-full;
+}
+.ac-menu-list > div {
+    @apply h-full;
+    @apply overflow-auto;
+    @apply custom-scrollbar;
 }
 .ac-menu-item {
     @apply flex-1 flex-x;
