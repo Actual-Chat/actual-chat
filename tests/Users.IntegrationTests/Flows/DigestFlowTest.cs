@@ -33,8 +33,14 @@ public class DigestFlowTest(ITestOutputHelper @out)
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
 
         var userId = UserId.Parse("actual-admin");
-        var account = await accountsBackend.Get(userId, default);
-        var updateCmd = new AccountsBackend_Update(account! with { TimeZone = "America/New_York" }, null);
+        var account = await accountsBackend.Get(userId, default).Require();
+        var updateCmd = new AccountsBackend_Update(
+            account with {
+                TimeZone = "America/New_York",
+                Email = "admin@actual.chat",
+                IsEmailVerified = true,
+            },
+            null);
         await commander.Call(updateCmd, true);
 
         await ComputedTest.When(async ct => {
@@ -55,7 +61,13 @@ public class DigestFlowTest(ITestOutputHelper @out)
 
         var userId = UserId.Parse("actual-admin");
         var account = await accountsBackend.Get(userId, default).Require();
-        var updateCmd = new AccountsBackend_Update(account with { TimeZone = "America/New_York" }, null);
+        var updateCmd = new AccountsBackend_Update(
+            account with {
+                TimeZone = "America/New_York",
+                Email = "admin@actual.chat",
+                IsEmailVerified = true,
+            },
+            null);
         await commander.Call(updateCmd, true);
 
         await ComputedTest.When(async ct => {
@@ -87,12 +99,17 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await kvas.SetUserEmailsSettings(
             userEmailsSettings with {
                 DigestTime = DateTime.Now.TimeOfDay.Add(new TimeSpan(0, 0, 10)),
+
             },
             default);
         var account = await accountsBackend.Get(userId, default).Require();
-        var updateCmd = new AccountsBackend_Update(account with {
-            TimeZone = TimeZoneInfo.Local.Id,
-        }, null);
+        var updateCmd = new AccountsBackend_Update(
+            account with {
+                TimeZone = TimeZoneInfo.Local.Id,
+                Email = "admin@actual.chat",
+                IsEmailVerified = true,
+            },
+            null);
         await commander.Call(updateCmd, true);
 
         await ComputedTest.When(async ct => {
