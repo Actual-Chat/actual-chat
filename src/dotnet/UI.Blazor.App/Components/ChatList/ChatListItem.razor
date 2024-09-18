@@ -84,10 +84,10 @@
                 HasMentions="@m.HasUnreadMentions"/>
             @if (hasButtons) {
                 @if (audioState.IsRecording) {
-                    <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="blackout"/>
+                    <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="blackout ending-btn"/>
                 }
                 <div class="listen-wrapper">
-                    <ChatListListenToggle AudioState="@audioState" Class="blackout"/>
+                    <ChatListListenToggle AudioState="@audioState" Class="blackout ending-btn"/>
                 </div>
             }
             @if (hasMenu) {

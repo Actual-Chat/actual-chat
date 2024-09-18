@@ -74,10 +74,7 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 
 .writable-chat-footer {
     @apply relative;
-    @apply bg-transparent md:bg-transparent;
-}
-.writable-chat-footer.narrow {
-    background: transparent;
+    @apply bg-post-panel md:bg-transparent;
 }
 
 .chat-footer {

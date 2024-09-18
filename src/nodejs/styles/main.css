@@ -185,7 +185,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 }
 .list-view-layout .layout-body {
     @apply justify-between;
-    @apply p-0 -mb-22 md:mb-0;
+    @apply p-0 mb-0;
 }
 
 .default-layout {
