@@ -67,7 +67,8 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         => GetChatListView(ChatUI.SelectedPlaceId.Value);
 
     public ChatListView GetChatListView(PlaceId placeId)
-        => _chatListViews.GetOrAdd(placeId, pid => new ChatListView(placeId, CreateSettingsState(placeId)));
+        => _chatListViews.GetOrAdd(placeId,
+            static (placeId1, self) => new ChatListView(placeId1, self.CreateSettingsState(placeId1)), this);
 
 #pragma warning disable CA1822 // Can be static
     public int GetCountWhenLoading(ChatListKind listKind)
