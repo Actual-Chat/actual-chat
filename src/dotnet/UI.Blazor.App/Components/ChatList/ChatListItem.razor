@@ -192,9 +192,8 @@
         DebugLog?.LogDebug("<- ComputeState: {ListKind} #{ChatTitle}, OK, ChatId={ChatId}", listKind, chatTitle, chatId);
         var lastEntry = chatState.Info.LastTextEntry;
         var isUnreadByOthers = false;
-        if (lastEntry != null) {
+        if (lastEntry != null)
             isUnreadByOthers = await IsUnreadByOthers(lastEntry, ownAuthorId, cancellationToken);
-        }
         return new() {
             ListKind = listKind,
             Chat = chatState.Chat,
@@ -212,6 +211,7 @@
     }
 
     private async Task<bool> IsUnreadByOthers(ChatEntry entry, AuthorId ownAuthorId, CancellationToken cancellationToken) {
+        var chat = Chat;
         if (_hasBeenReadEntryId == entry.Id)
             return false;
 
@@ -219,7 +219,7 @@
         if (!isOwnMessage)
             return false;
 
-        if (!await ChatSupportsUnreadStatus(cancellationToken).ConfigureAwait(false))
+        if (chat.HasSingleAuthor)
             return false;
 
         var readPositionsStat = await Chats.GetReadPositionsStat(Session, entry.ChatId, cancellationToken).ConfigureAwait(false);
@@ -233,20 +233,6 @@
         if (hasBeenRead)
             _hasBeenReadEntryId = entry.Id; // Remember that message has been read, so we don't need to recalculate it on next ComputeState cycle.
         return !hasBeenRead;
-    }
-
-    private async Task<bool> ChatSupportsUnreadStatus(CancellationToken cancellationToken) {
-        // NOTE(DF): move this check to ChatContext to share among all message views.
-        // ChatContext and Chat can be considered as immutable and used from any thread.
-        var chat = Chat;
-        if (chat.HasSingleAuthor)
-            return false;
-
-        var authors = await Authors.ListAuthorIds(Session, chat.Id, cancellationToken).ConfigureAwait(false);
-        if (authors.Count < 2)
-            return false; // It seems the current user is the only member in the chat hence it has no sense to check unread status.
-
-        return true;
     }
 
     // Nested types
