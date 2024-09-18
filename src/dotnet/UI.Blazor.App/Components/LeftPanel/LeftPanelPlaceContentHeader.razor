@@ -5,6 +5,8 @@
 @inherits ComputedStateComponent<LeftPanelPlaceContentHeader.Model>
 @{
     var m = State.Value;
+    var hasBackground = m.Place.Background != null;
+    var picture = m.Place.Background?.ToPicture() ?? m.Place.Picture.ToPicture();
 }
 
 <OnUIEvent TEvent="SearchClearedEvent" Handler="OnSearchCleared" />
@@ -21,26 +23,14 @@
             TextChanged="@OnSearchBoxTextChanged"
             Cancelled="@OnSearchBoxCancelled"/>
         <div class="c-icon">
-
-            @if (m.Place.Background != null) {
-                <Pic
-                    Title="@m.Place.Title"
-                    Picture="@m.Place.Background.ToPicture()"
-                    Size="@SquareSize.SizeFull"
-                    IsSquare="@true"
-                    AvatarKind="@AvatarKind.Marble"
-                    AvatarKey="@m.Place.Id.Value"
-                    ShowFullSizeImage="true"/>
-            } else {
-                <Pic
-                    Title="@m.Place.Title"
-                    Picture="@m.Place.Picture.ToPicture()"
-                    Size="@SquareSize.SizeFull"
-                    IsSquare="@true"
-                    IsBlurred="@true"
-                    AvatarKind="@AvatarKind.Marble"
-                    AvatarKey="@m.Place.Id.Value"/>
-            }
+            <Pic
+                Picture="picture"
+                IsBlurred="!hasBackground"
+                Title="@m.Place.Title"
+                Size="SquareSize.SizeFull"
+                IsSquare="@true"
+                AvatarKind="AvatarKind.Marble"
+                AvatarKey="@m.Place.Id.Value" />
         </div>
     </div>
 
