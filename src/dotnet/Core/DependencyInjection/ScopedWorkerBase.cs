@@ -18,11 +18,24 @@ public abstract class ScopedWorkerBase<TScope>(TScope hub) : ScopedServiceBase<T
 
     public virtual Task Run()
     {
+        if (_whenRunning != null)
+            return _whenRunning;
         lock (Lock) {
             if (_whenRunning != null)
                 return _whenRunning;
+            if (StopToken.IsCancellationRequested)
+                return _whenRunning = Task.CompletedTask;
 
-            _whenRunning = Task.Run(() => OnRun(StopToken), StopToken);
+            // ReSharper disable once PossibleMultipleWriteAccessInDoubleCheckLocking
+            _whenRunning = Task.Run(async () => {
+                try {
+                    await OnRun(StopToken).ConfigureAwait(false);
+                }
+                catch {
+                    // Intended: WhenRunning should behave similarly
+                    // to how it behaves in WorkerBase, i.e. never throw.
+                }
+            }, CancellationToken.None);
         }
         Hub.RegisterAwaitable(_whenRunning);
         return _whenRunning;
