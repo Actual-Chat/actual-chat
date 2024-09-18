@@ -49,15 +49,6 @@ public interface IChats : IComputeService
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
     Task<ReadPositionsStat> GetReadPositionsStat(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    // Non-compute methods
-
-    Task<ChatEntry?> FindNext(
-        Session session,
-        ChatId chatId,
-        long? startEntryId, // Nullable is ok here (non-compute method)
-        string text,
-        CancellationToken cancellationToken);
-
     // Commands
 
     [CommandHandler]

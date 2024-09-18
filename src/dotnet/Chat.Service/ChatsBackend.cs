@@ -558,24 +558,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ToApiArray();
     }
 
-    // Not a [ComputeMethod]!
-    public virtual async Task<ChatEntry?> FindNext(
-        ChatId chatId,
-        long? startEntryId,
-        string text,
-        CancellationToken cancellationToken)
-    {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var dbEntry = await dbContext.ChatEntries
-            .Where(c => c.ChatId == chatId && c.Content.Contains(text) && (startEntryId == null || c.LocalId < startEntryId))
-            .OrderByDescending(x => x.LocalId)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return dbEntry?.ToModel(); // LinkPreview & other properties aren't populated here!
-    }
-
     // [CommandHandler]
     public virtual async Task<Chat> OnChange(
         ChatsBackend_Change command,
