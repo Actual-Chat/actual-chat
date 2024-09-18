@@ -27,7 +27,6 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     private AccountUI AccountUI => Hub.AccountUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatUI ChatUI => Hub.ChatUI;
-    private SearchUI SearchUI => Hub.SearchUI;
     private TuneUI TuneUI => Hub.TuneUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
     private UICommander UICommander => Hub.UICommander();
@@ -83,10 +82,6 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     {
         var listView = GetChatListView(placeId);
         var settings = await listView.GetSettings(cancellationToken).ConfigureAwait(false);
-        if (await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false)) {
-            var searchResults = await SearchUI.GetContactSearchResults().ConfigureAwait(false);
-            return searchResults.Count;
-        }
         var chatById = await ListAllUnordered(placeId, settings.Filter, cancellationToken).ConfigureAwait(false);
         return chatById.Count;
     }
@@ -146,13 +141,6 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         CancellationToken cancellationToken = default)
     {
         DebugLog?.LogDebug("-> ListAll (PlaceId={PlaceId})", placeId);
-        if (await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false)) {
-            var searchResults = await SearchUI.GetContactSearchResults().ConfigureAwait(false);
-            var foundChats = await searchResults.Select(x => ChatUI.Get(x.ChatId, cancellationToken))
-                .Collect()
-                .ConfigureAwait(false);
-            return foundChats.SkipNullItems().ToList();
-        }
         var chatById = await ListAllUnordered(placeId, settings.Filter, cancellationToken).ConfigureAwait(false);
         DebugLog?.LogDebug("<- ListAll (PlaceId={PlaceId})", placeId);
         return chatById.Values.OrderBy(settings.Order, ChatListPreOrder.ChatList).ToList();

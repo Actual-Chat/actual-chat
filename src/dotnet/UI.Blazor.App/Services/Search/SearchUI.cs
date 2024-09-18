@@ -42,12 +42,6 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         => _isSearchModeOn.Use(cancellationToken).AsTask();
 
     [ComputeMethod] // Synced
-    public virtual Task<IReadOnlyList<FoundItem>> GetContactSearchResults()
-        => Task.FromResult<IReadOnlyList<FoundItem>>(_cached.FoundItems
-            .Where(x => x.SearchResult is ContactSearchResult)
-            .ToList());
-
-    [ComputeMethod] // Synced
     public virtual Task<IReadOnlyList<FoundItem>> GetSearchResults()
         => Task.FromResult(_cached.FoundItems);
 

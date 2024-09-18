@@ -68,10 +68,8 @@ public partial class SearchUI
             }
         }
         _cached = new Cached(criteria, foundItems);
-        using (Invalidation.Begin()) {
+        using (Invalidation.Begin())
             _ = GetSearchResults();
-            _ = GetContactSearchResults();
-        }
     }
 
     private async Task<Dictionary<SubgroupKey, IReadOnlyList<SearchResult>>> Find(

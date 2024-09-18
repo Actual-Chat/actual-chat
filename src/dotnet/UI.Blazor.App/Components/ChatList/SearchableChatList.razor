@@ -4,7 +4,7 @@
     var m = State.Value;
 }
 
-@if (m is { IsSearchOn: true, EnableIncompleteUI: true }) {
+@if (m is { IsSearchOn: true }) {
     <FoundChatList @key="@(m.PlaceId.Value + "-found")"/>
 } else {
     <AllChatList @key="@m.PlaceId.Value" PlaceId="@PlaceId" />
@@ -12,7 +12,6 @@
 
 @code {
     [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Features Features => Hub.Features();
     private SearchUI SearchUI => Hub.SearchUI;
 
     [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
@@ -28,11 +27,10 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var placeId = PlaceId;
         var isSearchOn = await SearchUI.IsSearchModeOn(cancellationToken);
-        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
-        return new Model(placeId, isSearchOn, enableIncompleteUI);
+        return new Model(placeId, isSearchOn);
     }
 
-    public sealed record Model(PlaceId PlaceId = default, bool IsSearchOn = false, bool EnableIncompleteUI = false) {
+    public sealed record Model(PlaceId PlaceId = default, bool IsSearchOn = false) {
         public static readonly Model Loading = new();
     }
 }
