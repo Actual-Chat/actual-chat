@@ -1,10 +1,11 @@
 using ActualChat.Search;
 using ActualChat.UI.Blazor.App.Events;
+using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
+public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized, IDisposable
 {
     private static readonly SearchScope[] Scopes = [SearchScope.People, SearchScope.Groups, SearchScope.Places, SearchScope.Messages ];
     private Cached _cached = Cached.None;
@@ -16,6 +17,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     public IMutableState<PlaceId> PlaceId => _placeId;
     private IMutableState<ImmutableHashSet<SearchScope>> ExtendedLimits { get; }
     private ISearch Search => Hub.Search;
+    private NavbarUI NavbarUI => Hub.NavbarUI;
     private UIEventHub UIEventHub => Hub.UIEventHub();
 
     public SearchUI(ChatUIHub uiHub) : base(uiHub)
@@ -26,10 +28,14 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         _isSearchModeOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchModeOn)));
         ExtendedLimits = stateFactory
             .NewMutable(ImmutableHashSet<SearchScope>.Empty, StateCategories.Get(GetType(), nameof(ExtendedLimits)));
+        NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;
     }
 
     void INotifyInitialized.Initialized()
         => this.Start();
+
+    void IDisposable.Dispose()
+        => NavbarUI.SelectedGroupChanged -= NavbarUIOnSelectedGroupChanged;
 
     [ComputeMethod]
     public virtual Task<bool> IsSearchModeOn(CancellationToken cancellationToken)
@@ -77,6 +83,12 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     {
         var current = await ExtendedLimits.Use(cancellationToken).ConfigureAwait(false);
         ExtendedLimits.Value = current.Remove(chatKind);
+    }
+
+    private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
+    {
+        if (e.IsUserAction)
+            Clear();
     }
 
     private sealed record Cached(Criteria Criteria, IReadOnlyList<FoundItem> FoundItems)
