@@ -5,7 +5,7 @@ namespace ActualChat.Chat;
 
 public sealed record MarkupSeq(ImmutableArray<Markup> Items) : Markup
 {
-    public MarkupSeq(params Markup[] items) : this(ApiArray.New(items)) { }
+    public MarkupSeq(params Markup[] items) : this(ApiArray.Wrap(items)) { }
     public MarkupSeq(IEnumerable<Markup> items) : this(ImmutableArray.Create(items.ToArray())) { }
     public MarkupSeq() : this(ImmutableArray<Markup>.Empty) { }
 
