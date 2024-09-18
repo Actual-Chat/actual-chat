@@ -34,6 +34,8 @@ public partial class DigestFlow : PeriodicFlow
             return "Account has no time zone";
         if (account.Email.IsNullOrEmpty() || !account.IsEmailVerified)
             return "Account has no verified email";
+        if (!account.Email.EndsWith("@actual.chat", StringComparison.OrdinalIgnoreCase))
+            return "Account is excluded";
         if (!TZConvert.TryGetTimeZoneInfo(account.TimeZone, out var timeZoneInfo))
             return $"Can't find TimeZoneInfo for time zone: {account.TimeZone}";
 
