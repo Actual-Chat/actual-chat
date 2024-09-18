@@ -9,7 +9,7 @@
     @apply text-xs text-primary;
 }
 .chat-message-sending-status.only-dot {
-    @apply absolute;
+    @apply absolute bottom-0.5;
     @apply pl-0;
     @apply bg-transparent;
 }
@@ -21,12 +21,17 @@
     @apply rounded-full;
     @apply bg-primary;
 }
+
+/*Sending status in NavbarItem*/
 .navbar-item .chat-message-sending-status {
     @apply absolute bottom-1 right-4 top-auto;
 }
 .navbar-item .chat-message-sending-status .sending-circle {
     @apply w-1.5 h-1.5;
 }
-body.hoverable .navbar-item:hover .chat-message-sending-status .sending-circle {
+body.hoverable .navbar-item:hover .chat-message-sending-status {
+    @apply hidden;
+}
+.navbar-item:has(.ending-btn.on) .chat-message-sending-status {
     @apply hidden;
 }

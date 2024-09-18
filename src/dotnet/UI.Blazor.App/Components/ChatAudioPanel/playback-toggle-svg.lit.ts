@@ -31,7 +31,7 @@ class PlaybackToggleSvg extends LitElement {
         }
         .spin-and-on {
             animation: spin-and-on ease-in-out;
-            animation-duration: 0.5s;
+            animation-duration: 0.25s;
         }
 
         @keyframes spin-and-on {
@@ -66,7 +66,7 @@ class PlaybackToggleSvg extends LitElement {
                         <animate
                             href="#playback-toggle-3"
                             attributeName="fill"
-                            dur="0.5s"
+                            dur="0.25s"
                             repeatCount="1"
                             values="
                                 #898989FF;

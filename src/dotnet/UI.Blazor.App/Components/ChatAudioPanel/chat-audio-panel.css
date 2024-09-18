@@ -264,6 +264,11 @@ body.narrow .base-panel .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-
         @apply text-1.5xl text-mobile-landscape-audio-panel-button-text;
         @apply opacity-100;
     }
+    body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon.off i.right,
+    body.narrow .text-mode .rec-icon.off i.right,
+    body.narrow .to-thin .rec-icon.off i.right {
+        @apply always-white;
+    }
     body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon.text-mode-on,
     body.narrow .text-mode .rec-icon.text-mode-on,
     body.narrow .to-thin .rec-icon.text-mode-on {
