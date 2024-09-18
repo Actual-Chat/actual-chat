@@ -157,23 +157,6 @@ public class Chats(IServiceProvider services) : IChats
         return await GetReadPositionsStatInternal(chatId, cancellationToken).ConfigureAwait(false);
     }
 
-    // Not a [ComputeMethod]!
-    public virtual async Task<ChatEntry?> FindNext(
-        Session session,
-        ChatId chatId,
-        long? startEntryId,
-        string text,
-        CancellationToken cancellationToken)
-    {
-        text.RequireMaxLength(Constants.Chat.MaxSearchFilterLength, "text.length");
-
-        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return null;
-
-        return await Backend.FindNext(chatId, startEntryId, text, cancellationToken).ConfigureAwait(false);
-    }
-
     // [CommandHandler]
     public virtual async Task<Chat> OnChange(Chats_Change command, CancellationToken cancellationToken)
     {

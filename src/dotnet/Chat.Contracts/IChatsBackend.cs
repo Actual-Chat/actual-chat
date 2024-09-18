@@ -83,12 +83,6 @@ public interface IChatsBackend : IComputeService, IBackendService
         int limit,
         CancellationToken cancellationToken);
 
-    Task<ChatEntry?> FindNext(
-        ChatId chatId,
-        long? startEntryId,
-        string text,
-        CancellationToken cancellationToken);
-
     [ComputeMethod]
     Task<ChatCopyState?> GetChatCopyState(ChatId chatId, CancellationToken cancellationToken);
 
