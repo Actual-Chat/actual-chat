@@ -252,7 +252,7 @@ public sealed class ServerAuth
         else {
             // Update
             user = user with {
-                Claims = claims.WithMany(user.Claims),
+                Claims = claims.With(user.Claims),
                 Identities = identities,
             };
         }
