@@ -73,7 +73,7 @@ public readonly partial struct FlowId : ISymbolIdentifier<FlowId>
 
     public static string CombineArguments(params ReadOnlySpan<string> arguments)
         => arguments.Length == 0 ? ""
-            : ArgumentListFormat.Format(arguments.ToArray());
+            : ArgumentListFormat.Format(arguments);
 
     public List<string> SplitArguments()
         => ArgumentListFormat.Parse(Arguments);
