@@ -1,4 +1,3 @@
-@using ActualChat.Comparison
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<ChatList.Model>
 @{
@@ -103,7 +102,7 @@
                 .ToList();
         }
 
-        var isSearchModeOn = await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false);
+        var isSearchModeOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
         DebugLog?.LogDebug("<- ComputeState: {List}. IsSearchModeOn={IsSearchModeOn}", chatListKind, isSearchModeOn);
         return new (chats, isSearchModeOn);
     }

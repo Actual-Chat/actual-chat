@@ -15,10 +15,12 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
 
     public IMutableState<string> Text => _text;
     public IMutableState<PlaceId> PlaceId => _placeId;
+    public IState<bool> IsSearchModeOn => _isSearchModeOn;
     private IMutableState<ImmutableHashSet<SearchScope>> ExtendedLimits { get; }
     private ISearch Search => Hub.Search;
     private NavbarUI NavbarUI => Hub.NavbarUI;
     private UIEventHub UIEventHub => Hub.UIEventHub();
+
 
     public SearchUI(ChatUIHub uiHub) : base(uiHub)
     {
@@ -36,10 +38,6 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
 
     void IDisposable.Dispose()
         => NavbarUI.SelectedGroupChanged -= NavbarUIOnSelectedGroupChanged;
-
-    [ComputeMethod]
-    public virtual Task<bool> IsSearchModeOn(CancellationToken cancellationToken)
-        => _isSearchModeOn.Use(cancellationToken).AsTask();
 
     [ComputeMethod] // Synced
     public virtual Task<IReadOnlyList<FoundItem>> GetSearchResults()

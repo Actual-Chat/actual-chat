@@ -476,7 +476,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         // Commander use here is intended: this "action" shouldn't be counted as user action
         var writeDebouncer = new Debouncer<ICommand>(
             TimeSpan.FromSeconds(1),
-            command => Commander.Run(command, CancellationToken.None));
+            (command, ct) => Commander.Run(command, ct));
 
         return Task.FromResult(StateFactory.NewCustomSynced<ReadPosition>(
             new (

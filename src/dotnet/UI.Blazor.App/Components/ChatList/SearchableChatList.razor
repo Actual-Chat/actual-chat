@@ -23,10 +23,9 @@
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
 
-
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var placeId = PlaceId;
-        var isSearchOn = await SearchUI.IsSearchModeOn(cancellationToken);
+        var isSearchOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
         return new Model(placeId, isSearchOn);
     }
 
