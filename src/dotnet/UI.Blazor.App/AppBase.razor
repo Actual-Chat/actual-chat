@@ -15,21 +15,21 @@
 <ScreenSizeProvider>
     <AlwaysVisibleComponents/>
 
-    <Router AppAssembly="@UIAssembly" AdditionalAssemblies="@UIModuleAssemblies">
-        <Found Context="routeData">
-            <RequirementChecker>
-                <Success>
+    <RequirementChecker>
+        <Success>
+            <Router AppAssembly="@UIAssembly" AdditionalAssemblies="@UIModuleAssemblies">
+                <Found Context="routeData">
                     <RouteView RouteData="@routeData" DefaultLayout="@typeof(DefaultLayout)"/>
-                </Success>
-                <Failure Context="failures">
-                    <ErrorBlock Failures="@failures"/>
-                </Failure>
-            </RequirementChecker>
-        </Found>
-        <NotFound>
-            <PageNotFoundBlock/>
-        </NotFound>
-    </Router>
+                </Found>
+                <NotFound>
+                    <PageNotFoundBlock/>
+                </NotFound>
+            </Router>
+        </Success>
+        <Failure Context="failures">
+            <ErrorBlock Failures="@failures"/>
+        </Failure>
+    </RequirementChecker>
 </ScreenSizeProvider>
 
 @code {

@@ -1,0 +1,32 @@
+@namespace ActualChat.UI.Blazor.Components
+@implements IDisposable;
+
+@ChildContent
+
+@code {
+    private IsolateRerender? _owner;
+
+    [CascadingParameter] public IsolateRerender Owner { get; set; } = null!;
+    [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = null!;
+
+    protected override void OnParametersSet() {
+        if (_owner is null) {
+            _owner = Owner;
+            if (_owner is null)
+                throw StandardError.Constraint(nameof(RerenderRegion) + " component should be used inside " + nameof(IsolateRerender) + " component.");
+            _owner.RefreshRequested += OnRefreshRequested;
+        }
+        else if (ReferenceEquals(_owner, Owner))
+            throw StandardError.Constraint(nameof(IsolateRerender) + " parent component should be changed.");
+    }
+
+    private void OnRefreshRequested(object? sender, EventArgs e)
+        => StateHasChanged();
+
+    public void Dispose() {
+        if (_owner is null)
+            return;
+        _owner.RefreshRequested -= OnRefreshRequested;
+        _owner = null;
+    }
+}

@@ -1,0 +1,30 @@
+@namespace ActualChat.UI.Blazor.Components
+<CascadingValue Value="@this" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    private int? _parameterSetIndex;
+
+    /// <summary>
+    /// ChildContent will be rendered once.
+    /// Re-render request will be transferred only to child RerenderRegion components and their content.
+    /// Changing ParameterSetIndex leads to re-rendering ChildContent entirely again.
+    /// </summary>
+    [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = null!;
+    [Parameter] public int ParameterSetIndex { get; set; } = 0;
+
+    public event EventHandler RefreshRequested = (_, _) => { };
+
+    public override Task SetParametersAsync(ParameterView parameters) {
+        parameters.TryGetValue<int>(nameof(ParameterSetIndex), out var parameterSetIndex);
+        if (_parameterSetIndex.HasValue && _parameterSetIndex.Value == parameterSetIndex) {
+            RefreshRequested.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
+
+        _parameterSetIndex = parameterSetIndex;
+        var task = base.SetParametersAsync(parameters);
+        return task;
+    }
+}
