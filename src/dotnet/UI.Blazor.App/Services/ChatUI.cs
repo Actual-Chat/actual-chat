@@ -394,11 +394,12 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
     private bool SelectPlaceInternal(PlaceId placeId)
     {
+        var selectedPlaceId = _selectedPlaceId;
         lock (_lock) {
-            if (_selectedPlaceId.Value == placeId)
+            if (selectedPlaceId.Value == placeId)
                 return false;
 
-            _selectedPlaceId.Value = placeId;
+            selectedPlaceId.Value = placeId;
         }
         // The rest is done by SynchronizeSelectedChatIdAndActivePlaceId
         return true;
