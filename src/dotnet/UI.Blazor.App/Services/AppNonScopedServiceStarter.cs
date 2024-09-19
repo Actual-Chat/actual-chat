@@ -1,26 +1,19 @@
 using ActualChat.Contacts;
 using ActualChat.Hosting;
+using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Components.Internal;
-using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
-using ActualLab.Fusion.Client.Caching;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
 public class AppNonScopedServiceStarter
 {
     private HostInfo? _hostInfo;
-    private History? _history;
-    private AutoNavigationUI? _autoNavigationUI;
-    private LoadingUI? _loadingUI;
     private ILogger? _log;
 
     private IServiceProvider Services { get; }
     private Tracer Tracer { get; }
     private HostInfo HostInfo => _hostInfo ??= Services.HostInfo();
-    private History History => _history ??= Services.GetRequiredService<History>();
-    private AutoNavigationUI AutoNavigationUI => _autoNavigationUI ??= Services.GetRequiredService<AutoNavigationUI>();
-    private LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public AppNonScopedServiceStarter(IServiceProvider services)
@@ -58,20 +51,13 @@ public class AppNonScopedServiceStarter
 
                 // Access key services
                 var accounts = Services.GetRequiredService<IAccounts>();
-                var contacts = Services.GetRequiredService<IContacts>();
                 Services.GetRequiredService<IChats>();
                 _ = Services.StateFactory().NewMutable<bool>();
 
                 // Preload own account
                 var ownAccountTask = accounts.GetOwn(session, cancellationToken);
 
-                // Start preloading top contacts
-                // NOTE(DF): I doubt that it makes sense to run preload contacts here now,
-                // because we don't know selected place yet.
-                var contactIdsTask = contacts.ListIds(session, PlaceId.None, cancellationToken);
-                var contactIds = await contactIdsTask.ConfigureAwait(false);
-                foreach (var contactId in contactIds.Take(Constants.Contacts.MinLoadLimit))
-                    _ = contacts.Get(session, contactId, cancellationToken);
+                await PreloadContactListData(session, cancellationToken).ConfigureAwait(false);
 
                 // Complete the tasks we started earlier
                 await ownAccountTask.ConfigureAwait(false);
@@ -81,6 +67,24 @@ public class AppNonScopedServiceStarter
                 Tracer.Point($"{nameof(StartNonScopedServices)} failed, error: " + e);
             }
         }, CancellationToken.None);
+
+    private async Task PreloadContactListData(Session session, CancellationToken cancellationToken)
+    {
+        using var _1 = Tracer.Region();
+        // Start preloading top contacts
+        // NOTE(DF): I doubt that it makes sense to run preload contacts here now,
+        // because we don't know selected place yet.
+        var localSettings = Services.LocalSettings();
+        var selectedChatIdOption = await localSettings.TryGet<ChatId>(nameof(ChatUI.SelectedChatId), cancellationToken).ConfigureAwait(false);
+        var selectedPlaceId = PlaceId.None;
+        if (selectedChatIdOption.IsSome(out var selectedChatId))
+            selectedPlaceId = selectedChatId.PlaceId;
+        Tracer.Point($"-- {nameof(PreloadContactListData)}.{nameof(PlaceId)}: '{selectedPlaceId}'");
+        var contacts = Services.GetRequiredService<IContacts>();
+        var contactIds = await contacts.ListIds(session, selectedPlaceId, cancellationToken).ConfigureAwait(false);
+        foreach (var contactId in contactIds.Take(Constants.Contacts.MinLoadLimit))
+            _ = contacts.Get(session, contactId, cancellationToken);
+    }
 
     // Private methods
 
