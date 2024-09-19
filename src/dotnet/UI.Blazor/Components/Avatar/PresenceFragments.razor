@@ -1,0 +1,48 @@
+@using ActualChat.Users
+@namespace ActualChat.UI.Blazor.Components
+
+@* ReSharper disable once InconsistentNaming *@
+@code {
+    @* '__builder' is predefined name used by RazorSourceGenerator *@
+    public static RenderFragment<Presence> PresenceIndicator = presence => __builder =>
+    {
+        if (presence is Presence.Unknown or Presence.Offline)
+            return;
+
+        var cls = presence switch {
+            Presence.Online => "bg-online",
+            Presence.Away => "bg-away",
+            Presence.Recording => "bg-danger animate-pulse",
+            _ => "",
+        };
+
+        <div class="presence-indicator">
+            <div class="@cls c-dot"></div>
+        </div>
+    };
+
+    @* '__builder' is predefined name used by RazorSourceGenerator *@
+    public static RenderFragment<(Presence, Moment?)> PresenceText = tuple  => __builder => {
+        var (presence, lastCheckIn) = tuple;
+        @switch (presence)
+        {
+            case Presence.Online:
+                @("Online")
+                break;
+            case Presence.Recording:
+                @("Speaking...")
+                break;
+            case Presence.Away or Presence.Offline:
+                @if (lastCheckIn != null) {
+                    @("Last seen ")<LiveTimeDeltaText Moment="@lastCheckIn" NullText=""/>
+                } else {
+                    @("Offline")
+                }
+                break;
+            case Presence.Unknown:
+            default:
+                @("...")
+                break;
+        }
+    };
+}

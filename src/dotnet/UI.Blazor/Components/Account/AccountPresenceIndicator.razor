@@ -5,7 +5,7 @@
     var presence = State.Value;
 }
 
-<PresenceIndicator Presence="@presence" />
+@PresenceFragments.PresenceIndicator(presence)
 
 @code {
     [Inject] private IUserPresences UserPresences { get; init; } = null!;

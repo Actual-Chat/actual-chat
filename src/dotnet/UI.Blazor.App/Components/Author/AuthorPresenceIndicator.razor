@@ -3,8 +3,7 @@
 @{
     var presence = State.Value;
 }
-
-<PresenceIndicator Presence="@presence" />
+@PresenceFragments.PresenceIndicator(presence)
 
 @code {
     [Inject] protected Session Session { get; init; } = null!;
