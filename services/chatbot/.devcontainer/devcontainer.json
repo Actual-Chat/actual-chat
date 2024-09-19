@@ -17,7 +17,10 @@
     "type=volume,source=ac_chatbot_bashhistory,target=/commandhistory"
   ],
 
-	// Features to add to the dev container. More info: https://containers.dev/features.
+  "workspaceMount": "source=${localWorkspaceFolder}/../..,target=/app,type=bind",
+  "workspaceFolder": "/app/services/chatbot",
+
+  // Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
@@ -46,6 +49,8 @@
   },
 
   "runArgs": [
+    "--rm",
+    "--name", "devcontainer_${localEnv:USER:dev}_chatbot",
     "--env-file", ".secrets"
   ],
   // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
