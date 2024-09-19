@@ -23,28 +23,24 @@ partial class PanelsUI
     private Task TrackScreenSize(CancellationToken cancellationToken)
         => Dispatcher.InvokeAsync(async () => {
             var lastIsWide = IsWide();
-            await foreach (var _ in ScreenSize.Changes(cancellationToken).ConfigureAwait(false)) {
+            await foreach (var _ in ScreenSize.Changes(cancellationToken).ConfigureAwait(true)) {
                 var isWide = IsWide();
                 if (lastIsWide != isWide) {
                     lastIsWide = isWide;
                     // Recalculate left panel visibility when screen size is changed.
-                    await Dispatcher
-                        .InvokeSafeAsync(() => Left.SetIsVisible(Left.IsVisible.Value), Log)
-                        .ConfigureAwait(false);
+                    Left.SetIsVisible(Left.IsVisible.Value);
                 }
             }
         });
 
     private Task TrackRightPanelSearchMode(CancellationToken cancellationToken)
         => Dispatcher.InvokeAsync(async () => {
-            await foreach (var isSearchMode in Right.IsSearchMode.Changes(cancellationToken).ConfigureAwait(false)) {
+            await foreach (var isSearchMode in Right.IsSearchMode.Changes(cancellationToken).ConfigureAwait(true)) {
                 if (!isSearchMode.Value)
                     continue;
 
                 // Open right panel when search mode is triggered on.
-                await Dispatcher
-                    .InvokeSafeAsync(() => Right.SetIsVisible(true), Log)
-                    .ConfigureAwait(false);
+                Right.SetIsVisible(true);
             }
         });
 }
