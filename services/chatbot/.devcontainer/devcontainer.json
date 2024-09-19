@@ -1,0 +1,53 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/python
+{
+	"name": "Python 3",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+
+  "build": {
+    "dockerfile": "Containerfile",
+    "args": {
+      "USER_NAME": "${localEnv:USER:dev}"
+    }
+  },
+
+  "mounts": [
+    "type=bind,source=${localEnv:HOME}/.ssh,target=/home/${localEnv:USER:dev}/.ssh,consistency=consistent",
+    // Special volume to persist bash history
+    "type=volume,source=ac_chatbot_bashhistory,target=/commandhistory"
+  ],
+
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+  "postCreateCommand": "poetry install --no-interaction --no-ansi --no-root",
+
+	// Configure tool-specific properties.
+	"customizations": {
+    "vscode": {
+      "extensions": [
+        // Editor tools
+        "editorconfig.editorconfig",
+        // Git related tools
+        "maattdd.gitless",
+        "mhutchie.git-graph",
+        // Python
+        "ms-python.python",
+        "ms-toolsai.jupyter"
+      ],
+      "settings": {
+        "extensions.ignoreRecommendations": true
+      }
+    }
+  },
+
+  "runArgs": [
+    "--env-file", ".secrets"
+  ],
+  // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	"remoteUser": "${localEnv:USER:dev}"
+}
