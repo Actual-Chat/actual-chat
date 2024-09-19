@@ -8,7 +8,7 @@
 }
 
 <pre @ref="_preRef" class="@cls" title="@title"
-    data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, bool.FalseString, "", Markup.Code))">
+    data-menu="@(MenuRef.New<MessageMenu>(Entry.Id, bool.FalseString, "", Markup.Code))">
     <code>@Markup.Code</code>
 </pre>
 
@@ -16,12 +16,8 @@
     private static readonly string JSHighlightCodeMethod = $"{BlazorUIAppModule.ImportName}.highlightCode";
 
     private ElementReference _preRef;
-    private ChatMessage _message = null!;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
-
-    protected override void OnParametersSet()
-        => _message = new ChatMessage(Entry);
 
     protected override Task OnAfterRenderAsync(bool firstRender)
         => JS.InvokeVoidAsync(JSHighlightCodeMethod, _preRef, Markup.Language.NullIfWhiteSpace(), Markup.Code).AsTask();
