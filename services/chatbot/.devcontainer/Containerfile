@@ -6,6 +6,9 @@ ARG PYTHON_VER
 ARG USER_NAME
 
 RUN \
+    # Install git lfs
+    apt-get update && \
+    apt-get -y install git-lfs && \
     # Update container user
     groupmod -n ${USER_NAME} vscode && \
     usermod -l ${USER_NAME} vscode && \
