@@ -1,0 +1,87 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<ChatRightPanelContent.Model>
+@{
+    var m = State.Value;
+}
+
+<div class="right-chat-panel">
+    <ErrorBarrier Name="RightPanelContent" Kind="@ErrorBarrierKind.Full">
+        @if (m.ShowSearchPanel) {
+            <AISearchPanel ChatContext="@ChatContext"/>
+        }
+        <RightPanelHeader ChatContext="@ChatContext" />
+        <div class="c-panel-content">
+            <RightPanelChatInfo ChatContext="@ChatContext"/>
+            <div class="c-panel-tabs">
+                @if (m.ShowTabs) {
+                    <TabPanel
+                        @key="@Chat.Id.Value"
+                        TabsClass="left-panel-tabs wide-left-panel-tabs"
+                        BottomHill="true">
+
+                        @if (m.ShowMembersTab) {
+                            <Tab @key="@("members")" Id="members" Title="Members" Order="0">
+                                <AuthorList ChatId="@Chat.Id"/>
+                            </Tab>
+                        }
+                        @if (m.EnableIncompleteUI) {
+                            <Tab @key="@("media")" Id="media" Title="Media" Order="1">
+                                <ToBeDone/>
+                            </Tab>
+                            <Tab @key="@("files")" Id="files" Title="Files" Order="2">
+                                <ToBeDone/>
+                            </Tab>
+                            <Tab @key="@("links")" Id="links" Title="Links" Order="3">
+                                <ToBeDone/>
+                            </Tab>
+                        }
+                    </TabPanel>
+                }
+            </div>
+        </div>
+    </ErrorBarrier>
+</div>
+
+@code {
+    private ChatUIHub Hub => ChatContext.Hub;
+    private Session Session => Hub.Session();
+    private Chat Chat => ChatContext.Chat;
+    private IChats Chats => Hub.Chats;
+    private Features Features => Hub.Features();
+    private PanelsUI PanelsUI => Hub.PanelsUI;
+    private ShareUI ShareUI => Hub.ShareUI;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = new Model(),
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat.Id;
+
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var showMemberTab = rules.CanSeeMembers();
+        var showSearchPanel = await ChatContext.Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
+
+        return new () {
+            EnableIncompleteUI = enableIncompleteUI,
+            ShowMembersTab = showMemberTab,
+            ShowSearchPanel = showSearchPanel && enableIncompleteUI,
+        };
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public bool EnableIncompleteUI { get; init; }
+        public bool ShowTabs => ShowMembersTab || EnableIncompleteUI;
+        public bool ShowMembersTab { get; init; }
+        public bool ShowSearchPanel { get; init; }
+    }
+}

@@ -1,7 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AuthorRules>
+@inherits ComputedStateComponent<RightPanelHeader.Model>
 @{
     var m = State.Value;
+    var authorRules = m.AuthorRules;
+    var shareModal = m.ShareModel;
 }
 
 <div class="c-header">
@@ -24,7 +26,7 @@
     <div class="c-center">
         <ChatIcon Chat="Chat" Size="SquareSize.Size16" ShowPresence="@false"/>
         <div class="c-buttons">
-            @if (m.CanEditProperties()) {
+            @if (authorRules.CanEditProperties()) {
                 <ButtonRound Class="btn-sm" Click="@OnEditChatSettingsClick">
                     <i class="icon-edit text-2xl"></i>
                 </ButtonRound>
@@ -34,8 +36,8 @@
                     <i class="icon-person-add text-2xl"></i>
                 </ButtonRound>
             }
-            @if (ShareModel != null) {
-                <ButtonRound Class="btn-sm" Click="@(() => OnShareClick(ShareModel))">
+            @if (shareModal != null) {
+                <ButtonRound Class="btn-sm" Click="@(() => OnShareClick(shareModal))">
                     <i class="icon-share text-2xl"></i>
                 </ButtonRound>
             }
@@ -63,17 +65,20 @@
     private EditMembersUI EditMembersUI => ChatContext.Hub.EditMembersUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
-    [Parameter] public ShareModalModel? ShareModel { get; set; }
 
-    protected override ComputedState<AuthorRules>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = AuthorRules.None(Chat.Id),
+            InitialValue = new Model(AuthorRules.None(Chat.Id), null),
             UpdateDelayer = FixedDelayer.NextTick,
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
-    protected override Task<AuthorRules> ComputeState(CancellationToken cancellationToken)
-        => Chats.GetRules(Session, Chat.Id, default);
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat.Id;
+        var authorRules = await Chats.GetRules(Session, chatId, default).ConfigureAwait(false);
+        var shareModel = await ShareUI.GetModel(chatId, cancellationToken).ConfigureAwait(false);
+        return new Model(authorRules, shareModel);
+    }
 
     private void OnHideRightPanelClick()
         => PanelsUI.Right.SetIsVisible(false);
@@ -86,4 +91,8 @@
 
     private Task OnInviteClick()
         => ModalUI.Show(new AddMemberModal.Model(Chat.Id));
+
+    // Nested types
+
+    public sealed record Model(AuthorRules AuthorRules, ShareModalModel? ShareModel);
 }

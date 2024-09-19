@@ -1,109 +1,27 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Components.SideNav
-@inherits ComputedStateComponent<ChatRightPanel.Model>
-@{
-    var m = State.Value;
-    if (ReferenceEquals(m, Model.Loading))
-        return;
-}
+@inherits ComputedStateComponent<bool>
 
 <SideNav
     Side="SideNavSide.Right"
-    IsOpen="@m.IsVisible"
+    IsOpen="@State.Value"
     VisibilityChanged="@(NoStateHasChanged.EventCallback<bool>(isOpen => PanelsUI.Right.SetIsVisible(isOpen)))">
-    <div class="right-chat-panel">
-        <ErrorBarrier Name="RightPanelContent" Kind="@ErrorBarrierKind.Full">
-        @if (m.RenderContent) {
-            @if (m.ShowSearchPanel) {
-                <AISearchPanel ChatContext="@ChatContext"/>
-            }
-            <RightPanelHeader ChatContext="@ChatContext" ShareModel="@m.ShareModel"/>
-            <div class="c-panel-content">
-                <RightPanelChatInfo ChatContext="@ChatContext"/>
-                <div class="c-panel-tabs">
-                    @if (m.ShowTabs) {
-                        <TabPanel
-                            @key="@Chat.Id.Value"
-                            TabsClass="left-panel-tabs wide-left-panel-tabs"
-                            BottomHill="true">
-
-                            @if (m.ShowMembersTab) {
-                                <Tab @key="@("members")" Id="members" Title="Members" Order="0">
-                                    <AuthorList ChatId="@Chat.Id"/>
-                                </Tab>
-                            }
-                            @if (m.EnableIncompleteUI) {
-                                <Tab @key="@("media")" Id="media" Title="Media" Order="1">
-                                    <ToBeDone/>
-                                </Tab>
-                                <Tab @key="@("files")" Id="files" Title="Files" Order="2">
-                                    <ToBeDone/>
-                                </Tab>
-                                <Tab @key="@("links")" Id="links" Title="Links" Order="3">
-                                    <ToBeDone/>
-                                </Tab>
-                            }
-                        </TabPanel>
-                    }
-                </div>
-            </div>
-        }
-        </ErrorBarrier>
-    </div>
+    <ChatRightPanelContent ChatContext="@ChatContext" />
 </SideNav>
 
 @code {
-    private Session Session => ChatContext.Hub.Session();
-    private Chat Chat => ChatContext.Chat;
-    private IChats Chats => ChatContext.Hub.Chats;
-    private Features Features => ChatContext.Hub.Features();
     private PanelsUI PanelsUI => ChatContext.Hub.PanelsUI;
-    private ShareUI ShareUI => ChatContext.Hub.ShareUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<bool>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
+            t => new ComputedState<bool>.Options() {
+                InitialValue = PanelsUI.Right.IsVisible.Value,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = Chat.Id;
-
-        var isVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
-        var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var showMemberTab = rules.CanSeeMembers();
-        var shareModel = await ShareUI.GetModel(chatId, cancellationToken).ConfigureAwait(false);
-        var showSearchPanel = await ChatContext.Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
-        if (showSearchPanel && !isVisible) {
-            ChatContext.Hub.PanelsUI.Right.SetIsVisible(true);
-        }
-        return new () {
-            IsVisible = isVisible,
-            RenderContent = true,
-            EnableIncompleteUI = enableIncompleteUI,
-            ShowMembersTab = showMemberTab,
-            ShareModel = shareModel,
-            ShowSearchPanel = showSearchPanel && enableIncompleteUI,
-        };
-    }
-
-    // Nested types
-
-    public sealed record Model {
-        public static readonly Model Loading = new();
-
-        public bool IsVisible { get; init; }
-        public bool RenderContent { get; init; }
-        public bool EnableIncompleteUI { get; init; }
-        public bool ShowTabs => ShowMembersTab || EnableIncompleteUI;
-        public bool ShowMembersTab { get; init; }
-        public bool ShowSearchPanel { get; init; }
-        public ShareModalModel? ShareModel { get; init; }
-    }
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
+        => PanelsUI.Right.IsVisible.Use(cancellationToken).AsTask();
 }

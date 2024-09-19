@@ -2,7 +2,7 @@ using ActualChat.UI.Blazor.Services.Internal;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class PanelsUI : ScopedWorkerBase<UIHub>
+public partial class PanelsUI : ScopedWorkerBase<UIHub>
 {
     private History History => Hub.History;
     private Dispatcher Dispatcher => Hub.Dispatcher;
@@ -60,20 +60,4 @@ public class PanelsUI : ScopedWorkerBase<UIHub>
 
     public bool IsWide()
         => ScreenSize.Value.IsWide();
-
-    // Protected & private methods
-
-    protected override Task OnRun(CancellationToken cancellationToken)
-        => Dispatcher.InvokeAsync(async () => {
-            var lastIsWide = IsWide();
-            await foreach (var _ in ScreenSize.Changes(cancellationToken).ConfigureAwait(false)) {
-                var isWide = IsWide();
-                if (lastIsWide != isWide) {
-                    lastIsWide = isWide;
-                    await Dispatcher
-                        .InvokeSafeAsync(() => Left.SetIsVisible(Left.IsVisible.Value), Log) // Changes it to the right one
-                        .ConfigureAwait(false);
-                }
-            }
-        });
 }
