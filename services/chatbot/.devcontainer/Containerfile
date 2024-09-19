@@ -1,0 +1,27 @@
+ARG PYTHON_VER=3.12
+
+FROM mcr.microsoft.com/devcontainers/python:1-${PYTHON_VER}-bullseye
+
+ARG PYTHON_VER
+ARG USER_NAME
+
+RUN \
+    # Update container user
+    groupmod -n ${USER_NAME} vscode && \
+    usermod -l ${USER_NAME} vscode && \
+    usermod -d /home/${USER_NAME} -m ${USER_NAME} && \
+    # Persist bash history
+    SNIPPET="export PROMT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" && \
+    mkdir /commandhistory && \
+    touch /commandhistory/.bash_history && \
+    chown -R ${USER_NAME} /commandhistory && \
+    echo "$SNIPPET" >> "/home/${USER_NAME}/.bashrc" && \
+    # Get needed python permissions
+    chown -R ${USER_NAME} /usr/local/include/python${PYTHON_VER}
+
+USER ${USER_NAME}
+
+RUN \
+    # Install tools
+    pipx install poetry==1.6.1 && \
+    poetry config virtualenvs.create false
