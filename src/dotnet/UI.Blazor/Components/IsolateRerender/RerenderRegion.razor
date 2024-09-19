@@ -16,8 +16,8 @@
                 throw StandardError.Constraint(nameof(RerenderRegion) + " component should be used inside " + nameof(IsolateRerender) + " component.");
             _owner.RefreshRequested += OnRefreshRequested;
         }
-        else if (ReferenceEquals(_owner, Owner))
-            throw StandardError.Constraint(nameof(IsolateRerender) + " parent component should be changed.");
+        else if (!ReferenceEquals(_owner, Owner))
+            throw StandardError.Constraint(nameof(IsolateRerender) + " parent component should not be changed.");
     }
 
     private void OnRefreshRequested(object? sender, EventArgs e)
