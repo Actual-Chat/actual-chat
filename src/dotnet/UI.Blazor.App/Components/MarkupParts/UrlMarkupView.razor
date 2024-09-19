@@ -9,14 +9,14 @@
        href="@(_localUrl!.Value)"
        @onclick="@(() => _ = History.NavigateTo(localUrl))"
        @onclick:preventDefault="true"
-       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, bool.FalseString, Markup.Url, ""))">
+       data-menu="@(MenuRef.New<MessageMenu>(Entry.Id, bool.FalseString, Markup.Url, ""))">
         @url
     </a>
     return;
 }
 
 <a class="@cls" href="@_hrefUrl" target="_blank"
-   data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, bool.FalseString, url, ""))">
+   data-menu="@(MenuRef.New<MessageMenu>(Entry.Id, bool.FalseString, url, ""))">
     @url
 </a>
 
@@ -28,7 +28,6 @@
 
     private LocalUrl? _localUrl;
     private string _hrefUrl = "";
-    private ChatMessage _message = null!;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private NavigationManager Nav => Hub.Nav;
@@ -36,7 +35,6 @@
     private UrlMapper UrlMapper => Hub.UrlMapper();
 
     protected override void OnParametersSet() {
-        _message = new ChatMessage(Entry);
         var url = Markup.Url;
         _hrefUrl = url;
         _localUrl = null;
