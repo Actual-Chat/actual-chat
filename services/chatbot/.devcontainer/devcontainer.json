@@ -7,7 +7,8 @@
   "build": {
     "dockerfile": "Containerfile",
     "args": {
-      "USER_NAME": "${localEnv:USER:dev}"
+      "USER_NAME": "${localEnv:USER:dev}",
+      "VARIANT": "1-3.12-bullseye"
     }
   },
 
