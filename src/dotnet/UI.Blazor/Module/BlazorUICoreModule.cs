@@ -51,11 +51,15 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddAlias<Hub, UIHub>(ServiceLifetime.Scoped); // Required for PermissionHandler descendants
         if (!hostKind.IsServer())
             services.TryAddSingleton<IHostApplicationLifetime>(_ => new FakeHostApplicationLifetime());
-        services.AddSingleton(_ => new AutoNavigationTasks(hostKind));
-        if (hostKind.IsApp())
+        if (hostKind.IsApp()) {
             services.AddSingleton(_ => new RenderModeSelector()); // Kinda no-op on the client
-        else
-            services.AddScoped(_ => new RenderModeSelector()); // Should be scoped on server
+            services.AddSingleton(_ => new AutoNavigationTasks(hostKind));
+        }
+        else {
+            // These services have to be scoped in SSB
+            services.AddScoped(_ => new RenderModeSelector());
+            services.AddScoped(_ => new AutoNavigationTasks(hostKind));
+        }
         services.AddScoped(c => new BrowserInit(c));
         services.AddScoped(c => new BrowserInfo(c.UIHub()));
         services.AddScoped(c => new WebShareInfo(c));
