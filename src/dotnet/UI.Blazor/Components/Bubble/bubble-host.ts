@@ -81,15 +81,16 @@ export class BubbleHost {
 
         this.clearAutoUpdate();
 
-        const notReadBubbles = this._bubbles.filter(x => !x.isRead);
-        const shownBubble = notReadBubbles.find(x => x.isShown);
+        const unreadBubbles = this._bubbles.filter(x => !x.isRead);
+        const shownBubble = unreadBubbles.find(x => x.isShown);
         if (shownBubble) {
             shownBubble.isShown = false;
             shownBubble.bubbleElement.style.display = 'none';
         }
 
-        const bubblesToSkip = notReadBubbles
-            .filter(x => x.isTopElement && x.isInViewport);
+        const bubblesToSkip = unreadBubbles
+            .filter(_ => true); // Skip all of them rather than just the current "batch"
+            // .filter(x => x.isTopElement && x.isInViewport); // Skip just the current "batch"
         bubblesToSkip.forEach(x => x.isRead = true);
 
         return bubblesToSkip.map(x => x.bubbleRef);
