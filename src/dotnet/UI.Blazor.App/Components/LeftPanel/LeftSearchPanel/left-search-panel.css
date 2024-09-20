@@ -126,6 +126,7 @@ body.hoverable .left-search-panel.chat-search .c-ai-btn.search-btn.btn-round:hov
     @apply py-2;
     @apply overflow-hidden;
 }
+.left-search-panel.chat-search .c-search-tab.c-container, /* TODO: Remove when migrated to new search UI */
 .left-search-panel.chat-search .tab > .c-container {
     @apply flex-y;
     @apply h-full;
