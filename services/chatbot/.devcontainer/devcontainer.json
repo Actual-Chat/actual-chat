@@ -13,8 +13,10 @@
 
   "mounts": [
     "type=bind,source=${localEnv:HOME}/.ssh,target=/home/${localEnv:USER:dev}/.ssh,consistency=consistent",
+    // Add volume for python's virtual environment
+    "type=volume,source=devcontainer_${localEnv:USER:dev}_chatbot_venv,target=/home/${localEnv:USER:dev}/.venv",
     // Special volume to persist bash history
-    "type=volume,source=ac_chatbot_bashhistory,target=/commandhistory"
+    "type=volume,source=devcontainer_${localEnv:USER:dev}_chatbot_bashhistory,target=/commandhistory"
   ],
 
   "workspaceMount": "source=${localWorkspaceFolder}/../..,target=/app,type=bind",
