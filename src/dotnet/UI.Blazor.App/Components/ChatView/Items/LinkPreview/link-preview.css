@@ -17,9 +17,6 @@ body.narrow .link-preview.local-link:not(.place-link) {
 .link-preview:not(:has(.c-thumbnail)) {
     @apply h-20 md:h-20;
 }
-.link-preview:not(:has(.c-thumbnail)):not(:has(.c-description)) {
-    @apply h-16 md:h-14;
-}
 body.hoverable .link-preview:hover {
     @apply brightness-105;
 }

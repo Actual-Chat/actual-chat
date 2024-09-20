@@ -35,13 +35,13 @@
 .markup-editor .editor-content:empty:before {
     content: attr(data-placeholder);
     @apply truncate;
-    @apply text-04;
+    @apply text-post-panel-text;
 }
 body.narrow .markup-editor .editor-content:empty:before {
-    @apply text-caption-1;
+    @apply text-text-1;
 }
-/* Permanent mobile cursor */
 
+/* Permanent mobile cursor */
 .markup-editor > .c-cursor {
     @apply absolute;
     @apply w-px h-5;

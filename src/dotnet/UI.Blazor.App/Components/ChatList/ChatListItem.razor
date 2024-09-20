@@ -32,7 +32,7 @@
                     <span class="c-chat-title">
                         <span>@chat.Title</span>
                         <span class="c-incut"></span>
-                        @if (lastTextEntry != null && hasButtons && !isListeningOrRecording) {
+                        @if (lastTextEntry != null && !isListeningOrRecording) {
                             <LastEntryTime LastEntry="@lastTextEntry"/>
                         }
                 </span>
