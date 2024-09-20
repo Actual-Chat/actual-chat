@@ -31,10 +31,9 @@
     private SearchUI SearchUI => Hub.SearchUI;
 
     protected override async Task<IReadOnlyList<FoundItem>> ComputeState(CancellationToken cancellationToken) {
-        var isOn = await SearchUI.IsSearchModeOn(cancellationToken);
-        if (!isOn)
-            return [];
-
-        return await SearchUI.GetSearchResults();
+        var isOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
+        return isOn
+            ? await SearchUI.GetSearchResults().ConfigureAwait(false)
+            : [];
     }
 }

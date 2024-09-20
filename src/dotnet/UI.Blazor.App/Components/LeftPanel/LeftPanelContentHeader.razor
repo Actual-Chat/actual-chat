@@ -47,7 +47,7 @@
     protected override async Task<Place?> ComputeState(CancellationToken cancellationToken) {
         var session = Session;
         var searchPlaceId = await SearchUI.PlaceId.Use(cancellationToken).ConfigureAwait(false);
-        var isSearchOn = await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false);
+        var isSearchOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
         if (isSearchOn && searchPlaceId.IsNone)
             return null;
 

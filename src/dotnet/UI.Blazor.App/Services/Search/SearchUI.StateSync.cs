@@ -5,6 +5,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public partial class SearchUI
 {
     private static readonly TimeSpan SearchTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan DebounceInterval = TimeSpan.FromSeconds(0.5);
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
@@ -27,18 +28,10 @@ public partial class SearchUI
             .Where(x => !x.HasError)
             .Select(x => x.Value)
             .DeduplicateNeighbors();
-        DelegatingWorker? activeSearchJob = null;
-        try {
-            await foreach (var criteria in criteriaChanges.ConfigureAwait(false)) {
-                if (activeSearchJob != null)
-                    await activeSearchJob.DisposeSilentlyAsync().ConfigureAwait(false);
-                activeSearchJob = DelegatingWorker.New(ct => UpdateSearchResults(criteria, ct),
-                    cancellationToken.CreateLinkedTokenSource(SearchTimeout));
-            }
-        }
-        finally {
-            await activeSearchJob.DisposeSilentlyAsync().ConfigureAwait(false);
-        }
+        var debouncer = new CancellableDebouncer<Criteria>(DebounceInterval, UpdateSearchResults);
+        await using var _ = debouncer.ConfigureAwait(false);
+        await foreach (var criteria in criteriaChanges.ConfigureAwait(false))
+            debouncer.Enqueue(criteria);
     }
 
     private async Task UpdateSearchResults(
@@ -46,10 +39,9 @@ public partial class SearchUI
         CancellationToken cancellationToken)
     {
         List<FoundItem> foundItems = [];
-        var isSearchModeOn = !criteria.Text.IsNullOrEmpty();
-        _isSearchModeOn.Value = isSearchModeOn;
-        if (isSearchModeOn) {
-            var searchResultMap = await Find(criteria, cancellationToken).ConfigureAwait(false);
+        if (!criteria.Text.IsNullOrEmpty()) {
+            using var searchCts = cancellationToken.CreateLinkedTokenSource(SearchTimeout);
+            var searchResultMap = await Find(criteria, searchCts.Token).ConfigureAwait(false);
             foundItems = new List<FoundItem>(searchResultMap.Sum(x => x.Value.Count));
 
             foreach (var scope in Scopes) {
@@ -67,6 +59,7 @@ public partial class SearchUI
                 }
             }
         }
+        _isSearchModeOn.Value = !criteria.Text.IsNullOrEmpty();
         _cached = new Cached(criteria, foundItems);
         using (Invalidation.Begin())
             _ = GetSearchResults();
