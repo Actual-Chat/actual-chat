@@ -117,7 +117,8 @@
 
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var isOpen = await SearchUI.IsSearchModeOn(cancellationToken) || await _isOpen.Use(cancellationToken);
+        var isOpen = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false)
+                     || await _isOpen.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI =  await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
         return new Model(isOpen, enableIncompleteUI);
     }

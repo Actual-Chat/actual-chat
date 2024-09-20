@@ -63,7 +63,7 @@ public class Debouncer<T>(MomentClock clock, TimeSpan interval, Func<T, Task> ac
             return;
         }
 
-        // We must do all of this before triggering _process.Invoke
+        // We must do all of this before triggering action.Invoke
         T item;
         lock (Lock) {
             item = _item;

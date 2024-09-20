@@ -1,4 +1,3 @@
-@using ActualChat.Comparison
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<ChatList.Model>
 @{
@@ -92,7 +91,7 @@
         var chatListKind = Kind;
         // Done w/ preps for .ConfigureAwait(false)
 
-        var isSearchModeOn = await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false);
+        var isSearchModeOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
         DebugLog?.LogDebug("-> ComputeState: {ListKind}, IsSearchModeOn={IsSearchModeOn}", chatListKind, isSearchModeOn);
         IReadOnlyList<Chat> chats = new List<Chat>();
         if (Kind == ChatListKind.Active) {
