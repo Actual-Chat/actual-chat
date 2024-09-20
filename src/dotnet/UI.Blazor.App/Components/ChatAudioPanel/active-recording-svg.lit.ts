@@ -45,42 +45,29 @@ class ActiveRecordingSvg extends LitElement {
             }
         }
         rect#record-rect-2.in-rest {
-            animation: in-rest 1.25s linear infinite 0.60s;
+            animation: wave 1.3s linear infinite;
         }
         rect#record-rect-3.in-rest {
-            animation: in-rest 1.25s linear infinite 0.40s;
+            animation: wave 1.3s linear infinite -1.1s;
         }
         rect#record-rect-4.in-rest {
-            animation: in-rest 1.25s linear infinite 0.20s;
+            animation: wave 1.3s linear infinite -0.9s;
         }
 
-        @keyframes in-rest {
-            0% {
-                transform: translateY(0px);
-                opacity: 1;
+        @keyframes wave {
+            0%, 60%, 100% {
+                transform: initial;
             }
-            25% {
-                transform: translateY(2px);
-                opacity: 0.9;
-            }
-            50% {
-                transform: translateY(0px);
-                opacity: 0.8;
-            }
-            75% {
-                transform: translateY(-2px);
-                opacity: 0.7;
-            }
-            100% {
-                transform: translateY(0px);
-                opacity: 0.6;
+            30% {
+                transform: translateY(-5px);
             }
         }
     `];
 
     @property()
     size = 10;
-
+    @property({type: Boolean})
+    isActive = false;
 
     private readonly minHeight = 10;
     private readonly maxHeight = 100;
@@ -93,7 +80,6 @@ class ActiveRecordingSvg extends LitElement {
     private readonly isVoiceActive$: Observable<boolean>;
     private readonly recorderStateChangedSubscription: Subscription;
 
-    private isVoiceActive = false;
     private isRecording = false;
     private lastIsRecording = false;
 
@@ -107,21 +93,18 @@ class ActiveRecordingSvg extends LitElement {
             .pipe(throttleTime(0, animationFrameScheduler));
 
         this.recorderStateChangedSubscription = OpusMediaRecorder.recorderStateChanged$.subscribe(s => {
-           this.isVoiceActive = s.isVoiceActive;
            this.isRecording = s.isRecording;
         });
 
         this.height1$ = signalPower$
             .pipe(scan<number, Result, RunningMax>((runningMaxOrResult, p, i) => {
                 const runningMax: RunningMax = runningMaxOrResult['runningMax'] || runningMaxOrResult;
-                const { isRecording, isVoiceActive, lastIsRecording } = this;
+                const { isRecording, lastIsRecording } = this;
                 if (isRecording != lastIsRecording) {
                     // cleanup state on start/stop recording
                     this.lastIsRecording = isRecording;
                     runningMax.reset();
                 }
-                if (!isVoiceActive)
-                    return { runningMax, p, i };
 
                 runningMax.appendSample(p);
                 return { runningMax, p, i };
@@ -133,7 +116,7 @@ class ActiveRecordingSvg extends LitElement {
                     return Math.floor(minHeight + Math.random() * minHeight);
 
                 const height = Math.floor((translate(p, [0, 0.8 * maxPower], [minHeight, maxHeight]))) * 100 / maxHeight;
-                return (!this.isVoiceActive || isNaN(height))
+                return (!this.isActive || isNaN(height))
                     ? minHeight
                     : height;
             }));
@@ -175,47 +158,93 @@ class ActiveRecordingSvg extends LitElement {
         const edgeDotCls = observe(this.isVoiceActive$.pipe(map(b => b ? "active" : "non-active")));
         const centerDotCls = observe(this.isVoiceActive$.pipe(map(b => b ? "" : "in-rest")));
 
-        return html`
-            <svg xmlns="http://www.w3.org/2000/svg" width="${size * 4}" height="${size * 4}"
-                 preserveAspectRatio="none"
-                 viewBox="0 0 24 24" fill="none" stroke="var(--white)"
-                 stroke-width="${width}%" stroke-linecap="round" stroke-linejoin="bevel">
-                <rect id="record-rect-1" class="${edgeDotCls}"
-                      x="${width / 2}%"
-                      y="${offset3}%"
-                      width="${width}%"
-                      height="${height3}%"
-                      fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
-                </rect>
-                <rect id="record-rect-2" class="${centerDotCls}"
-                      x="${width * 2.5}%"
-                      y="${offset2}%"
-                      width="${width}%"
-                      height="${height2}%"
-                      fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
-                </rect>
-                <rect id="record-rect-3" class="${centerDotCls}"
-                      x="${width * 4.5}%"
-                      y="${offset1}%"
-                      width="${width}%"
-                      height="${height1}%"
-                      fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
-                </rect>
-                <rect id="record-rect-4" class="${centerDotCls}"
-                      x="${width * 6.5}%"
-                      y="${offset2}%"
-                      width="${width}%"
-                      height="${height2}%"
-                      fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
-                </rect>
-                <rect id="record-rect-5" class="${edgeDotCls}"
-                      x="${width * 8.5}%"
-                      y="${offset3}%"
-                      width="${width}%"
-                      height="${height3}%"
-                      fill="var(--white)" stroke-width="0" rx="5%" ry="5%">
-                </rect>
-            </svg>
-        `;
+        if (this.isActive) {
+            return html`
+                <svg xmlns='http://www.w3.org/2000/svg' width='${size * 4}' height='${size * 4}'
+                     preserveAspectRatio='none'
+                     viewBox='0 0 24 24' fill='none' stroke='var(--white)'
+                     stroke-width='${width}%' stroke-linecap='round' stroke-linejoin='bevel'>
+                    <rect id='record-rect-1' class='${edgeDotCls}'
+                          x='${width / 2}%'
+                          y='${offset3}%'
+                          width='${width}%'
+                          height='${height3}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                    <rect id='record-rect-2' class='${centerDotCls}'
+                          x='${width * 2.5}%'
+                          y='${offset2}%'
+                          width='${width}%'
+                          height='${height2}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                    <rect id='record-rect-3' class='${centerDotCls}'
+                          x='${width * 4.5}%'
+                          y='${offset1}%'
+                          width='${width}%'
+                          height='${height1}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                    <rect id='record-rect-4' class='${centerDotCls}'
+                          x='${width * 6.5}%'
+                          y='${offset2}%'
+                          width='${width}%'
+                          height='${height2}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                    <rect id='record-rect-5' class='${edgeDotCls}'
+                          x='${width * 8.5}%'
+                          y='${offset3}%'
+                          width='${width}%'
+                          height='${height3}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                </svg>
+            `;
+        } else {
+            const yOffset = 50 - minHeight / 2;
+            return html`
+                <svg xmlns='http://www.w3.org/2000/svg' width='${size * 4}' height='${size * 4}'
+                     preserveAspectRatio='none'
+                     viewBox='0 0 24 24' fill='none' stroke='var(--white)'
+                     stroke-width='${width}%' stroke-linecap='round' stroke-linejoin='bevel'>
+                    <rect id='record-rect-1' class='non-active'
+                          x='${width / 2}%'
+                          y='${yOffset}%'
+                          width='${width}%'
+                          height='${minHeight}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                    <rect id='record-rect-2' class='in-rest'
+                          x='${width * 2.5}%'
+                          y='${yOffset}%'
+                          width='${width}%'
+                          height='${minHeight}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                    <rect id='record-rect-3' class='in-rest'
+                          x='${width * 4.5}%'
+                          y='${yOffset}%'
+                          width='${width}%'
+                          height='${minHeight}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                    <rect id='record-rect-4' class='in-rest'
+                          x='${width * 6.5}%'
+                          y='${yOffset}%'
+                          width='${width}%'
+                          height='${minHeight}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                    <rect id='record-rect-5' class='non-active'
+                          x='${width * 8.5}%'
+                          y='${yOffset}%'
+                          width='${width}%'
+                          height='${minHeight}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                </svg>
+            `;
+        }
     }
 }

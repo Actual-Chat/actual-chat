@@ -607,11 +607,11 @@ body.narrow .rec-icon.text-mode-on {
 }
 @media (orientation: portrait) {
     body.narrow .audio-panel-wrapper {
-        @apply items-end gap-x-0;
+        @apply items-end gap-x-1;
     }
     body.narrow .chat-message-editor:has(.related-chat-entry-panel) .audio-panel-wrapper,
-    body.narrow .text-mode .audio-panel-wrapper,
-    body.narrow .narrow-panel .audio-panel-wrapper {
+    body.narrow .chat-message-editor.text-mode .audio-panel-wrapper,
+    body.narrow .chat-message-editor.narrow-panel .audio-panel-wrapper {
         @apply gap-x-2;
     }
 }
@@ -627,6 +627,8 @@ body.narrow .rec-icon.text-mode-on {
 /* Volume Settings Button */
 .chat-audio-panel .volume-settings-btn {
     @apply landscape:hidden md:hidden;
+    @apply duration-150 ease-in-out;
+    transition-property: background-color, opacity;
 }
 @media (orientation: portrait) {
     .volume-settings-btn.btn-round {
@@ -639,8 +641,56 @@ body.narrow .rec-icon.text-mode-on {
     body.narrow .volume-settings-btn.btn.btn-round > .btn-content i {
         @apply text-2xl text-mobile-landscape-audio-panel-button-text;
     }
+    body.narrow .chat-audio-panel:has(.record-on) .volume-settings-btn.btn.btn-round > .btn-content i {
+        background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
     .volume-settings-btn > .btn-content .c-text {
         @apply absolute top-0.5 left-1/2;
-        @apply text-xxs font-semibold text-mobile-landscape-audio-panel-button-text;
+        @apply text-xxs font-semibold always-white;
+    }
+}
+
+body.narrow .volume-settings-btn.text {
+    @apply landscape:hidden;
+    @apply relative bottom-1;
+    @apply flex items-center justify-center;
+    @apply h-6;
+    @apply px-2;
+    @apply rounded-full;
+    @apply bg-post-panel;
+}
+body.narrow .volume-settings-btn.text > .c-text {
+    @apply text-text-1 font-semibold;
+    @apply bg-mobile-landscape-audio-panel-button-text;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+body.narrow .volume-settings-btn.text::before {
+    @apply landscape:hidden;
+    @apply content-empty;
+    @apply absolute inset-0 z-minus;
+    @apply rounded-full;
+    @apply bg-mobile-landscape-audio-panel-button-text;
+    margin: -2px;
+}
+
+@media (orientation: portrait) {
+    body.narrow .chat-audio-panel:has(.record-on-btn) .volume-settings-btn.text > .c-text,
+    body.narrow .chat-audio-panel:has(.record-on-btn):not(.text-mode, .narrow-panel) .volume-settings-btn.text > .c-text {
+        background-image: linear-gradient(to right, #FF3880, 10%, white);
+    }
+    body.narrow .chat-audio-panel:has(.record-on-btn) .volume-settings-btn.text::before,
+    body.narrow .chat-audio-panel:has(.record-on-btn):not(.text-mode, .narrow-panel) .volume-settings-btn.text::before {
+        background-image: linear-gradient(to right, #FF3880, 25%, var(--mobile-landscape-audio-panel-button-text));
+    }
+    body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings-btn.text > .c-text {
+        background-image: linear-gradient(to right, #852FB0, 10%, white);
+    }
+    body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings-btn.text::before {
+        background-image: linear-gradient(to right, #852FB0, 25%, var(--mobile-landscape-audio-panel-button-text));
     }
 }

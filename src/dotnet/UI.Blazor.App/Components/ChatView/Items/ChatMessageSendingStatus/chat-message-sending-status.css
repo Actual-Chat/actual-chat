@@ -24,7 +24,7 @@
 
 /*Sending status in NavbarItem*/
 .navbar-item .chat-message-sending-status {
-    @apply absolute bottom-1 right-4 top-auto;
+    @apply absolute bottom-1 right-2 top-auto;
 }
 .navbar-item .chat-message-sending-status .sending-circle {
     @apply w-1.5 h-1.5;
@@ -32,6 +32,12 @@
 body.hoverable .navbar-item:hover .chat-message-sending-status {
     @apply hidden;
 }
-.navbar-item:has(.ending-btn.on) .chat-message-sending-status {
+.navbar-item:has(.ending-btn.on) .chat-message-sending-status,
+.navbar-item:has(.message-counter-badge) .chat-message-sending-status {
     @apply hidden;
+}
+
+/*Sending status in attachments*/
+.message-attachments .chat-message-sending-status {
+    @apply -right-1 bottom-0;
 }

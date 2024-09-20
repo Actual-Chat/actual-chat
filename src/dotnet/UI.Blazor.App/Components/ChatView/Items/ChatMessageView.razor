@@ -161,7 +161,7 @@
                         <CascadingValue Value="@entry" IsFixed="true">
                             <MarkupView Markup="@_markup"/>
                         </CascadingValue>
-                        @if (m.IsUnreadByOthers) {
+                        @if (m.IsUnreadByOthers && entry.Attachments.Count == 0) {
                             <ChatMessageSendingStatus
                                 Status="@ChatMessageSendingStatus.MessageStatus.Unread"
                                 IsDotOnly="@(!isUnreadByOthersBlockStart)"/>
@@ -181,6 +181,11 @@
                             <FileAttachment Attachment="@attachment"/>
                         }
                     </div>
+                    @if (m.IsUnreadByOthers) {
+                        <ChatMessageSendingStatus
+                            Status="@ChatMessageSendingStatus.MessageStatus.Unread"
+                            IsDotOnly="@(!isUnreadByOthersBlockStart)"/>
+                    }
                 </div>
             }
             @if (message.ShowLinkPreview) {

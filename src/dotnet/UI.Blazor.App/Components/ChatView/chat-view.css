@@ -136,7 +136,8 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     @apply text-02 text-base;
 }
 .chat-message-markup:has(.chat-message-sending-status) .plain-text-markup,
-.chat-message-markup:has(.chat-message-sending-status) .playable-text-markup {
+.chat-message-markup:has(.chat-message-sending-status) .playable-text-markup,
+.chat-message-markup:has(.chat-message-sending-status) .url-markup {
     @apply mr-1;
 }
 
@@ -246,8 +247,9 @@ body.hoverable .chat-header-title:hover {
 }
 
 .message-attachments {
+    @apply relative;
     @apply flex-y gap-y-1;
-    @apply py-0.5;
+    @apply py-0.5 pr-2;
     @apply overflow-hidden;
 }
 .message-image-attachments {

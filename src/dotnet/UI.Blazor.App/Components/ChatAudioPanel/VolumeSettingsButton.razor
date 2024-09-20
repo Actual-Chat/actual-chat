@@ -4,12 +4,11 @@
     var language = State.Value;
 }
 
-<ButtonRound
-    Click="@OnClick"
-    Class="volume-settings-btn btn-transparent btn-xs">
-    <i class="icon-volume-settings"></i>
-    <span class="c-text">@language.ShortTitle</span>
-</ButtonRound>
+<button class="volume-settings-btn text" @onclick="@OnClick">
+    <div class="c-text">
+        @language.ShortTitle
+    </div>
+</button>
 
 @code {
     [Inject] private ModalUI ModalUI { get; init; } = null!;
