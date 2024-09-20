@@ -53,8 +53,11 @@ namespace ActualChat.Flows.Migrations
                     b.HasKey("Id")
                         .HasName("pk_flows");
 
-                    b.HasIndex("HardResumeAt")
-                        .HasDatabaseName("ix_flows_hard_resume_at");
+                    b.HasIndex("HardResumeAt", "Step")
+                        .HasDatabaseName("ix_flows_hard_resume_at_step");
+
+                    b.HasIndex("Step", "HardResumeAt")
+                        .HasDatabaseName("ix_flows_step_hard_resume_at");
 
                     b.ToTable("_flows");
                 });
