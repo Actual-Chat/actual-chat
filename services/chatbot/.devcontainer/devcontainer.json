@@ -27,7 +27,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-  "postCreateCommand": "poetry install --no-interaction --no-ansi --no-root",
+  "postCreateCommand": "bash -c 'source ~/.venv/chatbot/bin/activate && poetry install --no-interaction --no-ansi --no-root'",
 
 	// Configure tool-specific properties.
 	"customizations": {
@@ -43,7 +43,9 @@
         "ms-toolsai.jupyter"
       ],
       "settings": {
-        "extensions.ignoreRecommendations": true
+        "extensions.ignoreRecommendations": true,
+        "python.terminal.activateEnvInCurrentTerminal": true,
+        "python.defaultInterpreterPath": "~/.venv/chatbot/bin/python"
       }
     }
   },
