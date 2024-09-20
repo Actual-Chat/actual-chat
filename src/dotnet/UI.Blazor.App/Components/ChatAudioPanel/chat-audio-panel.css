@@ -655,15 +655,15 @@ body.narrow .rec-icon.text-mode-on {
 
 body.narrow .volume-settings-btn.text {
     @apply landscape:hidden;
-    @apply relative bottom-1;
+    @apply relative bottom-1.5;
     @apply flex items-center justify-center;
-    @apply h-6;
+    @apply h-5;
     @apply px-2;
     @apply rounded-full;
     @apply bg-post-panel;
 }
 body.narrow .volume-settings-btn.text > .c-text {
-    @apply text-text-1 font-semibold;
+    @apply text-caption-6 font-semibold;
     @apply bg-mobile-landscape-audio-panel-button-text;
     -webkit-background-clip: text;
     background-clip: text;
