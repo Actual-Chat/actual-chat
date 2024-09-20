@@ -9,6 +9,9 @@ RUN \
     # Install git lfs
     apt-get update && \
     apt-get -y install git-lfs && \
+    # Install & configure Python tools
+    pipx install poetry==1.6.1 && \
+    poetry config virtualenvs.create false && \
     # Update container user
     groupmod -n ${USER_NAME} vscode && \
     usermod -l ${USER_NAME} vscode && \
@@ -18,13 +21,10 @@ RUN \
     mkdir /commandhistory && \
     touch /commandhistory/.bash_history && \
     chown -R ${USER_NAME} /commandhistory && \
-    echo "$SNIPPET" >> "/home/${USER_NAME}/.bashrc" && \
-    # Get needed python permissions
-    chown -R ${USER_NAME} /usr/local/include/python${PYTHON_VER}
+    echo "$SNIPPET" >> "/home/${USER_NAME}/.bashrc"
 
 USER ${USER_NAME}
 
 RUN \
-    # Install tools
-    pipx install poetry==1.6.1 && \
-    poetry config virtualenvs.create false
+    # Create Python's venv for the project
+    python -m venv ~/.venv/chatbot
