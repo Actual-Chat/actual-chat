@@ -156,7 +156,6 @@ namespace ActualChat.Notification.Migrations
             modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbEvent", b =>
                 {
                     b.Property<string>("Uuid")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("text")
                         .HasColumnName("uuid")
                         .UseCollation("C");
@@ -188,10 +187,6 @@ namespace ActualChat.Notification.Migrations
 
                     b.HasIndex("DelayUntil")
                         .HasDatabaseName("ix_events_delay_until");
-
-                    b.HasIndex("Uuid")
-                        .IsUnique()
-                        .HasDatabaseName("ix_events_uuid");
 
                     b.HasIndex("State", "DelayUntil")
                         .HasDatabaseName("ix_events_state_delay_until");
