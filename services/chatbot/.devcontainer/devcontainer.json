@@ -20,7 +20,7 @@
     "type=volume,source=devcontainer_${localEnv:USER:dev}_chatbot_bashhistory,target=/commandhistory"
   ],
 
-  "workspaceMount": "source=${localWorkspaceFolder}/../..,target=/app,type=bind",
+  "workspaceMount": "type=bind,source=${localWorkspaceFolder}/../..,target=/app",
   "workspaceFolder": "/app/services/chatbot",
 
   // Features to add to the dev container. More info: https://containers.dev/features.
