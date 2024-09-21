@@ -13,7 +13,7 @@
   },
 
   "mounts": [
-    "type=bind,source=${localEnv:HOME}/.ssh,target=/home/${localEnv:USER:dev}/.ssh,consistency=consistent",
+    // AU: "type=bind,source=${localEnv:HOME}/.ssh,target=/home/${localEnv:USER:dev}/.ssh,consistency=consistent",
     // Add volume for python's virtual environment
     "type=volume,source=devcontainer_${localEnv:USER:dev}_chatbot_venv,target=/home/${localEnv:USER:dev}/.venv",
     // Special volume to persist bash history
