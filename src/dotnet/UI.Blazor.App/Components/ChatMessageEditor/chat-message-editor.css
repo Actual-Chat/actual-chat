@@ -308,6 +308,9 @@ body.wide .attachment-mode .post-panel-btn.post-message {
     @apply bg-01;
     @apply border-y border-bg-02;
 }
+body.narrow .attachment-list-wrapper {
+    @apply pb-6;
+}
 .chat-message-editor:not(.narrow-panel) .attachment-list-wrapper .close-keyboard-btn,
 .chat-message-editor:not(.narrow-panel) .attachment-list-wrapper .remove-all-btn {
     @apply hidden;
