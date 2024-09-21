@@ -12,6 +12,9 @@
     @apply border-y border-separator;
     @apply bg-01 text-03;
 }
+body.narrow .mention-list {
+    @apply pb-6;
+}
 /* Firefox workaround: it somehow displays the border otherwise */
 .mention-list.hidden {
     @apply border-y-0;
