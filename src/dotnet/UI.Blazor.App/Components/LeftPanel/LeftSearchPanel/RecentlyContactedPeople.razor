@@ -29,7 +29,10 @@
     protected override async Task<IReadOnlyList<Chat>> ComputeState(CancellationToken cancellationToken) {
         var session = Session;
         var recentIds = await ChatUsages.GetRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, cancellationToken).ConfigureAwait(false);
-        var chats = await recentIds.Select(id => Chats.Get(session, id, cancellationToken)).Collect().ConfigureAwait(false);
+        var chats = await recentIds
+            .Select(id => Chats.Get(session, id, cancellationToken))
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
+            .ConfigureAwait(false);
         return chats.SkipNullItems().ToList();
     }
 }

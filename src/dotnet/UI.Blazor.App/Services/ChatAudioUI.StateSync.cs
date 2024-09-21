@@ -288,7 +288,7 @@ public partial class ChatAudioUI
                 if (monitors.Remove(chatId, out var monitor))
                     stopTasks.Add(monitor.Stop());
             }
-            await stopTasks.Collect().ConfigureAwait(false);
+            await stopTasks.Collect(ApiConstants.Concurrency.Unlimited, cancellationToken).ConfigureAwait(false);
 
             foreach (var chatId in toStart) {
                 var userChatSettings = await AccountSettings

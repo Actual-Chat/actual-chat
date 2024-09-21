@@ -38,11 +38,11 @@
 
     protected override async Task<List<Contact?>> ComputeState(CancellationToken cancellationToken) {
         var contactIds = await Contacts.ListIds(Session, PlaceId.None, cancellationToken).ConfigureAwait(false);
-        var allContacts = await contactIds
+        var maybeContacts = await contactIds
             .Select(x => Contacts.Get(Session, x, cancellationToken))
-            .Collect(256)
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);
-        var allowedContacts = allContacts
+        var allowedContacts = maybeContacts
             .SkipNullItems()
             .Where(c => c.Kind == ContactKind.Chat
                         && c.PlaceId == PlaceId.None

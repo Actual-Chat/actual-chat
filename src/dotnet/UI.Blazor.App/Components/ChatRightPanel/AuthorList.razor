@@ -133,7 +133,7 @@
                 var authorName = author.Avatar.Name ?? "";
                 return (authorId, isAnonymous, presence, authorName);
             })
-            .Collect(256)
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);
         foreach (var (authorId, isAnonymous, presence, authorName) in authorInfos) {
             if (authorId.IsNone)

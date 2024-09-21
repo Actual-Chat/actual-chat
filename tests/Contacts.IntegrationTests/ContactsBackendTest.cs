@@ -83,7 +83,7 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
             .OrderBy(x => x.Id)
             .Select(x => x.ChatId)
             .Select(id => _tester.Chats.Get(_tester.Session, id, cancellationToken))
-            .Collect();
+            .Collect(cancellationToken);
         return chats.SkipNullItems().ToList();
     }
 }

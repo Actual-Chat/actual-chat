@@ -43,7 +43,11 @@ public sealed class UserContactIndexer(IServiceProvider services, IAccountsBacke
                 last.Version,
                 last.Id);
             NeedsSync.Reset();
-            var updates = await accounts.Select(ToIndexedUserContact).Collect().ToApiArray().ConfigureAwait(false);
+            var updates = await accounts
+                .Select(ToIndexedUserContact)
+                .Collect(cancellationToken)
+                .ToApiArray()
+                .ConfigureAwait(false);
             var indexCmd = new SearchBackend_UserContactBulkIndex(updates, []);
             await Commander.Call(indexCmd, cancellationToken).ConfigureAwait(false);
 
@@ -83,7 +87,12 @@ public sealed class UserContactIndexer(IServiceProvider services, IAccountsBacke
                 last.Version,
                 last.Id);
             NeedsSync.Reset();
-            var userContacts = await authors.Select(x => x.UserId).Distinct().Select(ToIndexedUserContact).Collect().ConfigureAwait(false);
+            var userContacts = await authors
+                .Select(x => x.UserId)
+                .Distinct()
+                .Select(ToIndexedUserContact)
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
             var updates = userContacts.SkipNullItems().ToApiArray();
             var indexCmd = new SearchBackend_UserContactBulkIndex(updates, []);
             await Commander.Call(indexCmd, cancellationToken).ConfigureAwait(false);

@@ -56,7 +56,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
                 Log.LogInformation("+ {UserId}: {UserName}", id, name);
                 return await AddInternalAccount(new (id, name), cancellationToken).ConfigureAwait(false);
             })
-            .Collect()
+            .Collect(cancellationToken)
             .ConfigureAwait(false);
         Log.LogInformation("Created {Count} test bots", accounts.Length);
     }
@@ -109,7 +109,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
                 Log.LogInformation("+ {UserId}: {UserName}", x.Id, x.UserName);
                 return await AddInternalAccount(x, cancellationToken).ConfigureAwait(false);
             })
-            .Collect()
+            .Collect(cancellationToken)
             .ConfigureAwait(false);
         Log.LogInformation("Created {Count} test users", accounts.Length);
     }

@@ -519,7 +519,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             var tiles = await IdTileStack.FirstLayer
                 .GetCoveringTiles(idRange)
                 .Select(x => Chats.GetTile(Session, chatId, ChatEntryKind.Text, x.Range, cancellationToken))
-                .Collect()
+                .Collect(ApiConstants.Concurrency.High, cancellationToken)
                 .ConfigureAwait(false);
 
             // prefetch authors
@@ -528,8 +528,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 .Select(e => e.AuthorId)
                 .Distinct()
                 .Select(authorId => Authors.Get(Session, chatId, authorId, cancellationToken))
-                .Collect();
-
+                .Collect(ApiConstants.Concurrency.High, cancellationToken);
         }, CancellationToken.None);
     }
 

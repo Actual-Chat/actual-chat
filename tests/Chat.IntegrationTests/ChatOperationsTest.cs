@@ -221,7 +221,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         await ComputedTest.When(async ct => {
             var chats = (await (await contacts.ListIds(session, PlaceId.None, ct))
                 .Select(x => chatsBackend.Get(x.ChatId, ct))
-                .Collect())
+                .Collect(ct))
                 .SkipNullItems()
                 .ToList();
             chats.Any(c => c.SystemTag == Constants.Chat.SystemTags.Notes).Should().BeTrue();

@@ -190,9 +190,8 @@ public partial class ChatUI
         }
         finally {
             _whenActivePlaceRestored.TrySetResult();
-            await Hub.Dispatcher.InvokeAsync(() => {
-                    ChatListUI.GetChatListView(SelectedPlaceId.Value);
-                })
+            await Hub.Dispatcher
+                .InvokeAsync(() => ChatListUI.GetPlaceChatListSettings(SelectedPlaceId.Value))
                 .ConfigureAwait(false);
         }
     }

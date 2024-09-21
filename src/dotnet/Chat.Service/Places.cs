@@ -61,7 +61,7 @@ public class Places(IServiceProvider services) : IPlaces
         var chatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
         var chats = await chatIds
             .Select(c => Chats.Get(session, c, cancellationToken))
-            .Collect()
+            .Collect(cancellationToken)
             .ConfigureAwait(false);
 
         // TODO(DF): make it possible to configure Welcome Chat

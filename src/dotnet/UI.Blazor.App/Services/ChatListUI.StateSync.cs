@@ -43,7 +43,7 @@ public partial class ChatListUI
             return; // skip tune notifications for mobile MAUI
 
         var cChatInfoMap = await Computed
-            .Capture(() => ListOverallUnorderedRaw(cancellationToken), cancellationToken)
+            .Capture(() => ListAllUnorderedRaw(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var previous = await cChatInfoMap.Use(cancellationToken).ConfigureAwait(false);
         var lastPlayedAt = CpuNow; // Skip tune after loading

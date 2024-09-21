@@ -263,7 +263,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     sidTile.Range,
                     includeRemoved,
                     cancellationToken))
-                .Collect()
+                .Collect(cancellationToken)
                 .ConfigureAwait(false);
             return new ChatTile(smallerChatTiles, includeRemoved);
         }
@@ -322,12 +322,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (linkPreviewIds1.Count == 0)
                 return EmptyLinkPreviews;
 
-            return (await linkPreviewIds1
-                    .Select(id => LinkPreviewsBackend.Get(id, cancellationToken))
-                    .Collect()
-                    .ConfigureAwait(false))
-                .Where(lp => lp != null)
-                .ToDictionary(lp => lp!.Id)!;
+            var linkPreviews = await linkPreviewIds1
+                .Select(id => LinkPreviewsBackend.Get(id, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+            return linkPreviews.SkipNullItems().ToDictionary(lp => lp.Id);
         }
 
         Task<ILookup<TextEntryId, TextEntryAttachment>> GetAttachments()
@@ -340,9 +339,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 ? GetAttachmentsBulk()
                 : EmptyAttachmentsTask;
 
-            async Task<ILookup<TextEntryId,TextEntryAttachment>> GetAttachmentsBulk()
-            {
-                var attachments = await entryIdsWithAttachments.Select(x => GetEntryAttachments(x, cancellationToken)).Collect().ConfigureAwait(false);
+            async Task<ILookup<TextEntryId,TextEntryAttachment>> GetAttachmentsBulk() {
+                var attachments = await entryIdsWithAttachments
+                    .Select(x => GetEntryAttachments(x, cancellationToken))
+                    .Collect(cancellationToken)
+                    .ConfigureAwait(false);
                 return attachments.SelectMany(x => x).ToLookup(x => x.EntryId);
             }
         }
@@ -412,7 +413,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (mediaIds.Count > 0) {
             var mediaList = await mediaIds
                 .Select(mid => MediaBackend.Get(mid, cancellationToken))
-                .Collect()
+                .Collect(cancellationToken)
                 .ConfigureAwait(false);
             mediaMap = mediaList
                 .SkipNullItems()
@@ -649,7 +650,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 await peerChatId.UserIds
                     .ToArray()
                     .Select(userId => AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken))
-                    .Collect()
+                    .Collect(cancellationToken)
                     .ConfigureAwait(false);
             }
             else if (chatId.Kind == ChatKind.Group || chatId.Kind == ChatKind.Place) {

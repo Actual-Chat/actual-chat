@@ -14,10 +14,12 @@ public static partial class Constants
             public static readonly bool ApiClient = false;
             public static readonly bool ApiServer = false;
             public static readonly bool BackendClient = false;
-            public static readonly bool BackendServer = true;
+            public static readonly bool BackendServer = false;
             public static readonly RandomTimeSpan? AnyServerInboundDelay = null; // new(0.5, 0.1);
-            public static readonly bool LogExistingCacheEntryUpdates = true; // Used only in WASM
+            public static readonly bool LogExistingCacheEntryUpdates = true; // Used only in WASM + DEBUG
         }
+
+        public static readonly bool LogAnyThrownException = true; // Used only in App + DEBUG
 
         // Core components
         public static readonly bool SignalR = false;
@@ -38,7 +40,7 @@ public static partial class Constants
         public static readonly bool ChatUI = false;
 
         // UI components
-        public static readonly bool ChatListComponents = false;
+        public static readonly bool ChatListRelated = false;
 
         // Audio
         public static readonly bool WebMReader = false;

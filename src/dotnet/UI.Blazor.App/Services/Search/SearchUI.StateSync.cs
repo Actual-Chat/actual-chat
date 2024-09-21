@@ -85,7 +85,7 @@ public partial class SearchUI
             : Scopes.Where(x => x is not SearchScope.Places);
         var subgroups = ToSubgroups(scopes);
         var allSearchResults = await subgroups.Select(FindSubgroup)
-            .CollectResults()
+            .CollectResults(ApiConstants.Concurrency.Low, cancellationToken)
             .ConfigureAwait(false);
         return subgroups.Zip(allSearchResults)
             .Where(x => x.Second.HasValue)
@@ -104,7 +104,7 @@ public partial class SearchUI
                 var entryResponse = await Search.FindEntries(session, criteria.ToEntryQuery(key), cancellationToken).ConfigureAwait(false);
                 return entryResponse.Hits;
             default:
-                throw new ArgumentOutOfRangeException(nameof(key.Scope), key.Scope, null);
+                throw new ArgumentOutOfRangeException($"{nameof(key)}.{nameof(key.Scope)}");
             }
         }
     }

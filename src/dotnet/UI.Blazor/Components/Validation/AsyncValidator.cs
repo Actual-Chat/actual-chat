@@ -8,11 +8,12 @@ public sealed class AsyncValidator(ValidationModelStore modelStore)
     {
         var asyncValidationResults = await modelStore.List(validationContext)
             .Select(x => ValidateProperty(x, cancellationToken))
-            .Collect();
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken);
         return asyncValidationResults.SelectMany(x => x).SkipNullItems().ToList();
     }
 
-    public async Task<IReadOnlyCollection<ValidationResult>> ValidateProperty(object? value, ValidationContext validationContext, CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<ValidationResult>> ValidateProperty(
+        object? value, ValidationContext validationContext, CancellationToken cancellationToken)
     {
         var ctx = modelStore.Get(validationContext.MemberName!, validationContext);
         if (ctx is null)
@@ -22,6 +23,9 @@ public sealed class AsyncValidator(ValidationModelStore modelStore)
         return validationResults.SkipNullItems().ToList();
     }
 
-    private static Task<ValidationResult?[]> ValidateProperty(ValidationModelStore.PropertyValidationContext ctx, CancellationToken cancellationToken = default)
-        => ctx.Property.AsyncAttributes.Select(attr => attr.IsValidAsync(ctx.Value, ctx.ValidationContext, cancellationToken)).Collect();
+    private static Task<ValidationResult?[]> ValidateProperty(
+        ValidationModelStore.PropertyValidationContext ctx, CancellationToken cancellationToken = default)
+        => ctx.Property.AsyncAttributes
+            .Select(attr => attr.IsValidAsync(ctx.Value, ctx.ValidationContext, cancellationToken))
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken);
 }

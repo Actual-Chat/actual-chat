@@ -109,14 +109,12 @@
             ? await Hub.Places.Get(Session, previewPlaceId, cancellationToken).ConfigureAwait(false)
             : null;
 
-        var places = (await placeIds
+        var maybePlaces = await placeIds
             .OrderBy(x => navbarSettings.PlacesOrder.IndexOf(x))
             .Select(id => Hub.Places.Get(Session, id, cancellationToken))
-            .Collect()
-            .ConfigureAwait(false))
-            .SkipNullItems()
-            .ToList();
-
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
+            .ConfigureAwait(false);
+        var places = maybePlaces.SkipNullItems().ToList();
         return new() {
             Places = places,
             PreviewPlace = previewPlace,

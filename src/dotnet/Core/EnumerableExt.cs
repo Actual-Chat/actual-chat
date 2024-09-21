@@ -9,11 +9,35 @@ public static class EnumerableExt
         yield return suffix;
     }
 
-    public static IEnumerable<T> AddBefore<T>(this IEnumerable<T> source, T prefix)
+    public static IEnumerable<T> PrefixWith<T>(this IEnumerable<T> source, T prefix)
     {
         yield return prefix;
         foreach (var item in source)
             yield return item;
+    }
+
+    public static int FirstIndexOf<T>(this IEnumerable<T> source, Func<T, bool> predicate)
+    {
+        var index = 0;
+        foreach (var item in source) {
+            if (predicate.Invoke(item))
+                return index;
+
+            index++;
+        }
+        return -1;
+    }
+
+    public static int LastIndexOf<T>(this IEnumerable<T> source, Func<T, bool> predicate)
+    {
+        var lastIndex = -1;
+        var index = 0;
+        foreach (var item in source) {
+            if (predicate.Invoke(item))
+                lastIndex = index;
+            index++;
+        }
+        return lastIndex;
     }
 
     public static (IReadOnlyCollection<T> Matched, IReadOnlyCollection<T> NotMatched) Split<T>(this IEnumerable<T> source, Func<T, bool> predicate)
@@ -36,8 +60,6 @@ public static class EnumerableExt
         => left.Take(right.Count).SequenceEqual(right);
 
     public static bool SetEquals<T>(this IReadOnlySet<T> first, IReadOnlyCollection<T> second)
-        => first.Count == second.Count && second.All(first.Contains);
-    public static bool SmallSetEquals<T>(this IReadOnlyCollection<T> first, IReadOnlyCollection<T> second)
         => first.Count == second.Count && second.All(first.Contains);
 
     // Constructs "a, b, and c" strings

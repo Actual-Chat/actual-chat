@@ -62,7 +62,7 @@ public class NotificationsBackend(IServiceProvider services)
                 var userChatSettings = await kvas.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
                 return (UserId: userId, userChatSettings.NotificationMode);
             })
-            .Collect()
+            .Collect(cancellationToken)
             .ConfigureAwait(false);
 
         var subscriberIds = notificationModes

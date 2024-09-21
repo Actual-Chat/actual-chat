@@ -11,12 +11,17 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
         VirtualListData<ChatListItemModel> renderedData,
         CancellationToken cancellationToken)
     {
-        var selectedChatId = ChatUI.SelectedChatId.Value;
-        var selectedPlaceId = await ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
-        var selectedChatIndex = await ChatListUI.IndexOf(selectedPlaceId, selectedChatId, cancellationToken).ConfigureAwait(false);
-        var chatCount = await ChatListUI.GetCount(selectedPlaceId, cancellationToken).ConfigureAwait(false);
+        var chatId = ChatUI.SelectedChatId.Value;
+        var placeId = await ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
+        var chatIndexTask = ChatListUI.IndexOf(placeId, chatId, cancellationToken);
+        var chatCountTask = ChatListUI.GetCount(placeId, cancellationToken);
+        var chatIndex = await chatIndexTask.ConfigureAwait(false);
+        var chatCount = await chatCountTask.ConfigureAwait(false);
+        DebugLog?.LogDebug(
+            "GetData: {PlaceId}/{ChatId} (#{ChatIndex}/{ChatCount})",
+            placeId, chatId, chatIndex, chatCount);
         if (chatCount == 0)
-            return VirtualListData<ChatListItemModel>.None;
+            return VirtualListData<ChatListItemModel>.None; // TODO(AY): This leaves the list in "loading" state, AK please fix this
 
         var firstItem = renderedData.FirstItem;
         var lastItem = renderedData.LastItem;
@@ -28,8 +33,8 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
         var range = (hasQuery, isFirstRender) switch {
             // No query, no data -> initial load
             (false, true) => new Range<int>(
-                selectedChatIndex - ChatListUI.HalfLoadLimit,
-                selectedChatIndex + ChatListUI.HalfLoadLimit),
+                chatIndex - ChatListUI.HalfLoadLimit,
+                chatIndex + ChatListUI.HalfLoadLimit),
             // No query, but there is old data -> retaining visual position
             (false, false) => new Range<int>(minVisibleIndex - ChatListUI.TileSize, maxVisibleIndex + ChatListUI.TileSize),
             // Query is there, so data is irrelevant
@@ -37,28 +42,27 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
         };
 
         // Fit to existing chat count
+        var indexTileLayer = ChatListUI.ChatTileStack.FirstLayer;
         range = range
             .IntersectWith(new Range<int>(0, chatCount))
-            .ExpandToTiles(ChatListUI.ChatTileStack.FirstLayer);
+            .ExpandToTiles(indexTileLayer);
         // Expand and fit again if too small
         if (range.Size() < ChatListUI.LoadLimit)
             range = range.Expand(ChatListUI.TileSize)
                 .IntersectWith(new Range<int>(0, chatCount))
-                .ExpandToTiles(ChatListUI.ChatTileStack.FirstLayer);
-        var indexTiles = ChatListUI.ChatTileStack.FirstLayer.GetCoveringTiles(range);
+                .ExpandToTiles(indexTileLayer);
+        var indexTiles = indexTileLayer.GetCoveringTiles(range);
         var resultItems = new List<ChatListItemModel>();
         foreach (var indexTile in indexTiles) {
-            var tile = await ChatListUI.GetTile(selectedPlaceId, indexTile, cancellationToken).ConfigureAwait(false);
-            if (tile.Items.Count <= 0)
-                continue;
-
-            resultItems.AddRange(tile.Items);
+            var tile = await ChatListUI.GetTile(placeId, indexTile, cancellationToken).ConfigureAwait(false);
+            if (tile.Items.Count != 0)
+                resultItems.AddRange(tile.Items);
         }
 
         var scrollToKey = null as string;
         if (isFirstRender) {
             // scroll to the selected chat on very first render
-            var selectedItem = resultItems.FirstOrDefault(it => it.Chat.Id == selectedChatId);
+            var selectedItem = resultItems.FirstOrDefault(it => it.Chat.Id == chatId);
             if (selectedItem != null)
                 scrollToKey = selectedItem.Key;
         }
@@ -84,7 +88,7 @@ public partial class ChatList : ComputedStateComponent<ChatList.Model>, IVirtual
             ScrollToKey = scrollToKey,
         };
 
-        // do not return new instance if data is the same to prevent re-renders
+        // Return the old data if the new one is identical (to prevent re-renders)
         return result.IsSimilarTo(renderedData)
             ? renderedData
             : result;

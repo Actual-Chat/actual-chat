@@ -219,7 +219,7 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
     {
         var resultPlayingTasks = await chatIds
             .Select(chatId => ResumeRealtimePlayback(chatId, cancellationToken))
-            .Collect()
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
             .ConfigureAwait(false);
         return Task.WhenAll(resultPlayingTasks);
     }
@@ -243,11 +243,11 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
     private Task StopPlayers(IEnumerable<ChatId> chatIds, ChatPlayerKind playerKind)
         => chatIds
             .Select(chatId => StopPlayer(chatId, playerKind))
-            .Collect();
+            .Collect(ApiConstants.Concurrency.Unlimited);
 
     private Task StopPlayers()
         // ReSharper disable once InconsistentlySynchronizedField
         => _players
             .Select(kv => StopPlayer(kv.Key.ChatId, kv.Key.PlayerKind))
-            .Collect();
+            .Collect(ApiConstants.Concurrency.Unlimited);
 }

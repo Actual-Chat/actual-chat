@@ -37,9 +37,8 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     void IDisposable.Dispose()
         => NavbarUI.SelectedGroupChanged -= NavbarUIOnSelectedGroupChanged;
 
-    [ComputeMethod]
-    public virtual Task<bool> IsSearchModeOn(CancellationToken cancellationToken)
-        => _isSearchModeOn.Use(cancellationToken).AsTask();
+    public virtual ValueTask<bool> IsSearchModeOn(CancellationToken cancellationToken)
+        => _isSearchModeOn.Use(cancellationToken);
 
     [ComputeMethod] // Synced
     public virtual Task<IReadOnlyList<FoundItem>> GetSearchResults()

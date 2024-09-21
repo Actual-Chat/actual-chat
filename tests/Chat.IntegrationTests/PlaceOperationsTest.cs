@@ -111,7 +111,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         await ComputedTest.When(async ct => {
             var contactIds = await contacts.ListIds(session, place.Id, ct);
             var chatIds = (await contactIds.Select(id => contacts.Get(session, id, ct))
-                .Collect())
+                .Collect(ct))
                 .SkipNullItems()
                 .Select(c => c.ChatId)
                 .ToArray();
@@ -318,7 +318,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             await ComputedTest.When(async ct => {
                 var contactIds = await contacts.ListIds(anotherSession, place.Id, ct);
                 var chatIds = (await contactIds.Select(id => contacts.Get(anotherSession, id, ct))
-                    .Collect())
+                    .Collect(ct))
                     .SkipNullItems()
                     .Select(c => c.ChatId)
                     .ToArray();
@@ -353,7 +353,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         await ComputedTest.When(async ct => {
             var contactIds = await contacts.ListIds(anotherSession, place.Id, ct);
             var chatIds = (await contactIds.Select(id => contacts.Get(anotherSession, id, ct))
-                .Collect())
+                .Collect(ct))
                 .SkipNullItems()
                 .Select(c => c.ChatId)
                 .ToArray();

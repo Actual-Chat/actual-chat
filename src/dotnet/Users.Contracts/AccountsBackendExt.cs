@@ -35,9 +35,11 @@ public static class AccountsBackendExt
         }
         yield break;
 
-        async Task<ApiArray<AccountFull>> GetAccounts(ApiArray<UserId> userIds)
-        {
-            var accounts = await userIds.Select(id => accountsBackend.Get(id, cancellationToken)).Collect().ConfigureAwait(false);
+        async Task<ApiArray<AccountFull>> GetAccounts(ApiArray<UserId> userIds) {
+            var accounts = await userIds
+                .Select(id => accountsBackend.Get(id, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
             return accounts.SkipNullItems().ToApiArray();
         }
     }

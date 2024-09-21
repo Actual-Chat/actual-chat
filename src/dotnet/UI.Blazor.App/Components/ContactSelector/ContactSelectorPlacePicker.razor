@@ -55,17 +55,13 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var navbarSettings = await ChatUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
         var placeIds = await Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
-        var places = (await placeIds
-                .OrderBy(x => navbarSettings.PlacesOrder.IndexOf(x))
-                .Select(id => Hub.Places.Get(Session, id, cancellationToken))
-                .Collect()
-                .ConfigureAwait(false))
-            .SkipNullItems()
-            .ToList();
-
-        return new() {
-            Places = places
-        };
+        var maybePlaces = await placeIds
+            .OrderBy(x => navbarSettings.PlacesOrder.IndexOf(x))
+            .Select(id => Hub.Places.Get(Session, id, cancellationToken))
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
+            .ConfigureAwait(false);
+        var places = maybePlaces.SkipNullItems().ToList();
+        return new() { Places = places };
     }
 
     private void OnSelectedTabIdChanged(string? tabId) {

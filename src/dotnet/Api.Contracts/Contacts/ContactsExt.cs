@@ -27,7 +27,7 @@ public static class ContactsExt
         var contactIds = await contacts.ListIds(session, placeId, cancellationToken).ConfigureAwait(false);
         var candidates = await contactIds
             .Select(cid => contacts.Get(session, cid, default))
-            .Collect() // Add concurrency
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);
         if (filter == null)
             return candidates.SkipNullItems().ToList();

@@ -96,7 +96,7 @@
                 var authorName = author?.Avatar.Name ?? "";
                 return (authorId, authorName);
             })
-            .Collect(256)
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false)) // Add concurrency
             .ToList();
 

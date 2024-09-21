@@ -15,7 +15,7 @@
             AdditionalAttributes="@attributes">
             <TitleContent>
                 <span>@title</span>
-                <ChatListTabUnreadCount ChatListView="@_chatListView" ChatListFilter="@filter" />
+                <ChatListTabUnreadCount PlaceChatListSettings="@_placeChatListSettings" ChatListFilter="@filter" />
             </TitleContent>
         </Tab>;
     }
@@ -30,7 +30,7 @@
             AutoSelectInitialTab="false"
             SelectedTabIdChanged="@OnSelectedTabIdChanged">
             <AdditionalButton>
-                <ChatListSortButton ChatListView="@_chatListView" />
+                <ChatListSortButton PlaceChatListSettings="@_placeChatListSettings" />
             </AdditionalButton>
             <ChildContent>
                 @for (var i = 0; i < ChatListFilter.All.Count; i++) {
@@ -58,38 +58,37 @@
     };
 
     private TabPanel _tabPanel = null!;
-    private bool _updateSelectedTab = true;
-    private ChatListView? _chatListView;
+    private PlaceChatListSettings? _placeChatListSettings;
+    private string? _tabPanelSelectedTabId;
 
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
 
     protected override async Task OnParametersSetAsync() {
-        var oldChatListView = _chatListView;
-        _chatListView = ChatListUI.GetChatListView(PlaceId);
-        await _chatListView.WhenReady; // NOTE(DF): Re-render after ChatListView became ready (settings are loaded) to select tab with current filter id.
-        if (_chatListView != oldChatListView)
-            _updateSelectedTab = true;
+        if (PlaceId == _placeChatListSettings?.PlaceId)
+            return;
+
+        var placeId = PlaceId;
+        var placeChatListSettings = ChatListUI.GetPlaceChatListSettings(placeId);
+        var chatListSettings = await placeChatListSettings.Get();
+        if (placeId != PlaceId)
+            return; // PlaceId was changed while we were reading settings
+
+        _placeChatListSettings = placeChatListSettings;
+        _tabPanelSelectedTabId = chatListSettings.FilterId;
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (!_updateSelectedTab)
-            return;
-        var chatListView = _chatListView;
-        if (chatListView == null)
-            return;
-        var settings = await chatListView.GetSettings();
-        // If chatListView has been changed during we reading settings, do nothing now, wait new chatListView is rendered.
-        if (chatListView != _chatListView)
+    protected override void OnAfterRender(bool firstRender) {
+        if (_tabPanelSelectedTabId == null)
             return;
 
-        _updateSelectedTab = false;
-        _tabPanel.SelectedTabId = settings.FilterId;
+        _tabPanel.SelectedTabId = _tabPanelSelectedTabId;
+        _tabPanelSelectedTabId = null;
     }
 
     private void OnSelectedTabIdChanged(string? tabId) {
         var filterId = tabId ?? "";
-        _chatListView?.SetFilter(filterId);
+        _placeChatListSettings?.SetFilter(filterId);
     }
 }

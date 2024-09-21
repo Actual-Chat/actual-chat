@@ -76,7 +76,7 @@
         var searchPhrase = SearchPhrase;
         var excludedChats = ExcludeChatIds;
 
-        var allChats = await ChatListUI.ListAllUnordered(_placeId, Filter, cancellationToken).ConfigureAwait(false);
+        var allChats = await ChatListUI.ListUnordered(_placeId, Filter, cancellationToken).ConfigureAwait(false);
         _allChats.Value = allChats;
         var chats = allChats.Values;
         if (excludedChats != null && excludedChats.Count != 0)

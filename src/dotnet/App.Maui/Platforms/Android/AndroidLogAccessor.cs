@@ -34,7 +34,7 @@ public class AndroidLogAccessor : IMauiLogAccessor
         var now = DateTime.Now;
         var fileName = "log_"
             + (MauiSettings.IsDevApp ? "dev_actual_chat_" : "actual_chat_")
-            + now.ToString("yyyyMMdd_HH.mm.ss")
+            + now.ToString("yyyyMMdd_HH.mm.ss", CultureInfo.InvariantCulture)
             + ".txt";
         var filePath = Path.Combine(_downloadFolder, fileName);
         var age = TimeSpan.FromMinutes(30); // Get log for the last 30 minutes.
