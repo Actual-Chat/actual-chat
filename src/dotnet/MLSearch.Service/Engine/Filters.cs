@@ -50,7 +50,7 @@ internal sealed class ChatFilterBuilder(IContactsBackend contacts)
 
     internal async ValueTask IncludePrivate(UserId userId, PlaceId? placeId, CancellationToken cancellationToken)
     {
-        var privateContacts = await contacts.ListIdsForSearch(userId, placeId, cancellationToken).ConfigureAwait(false);
+        var privateContacts = await contacts.ListIdsForSearch(userId, placeId, false, cancellationToken).ConfigureAwait(false);
         ChatFilter.ChatIds.UnionWith(privateContacts.Select(c => c.ChatId));
     }
 
