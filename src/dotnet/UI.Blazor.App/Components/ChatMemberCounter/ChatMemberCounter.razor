@@ -61,7 +61,7 @@
 
         var authorPresences = await allAuthorIds
             .Select(authorId => Authors.GetPresence(Session, chatId, authorId, cancellationToken))
-            .Collect()
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);
 
         var onlineCount = authorPresences.Count(presence => presence is Presence.Online or Presence.Recording);

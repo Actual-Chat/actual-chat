@@ -151,7 +151,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
         var existingTask = _registerDeviceTask;
         if (existingTask != null) {
             var alreadyRegisteredDeviceId = await existingTask.ConfigureAwait(false);
-            if (alreadyRegisteredDeviceId == deviceId)
+            if (OrdinalEquals(alreadyRegisteredDeviceId, deviceId))
                 return;
         }
         lock (Lock) {

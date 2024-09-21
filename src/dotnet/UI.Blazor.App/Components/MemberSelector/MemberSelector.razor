@@ -99,9 +99,8 @@
 
         var accounts = await userIds
             .Select(c => Accounts.Get(Session, c, DisposeToken))
-            .Collect()
+            .Collect(ApiConstants.Concurrency.High, DisposeToken)
             .ConfigureAwait(false);
-
         var memberUserIds = new HashSet<UserId>(await ListSource.ListMemberUserIds(DisposeToken));
 
         var items = accounts

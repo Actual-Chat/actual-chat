@@ -114,7 +114,7 @@
         var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken).ConfigureAwait(false);
         var avatars = await avatarIds
             .Select(x => Avatars.GetOwn(Session, x, cancellationToken))
-            .Collect()
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
             .ConfigureAwait(false);
         var existingAvatars = avatars.SkipNullItems().ToApiArray();
         var anonymous = GetAnonymous();

@@ -54,6 +54,7 @@ public class FontSizeUI : ScopedServiceBase<UIHub>
             .ToArray();
     }
 
+#pragma warning disable CA1024
     public int GetFontSizePixels()
         => FontSize.Value switch {
             "14px" => 14,
@@ -62,4 +63,5 @@ public class FontSizeUI : ScopedServiceBase<UIHub>
             "20px" => 20,
             _ => 14,
         };
+#pragma warning restore CA1024
 }

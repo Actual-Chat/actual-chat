@@ -74,16 +74,12 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var navbarSettings = await Hub.ChatUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
-        var chats = (await navbarSettings.PinnedChats
-                .Select(id => Hub.ChatUI.Get(id, cancellationToken))
-                .Collect()
-                .ConfigureAwait(false))
-            .SkipNullItems()
-            .ToList();
-
-        return new() {
-            Chats = chats,
-        };
+        var maybeChats = await navbarSettings.PinnedChats
+            .Select(id => Hub.ChatUI.Get(id, cancellationToken))
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
+            .ConfigureAwait(false);
+        var chats = maybeChats.SkipNullItems().ToList();
+        return new() { Chats = chats };
     }
 
     [JSInvokable]

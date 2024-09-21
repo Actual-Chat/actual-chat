@@ -25,7 +25,7 @@ public partial class ChatUI
         var tiles = await ChatView.IdTileStack.FirstLayer
             .GetCoveringTiles(requestedIdRange)
             .Select(t => Chats.GetTile(Session, chatId, ChatEntryKind.Text, t.Range, cancellationToken))
-            .Collect()
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);
         var entries = tiles.SelectMany(t => t.Entries).ToList();
         if (entries.Count == 0)
@@ -143,7 +143,7 @@ public partial class ChatUI
             var entryIds = entries.Select(x => x.Id).ToList();
             var docIds = await entryIds
                 .Select(c => MLSearch.GetIndexDocIdByEntryId(Session, c, cancellationToken))
-                .Collect()
+                .Collect(ApiConstants.Concurrency.High, cancellationToken)
                 .ConfigureAwait(false);
             var result = entryIds
                 .Zip(docIds, (entryId, docId) => (entryId, docId))

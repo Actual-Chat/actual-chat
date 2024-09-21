@@ -31,7 +31,10 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
             return true;
 
         using var _2 = Tracer.Region($"Checking {dbExternalContactLinks.Count} external contact link(s)");
-        await dbExternalContactLinks.Select(EnsureCreated).Collect(HardwareInfo.ProcessorCount).ConfigureAwait(false);
+        await dbExternalContactLinks
+            .Select(EnsureCreated)
+            .Collect(HardwareInfo.ProcessorCount * 2, cancellationToken)
+            .ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return false;
 

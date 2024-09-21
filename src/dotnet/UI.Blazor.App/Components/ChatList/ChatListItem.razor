@@ -134,7 +134,7 @@
     private Session Session => Hub.Session();
 
     private ILogger Log => _log ??= Hub.LogFor(GetType());
-    private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
+    private ILogger? DebugLog => Constants.DebugMode.ChatListRelated ? Log : null;
 
     [Parameter, EditorRequired] public ChatListKind ListKind { get; set; } = ChatListKind.All;
     [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;

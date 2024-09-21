@@ -29,8 +29,10 @@
 </div>
 
 @code {
-    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+    private ChatUI ChatUI => Hub.ChatUI;
 
-    private void OnClick(ChatListOrder order)
-        => ChatListUI.GetChatListView().SetOrder(order);
+    private Task OnClick(ChatListOrder order)
+        => ChatListUI.GetPlaceChatListSettings(ChatUI.SelectedPlaceId.Value).SetOrder(order);
 }

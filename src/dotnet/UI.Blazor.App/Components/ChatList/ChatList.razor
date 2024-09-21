@@ -69,7 +69,7 @@
     private SearchUI SearchUI => Hub.SearchUI;
     private FontSizeUI FontSizeUI => Hub.FontSizeUI;
     private ILogger Log => _log ??= Hub.LogFor(GetType());
-    private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
+    private ILogger? DebugLog => Constants.DebugMode.ChatListRelated ? Log : null;
 
     [Parameter, EditorRequired] public ChatListKind Kind { get; set; }
     [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
@@ -90,21 +90,21 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatListKind = Kind;
+        // Done w/ preps for .ConfigureAwait(false)
 
-        DebugLog?.LogDebug("-> ComputeState: {List}", chatListKind);
+        var isSearchModeOn = await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false);
+        DebugLog?.LogDebug("-> ComputeState: {ListKind}, IsSearchModeOn={IsSearchModeOn}", chatListKind, isSearchModeOn);
         IReadOnlyList<Chat> chats = new List<Chat>();
         if (Kind == ChatListKind.Active) {
             var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
-            chats = (await activeChats
-                    .Select(ac => Chats.Get(Session, ac.ChatId, cancellationToken))
-                    .Collect()
-                    .ConfigureAwait(false))
-                .SkipNullItems()
-                .ToList();
+            var maybeChats = await activeChats
+                .Select(ac => Chats.Get(Session, ac.ChatId, cancellationToken))
+                .Collect(ApiConstants.Concurrency.High, cancellationToken)
+                .ConfigureAwait(false);
+            chats = maybeChats.SkipNullItems().ToList();
         }
 
-        var isSearchModeOn = await SearchUI.IsSearchModeOn(cancellationToken).ConfigureAwait(false);
-        DebugLog?.LogDebug("<- ComputeState: {List}. IsSearchModeOn={IsSearchModeOn}", chatListKind, isSearchModeOn);
+        DebugLog?.LogDebug("<- ComputeState: {ListKind}, IsSearchModeOn={IsSearchModeOn}", chatListKind, isSearchModeOn);
         return new (chats, isSearchModeOn);
     }
 

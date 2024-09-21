@@ -66,7 +66,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     public ChatEditorUI ChatEditorUI => _chatEditorUI ??= Services.GetRequiredService<ChatEditorUI>();
     public ChatListUI ChatListUI => _chatListUI ??= Services.GetRequiredService<ChatListUI>();
     public ChatAudioUI ChatAudioUI => _chatAudioUI ??= Services.GetRequiredService<ChatAudioUI>();
-    public NotificationUI NotificationUI => _notificationUI ??= Services.GetRequiredService<NotificationUI>();
+    public new NotificationUI NotificationUI => _notificationUI ??= Services.GetRequiredService<NotificationUI>();
     public LanguageUI LanguageUI => _languageUI ??= Services.GetRequiredService<LanguageUI>();
     public EditMembersUI EditMembersUI => _editMembersUI ??= Services.GetRequiredService<EditMembersUI>();
     public SearchUI SearchUI => _searchUI ??= Services.GetRequiredService<SearchUI>();

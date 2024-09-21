@@ -63,8 +63,6 @@ public static partial class MauiProgram
 
         ClientAppStartup.Initialize();
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
-        // Uncomment to log EVERY thrown exception:
-        // AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
         MauiThreadPoolSettings.Apply();
 #if WINDOWS
         FixStaticContentProvider();
@@ -345,11 +343,4 @@ public static partial class MauiProgram
         => Log.LogInformation("Unhandled exception, isTerminating={IsTerminating}.\n{Exception}",
             e.IsTerminating,
             e.ExceptionObject);
-
-    // This method should be used only for debugging.
-    private static void OnFirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
-    {
-        var error = e.Exception;
-        Log.LogWarning(error, "FCE: {Type}, {Message}", error.GetType().Name, error.Message);
-    }
 }

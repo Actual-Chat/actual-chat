@@ -97,7 +97,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     [ComputeMethod(MinCacheDuration = 300)]
     public virtual async Task<ChatInfo?> Get(ChatId chatId, CancellationToken cancellationToken = default)
     {
-        DebugLog?.LogDebug("Get: {ChatId}", chatId.Value);
+        DebugLog?.LogDebug("Get({ChatId})", chatId.Value);
         if (chatId.IsNone)
             return null;
 
@@ -105,49 +105,55 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         if (contact == null)
             return null;
 
-        var chatNewsTask = Chats.GetNews(Session, chatId, cancellationToken);
-        var lastMentionTask = Mentions.GetLastOwn(Session, chatId, cancellationToken);
-        var readEntryLidTask = GetReadEntryLid(chatId, cancellationToken);
-        var userSettingsTask = AccountSettings.GetUserChatSettings(chatId, cancellationToken);
+        try {
+            var chatNewsTask = Chats.GetNews(Session, chatId, cancellationToken);
+            var lastMentionTask = Mentions.GetLastOwn(Session, chatId, cancellationToken);
+            var readEntryLidTask = GetReadEntryLid(chatId, cancellationToken);
+            var userSettingsTask = AccountSettings.GetUserChatSettings(chatId, cancellationToken);
 
-        var news = await chatNewsTask.ConfigureAwait(false);
-        var userSettings = await userSettingsTask.ConfigureAwait(false);
-        var lastMention = await lastMentionTask.ConfigureAwait(false);
-        var readEntryLid = await readEntryLidTask.ConfigureAwait(false);
-        var unreadCount = ComputeUnreadCount(chatId, news, readEntryLid);
+            var news = await chatNewsTask.ConfigureAwait(false);
+            var userSettings = await userSettingsTask.ConfigureAwait(false);
+            var lastMention = await lastMentionTask.ConfigureAwait(false);
+            var readEntryLid = await readEntryLidTask.ConfigureAwait(false);
+            var unreadCount = ComputeUnreadCount(chatId, news, readEntryLid);
 
-        var hasUnreadMentions = false;
-        if (userSettings.NotificationMode is not ChatNotificationMode.Muted) {
-            var lastMentionEntryId = lastMention?.EntryId.LocalId ?? 0;
-            hasUnreadMentions = lastMentionEntryId > readEntryLid;
-        }
-
-        var navbarSettings = await NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
-
-        var lastTextEntryText = "";
-        if (news.LastTextEntry is { } lastTextEntry) {
-            if (lastTextEntry.IsStreaming)
-                lastTextEntryText = Constants.Messages.RecordingSkeleton;
-            else {
-                var chatMarkupHub = ChatMarkupHubFactory[chatId];
-                var markup = await chatMarkupHub
-                    .GetMarkup(lastTextEntry, MarkupConsumer.ChatListItemText, cancellationToken)
-                    .ConfigureAwait(false);
-                lastTextEntryText = markup.ToReadableText(MarkupConsumer.ChatListItemText);
+            var hasUnreadMentions = false;
+            if (userSettings.NotificationMode is not ChatNotificationMode.Muted) {
+                var lastMentionEntryId = lastMention?.EntryId.LocalId ?? 0;
+                hasUnreadMentions = lastMentionEntryId > readEntryLid;
             }
-        }
 
-        var result = new ChatInfo(contact) {
-            News = news,
-            UserSettings = userSettings,
-            LastMention = lastMention,
-            ReadEntryLid = readEntryLid,
-            UnreadCount = unreadCount,
-            HasUnreadMentions = hasUnreadMentions,
-            LastTextEntryText = lastTextEntryText,
-            IsPinnedToNavbar = navbarSettings.PinnedChats.Contains(chatId),
-        };
-        return result;
+            var navbarSettings = await NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
+
+            var lastTextEntryText = "";
+            if (news.LastTextEntry is { } lastTextEntry) {
+                if (lastTextEntry.IsStreaming)
+                    lastTextEntryText = Constants.Messages.RecordingSkeleton;
+                else {
+                    var chatMarkupHub = ChatMarkupHubFactory[chatId];
+                    var markup = await chatMarkupHub
+                        .GetMarkup(lastTextEntry, MarkupConsumer.ChatListItemText, cancellationToken)
+                        .ConfigureAwait(false);
+                    lastTextEntryText = markup.ToReadableText(MarkupConsumer.ChatListItemText);
+                }
+            }
+
+            var result = new ChatInfo(contact) {
+                News = news,
+                UserSettings = userSettings,
+                LastMention = lastMention,
+                ReadEntryLid = readEntryLid,
+                UnreadCount = unreadCount,
+                HasUnreadMentions = hasUnreadMentions,
+                LastTextEntryText = lastTextEntryText,
+                IsPinnedToNavbar = navbarSettings.PinnedChats.Contains(chatId),
+            };
+            return result;
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogError(e, "Get({ChatId}) failed", chatId.Value);
+            throw;
+        }
     }
 
     [ComputeMethod]
@@ -381,11 +387,12 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
     private bool SelectChatInternal(ChatId chatId)
     {
+        var selectedChatId = _selectedChatId;
         lock (Lock) {
-            if (_selectedChatId.Value == chatId)
+            if (selectedChatId.Value == chatId)
                 return false;
 
-            _selectedChatId.Value = chatId;
+            selectedChatId.Value = chatId;
             SaveSelectedChatIds(chatId);
         }
         // The rest is done by InvalidateSelectedChatDependencies
@@ -411,11 +418,11 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             return;
 
         var isChatsSelected = NavbarUI.IsGroupSelected(NavbarGroupIds.Chats);
-        var isPlaceSelected = NavbarUI.IsPlaceSelected(out var selectedPlaceId);
+        var isPlaceSelected = NavbarUI.IsPlaceSelected(out var navbarSelectedPlaceId);
         var isPeerChat = chatId.Kind == ChatKind.Peer;
         var isChatPlaceSelected = chatId.IsPlaceChat
             && isPlaceSelected
-            && selectedPlaceId.Equals(chatId.PlaceId);
+            && navbarSelectedPlaceId.Equals(chatId.PlaceId);
         if (!isChatsSelected && !(isPeerChat && isPlaceSelected) && !isChatPlaceSelected) {
             var navbarSettings = await NavbarSettings.Use().ConfigureAwait(false);
             if (navbarSettings.PinnedChats.Contains(chatId)) {
@@ -432,17 +439,16 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             return;
         }
 
+        var selectedPlaceId = SelectedPlaceId.Value;
         if (chatId.Kind == ChatKind.Peer &&
-            !SelectedPlaceId.Value.IsNone &&
-            OrdinalEquals(NavbarUI.SelectedGroupId, SelectedPlaceId.Value.GetNavbarGroupId())) {
-            var listView = ChatListUI.GetChatListView(SelectedPlaceId.Value);
-            // When peer chat is selected in url, we should keep selected place nav group if the chat belongs to
-            // place chat list.
-            var settings = await listView.GetSettings().ConfigureAwait(false);
-            // Peer chat can be included in the chat list only within People and None filters.
-            if (settings.Filter == ChatListFilter.People || settings.Filter == ChatListFilter.None) {
-                // Check if peer chat was shown for place chat list view
-                var chats = await ChatListUI.ListPlaceMembers(SelectedPlaceId.Value, default).ConfigureAwait(false);
+            !selectedPlaceId.IsNone &&
+            OrdinalEquals(NavbarUI.SelectedGroupId, selectedPlaceId.GetNavbarGroupId())) {
+            var placeChatListSettings = ChatListUI.GetPlaceChatListSettings(selectedPlaceId);
+            // When a peer chat is "selected" via URL, we should retain the selected place
+            // nav group if we're on "People" tab (or no tab is selected) and the peer is a member of this place
+            var chatListSettings = await placeChatListSettings.Get().ConfigureAwait(false);
+            if (chatListSettings.Filter == ChatListFilter.People || chatListSettings.Filter == ChatListFilter.None) {
+                var chats = await ChatListUI.ListMembersOnly(selectedPlaceId, default).ConfigureAwait(false);
                 if (chats.ContainsKey(chatId))
                     return; // Keep selected group
             }
@@ -544,13 +550,13 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
     {
         var placeId = PlaceId.None;
-        var isChats = OrdinalEquals(NavbarUI.SelectedGroupId, NavbarGroupIds.Chats)|| NavbarUI.IsPlaceSelected(out placeId);
+        var isChatOrPlace = OrdinalEquals(NavbarUI.SelectedGroupId, NavbarGroupIds.Chats)
+            || NavbarUI.IsPlaceSelected(out placeId);
         if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId)) {
-            isChats = true;
+            isChatOrPlace = true;
             placeId = pinnedChatId.PlaceId;
         }
-
-        if (!isChats)
+        if (!isChatOrPlace)
             return;
 
         SelectPlaceInternal(placeId);
@@ -560,19 +566,17 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         if (!e.IsUserAction)
             return;
 
-        _ = DisplayLastUsedChat();
+        _ = SelectLastUsedChat();
 
-        async Task DisplayLastUsedChat(CancellationToken cancellationToken = default)
+        async Task SelectLastUsedChat(CancellationToken cancellationToken = default)
         {
             try {
-                var lastSelectedChatId = await GetChatIdToDisplay(cancellationToken)
+                var lastSelectedChatId = await GetLastUsedChatId(cancellationToken)
                     .ConfigureAwait(true); // Continue on the Blazor Dispatcher
 
-                if (lastSelectedChatId == ChatId.None)
-                    DebugLog?.LogDebug("ResetSelectedChatOnPlaceChange");
-                else
-                    DebugLog?.LogDebug("Restoring SelectedChatOnPlace. ChatId: '{ChatId}'", lastSelectedChatId);
-
+                DebugLog?.LogDebug(
+                    "SelectLastUsedChat: PlaceId: {PlaceId} -> ChatId: {ChatId}",
+                    placeId, lastSelectedChatId);
                 SelectChatInternal(lastSelectedChatId);
                 if (Hub.PanelsUI.IsWide()) {
                     // Do not navigate on narrow screen to prevent hiding panels
@@ -585,11 +589,11 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
                 }
             }
             catch (Exception ex) {
-                Log.LogError(ex, "DisplayLastUsedChat failed");
+                Log.LogError(ex, "SelectLastUsedChat failed");
             }
         }
 
-        async Task<ChatId> GetChatIdToDisplay(CancellationToken cancellationToken)
+        async Task<ChatId> GetLastUsedChatId(CancellationToken cancellationToken)
         {
             var selectedChatIds = SelectedChatIds.Value;
             if (!selectedChatIds.TryGetValue(placeId, out var lastSelectedChatId)) {
@@ -671,7 +675,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         async Task<ChatId> GetFirstChatId(PlaceId placeId)
         {
             var chatListSettings = new ChatListSettings { FilterId = ChatListFilter.None.Id }; // TODO(DF): better use stored sorting settings for the place.
-            var chats = await ChatListUI.ListAll(placeId, chatListSettings, default).ConfigureAwait(false);
+            var chats = await ChatListUI.List(placeId, chatListSettings, default).ConfigureAwait(false);
             return chats.Count > 0 ? chats[0].Id : ChatId.None;
         }
     }

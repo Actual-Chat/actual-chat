@@ -70,7 +70,7 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
 
                 return chat;
             })
-            .Collect()
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ToApiArray()
             .ConfigureAwait(false);
         return await FixActiveChats(activeChats, cancellationToken).ConfigureAwait(false);
@@ -88,7 +88,7 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
             .Select(async chat => (
                 Chat: chat,
                 Rules: await Chats.GetRules(Session, chat.ChatId, cancellationToken).ConfigureAwait(false)))
-            .Collect()
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);
 
         var recordingChat = chatsAndRules

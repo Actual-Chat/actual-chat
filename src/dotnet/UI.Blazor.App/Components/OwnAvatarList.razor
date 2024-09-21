@@ -65,7 +65,7 @@
         var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken).ConfigureAwait(false);
         var avatars = await avatarIds
             .Select(id => Avatars.GetOwn(Session, id, cancellationToken))
-            .Collect()
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
             .ConfigureAwait(false);
         return avatars.SkipNullItems().ToList();
     }

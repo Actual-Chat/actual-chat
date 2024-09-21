@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Threading.Tasks.Sources;
+using System.Runtime.ExceptionServices;
 using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualLab.Fusion.Client;
@@ -68,6 +68,8 @@ public static class ClientAppStartup
             TimeoutFactory = (_, ct) => Task.Delay(TimeSpan.FromSeconds(1), ct),
         };
 #if DEBUG
+        if (Constants.DebugMode.LogAnyThrownException)
+            FirstChanceExceptionLogger.Use();
         if (OSInfo.IsWebAssembly && Constants.DebugMode.RpcCalls.LogExistingCacheEntryUpdates)
             RemoteComputeServiceInterceptor.Options.Default = new() {
                 LogCacheEntryUpdateSettings = (LogLevel.Information, int.MaxValue),

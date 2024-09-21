@@ -67,7 +67,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var nonPlaceContactIds = await ListIds(userId, PlaceId.None, cancellationToken).ConfigureAwait(false);
         var placeIds = await ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
         var placeContactIds = await placeIds.Select(placeId => ListIdsForSearch(userId, placeId, false, cancellationToken))
-            .Collect()
+            .Collect(cancellationToken)
             .Flatten()
             .ConfigureAwait(false);
         return nonPlaceContactIds.Concat(placeContactIds)
@@ -82,9 +82,9 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return await ListIds(userId, placeId.Value, cancellationToken).ConfigureAwait(false);
 
         var placeIds = await ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
-        var contactIds = await placeIds.AddBefore(PlaceId.None)
+        var contactIds = await placeIds.PrefixWith(PlaceId.None)
             .Select(id => ListIds(userId, id, cancellationToken))
-            .Collect()
+            .Collect(cancellationToken)
             .Flatten()
             .ConfigureAwait(false);
         return contactIds
@@ -426,7 +426,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             await referencingUserIds
                 .Where(userId => userId != account.Id)
                 .Select(CreateContact)
-                .Collect()
+                .Collect(cancellationToken)
                 .ConfigureAwait(false);
 
             var completeCmd = new AccountsBackend_Update(account with { IsGreetingCompleted = true }, account.Version);

@@ -116,7 +116,7 @@ public class Chats(IServiceProvider services) : IChats
         var authorIds = await AuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         var authors = await authorIds
             .Select(id => Authors.Get(session, chatId, id, cancellationToken))
-            .Collect() // Add concurrency
+            .Collect(cancellationToken)
             .ConfigureAwait(false);
         return authors
             .SkipNullItems()
@@ -346,7 +346,7 @@ public class Chats(IServiceProvider services) : IChats
         var templateAuthorIds = await AuthorsBackend.ListAuthorIds(templateChatId, cancellationToken).ConfigureAwait(false);
         var templateAuthors = await templateAuthorIds
             .Select(aId => AuthorsBackend.Get(templateChatId, aId, AuthorsBackend_GetAuthorOption.Full, cancellationToken))
-            .Collect(4)
+            .Collect(4, cancellationToken) // NOTE(AY): Why 4? AK, please add comment
             .ConfigureAwait(false);
         var authorRoles = await templateAuthorIds
             .Select(async aId => (
@@ -357,7 +357,7 @@ public class Chats(IServiceProvider services) : IChats
                     false,
                     cancellationToken).ConfigureAwait(false))
             )
-            .Collect(4)
+            .Collect(4, cancellationToken) // NOTE(AY): Why 4? AK, please add comment
             .ConfigureAwait(false);
         var templateOwner = authorRoles.FirstOrDefault(x => x.Roles.Any(r => r.SystemRole == SystemRole.Owner));
 
@@ -435,7 +435,8 @@ public class Chats(IServiceProvider services) : IChats
         var avatarIds = await Avatars.ListOwnAvatarIds(session, cancellationToken).ConfigureAwait(false);
         var avatars = await avatarIds
             .Select(aId => Avatars.GetOwn(session, aId, cancellationToken))
-            .Collect().ConfigureAwait(false);
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
         var guestAvatar = avatars
             .Where(a => a != null)
             .FirstOrDefault(a => OrdinalEquals(a!.Name, Avatar.GuestName));
@@ -474,7 +475,7 @@ public class Chats(IServiceProvider services) : IChats
             .Select(chatEntryId => this.GetEntry(session, chatEntryId, cancellationToken)
                 .Require(ChatEntry.MustNotBeRemoved)
                 .AsTask())
-            .Collect()
+            .Collect(cancellationToken)
             .ConfigureAwait(false);
 
         foreach (var destinationChatId in destinationChatIds) {
@@ -711,7 +712,7 @@ public class Chats(IServiceProvider services) : IChats
                     }
                     return (AuthorId: authorId, c.EntryLid);
                 })
-                .Collect()
+                .Collect(cancellationToken)
                 .ConfigureAwait(false))
             .Select(c => new AuthorReadPosition(c.AuthorId, c.EntryLid))
             .ToApiArray();

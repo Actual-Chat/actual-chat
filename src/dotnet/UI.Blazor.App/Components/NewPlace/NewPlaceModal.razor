@@ -53,7 +53,7 @@
         _place = place;
         _defaultChat = defaultChat;
         if (defaultChat != null) {
-            var peopleContacts = await Hub.ChatListUI.ListPeopleContacts();
+            var peopleContacts = await Hub.ChatListUI.ListPeopleOnly();
             if (peopleContacts.Count > 0) {
                 _page = Page.Members;
                 // Re-render component to show Add members page.

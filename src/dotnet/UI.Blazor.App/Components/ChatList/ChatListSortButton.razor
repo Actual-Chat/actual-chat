@@ -1,6 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<ChatListSortButton.Model>
-
 @{
     var m = State.Value;
     var order = m.SortOrder;
@@ -20,7 +19,7 @@
 @code {
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ChatListView ChatListView { get; set; } = null!;
+    [Parameter, EditorRequired] public PlaceChatListSettings PlaceChatListSettings { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -29,10 +28,8 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var settings = await ChatListView.GetSettings(cancellationToken).ConfigureAwait(false);
-        return new() {
-            SortOrder = settings.Order,
-        };
+        var chatListSettings = await PlaceChatListSettings.Get(cancellationToken).ConfigureAwait(false);
+        return new() { SortOrder = chatListSettings.Order };
     }
 
     // Nested types

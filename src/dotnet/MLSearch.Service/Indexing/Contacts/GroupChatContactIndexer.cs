@@ -52,13 +52,12 @@ public sealed class GroupChatContactIndexer(IServiceProvider services) : Contact
         }
         return hasChanges;
 
-        async Task<Dictionary<PlaceId, Place>> GetPlaceMap(ApiArray<Chat.Chat> chats)
-        {
+        async Task<Dictionary<PlaceId, Place>> GetPlaceMap(ApiArray<Chat.Chat> chats) {
             var places = await chats.Where(x => x.Id.IsPlaceChat)
                 .Select(x => x.Id.PlaceId)
                 .Distinct()
                 .Select(x => PlacesBackend.Get(x, cancellationToken))
-                .Collect()
+                .Collect(cancellationToken)
                 .ConfigureAwait(false);
             return places.SkipNullItems().ToDictionary(x => x.Id);
         }
