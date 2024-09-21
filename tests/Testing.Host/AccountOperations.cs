@@ -66,6 +66,10 @@ public static class AccountOperations
     public static async Task<AsyncDisposable<User?>> BackupAuth(this IWebTester tester)
     {
         var userToRestore = await tester.Auth.GetUser(tester.Session);
-        return AsyncDisposable.New(x => x != null ? tester.SignIn(x).ToVoidValueTask() : ValueTask.CompletedTask, userToRestore);
+        return AsyncDisposable.New(
+            x => x != null
+                ? new ValueTask(tester.SignIn(x))
+                : ValueTask.CompletedTask,
+            userToRestore);
     }
 }
