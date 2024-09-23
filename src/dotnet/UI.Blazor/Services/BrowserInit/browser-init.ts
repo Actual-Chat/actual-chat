@@ -41,8 +41,7 @@ export class BrowserInit {
             this.baseUri = baseUri;
             this.sessionHash = sessionHash;
             this.initWindowId();
-            if (DeviceInfo.isAndroidWebView)
-                void this.initAndroidWebView();
+            void this.initAndroidWebViewClipboardHandlers();
             if (appKind !== 'MauiApp')
                 void this.initFirebase();
 
@@ -262,7 +261,13 @@ export class BrowserInit {
         });
     }
 
-    private static initAndroidWebView(): void {
+    private static initAndroidWebViewClipboardHandlers(): void {
+        // Our own WebViews expose `window.Android` object,
+        // search for `AndroidJSInterface` to find how.
+        const android = window['Android'] as unknown;
+        if (!android)
+            return;
+
         // In Android WebView readText and writeText operations fail with insufficient permissions,
         // and there is no way to grant these permissions.
         // https://stackoverflow.com/questions/61243646/clipboard-api-call-throws-notallowederror-without-invoking-onpermissionrequest
