@@ -3,7 +3,7 @@
 @inherits FusionComponentBase
 @{
     var name = ShowAsYou ? "You" : Avatar.Name;
-    var flexClass = ShowAsYou ? "non-shrinkable" : "";
+    var flexClass = ShowAsYou || name.Length < 10 ? "non-shrinkable" : "min-w-16";
 }
 
 @if (ReferenceEquals(Avatar, Avatar.Loading)) {

@@ -35,7 +35,7 @@
 .markup-editor .editor-content:empty:before {
     content: attr(data-placeholder);
     @apply truncate;
-    @apply text-post-panel-text;
+    @apply text-03;
 }
 body.narrow .markup-editor .editor-content:empty:before {
     @apply text-text-1;
