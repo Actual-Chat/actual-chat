@@ -71,6 +71,7 @@
 
         var placeId = PlaceId;
         var placeChatListSettings = ChatListUI.GetPlaceChatListSettings(placeId);
+        _placeChatListSettings ??= placeChatListSettings; // Ensure field is initialized before first render.
         var chatListSettings = await placeChatListSettings.Get();
         if (placeId != PlaceId)
             return; // PlaceId was changed while we were reading settings
