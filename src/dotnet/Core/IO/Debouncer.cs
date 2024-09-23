@@ -13,10 +13,6 @@ public class Debouncer<T>(MomentClock clock, TimeSpan interval, Func<T, Task> ac
     public MomentClock Clock { get; } = clock;
     public TimeSpan Interval { get; } = interval;
 
-    public Debouncer(TimeSpan interval, Func<T, Task> action)
-        : this(MomentClockSet.Default.CpuClock, interval, action)
-    { }
-
     public Task WhenCompleted()
     {
         lock (Lock) {
@@ -75,4 +71,30 @@ public class Debouncer<T>(MomentClock clock, TimeSpan interval, Func<T, Task> ac
 
         await action.Invoke(item).ConfigureAwait(false);
     }
+}
+
+public static class Debouncer
+{
+    public static Debouncer<T> New<T>(MomentClock clock, TimeSpan interval, Func<T, Task> action)
+        => new (clock, interval, action);
+
+    public static Debouncer<T> New<T>(TimeSpan interval, Func<T, Task> action)
+        => new (MomentClockSet.Default.CpuClock, interval, action);
+
+    public static CancellableDebouncer<T> New<T>(
+        MomentClock clock,
+        ILogger log,
+        TimeSpan interval,
+        Func<T, CancellationToken, Task> taskFactory)
+        => new (clock, log, interval, taskFactory);
+
+    public static CancellableDebouncer<T> New<T>(
+        TimeSpan interval,
+        Func<T, CancellationToken, Task> taskFactory)
+        => new (MomentClockSet.Default.CpuClock, StaticLog.For<CancellableDebouncer<T>>(), interval, taskFactory);
+
+    public static CancellableDebouncer New(
+        TimeSpan interval,
+        Func<CancellationToken, Task> taskFactory)
+        => new (interval, taskFactory);
 }
