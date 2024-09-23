@@ -28,7 +28,7 @@ public partial class SearchUI
             .Where(x => !x.HasError)
             .Select(x => x.Value)
             .DeduplicateNeighbors();
-        var debouncer = new CancellableDebouncer<Criteria>(DebounceInterval, UpdateSearchResults);
+        var debouncer = Debouncer.New<Criteria>(DebounceInterval, UpdateSearchResults);
         await using var _ = debouncer.ConfigureAwait(false);
         await foreach (var criteria in criteriaChanges.ConfigureAwait(false))
             debouncer.Enqueue(criteria);

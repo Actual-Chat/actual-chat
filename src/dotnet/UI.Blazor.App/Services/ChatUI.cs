@@ -480,7 +480,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         var pChatId = new ChatId(chatId, ParseOrNone.Option);
 
         // Commander use here is intended: this "action" shouldn't be counted as user action
-        var writeDebouncer = new Debouncer<ICommand>(
+        var writeDebouncer = Debouncer.New<ICommand>(
             TimeSpan.FromSeconds(1),
             command => Commander.Run(command, CancellationToken.None));
 
