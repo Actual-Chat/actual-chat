@@ -2,28 +2,21 @@ namespace ActualChat.IO;
 
 public class CancellableDebouncer<T> : WorkerBase
 {
-    private readonly Channel<ActionContext> _queue = Channel.CreateBounded<ActionContext>(new BoundedChannelOptions(100) {
+    private readonly Channel<Context> _queue = Channel.CreateBounded<Context>(new BoundedChannelOptions(100) {
         FullMode = BoundedChannelFullMode.DropOldest,
     });
 
     private MomentClock Clock { get; }
     private ILogger Log { get; }
     private TimeSpan Interval { get; }
-    private Func<T, CancellationToken, Task> ActionFactory { get; }
+    private Func<T, CancellationToken, Task> TaskFactory { get; }
 
-    public CancellableDebouncer(TimeSpan interval, Func<T, CancellationToken, Task> actionFactory) : this(
-        MomentClockSet.Default.CpuClock,
-        StaticLog.For<CancellableDebouncer<T>>(),
-        interval,
-        actionFactory)
-    { }
-
-    public CancellableDebouncer(MomentClock clock, ILogger log, TimeSpan interval, Func<T, CancellationToken, Task> actionFactory)
+    public CancellableDebouncer(MomentClock clock, ILogger log, TimeSpan interval, Func<T, CancellationToken, Task> taskFactory)
     {
         Clock = clock;
         Log = log;
         Interval = interval;
-        ActionFactory = actionFactory;
+        TaskFactory = taskFactory;
         this.Start();
     }
 
@@ -35,13 +28,13 @@ public class CancellableDebouncer<T> : WorkerBase
 
     public void Enqueue(T item)
     {
-        if (!_queue.Writer.TryWrite(new ActionContext(item, Clock.Now)))
-            throw StandardError.Internal("Failed to enqueue debounced task");
+        if (!_queue.Writer.TryWrite(new Context(item, Clock.Now)))
+            throw StandardError.Internal("Failed to enqueue debounced task.");
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        ActionContext? executing = null;
+        Context? executing = null;
         await foreach (var context in _queue.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             try {
                 var clockNow = Clock.Now;
@@ -51,18 +44,16 @@ public class CancellableDebouncer<T> : WorkerBase
                 if (_queue.Reader.Count == 0) {
                     await executing.DisposeSilentlyAsync().ConfigureAwait(false);
                     executing = context;
-                    executing.Start(ActionFactory);
-                }
-                else {
-                    Console.WriteLine("Not empty");
+                    executing.Start(TaskFactory);
                 }
             }
+            catch(OperationCanceledException e) when (e.IsCancellationOf(cancellationToken)) { }
             catch (Exception e) {
                 Log.LogError(e, "Debouncing failed");
             }
     }
 
-    private sealed class ActionContext(T item, Moment queuedAt) : IAsyncDisposable
+    private sealed class Context(T item, Moment queuedAt) : IAsyncDisposable
     {
         private readonly object _lock = new ();
         private CancellationTokenSource? _cts;
@@ -111,14 +102,14 @@ public class CancellableDebouncer<T> : WorkerBase
     }
 }
 
-public class CancellableDebouncer(MomentClock clock, ILogger log, TimeSpan interval, Func<CancellationToken, Task> actionFactory)
-    : CancellableDebouncer<Unit>(clock, log, interval, (_,ct) => actionFactory(ct))
+public class CancellableDebouncer(MomentClock clock, ILogger log, TimeSpan interval, Func<CancellationToken, Task> taskFactory)
+    : CancellableDebouncer<Unit>(clock, log, interval, (_,ct) => taskFactory(ct))
 {
-    public CancellableDebouncer(TimeSpan interval, Func<CancellationToken, Task> actionFactory) : this(
+    public CancellableDebouncer(TimeSpan interval, Func<CancellationToken, Task> taskFactory) : this(
         MomentClockSet.Default.CpuClock,
         StaticLog.For<CancellableDebouncer>(),
         interval,
-        actionFactory)
+        taskFactory)
     { }
 
     public void Enqueue()

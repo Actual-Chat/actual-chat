@@ -10,7 +10,7 @@ public class CancellableDebouncerTest
         // arrange
         var count = 0;
         var interval = TimeSpan.FromMilliseconds(1);
-        await using var sut = new CancellableDebouncer(interval,
+        await using var sut = Debouncer.New(interval,
             _ => {
                 Interlocked.Increment(ref count);
                 return Task.CompletedTask;
@@ -38,7 +38,7 @@ public class CancellableDebouncerTest
         var last = 0;
         var callCount = 0;
         var interval = TimeSpan.FromMilliseconds(100);
-        await using var sut = new CancellableDebouncer<int>(interval,
+        await using var sut = Debouncer.New<int>(interval,
             (i, _) => {
                 Interlocked.Exchange(ref last, i);
                 Interlocked.Increment(ref callCount);
@@ -70,7 +70,7 @@ public class CancellableDebouncerTest
         var callCount = 0;
         var interval = TimeSpan.FromMilliseconds(1);
         var startedEvent = StateFactory.Default.NewMutable<int>();
-        await using var sut = new CancellableDebouncer<int>(interval,
+        await using var sut = Debouncer.New<int>(interval,
             (i, _) => {
                 startedEvent.Value = i;
                 Interlocked.Exchange(ref last, i);
@@ -106,7 +106,7 @@ public class CancellableDebouncerTest
         var completedCount = 0;
         var interval = TimeSpan.FromMilliseconds(100);
         var startedEvent = StateFactory.Default.NewMutable<int>();
-        await using var sut = new CancellableDebouncer<int>(interval,
+        await using var sut = Debouncer.New<int>(interval,
             async (i, ct) => {
                 Interlocked.Increment(ref startedCount);
                 startedEvent.Value = i;
