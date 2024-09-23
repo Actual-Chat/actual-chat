@@ -82,10 +82,16 @@ body.narrow .chat-audio-panel .playback-wrapper .btn.btn-round {
 
 .recorder-wrapper .mic-disabled.btn .btn-content,
 body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
-    @apply bg-05;
+    @apply bg-transparent;
 }
 .recorder-wrapper.mic-disabled {
     @apply border-text-04;
+}
+.btn-round.mic-disabled {
+    @apply bg-05;
+}
+.btn-round.mic-disabled i {
+    @apply text-headline-5 md:text-headline-7 text-06;
 }
 
 .playback-wrapper.listen-off-to-on,
@@ -690,5 +696,23 @@ body.narrow .rec-icon.text-mode-on {
     }
     body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings-btn.text::before {
         background-image: linear-gradient(to right, #852FB0, 25%, var(--mobile-landscape-audio-panel-button-text));
+    }
+}
+
+.recorder-btn-skeleton {
+    @apply flex-none;
+    @apply w-20 h-20;
+    @apply mb-2;
+    @apply rounded-full;
+    @apply overflow-hidden;
+    @apply bg-03;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: .5;
     }
 }

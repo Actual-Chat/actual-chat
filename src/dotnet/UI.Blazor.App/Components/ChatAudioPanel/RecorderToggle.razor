@@ -32,58 +32,63 @@
     var mustKeepAwake = !m.IsRecordingHere;
 }
 
-@if (m.HasMicrophonePermission != false) {
-    @if (showStatus) {
-        <div class="narrow-recorder-tooltip">
-            <div class="c-tooltip-text">@statusText</div>
-            <div class="c-tooltip-arrow"></div>
-        </div>
-    }
-    <div class="recorder-wrapper @animatorClass @transitioningClass" data-tooltip="@tooltipText" data-tooltip-position="@(tooltipPosition.ToPositionString())">
+@if (ReferenceEquals(m, Model.Loading) && ScreenSize.IsNarrow()) {
+    <div class="recorder-btn-skeleton"></div>
+} else {
+    @if (m.HasMicrophonePermission != false) {
         @if (showStatus) {
-            <div class="c-tooltip">
+            <div class="narrow-recorder-tooltip">
                 <div class="c-tooltip-text">@statusText</div>
                 <div class="c-tooltip-arrow"></div>
             </div>
         }
-        <ButtonRound
-            Class="@recBtnCls"
-            Click="@OnClick"
-            MustKeepAwake="@mustKeepAwake"
-            Tooltip="@tooltip"
-            TooltipPosition="FloatingPosition.Top"
-            @onmouseup="@OnPointerUp"
-            @ontouchend="@OnPointerUp"
-            @ontouchcancel="@OnPointerUp"
-            @oncontextmenu="@OnContextMenu"
-            data-context-menu-delay="200">
 
-            @* Icon for OFF state *@
-            <div class="rec-icon off">
-                <i class="icon-recorder-left-half left"></i>
-                <i class="icon-recorder-right-half right"></i>
-            </div>
+        <div class="recorder-wrapper @animatorClass @transitioningClass" data-tooltip="@tooltipText" data-tooltip-position="@(tooltipPosition.ToPositionString())">
+            @if (showStatus) {
+                <div class="c-tooltip">
+                    <div class="c-tooltip-text">@statusText</div>
+                    <div class="c-tooltip-arrow"></div>
+                </div>
+            }
+            <ButtonRound
+                Class="@recBtnCls"
+                Click="@OnClick"
+                MustKeepAwake="@mustKeepAwake"
+                Tooltip="@tooltip"
+                TooltipPosition="FloatingPosition.Top"
+                @onmouseup="@OnPointerUp"
+                @ontouchend="@OnPointerUp"
+                @ontouchcancel="@OnPointerUp"
+                @oncontextmenu="@OnContextMenu"
+                data-context-menu-delay="200">
 
-            @* Icon for narrow-panel and text-mode *@
-            <narrow-recording-svg
-                isActive="@m.IsVoiceActive"
-                class="rec-icon on text-mode-on"/>
+                @* Icon for OFF state *@
+                <div class="rec-icon off">
+                    <i class="icon-recorder-left-half left"></i>
+                    <i class="icon-recorder-right-half right"></i>
+                </div>
 
-            @* Icon for ON state *@
-            <active-recording-svg
-                size="@recordingIconSize"
-                isActive="@m.IsVoiceActive"
-                class="rec-icon on text-mode-off"/>
-        </ButtonRound>
-    </div>
-} else {
-    <div class="recorder-wrapper mic-disabled">
-        <ButtonRound
-            Class="mic-disabled"
-            Click="@OnClick">
-            <i class="icon-mic-off text-06"></i>
-        </ButtonRound>
-    </div>
+                @* Icon for narrow-panel and text-mode *@
+                <narrow-recording-svg
+                    isActive="@m.IsVoiceActive"
+                    class="rec-icon on text-mode-on"/>
+
+                @* Icon for ON state *@
+                <active-recording-svg
+                    size="@recordingIconSize"
+                    isActive="@m.IsVoiceActive"
+                    class="rec-icon on text-mode-off"/>
+            </ButtonRound>
+        </div>
+    } else {
+        <div class="recorder-wrapper mic-disabled">
+            <ButtonRound
+                Class="mic-disabled"
+                Click="@OnClick">
+                <i class="icon-mic-off"></i>
+            </ButtonRound>
+        </div>
+    }
 }
 
 @code {
