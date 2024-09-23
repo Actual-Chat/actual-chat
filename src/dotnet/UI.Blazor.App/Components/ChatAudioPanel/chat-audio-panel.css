@@ -379,6 +379,9 @@ body.narrow .chat-audio-panel .recorder-wrapper {
     @apply pointer-events-none;
     filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));
 }
+body.hoverable .recorder-wrapper> .c-tooltip {
+    @apply hidden;
+}
 
 .recorder-wrapper > .c-tooltip > .c-tooltip-arrow {
     @apply absolute -bottom-1;
