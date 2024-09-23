@@ -1,7 +1,6 @@
 import { customElement, property } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
-import { animationFrameScheduler, map, scan, Observable, Subscription } from 'rxjs';
-import { throttleTime } from 'rxjs/operators';
+import { map, scan, Observable, Subscription, filter } from 'rxjs';
 import { OpusMediaRecorder } from '../AudioRecorder/opus-media-recorder';
 import { RunningMax, translate } from 'math';
 import { observe } from '../../Services/observe-directive-lit';
@@ -46,7 +45,7 @@ class NarrowRecordingSvg extends LitElement {
         const minOpacity = 60;
         const maxOpacity = 100;
         const signalPower$ = OpusMediaRecorder.audioPowerChanged$
-            .pipe(throttleTime(0, animationFrameScheduler));
+            .pipe(filter((p, i) => i % 2 === 0));
 
         this.recorderStateChangedSubscription = OpusMediaRecorder.recorderStateChanged$.subscribe(s => {
             this.isRecording = s.isRecording;
@@ -84,6 +83,10 @@ class NarrowRecordingSvg extends LitElement {
     }
 
     protected render(): unknown {
+        const display = getComputedStyle(this.shadowRoot?.host, null)?.display ?? 'none';
+        if (display === 'none')
+            return html``;
+
         const defaultOpacity = 70;
         const opacity = observe(this.opacity$, defaultOpacity);
 

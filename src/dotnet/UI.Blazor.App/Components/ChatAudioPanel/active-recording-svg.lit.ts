@@ -1,7 +1,7 @@
 import { customElement, property } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
-import { animationFrameScheduler, map, scan, Observable, Subscription } from 'rxjs';
-import { delayWhen, throttleTime, skip, take, distinctUntilChanged } from 'rxjs/operators';
+import { map, scan, Observable, Subscription, filter } from 'rxjs';
+import { delayWhen, skip, take, distinctUntilChanged } from 'rxjs/operators';
 import { OpusMediaRecorder } from '../AudioRecorder/opus-media-recorder';
 import { clamp, RunningMax, translate } from 'math';
 import { observe } from '../../Services/observe-directive-lit';
@@ -90,7 +90,7 @@ class ActiveRecordingSvg extends LitElement {
         this.isVoiceActive$ = OpusMediaRecorder.recorderStateChanged$
             .pipe(map(s => s.isVoiceActive), distinctUntilChanged());
         const signalPower$ = OpusMediaRecorder.audioPowerChanged$
-            .pipe(throttleTime(0, animationFrameScheduler));
+            .pipe(filter((p, i) => i % 2 === 0));
 
         this.recorderStateChangedSubscription = OpusMediaRecorder.recorderStateChanged$.subscribe(s => {
            this.isRecording = s.isRecording;
@@ -123,10 +123,10 @@ class ActiveRecordingSvg extends LitElement {
 
         this.height2$ = this.height1$
             .pipe(map(h => clamp(0.7 * h, minHeight, maxHeight)))
-            .pipe(delayWhen(() => this.height1$.pipe(skip(5), take(1)))); // with 150 ms delay
+            .pipe(delayWhen(() => this.height1$.pipe(skip(3), take(1)))); // with 180 ms delay
         this.height3$ = this.height1$
             .pipe(map(h => clamp(0.4 * h, minHeight, maxHeight)))
-            .pipe(delayWhen(() => this.height1$.pipe(skip(10), take(1)))); // with 300 ms delay
+            .pipe(delayWhen(() => this.height1$.pipe(skip(6), take(1)))); // with 360 ms delay
 
         // offsets in percent
         this.offset1$ = this.height1$
@@ -144,6 +144,10 @@ class ActiveRecordingSvg extends LitElement {
     }
 
     protected render(): unknown {
+        const display = getComputedStyle(this.shadowRoot?.host, null)?.display ?? 'none';
+        if (display === 'none')
+            return html``;
+
         const { size, minHeight } = this;
         const width = 10;
         const defaultHeight = minHeight;
@@ -155,8 +159,8 @@ class ActiveRecordingSvg extends LitElement {
         const offset1 = observe(this.offset1$, defaultOffset);
         const offset2 = observe(this.offset2$, defaultOffset);
         const offset3 = observe(this.offset3$, defaultOffset);
-        const edgeDotCls = observe(this.isVoiceActive$.pipe(map(b => b ? "active" : "non-active")));
-        const centerDotCls = observe(this.isVoiceActive$.pipe(map(b => b ? "" : "in-rest")));
+        const edgeDotCls = observe(this.isVoiceActive$.pipe(map(b => b ? "active" : "non-active")), "active");
+        const centerDotCls = observe(this.isVoiceActive$.pipe(map(b => b ? "" : "in-rest")), "");
 
         if (this.isActive) {
             return html`
