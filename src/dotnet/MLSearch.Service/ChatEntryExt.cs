@@ -12,8 +12,12 @@ public static class ChatEntryExt
         => new() {
             Id = entry.Id.AsTextEntryId(),
             Content = entry.Content,
+            At = entry.GetIndexedEntryDate(),
         };
 
     public static IEnumerable<IndexedEntry> ToIndexedEntries(this IEnumerable<ChatEntry> entries)
         => entries.Select(x => x.ToIndexedEntry());
+
+    public static Moment GetIndexedEntryDate(this ChatEntry entry)
+        => entry.EndsAt ?? entry.ContentEndsAt ?? entry.BeginsAt;
 }

@@ -72,17 +72,21 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         var groups = await Tester.CreateGroupContacts(bob, places);
 
         // act
-        var aliceEntries = await groups.Joined().Select(x => CreateEntry(x.Id, "Let's go outside")).Collect();
-        await groups.OtherPrivate().Select(x => CreateEntry(x.Id, "Let's go - this entry must not be found")).Collect();
+        var aliceEntries = await CreateEntries(groups.Joined(), "Let's go outside");
+        await CreateEntries(groups.OtherPrivate(), "Let's go - this entry must not be found");
         await Tester.SignIn(bob);
-        var bobEntries = await groups.Joined().Select(x => CreateEntry(x.Id, "Let's go")).Collect();
+        var bobEntries = await CreateEntries(groups.Joined(), "Let's go");
         var entryLookup = aliceEntries.Concat(bobEntries).ToLookup(x => x.ChatId);
 
         // assert
         foreach (var chat in groups.Values) {
-            var expected = entryLookup[chat.Id].BuildSearchResults().ToList();
+            var expected = entryLookup[chat.Id]
+                .OrderByDescending(x => x.GetIndexedEntryDate())
+                .BuildSearchResults()
+                .ToList();
             var searchResults = await Find("let", chatId: chat.Id, expected: expected.Count);
-            searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch(), chat.Title);
+            searchResults.Should()
+                .BeEquivalentTo(expected, o => o.ExcludingSearchMatch().WithStrictOrdering(), chat.Title);
         }
     }
 
@@ -96,17 +100,21 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         var groups = await Tester.CreateGroupContacts(bob, places);
 
         // act
-        var aliceEntries = await groups.Joined().Select(x => CreateEntry(x.Id, "Let's go outside")).Collect();
-        await groups.OtherPrivate().Select(x => CreateEntry(x.Id, "Let's go - this entry must not be found")).Collect();
+        var aliceEntries = await CreateEntries(groups.Joined(), "Let's go outside");
+        await CreateEntries(groups.OtherPrivate(), "Let's go - this entry must not be found");
         await Tester.SignIn(bob);
-        var bobEntries = await groups.Joined().Select(x => CreateEntry(x.Id, "Let's go")).Collect();
+        var bobEntries = await CreateEntries(groups.Joined(), "Let's go");
         var entryLookup = aliceEntries.Concat(bobEntries).ToLookup(x => x.ChatId.PlaceId);
 
         // assert
         foreach (var place in places.Values) {
-            var expected = entryLookup[place.Id].BuildSearchResults().ToList();
+            var expected = entryLookup[place.Id]
+                .OrderByDescending(x => x.GetIndexedEntryDate())
+                .BuildSearchResults()
+                .ToList();
             var searchResults = await Find("let", place.Id, expected: expected.Count);
-            searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch(), place.Title);
+            searchResults.Should()
+                .BeEquivalentTo(expected, o => o.ExcludingSearchMatch().WithStrictOrdering(), place.Title);
         }
     }
 
@@ -130,7 +138,8 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         entry2 = await UpdateEntry(entry2.Id, "let");
         searchResults = await Find("let", expected: 2);
         searchResults.Should()
-            .BeEquivalentTo([entry1.BuildSearchResult(), entry2.BuildSearchResult()], o => o.ExcludingSearchMatch());
+            .BeEquivalentTo([entry2.BuildSearchResult(), entry1.BuildSearchResult()],
+                o => o.ExcludingSearchMatch().WithStrictOrdering());
     }
 
     [Fact]
@@ -153,8 +162,16 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     // Private methods
 
-    private Task<ChatEntry> CreateEntry(ChatId chatId, string text)
-        => Tester.CreateTextEntry(chatId, $"{UniquePart} {text}");
+    private async Task<List<ChatEntry>> CreateEntries(IEnumerable<Chat.Chat> chats, string text)
+    {
+        var entries = new List<ChatEntry>();
+        foreach (var chat in chats)
+            entries.Add(await Tester.CreateTextEntry(chat.Id, $"{UniquePart} {text}"));
+        return entries;
+    }
+
+    private async Task<ChatEntry> CreateEntry(ChatId chatId, string text)
+        => await Tester.CreateTextEntry(chatId, $"{UniquePart} {text}");
 
     private Task<ChatEntry> UpdateEntry(ChatEntryId id, string text)
         => Tester.UpdateTextEntry(id, $"{UniquePart} {text}");

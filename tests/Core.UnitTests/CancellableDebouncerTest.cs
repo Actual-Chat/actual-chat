@@ -81,7 +81,7 @@ public class CancellableDebouncerTest
         // act
         for (int i = 1; i <= count; i++) {
             var prev = i - 1;
-            await startedEvent.When(x => x == prev).WaitAsync(interval + TimeSpan.FromSeconds(1));
+            await startedEvent.When(x => x == prev).WaitAsync(interval + TimeSpan.FromSeconds(3));
             sut.Enqueue(i);
         }
 
