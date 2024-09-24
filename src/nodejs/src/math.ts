@@ -114,19 +114,21 @@ export class RunningUnitMedian implements RunningCounter {
         if (this._value !== null)
             return this._value;
 
+        if (this._sampleCount <= 0)
+            return this._value = this.defaultValue; // No samples
+
         const halfSampleCount = this._sampleCount / 2;
-        if (halfSampleCount) {
-            // there are samples to calc median
-            let runningCount = 0;
-            for (let i = 0; i < this._buckets.length; i++) {
-                runningCount += this._buckets[i];
-                if (runningCount >= halfSampleCount) {
-                    // Ideally we should distribute the weight here
-                    return this._value = i / this._buckets.length + this._halfBucketSize;
-                }
+        let runningCount = 0;
+        for (let i = 0; i < this._buckets.length; i++) {
+            runningCount += this._buckets[i];
+            if (runningCount >= halfSampleCount) {
+                // Ideally we should distribute the weight here
+                return this._value = (2*i + 1) * this._halfBucketSize;
             }
         }
-        return this._value = this.defaultValue;
+
+        // We shouldn't land here, but just in case:
+        return this._value = (2*this._buckets.length - 1) * this._halfBucketSize;
     }
 
     public reset(): void {

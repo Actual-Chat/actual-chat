@@ -11,7 +11,7 @@ import { Log } from 'logging';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('AudioStreamer');
 const bufferPool: ObjectPool<ArrayBuffer> = new ObjectPool<ArrayBuffer>(
-    () => new ArrayBuffer(AE.FRAME_BYTES * 2)
+    () => new ArrayBuffer(AE.FRAME_BUFFER_BYTES)
 ).expandTo(20);
 
 export class AudioStream implements Disposable {
@@ -69,10 +69,11 @@ export class AudioStream implements Disposable {
             return;
 
         const buffer = bufferPool.get();
-        let frame : Uint8Array;
-        if (buffer.byteLength >= source.byteLength)
+        let frame: Uint8Array;
+        if (source.byteLength <= buffer.byteLength)
             frame = new Uint8Array(buffer, 0, source.byteLength)
         else {
+            // bufferPool's buffer isn't big enough, so we allocate a "custom" one
             frame = new Uint8Array(source.byteLength);
             bufferPool.release(buffer);
         }
@@ -84,7 +85,7 @@ export class AudioStream implements Disposable {
         this.frames.push(frame);
         while (this.frames.length > AS.MAX_BUFFERED_FRAMES) {
             const oldFrame = this.frames.shift();
-            if (oldFrame.buffer.byteLength >= buffer.byteLength)
+            if (oldFrame.buffer.byteLength === AE.FRAME_BUFFER_BYTES) // It's our own buffer
                 bufferPool.release(oldFrame.buffer);
         }
         this.frameAdded.trigger();

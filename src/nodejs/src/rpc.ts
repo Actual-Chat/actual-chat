@@ -318,9 +318,9 @@ export function rpcClientServer<TClient extends object>(
 
     messagePort.onmessage = async (event: MessageEvent<RpcCall | RpcResult>): Promise<void> => {
         const data = event.data;
-        if (data['method'])
+        if (data['method']) // RpcCall message, we process it via serverOnMessage
             await serverOnMessage.call(messagePort, event);
-        else
+        else // RpcResult message, we process it via clientOnMessage
             await clientOnMessage.call(messagePort, event);
     }
     return client;

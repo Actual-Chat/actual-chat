@@ -218,14 +218,12 @@ export class OpusMediaRecorder implements RecorderStateServer {
             Versioning.artifactVersions,
             hubUrl,
             { type: 'rpc-timeout', timeoutMs: 5_000 });
-
         debugLog?.log(`init(): encoderWorker created`);
 
         await this.vadWorker.create(
             Versioning.artifactVersions,
             canUseNNVad,
             { type: 'rpc-timeout', timeoutMs: 5_000 });
-
         debugLog?.log(`init(): vadWorker created`);
 
         this.whenInitialized.resolve(undefined);

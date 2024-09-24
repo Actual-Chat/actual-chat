@@ -28,12 +28,15 @@ export const AUDIO_PLAY = {
 
 const ENC_FRAME_DURATION_MS = 20; // 20ms
 const ENC_BIT_RATE = 32 * 1024; // 32Kbps = 4KB/s = ~80 bytes per frame
+const ENC_BYTE_RATE = Math.round(ENC_BIT_RATE / 8);
+const ENC_FRAME_BYTES = Math.round(ENC_BIT_RATE * ENC_FRAME_DURATION_MS / 1000 / 8);
 export const AUDIO_ENCODER = {
     FRAME_DURATION_MS: ENC_FRAME_DURATION_MS,
     BIT_RATE: ENC_BIT_RATE,
-    BYTE_RATE: Math.round(ENC_BIT_RATE / 8),
+    BYTE_RATE: ENC_BYTE_RATE,
     FRAME_SAMPLES: REC_SAMPLES_PER_MS * ENC_FRAME_DURATION_MS,
-    FRAME_BYTES: Math.ceil(ENC_BIT_RATE * ENC_FRAME_DURATION_MS / 1000),
+    FRAME_BYTES: ENC_FRAME_BYTES,
+    FRAME_BUFFER_BYTES: 2 * ENC_FRAME_BYTES,
     FADE_FRAMES: 3, // 60ms, it's fade-in @ start and fade-out @ the end
     MAX_BUFFERED_FRAMES: 50, // 1s, it doesn't have to be large now, coz frames are instantly added to streams
     DEFAULT_PRE_SKIP: 312, // Pre-skip / codec delay measured in samples. It's the default one, used w/ system encoder, which doesn't provide it.
@@ -42,7 +45,7 @@ export const AUDIO_ENCODER = {
 export const AUDIO_STREAMER = {
     MAX_STREAMS: 3, // Max streams to keep sending
     DELAY_FRAMES: 5, // 100ms - !DELAYER: streamer won't start sending until it gets these frames (~400 bytes)
-    MIN_PACK_FRAMES: 3, // 30ms - min. # of frames to send at once (~240 bytes)
+    MIN_PACK_FRAMES: 3, // 60ms - min. # of frames to send at once (~240 bytes)
     MAX_PACK_FRAMES: 10, // 200ms - max. # of frames to send at once (~800 bytes)
     MAX_BUFFERED_FRAMES: 1500, // 30s (~120KB)
     MAX_SPEED: 2, // Max streaming speed - relative to real-time; must be >1, but not too high to avoid queued stream overlap
@@ -58,7 +61,7 @@ export const AUDIO_STREAMER = {
 }
 
 export const AUDIO_VAD = {
-    // All durations here are in seconds
+    // All durations below are in seconds
     MIN_SPEECH: 0.5, // When the speech is detected, it will always send at this much at least
     MAX_SPEECH: 60 * 2, // Max speech duration - if it takes longer, VAD will generate a hard split anyway
     MIN_SPEECH_TO_CANCEL_PAUSE: 0.15, // Min. speech duration required to cancel non-materialized pause
@@ -68,4 +71,6 @@ export const AUDIO_VAD = {
     CONV_DURATION: 30, // A period from conversationSignal to the moment VAD assumes the conversation ended
     PAUSE_VARIES_FROM: 10, // Pause starts to vary from (MAX_PAUSE or MAX_CONV_PAUSE) to MIN_PAUSE at this speech duration
     PAUSE_VARY_POWER: Math.sqrt(2), // The power used in max_pause = lerp(MAX_PAUSE, MIN_PAUSE, pow(alpha, THIS_VALUE))
+    // All durations below are in samples (16KHz = 16 samples per ms)
+    NN_VAD_CONTEXT_SAMPLES: 64, // 4ms, the length of NN VAD buffer "prefix" copied from the end of prev. buffer
 };

@@ -1,12 +1,13 @@
+
 import { AUDIO_REC as AR, AUDIO_VAD as AV } from '_constants';
 import { clamp, lerp, RunningUnitMedian, RunningEMA, approximateGain } from 'math';
-import { Versioning } from 'versioning';
 // @ts-ignore - it works, but fails validation
 import * as ort from 'onnxruntime-web/wasm';
+import { WebRtcVad } from '@actual-chat/webrtc-vad';
 import { VoiceActivityChange, VoiceActivityDetector, NO_VOICE_ACTIVITY } from './audio-vad-contract';
 import { Log } from 'logging';
 
-const { logScope, debugLog } = Log.get('AudioVadWorker');
+const { debugLog } = Log.get('AudioVadWorker');
 
 export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector {
     protected readonly probEMA = new RunningEMA(0.5, 5); // 32ms*5 ~ 150ms
@@ -25,7 +26,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     protected maxPauseSamples: number;
 
     protected constructor(
-        private isNeural: boolean,
+        protected isNeural: boolean,
         protected sampleRate: number,
         public lastActivityEvent: VoiceActivityChange = NO_VOICE_ACTIVITY,
     ) {
@@ -38,7 +39,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     public abstract init(): Promise<void>;
 
     public reset(): void {
-        this.lastActivityEvent = { kind: 'end', offset: 0, speechProb: 0 };
+        this.lastActivityEvent = NO_VOICE_ACTIVITY;
         this.sampleCount = 0;
         this.pauseOffset = null;
         this.pauseCancelSamples = 0;
@@ -137,10 +138,11 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
                 && (this.sampleCount - this.lastConversationSignalAtSample) <= this.sampleRate * AV.CONV_DURATION;
             const maxPause = isConversation ? AV.MAX_CONV_PAUSE : AV.MAX_PAUSE;
             const maxPauseVariesFromSamples = this.sampleRate * AV.PAUSE_VARIES_FROM;
-            let maxPauseAlpha = Math.abs(
+            let maxPauseAlpha =
                 (currentSpeechSamples - maxPauseVariesFromSamples) /
-                (this.maxSpeechSamples - maxPauseVariesFromSamples));
-            maxPauseAlpha = clamp(Math.pow(maxPauseAlpha, AV.PAUSE_VARY_POWER), 0, 1);
+                (this.maxSpeechSamples - maxPauseVariesFromSamples); // Always > 0
+            maxPauseAlpha = clamp(maxPauseAlpha, 0, 1);
+            maxPauseAlpha = Math.pow(maxPauseAlpha, AV.PAUSE_VARY_POWER);
             const silenceThreshold = lerp(maxPause, AV.MIN_PAUSE, maxPauseAlpha);
             this.maxPauseSamples = Math.floor(this.sampleRate * silenceThreshold);
         }
@@ -164,8 +166,45 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     protected abstract appendChunkInternal(monoPcm: Float32Array): Promise<number|null>;
 }
 
-const CONTEXT_SAMPLES = 64;
-export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
+// WebRtcVoiceActivityDetector
+
+enum VadActivity {
+    Silence = 0,
+    Voice = 1,
+    Error = -1,
+}
+
+export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
+    constructor(private baseVad: WebRtcVad) {
+        super(false, AR.SAMPLE_RATE);
+    }
+
+    public override init(): Promise<void> {
+        // @ts-ignore
+        return Promise.resolve(undefined);
+    }
+
+    protected override appendChunkInternal(monoPcm: Float32Array): Promise<number | null> {
+        if (monoPcm.length !== AR.SAMPLES_PER_WINDOW_30)
+            throw new Error(`appendChunk() accepts ${AR.SAMPLES_PER_WINDOW_30} sample audio windows only.`);
+
+        const activity = this.baseVad.detect(monoPcm.buffer);
+        if (activity == VadActivity.Error)
+            throw new Error(`Error calling WebRtc VAD`);
+
+        // Our base class logic has been developed for float speech probability about 0.75 and higher,
+        // so let's adjust 1|0 to tested range to reuse existing heuristics
+        return Promise.resolve(Number(0.8 * activity));
+    }
+
+    protected override resetInternal() {
+        this.baseVad.reset();
+    }
+}
+
+// NNVoiceActivityDetector
+
+export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
     private readonly modelUri: URL;
 
     private readonly context: Float32Array;
@@ -177,11 +216,12 @@ export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
         super(true, AR.SAMPLE_RATE, lastActivityEvent);
 
         this.modelUri = modelUri;
-        this.context = new Float32Array(CONTEXT_SAMPLES).fill(0);
-        this.buffer = new Float32Array(AR.SAMPLES_PER_WINDOW_32 + CONTEXT_SAMPLES).fill(0);
+        this.context = new Float32Array(AV.NN_VAD_CONTEXT_SAMPLES).fill(0);
+        this.buffer = new Float32Array(AR.SAMPLES_PER_WINDOW_32 + AV.NN_VAD_CONTEXT_SAMPLES).fill(0);
         this.resetInternal();
 
-        // multithreading requires Cross origin Isolation - see https://web.dev/articles/cross-origin-isolation-guide
+        // Multithreading requires Cross Origin Isolation, so we don't use it here. See:
+        // - https://web.dev/articles/cross-origin-isolation-guide
         // ort.env.wasm.numThreads = 4;
         ort.env.wasm.numThreads = 1;
         ort.env.wasm.simd = true;

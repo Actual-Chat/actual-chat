@@ -3,99 +3,152 @@ import WebRtcVadWasm from '@actual-chat/webrtc-vad/webrtc-vad.wasm';
 
 import { AUDIO_REC as AR } from '_constants';
 import Denque from 'denque';
+import { delayAsync, PromiseSource, retry } from 'promises';
 import { Disposable } from 'disposable';
-import { Log } from 'logging';
-import { Versioning } from 'versioning';
 import { RunningEMA } from 'math';
-import OnnxModel from './vad.onnx';
 import { rpcClientServer, RpcNoWait, rpcNoWait, RpcTimeout } from 'rpc';
-import { AudioVadWorklet } from '../worklets/audio-vad-worklet-contract';
-import { NO_VOICE_ACTIVITY } from './audio-vad-contract';
-import { NNVoiceActivityDetector } from './audio-vad';
-import { AudioVadWorker } from './audio-vad-worker-contract';
-import { OpusEncoderWorker } from './opus-encoder-worker-contract';
-import { VoiceActivityChange, VoiceActivityDetector } from './audio-vad-contract';
-import { delayAsync, retry } from 'promises';
-import { WebRtcVoiceActivityDetector } from './audio-vad-webrtc';
-import { RecorderStateServer } from "../opus-media-recorder-contracts";
+import { Versioning } from 'versioning';
 import { AudioDiagnosticsState } from "../audio-recorder";
+import { NO_VOICE_ACTIVITY, VoiceActivityChange, VoiceActivityDetector } from './audio-vad-contract';
+import { AudioVadWorker } from './audio-vad-worker-contract';
+import { AudioVadWorklet } from '../worklets/audio-vad-worklet-contract';
+import { NeuralVoiceActivityDetector, WebRtcVoiceActivityDetector } from './audio-vad';
+import { OpusEncoderWorker } from './opus-encoder-worker-contract';
+import { RecorderStateServer } from "../opus-media-recorder-contracts";
+import OnnxModel from './vad.onnx';
+import { Log } from 'logging';
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('AudioVadWorker');
 
 const worker = globalThis as unknown as Worker;
 const queue = new Denque<ArrayBuffer>();
 
-let vadModule: WebRtcVadModule = null;
 let vadWorklet: AudioVadWorklet & Disposable = null;
 let encoderWorker: OpusEncoderWorker & Disposable = null;
-let nnVoiceDetector: VoiceActivityDetector = null;
-let webrtcVoiceDetector: VoiceActivityDetector = null;
-let isVadRunning = false;
 let isActive = false;
-let isNNVadInitialized = false;
 let audioPowerEma = new RunningEMA(0, 10);
-let canUseNNVad = false;
 let lastVadEventProcessedAt = 0;
 
+class VadLoader {
+    private static webRtcVadModule: WebRtcVadModule = null;
+
+    public static neuralVadLoadDelaySource = new PromiseSource<void>();
+    public useNeuralVad = false;
+    public whenWebRtcVadReady: Promise<void> = null;
+    public whenNeuralVadReady: Promise<void> = null;
+    public webRtcVad: WebRtcVoiceActivityDetector | null = null;
+    public neuralVad: NeuralVoiceActivityDetector | null = null;
+    public isInitialized = false;
+
+    public static cancelNeuralVadLoadDelay(): void {
+        VadLoader.neuralVadLoadDelaySource?.resolve(undefined)
+        VadLoader.neuralVadLoadDelaySource = null;
+    }
+
+    public get vad(): VoiceActivityDetector {
+        return this.neuralVad ?? this.webRtcVad;
+    }
+
+    public get windowSizeMs(): 30 | 32 {
+        return this.neuralVad !== null ? 32 : 30;
+    }
+
+    public load(useNeuralVad: boolean = true): Promise<void> {
+        if (this.whenWebRtcVadReady === null) {
+            this.useNeuralVad = useNeuralVad;
+            this.whenWebRtcVadReady = (async () => {
+                VadLoader.webRtcVadModule ??= await retry(3, () => webRtcVadModule(getEmscriptenLoaderOptions()));
+                const baseVad = new VadLoader.webRtcVadModule.WebRtcVad(AR.SAMPLE_RATE, 0);
+                const webRtcVad = new WebRtcVoiceActivityDetector(baseVad);
+                await webRtcVad.init();
+                this.webRtcVad = webRtcVad;
+            })();
+            this.whenNeuralVadReady ??= (async () => {
+                if (!this.useNeuralVad) {
+                    this.neuralVad = null;
+                    return;
+                }
+
+                await VadLoader.neuralVadLoadDelaySource;
+                infoLog?.log(`VadSwitcher.init: loading neural VAD...`);
+                await this.whenWebRtcVadReady;
+                const lastActivityEvent: VoiceActivityChange = this.webRtcVad.lastActivityEvent ?? NO_VOICE_ACTIVITY;
+                const nnVad = new NeuralVoiceActivityDetector(OnnxModel as unknown as URL, lastActivityEvent);
+                await nnVad.init();
+                this.neuralVad = nnVad;
+            })();
+            return this.whenWebRtcVadReady;
+        }
+
+        // Non-first init(...)
+        return (async (): Promise<void> => {
+            await this.whenReady();
+            // It's safe to skip .init() on what's not loaded yet
+            await this.webRtcVad?.init();
+            await this.neuralVad?.init();
+        })();
+    }
+
+    public async whenReady(): Promise<void> {
+        return this.whenWebRtcVadReady;
+    }
+
+    public async whenFullyReady(forceLoad = true): Promise<void> {
+        if (forceLoad)
+            VadLoader.cancelNeuralVadLoadDelay();
+        return this.useNeuralVad ? this.whenNeuralVadReady : this.whenWebRtcVadReady;
+    }
+}
+const vads = new VadLoader();
+delayAsync(2000).then(_ => VadLoader.cancelNeuralVadLoadDelay());
+
 const serverImpl: AudioVadWorker = {
-    create: async (artifactVersions: Map<string, string>, canUseNNVad_: boolean, _timeout?: RpcTimeout): Promise<void> => {
-        canUseNNVad = canUseNNVad_;
-        if (nnVoiceDetector != null) {
-            await nnVoiceDetector.init();
-            return;
-        }
-        else if (webrtcVoiceDetector != null) {
-            await webrtcVoiceDetector.init();
-            return;
-        }
-
-        infoLog?.log(`-> onCreate`, canUseNNVad_, _timeout);
+    create: async (artifactVersions: Map<string, string>, canUseNNVad: boolean, _timeout?: RpcTimeout): Promise<void> => {
+        infoLog?.log(`create`, canUseNNVad, _timeout);
         Versioning.init(artifactVersions);
-
         queue.clear();
-
-        // Loading WebRtc VAD module
-        vadModule = await retry(3, () => webRtcVadModule(getEmscriptenLoaderOptions()));
-        webrtcVoiceDetector = new WebRtcVoiceActivityDetector(new vadModule.WebRtcVad(AR.SAMPLE_RATE, 0));
-
-        // Init NNVad with delay to avoid excessive load during startup
-        const isSimdSupported = canUseNNVad && _isSimdSupported();
-        if (isSimdSupported && !isNNVadInitialized) {
-            infoLog?.log(`onCreate: SIMD is supported will load NN VAD module`);
-            // Load NN VAD Module with delay
-            delayAsync(2000).then(_ => initNNVad());
-        }
-        infoLog?.log(`<- onCreate`);
+        void vads.load(canUseNNVad && isSimdSupported());
     },
 
     init: async (workletPort: MessagePort, encoderWorkerPort: MessagePort): Promise<void> => {
+        await vads.whenReady();
+        if (vads.webRtcVad === null) {
+            errorLog?.log(`init: no WebRTC VAD`);
+            return;
+        }
+
         vadWorklet = rpcClientServer<AudioVadWorklet>(`${logScope}.vadWorklet`, workletPort, serverImpl);
         encoderWorker = rpcClientServer<OpusEncoderWorker>(`${logScope}.encoderWorker`, encoderWorkerPort, serverImpl);
-
-        startWorklet();
+        void vadWorklet.start(vads.windowSizeMs, rpcNoWait);
+        if (vads.neuralVad === null) {
+            // Change vadWorklet window size when neural VAD gets loaded
+            vads.whenNeuralVadReady.then(() => {
+                if (vads.neuralVad !== null) // Load may fail
+                    void vadWorklet.start(vads.windowSizeMs, rpcNoWait);
+            })
+        }
         isActive = true;
     },
 
     reset: async (): Promise<void> => {
-        // it is safe to skip init while it still not active
         if (!isActive)
             return;
 
-        nnVoiceDetector?.reset();
-        webrtcVoiceDetector?.reset();
+        vads.webRtcVad?.reset();
+        vads.neuralVad?.reset();
     },
 
     conversationSignal: async (_noWait?: RpcNoWait): Promise<void> => {
         if (!isActive)
             return;
 
-        nnVoiceDetector?.conversationSignal();
-        webrtcVoiceDetector?.conversationSignal();
+        vads.webRtcVad?.conversationSignal();
+        vads.neuralVad?.conversationSignal();
     },
 
     runDiagnostics: async (diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> => {
+        const vad = vads.neuralVad ?? vads.webRtcVad;
         diagnosticsState.isVadActive = isActive;
-        const vad = nnVoiceDetector ?? webrtcVoiceDetector;
         diagnosticsState.lastVadEvent = vad.lastActivityEvent;
         diagnosticsState.lastVadFrameProcessedAt = lastVadEventProcessedAt;
 
@@ -116,34 +169,20 @@ const serverImpl: AudioVadWorker = {
 const stateServer = rpcClientServer<RecorderStateServer>(`${logScope}.stateServer`, worker, serverImpl);
 
 async function processQueue(): Promise<void> {
-    if (isVadRunning)
-        return;
-
-    if (webrtcVoiceDetector == null && nnVoiceDetector == null)
-        return;
-
+    const vad = vads.vad;
+    const windowSizeSamples = vads.windowSizeMs * AR.SAMPLES_PER_MS;
+    const windowSizeBytes = windowSizeSamples * 4;
     try {
-        isVadRunning = true;
-        while (true) {
-            if (queue.isEmpty())
-                return;
-
+        while (!queue.isEmpty()) {
             const buffer = queue.shift();
             let vadEvent: VoiceActivityChange | number;
-            const hasNNVad = nnVoiceDetector != null;
 
-            // might be switched to NN Vad, but still has queue with wrong buffers
-            if (hasNNVad && buffer.byteLength == AR.SAMPLES_PER_WINDOW_32 * 4) {
-                const monoPcm = new Float32Array(buffer, 0, AR.SAMPLES_PER_WINDOW_32);
-                vadEvent = await nnVoiceDetector!.appendChunk(monoPcm);
-            }
-            else if (buffer.byteLength == AR.SAMPLES_PER_WINDOW_30 * 4) {
-                const monoPcm = new Float32Array(buffer, 0, AR.SAMPLES_PER_WINDOW_30);
-                vadEvent = await webrtcVoiceDetector.appendChunk(monoPcm);
+            if (buffer.byteLength === windowSizeBytes) {
+                const monoPcm = new Float32Array(buffer, 0, windowSizeSamples);
+                vadEvent = await vad.appendChunk(monoPcm);
             }
             else {
                 warnLog?.log(`processQueue: unexpected buffer length:`, buffer.byteLength);
-                // wrong sample buffer - let's skip it
                 vadEvent = 0;
             }
             lastVadEventProcessedAt = Date.now();
@@ -157,13 +196,8 @@ async function processQueue(): Promise<void> {
             }
             else {
                 if (vadEvent.kind === "start") {
-                    // we are trying to initialize NN vad when WebRTC vad has already triggered recording
-                    // because it's time and CPU consuming operation
-                    const isSimdSupported = canUseNNVad && _isSimdSupported();
-                    if (isSimdSupported && !hasNNVad && !isNNVadInitialized) {
-                        // Load NN VAD Module asynchronously
-                        void initNNVad();
-                    }
+                    if (vads.useNeuralVad && !vads.neuralVad)
+                        VadLoader.cancelNeuralVadLoadDelay();
                 }
                 void encoderWorker.onVoiceActivityChange(vadEvent, rpcNoWait);
                 void stateServer.onVoiceStateChanged(vadEvent.kind === 'start', rpcNoWait);
@@ -172,14 +206,32 @@ async function processQueue(): Promise<void> {
     }
     catch (error) {
         errorLog?.log(`processQueue: unhandled error:`, error);
-    } finally {
-        isVadRunning = false;
     }
 }
 
+// Helpers
 
-const _isSimdSupported = (): boolean => {
-    // Uncomment following line to test WebRTC VAD on devices supporting SIMD WASM
+function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
+    return {
+        locateFile: (filename: string) => {
+            const codecWasmPath = Versioning.mapPath(WebRtcVadWasm);
+            if (filename.slice(-4) === 'wasm')
+                return codecWasmPath;
+            // /// #if DEBUG
+            // else if (filename.slice(-3) === 'map')
+            //     return WebRtcVadWasmMap;
+            // /// #endif
+            // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
+            // emscripten 1.37.25 loads memory initializers as data: URI
+            else if (filename.slice(0, 5) === 'data:')
+                return filename;
+            else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
+        },
+    };
+}
+
+const isSimdSupported = (): boolean => {
+    // Uncomment the next line to test WebRTC VAD fallback
     // return false;
     try {
         // Test for WebAssembly SIMD capability (for both browsers and Node.js)
@@ -204,49 +256,3 @@ const _isSimdSupported = (): boolean => {
         return false;
     }
 };
-
-
-// Helpers
-
-function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
-    return {
-        locateFile: (filename: string) => {
-            const codecWasmPath = Versioning.mapPath(WebRtcVadWasm);
-            if (filename.slice(-4) === 'wasm')
-                return codecWasmPath;
-            // /// #if DEBUG
-            // else if (filename.slice(-3) === 'map')
-            //     return WebRtcVadWasmMap;
-            // /// #endif
-            // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
-            // emscripten 1.37.25 loads memory initializers as data: URI
-            else if (filename.slice(0, 5) === 'data:')
-                return filename;
-            else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
-        },
-    };
-}
-
-async function initNNVad(): Promise<void> {
-    if (isNNVadInitialized)
-        return;
-
-    infoLog?.log(`-> initNNVad`);
-    const currentActivityEvent: VoiceActivityChange = webrtcVoiceDetector.lastActivityEvent ?? NO_VOICE_ACTIVITY;
-    const vad = new NNVoiceActivityDetector(OnnxModel as unknown as URL, currentActivityEvent);
-    await vad.init();
-
-    nnVoiceDetector = vad;
-    isNNVadInitialized = true;
-    startWorklet();
-    infoLog?.log(`<- initNNVad`);
-}
-
-function startWorklet(): void {
-    if (!vadWorklet)
-        return; // when NN VAD is already initialized, but there are no vadWorklet yet
-
-    const hasNNVad = nnVoiceDetector != null;
-    const vadWindowSizeMs = hasNNVad ? 32 : 30;
-    void vadWorklet.start(vadWindowSizeMs, rpcNoWait);
-}
