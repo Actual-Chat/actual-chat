@@ -27,6 +27,7 @@
             </HeaderButton>
             <TextInput
                 @ref="_inputRef"
+                Text="@InitialText"
                 Class="w-full"
                 Placeholder="@Placeholder"
                 MaxLength="@MaxLength"
@@ -67,6 +68,7 @@
     [Parameter] public int? MaxLength { get; set; }
     [Parameter] public string Placeholder { get; set; } = "Search...";
     [Parameter] public string TabIndex { get; set; } = "";
+    [Parameter] public string InitialText { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<string> TextChanged { get; set; }
     [Parameter] public EventCallback<string> Triggered { get; set; }
