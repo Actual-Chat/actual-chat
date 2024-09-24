@@ -218,7 +218,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         // NOTE: we don't have any other chance to process removed items
         Log.LogDebug("Received AccountChangedEvent {ChangeKind} #{Id}", changeKind, account.Id);
         if (changeKind == ChangeKind.Remove) {
-            var deletedContacts = ApiArray.New(account.ToIndexedUserContact());
+            var deletedContacts = ApiArray.New([account.ToIndexedUserContact()]);
             await Queues.Enqueue(new SearchBackend_UserContactBulkIndex([], deletedContacts), cancellationToken).ConfigureAwait(false);
         }
         else
@@ -255,7 +255,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         // NOTE: we don't have any other chance to process removed items
         if (changeKind == ChangeKind.Remove) {
             var place = await PlacesBackend.Get(chat.Id.PlaceId, cancellationToken).ConfigureAwait(false);
-            var deletedContacts = ApiArray.New(chat.ToIndexedChatContact(place));
+            var deletedContacts = ApiArray.New([chat.ToIndexedChatContact(place)]);
             await Queues.Enqueue(new SearchBackend_ChatContactBulkIndex([], deletedContacts), cancellationToken).ConfigureAwait(false);
         }
         else
@@ -274,7 +274,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         var (place, _, changeKind) = eventCommand;
         // NOTE: we don't have any other chance to process removed items
         if (changeKind == ChangeKind.Remove) {
-            var deletedContacts = ApiArray.New(place.ToIndexedPlaceContact());
+            var deletedContacts = ApiArray.New([place.ToIndexedPlaceContact()]);
             await Queues.Enqueue(new SearchBackend_PlaceContactBulkIndex([], deletedContacts), cancellationToken).ConfigureAwait(false);
         }
         else
@@ -478,11 +478,12 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         var chatIds = await ListChatIds().ConfigureAwait(false);
 
         var searchResponse =
-            await OpenSearchClient.SearchAsync<IndexedEntry>(s
-                        => s.Index(OpenSearchNames.EntryIndexName)
+            await OpenSearchClient.SearchAsync<IndexedEntry>(searchDescriptor
+                        => searchDescriptor.Index(OpenSearchNames.EntryIndexName)
                             .From(query.Skip)
                             .Size(query.Limit)
                             .Query(q => q.Bool(ConfigureQuery))
+                            .Sort(s => s.Descending(x => x.At))
                             .IgnoreUnavailable()
                             .Highlight(h => h.Fields(f => f.Field(x => x.Content)))
                             .Log(OpenSearchClient, DebugLog, "Entry search request"),

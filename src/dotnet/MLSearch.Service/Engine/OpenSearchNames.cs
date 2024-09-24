@@ -8,7 +8,7 @@ internal sealed class OpenSearchNames
     public const string IngestPipelineNameSuffix = "ingest-pipeline";
     public const string IndexNameSuffix = "index";
     public const string TemplateNameSuffix = "template";
-    public const string EntryIndexVersion = "v3";
+    public const string EntryIndexVersion = "v4";
     public const string UserIndexVersion = "v5";
     public const string GroupIndexVersion = "v5";
     public const string PlaceIndexVersion = "v3";
@@ -16,7 +16,7 @@ internal sealed class OpenSearchNames
     public const string TestPrefix = "test";
     public const string ChatContent = "chat-content";
     public const string ChatContentCursor = "chat-content-cursor";
-    public const string ChatCursor = "chat-cursor";
+    public const string ChatCursor = "v2-chat-cursor";
     public string UniquePart { get; init; } = ""; // for testing purpose only
     public static string MLIndexPattern => $"{MLPrefix}-*";
     public static string MLTestIndexPattern => $"{MLPrefix}-{TestPrefix}-*";
