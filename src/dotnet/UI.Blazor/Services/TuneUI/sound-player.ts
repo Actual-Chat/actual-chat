@@ -18,12 +18,12 @@ export class SoundPlayer {
         if (playedAt - lastPlayedAt <= (cooldown ?? DEFAULT_COOLDOWN) * 1000)
             return; // do not play same sound too often
 
-        const audioContextRef = audioContextSource.getRef('play-tunes', {
+        const contextRef = audioContextSource.getRef('play-tunes', {
             attach: context => this.onAttach(context),
             detach: context => this.onDetach(context),
         });
-        const context = await audioContextRef.whenFirstTimeReady();
-        const pause = audioContextRef.use();
+        const context = await contextRef.whenFirstTimeReady();
+        const pause = contextRef.use();
         const buffer = await this.getSound(context, url);
         if (!context) {
             warnLog?.log('play: failed to play sound: audioContext became unavailable')
@@ -46,7 +46,7 @@ export class SoundPlayer {
             source.stop();
             source.disconnect();
             pause();
-            await audioContextRef.disposeAsync();
+            await contextRef.disposeAsync();
         }
         debugLog?.log('<- play', url);
     }
