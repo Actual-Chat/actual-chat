@@ -21,7 +21,6 @@ import { VoiceActivityChange } from './audio-vad-contract';
 import { RecorderStateServer } from '../opus-media-recorder-contracts';
 import { AudioDiagnosticsState } from '../audio-recorder';
 import { Log } from 'logging';
-import { AudioStreamFader } from '../../../Services/audio-stream-fader';
 import { approximateGain, clamp } from 'math';
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
@@ -48,7 +47,6 @@ const systemCodecConfig: AudioEncoderConfig = {
     sampleRate: AR.SAMPLE_RATE,
     bitrate: AE.BIT_RATE,
 };
-const audioStreamFader = new AudioStreamFader(AE.FRAME_SAMPLES * AE.FADE_FRAMES);
 
 let state: 'initial' | 'created' | 'encoding' | 'ended' = 'initial';
 let isVoiceDetected: boolean = false;
@@ -219,7 +217,6 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
         return; // No encoder = there is nothing we can do
 
     if (fade === 'in') {
-        audioStreamFader.fadeIn();
         // calculate precise moment when speech starts - VAD may provide signals with delay
         // we will try to filter out frames with gain significantly lower than most recent
         const gains = new Float32Array(queue.length).fill(0);
@@ -238,15 +235,12 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
                 startIndex--;
             }
             let framesToShift = clamp(startIndex - 1, 0, queue.length - 1);
-            console.log('framesToShift', framesToShift, [...gains]);
             while (framesToShift-- > 0)            {
                 const samplesBuffer = queue.shift();
                 void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
             }
         }
     }
-    else if (fade === 'out')
-        audioStreamFader.fadeOut();
     else if (!isVoiceDetected)
         return;
 
@@ -255,7 +249,6 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
         while (!queue.isEmpty()) {
             const samplesBuffer = queue.shift();
             const samples = new Float32Array(samplesBuffer);
-            const fadedSamples = audioStreamFader.process(samples);
             const timestamp = chunkTimeOffset * 1000; // microseconds instead of ms
             if (systemEncoder) {
                 const audioChunk = new AudioData({
@@ -264,7 +257,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
                     numberOfChannels: 1,
                     numberOfFrames: AE.FRAME_SAMPLES,
                     timestamp: timestamp,
-                    data: fadedSamples,
+                    data: samples,
                 });
                 systemEncoder.encode(audioChunk);
                 encodedAudioFrames.push({ frame: samplesBuffer, timestamp: timestamp });
