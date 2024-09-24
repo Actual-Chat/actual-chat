@@ -478,11 +478,12 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         var chatIds = await ListChatIds().ConfigureAwait(false);
 
         var searchResponse =
-            await OpenSearchClient.SearchAsync<IndexedEntry>(s
-                        => s.Index(OpenSearchNames.EntryIndexName)
+            await OpenSearchClient.SearchAsync<IndexedEntry>(searchDescriptor
+                        => searchDescriptor.Index(OpenSearchNames.EntryIndexName)
                             .From(query.Skip)
                             .Size(query.Limit)
                             .Query(q => q.Bool(ConfigureQuery))
+                            .Sort(s => s.Descending(x => x.At))
                             .IgnoreUnavailable()
                             .Highlight(h => h.Fields(f => f.Field(x => x.Content)))
                             .Log(OpenSearchClient, DebugLog, "Entry search request"),

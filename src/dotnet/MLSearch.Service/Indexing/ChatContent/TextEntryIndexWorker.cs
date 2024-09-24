@@ -20,6 +20,7 @@ internal sealed class ChatEntryIndexWorker(
 {
     private const int BatchSize = 100;
     private const int Quota = 1_000;
+
     public async Task ExecuteAsync(MLSearch_TriggerChatIndexing job, CancellationToken cancellationToken)
     {
         var (chatId, indexingKind) = job;
