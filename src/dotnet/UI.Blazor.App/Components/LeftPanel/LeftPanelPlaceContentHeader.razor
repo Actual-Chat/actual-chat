@@ -15,7 +15,8 @@
     <div class="c-content">
         <ChatSearchBox
             @ref="_searchBoxRef"
-            IsCollapsed="true"
+            InitialText="@m.InitialText"
+            IsCollapsed="@m.InitialText.IsNullOrEmpty()"
             ShowClose="true"
             Placeholder="Search"
             ShowSpinner="true"
@@ -61,7 +62,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new(Place, false, true),
+            InitialValue = new(Place, false, true, SearchUI.Text.ValueOrDefault ?? ""),
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
@@ -70,7 +71,8 @@
         var placeId = Place.Id;
         var places = await Contacts.ListPlaceIds(Session, default).ConfigureAwait(false);
         var isMember = places.Contains(placeId);
-        return new (place, isMember);
+        var initialText = SearchUI.Text.ValueOrDefault ?? ""; // intentionally avoid recompute
+        return new(place, isMember, InitialText: initialText);
     }
 
     private void OnSearchBoxTextChanged(string text) {
@@ -90,5 +92,5 @@
 
     // Nested types
 
-    public sealed record Model(Place Place, bool IsMember = false, bool IsLoading = false);
+    public sealed record Model(Place Place, bool IsMember = false, bool IsLoading = false, string InitialText = "");
 }

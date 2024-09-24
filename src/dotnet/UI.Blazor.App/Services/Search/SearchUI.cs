@@ -79,8 +79,10 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
 
     private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
     {
-        if (e.IsUserAction)
-            Clear();
+        if (!e.IsUserAction)
+            return;
+
+        PlaceId.Value = NavbarUI.IsPlaceSelected(out var placeId) ? placeId : ActualChat.PlaceId.None;
     }
 
     private sealed record Cached(Criteria Criteria, IReadOnlyList<FoundItem> FoundItems)
