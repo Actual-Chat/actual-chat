@@ -66,7 +66,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     {
         var nonPlaceContactIds = await ListIds(userId, PlaceId.None, cancellationToken).ConfigureAwait(false);
         var placeIds = await ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
-        var placeContactIds = await placeIds.Select(placeId => ListIdsForSearch(userId, placeId, false, cancellationToken))
+        var placeContactIds = await placeIds.Select(placeId => ListPlaceContactIds(userId, placeId, false, cancellationToken))
             .Collect(cancellationToken)
             .Flatten()
             .ConfigureAwait(false);
@@ -76,14 +76,14 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ContactId>> ListIdsForSearch(UserId userId, PlaceId? placeId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<ContactId>> ListIdsForSearch(UserId userId, PlaceId? placeId, bool includePublic, CancellationToken cancellationToken)
     {
         if (placeId != null)
-            return await ListIds(userId, placeId.Value, cancellationToken).ConfigureAwait(false);
+            return await ListPlaceContactIds(userId, placeId.Value, includePublic, cancellationToken).ConfigureAwait(false);
 
         var placeIds = await ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
         var contactIds = await placeIds.PrefixWith(PlaceId.None)
-            .Select(id => ListIds(userId, id, cancellationToken))
+            .Select(id => ListPlaceContactIds(userId, id, includePublic, cancellationToken))
             .Collect(cancellationToken)
             .Flatten()
             .ConfigureAwait(false);
@@ -92,10 +92,22 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .ToApiArray();
     }
 
+    [ComputeMethod]
+    protected virtual async Task<ApiArray<ContactId>> ListPlaceContactIds(UserId userId, PlaceId placeId, bool includePublic, CancellationToken cancellationToken)
+    {
+        var contactIds = await ListIds(userId, placeId, cancellationToken).ConfigureAwait(false);
+        if (includePublic)
+            return contactIds;
+
+        var publicChatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
+        return contactIds.ExceptBy(publicChatIds, x => x.ChatId).ToApiArray();
+    }
+
+
     // [ComputeMethod]
     public virtual async Task<ApiArray<ContactId>> ListIdsForGroupContactSearch(UserId userId, PlaceId? placeId, CancellationToken cancellationToken)
     {
-        var contactIds = await ListIdsForSearch(userId, placeId, cancellationToken).ConfigureAwait(false);
+        var contactIds = await ListIdsForSearch(userId, placeId, true, cancellationToken).ConfigureAwait(false);
         return contactIds.Where(x => x.ChatId is { Kind: ChatKind.Group or ChatKind.Place })
             .ToApiArray();
     }
@@ -107,17 +119,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     {
         var contactIds = await ListIds(userId, PlaceId.None, cancellationToken).ConfigureAwait(false);
         return contactIds.Where(x => x.ChatId.Kind == ChatKind.Peer).ToApiArray();
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<ApiArray<ContactId>> ListIdsForSearch(UserId userId, PlaceId placeId, bool includePublic, CancellationToken cancellationToken)
-    {
-        var contactIds = await ListIds(userId, placeId, cancellationToken).ConfigureAwait(false);
-        if (includePublic)
-            return contactIds;
-
-        var publicChatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
-        return contactIds.ExceptBy(publicChatIds, x => x.ChatId).ToApiArray();
     }
 
     // [ComputeMethod]

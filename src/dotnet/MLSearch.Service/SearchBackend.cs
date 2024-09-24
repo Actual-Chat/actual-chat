@@ -510,12 +510,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
         async Task<List<ChatId>> ListChatIds()
         {
-            if (!query.ChatId.IsNone)
-                return [query.ChatId];
-            else {
-                var contactIds = await ContactsBackend.ListIdsForSearch(userId, query.PlaceId, cancellationToken).ConfigureAwait(false);
+            if (query.ChatId.IsNone) {
+                var contactIds = await ContactsBackend.ListIdsForSearch(userId, query.PlaceId, true, cancellationToken).ConfigureAwait(false);
                 return contactIds.Select(x => x.ChatId).ToList();
             }
+            return [query.ChatId];
         }
     }
 }

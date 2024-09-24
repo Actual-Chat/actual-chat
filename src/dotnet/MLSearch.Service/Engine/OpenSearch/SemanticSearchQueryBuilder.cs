@@ -4,9 +4,15 @@ using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch;
 
-internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings) : IQueryBuilder
+internal sealed class SemanticSearchQueryBuilder(
+    OpenSearchNamingPolicy namingPolicy,
+    SemanticIndexSettings settings) : IQueryBuilder
 {
     private const string EmbeddingFieldName = "event_dense_embedding";
+
+    private readonly string ChatIdFieldName = $"{namingPolicy.ConvertName(nameof(ChatSlice.Metadata))}.{namingPolicy.ConvertName(nameof(ChatSliceMetadata.ChatId))}";
+    private readonly string PlaceIdFieldName = $"{namingPolicy.ConvertName(nameof(ChatSlice.Metadata))}.{namingPolicy.ConvertName(nameof(ChatSliceMetadata.PlaceId))}";
+    private readonly Field NonExistentField = new("NON_EXISTING_FIELD");
 
     private List<QueryContainer> _queryFilters = [];
     private readonly List<QueryContainer> _queries = [];
@@ -182,25 +188,79 @@ internal sealed class SemanticSearchQueryBuilder(SemanticIndexSettings settings)
 
     void IQueryBuilder.ApplyChatFilter(ChatFilter chatFilter)
     {
-        var isPublic = ToBoolTermValue(chatFilter.PublicChatInclusion);
-        var isBotChat = ToBoolTermValue(chatFilter.BotChatInclusion);
+        var chatQueryFilters = new List<QueryContainer>();
 
-        if (isPublic.HasValue || isBotChat.HasValue) {
-            _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
+        if (chatFilter.IncludePublic) {
+            // Include all public chats
+            var publicChatFilter = new QueryContainerDescriptor<ChatSlice>()
                 .HasParent<ChatInfo>(parent => parent
                     .ParentType(ChatInfoToChatSliceRelation.ChatInfoName)
                     .Query(query => query.Bool(parentQuery => parentQuery.Filter([
-                            q => isPublic.HasValue ? q.Term(t => t.IsPublic, isPublic.Value) : q,
-                            q => isBotChat.HasValue ? q.Term(t => t.IsBotChat, isBotChat.Value) : q,
+                            q => q.Term(t => t.IsPublic, true),
+                            q => q.Term(t => t.IsBotChat, false),
                         ])))
+                );
+
+            var exclusions = GetExcludedChatFilters(chatFilter.ExcludedChatIds, ChatIdFieldName);
+            if (exclusions.Length > 0) {
+                publicChatFilter = new QueryContainerDescriptor<ChatSlice>()
+                    .Bool(boolQuery => boolQuery
+                        .Filter(publicChatFilter)
+                        .MustNot(exclusions));
+            }
+            chatQueryFilters.Add(publicChatFilter);
+        }
+        else if (chatFilter.PlaceIds.Count > 0) {
+            // Otherwise, include all public chat from the specified places (if any)
+            var placeFilters = chatFilter.PlaceIds
+                .Select(placeId => new QueryContainerDescriptor<ChatSlice>()
+                    .Term(query => query.Field(PlaceIdFieldName).Value(placeId.Value)))
+                .ToArray();
+
+            var exclusions = GetExcludedChatFilters(chatFilter.ExcludedChatIds, ChatIdFieldName);
+            chatQueryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
+                .Bool(boolQuery => boolQuery
+                    .Filter([
+                        new QueryContainerDescriptor<ChatSlice>()
+                            .HasParent<ChatInfo>(parent => parent
+                                .ParentType(ChatInfoToChatSliceRelation.ChatInfoName)
+                                .Query(query => query.Bool(parentQuery => parentQuery.Filter([
+                                        q => q.Term(t => t.IsPublic, true),
+                                        q => q.Term(t => t.IsBotChat, false),
+                                    ])))),
+                        new QueryContainerDescriptor<ChatSlice>()
+                            .Bool(placeQuery => placeQuery.Should(placeFilters)),
+                    ])
+                    .MustNot(exclusions)
                 ));
         }
 
-        return;
+        // Finally add all private chats specified
+        foreach (var chatId in chatFilter.ChatIds.Where(chatId => !chatFilter.ExcludedChatIds.Contains(chatId))) {
+            chatQueryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
+                .Term(query => query.Field(ChatIdFieldName).Value(chatId.Value))
+            );
+        }
 
-        // NOTE: InclusionMode.Include means no filter required
-        static bool? ToBoolTermValue(InclusionMode inclusionMode) => inclusionMode != InclusionMode.Include
-            ? inclusionMode == InclusionMode.IncludeStrictly
-            : default(bool?);
+        if (chatQueryFilters.Count == 0) {
+            // Add filter that never evaluates to true
+            _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
+                .Exists(q => q.Field(NonExistentField)));
+        }
+        else if (chatQueryFilters.Count == 1) {
+            _queryFilters.AddRange(chatQueryFilters);
+        }
+        else {
+            _queryFilters.Add(new QueryContainerDescriptor<ChatSlice>()
+                .Bool(boolQuery => boolQuery.Should(chatQueryFilters.ToArray())));
+        }
+
+        static QueryContainer[] GetExcludedChatFilters(ISet<ChatId> excludedChatIds,string chatIdFieldName)
+            => excludedChatIds.Count > 0
+                ? excludedChatIds
+                    .Select(excludedChatId => new QueryContainerDescriptor<ChatSlice>()
+                        .Term(query => query.Field(chatIdFieldName).Value(excludedChatId.Value)))
+                    .ToArray()
+                : [];
     }
 }

@@ -104,7 +104,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             .AddHostedService(c => c.GetRequiredService<OpenSearchConfigurator>());
     }
 
-    private void InjectIndexingServices(RpcHostBuilder rpcHost, bool isBackendClient)
+    private static void InjectIndexingServices(RpcHostBuilder rpcHost, bool isBackendClient)
     {
         var services = rpcHost.Services;
         if (isBackendClient)
@@ -247,6 +247,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                     e.IsEnabled = true;
                     e.WebHookUri = Settings!.Integrations!.Bot!.WebHookUri!;
                 });
+                services.AddSingleton<IFilters, Filters>();
                 services.AddSingleton<IBotConversationHandler, ExternalChatBotConversationHandler>();
                 services.AddSingleton<IChatBotWorker>(
                     static c => c.CreateInstance<ChatBotWorker>());

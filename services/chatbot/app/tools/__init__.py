@@ -15,12 +15,14 @@ class _Tools(object):
     REPLY = None
     FORWARD_CHAT_LINKS = None
     SEARCH_PUBLIC_CHATS = None
+    SEARCH_MY_CHATS = None
 
     @classmethod
     def init(cls, *, base_url):
         cls.REPLY = base_url + "/api/bot/conversation/reply"
         cls.FORWARD_CHAT_LINKS = base_url + "/api/bot/conversation/forward-chat-links"
         cls.SEARCH_PUBLIC_CHATS = base_url + "/api/bot/search/public-chats"
+        cls.SEARCH_MY_CHATS = base_url + "/api/bot/search/my-chats"
 
 @tool(parse_docstring=True)
 def reply(
@@ -55,6 +57,32 @@ def search_in_public_chats(
     """
     results = _post(
         _Tools.SEARCH_PUBLIC_CHATS,
+        {
+            "text": text
+        },
+        config
+    )
+
+    # Note: For some reason if results are formatted into a plain text
+    # the agent doesn't want to send relevand search results to the user.
+    # return text_results
+    return results
+
+@tool(parse_docstring=True)
+def search_in_my_chats(
+    text: str,
+    config: RunnableConfig
+) -> List[Any]:
+    """Search in private chats or, in other words, the chats user calls my chats.
+
+    Args:
+        text: Text to search for.
+
+    Returns:
+        List: ranked search results.
+    """
+    results = _post(
+        _Tools.SEARCH_MY_CHATS,
         {
             "text": text
         },
@@ -177,5 +205,6 @@ def all():
     return [
         reply,
         search_in_public_chats,
+        search_in_my_chats,
         forward_search_results
     ]

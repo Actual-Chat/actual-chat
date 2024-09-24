@@ -18,10 +18,12 @@ public class BotToolsContextHandlerOptions
 public class BotToolsContext(ClaimsPrincipal? claims) : IBotToolsContext
 {
     public const string ConversationClaimType = "ConversationId";
+    public const string UserClaimType = "UserId";
     public string? ConversationId => claims?.FindFirstValue(ConversationClaimType);
+    public string? UserId => claims?.FindFirstValue(UserClaimType);
     public bool IsValid => claims != null
-        && claims.HasClaim(e => OrdinalEquals(e.Type, ConversationClaimType));
-
+        && claims.HasClaim(e => OrdinalEquals(e.Type, ConversationClaimType))
+        && claims.HasClaim(e => OrdinalEquals(e.Type, UserClaimType));
 }
 
 public class BotToolsContextHandler(IOptionsMonitor<BotToolsContextHandlerOptions> options) : IBotToolsContextHandler
@@ -29,11 +31,13 @@ public class BotToolsContextHandler(IOptionsMonitor<BotToolsContextHandlerOption
     private const string BearerPrefix = "Bearer ";
 
     public IBotToolsContext GetContext(HttpRequest request) => new BotToolsContext(GetValidatedClaims(request));
-    public void SetContext(HttpRequestMessage request, string conversationId)
+    public void SetContext(HttpRequestMessage request, string conversationId, string userId)
     {
         var config = options.CurrentValue;
-        var claims = new List<Claim>();
-        claims.Add(new Claim(BotToolsContext.ConversationClaimType, conversationId));
+        var claims = new List<Claim> {
+            new(BotToolsContext.ConversationClaimType, conversationId),
+            new(BotToolsContext.UserClaimType, userId),
+        };
         var expiration = DateTime.UtcNow.Add(config.ContextLifetime);
 
         var token = new JwtSecurityToken(
@@ -76,7 +80,7 @@ public class BotToolsContextHandler(IOptionsMonitor<BotToolsContextHandlerOption
             ValidateIssuer = true,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = signingCredentials?.Key,
-            ClockSkew = TimeSpan.Zero
+            ClockSkew = TimeSpan.Zero,
         };
 
         var tokenHandler = new JwtSecurityTokenHandler();

@@ -9,7 +9,10 @@ namespace ActualChat.MLSearch.Bot.Tools;
 [ApiController]
 [Route("api/bot/search")]
 [Produces("application/json")]
-public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine, IBotToolsContextHandler botToolsContext) : ControllerBase
+public sealed class SearchToolsController(
+    IFilters filters,
+    ISearchEngine<ChatSlice> searchEngine,
+    IBotToolsContextHandler botToolsContext) : ControllerBase
 {
     public sealed class SearchQueryRequest {
         public const int MaxLimit = 3;
@@ -32,7 +35,15 @@ public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine,
     [HttpPost("public-chats")]
     public async Task<ActionResult<List<SearchQueryDocumentResult>>> PublicChatsText([FromBody]SearchQueryRequest search, CancellationToken cancellationToken)
     {
-        var limit = search.Limit.GetValueOrDefault(1);
+        var context = botToolsContext.GetContext(Request);
+        if (!context.IsValid || (context.ConversationId is var conversationId && string.IsNullOrEmpty(conversationId))) {
+            throw new UnauthorizedAccessException();
+        }
+        if (!ChatId.TryParse(conversationId, out var chatId)) {
+            throw new InvalidOperationException("Malformed conversation id detected.");
+        }
+
+        var limit = search.Limit ?? 1;
         // Add limit constraints.
         if (limit < 1) {
             limit = 1;
@@ -42,14 +53,11 @@ public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine,
         }
         var query = new SearchQuery() {
             Filters = [
-                new SemanticFilter<ChatSlice>(search.Text),
-                new KeywordFilter<ChatSlice>(search.Text.Split()),
-                new ChatFilter() {
-                    PublicChatInclusion = InclusionMode.IncludeStrictly,
-                    BotChatInclusion = InclusionMode.Exclude,
-                }
+                await filters.Semantic(search.Text, cancellationToken).ConfigureAwait(false),
+                await filters.Keyword(search.Text, cancellationToken).ConfigureAwait(false),
+                await filters.Chat(chats => chats.Public().Exclude([chatId]), cancellationToken).ConfigureAwait(false),
             ],
-            Limit = limit
+            Limit = limit,
         };
         var searchResult = await searchEngine.Find(query, cancellationToken).ConfigureAwait(false);
         // TODO: (?) Error handling
@@ -61,7 +69,7 @@ public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine,
                 var link = Links.Chat(chatEntryId);
                 return new SearchQueryDocumentResult {
                     LocalUrl = link,
-                    Document = e
+                    Document = e,
                 };
             })
             .ToList();
@@ -71,9 +79,15 @@ public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine,
     public async Task<ActionResult<List<RankedDocument<ChatSlice>>>> PrivateChatsText([FromBody]SearchQueryRequest search, CancellationToken cancellationToken)
     {
         var context = botToolsContext.GetContext(Request);
-        if (!context.IsValid) {
+        if (!context.IsValid
+            || (context.ConversationId is var conversationId && string.IsNullOrEmpty(conversationId))
+            || (context.UserId is var contextUserId && string.IsNullOrEmpty(contextUserId))) {
             throw new UnauthorizedAccessException();
         }
+        if (!ChatId.TryParse(conversationId, out var chatId) || !UserId.TryParse(contextUserId, out var userId)) {
+            throw new InvalidOperationException("Malformed conversation id detected.");
+        }
+
         var limit = search.Limit;
         // Add limit constraints.
         if (limit < 1) {
@@ -84,18 +98,19 @@ public sealed class SearchToolsController(ISearchEngine<ChatSlice> searchEngine,
         }
         var query = new SearchQuery() {
             Filters = [
-                new SemanticFilter<ChatSlice>(search.Text),
-                new KeywordFilter<ChatSlice>(search.Text.Split()),
-                new ChatFilter() {
-                    PublicChatInclusion = InclusionMode.Include,
-                    BotChatInclusion = InclusionMode.Exclude,
-                },
+                await filters.Semantic(search.Text, cancellationToken).ConfigureAwait(false),
+                await filters.Keyword(search.Text, cancellationToken).ConfigureAwait(false),
+                await filters.Chat(
+                    chats => chats.Private(userId).Exclude([chatId]),
+                    cancellationToken
+                ).ConfigureAwait(false),
             ],
             Limit = limit,
         };
         var searchResult = await searchEngine.Find(query, cancellationToken).ConfigureAwait(false);
         var documents = searchResult.Documents;
         // TODO: Error handling
+
         return documents.Select(e=>e).ToList();
     }
 }
