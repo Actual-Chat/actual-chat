@@ -15,6 +15,7 @@
             <label>
                 <TextInput
                     @ref="_inputRef"
+                    Text="@m.InitialText"
                     Class="w-full dialog-unstyled"
                     Placeholder="@Placeholder"
                     MaxLength="@MaxLength"
@@ -46,7 +47,7 @@
 
                 <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
                     <div class="c-container">
-                        <ChatSearchTab/>
+                        <ChatSearchTab />
                     </div>
                 </Tab>
                 <Tab @key="@("ai-search")" Id="ai-search" Title="Search" Order="1">
@@ -110,16 +111,16 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.None,
+            t => new ComputedState<Model>.Options() {
+                InitialValue = new Model(SearchUI.IsSearchModeOn.ValueOrDefault, false, SearchUI.Text.ValueOrDefault ?? ""),
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
-
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var isOpen = await SearchUI.IsSearchModeOn(cancellationToken) || await _isOpen.Use(cancellationToken);
         var enableIncompleteUI =  await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
-        return new Model(isOpen, enableIncompleteUI);
+        var initialText = SearchUI.Text.ValueOrDefault ?? ""; // intentionally avoid recompute
+        return new Model(isOpen, enableIncompleteUI, initialText);
     }
 
     private void OnClick(bool openPanel) {
@@ -165,7 +166,5 @@
     private Task OnSearchCleared(SearchClearedEvent e, CancellationToken cancellationToken)
         => _inputRef?.Clear().AsTask() ?? Task.CompletedTask;
 
-    public sealed record Model(bool IsOpen, bool EnableIncompleteUI) {
-        public static readonly Model None = new(false, false);
-    }
+    public sealed record Model(bool IsOpen, bool EnableIncompleteUI, string InitialText = "");
 }
