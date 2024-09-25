@@ -74,7 +74,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         var unreadChats = new List<DigestParameters.DigestChat>();
         var accountSettings = ServerKvasBackend.GetUserClient(account.Id);
         var contactIds = await ContactsBackend
-            .ListIdsForEntrySearch(account.Id, cancellationToken)
+            .ListIdsForSearch(account.Id, null, false, cancellationToken)
             .ConfigureAwait(false);
         foreach (var contactId in contactIds) {
             var digestChat = await GetDigestChat(contactId).ConfigureAwait(false);

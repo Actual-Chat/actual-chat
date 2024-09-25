@@ -68,8 +68,8 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob);
-        var groups = await Tester.CreateGroupContacts(bob, places);
+        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
+        var groups = await Tester.CreateGroupContacts(bob, places, UniquePart);
 
         // act
         var aliceEntries = await CreateEntries(groups.Joined(), "Let's go outside");
@@ -96,15 +96,26 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob);
-        var groups = await Tester.CreateGroupContacts(bob, places);
+        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
+        var groups = await Tester.CreateGroupContacts(bob, places, UniquePart);
+        var people = await Tester.CreateUserContacts(bob, places, UniquePart);
 
         // act
+        var allPlaceEntries = new List<(PlaceId PlaceId, ChatEntry Entry)>();
         var aliceEntries = await CreateEntries(groups.Joined(), "Let's go outside");
+        allPlaceEntries.AddRange(aliceEntries.Select(x => (x.ChatId.PlaceId, x)));
         await CreateEntries(groups.OtherPrivate(), "Let's go - this entry must not be found");
         await Tester.SignIn(bob);
         var bobEntries = await CreateEntries(groups.Joined(), "Let's go");
-        var entryLookup = aliceEntries.Concat(bobEntries).ToLookup(x => x.ChatId.PlaceId);
+        allPlaceEntries.AddRange(bobEntries.Select(x => (x.ChatId.PlaceId, x)));
+        foreach (var userContact in people) {
+            var entry = await CreateEntry(new PeerChatId(bob.Id, userContact.Value.Id), "Let's go - in peer chat");
+            if (userContact.Key.PlaceKey is { } placeKey) {
+                var place = places[placeKey];
+                allPlaceEntries.Add((place.Id, entry));
+            }
+        }
+        var entryLookup = allPlaceEntries.ToLookup(x => x.PlaceId, x => x.Entry);
 
         // assert
         foreach (var place in places.Values) {
@@ -166,7 +177,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     {
         var entries = new List<ChatEntry>();
         foreach (var chat in chats)
-            entries.Add(await Tester.CreateTextEntry(chat.Id, $"{UniquePart} {text}"));
+            entries.Add(await CreateEntry(chat.Id, text));
         return entries;
     }
 

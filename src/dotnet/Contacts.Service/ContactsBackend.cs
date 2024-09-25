@@ -23,7 +23,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
     private IAuthorsBackend AuthorsBackend => _authorsBackend ??= Services.GetRequiredService<IAuthorsBackend>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-    private IPlacesBackend PlacesBackend { get; } = services.GetRequiredService<IPlacesBackend>();
     private IExternalContactsBackend ExternalContactsBackend
         => _externalContactsBackend ??= Services.GetRequiredService<IExternalContactsBackend>();
     private IDbEntityResolver<string, DbContact> DbContactResolver { get; }
@@ -59,20 +58,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             await PseudoChatContact(contactId.ChatId).ConfigureAwait(false);
 
         return contact;
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<ApiArray<ContactId>> ListIdsForEntrySearch(UserId userId, CancellationToken cancellationToken)
-    {
-        var nonPlaceContactIds = await ListIds(userId, PlaceId.None, cancellationToken).ConfigureAwait(false);
-        var placeIds = await ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
-        var placeContactIds = await placeIds.Select(placeId => ListPlaceContactIds(userId, placeId, false, cancellationToken))
-            .Collect(cancellationToken)
-            .Flatten()
-            .ConfigureAwait(false);
-        return nonPlaceContactIds.Concat(placeContactIds)
-            .Concat(placeIds.Select(x => new ContactId(userId, x.ToRootChatId())))
-            .ToApiArray();
     }
 
     // [ComputeMethod]
@@ -113,12 +98,19 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ContactId>> ListIdsForUserContactSearch(
+    public virtual async Task<ApiArray<ContactId>> ListPeerContactIds(
         UserId userId,
+        PlaceId placeId,
         CancellationToken cancellationToken)
     {
         var contactIds = await ListIds(userId, PlaceId.None, cancellationToken).ConfigureAwait(false);
-        return contactIds.Where(x => x.ChatId.Kind == ChatKind.Peer).ToApiArray();
+        var peerContactIds = contactIds.Where(x => x.ChatId.Kind == ChatKind.Peer).ToApiArray();
+        if (placeId.IsNone)
+            return peerContactIds;
+
+        var placeUserIds = await AuthorsBackend.ListPlaceUserIds(placeId, cancellationToken).ConfigureAwait(false);
+        return peerContactIds.IntersectBy(placeUserIds, x => x.ChatId.PeerChatId.UserIds.OtherThan(userId))
+            .ToApiArray();
     }
 
     // [ComputeMethod]
@@ -149,10 +141,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
         else {
             await PseudoPlaceContact(placeId).ConfigureAwait(false);
-            var chatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
+            var publicChatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
             var contactIds = sContactIds.Select(c => new ContactId(c)).ToList();
             var addedChatIds = contactIds.Select(c => c.ChatId).ToList();
-            var chatIdsToAdd = chatIds.Except(addedChatIds).ToList();
+            var chatIdsToAdd = publicChatIds.Except(addedChatIds).ToList();
             if (chatIdsToAdd.Count > 0) {
                 var contactsToAdd = chatIdsToAdd.Select(c => new ContactId(ownerId, c, AssumeValid.Option)).ToList();
                 contactIds.InsertRange(0, contactsToAdd);
