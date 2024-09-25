@@ -322,7 +322,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         CancellationToken cancellationToken)
     {
         var ownContactIds = await ContactsBackend
-            .ListIdsForUserContactSearch(userId, cancellationToken)
+            .ListPeerContactIds(userId, cancellationToken)
             .ConfigureAwait(false);
         if (ownContactIds.IsEmpty && query.Own)
             return ContactSearchResultPage.Empty;
@@ -513,10 +513,14 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         {
             if (!query.ChatId.IsNone)
                 return [query.ChatId];
-            else {
-                var contactIds = await ContactsBackend.ListIdsForSearch(userId, query.PlaceId, cancellationToken).ConfigureAwait(false);
+
+            var contactIds = await ContactsBackend.ListIdsForSearch(userId, query.PlaceId, true, cancellationToken).ConfigureAwait(false);
+            if (query.PlaceId is not { IsNone: false } placeId)
                 return contactIds.Select(x => x.ChatId).ToList();
-            }
+
+            // TODO: move this logic inside ListIdsForSearch
+            var peerContactIds = await ContactsBackend.ListPeerContactIds(userId, placeId, cancellationToken).ConfigureAwait(false);
+            return contactIds.Concat(peerContactIds).Select(x => x.ChatId).ToList();
         }
     }
 }

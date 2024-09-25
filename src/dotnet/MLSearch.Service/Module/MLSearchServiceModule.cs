@@ -124,7 +124,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         // Contact indexing: UserContactIndexer, GroupChatContactIndexer, PlaceContactIndexer
 
-        // TODO: uncomment when migration to single index is done
         services.AddSingleton<UserContactIndexer>()
             .AddHostedService(c => c.GetRequiredService<UserContactIndexer>());
         services.AddSingleton<GroupChatContactIndexer>()
