@@ -22,7 +22,6 @@ const { logScope, infoLog, debugLog, warnLog } = Log.get('AudioContextSource');
 
 const MaintainCyclePeriodMs = 2000;
 const FixCyclePeriodMs = 300;
-const MaxWarmupTimeMs = 2000;
 const MaxResumeTimeMs = 600;
 const MaxResumeCount = 60;
 const MaxInteractiveResumeCount = 3;
@@ -90,6 +89,16 @@ abstract class AudioContextSourceBase implements AudioContextSource {
     public get context(): OverridenAudioContext { return this._context; }
     public get refCount(): number { return this._refCount }
     public abstract get isActive(): boolean;
+
+    public get hasRefsInUse(): boolean {
+        for (let [_, refs] of this.refs) {
+            for (let ref of refs) {
+                if (ref.isUsed)
+                    return true;
+            }
+        }
+        return false;
+    }
 
     protected constructor(public readonly purpose: AudioContextPurpose) {
         this.onDeviceAwakeHandler = OnDeviceAwake.events.add(() => this.onDeviceAwake());
@@ -208,7 +217,6 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
     private isInteractiveWasReset = false;
     private resumeCount = 0;
     private interactiveResumeCount = 0;
-    private whenInitializedInteractively: Promise<void> | null = null;
     private _whenReady = new PromiseSource<AudioContext | null>();
     // private _whenClosed = new PromiseSource<AudioContext | null>();
     private _whenNotReady = new PromiseSource<void>();
@@ -234,25 +242,18 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
     }
 
     public async initContextInteractively(): Promise<void> {
+        Interactive.isInteractive = true;
+
         if (this._context && this._context.state === 'running') {
             debugLog?.log(`initContextInteractively: already running`);
             return; // Already ready
+        } else if (this._context && this._context.state === 'suspended') {
+            await this._context.resume();
+            return;
         }
 
-        if (this.whenInitializedInteractively)
-            return; // Already being initialized
-
-        const whenInitializedInteractively = new PromiseSource<void>();
-        try {
-            this.whenInitializedInteractively = whenInitializedInteractively;
-            const context = await this.create(true);
-            // skip warmup as we need the context ASAP - e.g. after clicking on the recording button
-            this.markReady(context);
-        }
-        finally {
-            whenInitializedInteractively.resolve(undefined);
-            this.whenInitializedInteractively = null;
-        }
+        const context = await this.create(true);
+        this.markReady(context);
     }
 
     public async terminate(): Promise<void> {
@@ -279,15 +280,11 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
 
     // Must be private, but good to keep it near markNotReady
     private markReady(context: AudioContext | null) {
-        if (!this._isActive)
-            return;
-
         // Invariant it maintains on exit:
         // - _context != null
         // - _whenReady is completed
         // - _whenNotReady is NOT completed.
 
-        Interactive.isInteractive = true;
         if (this._context)
             return; // Already ready
 
@@ -341,29 +338,9 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         // noinspection InfiniteLoopJS
         let retryCount = 0;
         while (this._isActive) { // Renew loop
-            let context: AudioContext = null;
+            let context = await this.create();
+            this.markReady(context);
             try {
-                let whenInitializedInteractively = this.whenInitializedInteractively as PromiseSource<void>;
-                if (!whenInitializedInteractively) {
-                    whenInitializedInteractively = new PromiseSource<void>();
-                    try {
-                        this.whenInitializedInteractively = whenInitializedInteractively;
-                        context = await this.create();
-                        await this.warmup(context);
-                        retryCount = 0;
-                        this.markReady(context);
-                    }
-                    finally {
-                        whenInitializedInteractively.resolve(undefined);
-                        this.whenInitializedInteractively = null;
-                    }
-                }
-                else {
-                    await whenInitializedInteractively;
-                    context = this._context;
-                    if (!context)
-                        continue;
-                }
                 let lastTestAt = Date.now();
 
                 // noinspection InfiniteLoopJS
@@ -377,21 +354,13 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
                         await Promise.race([this._whenNotReady, whenDelayCompleted]);
                     }
 
-                    // Let's try to test whether AudioContext is broken and fix
+                    // Let's try to test whether AudioContext is broken and fix if it is in use by any audioContextRef
+                    if (!this.hasRefsInUse || !Interactive.isInteractive)
+                        continue;
+
                     try {
                         lastTestAt = Date.now();
-                        if (BrowserInfo.hostKind === 'MauiApp') {
-                            if (context.state === 'closed')
-                                // noinspection ExceptionCaughtLocallyJS
-                                throw new Error(`${logScope}.test: AudioContext is closed.`);
-                            else if (context.state === 'suspended')
-                                await this.interactiveResume(context);
-                        }
-                        else {
-                            // Skip test() call for MAUI as it doesn't exclusively use audio output or microphone;
-                            // note that it will be called as part of `fix` call anyway.
-                            await this.test(context, true);
-                        }
+                        await this.test(context, true);
                         // See the description of markReady/markNotReady to understand the invariant it maintains
                         retryCount = 0;
                         this.markReady(context);
@@ -468,7 +437,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
                 Interactive.isInteractive = true;
             }
             else {
-                await this.interactiveResume(context);
+                void this.interactiveResume(context);
             }
 
             await Promise.all([whenModule1, whenModule2, whenModule3]);
@@ -482,44 +451,6 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         catch (e) {
             await this.closeSilently(context);
             throw e;
-        }
-    }
-
-    private async warmup(context: AudioContext): Promise<void> {
-        debugLog?.log(`warmup, AudioContext:`, Log.ref(context));
-        if (!this._isActive)
-            return;
-
-        const warmUpWorkletPath = Versioning.mapPath('/dist/warmUpWorklet.js');
-        await context.audioWorklet.addModule(warmUpWorkletPath);
-        const nodeOptions: AudioWorkletNodeOptions = {
-            channelCount: 1,
-            channelCountMode: 'explicit',
-            numberOfInputs: 0,
-            numberOfOutputs: 1,
-            outputChannelCount: [1],
-        };
-        const node = new AudioWorkletNode(context, 'warmUpWorklet', nodeOptions);
-        node.connect(context.destination);
-
-        try {
-            const whenWarmedUp = new PromiseSourceWithTimeout<void>();
-            node.port.postMessage('stop');
-            node.port.onmessage = (ev: MessageEvent<string>): void => {
-                if (ev.data === 'stopped')
-                    whenWarmedUp.resolve(undefined);
-                else
-                    warnLog?.log(`warmup: unsupported message from warm up worklet`);
-            };
-            whenWarmedUp.setTimeout(MaxWarmupTimeMs, () => {
-                whenWarmedUp.reject(`${logScope}.warmup: couldn't complete warm-up on time.`);
-            })
-            await whenWarmedUp;
-        }
-        finally {
-            node.disconnect();
-            node.port.onmessage = null;
-            node.port.close();
         }
     }
 
@@ -581,6 +512,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         if (Interactive.isAlwaysInteractive) {
             debugLog?.log(`interactiveResume: Interactive.isAlwaysInteractive == true`);
             await this.resume(context, false);
+            Interactive.isInteractive = true;
         }
         else {
             // Resume can be called during user interaction only
@@ -612,6 +544,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
             if (!success)
                 throw new Error(`${logScope}.interactiveResume: timed out while waiting for interaction`);
 
+            Interactive.isInteractive = true;
             debugLog?.log(`interactiveResume: succeeded on interaction`);
         }
         finally {
@@ -779,13 +712,8 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
     }
 
     public pauseRef(): void {
-        const hasActiveRefs = [...this.refs.values()]
-            .reduce((prev, current) =>
-                prev || current
-                    .map(value => value.state === 'running')
-                    .reduce((p, v) => p || v), false);
-
-        if (!hasActiveRefs)
+        const hasUsedRefs = this.hasRefsInUse;
+        if (!hasUsedRefs)
             this.suspendContextDebounced();
     }
 

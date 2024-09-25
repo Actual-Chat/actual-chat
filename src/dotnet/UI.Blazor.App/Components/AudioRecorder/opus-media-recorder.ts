@@ -2,18 +2,11 @@
 import { AUDIO_REC as AR } from '_constants';
 import { Disposable } from 'disposable';
 import { Versioning } from 'versioning';
-import {
-    catchErrors,
-    debounce,
-    delayAsync,
-    delayAsyncWith,
-    PromiseSource,
-    retry
-} from 'promises';
+import { catchErrors, debounce, delayAsync, delayAsyncWith, PromiseSource, retry } from 'promises';
 import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
 import { Observable, Subject } from 'rxjs';
-import { BrowserInit } from "../../../UI.Blazor/Services/BrowserInit/browser-init";
-import { BrowserInfo } from "../../../UI.Blazor/Services/BrowserInfo/browser-info";
+import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
+import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { recordingAudioContextSource } from '../../Services/audio-context-source';
 import { AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
 import { AudioVadWorker } from './workers/audio-vad-worker-contract';
@@ -21,9 +14,9 @@ import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
 import { OpusEncoderWorker } from './workers/opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from './worklets/opus-encoder-worklet-contract';
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
-import { AudioInitializer } from "../../Services/audio-initializer";
-import { AudioDiagnosticsState } from "./audio-recorder";
-import { RecorderState, RecorderStateChanged, RecorderStateServer } from "./opus-media-recorder-contracts";
+import { AudioInitializer } from '../../Services/audio-initializer';
+import { AudioDiagnosticsState } from './audio-recorder';
+import { RecorderState, RecorderStateChanged, RecorderStateServer } from './opus-media-recorder-contracts';
 import { Log } from 'logging';
 
 /*
@@ -65,9 +58,9 @@ export class OpusMediaRecorder implements RecorderStateServer {
         return OpusMediaRecorder.recorderStateChangedSubject.asObservable();
     }
 
+    private state: 'inactive' | 'initializing' | 'recording' | 'stopped'  = 'inactive';
     private lastState: RecorderState = { isRecording: false, isConnected: false, isVoiceActive: false };
     private whenInitialized: PromiseSource<void>;
-    private initStarted = false;
 
     private encoderWorkerInstance: Worker = null;
     private encoderWorker: OpusEncoderWorker & Disposable = null;
@@ -108,6 +101,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
         // better integration with native mobile audio pipeline
         if ('audioSession' in navigator) {
             navigator.audioSession['type'] = 'playback'; // 'play-and-record'
+
         }
         infoLog?.log('<- stopStreamTracks()');
     }
@@ -189,7 +183,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
     public async init(baseUri: string, canUseNNVad: boolean): Promise<void> {
         debugLog?.log(`-> init()`, baseUri, canUseNNVad);
-        this.initStarted = true;
+        this.state = 'initializing';
         if (this.whenInitialized.isCompleted())
             return;
 
@@ -226,29 +220,6 @@ export class OpusMediaRecorder implements RecorderStateServer {
             { type: 'rpc-timeout', timeoutMs: 5_000 });
         debugLog?.log(`init(): vadWorker created`);
 
-        this.whenInitialized.resolve(undefined);
-        debugLog?.log(`<- init()`);
-    }
-
-    public subscribeToStateChanges(onStateChanged: RecorderStateChanged): void {
-        this.onStateChanged = onStateChanged;
-        this.stateChanged();
-    }
-
-    public async start(chatId: string, repliedChatEntryId: string): Promise<void> {
-        this.stateChanged();
-
-        debugLog?.log('-> start(): #', chatId);
-        if (!chatId)
-            throw new Error('start: chatId is unspecified.');
-
-        debugLog?.log(`start(): awaiting whenInitialized`);
-        await this.ensureInitialized();
-        debugLog?.log(`start(): whenInitialized completed`);
-
-        await this.stop();
-        debugLog?.log(`start(): after stop() call`);
-
         const detach = async () => {
             await catchErrors(
                 () => this.encoderWorkletInstance?.disconnect(),
@@ -257,7 +228,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
             await catchErrors(
                 () => {
                     if (this.encoderWorklet) {
-                        void this.encoderWorklet.stop(rpcNoWait);
+                        void this.encoderWorklet.terminate(rpcNoWait);
                         this.encoderWorklet.dispose();
                     }
                 },
@@ -271,7 +242,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
             await catchErrors(
                 () => {
                     if (this.vadWorklet) {
-                        void this.vadWorklet.stop(rpcNoWait);
+                        void this.vadWorklet.terminate(rpcNoWait);
                         this.vadWorklet.dispose();
                     }
                 },
@@ -295,7 +266,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
         }
 
         const attach = async (context: AudioContext) => {
-            debugLog?.log(`-> start.attach()`);
+            debugLog?.log(`-> init.attach()`);
 
             if (!this.encoderWorkletInstance
                 || !this.vadWorkletInstance
@@ -303,8 +274,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
                 || this.vadWorkletInstance.context !== context) {
 
                 if (this.encoderWorkletInstance) {
-                    void this.vadWorklet?.stop(rpcNoWait);
-                    void this.encoderWorklet?.stop(rpcNoWait);
+                    void this.vadWorklet?.terminate(rpcNoWait);
+                    void this.encoderWorklet?.terminate(rpcNoWait);
                     await detach();
                 }
 
@@ -314,7 +285,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
                     encoderWorkerToWorkletChannel.port1,
                     encoderWorkerToVadWorkerChannel.port1);
 
-                debugLog?.log(`start.attach(): encoder worklet init...`);
+                debugLog?.log(`init.attach(): encoder worklet init...`);
                 // Encoder worklet init
                 const encoderWorkletOptions: AudioWorkletNodeOptions = {
                     numberOfInputs: 1,
@@ -335,12 +306,12 @@ export class OpusMediaRecorder implements RecorderStateServer {
                     this.encoderWorkletInstance.port,
                     this);
                 await this.encoderWorklet.init(encoderWorkerToWorkletChannel.port2);
-                debugLog?.log(`start.attach(): encoder worklet init completed`);
+                debugLog?.log(`init.attach(): encoder worklet init completed`);
 
                 const vadWorkerChannel = new MessageChannel();
                 const t2 = this.vadWorker.init(vadWorkerChannel.port1, encoderWorkerToVadWorkerChannel.port2);
 
-                debugLog?.log(`start.attach(): vad worklet init...`);
+                debugLog?.log(`init.attach(): vad worklet init...`);
                 // VAD worklet init
                 const vadWorkletOptions: AudioWorkletNodeOptions = {
                     numberOfInputs: 1,
@@ -355,62 +326,75 @@ export class OpusMediaRecorder implements RecorderStateServer {
                     vadWorkletOptions);
                 this.vadWorklet = rpcClient<AudioVadWorklet>(`${logScope}.vadWorklet`, this.vadWorkletInstance.port);
                 void this.vadWorklet.init(vadWorkerChannel.port2, rpcNoWait);
-                debugLog?.log(`start.attach(): vad worklet init completed`);
+                debugLog?.log(`init.attach(): vad worklet init completed`);
 
                 await Promise.all([t1, t2]);
             }
 
-            // stop active microphone stream if exists
-            await this.stopMicrophoneStream();
-            debugLog?.log(`start.attach(): getting microphone stream`);
-            try {
-                const stream = await OpusMediaRecorder.getMicrophoneStream();
-
-                // multiple microphone stream can be acquired with multiple attach() calls
-                if (!this.stream) {
-                    this.stream = stream;
-                    this.source = context.createMediaStreamSource(this.stream);
-                    this.source.connect(this.vadWorkletInstance);
-                    this.source.connect(this.encoderWorkletInstance);
-                }
-                else {
-                    await OpusMediaRecorder.stopStreamTracks(stream);
-                }
-                debugLog?.log(`start.attach(): microphone stream has been connected to the pipeline`);
-            }
-            catch (e) {
+            // Acquire new stream and terminate old one if recording
+            if (this.state === 'recording')
+                await this.startMicrophoneStream(context);
+            else
                 await this.stopMicrophoneStream();
-                warnLog?.log('start.attach(): getMicrophoneStream() failed:', e);
-            }
-            debugLog?.log(`<- start.attach()`);
+
+            debugLog?.log(`<- init.attach()`);
         }
 
         const options: AudioContextRefOptions = {
             attach: attach,
             detach: _ => retry(2, () => detach()),
         }
-        const contextRef = recordingAudioContextSource.getRef('recording', options);
+        this.contextRef = recordingAudioContextSource.getRef('recording', options);
+        this.state = 'stopped';
+        this.whenInitialized.resolve(undefined);
+        debugLog?.log(`<- init()`);
+    }
+
+    public subscribeToStateChanges(onStateChanged: RecorderStateChanged): void {
+        this.onStateChanged = onStateChanged;
+        this.stateChanged();
+    }
+
+    public async start(chatId: string, repliedChatEntryId: string): Promise<void> {
+        this.stateChanged();
+
+        debugLog?.log('-> start(): #', chatId);
+        if (!chatId)
+            throw new Error('start: chatId is unspecified.');
+
+        debugLog?.log(`start(): awaiting whenInitialized`);
+        await this.ensureInitialized();
+        debugLog?.log(`start(): whenInitialized completed`);
+
+        await this.stop();
+        debugLog?.log(`start(): after stop() call`);
+
+        this.state = 'recording';
+        const contextRef = this.contextRef;
         this.pauseContextRef = contextRef.use();
         try {
             debugLog?.log(`start(): awaiting whenFirstTimeReady...`);
             await contextRef.whenFirstTimeReady();
-            this.contextRef = contextRef;
 
-            debugLog?.log(`start(): awaiting encoder worker start and vad worker reset ...`);
+            await this.startMicrophoneStream(contextRef.currentContext);
+
+            debugLog?.log(`start(): awaiting encoder worker start, worklet start and vad worker reset ...`);
             await Promise.all([
                 this.encoderWorker.start(chatId, repliedChatEntryId),
                 this.vadWorker.reset(),
+                this.encoderWorklet.start(rpcNoWait)
             ]);
         }
         catch (e) {
+            this.state = 'stopped';
             await this.stopMicrophoneStream();
-            void contextRef.disposeAsync();
+            this.pauseContextRef?.();
             throw e;
         }
         debugLog?.log('<- start()');
     }
 
-    public async setSessionToken(sessionToken: string): Promise<void> {
+    public setSessionToken(sessionToken: string): void {
         this.sessionToken = sessionToken;
 
         // We don't want to wait here - this method can complete immediately,
@@ -425,20 +409,27 @@ export class OpusMediaRecorder implements RecorderStateServer {
     }
 
     public async stop(): Promise<void> {
+        this.state = 'stopped';
+
+        if (!this.stream && !this.source)
+            return;
+
         debugLog?.log(`-> stop()`);
+
+        await catchErrors(
+            () => this.encoderWorker?.stop(),
+            e => warnLog?.log('stop encoderWorker.stop error:', e));
+        await catchErrors(
+            () => this.vadWorker?.reset(),
+            e => warnLog?.log('stop vadWorker.reset error:', e));
+
         try {
             await this.stopMicrophoneStream();
-            void this.vadWorklet?.stop(rpcNoWait);
-            void this.encoderWorklet?.stop(rpcNoWait);
             await this.encoderWorker?.stop();
-            if (!this.contextRef)
-                return;
-
-            debugLog?.log('stop: disposing audioContextRef')
-            await this.contextRef.disposeAsync();
-            this.contextRef = null;
         }
         finally {
+            this.pauseContextRef?.();
+            this.pauseContextRef = null;
             debugLog?.log(`<- stop()`);
         }
     }
@@ -448,8 +439,11 @@ export class OpusMediaRecorder implements RecorderStateServer {
         await this.vadWorker?.reset();
         this.pauseContextRef?.();
         this.pauseContextRef = null;
+        this.contextRef = null;
         this.encoderWorkerInstance.terminate();
         this.vadWorkerInstance.terminate();
+        void this.vadWorklet?.terminate(rpcNoWait);
+        void this.encoderWorklet?.terminate(rpcNoWait);
         this.whenInitialized = new PromiseSource<void>();
         AudioInitializer.isRecorderInitialized = false;
     }
@@ -532,7 +526,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     // Private methods
 
     private async ensureInitialized(): Promise<void> {
-        if (this.initStarted) {
+        if (this.state !== 'inactive') {
             if (this.whenInitialized.isCompleted())
                 return;
 
@@ -571,12 +565,32 @@ export class OpusMediaRecorder implements RecorderStateServer {
         await this.onRecordingStateChanged(false);
     }
 
+    private async startMicrophoneStream(context: AudioContext): Promise<void> {
+        if (this.stream?.active && this.source?.context === context)
+            return;
+
+        await this.stopMicrophoneStream();
+        debugLog?.log(`startMicrophoneStream(): getting microphone stream`);
+        try {
+            this.stream = await OpusMediaRecorder.getMicrophoneStream();
+            this.source = context.createMediaStreamSource(this.stream);
+            this.source.connect(this.vadWorkletInstance);
+            this.source.connect(this.encoderWorkletInstance);
+            debugLog?.log(`startMicrophoneStream(): microphone stream has been connected to the pipeline`);
+        } catch (e) {
+            await this.stopMicrophoneStream();
+            warnLog?.log('startMicrophoneStream(): getMicrophoneStream() failed:', e);
+        }
+    }
+
     private async stopMicrophoneStream(): Promise<void> {
+        if (!this.stream && !this.source)
+            return;
+
         infoLog?.log('stopMicrophoneStream()');
         const stream = this.stream;
         try {
-            if (this.source)
-                this.source.disconnect();
+            this.source?.disconnect();
             this.source = null;
             this.stream = null;
         }

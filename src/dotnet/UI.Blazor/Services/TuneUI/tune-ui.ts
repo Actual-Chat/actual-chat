@@ -1,7 +1,7 @@
 import { delayAsync, PromiseSource } from 'promises';
 import { Log } from 'logging';
 import { DeviceInfo } from 'device-info';
-import { soundPlayer } from './sound-player';
+import { SoundPlayer } from './sound-player';
 import { Interactive } from 'interactive';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('TuneUI');
@@ -69,9 +69,11 @@ export class TuneUI {
     private static useJsVibration: boolean;
     private static blazorRef: DotNet.DotNetObject;
     private static tunes: { [key in Tune]: TuneInfo };
+    private static readonly soundPlayer = new SoundPlayer();
+
 
     /** Called by blazor */
-    public static init(blazorRef: DotNet.DotNetObject, tunes: { [key in Tune]: TuneInfo }, useJsVibration: boolean){
+    public static async init(blazorRef: DotNet.DotNetObject, tunes: { [key in Tune]: TuneInfo }, useJsVibration: boolean): Promise<void>{
         this.blazorRef = blazorRef;
         this.tunes = tunes;
         this.useJsVibration = useJsVibration;
@@ -134,7 +136,7 @@ export class TuneUI {
         const ext = DeviceInfo.isWebKit ? '.m4a' : '.webm'; // TODO: allow webm for iOS >= 16.5
         const soundUrl = `dist/sounds/${tuneInfo.sound}${ext}`;
         const cooldown = cooldownMap.get(tune);
-        await soundPlayer.play(soundUrl, cooldown);
+        await TuneUI.soundPlayer.play(soundUrl, cooldown);
     }
 
     private static vibrate(durationMs: number = 20): void {

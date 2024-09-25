@@ -123,8 +123,12 @@ const serverImpl: AudioVadWorker = {
         if (vads.neuralVad === null) {
             // Change vadWorklet window size when neural VAD gets loaded
             vads.whenNeuralVadReady.then(() => {
-                if (vads.neuralVad !== null) // Load may fail
+                // Load may fail
+                if (vads.neuralVad !== null) {
+                    queue.clear();
                     void vadWorklet.start(vads.windowSizeMs, rpcNoWait);
+                    queue.clear();
+                }
             })
         }
         isActive = true;
@@ -137,6 +141,7 @@ const serverImpl: AudioVadWorker = {
         vads.webRtcVad?.reset();
         vads.neuralVad?.reset();
         void stateServer.onVoiceStateChanged(false, rpcNoWait);
+        queue.clear();
     },
 
     conversationSignal: async (_noWait?: RpcNoWait): Promise<void> => {

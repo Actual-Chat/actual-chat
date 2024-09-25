@@ -22,9 +22,9 @@ export class AudioDiagnosticsState {
     public lastVadFrameProcessedAt?: number = null;
     public isConnected?: boolean = null;
     public lastFrameProcessedAt?: number = null;
-    public vadWorkletState?: 'running' | 'stopped' | 'inactive' = null;
+    public vadWorkletState?: 'running' | 'ready' | 'inactive' | 'terminated' = null;
     public lastVadWorkletFrameProcessedAt?: number = null;
-    public encoderWorkletState?: 'running' | 'stopped' | 'inactive' = null;
+    public encoderWorkletState?: 'running' | 'ready' | 'inactive' | 'terminated' = null;
     public lastEncoderWorkletFrameProcessedAt?: number = null;
 }
 
@@ -137,7 +137,7 @@ export class AudioRecorder {
 
         try {
             if (sessionToken)
-                await opusMediaRecorder.setSessionToken(sessionToken);
+                opusMediaRecorder.setSessionToken(sessionToken);
 
             if (this.state === 'recording' || this.state === 'starting') {
                 warnLog?.log('startRecording: it seems that server and client states are inconsistent');

@@ -9,6 +9,7 @@ import { OpusEncoderWorklet } from './opus-encoder-worklet-contract';
 import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';
 import { RecorderStateServer } from "../opus-media-recorder-contracts";
 import { Log } from 'logging';
+import { approximateGain } from 'math';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorkletProcessor');
 
@@ -21,7 +22,8 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     private readonly samplesPerWindow: number;
     private readonly buffer: AudioRingBuffer;
     private readonly bufferPool: ObjectPool<ArrayBuffer>;
-    private state: 'running' | 'stopped' | 'inactive' = 'inactive';
+
+    private state: 'running' | 'ready' | 'inactive' | 'terminated' = 'inactive';
     private stateServer: RecorderStateServer & Disposable;
     private worker: OpusEncoderWorker & Disposable;
     private samplesSinceLastReport: number = null;
@@ -47,14 +49,21 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
 
     public async init(workerPort: MessagePort): Promise<void> {
         this.worker = rpcClientServer<OpusEncoderWorker>(`${logScope}.worker`, workerPort, this);
-        this.state = 'running';
+        this.state = 'ready';
         this.samplesSinceLastReport = null;
         this.frameCount = 0;
         this.lastFrameProcessedAt = 0;
     }
 
-    public async stop(_noWait?: RpcNoWait): Promise<void> {
-        this.state = 'stopped';
+    public async start(_noWait?: RpcNoWait): Promise<void> {
+        this.state = 'running';
+        this.frameCount = 0;
+        this.lastFrameProcessedAt = 0;
+        this.buffer.reset();
+    }
+
+    public async terminate(_noWait?: RpcNoWait): Promise<void> {
+        this.state = 'terminated';
         this.samplesSinceLastReport = null;
         this.frameCount = 0;
         this.lastFrameProcessedAt = 0;
@@ -67,6 +76,8 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
 
     // called for each 128 samples ~ 2.5ms
     public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
+        // if (inputs[0].length)
+        //     console.log("RECORD:", approximateGain(inputs[0][0]));
         if (this.frameCount++ > 100) {
             this.frameCount = 0;
             this.lastFrameProcessedAt = Date.now();
@@ -78,10 +89,12 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
                 && inputs.length !== 0
                 && inputs[0].length !== 0;
 
-            if (this.state === 'stopped')
+            if (this.state === 'terminated')
                 return false;
+
             if (this.state === 'inactive')
                 return true;
+
             if (!hasInput)
                 return true;
 

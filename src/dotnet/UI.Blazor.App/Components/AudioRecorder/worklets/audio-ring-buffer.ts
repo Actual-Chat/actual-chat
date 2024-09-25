@@ -17,7 +17,7 @@ export class AudioRingBuffer {
         this.bufferSize = bufferSize;
         this.channelBuffers = [];
         for (let channel = 0; channel < this.channelCount; channel++) {
-            this.channelBuffers[channel] = new Float32Array(bufferSize);
+            this.channelBuffers[channel] = new Float32Array(bufferSize).fill(0);
         }
     }
 
@@ -104,5 +104,8 @@ export class AudioRingBuffer {
         this.readIndex = 0;
         this.writeIndex = 0;
         this._framesAvailable = 0;
+        for (let channel = 0; channel < this.channelCount; channel++) {
+            this.channelBuffers[channel].fill(0);
+        }
     }
 }
