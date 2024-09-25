@@ -8,13 +8,14 @@ import { AudioVadWorker } from '../workers/audio-vad-worker-contract';
 import { AudioVadWorklet } from './audio-vad-worklet-contract';
 import { AudioDiagnosticsState } from "../audio-recorder";
 import { Log } from 'logging';
+import { approximateGain } from 'math';
 
 const { logScope, debugLog, warnLog } = Log.get('AudioVadWorkletProcessor');
 
 export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements AudioVadWorklet {
     private readonly buffer: AudioRingBuffer;
 
-    private state: 'running' | 'stopped' | 'inactive' = 'inactive';
+    private state: 'running' | 'ready' | 'inactive' | 'terminated' = 'inactive';
     private samplesPerWindow: number = AR.SAMPLES_PER_WINDOW_32;
     private bufferPool: ObjectPool<ArrayBuffer>;
     private server: Disposable;
@@ -31,6 +32,9 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
 
     public async init(workerPort: MessagePort): Promise<void> {
         this.worker = rpcClientServer<AudioVadWorker>(`${logScope}.worker`, workerPort, this);
+        this.state = 'ready';
+        this.frameCount = 0;
+        this.lastFrameProcessedAt = 0;
     }
 
     public async start(windowSizeMs: 30 | 32, noWait?: RpcNoWait): Promise<void> {
@@ -39,10 +43,13 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
            : AR.SAMPLES_PER_WINDOW_32;
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(this.samplesPerWindow * 4)).expandTo(4);
         this.state = 'running';
+        this.frameCount = 0;
+        this.lastFrameProcessedAt = 0;
+        this.buffer.reset();
     }
 
-    public async stop(_noWait?: RpcNoWait): Promise<void> {
-        this.state = 'stopped';
+    public async terminate(_noWait?: RpcNoWait): Promise<void> {
+        this.state = 'terminated';
     }
 
     public async releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
@@ -55,6 +62,8 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
 
     public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
         // debugLog?.log(`process:`, this.state);
+        // if (inputs[0].length)
+        //     console.log("VAD:", approximateGain(inputs[0][0]));
         if (this.frameCount++ > 100) {
             this.frameCount = 0;
             this.lastFrameProcessedAt = Date.now();
@@ -64,10 +73,12 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
             && inputs.length !== 0
             && inputs[0].length !== 0;
 
-        if (this.state === 'stopped')
+        if (this.state === 'terminated')
             return false;
+
         if (this.state === 'inactive')
             return true;
+
         if (!hasInput)
             return true;
 

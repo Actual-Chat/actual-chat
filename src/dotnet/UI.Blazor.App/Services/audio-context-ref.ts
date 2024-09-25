@@ -22,17 +22,16 @@ export interface AudioContextRefOptions {
     retryCount?: number,
 }
 
-export type AudioContextRefState = 'running' | 'paused';
-
 export class AudioContextRef implements AsyncDisposable {
     private readonly name: string;
     private readonly _whenFirstTimeReady = new PromiseSource<OverridenAudioContext>;
     private readonly whenRunning: Promise<void>;
     private readonly whenDisposeRequested = new PromiseSource<Cancelled>;
     private context: OverridenAudioContext;
-    private _state: AudioContextRefState = 'paused';
+    private _isUsed = false;
 
-    public get state(): AudioContextRefState { return this._state; }
+    public get isUsed(): boolean { return this._isUsed; }
+    public get currentContext(): AudioContext { return this.context; }
 
     constructor(
         public readonly source: AudioContextSource,
@@ -45,11 +44,11 @@ export class AudioContextRef implements AsyncDisposable {
 
     async disposeAsync() : Promise<void> {
         debugLog?.log(`${this.name}.disposeAsync`);
-        this._state = 'paused';
+        this._isUsed = false;
         if (!this.whenDisposeRequested.isCompleted())
             this.whenDisposeRequested.resolve(cancelled)
 
-        this._state = 'paused';
+        this._isUsed = false;
         this.source.pauseRef();
         await this.whenRunning;
     }
@@ -63,10 +62,10 @@ export class AudioContextRef implements AsyncDisposable {
     }
 
     public use(): () => void {
-        this._state = 'running';
+        this._isUsed = true;
         this.source.useRef();
         return () => {
-            this._state = 'paused';
+            this._isUsed = false;
             this.source.pauseRef();
         };
     }
