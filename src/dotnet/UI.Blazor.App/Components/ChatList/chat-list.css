@@ -164,6 +164,9 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
 .chat-list .navbar-item-content .c-last-message .c-name:has(.non-shrinkable) {
     @apply flex-none;
 }
+.chat-list .navbar-item-content .c-last-message .c-name:has(.shrinkable) {
+    @apply min-w-16;
+}
 .chat-list .navbar-item-content .c-last-message .c-colon {
     @apply -ml-1;
     @apply text-xs text-02 font-medium;
