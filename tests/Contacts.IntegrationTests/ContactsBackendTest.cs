@@ -42,7 +42,7 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
         // assert
         var expected = chats.JoinedGroups1();
         await ComputedTest.When(async ct => {
-                var chatIds = await ListGroupsForContactSearch(SearchScope.Groups, ct);
+                var chatIds = await ListChatsForContactSearch(SearchScope.Groups, ct);
                 chatIds.Should().BeEquivalentTo(expected, o => o.IdTitle());
             },
             TimeSpan.FromSeconds(10));
@@ -63,7 +63,7 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         await ComputedTest.When(async ct => {
-                var foundPeerChats = await ListGroupsForContactSearch(SearchScope.People, ct);
+                var foundPeerChats = await ListChatsForContactSearch(SearchScope.People, ct);
                 var expected = accounts[..5]
                     .Select(x => new Chat.Chat(new PeerChatId(bob.Id, x.Id).ToChatId()) {
                         Title = x.FullName,
@@ -73,11 +73,64 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
             TimeSpan.FromSeconds(10));
     }
 
-    private async Task<List<Chat.Chat>> ListGroupsForContactSearch(SearchScope scope, CancellationToken cancellationToken = default)
+    [Fact]
+    public async Task ShouldListIdsForSearch()
+    {
+        // arrange
+        var bob = await _tester.SignInAsUniqueBob();
+
+        // act
+        await _tester.SignInAsUniqueAlice();
+        var places = await _tester.CreatePlaceContacts(bob);
+        var groups = await _tester.CreateGroupContacts(bob, places);
+        var people = await _tester.CreateUserContacts(bob, places);
+        await _tester.SignIn(bob);
+
+        // assert
+        var expected = ExpectedIds(x => x.Key.PlaceKey is null && x.Key is { MustJoin: true, IsPublic: false }, people.Friends());
+        var contactIds = await ListIdsForSearch(PlaceId.None, false, expected.Count);
+        contactIds.Order().Should().Equal(expected);
+
+        expected = ExpectedIds(x => x.Key.PlaceKey is null && x.Key.MustJoin, people.Friends());
+        contactIds = await ListIdsForSearch(PlaceId.None, true, expected.Count);
+        contactIds.Order().Should().Equal(expected);
+
+        expected = ExpectedIds(x => x.Key is { MustJoin: true, IsPublic: false }, people.Friends());
+        contactIds = await ListIdsForSearch(null, false, expected.Count);
+        contactIds.Order().Should().Equal(expected);
+
+        expected = ExpectedIds(x => x.Key.MustJoin || x.Key is { PlaceKey.MustJoin: true, IsPublic: true }, people.Friends());
+        contactIds = await ListIdsForSearch(null, true, expected.Count);
+        contactIds.Order().Should().Equal(expected);
+
+        foreach (var (placeKey, place) in places) {
+            expected = ExpectedIds(x => x.Key.PlaceKey == placeKey && x.Key.PlaceKey.MustJoin && x.Key is { MustJoin: true, IsPublic: false }, []);
+            contactIds = await ListIdsForSearch(place.Id, false, expected.Count);
+            contactIds.Order().Should().Equal(expected);
+
+            expected = ExpectedIds(x => x.Key.PlaceKey == placeKey && (x.Key.MustJoin || x.Key.IsPublic), []);
+            contactIds = await ListIdsForSearch(place.Id, true, expected.Count);
+            contactIds.Order().Should().Equal(expected);
+        }
+        return;
+
+        List<ContactId> ExpectedIds(Func<KeyValuePair<TestGroupKey, Chat.Chat>, bool> groupFilter, IEnumerable<AccountFull> users)
+        {
+            var groupChatIds = groups.Where(groupFilter).Select(x => x.Value.Id);
+            var peerChatIds = users.Select(x => new PeerChatId(bob.Id, x.Id).ToChatId());
+            return groupChatIds
+                .Concat(peerChatIds)
+                .Select(x => new ContactId(bob.Id, x))
+                .Order()
+                .ToList();
+        }
+    }
+
+    private async Task<List<Chat.Chat>> ListChatsForContactSearch(SearchScope scope, CancellationToken cancellationToken = default)
     {
         var account = await _accounts.GetOwn(_tester.Session, cancellationToken);
         var contactIds = scope == SearchScope.People
-            ? await _contactsBackend.ListIdsForUserContactSearch(account.Id, cancellationToken)
+            ? await _contactsBackend.ListPeerContactIds(account.Id, cancellationToken)
             : await _contactsBackend.ListIdsForGroupContactSearch(account.Id, null, cancellationToken);
         var chats = await contactIds.Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId))
             .OrderBy(x => x.Id)
@@ -85,5 +138,21 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
             .Select(id => _tester.Chats.Get(_tester.Session, id, cancellationToken))
             .Collect(cancellationToken);
         return chats.SkipNullItems().ToList();
+    }
+
+    private async Task<List<ContactId>> ListIdsForSearch(PlaceId? placeId, bool includePublic, int expectedCount)
+    {
+        var account = await _accounts.GetOwn(_tester.Session, CancellationToken.None);
+        return await ComputedTest.When(async ct => {
+                var contactIds =
+                    await _contactsBackend.ListIdsForSearch(account.Id, placeId, includePublic, ct);
+                var result = contactIds.Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId))
+                    .OrderBy(x => x.Id)
+                    .ToList();
+                result.Should().HaveCount(expectedCount);
+
+                return result;
+            },
+            TimeSpan.FromSeconds(5));
     }
 }

@@ -9,16 +9,12 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
     private WebClientTester _tester = null!;
     private IContacts _contacts = null!;
-    private IContactsBackend _contactsBackend = null!;
-    private IAccounts _accounts = null!;
 
     protected override async Task InitializeAsync()
     {
         await base.InitializeAsync();
         _tester = AppHost.NewWebClientTester(Out);
         _contacts = AppHost.Services.GetRequiredService<IContacts>();
-        _contactsBackend = AppHost.Services.GetRequiredService<IContactsBackend>();
-        _accounts = _tester.AppServices.GetRequiredService<IAccounts>();
     }
 
     protected override async Task DisposeAsync()
@@ -97,17 +93,6 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
 
             contactIds = await ListIds(privatePlace.Id, ct);
             contactIds.Should().BeEquivalentTo(expectedPrivatePlaceChatIds);
-
-            contactIds = await ListIdsForEntrySearch(ct);
-            contactIds.Should()
-                .BeEquivalentTo(new[] {
-                    new ContactId(bob.Id, publicChatId),
-                    new ContactId(bob.Id, privateChatId),
-                    new ContactId(bob.Id, publicPlacePrivateChatId),
-                    new ContactId(bob.Id, publicPlace.Id.ToRootChatId()),
-                    new ContactId(bob.Id, privatePlacePrivateChatId),
-                    new ContactId(bob.Id, privatePlace.Id.ToRootChatId()),
-                });
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -170,18 +155,6 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
 
             contactIds = await ListIds(privatePlace.Id, ct);
             contactIds.Should().BeEquivalentTo(expectedPrivatePlaceChatIds);
-
-            // TODO: move to ContactsBackendTest
-            contactIds = await ListIdsForEntrySearch(ct);
-            contactIds.Should()
-                .BeEquivalentTo(new[] {
-                    new ContactId(bob.Id, publicChatId),
-                    new ContactId(bob.Id, privateChatId),
-                    new ContactId(bob.Id, publicPlacePrivateChatId),
-                    new ContactId(bob.Id, publicPlace.Id.ToRootChatId()),
-                    new ContactId(bob.Id, privatePlacePrivateChatId),
-                    new ContactId(bob.Id, privatePlace.Id.ToRootChatId()),
-                });
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -189,12 +162,5 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
     {
         var contactIds = await _contacts.ListIds(_tester.Session, placeId, cancellationToken);
         return contactIds.Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
-    }
-
-    private async Task<List<ContactId>> ListIdsForEntrySearch(CancellationToken cancellationToken = default)
-    {
-        var account = await _accounts.GetOwn(_tester.Session, cancellationToken);
-        var contactIds = await _contactsBackend.ListIdsForEntrySearch(account.Id, cancellationToken);
-        return contactIds.Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId)).OrderBy(x => x.Id).ToList();
     }
 }
