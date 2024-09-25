@@ -32,12 +32,14 @@
 .markup-editor .editor-content:empty {
     @apply text-04;
 }
-.markup-editor .editor-content:empty:before {
+.markup-editor .editor-content:empty:before,
+.markup-editor .editor-content.empty-editor:before {
     content: attr(data-placeholder);
     @apply truncate;
     @apply text-03;
 }
-body.narrow .markup-editor .editor-content:empty:before {
+body.narrow .markup-editor .editor-content:empty:before,
+body.narrow .markup-editor .editor-content.empty-editor:before {
     @apply text-text-1;
 }
 
