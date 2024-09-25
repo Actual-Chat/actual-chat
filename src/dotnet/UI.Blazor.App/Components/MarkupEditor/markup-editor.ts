@@ -575,41 +575,49 @@ export class MarkupEditor {
         const process = (parent: Node) => {
             let mustNormalize = false;
             let skipNode: Node = null;
-            for (const node of parent.childNodes) {
-                if (node === skipNode) {
-                    skipNode = null;
-                    continue;
-                }
-
-                debugLog?.log('fixContent: processing', node);
-                let text = asText(node);
-                if (text) {
-                    const oldText = text.textContent;
-                    const newText = oldText.replace(ZeroWidthSpaceRe, ""); // \u200B (hex) = 8203 (dec)
-                    if (newText.length !== oldText.length) {
-                        text.textContent = newText;
-                        mustNormalize = true;
+            if (parent.childNodes.length == 1
+                && parent.childNodes.item(0).nodeName == 'BR'
+                && parent.childNodes.item(0).nodeValue == null) {
+                let clsList = this.contentDiv.classList;
+                if (!clsList.contains('empty-editor'))
+                    clsList.add('empty-editor');
+            } else {
+                this.contentDiv.classList.remove('empty-editor');
+                for (const node of parent.childNodes) {
+                    if (node === skipNode) {
+                        skipNode = null;
+                        continue;
                     }
-                    continue;
-                }
 
-                const element = asHTMLElement(node);
-                if (!element)
-                    continue;
+                    debugLog?.log('fixContent: processing', node);
+                    let text = asText(node);
+                    if (text) {
+                        const oldText = text.textContent;
+                        const newText = oldText.replace(ZeroWidthSpaceRe, ""); // \u200B (hex) = 8203 (dec)
+                        if (newText.length !== oldText.length) {
+                            text.textContent = newText;
+                            mustNormalize = true;
+                        }
+                        continue;
+                    }
 
-                const mention = asMention(element);
-                if (!mention) {
-                    process(element);
-                    continue;
-                }
+                    const element = asHTMLElement(node);
+                    if (!element)
+                        continue;
 
-                text = getPostMentionText(element);
-                if (!text || !text.textContent.startsWith(ZeroWidthSpace)) {
-                    debugLog?.log('fixContent: removing mention', mention);
-                    mention.remove();
+                    const mention = asMention(element);
+                    if (!mention) {
+                        process(element);
+                        continue;
+                    }
+
+                    text = getPostMentionText(element);
+                    if (!text || !text.textContent.startsWith(ZeroWidthSpace)) {
+                        debugLog?.log('fixContent: removing mention', mention);
+                        mention.remove();
+                    } else
+                        skipNode = text;
                 }
-                else
-                    skipNode = text;
             }
 
             if (mustNormalize)
