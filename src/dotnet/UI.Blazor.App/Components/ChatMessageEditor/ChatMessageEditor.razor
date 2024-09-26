@@ -57,7 +57,9 @@
                             <i class="icon-emoji-2 text-2xl"></i>
                         </ButtonRound>
                     }
-                    <NotifyCallPanel ChatId="@Chat.Id"/>
+                    @if (IsAdmin) {
+                        <NotifyAllButton Chat="@Chat"/>
+                    }
                     <div class="c-incut"></div>
                     <button class="post-panel-btn post-message btn btn-round btn-transparent btn-xs unhovered"
                             @onmousedown="@(_ => Post())"
@@ -111,6 +113,7 @@
     private IJSRuntime JS => Hub.JSRuntime();
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private Features Features => Hub.Features();
+    private bool IsAdmin => Hub.AccountUI.OwnAccount.Value.IsAdmin;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }

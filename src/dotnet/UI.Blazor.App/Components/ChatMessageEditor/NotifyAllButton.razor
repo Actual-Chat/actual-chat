@@ -1,0 +1,144 @@
+@using ActualChat.Notification
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<NotifyAllButton.Model>
+@{
+    var m = State.Value;
+    if (!m.IsVisible)
+        return;
+}
+
+<ButtonRound
+    Class="post-panel-btn notify-call-btn btn-xs btn-transparent btn-primary"
+    Tooltip="Notify All"
+    TooltipPosition="FloatingPosition.Top"
+    Click="@OnNotifyAllClick">
+    <i class="icon-notify-phone text-2xl"></i>
+</ButtonRound>
+
+@code {
+    private (ChatEntry, Moment)? _lastKnownOwnUnreadEntryInfo;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private AccountUI AccountUI => Hub.AccountUI;
+    private IAuthors Authors => Hub.Authors;
+    private IChats Chats => Hub.Chats;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private UICommander UICommander => Hub.UICommander();
+    private MomentClock Clock => Hub.Clocks().SystemClock;
+    private LiveTime LiveTime => Hub.LiveTime;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(Chat.Id.Kind is ChatKind.Peer),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat.Id;
+        if (chatId.Kind is ChatKind.Peer)
+            return new Model(true); // Always allowed for peer chats.
+
+        var ownAuthor = Chat.Rules.Author;
+        if (ownAuthor is null)
+            return new Model(false); // Disabled if no own author.
+
+        var chatIdRange = await Chats
+            .GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken)
+            .ConfigureAwait(false);
+        if (chatIdRange.IsEmpty)
+            return new Model(false); // Disabled if no messages yet.
+
+        var authorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (authorIds.Count > 10)
+            return new Model(false); // Always disabled for middle and large groups.
+
+        var readPositionsStat = await Chats.GetReadPositionsStat(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var isRecentDuration = TimeSpan.FromSeconds(10);
+        var oldMessageBeginsAtThreshold = Clock.Now - isRecentDuration;
+
+        var chatEntryReader = Hub.NewEntryReader(chatId, ChatEntryKind.Text);
+        var foundEntry = await chatEntryReader.GetLast(
+                chatIdRange,
+                x => {
+                    var isOwnEntry = x.AuthorId == ownAuthor.Id;
+                    if (isOwnEntry)
+                        return true; // Found own message.
+
+                    var hasRead = readPositionsStat.HasReadByAnotherAuthor(x, x.AuthorId);
+                    if (!hasRead)
+                        return false; // Continue search
+
+                    var isOldMessage = x.BeginsAt < oldMessageBeginsAtThreshold;
+                    return isOldMessage; // Stop search when message is too old.
+                },
+                100, // Max. 100 entries to scan upwards
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (foundEntry is null)
+            return new Model(false);
+
+        if (foundEntry.AuthorId != ownAuthor.Id)
+            return new Model(false); // No own unread or recent messages found.
+
+        // Own message found. Has it been read?
+        var hasRead = readPositionsStat.HasReadByAnotherAuthor(foundEntry.Id, ownAuthor.Id);
+        if (!hasRead) {
+            _lastKnownOwnUnreadEntryInfo = (foundEntry, Moment.MaxValue);
+            return new Model(true, true); // Unread own message found.
+        }
+
+        // Here we try to predict HasRead moment. It's possible if component exists since moment when message has been unread.
+        if (_lastKnownOwnUnreadEntryInfo is not null) {
+            if (_lastKnownOwnUnreadEntryInfo.Value.Item2 == Moment.MaxValue) {
+                // Remember current moment as HasRead moment.
+                // It should be +- accurate if RpcHub has been connected.
+                _lastKnownOwnUnreadEntryInfo = (_lastKnownOwnUnreadEntryInfo.Value.Item1, Clock.Now);
+            }
+
+            var elapsed = Clock.Now - _lastKnownOwnUnreadEntryInfo.Value.Item2;
+            if (elapsed > isRecentDuration)
+                return new Model(false); // Too much time passed since message has been read.
+
+            Computed.GetCurrent().Invalidate(isRecentDuration - elapsed + TimeSpan.FromMilliseconds(100), false); // Recalculate state when message recency will expire.
+            return new Model(true);
+        }
+
+        // How long time ago has it been read?
+        // We can't answer this question because we don't have info when messages have been read.
+        // So check creation time instead.
+        var isRecentMessage = foundEntry.BeginsAt > oldMessageBeginsAtThreshold;
+        if (!isRecentMessage)
+            return new Model(false);
+
+        // If the message is recent then it has been read recently.
+        var delay = foundEntry.BeginsAt + isRecentDuration - Clock.Now;
+        if (delay.Ticks <= 0)
+            return new Model(false); // Recency has expired.
+
+        Computed.GetCurrent().Invalidate(delay + TimeSpan.FromMilliseconds(100), false); // Recalculate state when message recency will expire.
+        return new Model(true);
+    }
+
+    private void OnNotifyAllClick() {
+        var message = State.Value.IsUnread
+            ? "Are you sure you want to Notify All members?"
+            : "Your messages have read recently. Do you still want to Notify All members?";
+        _ = ModalUI.Show(new ConfirmModal.Model(
+            false,
+            message,
+            NotifyAllInternal) {
+            Title = "Notify All"
+        });
+    }
+
+    private void NotifyAllInternal()
+        => _ = UICommander.Call(new Notifications_NotifyMembers(Session, Chat.Id));
+
+    // Nested types
+
+    public sealed record Model(bool IsVisible, bool IsUnread = false);
+}
