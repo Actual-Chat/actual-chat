@@ -23,7 +23,7 @@ export class SoundPlayer {
             detach: context => this.onDetach(context),
         });
         const context = await contextRef.whenFirstTimeReady();
-        const pause = contextRef.use();
+        const contextRefUsage = contextRef.use();
         const buffer = await this.getSound(context, url);
         if (!context) {
             warnLog?.log('play: failed to play sound: audioContext became unavailable')
@@ -45,7 +45,7 @@ export class SoundPlayer {
         } finally {
             source.stop();
             source.disconnect();
-            pause();
+            contextRefUsage.dispose();
             await contextRef.disposeAsync();
         }
         debugLog?.log('<- play', url);
