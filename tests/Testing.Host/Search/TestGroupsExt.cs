@@ -172,9 +172,24 @@ public static class TestGroupsExt
     public static IEnumerable<Chat.Chat> Joined(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
         => chats.Where(x => x.Key.MustJoin).Select(x => x.Value);
 
+    public static IEnumerable<Chat.Chat> PrivateJoined(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
+        => chats.Where(x => x.Key is { MustJoin: true, IsPublic: false }).Select(x => x.Value);
+
     public static IEnumerable<Chat.Chat> OtherPrivate(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
         => chats.Where(x => !x.Key.IsPublic && x.Key.PlaceKey?.IsPublic != true && !x.Key.MustJoin).Select(x => x.Value);
 
     public static IEnumerable<Chat.Chat> OtherPublic(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
         => chats.Where(x => x.Key.IsPublic && x.Key.PlaceKey?.IsPublic != false && !x.Key.MustJoin).Select(x => x.Value);
+
+    public static IEnumerable<Chat.Chat> VisibleInPlace(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats, TestPlaceKey placeKey)
+        => chats.Where(x => x.Key.PlaceKey == placeKey && (x.Key.MustJoin || x.Key.IsPublic)).Select(x => x.Value);
+
+    public static IEnumerable<Chat.Chat> PrivateJoinedInPlace(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats, TestPlaceKey placeKey)
+        => chats.Where(x => x.Key.PlaceKey == placeKey && x.Key.PlaceKey.MustJoin && x.Key is { MustJoin: true, IsPublic: false }).Select(x => x.Value);
+
+    public static IEnumerable<Chat.Chat> NonPlacePrivateJoined(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
+        => chats.Where(x => x.Key.PlaceKey is null && x.Key.MustJoin && !x.Key.IsPublic).Select(x => x.Value);
+
+    public static IEnumerable<Chat.Chat> NonPlaceJoined(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
+        => chats.Where(x => x.Key.PlaceKey is null && x.Key.MustJoin).Select(x => x.Value);
 }
