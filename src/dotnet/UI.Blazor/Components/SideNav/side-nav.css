@@ -1,4 +1,5 @@
 .side-nav {
+    @apply isolate;
     @apply fixed md:static;
     @apply z-button left-0;
     @apply h-full w-full;

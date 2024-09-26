@@ -1,11 +1,9 @@
 @using ActualChat.UI.Blazor.Services
 <div class="page-with-header-and-footer">
     <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Left.IsVisible">
-        <div class="layout-left">
         <ErrorBarrier Name="PageWithHeaderAndFooter-LeftDrawer" Kind="@ErrorBarrierKind.Medium">
             @LeftDrawer
         </ErrorBarrier>
-        </div>
     </RegionVisibilityProvider>
     <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Middle.IsVisible">
         <ErrorBarrier Name="PageWithHeaderAndFooter-Content">
@@ -35,11 +33,9 @@
         </ErrorBarrier>
     </RegionVisibilityProvider>
     <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Right.IsVisible">
-        <div class="layout-right">
         <ErrorBarrier Name="PageWithHeaderAndFooter-RightDrawer" Kind="@ErrorBarrierKind.Medium">
             @RightDrawer
         </ErrorBarrier>
-        </div>
     </RegionVisibilityProvider>
 </div>
 

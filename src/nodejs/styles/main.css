@@ -128,16 +128,6 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply overflow-auto custom-scrollbar-hide;
 }
 
-.layout-left {
-    @apply isolate;
-    @apply z-10;
-}
-
-.layout-right {
-    @apply isolate;
-    @apply z-10;
-}
-
 .layout-header {
     @apply z-50;
     @apply flex-none flex-y;
