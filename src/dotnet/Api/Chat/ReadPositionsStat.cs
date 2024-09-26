@@ -9,12 +9,18 @@ public partial record ReadPositionsStat(
     [property: DataMember, MemoryPackOrder(2)] ApiArray<AuthorReadPosition> TopReadPositions)
 {
     public bool CanCalculateHasReadByAnotherAuthor(ChatEntry chatEntry)
-        => chatEntry.LocalId >= StartTrackingEntryLid;
+        => CanCalculateHasReadByAnotherAuthor(chatEntry.Id);
 
-    public bool HasReadByAnotherAuthor(ChatEntry chatEntry, AuthorId ownAuthorId) {
-        var entryId = chatEntry.Id.LocalId;
+    public bool CanCalculateHasReadByAnotherAuthor(ChatEntryId chatEntryId)
+        => chatEntryId.LocalId >= StartTrackingEntryLid;
+
+    public bool HasReadByAnotherAuthor(ChatEntry chatEntry, AuthorId ownAuthorId)
+        => HasReadByAnotherAuthor(chatEntry.Id, ownAuthorId);
+
+    public bool HasReadByAnotherAuthor(ChatEntryId chatEntryId, AuthorId ownAuthorId) {
+        var entryLid = chatEntryId.LocalId;
         foreach (var authorReadPosition in TopReadPositions)
-            if (authorReadPosition.EntryLid >= entryId
+            if (authorReadPosition.EntryLid >= entryLid
                 && !authorReadPosition.AuthorId.IsNone
                 && authorReadPosition.AuthorId != ownAuthorId)
                 return true;
