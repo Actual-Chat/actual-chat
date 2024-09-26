@@ -86,44 +86,41 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
         var people = await _tester.CreateUserContacts(bob, places);
         await _tester.SignIn(bob);
 
-        // assert
-        var expected = ExpectedIds(x => x.Key.PlaceKey is null && x.Key is { MustJoin: true, IsPublic: false }, people.Friends());
-        var contactIds = await ListIdsForSearch(PlaceId.None, false, expected.Count);
-        contactIds.Order().Should().Equal(expected);
+        // act, assert
+        // non-place results
+        await TestListIdsForSearch(PlaceId.None, false, groups.NonPlacePrivateJoined(), people.Friends());
+        await TestListIdsForSearch(PlaceId.None, true, groups.NonPlaceJoined(), people.Friends());
 
-        expected = ExpectedIds(x => x.Key.PlaceKey is null && x.Key.MustJoin, people.Friends());
-        contactIds = await ListIdsForSearch(PlaceId.None, true, expected.Count);
-        contactIds.Order().Should().Equal(expected);
+        // found everywhere
+        await TestListIdsForSearch(null, false, groups.PrivateJoined(), people.Friends());
+        await TestListIdsForSearch(null, true, groups.Joined(), people.Friends());
 
-        expected = ExpectedIds(x => x.Key is { MustJoin: true, IsPublic: false }, people.Friends());
-        contactIds = await ListIdsForSearch(null, false, expected.Count);
-        contactIds.Order().Should().Equal(expected);
-
-        expected = ExpectedIds(x => x.Key.MustJoin || x.Key is { PlaceKey.MustJoin: true, IsPublic: true }, people.Friends());
-        contactIds = await ListIdsForSearch(null, true, expected.Count);
-        contactIds.Order().Should().Equal(expected);
-
+        // place bound results
         foreach (var (placeKey, place) in places) {
-            expected = ExpectedIds(x => x.Key.PlaceKey == placeKey && x.Key.PlaceKey.MustJoin && x.Key is { MustJoin: true, IsPublic: false }, []);
-            contactIds = await ListIdsForSearch(place.Id, false, expected.Count);
-            contactIds.Order().Should().Equal(expected);
-
-            expected = ExpectedIds(x => x.Key.PlaceKey == placeKey && (x.Key.MustJoin || x.Key.IsPublic), []);
-            contactIds = await ListIdsForSearch(place.Id, true, expected.Count);
-            contactIds.Order().Should().Equal(expected);
+            await TestListIdsForSearch(place.Id, false, groups.PrivateJoinedInPlace(placeKey), []);
+            await TestListIdsForSearch(place.Id, true, groups.VisibleInPlace(placeKey), []);
         }
+
         return;
 
-        List<ContactId> ExpectedIds(Func<KeyValuePair<TestGroupKey, Chat.Chat>, bool> groupFilter, IEnumerable<AccountFull> users)
+        async Task TestListIdsForSearch(PlaceId? placeId, bool includePublic, IEnumerable<Chat.Chat> expectedGroups, IEnumerable<AccountFull> expectedUsers)
         {
-            var groupChatIds = groups.Where(groupFilter).Select(x => x.Value.Id);
-            var peerChatIds = users.Select(x => new PeerChatId(bob.Id, x.Id).ToChatId());
-            return groupChatIds
-                .Concat(peerChatIds)
+            // arrange
+            var expected = ExpectedIds(expectedGroups, expectedUsers);
+
+            // act
+            var contactIds = await ListIdsForSearch(placeId, includePublic, expected.Count);
+
+            // assert
+            contactIds.Order().Should().Equal(expected);
+        }
+
+        List<ContactId> ExpectedIds(IEnumerable<Chat.Chat> expectedGroups, IEnumerable<AccountFull> expectedUsers)
+            => expectedUsers.Select(x => new PeerChatId(bob.Id, x.Id).ToChatId())
+                .Concat(expectedGroups.Select(x => x.Id))
                 .Select(x => new ContactId(bob.Id, x))
                 .Order()
                 .ToList();
-        }
     }
 
     private async Task<List<Chat.Chat>> ListChatsForContactSearch(SearchScope scope, CancellationToken cancellationToken = default)
