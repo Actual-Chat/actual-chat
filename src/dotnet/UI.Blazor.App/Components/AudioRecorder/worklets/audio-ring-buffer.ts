@@ -8,7 +8,7 @@ export class AudioRingBuffer {
     constructor(bufferSize: number, channelCount: number) {
         this.readIndex = 0;
         this.writeIndex = 0;
-        this._framesAvailable = 0;
+        this._samplesAvailable = 0;
 
         if (bufferSize < 1024) {
             throw new Error(`Min. buffer size is 1024, but specified bufferSize is ${bufferSize}.`);
@@ -21,9 +21,9 @@ export class AudioRingBuffer {
         }
     }
 
-    private _framesAvailable: number;
-    public get framesAvailable() {
-        return this._framesAvailable;
+    private _samplesAvailable: number;
+    public get samplesAvailable() {
+        return this._samplesAvailable;
     }
 
     public push(multiChannelData: Float32Array[]): void {
@@ -57,7 +57,7 @@ export class AudioRingBuffer {
             }
         }
         this.writeIndex = endWriteIndex;
-        this._framesAvailable += sourceLength;
+        this._samplesAvailable += sourceLength;
     }
 
     public pull(multiChannelData: Float32Array[]): boolean {
@@ -71,10 +71,10 @@ export class AudioRingBuffer {
         if (destinationLength > this.bufferSize / 2) {
             throw new Error(`multiChannelData should not have length longer than half of the bufferSize, length of multichannelData=${destinationLength}, bufferSize=${this.bufferSize}.`);
         }
-        if (this._framesAvailable === 0) {
+        if (this._samplesAvailable === 0) {
             return false;
         }
-        if (this._framesAvailable < destinationLength) {
+        if (this._samplesAvailable < destinationLength) {
             return false;
         }
 
@@ -95,7 +95,7 @@ export class AudioRingBuffer {
         }
 
         this.readIndex = endReadIndex;
-        this._framesAvailable -= destinationLength;
+        this._samplesAvailable -= destinationLength;
 
         return true;
     }
@@ -103,7 +103,7 @@ export class AudioRingBuffer {
     public reset(): void {
         this.readIndex = 0;
         this.writeIndex = 0;
-        this._framesAvailable = 0;
+        this._samplesAvailable = 0;
         for (let channel = 0; channel < this.channelCount; channel++) {
             this.channelBuffers[channel].fill(0);
         }

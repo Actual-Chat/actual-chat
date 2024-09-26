@@ -51,8 +51,8 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         return this.worklet.pause(noWait);
     }
 
-    public resume(): Promise<void> {
-        return this.worklet.resume();
+    public resume(preSkip: number): Promise<void> {
+        return this.worklet.resume(preSkip);
     }
 
     private onProcessorError = (ev: Event) => {

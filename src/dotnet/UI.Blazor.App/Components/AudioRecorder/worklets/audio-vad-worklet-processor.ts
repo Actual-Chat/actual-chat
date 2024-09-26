@@ -86,7 +86,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
         const { samplesPerWindow } = this;
 
         this.buffer.push(input);
-        if (this.buffer.framesAvailable >= samplesPerWindow) {
+        if (this.buffer.samplesAvailable >= samplesPerWindow) {
             const vadBuffer = new Array<Float32Array>();
             const vadArrayBuffer = this.bufferPool.get();
 
