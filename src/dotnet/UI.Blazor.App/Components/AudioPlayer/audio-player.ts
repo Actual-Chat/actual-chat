@@ -76,10 +76,10 @@ export class AudioPlayer implements Resettable {
     }
 
     /** Called from Blazor */
-    public static async create(blazorRef: DotNet.DotNetObject, id: string): Promise<AudioPlayer> {
+    public static async create(blazorRef: DotNet.DotNetObject, id: string, preSkip: number): Promise<AudioPlayer> {
         await AudioPlayer.init();
-        const player= AudioPlayer.pool.get();
-        await player.startPlayback(blazorRef);
+        const player = AudioPlayer.pool.get();
+        await player.startPlayback(blazorRef, id, preSkip);
         return player;
     }
 
@@ -164,14 +164,14 @@ export class AudioPlayer implements Resettable {
         });
     }
 
-    public async startPlayback(blazorRef: DotNet.DotNetObject): Promise<void> {
+    public async startPlayback(blazorRef: DotNet.DotNetObject, id: string, preSkip: number): Promise<void> {
         debugLog?.log(`#${this.internalId} -> startPlayback()`);
         this.blazorRef = blazorRef;
+        await this.whenReady;
         this.pauseContextRef = this.contextRef.use();
-        if (this.playbackState === 'ended') {
+        if (this.playbackState === 'ended')
             await decoderWorker.resume(this.internalId, rpcNoWait);
-            await this.feederNode.resume();
-        }
+        await this.feederNode.resume(preSkip);
         this.playbackState = 'paused';
         this.whenEnded = new PromiseSource<void>();
         debugLog?.log(`#${this.internalId} <- startPlayback()`);
@@ -238,7 +238,7 @@ export class AudioPlayer implements Resettable {
         this.pauseContextRef = this.contextRef.use();
 
         debugLog?.log(`#${this.internalId}.resume`);
-        await this.feederNode.resume();
+        await this.feederNode.resume(0);
     }
 
     // Event handlers

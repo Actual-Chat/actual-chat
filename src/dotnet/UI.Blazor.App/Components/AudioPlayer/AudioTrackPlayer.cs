@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Audio;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Module;
@@ -70,10 +71,12 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         throw StandardError.StateTransition(GetType(), "Repeated PlayCommand.");
                     _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
 
+                    var audioSource = (AudioSource)Source;
+                    var preSkip = audioSource.Format.PreSkip;
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Creating audio player in JS", _id);
                     _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod,
                         CancellationToken.None,
-                        _blazorRef, _id);
+                        _blazorRef, _id, preSkip);
                     break;
                 case PauseCommand:
                     if (_jsRef == null)
