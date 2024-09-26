@@ -1,30 +1,39 @@
+@using ActualChat.Search
+@inherits ComputedStateComponent<bool>
 @namespace ActualChat.UI.Blazor.App.Components
 @{
-    var btnText = _isExpanded ? "Show less" : "Show more";
-    var isExpandedCls = _isExpanded ? "expanded" : "";
+    var isExpanded = State.ValueOrDefault;
+    var btnText = isExpanded ? "Show less" : "Show more";
+    var isExpandedCls = isExpanded ? "expanded" : "";
 }
 
 <div class="search-result-group-header @isExpandedCls">
     <div class="c-title">
-        @Title
+        @Scope.ToString()
     </div>
-    <Button Class="show-more-btn btn-transparent unhovered btn-sm" Click="@OnClick">
-        <i class="icon-chevron-up c-arrow"></i>
-        <span class="c-text">@btnText</span>
-    </Button>
+    @if (CanExpandOrCollapse) {
+        <Button Class="show-more-btn btn-transparent unhovered btn-sm" Click="@OnClick">
+            <i class="icon-chevron-up c-arrow"></i>
+            <span class="c-text">@btnText</span>
+        </Button>
+    }
 </div>
 
 @code {
-    private bool _isExpanded;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private SearchUI SearchUI => Hub.SearchUI;
 
-    [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter, EditorRequired] public bool CanExpandOrCollapse { get; set; }
-    [Parameter] public EventCallback Expand { get; set; }
-    [Parameter] public EventCallback Collapse { get; set; }
+    [Parameter, EditorRequired] public SearchScope Scope { get; set; }
 
-    private Task OnClick(MouseEventArgs e) {
-        var result = _isExpanded ? Collapse.InvokeAsync() : Expand.InvokeAsync();
-        _isExpanded = !_isExpanded;
-        return result;
+    private async Task OnClick(MouseEventArgs e) {
+        var scope = Scope;
+        if (State.ValueOrDefault)
+            await SearchUI.ShowLess(scope);
+        else
+            await SearchUI.ShowMore(scope);
     }
+
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
+        => SearchUI.IsExpanded(Scope);
 }

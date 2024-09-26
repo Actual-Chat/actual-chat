@@ -56,6 +56,13 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         return new (text, placeId, extendedLimits);
     }
 
+    [ComputeMethod]
+    public virtual async Task<bool> IsExpanded(SearchScope scope)
+    {
+        var expandedScopes = await ExtendedLimits.Use(StopToken).ConfigureAwait(false);
+        return expandedScopes.Contains(scope);
+    }
+
     public void Clear()
     {
         if (Text.Value.IsNullOrEmpty())
