@@ -8,14 +8,13 @@
         return;
 
     var chatState = m.ChatState;
-    var url = Links.Chat(m.ChatState.Id, m.Entry?.LocalId);
 }
 @* TODO: merge with ChatListItem or at least refactor and extract common parts *@
 @if (m == Model.Loading) {
     <ChatListItemSkeleton />
 } else {
     <div class="navbar-item found-chat">
-        <div class="navbar-item-content" data-href="@url">
+        <div class="navbar-item-content" data-href="@m.Link">
             <div class="c-container">
                 <ChatIcon Chat="chatState.Chat"/>
                 <div class="c-description">
@@ -91,6 +90,7 @@
             TitleMatch = titleMatch.IsEmpty ? SearchMatch.New(chatState.Chat.Title) : titleMatch,
             MessageMatch = messageMatch.IsEmpty ? SearchMatch.New(chatState.Info.LastTextEntryText) : messageMatch,
             Entry = entry,
+            Link = entryId.IsNone ? Links.Chat(chatState.Id): Links.Chat(chatState.Id, entry?.LocalId),
         };
     }
 
@@ -104,5 +104,6 @@
         public SearchMatch TitleMatch { get; init; } = SearchMatch.Empty;
         public SearchMatch MessageMatch { get; init; } = SearchMatch.Empty;
         public ChatEntry? Entry { get; init; }
+        public LocalUrl Link { get; init; }
     }
 }
