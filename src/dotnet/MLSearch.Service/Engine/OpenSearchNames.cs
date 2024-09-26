@@ -16,7 +16,7 @@ internal sealed class OpenSearchNames
     public const string TestPrefix = "test";
     public const string ChatContent = "chat-content";
     public const string ChatContentCursor = "chat-content-cursor";
-    public const string ChatCursor = "chat-cursor";
+    public const string ChatListCursor = "chat-cursor";
     public static string MLIndexPattern => $"{MLModulePrefix}-*";
     public static string MLTestIndexPattern => $"{MLModulePrefix}-{TestPrefix}-*";
     public static string MLTemplateName => $"{MLModulePrefix}-{TemplateNameSuffix}";

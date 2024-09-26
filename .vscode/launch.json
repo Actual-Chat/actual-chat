@@ -24,7 +24,7 @@
       "console": "internalConsole",
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      }
+      },
     }
   ]
 }

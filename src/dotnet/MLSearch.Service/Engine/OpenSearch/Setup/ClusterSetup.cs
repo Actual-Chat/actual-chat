@@ -61,7 +61,7 @@ internal sealed class ClusterSetup(
 
         var (templateName, pattern) = (OpenSearchNames.MLTemplateName, OpenSearchNames.MLIndexPattern);
         var ingestPipelineName = openSearchNames.GetIngestPipelineName(OpenSearchNames.ChatContent, embeddingModelProps);
-        var indexShortNames = new[] { OpenSearchNames.ChatContent, OpenSearchNames.ChatContentCursor, OpenSearchNames.ChatCursor };
+        var indexShortNames = new[] { OpenSearchNames.ChatContent, OpenSearchNames.ChatContentCursor, OpenSearchNames.ChatListCursor };
 
         var isTemplateValid = await actions.IsTemplateValidAsync(templateName, pattern, numberOfReplicas, cancellationToken)
             .ConfigureAwait(false);
@@ -105,7 +105,7 @@ internal sealed class ClusterSetup(
         using var _1 = _tracer.Region();
         var contentIndexName = openSearchNames.GetIndexName(OpenSearchNames.ChatContent, embeddingModelProps);
         var contentCursorIndexName = openSearchNames.GetIndexName(OpenSearchNames.ChatContentCursor, embeddingModelProps);
-        var chatsCursorIndexName = openSearchNames.GetIndexName(OpenSearchNames.ChatCursor, embeddingModelProps);
+        var chatsCursorIndexName = openSearchNames.GetIndexName(OpenSearchNames.ChatListCursor, embeddingModelProps);
 
         var ingestPipelineName = openSearchNames.GetIngestPipelineName(OpenSearchNames.ChatContent, embeddingModelProps);
 

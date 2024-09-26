@@ -71,7 +71,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             rpcHost.AddBackend<IChatIndexInitializerTrigger, ChatIndexInitializerTrigger>();
             if (!isBackendClient) {
                 services.AddSingleton<ICursorStates<ChatIndexInitializerShard.Cursor>>(
-                    static c => c.CreateInstance<CursorStates<ChatIndexInitializerShard.Cursor>>(OpenSearchNames.ChatCursor));
+                    static c => c.CreateInstance<CursorStates<ChatIndexInitializerShard.Cursor>>(OpenSearchNames.ChatListCursor));
                 services.AddSingleton<IInfiniteChatSequence, InfiniteChatSequence>();
                 services.AddSingleton<IChatIndexInitializerShard, ChatIndexInitializerShard>();
                 services.AddSingleton(static c => c.CreateInstance<ChatIndexInitializer>(ShardScheme.MLSearchBackend))

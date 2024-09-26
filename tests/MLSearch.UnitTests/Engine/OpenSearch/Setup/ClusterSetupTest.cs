@@ -75,7 +75,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             ), Times.Once());
 
         // Check if initializer verifies existence of all needed indexes
-        var indexShortNames = new[] { OpenSearchNames.ChatContent, OpenSearchNames.ChatContentCursor, OpenSearchNames.ChatCursor };
+        var indexShortNames = new[] { OpenSearchNames.ChatContent, OpenSearchNames.ChatContentCursor, OpenSearchNames.ChatListCursor };
         var indexNames = indexShortNames
             .Select(name => _openSearchNames.GetIndexName(name, _setupResult.EmbeddingModelProps));
         foreach (var indexName in indexNames) {
@@ -98,7 +98,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
         { EntityType.Pipeline, OpenSearchNames.ChatContent},
         { EntityType.Index, OpenSearchNames.ChatContent},
         { EntityType.Index, OpenSearchNames.ChatContentCursor},
-        { EntityType.Index, OpenSearchNames.ChatCursor},
+        { EntityType.Index, OpenSearchNames.ChatListCursor},
     };
 
     [Theory]

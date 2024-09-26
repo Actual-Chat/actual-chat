@@ -75,7 +75,7 @@ internal static class OpenSearchConfigurationServiceCollectionExt
             .AddAlias<ISettingsChangeTokenSource, SettingsChangeTokenSource<SemanticIndexSettings>>()
             .AddAlias<IOptionsChangeTokenSource<SemanticIndexSettings>, SettingsChangeTokenSource<SemanticIndexSettings>>();
 
-        foreach (var indexName in new[] { OpenSearchNames.ChatCursor, OpenSearchNames.ChatContentCursor }) {
+        foreach (var indexName in new[] { OpenSearchNames.ChatListCursor, OpenSearchNames.ChatContentCursor }) {
             services
                 .AddSingleton(c => c.CreateInstance<SettingsChangeTokenSource<PlainIndexSettings>>(indexName))
                 .AddAlias<ISettingsChangeTokenSource, SettingsChangeTokenSource<PlainIndexSettings>>()

@@ -9,6 +9,7 @@
       "args": [
         "build",
         "./src/dotnet/App.Server/App.Server.csproj",
+        "-p:AndroidSdkDirectory=/usr/local/share/dotnet/packs/Microsoft.Android.Sdk.Darwin/34.0.95/",
         "--no-restore"
       ]
     }
