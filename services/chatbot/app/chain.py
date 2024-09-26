@@ -70,7 +70,7 @@ def final_answer(state: State, config: RunnableConfig):
             return
         if isinstance(content, list):
             for line in content:
-                _try_add_answer(text)
+                _try_add_answer(line)
             return
         if isinstance(content, str):
             call_reply(content, config)
