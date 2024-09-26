@@ -71,13 +71,13 @@ export class OpusMediaRecorder implements RecorderStateServer {
     private vadWorkletInstance: AudioWorkletNode = null;
     private vadWorklet: AudioVadWorklet & Disposable = null;
     private contextRef: AudioContextRef = null;
+    private contextRefUsage: Disposable | null = null;
     private onStateChanged?: RecorderStateChanged;
     private isRecording: boolean = false;
     private isConnected: boolean = false;
     private isVoiceActive: boolean = false;
     private sessionToken: string | null;
     private encoderWorkerSessionToken: string | null;
-    private pauseContextRef: () => void | null = null;
 
     public origin: string = new URL('opus-media-recorder.ts', import.meta.url).origin;
     public source?: MediaStreamAudioSourceNode = null;
@@ -371,7 +371,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
         this.state = 'recording';
         const contextRef = this.contextRef;
-        this.pauseContextRef = contextRef.use();
+        this.contextRefUsage = contextRef.use();
         try {
             debugLog?.log(`start(): awaiting whenFirstTimeReady...`);
             await contextRef.whenFirstTimeReady();
@@ -389,7 +389,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
         catch (e) {
             this.state = 'stopped';
             await this.stopMicrophoneStream();
-            this.pauseContextRef?.();
+            this.contextRefUsage?.dispose();
+            this.contextRefUsage = null;
             throw e;
         }
         debugLog?.log('<- start()');
@@ -429,8 +430,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
             await this.encoderWorker?.stop();
         }
         finally {
-            this.pauseContextRef?.();
-            this.pauseContextRef = null;
+            this.contextRefUsage?.dispose();
+            this.contextRefUsage = null;
             debugLog?.log(`<- stop()`);
         }
     }
@@ -438,8 +439,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
     public async terminate(): Promise<void> {
         await this.encoderWorker?.stop();
         await this.vadWorker?.reset();
-        this.pauseContextRef?.();
-        this.pauseContextRef = null;
+        this.contextRefUsage?.dispose();
+        this.contextRefUsage = null;
         this.contextRef = null;
         this.encoderWorkerInstance.terminate();
         this.vadWorkerInstance.terminate();

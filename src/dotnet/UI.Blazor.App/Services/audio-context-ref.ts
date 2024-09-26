@@ -1,4 +1,4 @@
-import { AsyncDisposable } from 'disposable';
+import { AsyncDisposable, Disposable } from 'disposable';
 import {
     cancelled,
     Cancelled,
@@ -61,12 +61,14 @@ export class AudioContextRef implements AsyncDisposable {
         await this.whenRunning;
     }
 
-    public use(): () => void {
+    public use(): Disposable {
         this._isUsed = true;
         this.source.useRef();
-        return () => {
-            this._isUsed = false;
-            this.source.pauseRef();
+        return {
+            dispose: () => {
+                this._isUsed = false;
+                this.source.pauseRef();
+            },
         };
     }
 
