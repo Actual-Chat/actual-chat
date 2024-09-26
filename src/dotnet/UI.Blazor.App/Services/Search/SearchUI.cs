@@ -21,7 +21,6 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     private NavbarUI NavbarUI => Hub.NavbarUI;
     private UIEventHub UIEventHub => Hub.UIEventHub();
 
-
     public SearchUI(ChatUIHub uiHub) : base(uiHub)
     {
         var stateFactory = uiHub.StateFactory();
@@ -53,6 +52,13 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         var extendedLimits = await ExtendedLimits.Use(cancellationToken).ConfigureAwait(false);
         var placeId = await _placeId.Use(cancellationToken).ConfigureAwait(false);
         return new (text, placeId, extendedLimits);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> IsExpanded(SearchScope scope)
+    {
+        var expandedScopes = await ExtendedLimits.Use(StopToken).ConfigureAwait(false);
+        return expandedScopes.Contains(scope);
     }
 
     public void Clear()
