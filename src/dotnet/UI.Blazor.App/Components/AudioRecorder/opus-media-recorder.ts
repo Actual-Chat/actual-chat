@@ -376,7 +376,6 @@ export class OpusMediaRecorder implements RecorderStateServer {
             debugLog?.log(`start(): awaiting whenFirstTimeReady...`);
             await contextRef.whenFirstTimeReady();
 
-            await this.startMicrophoneStream(contextRef.currentContext);
 
             debugLog?.log(`start(): awaiting encoder worker start, worklet start and vad worker reset ...`);
             await Promise.all([
@@ -384,6 +383,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
                 this.vadWorker.reset(),
                 this.encoderWorklet.start(rpcNoWait)
             ]);
+
+            await this.startMicrophoneStream(contextRef.currentContext);
         }
         catch (e) {
             this.state = 'stopped';

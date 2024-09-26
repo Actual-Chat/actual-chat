@@ -48,6 +48,8 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     }
 
     public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChange | number> {
+        const currentOffset = this.sampleCount;
+        this.sampleCount += monoPcm.length;
         let currentEvent = this.lastActivityEvent;
         const gain = approximateGain(monoPcm);
         // debugLog?.log('appendChunk:', currentEvent, gain);
@@ -64,7 +66,6 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
         const probEma = this.probEMA.value;
         const longProbEma = this.longProbEMA.value;
         const probMedian = this.probMedian.value;
-        const currentOffset = this.sampleCount;
         const speechProbTrigger = 0.67 * probMedian;
         const pauseProbTrigger = 0.15 * probMedian;
 
@@ -147,7 +148,6 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
             this.maxPauseSamples = Math.floor(this.sampleRate * silenceThreshold);
         }
 
-        this.sampleCount += monoPcm.length;
         if (this.lastActivityEvent == currentEvent || this.lastActivityEvent.kind == currentEvent.kind)
             return gain;
 
@@ -175,6 +175,8 @@ enum VadActivity {
 }
 
 export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
+    private lastSkippedAt: number = 0;
+
     constructor(private baseVad: WebRtcVad) {
         super(false, AR.SAMPLE_RATE);
     }
@@ -189,6 +191,12 @@ export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
             throw new Error(`appendChunk() accepts ${AR.SAMPLES_PER_WINDOW_30} sample audio windows only.`);
 
         const activity = this.baseVad.detect(monoPcm.buffer);
+        const now = Date.now();
+        if (activity > 0 && (this.sampleCount / AR.SAMPLES_PER_MS < AV.SKIP_FIRST_RECORDING_MS || now - this.lastSkippedAt < 5)) {
+            this.lastSkippedAt = now;
+            return null; // Skip triggering on microphone noise at the beginning of the first microphone stream
+        }
+
         if (activity == VadActivity.Error)
             throw new Error(`Error calling WebRtc VAD`);
 

@@ -101,12 +101,10 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
             const input = inputs[0];
             this.buffer.push(input);
             if (this.buffer.samplesAvailable >= this.samplesPerWindow) {
-                const audioBuffer = new Array<Float32Array>();
                 const audioArrayBuffer = this.bufferPool.get();
+                const audioArray = new Float32Array(audioArrayBuffer, 0, this.samplesPerWindow)
 
-                audioBuffer.push(new Float32Array(audioArrayBuffer, 0, this.samplesPerWindow));
-
-                if (this.buffer.pull(audioBuffer)) {
+                if (this.buffer.pull([audioArray])) {
                     if (this.worker != null)
                         this.promiseQueue = this.promiseQueue.then(() =>
                             this.worker.onEncoderWorkletSamples(audioArrayBuffer, rpcNoWait));
