@@ -37,7 +37,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
         this.lastFrameProcessedAt = 0;
     }
 
-    public async start(windowSizeMs: 30 | 32, noWait?: RpcNoWait): Promise<void> {
+    public async start(windowSizeMs: 30 | 32): Promise<void> {
         this.samplesPerWindow = windowSizeMs == 30
            ? AR.SAMPLES_PER_WINDOW_30
            : AR.SAMPLES_PER_WINDOW_32;
@@ -87,12 +87,10 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
 
         this.buffer.push(input);
         if (this.buffer.samplesAvailable >= samplesPerWindow) {
-            const vadBuffer = new Array<Float32Array>();
             const vadArrayBuffer = this.bufferPool.get();
+            const vadArray = new Float32Array(vadArrayBuffer, 0, samplesPerWindow);
 
-            vadBuffer.push(new Float32Array(vadArrayBuffer, 0, samplesPerWindow));
-
-            if (this.buffer.pull(vadBuffer)) {
+            if (this.buffer.pull([vadArray])) {
                 if (this.worker)
                     this.promiseQueue = this.promiseQueue.then(() =>
                         this.worker.onFrame(vadArrayBuffer, rpcNoWait));

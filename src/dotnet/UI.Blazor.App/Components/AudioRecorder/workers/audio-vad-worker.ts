@@ -75,6 +75,9 @@ class VadLoader {
                 const lastActivityEvent: VoiceActivityChange = this.webRtcVad.lastActivityEvent ?? NO_VOICE_ACTIVITY;
                 const nnVad = new NeuralVoiceActivityDetector(OnnxModel as unknown as URL, lastActivityEvent);
                 await nnVad.init();
+                queue.clear();
+                await vadWorklet.start(vads.windowSizeMs);
+                queue.clear();
                 this.neuralVad = nnVad;
             })();
             return this.whenWebRtcVadReady;
@@ -119,14 +122,14 @@ const serverImpl: AudioVadWorker = {
 
         vadWorklet = rpcClientServer<AudioVadWorklet>(`${logScope}.vadWorklet`, workletPort, serverImpl);
         encoderWorker = rpcClientServer<OpusEncoderWorker>(`${logScope}.encoderWorker`, encoderWorkerPort, serverImpl);
-        void vadWorklet.start(vads.windowSizeMs, rpcNoWait);
+        await vadWorklet.start(vads.windowSizeMs);
         if (vads.neuralVad === null) {
             // Change vadWorklet window size when neural VAD gets loaded
-            vads.whenNeuralVadReady.then(() => {
+            vads.whenNeuralVadReady.then(async () => {
                 // Load may fail
                 if (vads.neuralVad !== null) {
                     queue.clear();
-                    void vadWorklet.start(vads.windowSizeMs, rpcNoWait);
+                    await vadWorklet.start(vads.windowSizeMs);
                     queue.clear();
                 }
             })

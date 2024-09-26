@@ -71,6 +71,8 @@ export const AUDIO_VAD = {
     CONV_DURATION: 30, // A period from conversationSignal to the moment VAD assumes the conversation ended
     PAUSE_VARIES_FROM: 10, // Pause starts to vary from (MAX_PAUSE or MAX_CONV_PAUSE) to MIN_PAUSE at this speech duration
     PAUSE_VARY_POWER: Math.sqrt(2), // The power used in max_pause = lerp(MAX_PAUSE, MIN_PAUSE, pow(alpha, THIS_VALUE))
+    SKIP_FIRST_RECORDING_MS: 300, // Microphone stream begins with some noise that triggers WebRTC VAD
+    SKIP_SEQUENTIAL_CALLS_MS: 5, // Skip batch calls to VAD when duration between calls is less than 5ms - VAD works with 30ms and 32 ms chunks
     // All durations below are in samples (16KHz = 16 samples per ms)
     NN_VAD_CONTEXT_SAMPLES: 64, // 4ms, the length of NN VAD buffer "prefix" copied from the end of prev. buffer
 };
