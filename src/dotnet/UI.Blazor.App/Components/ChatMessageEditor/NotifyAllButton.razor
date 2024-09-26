@@ -37,11 +37,12 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = Chat.Id;
+        var chat = Chat;
+        var chatId = chat.Id;
         if (chatId.Kind is ChatKind.Peer)
             return new Model(true); // Always allowed for peer chats.
 
-        var ownAuthor = Chat.Rules.Author;
+        var ownAuthor = chat.Rules.Author;
         if (ownAuthor is null)
             return new Model(false); // Disabled if no own author.
 
