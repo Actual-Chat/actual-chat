@@ -38,6 +38,7 @@
       "extensions": [
         // Editor tools
         "editorconfig.editorconfig",
+        "bierner.markdown-mermaid",
         // Git related tools
         "maattdd.gitless",
         "mhutchie.git-graph",
