@@ -70,13 +70,13 @@
 
                 @* Icon for narrow-panel and text-mode *@
                 <narrow-recording-svg
-                    isActive="@m.IsVoiceActive"
+                    isRecording="@m.IsRecordingHere"
                     class="rec-icon on text-mode-on"/>
 
                 @* Icon for ON state *@
                 <active-recording-svg
                     size="@recordingIconSize"
-                    isActive="@m.IsVoiceActive"
+                    isRecording="@m.IsRecordingHere"
                     class="rec-icon on text-mode-off"/>
             </ButtonRound>
         </div>
@@ -163,8 +163,7 @@
             recorderState.IsRecording,
             recorderState.IsConnected,
             hasMicrophonePermission,
-            isTransitioning,
-            recorderState.IsVoiceActive);
+            isTransitioning);
     }
 
     private void OnClick()
@@ -233,8 +232,7 @@
         bool IsMicrophoneCaptured = false,
         bool IsConnected = false,
         bool? HasMicrophonePermission = null,
-        bool IsTransitioning = false,
-        bool IsVoiceActive = false
+        bool IsTransitioning = false
     ) {
         public static readonly Model Loading = new(SpecialChat.Loading, Language.None, default, false, true, false);
     }

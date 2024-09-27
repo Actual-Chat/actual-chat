@@ -136,6 +136,7 @@ const serverImpl: AudioVadWorker = {
 
         vads.webRtcVad?.reset();
         vads.neuralVad?.reset();
+        void stateServer.onVoiceStateChanged(false, rpcNoWait);
     },
 
     conversationSignal: async (_noWait?: RpcNoWait): Promise<void> => {

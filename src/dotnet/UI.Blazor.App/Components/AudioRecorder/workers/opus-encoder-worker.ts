@@ -208,6 +208,7 @@ async function stopRecording(): Promise<void> {
     audioStream = null;
     encoder?.reset();
     systemEncoder?.reset();
+    await vadWorker?.reset();
     clearQueue();
     chunkTimeOffset = 0;
 }

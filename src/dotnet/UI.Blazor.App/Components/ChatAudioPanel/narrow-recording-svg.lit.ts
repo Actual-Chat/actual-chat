@@ -1,9 +1,8 @@
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
-import { map, scan, Observable, Subscription, filter } from 'rxjs';
+import { scan,  Subscription, filter } from 'rxjs';
 import { OpusMediaRecorder } from '../AudioRecorder/opus-media-recorder';
-import { RunningMax, translate } from 'math';
-import { observe } from '../../Services/observe-directive-lit';
+import { clamp, RunningMax, translate } from 'math';
 
 const SIGNAL_COUNT_TO_CALCULATE_MAX = 200; // 200 * 30ms = 6s
 
@@ -30,14 +29,21 @@ class NarrowRecordingSvg extends LitElement {
         }
     `];
 
+    @state()
+    private opacity: number = null;
+
+    private _isRecording = null;
     @property({type: Boolean})
-    isActive = false;
+    set isRecording(val: boolean) {
+        if (val)
+            this.opacity = null;
+        this._isRecording = val;
+    }
 
-    private readonly opacity$: Observable<number>;
+    get isRecording() { return this._isRecording };
+
     private readonly recorderStateChangedSubscription: Subscription;
-
-    private isRecording = false;
-    private lastIsRecording = false;
+    private readonly signalPowerSubscription: Subscription;
 
     constructor() {
         super();
@@ -45,52 +51,54 @@ class NarrowRecordingSvg extends LitElement {
         const minOpacity = 60;
         const maxOpacity = 100;
         const signalPower$ = OpusMediaRecorder.audioPowerChanged$
-            .pipe(filter((p, i) => i % 2 === 0));
+            .pipe(filter((p, i) => i % 2 === 0))
+            .pipe(scan<number, Result, RunningMax>((runningMaxOrResult, p, i) => {
+                const runningMax: RunningMax = runningMaxOrResult['runningMax'] || runningMaxOrResult;
+                runningMax.appendSample(p);
+                return { runningMax, p, i };
+            }, new RunningMax(SIGNAL_COUNT_TO_CALCULATE_MAX, 0)));
 
         this.recorderStateChangedSubscription = OpusMediaRecorder.recorderStateChanged$.subscribe(s => {
             this.isRecording = s.isRecording;
         });
+        this.signalPowerSubscription = signalPower$.subscribe(({ runningMax, p }) => {
+            if (!this._isRecording)
+                return;
 
-        this.opacity$ = signalPower$
-            .pipe(scan<number, Result, RunningMax>((runningMaxOrResult, p, i) => {
-                const runningMax: RunningMax = runningMaxOrResult['runningMax'] || runningMaxOrResult;
-                const { isRecording, lastIsRecording } = this;
-                if (isRecording != lastIsRecording) {
-                    // cleanup state on start/stop recording
-                    this.lastIsRecording = isRecording;
-                    runningMax.reset();
-                }
+            if (this.opacity === null)
+                runningMax.reset(); // On turn on recording
 
-                runningMax.appendSample(p);
-                return { runningMax, p, i };
-            }, new RunningMax(SIGNAL_COUNT_TO_CALCULATE_MAX, 0)))
-            .pipe(map(({ runningMax, p }) => {
-                const maxPower = runningMax.value;
-                const maxSampleCount = runningMax.sampleCount;
-                if (maxSampleCount < SIGNAL_COUNT_TO_CALCULATE_MAX / 2) // beginning of recording
-                    return Math.floor(minOpacity + Math.random() * minOpacity);
-
-                const opacity = Math.floor((translate(p, [0, 0.8 * maxPower], [minOpacity, maxOpacity]))) / maxOpacity;
-                return (!this.isActive || isNaN(opacity))
-                    ? minOpacity / 100
-                    : opacity;
-            }));
+            const maxPower = runningMax.value;
+            const maxSampleCount = runningMax.sampleCount;
+            const maxNotYetCalculatedAdjustment = maxSampleCount < SIGNAL_COUNT_TO_CALCULATE_MAX / 2
+                ? clamp(maxSampleCount / (SIGNAL_COUNT_TO_CALCULATE_MAX / 4), 0, 1)
+                : 1;
+            const power = p * maxNotYetCalculatedAdjustment;
+            const opacity = translate(power, [0, 0.8*maxPower], [minOpacity, maxOpacity]) / maxOpacity;
+            this.opacity = isNaN(opacity)
+                ? minOpacity / 100
+                : opacity
+        });
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
+
         this.recorderStateChangedSubscription.unsubscribe();
+        this.signalPowerSubscription.unsubscribe();
     }
 
     protected render(): unknown {
+        if (this.isRecording === false)
+            return html``;
+
         const display = getComputedStyle(this.shadowRoot?.host, null)?.display ?? 'none';
         if (display === 'none')
             return html``;
 
-        const defaultOpacity = 70;
-        const opacity = observe(this.opacity$, defaultOpacity);
+        const opacity = this.opacity ?? 70;
 
-        if (this.isActive) {
+        if (this._isRecording) {
             return html`
                 <svg width='24' height='24' viewBox='0 0 24 32' class='active'
                      fill='#FF3880' fill-opacity='1'
