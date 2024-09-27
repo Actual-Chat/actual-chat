@@ -18,8 +18,8 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
 {
     static CoreServerModule()
     {
-        ShardKeyResolvers.Register<FlowId>(static x => ShardKeyResolvers.ForString(x.Value));
-        ShardKeyResolvers.Register<IFlowEvent>(static x => ShardKeyResolvers.ForString(x.FlowId.Value));
+        ShardKeyResolvers.Register<FlowId>(static x => ShardKeyResolvers.ForString(x.Arguments));
+        ShardKeyResolvers.Register<IFlowEvent>(static x => ShardKeyResolvers.ForString(x.FlowId.Arguments));
         MeshRefResolvers.Register<Flows_Store>(static _ => NodeRef.OwnNodeAlias);
     }
 
