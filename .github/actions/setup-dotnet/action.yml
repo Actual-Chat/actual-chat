@@ -17,7 +17,7 @@ runs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-quality: 'ga'
-        dotnet-version: '8.0.300' # NOTE: keep it in sync with global.json file
+        dotnet-version: '8.0.303' # NOTE: keep it in sync with global.json file
 
     - name: Use cached dependencies
       uses: actions/cache@v4
@@ -41,4 +41,5 @@ runs:
       shell: bash
       if: ${{ inputs.restore == 'true' }}
       # wasm-tools is required by restore, but restore-workloads is too heavy for that
-      run: dotnet workload install wasm-tools && ./run-build.cmd restore --from-rollback-file https://maui.blob.core.windows.net/metadata/rollbacks/8.0.7.json && ./run-build.cmd restore
+      run: dotnet workload install wasm-tools --from-rollback-file https://maui.blob.core.windows.net/metadata/rollbacks/8.0.7.json \
+        && ./run-build.cmd restore && ./run-build.cmd restore
