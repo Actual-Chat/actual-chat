@@ -1,0 +1,57 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Search
+@{
+    if (ReferenceEquals(FoundItem, null))
+        return;
+}
+
+
+<div class="flex-y items-center gap-y-0.5">
+    <span class="text-title-1">ChatId: @FoundItem.ChatId</span>
+    <span>EntryId: @FoundItem.EntryId</span>
+    <span>TitleSearchMatch: @FoundItem.ContactSearchMatch</span>
+    <span>MessageSearchMatch: @FoundItem.MessageSearchMatch</span>
+</div>
+
+@switch (FoundItem.Scope) {
+    case SearchScope.Places:
+        // Place found
+        <FoundPlaceListItem
+            ChatId="@FoundItem.ChatId"
+            EntryId="@FoundItem.EntryId"
+            TitleSearchMatch="@FoundItem.ContactSearchMatch"
+            MessageSearchMatch="@FoundItem.MessageSearchMatch"/>
+        break;
+    case SearchScope.Groups:
+        // Chat found
+        @* <FoundChatListItem *@
+        @*     ChatId="@FoundItem.ChatId" *@
+        @*     EntryId="@FoundItem.EntryId" *@
+        @*     TitleSearchMatch="@FoundItem.ContactSearchMatch" *@
+        @*     MessageSearchMatch="@FoundItem.MessageSearchMatch"/> *@
+        break;
+    case SearchScope.People:
+        // Contact found
+        @* <FoundContactListItem *@
+        @*     ChatId="@FoundItem.ChatId" *@
+        @*     EntryId="@FoundItem.EntryId" *@
+        @*     TitleSearchMatch="@FoundItem.ContactSearchMatch" *@
+        @*     MessageSearchMatch="@FoundItem.MessageSearchMatch"/> *@
+        break;
+    case SearchScope.Messages:
+    default:
+        @* <FoundMessageListItem *@
+        @*     ChatId="@FoundItem.ChatId" *@
+        @*     EntryId="@FoundItem.EntryId" *@
+        @*     TitleSearchMatch="@FoundItem.ContactSearchMatch" *@
+        @*     MessageSearchMatch="@FoundItem.MessageSearchMatch"/> *@
+        break;
+}
+
+@code {
+    [Parameter] public FoundItem? FoundItem { get; set; }
+    // [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    // [Parameter] public TextEntryId EntryId { get; set; } = TextEntryId.None;
+    // [Parameter] public SearchMatch TitleSearchMatch { get; set; } = SearchMatch.Empty;
+    // [Parameter] public SearchMatch MessageSearchMatch { get; set; } = SearchMatch.Empty;
+}
