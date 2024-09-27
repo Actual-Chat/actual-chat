@@ -65,6 +65,5 @@ public abstract partial class PeriodicFlow : Flow
         return WaitForTimer(nameof(OnCheck), nextRunAt);
     }
 
-    protected virtual Moment ComputeNextRunAt(Moment now, CancellationToken cancellationToken)
-        => LastRunAt + MaxDelay;
+    protected abstract Moment ComputeNextRunAt(Moment now, CancellationToken cancellationToken);
 }

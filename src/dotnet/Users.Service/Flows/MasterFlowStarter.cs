@@ -27,9 +27,10 @@ internal class MasterFlowStarter(IServiceProvider services)
     {
         if (shardIndex != _requiredShardIndex || _isCompleted) {
             using var dTask = cancellationToken.ToTask();
-            await dTask.Resource.ConfigureAwait(false);
+            await dTask.Resource.SilentAwait(false);
             return;
         }
+
         var flow = await Flows.Get(_flowId, cancellationToken).ConfigureAwait(false);
         if (flow == null)
             await Flows.GetOrStart<MasterFlow>("", cancellationToken).ConfigureAwait(false);
