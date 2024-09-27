@@ -55,7 +55,7 @@ body.narrow .navbar-button .btn-square {
 .navbar-group {
     @apply flex-1 flex-y gap-y-1;
     @apply overflow-auto custom-scrollbar;
-    will-change: custom; /* Ensures its own composition layer */
+    will-change: transform; /* Ensures its own composition layer */
 }
 .navbar-group > .c-container {
     @apply flex-1 flex-y;

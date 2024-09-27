@@ -1,13 +1,14 @@
 .side-nav {
     @apply isolate;
-    @apply fixed md:static;
+    @apply fixed md:relative;
     @apply z-button left-0;
     @apply h-full w-full;
     @apply text-02 bg-02;
     @apply top-0 bottom-0;
+    @apply z-10;
     transform: none;
     touch-action: manipulation;
-    will-change: custom; /* Ensures its own composition layer */
+    will-change: transform; /* Ensures its own composition layer */
 }
 
 body.device-ios .side-nav {

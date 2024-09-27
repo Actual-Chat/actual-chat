@@ -17,7 +17,7 @@
     @apply flex items-center justify-center;
     @apply transition-opacity ease-in duration-300;
     background-color: var(--loading-overlay-bg-color);
-    will-change: custom;
+    will-change: transform;
 }
 .loading-overlay.removing {
     @apply transition-opacity ease-out duration-350 opacity-0;
