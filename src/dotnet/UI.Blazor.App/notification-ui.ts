@@ -1,21 +1,21 @@
 import { getMessaging, getToken, deleteToken, GetTokenOptions, onMessage } from 'firebase/messaging';
 import { Log } from 'logging';
-import { AppKind } from '../UI.Blazor/Services/BrowserInfo/browser-info';
+import { HostKind } from '../UI.Blazor/Services/BrowserInfo/browser-info';
 import { BrowserInit } from '../UI.Blazor/Services/BrowserInit/browser-init';
 
 const { debugLog, warnLog, errorLog } = Log.get('NotificationUI');
 
 export class NotificationUI {
     private static backendRef?: DotNet.DotNetObject = null;
-    private static appKind?: AppKind = null;
+    private static hostKind?: HostKind = null;
 
-    public static async init(backendRef: DotNet.DotNetObject, appKind: AppKind): Promise<void> {
+    public static async init(backendRef: DotNet.DotNetObject, hostKind: HostKind): Promise<void> {
         // probably init can be called multiple times on MAUI
         debugLog?.log(`init`);
         this.backendRef = backendRef;
-        this.appKind = appKind;
+        this.hostKind = hostKind;
 
-        if (appKind === 'MauiApp')
+        if (hostKind === 'MauiApp')
             return;
 
         const state = await this.getPermissionState();
@@ -176,7 +176,7 @@ function hasPromiseBasedNotificationApi(): boolean {
 }
 
 // Interactive.whenInteractive().then(async () => {
-//     if (BrowserInfo.appKind == 'Maui')
+//     if (BrowserInfo.hostKind == 'Maui')
 //         return;
 //
 //     const isGranted = await requestNotificationsPermission();

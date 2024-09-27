@@ -2,7 +2,7 @@ import { Connectivity } from 'connectivity';
 import { DeviceInfo } from 'device-info';
 import { EventHandlerSet } from "event-handling";
 import { delayAsync, PromiseSource } from 'promises';
-import { AppKind, BrowserInfo } from "../BrowserInfo/browser-info";
+import { HostKind, BrowserInfo } from "../BrowserInfo/browser-info";
 import { Log, LogLevel } from 'logging';
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAnalytics, setAnalyticsCollectionEnabled, Analytics } from 'firebase/analytics';
@@ -29,7 +29,7 @@ export class BrowserInit {
     public static reconnectingPromise: Promise<void> = null;
 
     public static async init(
-        appKind: AppKind,
+        hostKind: HostKind,
         apiVersion: string,
         baseUri: string,
         sessionHash: string,
@@ -42,11 +42,11 @@ export class BrowserInit {
             this.sessionHash = sessionHash;
             this.initWindowId();
             void this.initAndroidWebViewClipboardHandlers();
-            if (appKind !== 'MauiApp')
+            if (hostKind !== 'MauiApp')
                 void this.initFirebase();
 
             // this.preventSuspend();
-            await BrowserInfo.init(browserInfoBackendRef, appKind);
+            await BrowserInfo.init(browserInfoBackendRef, hostKind);
         }
         catch (e) {
             errorLog?.log('init: error:', e);

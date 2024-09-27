@@ -103,7 +103,7 @@ export class AudioRecorder {
                     if ('audioSession' in navigator) {
                         navigator.audioSession['type'] = 'play-and-record'; // 'playback'
                     }
-                    if (BrowserInfo.appKind === 'MauiApp' && DeviceInfo.isIos ) {
+                    if (BrowserInfo.hostKind === 'MauiApp' && DeviceInfo.isIos ) {
                         // iOS MAUI keeps microphone acquired, so let's return true there to avoid user complains
                         return true;
                     }
@@ -198,7 +198,7 @@ export class AudioRecorder {
         const diagnosticsState = new AudioDiagnosticsState();
         diagnosticsState.isPlayerInitialized = AudioPlayer.isInitialized;
 
-        const isMaui = BrowserInfo.appKind == 'MauiApp';
+        const isMaui = BrowserInfo.hostKind == 'MauiApp';
         const hasMicrophone = await this.hasMicrophone();
         const hasPermission = await this.hasPermission();
         if (!isMaui)
@@ -220,7 +220,7 @@ export class AudioRecorder {
     }
 
     private async hasMicrophone(): Promise<boolean> {
-        const isMaui = BrowserInfo.appKind == 'MauiApp';
+        const isMaui = BrowserInfo.hostKind == 'MauiApp';
         let hasMicrophone = false;
         if (navigator.mediaDevices?.enumerateDevices) {
             const devices = await navigator.mediaDevices.enumerateDevices();

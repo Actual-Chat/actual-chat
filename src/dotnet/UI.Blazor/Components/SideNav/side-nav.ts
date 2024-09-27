@@ -7,7 +7,7 @@ import { fromEvent } from 'rxjs';
 import { Gesture, Gestures } from 'gestures';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { Log } from 'logging';
-import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
+import { BrowserInfo, HostKind } from '../../Services/BrowserInfo/browser-info';
 import { fastRaf, fastReadRaf, fastWriteRaf } from 'fast-raf';
 
 const { debugLog } = Log.get('SideNav');
@@ -67,7 +67,7 @@ export class SideNav extends DisposableBag {
         super();
         this.contentDiv = element.firstElementChild as HTMLElement;
         this.bodyClassWhenOpen = `side-nav-${this.side == SideNavSide.Left ? 'left' : 'right'}-open`;
-        this.hasHistoryNavigationGesture = DeviceInfo.isWebKit && BrowserInfo.appKind !== 'MauiApp';
+        this.hasHistoryNavigationGesture = DeviceInfo.isWebKit && BrowserInfo.hostKind !== 'MauiApp';
         const stateObserver = new MutationObserver(() => this.updateBodyClassList());
         stateObserver.observe(this.element, { attributeFilter: ['data-side-nav'] });
         if (this.side == SideNavSide.Left)
