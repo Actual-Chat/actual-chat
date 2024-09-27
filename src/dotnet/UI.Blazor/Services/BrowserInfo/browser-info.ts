@@ -10,6 +10,7 @@ import {Theme, ThemeInfo} from "theme";
 const { infoLog } = Log.get('BrowserInfo');
 
 export type HostKind = 'Unknown' | 'WebServer' | 'WasmApp' | 'MauiApp';
+export type AppKind = 'Unknown' | 'Wasm' | 'Android' | 'Ios' | 'Windows' | 'MacOS';
 
 export class BrowserInfo {
     private static backendRef: DotNet.DotNetObject = null;
@@ -20,16 +21,18 @@ export class BrowserInfo {
         : ('MONO' in window)
             ? 'WasmApp'
             : "WebServer";
+    public static appKind: AppKind = 'Unknown';
     public static utcOffset: number;
     public static timeZone: string;
     public static windowId = "";
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
 
-    public static async init(backendRef1: DotNet.DotNetObject, hostKind: HostKind): Promise<void> {
+    public static async init(backendRef1: DotNet.DotNetObject, hostKind: HostKind, appKind: AppKind): Promise<void> {
         Theme.changed.add(theme => this.onThemeChanged(theme));
         infoLog?.log(`initializing`);
         this.backendRef = backendRef1;
         this.hostKind = hostKind;
+        this.appKind = appKind;
         this.utcOffset = new Date().getTimezoneOffset();
         this.timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         this.windowId = BrowserInit.windowId; // It is already computed when this call happens
