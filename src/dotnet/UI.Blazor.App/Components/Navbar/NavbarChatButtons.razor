@@ -1,6 +1,7 @@
 @using ActualChat.UI.Blazor.App.Module
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<NavbarChatButtons.Model>
+@implements ISortableListBackend
 @{
     var m = State.Value;
     var chats = m.Chats;
@@ -40,8 +41,6 @@
 </div>
 
 @code {
-    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.NavbarChatButtons.create";
-
     private DotNetObjectReference<NavbarChatButtons> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
@@ -61,7 +60,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(ISortableListBackend.JSCreateMethod, Ref, BlazorRef, "data-chat-id");
         }
     }
 
@@ -83,8 +82,8 @@
     }
 
     [JSInvokable]
-    public void OnOrderChanged(ChatId[] chats)
-        => Hub.ChatUI.SetNavbarPinnedChats(chats);
+    public void OnOrderChanged(string[] ids)
+        => Hub.ChatUI.SetNavbarPinnedChats(ids.Select(c => (ChatId)c).ToArray());
 
     // Nested types
 

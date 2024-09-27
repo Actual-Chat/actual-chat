@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.App.Module
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<NavbarPlaceButtons.Model>
+@implements ISortableListBackend
 @{
     var m = State.Value;
     var places = m.Places;
@@ -58,7 +59,6 @@
 </div>
 
 @code {
-    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.NavbarPlaceButtons.create";
     private DotNetObjectReference<NavbarPlaceButtons> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
@@ -80,7 +80,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(ISortableListBackend.JSCreateMethod, Ref, BlazorRef, "data-place-id");
         }
     }
 
@@ -122,8 +122,8 @@
     }
 
     [JSInvokable]
-    public void OnOrderChanged(PlaceId[] places)
-        => Hub.ChatUI.SetNavbarPlacesOrder(places);
+    public void OnOrderChanged(string[] ids)
+        => Hub.ChatUI.SetNavbarPlacesOrder(ids.Select(c => (PlaceId)c).ToArray());
 
     // Nested types
 
