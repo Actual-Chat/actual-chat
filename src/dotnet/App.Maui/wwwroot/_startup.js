@@ -24,9 +24,9 @@
             await window.App.whenBundleReady;
             return true;
         },
-        browserInit: async function (apiVersion, baseUri, sessionHash, browserInfoBackendRef, appKind) {
+        browserInit: async function (hostKind, apiVersion, baseUri, sessionHash, browserInfoBackendRef) {
             await window.App.whenBundleReady;
-            await window.ui.BrowserInit.init(apiVersion, baseUri, sessionHash, browserInfoBackendRef, appKind);
+            await window.ui.BrowserInit.init(hostKind, apiVersion, baseUri, sessionHash, browserInfoBackendRef);
         },
     };
     window.App.whenBundleReady = new Promise((resolve, _) => {
