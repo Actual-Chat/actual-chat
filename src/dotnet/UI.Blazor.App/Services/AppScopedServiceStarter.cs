@@ -38,6 +38,7 @@ public class AppScopedServiceStarter
             var browserInit = Services.GetRequiredService<BrowserInit>();
             _ = browserInit.Initialize(
                 HostInfo.HostKind,
+                HostInfo.AppKind,
                 Constants.Api.StringVersion,
                 baseUri,
                 sessionHash,

@@ -2,7 +2,7 @@ import { Connectivity } from 'connectivity';
 import { DeviceInfo } from 'device-info';
 import { EventHandlerSet } from "event-handling";
 import { delayAsync, PromiseSource } from 'promises';
-import { HostKind, BrowserInfo } from "../BrowserInfo/browser-info";
+import { HostKind, BrowserInfo, AppKind } from '../BrowserInfo/browser-info';
 import { Log, LogLevel } from 'logging';
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAnalytics, setAnalyticsCollectionEnabled, Analytics } from 'firebase/analytics';
@@ -30,6 +30,7 @@ export class BrowserInit {
 
     public static async init(
         hostKind: HostKind,
+        appKind: AppKind,
         apiVersion: string,
         baseUri: string,
         sessionHash: string,
@@ -46,7 +47,7 @@ export class BrowserInit {
                 void this.initFirebase();
 
             // this.preventSuspend();
-            await BrowserInfo.init(browserInfoBackendRef, hostKind);
+            await BrowserInfo.init(browserInfoBackendRef, hostKind, appKind);
         }
         catch (e) {
             errorLog?.log('init: error:', e);

@@ -14,6 +14,7 @@ public class BrowserInit(IServiceProvider services)
 
     public async Task Initialize(
         HostKind hostKind,
+        AppKind appKind,
         string apiVersion,
         string baseUri,
         string sessionHash,
@@ -27,6 +28,7 @@ public class BrowserInit(IServiceProvider services)
             await js
                 .InvokeVoidAsync("window.App.browserInit",
                     hostKind.ToString(),
+                    appKind.ToString(),
                     apiVersion,
                     baseUri,
                     sessionHash,
