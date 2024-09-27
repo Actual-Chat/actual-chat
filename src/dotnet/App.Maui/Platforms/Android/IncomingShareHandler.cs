@@ -6,14 +6,16 @@ using Uri = Android.Net.Uri;
 
 namespace ActualChat.App.Maui;
 
-public class IncomingShareHandler
+public static class IncomingShareHandler
 {
-    private ILogger Log { get; } = StaticLog.For(typeof(IncomingShareHandler));
+    private static ILogger Log { get; } = StaticLog.For(typeof(IncomingShareHandler));
 
-    public void HandleIntent(Intent intent)
+    public static void HandleIntent(Intent intent)
         => TryHandleSend(intent);
 
-    private void TryHandleSend(Intent intent)
+    // Private methods
+
+    private static void TryHandleSend(Intent intent)
     {
         var action = intent.Action;
         if (!OrdinalEquals(action, Intent.ActionSend) &&
@@ -39,7 +41,7 @@ public class IncomingShareHandler
         }
     }
 
-    private Task HandlePlainTextSend(string? text)
+    private static Task HandlePlainTextSend(string? text)
     {
         if (text.IsNullOrEmpty()) {
             Log.LogWarning("No text to send");
@@ -53,7 +55,7 @@ public class IncomingShareHandler
             .SuppressExceptions();
     }
 
-    private Task HandleFilesSend(string mimeType, IList? streams)
+    private static Task HandleFilesSend(string mimeType, IList? streams)
     {
         if (streams == null || streams.Count == 0) {
             Log.LogWarning("No file streams provided");
@@ -68,7 +70,7 @@ public class IncomingShareHandler
         return HandleFilesSend(mimeType, (ICollection<Uri>)uris);
     }
 
-    private Task HandleFilesSend(string mimeType, ICollection<Uri> uris)
+    private static Task HandleFilesSend(string mimeType, ICollection<Uri> uris)
     {
         Log.LogInformation("About to send {Count} files of type '{MimeType}'", uris.Count, mimeType);
         return DispatchToBlazor(scopedServices => {

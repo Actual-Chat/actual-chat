@@ -1,10 +1,12 @@
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.Services;
 using Foundation;
 using Microsoft.AspNetCore.Components;
 using Plugin.Firebase.CloudMessaging;
 using Plugin.Firebase.CloudMessaging.EventArgs;
+using Serilog;
 using UIKit;
 using UserNotifications;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
@@ -85,46 +87,15 @@ public class IosPushNotifications : IDeviceTokenRetriever, INotificationsPermiss
         }, Log, "Notifications permission request failed", cancellationToken);
 
     private void OnNotificationReceived(object? sender, FCMNotificationReceivedEventArgs e)
-        => _ = DispatchToBlazor(
-            _ => UIApplication.SharedApplication.ApplicationIconBadgeNumber = Hub.ChatUIHub().ChatListUI.UnreadChatCount.Value.Value,
-            "PushNotifications.OnNotificationReceived()");
+        => _ = DispatchToBlazor(_ => {
+            var unreadChatCount = Hub.ChatUIHub().ChatListUI.UnreadChatCount.Value.Value;
+            UNUserNotificationCenter.Current.SetBadgeCount(unreadChatCount, null);
+        }, "PushNotifications.OnNotificationReceived()");
 
     private static void OnNotificationTapped(object? sender, FCMNotificationTappedEventArgs e)
     {
-        var notificationUrl = null as string;
-        if (e.Notification.Data.TryGetValue(Constants.Notification.MessageDataKeys.Link, out var url))
-            notificationUrl = url;
-        _ = DispatchToBlazor(
-            c => c.GetRequiredService<IosPushNotifications>().HandleNotificationTap(notificationUrl),
-            $"PushNotifications.HandleNotificationTap(\"{url}\")");
-    }
-
-    private void HandleNotificationTap(string? url)
-    {
-        if (url.IsNullOrEmpty()) {
-            Log.LogWarning("No message link received within notification");
-            return;
-        }
-        Log.LogInformation("HandleNotificationTap: {Url}", url);
-
-        // TODO(AK): resolve notification hang issue when code below is used
-        // var autoNavigationTasks = AppServices.GetRequiredService<AutoNavigationTasks>();
-        // autoNavigationTasks.Add(ForegroundTask.Run(async () => {
-        //     var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
-        //     var notificationUI = scopedServices.GetRequiredService<NotificationUI>();
-        //     await notificationUI.HandleNotificationNavigation(url).ConfigureAwait(false);
-        // }, Log, "Failed to handle notification tap"));
-
-        // Dirty hack as we have BaseUrl - https://actual.chat/ but local url should be app://localhost/
-        var localUrl = url
-            .Replace(UrlMapper.BaseUrl, "")
-            .Replace($"app://{MauiSettings.LocalHost}/", "");
-
-        Log.LogInformation("OnNotificationTapped: navigating to {LocalUrl}", localUrl);
-
-        Nav.NavigateTo(localUrl, new NavigationOptions {
-            ForceLoad = false,
-            ReplaceHistoryEntry = false,
-        });
+        if (!e.Notification.Data.TryGetValue(Constants.Notification.MessageDataKeys.Link, out var url))
+            url = null;
+        AppNavigationQueue.EnqueueOrNavigateToNotificationUrl(url);
     }
 }

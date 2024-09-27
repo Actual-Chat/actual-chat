@@ -8,8 +8,6 @@ namespace ActualChat.App.Maui;
 public static class IntentHandler
 {
     private static readonly ILogger Log = StaticLog.For(typeof(IntentHandler));
-    private static readonly NotificationViewActionHandler NotificationHandler = new ();
-    private static readonly IncomingShareHandler ShareHandler = new ();
     private static Intent? _startIntent;
     private static bool _hasResumedOnce;
 
@@ -27,16 +25,16 @@ public static class IntentHandler
             return;
 
         if (intent.IsFromHistory()) {
-            Log.LogDebug("Intent is from history. Skipping it.");
+            Log.LogDebug("Intent is from history; skipping it");
             return;
         }
 
         if (!_hasResumedOnce) {
-            Log.LogDebug("Postponing activity start intent handling until resuming.");
+            Log.LogDebug("Postponing activity start intent handling until resuming");
             _startIntent = intent;
         }
         else {
-            Log.LogDebug("About to handle activity intent.");
+            Log.LogDebug("About to handle activity intent");
             HandleIntent(intent);
         }
     }
@@ -44,7 +42,7 @@ public static class IntentHandler
     private static void OnNewIntent(Activity activity, Intent? intent)
     {
         if (intent is not null) {
-            Log.LogDebug("About to handle new intent.");
+            Log.LogDebug("About to handle new intent");
             HandleIntent(intent);
         }
     }
@@ -54,7 +52,7 @@ public static class IntentHandler
         var hasResumedOnce = _hasResumedOnce;
         _hasResumedOnce = true;
         if (!hasResumedOnce && _startIntent is not null) {
-            Log.LogDebug("About to handle start intent.");
+            Log.LogDebug("About to handle start intent");
             HandleIntent(_startIntent);
         }
     }
@@ -63,10 +61,10 @@ public static class IntentHandler
     {
         if (_startIntent is not null) {
             _startIntent = null;
-            Log.LogDebug("Clear start intent.");
+            Log.LogDebug("Clear start intent");
         }
 
-        ShareHandler.HandleIntent(intent);
+        IncomingShareHandler.HandleIntent(intent);
         NotificationHandler.HandleIntent(intent);
     }
 }

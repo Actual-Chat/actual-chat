@@ -1,3 +1,5 @@
+using ActualChat.Hosting;
+
 namespace ActualChat.UI.Blazor.Services;
 
 public enum AutoNavigationReason
@@ -16,6 +18,7 @@ public abstract class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub
     private volatile List<(LocalUrl Url, AutoNavigationReason Reason)>? _autoNavigationCandidates = new();
 
     protected History History => Hub.History;
+    protected HostInfo HostInfo => Hub.HostInfo();
     protected AppBlazorCircuitContext CircuitContext => Hub.CircuitContext;
     protected Dispatcher Dispatcher => Hub.Dispatcher;
 
@@ -26,8 +29,15 @@ public abstract class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub
 
             var defaultUrl = await GetDefaultAutoNavigationUrl().ConfigureAwait(false);
             Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: {{DefaultUrl}}", defaultUrl);
-            await Services.GetRequiredService<AutoNavigationTasks>().Complete().WaitAsync(cancellationToken).ConfigureAwait(false);
-            Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: AutoNavigationTasks are completed");
+
+            if (HostInfo.HostKind.IsApp()) {
+                var appNavigationTasks = AppNavigationQueue.DequeueAll(Services);
+                Log.LogInformation(
+                    $"{nameof(GetAutoNavigationUrl)}: AppNavigationQueue has {{Count}} tasks",
+                    appNavigationTasks.Count);
+                await Task.WhenAll(appNavigationTasks).ConfigureAwait(false);
+            }
+
             var candidates = Interlocked.Exchange(ref _autoNavigationCandidates, null);
             if (candidates == null)
                 throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");

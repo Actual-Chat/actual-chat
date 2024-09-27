@@ -38,7 +38,7 @@ public class UIHub(IServiceProvider services) : Hub(services)
     private UICommander? _uiCommander;
     private UIEventHub? _uiEventHub;
     private RenderVars? _renderVars;
-    private RenderModeSelector? _renderModeSelector;
+    private BlazorRenderMode? _renderMode;
     private BrowserInfo? _browserInfo;
     private DateTimeConverter? _dateTimeConverter;
     private NavigationManager? _nav;
@@ -77,7 +77,7 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public VisualMediaViewerUI VisualMediaViewerUI => _visualMediaViewerUI ??= Services.GetRequiredService<VisualMediaViewerUI>();
     public Escapist Escapist => _escapist ??= Services.GetRequiredService<Escapist>();
     public RenderVars RenderVars => _renderVars ??= Services.GetRequiredService<RenderVars>();
-    public RenderModeSelector RenderModeSelector => _renderModeSelector ??= Services.GetRequiredService<RenderModeSelector>();
+    public BlazorRenderMode RenderMode => _renderMode ??= Services.GetRequiredService<BlazorRenderMode>();
     public BrowserInfo BrowserInfo => _browserInfo ??= Services.GetRequiredService<BrowserInfo>();
     public DateTimeConverter DateTimeConverter => _dateTimeConverter ??= Services.GetRequiredService<DateTimeConverter>();
     public NavigationManager Nav => _nav ??= Services.GetRequiredService<NavigationManager>();

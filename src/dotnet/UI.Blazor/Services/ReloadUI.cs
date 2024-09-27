@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualLab.Fusion.Client.Caching;
 
@@ -21,8 +22,11 @@ public class ReloadUI
         _ = circuitContext.WhenReady.ContinueWith(_ => circuitContext.Dispatcher.InvokeAsync(async () => {
             Log.LogInformation("Reloading...");
             try {
-                await Clear(clearCaches, clearLocalSettings).ConfigureAwait(true); // Nav requires UI context
+                var hostInfo = Services.HostInfo();
                 var nav = Services.GetRequiredService<NavigationManager>();
+                await Clear(clearCaches, clearLocalSettings).ConfigureAwait(true); // Nav requires UI context
+                if (hostInfo.HostKind.IsApp())
+                    AppNavigationQueue.Reset();
                 nav.NavigateTo(Links.Home, true);
             }
             catch (Exception e) {

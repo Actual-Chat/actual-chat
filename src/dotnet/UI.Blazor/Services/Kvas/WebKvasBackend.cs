@@ -21,7 +21,7 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
         _getManyName = $"{name}.getMany";
         _setManyName = $"{name}.setMany";
         _clearName = $"{name}.clear";
-        _isPrerendering = services.GetRequiredService<RenderModeSelector>().IsPrerendering;
+        _isPrerendering = services.GetRequiredService<BlazorRenderMode>().IsPrerendering;
         WhenReady = _isPrerendering ? Task.CompletedTask
             : JS.InvokeVoidAsync("window.App.isBundleReady").AsTask();
     }

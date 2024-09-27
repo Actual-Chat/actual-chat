@@ -45,7 +45,7 @@ internal static class MauiDeviceData
                 };
             }
             catch (PermissionException) {
-                logger?.LogDebug("No permission to read battery state from the device.");
+                logger?.LogDebug("No permission to read battery state from the device");
             }
 
             // https://docs.microsoft.com/dotnet/maui/platform-integration/communication/networking#using-connectivity
@@ -53,7 +53,7 @@ internal static class MauiDeviceData
                 device.IsOnline ??= Connectivity.NetworkAccess == NetworkAccess.Internet;
             }
             catch (PermissionException) {
-                logger?.LogDebug("No permission to read network state from the device.");
+                logger?.LogDebug("No permission to read network state from the device");
             }
 
             // https://docs.microsoft.com/dotnet/maui/platform-integration/device/display
@@ -101,7 +101,7 @@ internal static class MauiDeviceData
         }
         catch (Exception ex) {
             // Log, but swallow the exception so we can continue sending events
-            logger?.LogError(ex, "Error getting MAUI device information.");
+            logger?.LogError(ex, "Error getting MAUI device information");
         }
     }
 }

@@ -81,8 +81,10 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
         => Task.CompletedTask; // Actually handled by notification-ui.ts
 
     [JSInvokable]
-    public Task HandleNotificationNavigation(string url)
+    public Task NavigateToNotificationUrl(string url)
     {
+        Log.LogInformation("NavigateToNotificationUrl, Url: {Url}", url);
+
         // This method can be invoked from any synchronization context
         Uri.TryCreate(url, UriKind.RelativeOrAbsolute, out var uri);
         if (uri == null)

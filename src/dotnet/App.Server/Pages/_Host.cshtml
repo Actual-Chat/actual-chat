@@ -253,8 +253,8 @@
                 renderMode = RenderMode.Server;
                 var isPrerendering = isBlazorServer && isNewSession;
                 if (isPrerendering) {
-                    var renderModeSelector = Services.GetRequiredService<RenderModeSelector>();
-                    renderModeSelector.IsPrerendering = true;
+                    var blazorRenderMode = Services.GetRequiredService<BlazorRenderMode>();
+                    blazorRenderMode.IsPrerendering = true;
                     renderMode = RenderMode.ServerPrerendered;
                 }
                 var secureTokens = Services.GetRequiredService<ISecureTokens>();

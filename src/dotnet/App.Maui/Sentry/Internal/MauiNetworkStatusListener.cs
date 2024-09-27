@@ -18,7 +18,7 @@ internal class MauiNetworkStatusListener : INetworkStatusListener
         }
         catch (PermissionException) {
             _hasNetworkStatusPermission = false;
-            options.DiagnosticLogger?.LogDebug("No network status permission.  Will assume device is online.");
+            options.DiagnosticLogger?.LogDebug("No network status permission, will assume device is online");
         }
     }
 
