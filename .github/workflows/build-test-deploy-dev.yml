@@ -584,7 +584,7 @@ jobs:
     needs:
       - calc-pkg-params
     if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' }}
-    runs-on: macos-13
+    runs-on: macos-latest
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
@@ -703,7 +703,7 @@ jobs:
     name: Deploy ios app package to apple app store for ${{ github.ref_name }}
     # release branch can build for both dev and prod envs while other branches can build only for dev env
     if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' }}
-    runs-on: macos-13
+    runs-on: macos-latest
     needs:
       - build-ios-pkg
       - unit-tests
