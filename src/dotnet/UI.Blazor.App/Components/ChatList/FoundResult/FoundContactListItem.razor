@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI
-@inherits ComputedRenderStateComponent<FoundPlaceListItem.Model>
+@inherits ComputedRenderStateComponent<FoundContactListItem.Model>
 @{
     var m = State.Value;
     var chat = m.Chat ?? Chat;
@@ -82,7 +82,7 @@
     [Parameter] public bool IsLastItemInBlock { get; set; }
     [Parameter] public bool IsFirstItem { get; set; }
 
-    public FoundPlaceListItem()
+    public FoundContactListItem()
         => Options = ComputedStateComponentOptions.RecomputeStateOnParameterChange;
 
     // protected override void OnInitialized() {
