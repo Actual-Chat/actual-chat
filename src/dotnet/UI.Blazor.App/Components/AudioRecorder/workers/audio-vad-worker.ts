@@ -83,6 +83,7 @@ const serverImpl: AudioVadWorker = {
 
         nnVoiceDetector?.reset();
         webrtcVoiceDetector?.reset();
+        void stateServer.onVoiceStateChanged(false, rpcNoWait);
     },
 
     conversationSignal: async (_noWait?: RpcNoWait): Promise<void> => {

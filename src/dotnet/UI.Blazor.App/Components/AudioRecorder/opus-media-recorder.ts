@@ -432,6 +432,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
             await this.stopMicrophoneStream();
             void this.vadWorklet?.stop(rpcNoWait);
             void this.encoderWorklet?.stop(rpcNoWait);
+            await this.encoderWorker?.stop();
             if (!this.contextRef)
                 return;
 

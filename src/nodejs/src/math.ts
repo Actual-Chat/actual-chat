@@ -221,7 +221,7 @@ export class RunningEMA implements RunningCounter {
 
 export class RunningMax implements RunningCounter {
     private readonly defaultValue: number;
-    private readonly samples = new Array<number>();
+    private readonly _samples = new Array<number>();
     private max: number;
 
     constructor(
@@ -233,25 +233,29 @@ export class RunningMax implements RunningCounter {
     }
 
     public get sampleCount(): number {
-        return this.samples.length;
+        return this._samples.length;
     }
 
     public get value(): number {
         return this.max;
     }
 
+    public get samples(): number[] {
+        return this._samples;
+    }
+
     public reset(): void {
-        this.samples.length = 0;
+        this._samples.length = 0;
         this.max = this.defaultValue;
     }
 
     public appendSample(value: number): void {
         if (value > this.max)
             this.max = value;
-        this.samples.push(value);
+        this._samples.push(value);
 
-        if (this.samples.length > this.windowSize)
-            this.samples.shift();
+        if (this._samples.length > this.windowSize)
+            this._samples.shift();
     }
 }
 
@@ -288,5 +292,9 @@ export function approximateGain(monoPcm: Float32Array, stride = 5): number {
 }
 
 export function translate(number: number, [inMin, inMax]: Array<number>, [outMin, outMax]: Array<number>) {
-    return (number - inMin) / (inMax - inMin) * (outMax - outMin) + outMin;
+    const result = (number - inMin) / (inMax - inMin) * (outMax - outMin) + outMin;
+    if (isNaN(result))
+        return outMin;
+
+    return result;
 }

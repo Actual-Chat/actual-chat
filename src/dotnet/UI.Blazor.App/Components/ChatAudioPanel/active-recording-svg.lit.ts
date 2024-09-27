@@ -1,17 +1,29 @@
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
-import { animationFrameScheduler, map, scan, Observable, Subscription } from 'rxjs';
-import { delayWhen, throttleTime, skip, take, distinctUntilChanged } from 'rxjs/operators';
+import { filter, scan, Subscription } from 'rxjs';
 import { OpusMediaRecorder } from '../AudioRecorder/opus-media-recorder';
 import { clamp, RunningMax, translate } from 'math';
-import { observe } from '../../Services/observe-directive-lit';
 
-const SIGNAL_COUNT_TO_CALCULATE_MAX = 200; // 200 * 30ms = 6s
+const SIGNAL_COUNT_TO_CALCULATE_MAX = 100; // 200 * 30ms = 3s
 
-type Result = {
+interface Result {
     runningMax: RunningMax;
     p: number;
     i: number;
+}
+
+interface AudioPowerState {
+    height1: number;
+    height2: number;
+    height3: number;
+}
+
+const MIN_HEIGHT = 10;
+const MAX_HEIGHT = 100;
+const DEFAULT_STATE: AudioPowerState = {
+    height1: MIN_HEIGHT,
+    height2: MIN_HEIGHT,
+    height3: MIN_HEIGHT,
 }
 
 @customElement('active-recording-svg')
@@ -27,6 +39,7 @@ class ActiveRecordingSvg extends LitElement {
         }
         rect {
             transition-duration: 0s;
+            will-change: transform;
         }
         rect.non-active {
             opacity: 0;
@@ -45,13 +58,13 @@ class ActiveRecordingSvg extends LitElement {
             }
         }
         rect#record-rect-2.in-rest {
-            animation: wave 1.3s linear infinite;
+            animation: wave 1.3s steps(10, start) infinite;
         }
         rect#record-rect-3.in-rest {
-            animation: wave 1.3s linear infinite -1.1s;
+            animation: wave 1.3s steps(10, start) infinite -1.1s;
         }
         rect#record-rect-4.in-rest {
-            animation: wave 1.3s linear infinite -0.9s;
+            animation: wave 1.3s steps(10, start) infinite -0.9s;
         }
 
         @keyframes wave {
@@ -64,187 +77,143 @@ class ActiveRecordingSvg extends LitElement {
         }
     `];
 
-    @property()
+    private _isRecording = null;
+
+    @state({
+        hasChanged: (value: AudioPowerState, oldValue: AudioPowerState | null): boolean =>
+            value.height1 !== oldValue?.height1 || value.height2 !== oldValue?.height2 || value.height3 !== oldValue?.height3
+    })
+    private audioPowerState: AudioPowerState = DEFAULT_STATE;
+    @state()
+    private isVoiceActive = false;
+
+    @property({type: Number})
     size = 10;
+
     @property({type: Boolean})
-    isActive = false;
+    set isRecording(val: boolean) {
+        if (val)
+            this.audioPowerState = DEFAULT_STATE;
+        this._isRecording = val;
+    }
 
-    private readonly minHeight = 10;
-    private readonly maxHeight = 100;
-    private readonly height1$: Observable<number>;
-    private readonly height2$: Observable<number>;
-    private readonly height3$: Observable<number>;
-    private readonly offset1$: Observable<number>;
-    private readonly offset2$: Observable<number>;
-    private readonly offset3$: Observable<number>;
-    private readonly isVoiceActive$: Observable<boolean>;
+    get isRecording() { return this._isRecording };
+
     private readonly recorderStateChangedSubscription: Subscription;
-
-    private isRecording = false;
-    private lastIsRecording = false;
+    private readonly signalPowerChangedSubscription: Subscription;
 
     constructor() {
         super();
 
-        const { minHeight, maxHeight } = this;
-        this.isVoiceActive$ = OpusMediaRecorder.recorderStateChanged$
-            .pipe(map(s => s.isVoiceActive), distinctUntilChanged());
+        const recorderState$ = OpusMediaRecorder.recorderStateChanged$;
         const signalPower$ = OpusMediaRecorder.audioPowerChanged$
-            .pipe(throttleTime(0, animationFrameScheduler));
-
-        this.recorderStateChangedSubscription = OpusMediaRecorder.recorderStateChanged$.subscribe(s => {
-           this.isRecording = s.isRecording;
-        });
-
-        this.height1$ = signalPower$
+            .pipe(filter((p, i) => i % 2 === 0))
             .pipe(scan<number, Result, RunningMax>((runningMaxOrResult, p, i) => {
                 const runningMax: RunningMax = runningMaxOrResult['runningMax'] || runningMaxOrResult;
-                const { isRecording, lastIsRecording } = this;
-                if (isRecording != lastIsRecording) {
-                    // cleanup state on start/stop recording
-                    this.lastIsRecording = isRecording;
-                    runningMax.reset();
-                }
-
                 runningMax.appendSample(p);
                 return { runningMax, p, i };
-            }, new RunningMax(SIGNAL_COUNT_TO_CALCULATE_MAX, 0)))
-            .pipe(map(({ runningMax, p }) => {
-                const maxPower = runningMax.value;
-                const maxSampleCount = runningMax.sampleCount;
-                if (maxSampleCount < SIGNAL_COUNT_TO_CALCULATE_MAX / 2) // beginning of recording
-                    return Math.floor(minHeight + Math.random() * minHeight);
+            }, new RunningMax(SIGNAL_COUNT_TO_CALCULATE_MAX, 0)));
 
-                const height = Math.floor((translate(p, [0, 0.8 * maxPower], [minHeight, maxHeight]))) * 100 / maxHeight;
-                return (!this.isActive || isNaN(height))
-                    ? minHeight
-                    : height;
-            }));
+        this.recorderStateChangedSubscription = recorderState$.subscribe(rs => {
+            this.isVoiceActive = rs.isVoiceActive;
+            this._isRecording = rs.isRecording;
+        });
+        const getHeight = (power: number, maxPower: number) => Math.floor((translate(power, [0, 0.8*maxPower], [MIN_HEIGHT, MAX_HEIGHT]))) * 100 / MAX_HEIGHT;
+        this.signalPowerChangedSubscription = signalPower$.subscribe(({ runningMax, p }) => {
+            if (!this._isRecording || !this.isVoiceActive)
+                return;
 
-        this.height2$ = this.height1$
-            .pipe(map(h => clamp(0.7 * h, minHeight, maxHeight)))
-            .pipe(delayWhen(() => this.height1$.pipe(skip(5), take(1)))); // with 150 ms delay
-        this.height3$ = this.height1$
-            .pipe(map(h => clamp(0.4 * h, minHeight, maxHeight)))
-            .pipe(delayWhen(() => this.height1$.pipe(skip(10), take(1)))); // with 300 ms delay
+            if (this.audioPowerState === DEFAULT_STATE)
+                runningMax.reset(); // On turn on recording
 
-        // offsets in percent
-        this.offset1$ = this.height1$
-            .pipe(map(h => 50 - h / 2));
-        this.offset2$ = this.height2$
-            .pipe(map(h => 50 - h / 2));
-        this.offset3$ = this.height3$
-            .pipe(map(h => 50 - h / 2));
+            const maxPower = runningMax.value;
+            const maxSampleCount = runningMax.sampleCount;
+            const prevAudioPower = runningMax.samples;
+            const maxNotYetCalculatedAdjustment = maxSampleCount < SIGNAL_COUNT_TO_CALCULATE_MAX / 2
+                ? clamp(maxSampleCount / (SIGNAL_COUNT_TO_CALCULATE_MAX / 4), 0, 1)
+                : 1;
+            const power1 = p * maxNotYetCalculatedAdjustment;
+            const height1 = getHeight(power1, maxPower);
+            const power2 = prevAudioPower[prevAudioPower.length - 4] * maxNotYetCalculatedAdjustment ?? 0; // with 180 ms delay
+            const height2 = Math.floor(clamp(0.7 * getHeight(power2, maxPower), MIN_HEIGHT, MAX_HEIGHT));
+            const power3 = prevAudioPower[prevAudioPower.length - 7] * maxNotYetCalculatedAdjustment ?? 0; // with 360 ms delay
+            const height3 = Math.floor(clamp(0.4 * getHeight(power3, maxPower), MIN_HEIGHT, MAX_HEIGHT));
+            this.audioPowerState = {
+                height1: height1,
+                height2: height2,
+                height3: height3,
+            }
+        });
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
 
         this.recorderStateChangedSubscription.unsubscribe();
+        this.signalPowerChangedSubscription.unsubscribe();
     }
 
     protected render(): unknown {
-        const { size, minHeight } = this;
+        const { size, audioPowerState, isVoiceActive, isRecording } = this;
+        if (isRecording === false)
+            return html``;
+
+        const display = getComputedStyle(this.shadowRoot?.host, null)?.display ?? 'none';
+        if (display === 'none')
+            return html``;
+
         const width = 10;
-        const defaultHeight = minHeight;
-        const defaultOffset = 50 - minHeight / 2;
+        const height1 = isVoiceActive ? audioPowerState.height1 : MIN_HEIGHT;
+        const height2 = isVoiceActive ? audioPowerState.height2 : MIN_HEIGHT;
+        const height3 = isVoiceActive ? audioPowerState.height3 : MIN_HEIGHT;
+        const offset1 = 50 - height1 / 2;
+        const offset2 = 50 - height2 / 2;
+        const offset3 = 50 - height3 / 2;
 
-        const height1 = observe(this.height1$, defaultHeight);
-        const height2 = observe(this.height2$, defaultHeight);
-        const height3 = observe(this.height3$, defaultHeight);
-        const offset1 = observe(this.offset1$, defaultOffset);
-        const offset2 = observe(this.offset2$, defaultOffset);
-        const offset3 = observe(this.offset3$, defaultOffset);
-        const edgeDotCls = observe(this.isVoiceActive$.pipe(map(b => b ? "active" : "non-active")));
-        const centerDotCls = observe(this.isVoiceActive$.pipe(map(b => b ? "" : "in-rest")));
+        const edgeDotCls = isVoiceActive ? "active" : "non-active";
+        const centerDotCls = isVoiceActive ? "" : "in-rest";
 
-        if (this.isActive) {
-            return html`
-                <svg xmlns='http://www.w3.org/2000/svg' width='${size * 4}' height='${size * 4}'
-                     preserveAspectRatio='none'
-                     viewBox='0 0 24 24' fill='none' stroke='var(--white)'
-                     stroke-width='${width}%' stroke-linecap='round' stroke-linejoin='bevel'>
-                    <rect id='record-rect-1' class='${edgeDotCls}'
-                          x='${width / 2}%'
-                          y='${offset3}%'
-                          width='${width}%'
-                          height='${height3}%'
-                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
-                    </rect>
-                    <rect id='record-rect-2' class='${centerDotCls}'
-                          x='${width * 2.5}%'
-                          y='${offset2}%'
-                          width='${width}%'
-                          height='${height2}%'
-                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
-                    </rect>
-                    <rect id='record-rect-3' class='${centerDotCls}'
-                          x='${width * 4.5}%'
-                          y='${offset1}%'
-                          width='${width}%'
-                          height='${height1}%'
-                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
-                    </rect>
-                    <rect id='record-rect-4' class='${centerDotCls}'
-                          x='${width * 6.5}%'
-                          y='${offset2}%'
-                          width='${width}%'
-                          height='${height2}%'
-                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
-                    </rect>
-                    <rect id='record-rect-5' class='${edgeDotCls}'
-                          x='${width * 8.5}%'
-                          y='${offset3}%'
-                          width='${width}%'
-                          height='${height3}%'
-                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
-                    </rect>
-                </svg>
-            `;
-        } else {
-            const yOffset = 50 - minHeight / 2;
-            return html`
-                <svg xmlns='http://www.w3.org/2000/svg' width='${size * 4}' height='${size * 4}'
-                     preserveAspectRatio='none'
-                     viewBox='0 0 24 24' fill='none' stroke='var(--white)'
-                     stroke-width='${width}%' stroke-linecap='round' stroke-linejoin='bevel'>
-                    <rect id='record-rect-1' class='non-active'
-                          x='${width / 2}%'
-                          y='${yOffset}%'
-                          width='${width}%'
-                          height='${minHeight}%'
-                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
-                    </rect>
-                    <rect id='record-rect-2' class='in-rest'
-                          x='${width * 2.5}%'
-                          y='${yOffset}%'
-                          width='${width}%'
-                          height='${minHeight}%'
-                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
-                    </rect>
-                    <rect id='record-rect-3' class='in-rest'
-                          x='${width * 4.5}%'
-                          y='${yOffset}%'
-                          width='${width}%'
-                          height='${minHeight}%'
-                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
-                    </rect>
-                    <rect id='record-rect-4' class='in-rest'
-                          x='${width * 6.5}%'
-                          y='${yOffset}%'
-                          width='${width}%'
-                          height='${minHeight}%'
-                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
-                    </rect>
-                    <rect id='record-rect-5' class='non-active'
-                          x='${width * 8.5}%'
-                          y='${yOffset}%'
-                          width='${width}%'
-                          height='${minHeight}%'
-                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
-                    </rect>
-                </svg>
-            `;
-        }
+        return html`
+            <svg xmlns='http://www.w3.org/2000/svg' width='${size * 4}' height='${size * 4}'
+                 preserveAspectRatio='none'
+                 viewBox='0 0 24 24' fill='none' stroke='var(--white)'
+                 stroke-width='${width}%' stroke-linecap='round' stroke-linejoin='bevel'>
+                <rect id='record-rect-1' class='${edgeDotCls}'
+                      x='${width / 2}%'
+                      y='${offset3}%'
+                      width='${width}%'
+                      height='${height3}%'
+                      fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                </rect>
+                <rect id='record-rect-2' class='${centerDotCls}'
+                      x='${width * 2.5}%'
+                      y='${offset2}%'
+                      width='${width}%'
+                      height='${height2}%'
+                      fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                </rect>
+                <rect id='record-rect-3' class='${centerDotCls}'
+                      x='${width * 4.5}%'
+                      y='${offset1}%'
+                      width='${width}%'
+                      height='${height1}%'
+                      fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                </rect>
+                <rect id='record-rect-4' class='${centerDotCls}'
+                      x='${width * 6.5}%'
+                      y='${offset2}%'
+                      width='${width}%'
+                      height='${height2}%'
+                      fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                </rect>
+                <rect id='record-rect-5' class='${edgeDotCls}'
+                      x='${width * 8.5}%'
+                      y='${offset3}%'
+                      width='${width}%'
+                      height='${height3}%'
+                      fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                </rect>
+            </svg>
+        `;
     }
 }
