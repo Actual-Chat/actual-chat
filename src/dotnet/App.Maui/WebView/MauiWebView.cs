@@ -1,6 +1,7 @@
 // using WKWebView = global::WebKit.WKWebView;
 
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.UI.Blazor.Services;
 using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 
@@ -32,7 +33,9 @@ public sealed partial class MauiWebView
     public MauiWebView()
     {
         Id = Interlocked.Increment(ref _lastId);
-        Console.WriteLine($"MauiWebView: #{Id}");
+        if (Id > 1)
+            AppNavigationQueue.Reset();
+
         BlazorWebView = new BlazorWebView {
             HostPage = "wwwroot/index.html",
             BackgroundColor = MauiSettings.SplashBackgroundColor,
@@ -47,6 +50,7 @@ public sealed partial class MauiWebView
                 ComponentType = typeof(MauiBlazorApp),
                 Selector = "#app",
             });
+
         lock (StaticLock)
             _current = this;
         Tracer.Point($"Current = #{Id}");

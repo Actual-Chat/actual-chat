@@ -37,22 +37,17 @@ public class App : Application
 
     protected override void OnAppLinkRequestReceived(Uri uri)
     {
-        Log.LogInformation("OnAppLinkRequestReceived: {Uri}", uri);
         if (!OrdinalIgnoreCaseEquals(MauiSettings.Host, MauiSettings.DefaultHost)) {
-            // TODO(DF): to think if it's possible to handle it properly in host override mode.
-            Log.LogWarning("AppLinkRequest will be ignored because Host overriding is applied." +
-                " Default host is '{DefaultHost}', but actual host is '{Host}'",
-                MauiSettings.DefaultHost, MauiSettings.Host);
+            // TODO(DF): Think if it's possible to handle this in host override mode.
+            Log.LogWarning("OnAppLinkRequestReceived: {Uri} -> ignore (host override mode is on)", uri);
             return;
         }
-        if (!OrdinalIgnoreCaseEquals(uri.Host, MauiSettings.Host))
+        if (!OrdinalIgnoreCaseEquals(uri.Host, MauiSettings.Host)) {
+            Log.LogWarning("OnAppLinkRequestReceived: {Uri} -> ignore (wrong host)", uri);
             return;
+        }
 
-        var url = new LocalUrl(uri.PathAndQuery + uri.Fragment);
-        var autoNavigationTasks = Services.GetRequiredService<AutoNavigationTasks>();
-        autoNavigationTasks.Add(DispatchToBlazor(
-            c => c.GetRequiredService<AutoNavigationUI>().DispatchNavigateTo(url, AutoNavigationReason.AppLink),
-            $"AutoNavigationUI.DispatchNavigateTo(\"{url}\", AppLink)"));
+        AppNavigationQueue.EnqueueOrNavigateToNotificationUrl(uri.ToString());
     }
 
     public new void Quit()

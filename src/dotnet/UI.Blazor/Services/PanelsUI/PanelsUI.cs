@@ -15,7 +15,7 @@ public partial class PanelsUI : ScopedWorkerBase<UIHub>
     public PanelsUI(UIHub hub) : base(hub)
     {
         var browserInfo = hub.BrowserInfo;
-        if (!browserInfo.WhenReady.IsCompleted && !hub.RenderModeSelector.IsPrerendering)
+        if (!browserInfo.WhenReady.IsCompleted && !hub.RenderMode.IsPrerendering)
             throw StandardError.Internal(
                 $"{nameof(PanelsUI)} is resolved too early: {nameof(BrowserInfo)} is not ready yet.");
 

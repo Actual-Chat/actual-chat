@@ -3,7 +3,7 @@ namespace ActualChat.UI.Blazor.App;
 public interface INotificationUIBackend
 {
     [JSInvokable]
-    Task HandleNotificationNavigation(string absoluteUrl);
+    Task NavigateToNotificationUrl(string absoluteUrl);
     [JSInvokable]
     void SetPermissionState(string permissionState);
 }

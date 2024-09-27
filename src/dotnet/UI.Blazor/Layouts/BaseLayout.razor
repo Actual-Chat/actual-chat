@@ -4,7 +4,7 @@
 <div class="base-layout">
     <div class="base-layout-body">
         <div class="c-layout-content">
-            @if (!RenderModeSelector.IsPrerendering) {
+            @if (!RenderMode.IsPrerendering) {
                 <ToastHost @key="@ToastHostKey"/>
             }
             <NoComponent @key="@BodyKey">
@@ -21,7 +21,7 @@
     private static readonly object ToastHostKey = new();
 
     [Inject] private UIHub Hub { get; init; } = null!;
-    private RenderModeSelector RenderModeSelector => Hub.RenderModeSelector;
+    private BlazorRenderMode RenderMode => Hub.RenderMode;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 }

@@ -43,12 +43,12 @@ internal sealed class ServiceCoordinator(
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                 var transiency = TransiencyResolver(e);
                 if (transiency.IsTerminal()) {
-                    log.LogError(e, "[!] Irrecoverable error detected, exiting initialization.");
+                    log.LogError(e, "[!] Irrecoverable error detected, exiting initialization");
                     throw;
                 }
                 // While with high probability the error is irrecoverable
                 // whe retry initialization to show activity in logs.
-                log.LogError(e, "[!] Critical AsyncChain pipeline error, will retry in 30s.");
+                log.LogError(e, "[!] Critical AsyncChain pipeline error, will retry in 30s");
                 await clock.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
             }
         }
