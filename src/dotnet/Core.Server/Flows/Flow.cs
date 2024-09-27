@@ -59,8 +59,8 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
         var step = Step;
         FlowTransition transition;
         try {
-            if (Event.Is<IFlowControlEvent>(out var stepChangeEvent)) {
-                step = stepChangeEvent.GetNextStep(this);
+            if (Event.Is<IFlowControlEvent>(out var flowControlEvent)) {
+                step = flowControlEvent.GetNextStep(this);
                 if (step.IsEmpty)
                     return default;
             }
