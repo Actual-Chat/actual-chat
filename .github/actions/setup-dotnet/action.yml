@@ -35,12 +35,12 @@ runs:
     - name: Install workloads
       shell: bash
       if: ${{ inputs.restore-workloads == 'true' }}
-      run: dotnet workload restore --from-rollback-file https://maui.blob.core.windows.net/metadata/rollbacks/8.0.7.json
+      run: dotnet workload restore --from-rollback-file https://maui.blob.core.windows.net/metadata/rollbacks/8.0.82.json
 
     - name: Restore nuget packages
       shell: bash
       if: ${{ inputs.restore == 'true' }}
       # wasm-tools is required by restore, but restore-workloads is too heavy for that
       run: |
-        dotnet workload install wasm-tools --from-rollback-file https://maui.blob.core.windows.net/metadata/rollbacks/8.0.7.json \
+        dotnet workload install wasm-tools --from-rollback-file https://maui.blob.core.windows.net/metadata/rollbacks/8.0.82.json \
           && ./run-build.cmd restore && ./run-build.cmd restore
