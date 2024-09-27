@@ -421,15 +421,16 @@ module.exports = {
     },
     animation: {
       none: 'none',
-      spin: 'spin 1s steps(10, start) infinite',
-      ping: 'ping 1s steps(10, start) infinite',
-      pulse: 'pulse 2s steps(10, start) infinite',
-      'pulse-70': 'pulse-70 2s steps(10, start) infinite',
-      'custom-pulse': 'custom-pulse 2s steps(10, start) infinite',
-      'scale': 'scale 2s steps(10, start) infinite',
+      spin: 'spin 1s linear infinite',
+      ping: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
+      pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      'pulse-70': 'pulse-70 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      'custom-pulse': 'custom-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      'swipe-by': 'swipe-by 2s infinite',
+      'scale': 'scale 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       'decrease': 'decrease 500ms ease-in-out',
       'increase': 'increase 500ms ease-in-out',
-      bounce: 'bounce 1s steps(10, start) infinite',
+      bounce: 'bounce 1s infinite',
       'opacity-from-0': 'opacity-from-0 150ms ease-in-out',
       'tooltip-vertical': 'tooltip-vertical 300ms ease-in-out forwards',
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
@@ -440,6 +441,9 @@ module.exports = {
       'notify-panel-closing': 'notify-panel-closing 150ms ease-in-out',
       'notify-toggle-hide': 'notify-toggle-hide 150ms ease-in-out',
       'notify-toggle-show': 'notify-toggle-show 150ms ease-in-out',
+      'opacity-0-100-0': 'opacity-0-100-0 3s ease-in-out infinite',
+      'opacity-10-20-10': 'opacity-10-20-10 3s ease-in-out infinite',
+      'backdrop-2-4-2': 'backdrop-2-4-2 3s ease-in-out infinite',
     },
     aspectRatio: {
       auto: 'auto',
@@ -944,6 +948,17 @@ module.exports = {
           opacity: '.1',
         },
       },
+      'swipe-by': {
+        '0%': {
+          transform: 'translate(-150%) rotate(10deg)',
+        },
+        '70%': {
+          transform: 'translate(150%) rotate(10deg)',
+        },
+        '100%': {
+          transform: 'translate(150%) rotate(10deg)',
+        },
+      },
       'scale': {
         '50%': {
           transform: 'scale(0.3)',
@@ -1085,6 +1100,32 @@ module.exports = {
               'background': 'transparent',
               'border-left': '2px solid transparent',
           },
+      },
+      'opacity-0-100-0': {
+        '0%, 100%': {
+          opacity: 0,
+        },
+        '50%': {
+          opacity: 1,
+        },
+      },
+      'opacity-10-20-10': {
+        '0%, 100%': {
+          opacity: 0.1,
+        },
+        '50%': {
+          opacity: 0.2,
+        },
+      },
+      'backdrop-2-4-2': {
+        '0%, 100%': {
+          opacity: 0.9,
+          'backdrop-filter': 'blur(2px)',
+        },
+        '50%': {
+          opacity: 0.8,
+          'backdrop-filter': 'blur(4px)',
+        },
       },
     },
     letterSpacing: {

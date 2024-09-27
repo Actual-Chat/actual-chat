@@ -57,7 +57,7 @@ class ChatViewFooterSkeleton extends LitElement {
         height: 3rem;
         border-radius: 9999px;
         background-color: var(--background-03);
-        animation: pulse 2s steps(10, start) infinite;
+        animation: pulse 2s infinite;
     }
     .footer-button {
         flex: none;

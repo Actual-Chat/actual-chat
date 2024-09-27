@@ -9,7 +9,7 @@ export const messageStyles = css`
         column-gap: 0.25rem;
     }
     .animated-skeleton.message-skeleton {
-        animation: pulse 2s steps(5, start) infinite;
+        animation: pulse 2s infinite;
     }
     .message-skeleton.place {
         padding: 0.125rem 0;
@@ -72,7 +72,7 @@ export const messageStyles = css`
         margin-bottom: 0.5rem;
     }
     .animated-skeleton.message-list {
-        animation: pulse 2s steps(5, start) infinite;
+        animation: pulse 2s infinite;
     }
     .message-wrapper {
         display: flex;
@@ -101,11 +101,11 @@ export const messageStyles = css`
     .string-skeleton {
         background-color: var(--skeleton);
         border-radius: 0.5rem;
-        animation: pulse 2s steps(5, start) infinite;
+        animation: pulse 2s infinite;
     }
     .header-skeleton,
     .animated-skeleton.round-skeleton {
-        animation: pulse 2s steps(5, start) infinite;
+        animation: pulse 2s infinite;
     }
     .round-skeleton {
         flex: none;

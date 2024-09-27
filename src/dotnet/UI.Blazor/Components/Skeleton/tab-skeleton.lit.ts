@@ -23,7 +23,7 @@ class TabSkeleton extends LitElement {
             height: 0.75rem;
             background: var(--skeleton);
             border-radius: 9999px;
-            animation: pulse 2s steps(5, start) infinite;
+            animation: pulse 2s infinite;
         }
     `];
 

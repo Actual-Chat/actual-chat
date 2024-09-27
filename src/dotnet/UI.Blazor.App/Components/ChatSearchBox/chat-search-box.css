@@ -67,3 +67,11 @@
     @apply relative;
     @apply flex-x;
 }
+.chat-search-box-spinner {
+    @apply absolute right-0;
+    @apply self-center;
+    @apply w-5 h-5 min-w-5 min-h-5 max-w-5 max-h-5;
+    @apply mr-2;
+    @apply border-2 border-text-03 border-dashed rounded-full;
+    @apply animate-spin;
+}
