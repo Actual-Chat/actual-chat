@@ -11,7 +11,7 @@ class ImageSkeleton extends LitElement {
       }
 
       :host(.loading) {
-        animation: pulse 2s infinite;
+        animation: pulse 2s steps(10, start) infinite;
         background-color: var(--background-05);
       }
 

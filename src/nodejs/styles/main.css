@@ -256,7 +256,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 .fusion-close .a0, .fusion-close .a1, .fusion-close .a2, .fusion-close .a3, .fusion-close .a4,
 .fusion-close .a5, .fusion-close .a6, .fusion-close .a7, .fusion-close .a8, .fusion-close .a9 {
     display: inline-block;
-    animation: a-fusion-close 2s ease-in-out infinite;
+    animation: a-fusion-close 2s steps(10, start) infinite;
 }
 .fusion-close .a0 { animation-delay: -2.0s; }
 .fusion-close .a1 { animation-delay: -1.8s; }

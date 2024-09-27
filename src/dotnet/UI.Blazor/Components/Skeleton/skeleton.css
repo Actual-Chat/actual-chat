@@ -47,6 +47,7 @@ body.narrow .wide-left-skeleton-panel:has(.inaccessible-place-request) {
     @apply w-full h-10;
     @apply rounded-full;
     @apply bg-skeleton;
+    animation: pulse 2s steps(10, start) infinite;
 }
 .wide-left-skeleton-panel .skeleton-panel-body {
     @apply gap-y-0.5 overflow-auto;

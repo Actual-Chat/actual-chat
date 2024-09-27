@@ -26,7 +26,7 @@ export class ThinLeftPanelSkeletonLit extends LitElement {
         margin-bottom: 0.5rem;
         border-radius: 0.75rem;
         background: #F5F5F5;
-        animation: pulse 2s infinite;
+        animation: pulse 2s steps(5, start) infinite;
     }
     .footer-button {
         margin-top: auto;

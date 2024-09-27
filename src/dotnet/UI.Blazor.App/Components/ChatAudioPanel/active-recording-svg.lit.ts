@@ -45,13 +45,13 @@ class ActiveRecordingSvg extends LitElement {
             }
         }
         rect#record-rect-2.in-rest {
-            animation: wave 1.3s linear infinite;
+            animation: wave 1.3s steps(10, start) infinite;
         }
         rect#record-rect-3.in-rest {
-            animation: wave 1.3s linear infinite -1.1s;
+            animation: wave 1.3s steps(10, start) infinite -1.1s;
         }
         rect#record-rect-4.in-rest {
-            animation: wave 1.3s linear infinite -0.9s;
+            animation: wave 1.3s steps(10, start) infinite -0.9s;
         }
 
         @keyframes wave {
