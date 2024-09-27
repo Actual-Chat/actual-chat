@@ -145,7 +145,7 @@ export class NotificationUI {
                 return;
 
             const url = event.data?.url;
-            await this.backendRef.invokeMethodAsync('HandleNotificationNavigation', url);
+            await this.backendRef.invokeMethodAsync('NavigateToNotificationUrl', url);
         });
     }
 
