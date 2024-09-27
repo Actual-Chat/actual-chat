@@ -106,6 +106,7 @@ The instructions below imply you're on Windows.
 ### Windows app
 
 - Install [sign_app.cer](./.config/maui/sign_app.cer) to "Trusted Root Certification Authorities" (required only once).
+- Enable Developer mode in windows settings. https://learn.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development
 - Build solution:
   - using any IDE, or:
   - run `msbuild` from repo root, or,
