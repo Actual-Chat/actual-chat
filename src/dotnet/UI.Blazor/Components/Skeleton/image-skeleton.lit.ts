@@ -94,9 +94,10 @@ class ImageSkeleton extends LitElement {
             if (response.ok) {
                 const blob = await response.blob();
                 this._imageRef.value.src = URL.createObjectURL(blob);
-                break;
+                return;
             }
         }
+        this._imageRef.value.src = this.src;
     }
 
     async imageLoaded(): Promise<void> {
