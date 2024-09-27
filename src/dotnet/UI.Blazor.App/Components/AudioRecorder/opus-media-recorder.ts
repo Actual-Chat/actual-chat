@@ -207,7 +207,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
             this.vadWorker = rpcClientServer<AudioVadWorker>(`${logScope}.vadWorker`, this.vadWorkerInstance, this);
         }
 
-        if (BrowserInfo.appKind === 'MauiApp') {
+        if (BrowserInfo.hostKind === 'MauiApp') {
             // Use server address if the app is MAUI
             this.origin = baseUri;
         }
@@ -478,7 +478,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
         if (diagnosticsState.lastFrameProcessedAt == 0 || diagnosticsState.lastEncoderWorkletFrameProcessedAt) {
             await recordingAudioContextSource.context.suspend();
-            if (BrowserInfo.appKind === 'MauiApp')
+            if (BrowserInfo.hostKind === 'MauiApp')
                 await recordingAudioContextSource.context.resume(); // we don't need user interaction to resume
         }
 
@@ -542,7 +542,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
         // retry init again
         const origin = window.location.origin;
         let baseUri = origin.replace(/\/?$/, '/');
-        if (BrowserInfo.appKind === 'MauiApp') {
+        if (BrowserInfo.hostKind === 'MauiApp') {
             await BrowserInit.whenInitialized;
             baseUri = BrowserInit.baseUri;
         }

@@ -9,13 +9,13 @@ import {Theme, ThemeInfo} from "theme";
 
 const { infoLog } = Log.get('BrowserInfo');
 
-export type AppKind = 'Unknown' | 'WebServer' | 'WasmApp' | 'MauiApp';
+export type HostKind = 'Unknown' | 'WebServer' | 'WasmApp' | 'MauiApp';
 
 export class BrowserInfo {
     private static backendRef: DotNet.DotNetObject = null;
     private static isWebSplashRemoved: boolean;
 
-    public static appKind: AppKind = window.location.host === 'localhost' || window.location.host === '0.0.0.0'
+    public static hostKind: HostKind = window.location.host === 'localhost' || window.location.host === '0.0.0.0'
         ? 'MauiApp'
         : ('MONO' in window)
             ? 'WasmApp'
@@ -25,15 +25,15 @@ export class BrowserInfo {
     public static windowId = "";
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
 
-    public static async init(backendRef1: DotNet.DotNetObject, appKind: AppKind): Promise<void> {
+    public static async init(backendRef1: DotNet.DotNetObject, hostKind: HostKind): Promise<void> {
         Theme.changed.add(theme => this.onThemeChanged(theme));
         infoLog?.log(`initializing`);
         this.backendRef = backendRef1;
-        this.appKind = appKind;
+        this.hostKind = hostKind;
         this.utcOffset = new Date().getTimezoneOffset();
         this.timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         this.windowId = BrowserInit.windowId; // It is already computed when this call happens
-        if (this.appKind == 'MauiApp')
+        if (this.hostKind == 'MauiApp')
             Interactive.isAlwaysInteractive = true;
         this.initBodyClasses();
 
@@ -55,7 +55,7 @@ export class BrowserInfo {
             isTouchCapable: DeviceInfo.isTouchCapable,
             windowId: this.windowId,
         };
-        infoLog?.log(`init:`, JSON.stringify(initResult), appKind);
+        infoLog?.log(`init:`, JSON.stringify(initResult), hostKind);
         void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
         this.whenReady.resolve(undefined);
 
@@ -96,7 +96,7 @@ export class BrowserInfo {
 
     private static initBodyClasses() {
         const classList = document.body.classList;
-        switch (this.appKind) {
+        switch (this.hostKind) {
         case 'WebServer':
             classList.add('app-web', 'app-server');
             break;

@@ -380,7 +380,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
                     // Let's try to test whether AudioContext is broken and fix
                     try {
                         lastTestAt = Date.now();
-                        if (BrowserInfo.appKind === 'MauiApp') {
+                        if (BrowserInfo.hostKind === 'MauiApp') {
                             if (context.state === 'closed')
                                 // noinspection ExceptionCaughtLocallyJS
                                 throw new Error(`${logScope}.test: AudioContext is closed.`);
@@ -831,12 +831,12 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
 
 // Init
 
-export const audioContextSource: AudioContextSource = BrowserInfo.appKind === "MauiApp"
+export const audioContextSource: AudioContextSource = BrowserInfo.hostKind === "MauiApp"
     ? new MauiAudioContextSource('playback')
     : new WebAudioContextSource('playback');
 globalThis['audioContextSource'] = audioContextSource;
 
-export const recordingAudioContextSource: AudioContextSource = BrowserInfo.appKind === "MauiApp"
+export const recordingAudioContextSource: AudioContextSource = BrowserInfo.hostKind === "MauiApp"
     ? new MauiAudioContextSource('recording')
     : new WebAudioContextSource('recording');
 globalThis['recordingAudioContextSource'] = recordingAudioContextSource;

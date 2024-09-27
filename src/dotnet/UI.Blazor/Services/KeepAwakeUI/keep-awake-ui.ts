@@ -43,7 +43,7 @@ export class KeepAwakeUI {
         if (noSleep.isNativeWakeLockSupported)
             return;
         await BrowserInfo.whenReady;
-        const isSsbSafari = BrowserInfo.appKind === 'WebServer' && DeviceInfo.isWebKit;
+        const isSsbSafari = BrowserInfo.hostKind === 'WebServer' && DeviceInfo.isWebKit;
         if (!isSsbSafari)
             return;
 
@@ -72,7 +72,7 @@ export class KeepAwakeUI {
         if (noSleep.isNativeWakeLockSupported)
             return;
         await BrowserInfo.whenReady;
-        const isSsbSafari = BrowserInfo.appKind === 'WebServer' && DeviceInfo.isWebKit;
+        const isSsbSafari = BrowserInfo.hostKind === 'WebServer' && DeviceInfo.isWebKit;
         if (!isSsbSafari)
             return;
 
@@ -87,7 +87,7 @@ export class KeepAwakeUI {
 
     public static async subscribeOnFirstInteraction() {
         await BrowserInfo.whenReady;
-        if (BrowserInfo.appKind === 'MauiApp')
+        if (BrowserInfo.hostKind === 'MauiApp')
             return;
         // TODO: find out what's wrong with Interactive - why it breaks user gesture context in safari
         document.body.addEventListener(

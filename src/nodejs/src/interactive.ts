@@ -8,8 +8,8 @@ const { debugLog } = Log.get('Interactive');
 
 export class Interactive {
     private static _isInitialized = false;
-    private static _isInteractive = BrowserInfo.appKind === 'MauiApp';
-    private static _isAlwaysInteractive = BrowserInfo.appKind === 'MauiApp';
+    private static _isInteractive = BrowserInfo.hostKind === 'MauiApp';
+    private static _isAlwaysInteractive = BrowserInfo.hostKind === 'MauiApp';
 
     public static interactionEvents: EventHandlerSet<Event>;
     public static readonly interactionEvent$ = new Observable<Event>(subject => {
