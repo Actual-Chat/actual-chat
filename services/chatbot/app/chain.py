@@ -183,4 +183,14 @@ def create(*,
         checkpointer = memory,
         interrupt_before=["human_input"]
     )
-    return RunnableLambda(user_input) | graph
+
+    def invoke_graph(input_text, config: RunnableConfig) -> State:
+        messages = user_input(input_text)
+        if graph.get_state(config).next==("human_input",):
+            # Update state & resume execution after human input
+            graph.update_state(config, messages, as_node="human_input")
+            return graph.invoke(None, config)
+        # Invoke graph from the start
+        return graph.invoke(messages, config)
+
+    return RunnableLambda(invoke_graph)
