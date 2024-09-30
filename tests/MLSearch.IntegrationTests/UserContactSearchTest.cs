@@ -111,6 +111,20 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // assert
         searchResults.Should()
             .BeEquivalentTo(bob.BuildSearchResults(people.Strangers().ToArray()), o => o.ExcludingSearchMatch());
+
+        // act
+        searchResults = await Find("from u", true);
+
+        // assert
+        searchResults.Should()
+            .BeEquivalentTo(bob.BuildSearchResults(people.Friends().ToArray()), o => o.ExcludingSearchMatch());
+
+        // act
+        searchResults = await Find("from u", false);
+
+        // assert
+        searchResults.Should()
+            .BeEquivalentTo(bob.BuildSearchResults(people.Strangers().ToArray()), o => o.ExcludingSearchMatch());
     }
 
     [Fact]
@@ -136,6 +150,23 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         // act
         searchResults = await Find("us", false, places.JoinedPublicPlace1().Id);
+
+        // assert
+        searchResults.Should()
+            .BeEquivalentTo(
+                bob.BuildSearchResults(people.Stranger1FromPublicPlace1(), people.Stranger2FromPublicPlace1()),
+                o => o.ExcludingSearchMatch());
+
+        // act
+        searchResults = await Find("from u", true, places.JoinedPublicPlace1().Id);
+
+        // assert
+        searchResults.Should()
+            .BeEquivalentTo(bob.BuildSearchResults(people.Friend1FromPublicPlace1(), people.Friend2FromPublicPlace1()),
+                o => o.ExcludingSearchMatch());
+
+        // act
+        searchResults = await Find("from u", false, places.JoinedPublicPlace1().Id);
 
         // assert
         searchResults.Should()
