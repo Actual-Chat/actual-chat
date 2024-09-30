@@ -1,6 +1,66 @@
 @page "/test/place-info"
 @layout DiscoverLayout
+@inherits ComputedStateComponent<PlaceInfoTestPage.Model>
+@{
+    var m = State.Value;
+}
 
 <RequireAccount MustBeAdmin="true"/>
 
-<PlaceInfoPage/>
+<RenderIntoSlot Name="MainLeftDrawer">
+    <div class="discover-left">
+        <LeftPanelButtons/>
+        <PlaceInfoWideLeftPanel Data="@m" OnClick="@OnPlaceClick"/>
+    </div>
+</RenderIntoSlot>
+
+<PlaceInfo PlaceId="@m.SelectedPlaceId"/>
+
+@code {
+    private PlaceId _selectedPlaceId = PlaceId.None;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    private Session Session => Hub.Session();
+    private IPlaces Places => Hub.Places;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = new Model(),
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var navbarSettings = await Hub.ChatUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
+        var placeIds = await Hub.Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
+
+        var maybePlaces = await placeIds
+            .OrderBy(x => navbarSettings.PlacesOrder.IndexOf(x))
+            .Select(id => Hub.Places.Get(Session, id, cancellationToken))
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
+            .ConfigureAwait(false);
+        var places = maybePlaces.SkipNullItems().ToList();
+        if (_selectedPlaceId == PlaceId.None && places.Count > 0)
+            _selectedPlaceId = places[0].Id;
+        return new() {
+            Places = places,
+            SelectedPlaceId = _selectedPlaceId,
+        };
+    }
+
+    private void OnPlaceClick(PlaceId placeId) {
+        if (placeId == PlaceId.None)
+            return;
+        _selectedPlaceId = placeId;
+        State.Recompute();
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public List<Place> Places { get; init; } = [];
+        public PlaceId SelectedPlaceId { get; init; }
+    }
+}
+
