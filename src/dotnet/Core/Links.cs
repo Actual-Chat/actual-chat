@@ -24,6 +24,9 @@ public static class Links
             ? $"/embedded/{chatId.Value}" + ChatEntryQuery(vEntryId)
             : $"/embedded/{chatId.Value}";
 
+    public static LocalUrl PlaceInfo(PlaceId placeId)
+        => $"/place/{placeId.Value}";
+
     public static LocalUrl User(UserId userId)
         => $"/u/{userId.Value.UrlEncode()}";
 

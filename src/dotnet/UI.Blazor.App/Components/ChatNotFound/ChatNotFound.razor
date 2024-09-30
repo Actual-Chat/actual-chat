@@ -4,8 +4,13 @@
     <div class="c-wrapper">
         <chat-not-found-svg/>
         <div class="text-wrapper">
-            <p>Chat not found.</p>
-            <p>Choose another one.</p>
+            @if (Target is TargetKind.Chat) {
+                <p>Chat not found.</p>
+                <p>Choose another one.</p>
+            } else {
+                <p>Place not found.</p>
+                <p>Choose another one.</p>
+            }
         </div>
     </div>
 </div>
@@ -21,4 +26,7 @@
 
 @code {
     [Parameter] public bool ShowSignIn { get; set; }
+    [Parameter] public TargetKind Target { get; set; } = TargetKind.Chat;
+
+    public enum TargetKind { Chat, Place }
 }

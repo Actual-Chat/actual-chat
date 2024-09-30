@@ -85,12 +85,15 @@
             return Model.None;
 
         var entry = entryId.IsNone ? chatState.Info.LastTextEntry : await ChatUI.GetEntry(entryId, cancellationToken);
+        var link = !entryId.IsNone ? Links.Chat(chatId, entry?.LocalId)
+            : chatId.IsPlaceChat ? Links.PlaceInfo(chatId.PlaceId)
+            : Links.Chat(chatId);
         return new() {
             ChatState = chatState,
             TitleMatch = titleMatch.IsEmpty ? SearchMatch.New(chatState.Chat.Title) : titleMatch,
             MessageMatch = messageMatch.IsEmpty ? SearchMatch.New(chatState.Info.LastTextEntryText) : messageMatch,
             Entry = entry,
-            Link = entryId.IsNone ? Links.Chat(chatState.Id): Links.Chat(chatState.Id, entry?.LocalId),
+            Link = link,
         };
     }
 

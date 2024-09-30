@@ -12,107 +12,105 @@
     var isPublic = m.Place.IsPublic;
 }
 
-<div class="place-info-wrapper">
-    <div class="place-info">
-        <div class="c-top">
-            <div class="pic-wrapper">
-                @{
-                    var picture = m.Place.Background ?? m.Place.Picture;
-                    var isBlurred = m.Place.Background == null;
-                }
-                <Pic
-                    Picture="@picture.ToPicture()"
-                    Size="@SquareSize.SizeFull"
-                    IsSquare="@true"
-                    IsBlurred="@isBlurred"
-                    AvatarKind="@AvatarKind.Marble"
-                    AvatarKey="@m.Place.Id.Value"/>
-            </div>
-            <div class="c-incut h-5"></div>
-            <div class="c-subheader">
-                <Pic
-                    Class="place-avatar"
-                    Picture="@m.Place.Picture.ToPicture()"
-                    Size="@SquareSize.Size16"
-                    IsSquare="@true"
-                    IsBlurred="@false"
-                    AvatarKind="@AvatarKind.Marble"
-                    AvatarKey="@m.Place.Id.Value"/>
+<div class="place-info">
+    <div class="c-top">
+        <div class="pic-wrapper">
+            @{
+                var picture = m.Place.Background ?? m.Place.Picture;
+                var isBlurred = m.Place.Background == null;
+            }
+            <Pic
+                Picture="@picture.ToPicture()"
+                Size="@SquareSize.SizeFull"
+                IsSquare="@true"
+                IsBlurred="@isBlurred"
+                AvatarKind="@AvatarKind.Marble"
+                AvatarKey="@m.Place.Id.Value"/>
+        </div>
+        <div class="c-incut h-5"></div>
+        <div class="c-subheader">
+            <Pic
+                Class="place-avatar"
+                Picture="@m.Place.Picture.ToPicture()"
+                Size="@SquareSize.Size16"
+                IsSquare="@true"
+                IsBlurred="@false"
+                AvatarKind="@AvatarKind.Marble"
+                AvatarKey="@m.Place.Id.Value"/>
 
-                <div class="c-buttons">
-                    <ButtonRound Class="btn-sm join-btn" ContentClass="gap-x-2">
-                        <i class="icon-person-add text-xl"></i>
-                        <span>Join</span>
-                    </ButtonRound>
-                    <ButtonRound Class="btn-sm">
-                        <i class="icon-message-ellipse text-xl"></i>
-                    </ButtonRound>
-                    <ButtonRound Class="btn-sm">
-                        <i class="icon-more-vertical text-xl"></i>
-                    </ButtonRound>
-                </div>
+            <div class="c-buttons">
+                <ButtonRound Class="btn-sm join-btn" ContentClass="gap-x-2">
+                    <i class="icon-person-add text-xl"></i>
+                    <span>Join</span>
+                </ButtonRound>
+                <ButtonRound Class="btn-sm">
+                    <i class="icon-message-ellipse text-xl"></i>
+                </ButtonRound>
+                <ButtonRound Class="btn-sm">
+                    <i class="icon-more-vertical text-xl"></i>
+                </ButtonRound>
             </div>
         </div>
-        <div class="c-center">
-            <div class="c-title">
-                @m.Place.Title
-            </div>
-            <div class="c-info">
-                <span>@m.MemberCount @("Member".Pluralize(m.MemberCount))</span>
-                <DotSeparator/>
-                <span>@(isPublic ? "Public" : "Private")</span>
-                @if (isPublic) {
-                    <i class="icon-globe"></i>
-                } else {
-                    <i class="icon-lock"></i>
-                }
-            </div>
-            @if (!string.IsNullOrEmpty(m.Place.Description)) {
-                <div class="c-description">
-                    @m.Place.Description
-                </div>
-            } else if (m.EnableIncompleteUI) {
-                <div class="c-description">
-                    (Seen only for developers) Five generations, one family. We understand family because we are family. This is the family which has led
-                    SC Johnson for generations and these are their stories.
-                </div>
-            }
-            @if (m.EnableIncompleteUI) {
-                <div class="c-incut"></div>
-                <div class="c-follow-info">
-                    <div class="c-followers">
-                        <span>1264</span>
-                        <span class="c-text">Followers</span>
-                    </div>
-                    <div class="c-following">
-                        <span>147</span>
-                        <span class="c-text">Following</span>
-                    </div>
-                    <div class="c-followed-by">
-                        <div class="flex-x items-center">
-                            <span class="z-20 flex-none w-4 h-4 rounded-full bg-primary"></span>
-                            <span class="z-10 flex-none w-4 h-4 -ml-2 rounded-full bg-danger"></span>
-                            <span class="flex-none w-4 h-4 -ml-2 rounded-full bg-online"></span>
-                        </div>
-                        <span>Followed by Jack Black, Margo White and 25 others</span>
-                    </div>
-                </div>
+    </div>
+    <div class="c-center">
+        <div class="c-title">
+            @m.Place.Title
+        </div>
+        <div class="c-info">
+            <span>@m.MemberCount @("Member".Pluralize(m.MemberCount))</span>
+            <DotSeparator/>
+            <span>@(isPublic ? "Public" : "Private")</span>
+            @if (isPublic) {
+                <i class="icon-globe"></i>
+            } else {
+                <i class="icon-lock"></i>
             }
         </div>
-        <div class="c-bottom">
-            <TabPanel
-                @key="@m.Place.Id.Value"
-                TabsClass="left-panel-tabs wide-left-panel-tabs"
-                BottomHill="true">
+        @if (!string.IsNullOrEmpty(m.Place.Description)) {
+            <div class="c-description">
+                @m.Place.Description
+            </div>
+        } else if (m.EnableIncompleteUI) {
+            <div class="c-description">
+                (Seen only for developers) Five generations, one family. We understand family because we are family. This is the family which has led
+                SC Johnson for generations and these are their stories.
+            </div>
+        }
+        @if (m.EnableIncompleteUI) {
+            <div class="c-incut"></div>
+            <div class="c-follow-info">
+                <div class="c-followers">
+                    <span>1264</span>
+                    <span class="c-text">Followers</span>
+                </div>
+                <div class="c-following">
+                    <span>147</span>
+                    <span class="c-text">Following</span>
+                </div>
+                <div class="c-followed-by">
+                    <div class="flex-x items-center">
+                        <span class="z-20 flex-none w-4 h-4 rounded-full bg-primary"></span>
+                        <span class="z-10 flex-none w-4 h-4 -ml-2 rounded-full bg-danger"></span>
+                        <span class="flex-none w-4 h-4 -ml-2 rounded-full bg-online"></span>
+                    </div>
+                    <span>Followed by Jack Black, Margo White and 25 others</span>
+                </div>
+            </div>
+        }
+    </div>
+    <div class="c-bottom">
+        <TabPanel
+            @key="@m.Place.Id.Value"
+            TabsClass="left-panel-tabs wide-left-panel-tabs"
+            BottomHill="true">
 
-                <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
-                    <ChatList @key="@m.Place.Id.Value" PlaceId="@m.Place.Id" />
-                </Tab>
-                <Tab @key="@("members")" Id="members" Title="Members" Order="1">
-                    <PlaceInfoMembersTab Data="@m"/>
-                </Tab>
-            </TabPanel>
-        </div>
+            <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
+                <ChatList @key="@m.Place.Id.Value" PlaceId="@m.Place.Id" />
+            </Tab>
+            <Tab @key="@("members")" Id="members" Title="Members" Order="1">
+                <PlaceInfoMembersTab Data="@m"/>
+            </Tab>
+        </TabPanel>
     </div>
 </div>
 
