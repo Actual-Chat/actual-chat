@@ -1,0 +1,71 @@
+@page "/place/{PlaceSid}"
+@inherits ComputedStateComponent<PlaceInfoPage.Model>
+@layout ListViewLayout
+@{
+    var m = _rendered = State.Value;
+    var place = m.Place;
+    // Log.LogDebug("Rendered for #{PlaceId}", chat.Id);
+}
+@if (ReferenceEquals(place, SpecialPlace.Loading)) {
+    <chat-view-skeleton count="15" />
+    return;
+}
+@if (ReferenceEquals(place, SpecialPlace.NoPlaceSelected)) {
+    <div class="no-chat-body">
+        Select a place.
+    </div>
+} else if (ReferenceEquals(place, SpecialPlace.Unavailable)) {
+    <ChatNotFound ShowSignIn="@false" Target="@ChatNotFound.TargetKind.Place" />
+} else {
+    <PlaceInfo PlaceId="@m.Place.Id" />
+}
+
+@code {
+    private ILogger? _log;
+    private Model? _rendered;
+
+    [Inject] protected ChatUIHub Hub { get; init; } = null!;
+    protected Session Session => Hub.Session();
+    protected IPlaces Places => Hub.Places;
+    protected ILogger Log => _log ??= Hub.LogFor(GetType());
+
+    [Parameter] public string? PlaceSid { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = !PlaceSid.IsNullOrEmpty() ? Model.Loading : new Model(SpecialPlace.NoPlaceSelected),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var placeSid = PlaceSid;
+
+        if (placeSid.IsNullOrEmpty())
+            return new Model(SpecialPlace.NoPlaceSelected);
+
+        if (!PlaceId.TryParse(placeSid, out var placeId))
+            return Model.Unavailable;
+
+        try {
+            var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+            return place is not null ? new Model(place) : Model.Unavailable;
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to get Place #{PlaceId}", placeId);
+            this.NotifyStateHasChanged();
+            return Model.Unavailable;
+        }
+    }
+
+    protected override bool ShouldRender()
+        => ReferenceEquals(_rendered, null)
+            || State.HasError
+            || State.Value != _rendered;
+
+    // Nested types
+
+    public sealed record Model(Place Place) {
+        public static Model Loading = new (SpecialPlace.Loading);
+        public static Model Unavailable = new (SpecialPlace.Unavailable);
+    }
+}
