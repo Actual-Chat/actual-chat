@@ -3,13 +3,12 @@
 @inherits ComputedStateComponent<NotifyAllButton.Model>
 @{
     var m = State.Value;
-    if (!m.IsVisible)
-        return;
 }
 
 <ButtonRound
     Class="post-panel-btn notify-call-btn btn-xs btn-transparent btn-primary"
     Tooltip="Notify All"
+    IsDisabled="@(!m.IsActive)"
     TooltipPosition="FloatingPosition.Top"
     Click="@OnNotifyAllClick">
     <i class="icon-notify-phone text-2xl"></i>
@@ -52,10 +51,6 @@
         if (chatIdRange.IsEmpty)
             return new Model(false); // Disabled if no messages yet.
 
-        var authorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (authorIds.Count > 10)
-            return new Model(false); // Always disabled for middle and large groups.
-
         var readPositionsStat = await Chats.GetReadPositionsStat(Session, chatId, cancellationToken).ConfigureAwait(false);
         var isRecentDuration = TimeSpan.FromSeconds(10);
         var oldMessageBeginsAtThreshold = Clock.Now - isRecentDuration;
@@ -64,6 +59,9 @@
         var foundEntry = await chatEntryReader.GetLast(
                 chatIdRange,
                 x => {
+                    if (x.AuthorId.LocalId < 0)
+                        return false; // Ignore Bot's and System messages. Continue search.
+
                     var isOwnEntry = x.AuthorId == ownAuthor.Id;
                     if (isOwnEntry)
                         return true; // Found own message.
@@ -141,5 +139,5 @@
 
     // Nested types
 
-    public sealed record Model(bool IsVisible, bool IsUnread = false);
+    public sealed record Model(bool IsActive, bool IsUnread = false);
 }
