@@ -712,8 +712,7 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
     }
 
     public pauseRef(): void {
-        const hasUsedRefs = this.hasRefsInUse;
-        if (!hasUsedRefs)
+        if (!this.hasRefsInUse)
             this.suspendContextDebounced();
     }
 

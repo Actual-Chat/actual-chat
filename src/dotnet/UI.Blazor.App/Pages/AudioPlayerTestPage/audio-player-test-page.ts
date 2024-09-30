@@ -50,7 +50,7 @@ export class AudioPlayerTestPage {
     }
 
     public static async create(blazorRef: DotNet.DotNetObject): Promise<AudioPlayerTestPage> {
-        const player = await AudioPlayer.create(blazorRef, '0');
+        const player = await AudioPlayer.create(blazorRef, '0', 312);
         const codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
         return new AudioPlayerTestPage(blazorRef, player, codecModule);
     }
