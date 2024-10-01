@@ -1,0 +1,40 @@
+.chat-view-search-results-navigator {
+    @apply relative z-button;
+}
+
+/* Animation */
+.chat-view-search-results-navigator.off-to-on {
+    @apply opacity-100 transition-all ease-in-out duration-300;
+}
+.chat-view-search-results-navigator.on-to-off {
+    @apply opacity-0 translate-y-4 transition-all ease-in-out duration-300;
+}
+.chat-view-search-results-navigator.off {
+    @apply opacity-0 translate-y-4;
+}
+
+.chat-view-search-results-navigator > .c-content {
+    @apply absolute bottom-3 md:bottom-0 right-3 md:mb-2 z-10;
+    @apply flex-y items-center justify-center gap-y-3 shadow-scrollbar;
+}
+.chat-view-search-results-navigator .unread-counter {
+    @apply -mb-2 z-10;
+    @apply text-06 cursor-pointer;
+}
+.chat-view-search-results-navigator .btn.btn-round {
+    @apply shadow-md md:shadow-none;
+}
+.chat-view-search-results-navigator .btn.btn-round {
+    @apply font-bold text-4xl;
+}
+/* Hover */
+body.hoverable .chat-view-search-results-navigator .btn.btn-round:hover {
+    @apply bg-round;
+}
+/* Active */
+.chat-view-search-results-navigator .btn.btn-round:active,
+.chat-view-search-results-navigator .btn.btn-round:hover:active,
+.chat-view-search-results-navigator .btn.btn-round:focus:active,
+.chat-view-search-results-navigator .btn.btn-round:hover:focus:active {
+    @apply bg-round;
+}

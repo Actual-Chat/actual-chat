@@ -9,12 +9,11 @@
 
     var chatState = m.ChatState;
 }
-@* TODO: merge with ChatListItem or at least refactor and extract common parts *@
 @if (m == Model.Loading) {
     <ChatListItemSkeleton />
 } else {
     <div class="navbar-item found-chat">
-        <div class="navbar-item-content" data-href="@m.Link">
+        <div class="navbar-item-content" data-href="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
             <div class="c-container">
                 <ChatIcon Chat="chatState.Chat"/>
                 <div class="c-description">
@@ -48,7 +47,7 @@
                 LastEntry="@chatState.Info.LastTextEntry"
                 HideLastEntryTime="@(chatState.IsListening || chatState.IsRecording)"
                 NotificationMode="@chatState.Info.UserSettings.NotificationMode"
-                HasMentions="chatState.Info.HasUnreadMentions"/>
+                HasMentions="chatState.Info.HasUnreadMentions" />
         </div>
     </div>
 }
@@ -59,10 +58,7 @@
     private SearchUI SearchUI => Hub.SearchUI;
     private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
-    [Parameter] public TextEntryId EntryId { get; set; } = TextEntryId.None;
-    [Parameter] public SearchMatch TitleSearchMatch { get; set; } = SearchMatch.Empty;
-    [Parameter] public SearchMatch MessageSearchMatch { get; set; } = SearchMatch.Empty;
+    [Parameter] public FoundItem Item { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -75,25 +71,20 @@
     {
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.
-        var chatId = ChatId;
-        var titleMatch = TitleSearchMatch;
-        var messageMatch = MessageSearchMatch;
-        var entryId = EntryId;
+        var item = Item;
 
-        var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
+        var chatState = await ChatUI.GetState(item.ChatId, false, cancellationToken).ConfigureAwait(false);
         if (chatState == null)
             return Model.None;
 
-        var entry = entryId.IsNone ? chatState.Info.LastTextEntry : await ChatUI.GetEntry(entryId, cancellationToken);
-        var link = !entryId.IsNone ? Links.Chat(chatId, entry?.LocalId)
-            : chatId.IsPlaceChat ? Links.PlaceInfo(chatId.PlaceId)
-            : Links.Chat(chatId);
+        var entry = item.EntryId.IsNone ? chatState.Info.LastTextEntry : await ChatUI.GetEntry(item.EntryId, cancellationToken);
         return new() {
             ChatState = chatState,
-            TitleMatch = titleMatch.IsEmpty ? SearchMatch.New(chatState.Chat.Title) : titleMatch,
-            MessageMatch = messageMatch.IsEmpty ? SearchMatch.New(chatState.Info.LastTextEntryText) : messageMatch,
+            TitleMatch = item.ContactSearchMatch.IsEmpty ? SearchMatch.New(chatState.Chat.Title) : item.ContactSearchMatch,
+            MessageMatch = item.MessageSearchMatch.IsEmpty ? SearchMatch.New(chatState.Info.LastTextEntryText) : item.MessageSearchMatch,
             Entry = entry,
-            Link = link,
+            Link = item.Link,
+            Item = item,
         };
     }
 
@@ -108,5 +99,6 @@
         public SearchMatch MessageMatch { get; init; } = SearchMatch.Empty;
         public ChatEntry? Entry { get; init; }
         public LocalUrl Link { get; init; }
+        public FoundItem Item { get; init; } = null!;
     }
 }

@@ -19,9 +19,7 @@
 </VirtualList>
 
 <RenderIntoStack Name="SubFooter" Order="-1000_000" Key="NavigateToEndSubFooter">
-    <NavigateToUnreadOrEnd
-        ChatContext="@ChatContext"
-        ChatView="@this" />
+    <ChatViewNavigationPanel ChatContext="@ChatContext" ChatView="@this" />
 </RenderIntoStack>
 
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="DateVisor">

@@ -15,11 +15,7 @@
                 Scope="foundItem.Scope" />
         }
 
-        <FoundChat @key="@foundItem.SearchResult.Id"
-                   ChatId="foundItem.ChatId"
-                   EntryId="foundItem.EntryId"
-                   TitleSearchMatch="foundItem.ContactSearchMatch"
-                   MessageSearchMatch="foundItem.MessageSearchMatch" />
+        <FoundChat @key="@foundItem.SearchResult.Id" Item="@foundItem" />
         @if (foundItem.IsLastInGroup) {
             <Divider Class="mx-1 my-1.5" />
         }

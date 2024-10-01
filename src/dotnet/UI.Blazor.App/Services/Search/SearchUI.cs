@@ -12,11 +12,14 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     private readonly MutableState<string> _text;
     private readonly MutableState<PlaceId> _placeId;
     private readonly MutableState<bool> _isSearchModeOn;
+    private readonly MutableState<bool> _isResultsNavigationOn;
 
     public IMutableState<string> Text => _text;
     public IMutableState<PlaceId> PlaceId => _placeId;
     public IState<bool> IsSearchModeOn => _isSearchModeOn;
+    public IState<bool> IsResultsNavigationOn => _isResultsNavigationOn;
     private IMutableState<ImmutableHashSet<SearchScope>> ExtendedLimits { get; }
+    private History History => Hub.History;
     private ISearch Search => Hub.Search;
     private NavbarUI NavbarUI => Hub.NavbarUI;
     private UIEventHub UIEventHub => Hub.UIEventHub();
@@ -27,6 +30,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         _text = stateFactory.NewMutable("", StateCategories.Get(GetType(), nameof(Text)));
         _placeId = stateFactory.NewMutable(ActualChat.PlaceId.None, StateCategories.Get(GetType(), nameof(_placeId)));
         _isSearchModeOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchModeOn)));
+        _isResultsNavigationOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsResultsNavigationOn)));
         ExtendedLimits = stateFactory
             .NewMutable(ImmutableHashSet<SearchScope>.Empty, StateCategories.Get(GetType(), nameof(ExtendedLimits)));
         NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;
@@ -91,9 +95,50 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         PlaceId.Value = NavbarUI.IsPlaceSelected(out var placeId) ? placeId : ActualChat.PlaceId.None;
     }
 
-    private sealed record Cached(Criteria Criteria, IReadOnlyList<FoundItem> FoundItems)
+    public void Select(FoundItem foundItem)
     {
-        public static readonly Cached None = new (Criteria.None, []);
+        if (_cached.TrySelect(foundItem))
+            _isResultsNavigationOn.Value = true;
+    }
+
+    public Task SelectPrevious()
+        => NavigateTo(_cached.SelectPrevious());
+
+    public Task SelectNext()
+        => NavigateTo(_cached.SelectNext());
+
+    private Task NavigateTo(FoundItem? foundItem)
+        => foundItem is not null ? History.NavigateTo(foundItem.Link) : Task.CompletedTask;
+
+    // Nested types
+
+    private sealed class Cached(List<FoundItem> foundItems)
+    {
+        private int _activeIndex = -1;
+        public IReadOnlyList<FoundItem> FoundItems { get; } = foundItems;
+        public static readonly Cached None = new ([]);
+
+        public bool TrySelect(FoundItem foundItem)
+        {
+            var i = foundItems.IndexOf(foundItem);
+            if (i < 0)
+                return false;
+
+            _activeIndex = i;
+            return true;
+        }
+
+        public FoundItem? SelectPrevious()
+        {
+            _activeIndex = foundItems.PreviousIndexOrLast(_activeIndex);
+            return foundItems.GetValueOrDefault(_activeIndex);
+        }
+
+        public FoundItem? SelectNext()
+        {
+            _activeIndex = foundItems.NextIndexOrFirst(_activeIndex);
+            return foundItems.GetValueOrDefault(_activeIndex);
+        }
     }
 
     protected sealed record Criteria(string Text, PlaceId PlaceId, ImmutableHashSet<SearchScope> ExtendedLimits)

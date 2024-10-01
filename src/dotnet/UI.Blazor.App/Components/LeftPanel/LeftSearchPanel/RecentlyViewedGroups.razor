@@ -13,8 +13,8 @@
     </div>
     <div class="chat-list">
         @foreach (var chatInfo in chats) {
-            // TODO: reuse ChatListItem???
-            <FoundChat @key="chatInfo.Id" ChatId="chatInfo.Id" />
+            // TODO: replace with chat item for search results
+            <ChatListItem Chat="chatInfo.Chat" ListKind="ChatListKind.All" />
         }
     </div>
 </div>
@@ -24,6 +24,7 @@
     private IChatUsages ChatUsages => Hub.ChatUsages;
     private IChats Chats => Hub.Chats;
     private ChatUI ChatUI => Hub.ChatUI;
+    private History History => Hub.History;
 
     [Parameter] public string Title { get; set; } = "Recently viewed";
     [Parameter] public ChatUsageListKind ListKind { get; set; } = ChatUsageListKind.ViewedGroupChats;
