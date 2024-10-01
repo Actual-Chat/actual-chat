@@ -70,4 +70,20 @@ public static class ListExt
             removed.Release();
         }
     }
+
+    public static int NextIndexOrFirst<T>(this IReadOnlyList<T> list, int i)
+    {
+        if (list.Count == 0)
+            return -1;
+
+        return ++i >= list.Count ? 0 : i;
+    }
+
+    public static int PreviousIndexOrLast<T>(this IReadOnlyList<T> list, int i)
+    {
+        if (list.Count == 0)
+            return -1;
+
+        return --i < 0 ? list.Count - 1 : i;
+    }
 }

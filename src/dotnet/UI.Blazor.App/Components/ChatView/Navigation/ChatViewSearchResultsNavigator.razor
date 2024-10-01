@@ -1,0 +1,18 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="chat-view-search-results-navigator">
+    <div class="c-content">
+        <ButtonRound Tooltip="Navigate to previous search result" Click="@SearchUI.SelectPrevious">
+            <i class="icon-chevron-compact-up text-2xl font-thin"></i>
+        </ButtonRound>
+        <ButtonRound Tooltip="Navigate to next search result" Click="@SearchUI.SelectNext">
+            <i class="icon-chevron-compact-down text-2xl font-thin"></i>
+        </ButtonRound>
+    </div>
+</div>
+
+@code {
+    private SearchUI SearchUI => ChatContext.Hub.SearchUI;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+}

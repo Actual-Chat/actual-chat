@@ -21,6 +21,8 @@
 @import './Components/ChatView/Items/Reactions/reaction-badge.css';
 @import './Components/ChatView/Items/Reactions/message-reactions.css';
 @import './Components/ChatView/chat-view.css';
+@import './Components/ChatView/Navigation/navigate-to-unread-or-end.css';
+@import './Components/ChatView/Navigation/chat-view-search-results-navigator.css';
 @import './Components/ChatMessageEditor/chat-message-editor.css';
 @import './Components/ChatSearchBox/chat-search-box.css';
 @import './Components/DateVisor/date-visor.css';
@@ -31,7 +33,6 @@
 @import './Components/MarkupEditor/markup-editor.css';
 @import './Components/MarkupParts/markup-parts.css';
 @import './Components/Navbar/navbar.css';
-@import './Components/NavigateToUnreadOrEnd/navigate-to-unread-or-end.css';
 @import './Components/NewChat/new-chat-modal.css';
 @import './Components/NewPlace/new-place-modal.css';
 @import './Components/PlaceSettings/place-settings-modal.css';

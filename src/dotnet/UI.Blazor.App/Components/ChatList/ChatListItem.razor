@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI
 @inherits ComputedRenderStateComponent<ChatListItem.Model>
 @{
     var m = State.Value;
@@ -126,10 +125,7 @@
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ChatUI ChatUI => Hub.ChatUI;
-    private ChatListUI ChatListUI => Hub.ChatListUI;
-    private SearchUI SearchUI => Hub.SearchUI;
     private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
-    private IAuthors Authors => Hub.Authors;
     private IChats Chats => Hub.Chats;
     private Session Session => Hub.Session();
 

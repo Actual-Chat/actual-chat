@@ -1,0 +1,33 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<ChatViewNavigationPanel.Model>
+@{
+    var m = State.Value;
+}
+
+@if (m.ShowSearchResultsNavigator) {
+    <ChatViewSearchResultsNavigator ChatContext="@ChatContext"/>
+} else {
+    <NavigateToUnreadOrEnd
+        ChatContext="@ChatContext"
+        ChatView="ChatView" />
+}
+
+@code {
+    private SearchUI SearchUI => ChatContext.Hub.SearchUI;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
+    [CascadingParameter] private ScreenSize ScreenSize { get; set; }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (!ScreenSize.IsNarrow())
+            return new Model(false);
+
+        var hasSearchResults = await SearchUI.IsResultsNavigationOn.Use(cancellationToken).ConfigureAwait(false);
+        return new Model(hasSearchResults);
+    }
+
+    // Nested types
+
+    public sealed record Model(bool ShowSearchResultsNavigator);
+}

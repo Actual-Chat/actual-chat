@@ -60,7 +60,8 @@ public partial class SearchUI
             }
         }
         _isSearchModeOn.Value = !criteria.Text.IsNullOrEmpty();
-        _cached = new Cached(criteria, foundItems);
+        _isResultsNavigationOn.Value = false;
+        _cached = new Cached(foundItems);
         using (Invalidation.Begin())
             _ = GetSearchResults();
     }
