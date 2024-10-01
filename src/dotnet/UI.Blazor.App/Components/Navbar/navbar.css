@@ -89,9 +89,6 @@ body.narrow .navbar-button .btn-square {
     @apply px-2;
     @apply rounded-lg;
 }
-.navbar-item.high-item {
-    @apply h-14;
-}
 .navbar-item .navbar-item-content {
     @apply flex-1 flex-x;
     @apply h-full;

@@ -6,46 +6,34 @@
     var m = State.Value;
     if (m == Model.None)
         return;
+
     if (ReferenceEquals(FoundItem, null))
         return;
 
     var chatState = m.ChatState;
-    var chat = chatState.Chat;
-    var place = m.Place;
+    if (ReferenceEquals(m.Place, null) || m.Place.Id.IsNone)
+        return;
 }
 
 @if (m == Model.Loading) {
     <ChatListItemSkeleton />
 } else {
-    <div class="navbar-item found-chat">
-        <div class="navbar-item-content" data-href="@m.Link">
+    <div class="found-result place">
+        <div class="c-content" data-href="@m.Link">
             <div class="c-container">
                 <ChatIcon Chat="chatState.Chat"/>
                 <div class="c-description">
-                    <span class="c-chat-title">
-                        <SearchMatchHighlighter Match="@m.TitleMatch"/>
-                    </span>
-                    @if (m.Place != null) {
-                        <div class="c-place-info text-caption-3">
-                            @m.Place.Title
-                        </div>
-                    }
-                    @if (lastTextEntry != null) {
-                        <div class="c-last-message">
-                            @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
-                                <span class="c-name">
-                                    <AuthorName
-                                        AuthorSid="@lastTextEntry.AuthorId"
-                                        ShowDetailsOnClick="false"
-                                        ShowAsYou="true"/>
-                                </span>
-                                <span class="c-colon">:</span>
-                            }
-                            <span class="c-text @textCls">
-                                @text
-                            </span>
-                        </div>
-                    }
+                    <div class="c-first-line">
+                        <span class="c-title">
+                            <SearchMatchHighlighter Match="@m.TitleMatch"/>
+                        </span>
+                        <span class="c-members">@m.MemberCount @("member".Pluralize(m.MemberCount))</span>
+                    </div>
+                    <div class="c-second-line two-line">
+                        <p class="line-clamp-2">
+                            @m.Place.Description
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -55,11 +43,7 @@
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ChatUI ChatUI => Hub.ChatUI;
-    private ChatListUI ChatListUI => Hub.ChatListUI;
-    private SearchUI SearchUI => Hub.SearchUI;
-    private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
     private IAuthors Authors => Hub.Authors;
-    private IChats Chats => Hub.Chats;
     private IPlaces Places => Hub.Places;
     private Session Session => Hub.Session();
 
@@ -91,17 +75,18 @@
         if (placeId.IsNone)
             return Model.None;
 
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (ownAuthor == null || ownAuthor.Id.IsNone)
+        var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+        if (place == null)
             return Model.None;
 
-        var place = await Places.Get(Session, placeId, ownAuthor.Id, cancellationToken).ConfigureAwait(false);
-
+        var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
         var welcomeChatId = await Places.GetWelcomeChatId(Session, chatId.PlaceChatId.PlaceId, cancellationToken).ConfigureAwait(false);
 
         return new() {
             ChatState = chatState,
             TitleMatch = titleMatch.IsEmpty ? SearchMatch.New(chatState.Chat.Title) : titleMatch,
+            Place = place,
+            MemberCount = allAuthorIds.Count,
             Link = Links.Chat(welcomeChatId),
         };
     }
@@ -115,6 +100,7 @@
         public ChatState ChatState { get; init; } = ChatState.None;
         public SearchMatch TitleMatch { get; init; } = SearchMatch.Empty;
         public Place? Place { get; init; }
+        public int MemberCount { get; init; }
         public LocalUrl Link { get; init; }
     }
 }

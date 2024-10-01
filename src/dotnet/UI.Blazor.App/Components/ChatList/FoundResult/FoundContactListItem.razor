@@ -1,177 +1,128 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Search
 @using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI
+@using ActualChat.Contacts
 @inherits ComputedRenderStateComponent<FoundContactListItem.Model>
 @{
     var m = State.Value;
-    var chat = m.Chat ?? Chat;
-    DebugLog?.LogDebug("Rendered: #{ChatTitle}, ChatId='{ChatId}'", chat.Title, chat.Id);
-    var lastTextEntry = m.LastTextEntry;
-    var audioState = m.AudioState;
-    var isListeningOrRecording = audioState.IsListening || audioState.IsRecording;
-    var text = string.IsNullOrEmpty(m.LastTextEntryText) ? "There is no messages yet." : m.LastTextEntryText;
-    var textCls = m.Chat?.Kind == ChatKind.Peer ? "two-line" : "";
-    _renderedModel = m;
+    if (m == Model.None)
+        return;
+
+    if (ReferenceEquals(FoundItem, null))
+        return;
+
+    var chatState = m.ChatState;
+    var chat = chatState.Chat;
+    if (ReferenceEquals(chat, null))
+        return;
 }
 
-<NavbarItem
-    Class="high-item"
-    Url="@($"/chat/{chat.Id}")"
-    ReplaceOnPrefix="/chat/"
-    IsSelected="@m.IsSelected">
-    <ChildContent>
-        <div class="c-container">
-            <ChatIcon Chat="@chat" ShowPresence="@true"/>
-            <div class="c-description">
-                <span class="c-chat-title">
-                    <span>@chat.Title</span>
-                    <span class="c-incut"></span>
-                    @if (lastTextEntry != null && !isListeningOrRecording) {
-                        <LastEntryTime LastEntry="@lastTextEntry"/>
-                    }
-                </span>
-                @if (m.Place != null) {
-                    <div class="c-place-info text-caption-3">
-                        @m.Place.Title
-                    </div>
-                }
-                @if (lastTextEntry != null) {
-                    <div class="c-last-message">
-                        @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
-                            <span class="c-name">
-                                <AuthorName
-                                    AuthorSid="@lastTextEntry.AuthorId"
-                                    ShowDetailsOnClick="false"
-                                    ShowAsYou="true"/>
-                            </span>
-                            <span class="c-colon">:</span>
-                        }
-                        <span class="c-text @textCls">
-                            @text
+@if (m == Model.Loading) {
+    <ChatListItemSkeleton />
+} else {
+    <div class="found-result contact">
+        <div class="c-content" data-href="@m.Link">
+            <div class="c-container">
+                <ChatIcon Chat="@chatState.Chat"/>
+                <div class="c-description">
+                    <div class="c-first-line">
+                        <span class="c-title">
+                            <SearchMatchHighlighter Match="@m.TitleMatch"/>
                         </span>
                     </div>
-                }
+                    <div class="c-second-line bio">
+                        @m.Author?.Avatar.Bio
+                    </div>
+                    @if (m.Entry != null) {
+                        <div class="c-third-line">
+                            <div class="c-last-message">
+                                <AuthorName
+                                    AuthorSid="@m.Entry.AuthorId"
+                                    ShowDetailsOnClick="false"
+                                    ShowAsYou="true"/>
+                                <span class="c-colon">:</span>
+                                @if (m.Entry.IsStreaming) {
+                                    <chat-activity-svg size="4" isActive="true"/>
+                                } else {
+                                    <span class="c-text">
+                                        @m.ChatState.Info.LastTextEntryText
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
             </div>
         </div>
-    </ChildContent>
-    <Ending/>
-</NavbarItem>
+    </div>
+}
 
 @code {
-    // Settings data-bubble attributes inside a component instead providing them from ChatList as additional attributes,
-    // allows to avoid unnecessary OnParametersSet call during rendering ChatList and correspondingly
-    // it allows to avoid extra ComputeState call and Rendering.
-    private ILogger? _log;
-    private Model? _renderedModel;
-    private ChatEntryId _hasBeenReadEntryId;
-
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ChatUI ChatUI => Hub.ChatUI;
-    private ChatListUI ChatListUI => Hub.ChatListUI;
-    private SearchUI SearchUI => Hub.SearchUI;
-    private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
     private IAuthors Authors => Hub.Authors;
-    private IChats Chats => Hub.Chats;
-    private IPlaces Places => Hub.Places;
+    private AccountUI AccountUI => Hub.AccountUI;
     private Session Session => Hub.Session();
 
-    private ILogger Log => _log ??= Hub.LogFor(GetType());
-    private ILogger? DebugLog => Constants.DebugMode.ChatListRelated ? Log : null;
-
-    [Parameter, EditorRequired] public ChatListKind ListKind { get; set; } = ChatListKind.All;
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
-    [Parameter] public bool IsLastItemInBlock { get; set; }
-    [Parameter] public bool IsFirstItem { get; set; }
-
-    public FoundContactListItem()
-        => Options = ComputedStateComponentOptions.RecomputeStateOnParameterChange;
-
-    // protected override void OnInitialized() {
-    //     DebugLog?.LogDebug("OnInitialized: {ListKind} #{Index}", ListKind, Index);
-    // }
-    //
-    // protected override void OnParametersSet() {
-    //     DebugLog?.LogDebug("OnParametersSet: {ListKind} #{Index}", ListKind, Index);
-    // }
-
-    protected override bool ShouldRender() {
-        if (_renderedModel == null)
-            return true;
-
-        var m = State.LastNonErrorValue;
-        var isTheSame = m == _renderedModel;
-        return !isTheSame;
-    }
+    [Parameter] public FoundItem? FoundItem { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<Model>.Options {
-                InitialValue = new (),
-                UpdateDelayer = FixedDelayer.NextTick,
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
-         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
-         // Properties are copied to local vars because of this.
-        var chat = Chat;
-        var chatTitle = chat.Title;
-        var chatId = chat.Id;
-        var placeId = chatId.PlaceChatId.PlaceId;
-        var place = placeId.IsNone ? null : await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
-        DebugLog?.LogDebug("-> ComputeState: #{ChatTitle}", chatTitle);
-        var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
-        if (chatState == null) {
-            DebugLog?.LogDebug("<- ComputeState: #{ChatTitle}, No ChatState", chatTitle);
+        // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
+        // Properties are copied to local vars because of this.
+        var foundItem = FoundItem;
+        ChatEntry? lastTextEntry = null;
+        if (foundItem == null)
             return Model.None;
+
+        var chatId = foundItem.ChatId;
+        var titleMatch = foundItem.ContactSearchMatch;
+
+        var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
+        if (chatState == null)
+            return Model.None;
+
+        if (!chatId.IsPeerChat(out var peerChatId))
+            return Model.None;
+
+        var ownAuthor = await Authors.GetOwn(Session, peerChatId, cancellationToken).ConfigureAwait(false);
+        var anotherAuthorId = new AuthorId(peerChatId, ownAuthor != null && peerChatId.UserId1 == ownAuthor.UserId ? 2 : 1, AssumeValid.Option);
+        var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken).ConfigureAwait(false);
+
+        if (anotherAuthor == null)
+            return Model.None;
+
+        var entry = chatState.Info.LastTextEntry;
+        if (entry is { Id.IsNone: false, IsSystemEntry: false }) {
+            lastTextEntry = entry;
         }
-        DebugLog?.LogDebug("<- ComputeState: #{ChatTitle}, OK, ChatId={ChatId}", chatTitle, chatId);
-        var lastEntry = chatState.Info.LastTextEntry;
+
         return new() {
-            Chat = chatState.Chat,
-            Place = place,
-            AudioState = chatState.AudioState,
-            IsSelected = chatState.IsSelected,
-            LastTextEntry = lastEntry,
-            LastTextEntryText = chatState.Info.LastTextEntryText,
+            ChatState = chatState,
+            TitleMatch = titleMatch.IsEmpty ? SearchMatch.New(chatState.Chat.Title) : titleMatch,
+            Entry = lastTextEntry,
+            Link = Links.Chat(chatId),
+            Author = anotherAuthor,
         };
-    }
-
-    private async Task<bool> IsUnreadByOthers(ChatEntry entry, AuthorId ownAuthorId, CancellationToken cancellationToken) {
-        var chat = Chat;
-        if (_hasBeenReadEntryId == entry.Id)
-            return false;
-
-        var isOwnMessage = !ownAuthorId.IsNone && ownAuthorId == entry.AuthorId;
-        if (!isOwnMessage)
-            return false;
-
-        if (chat.HasSingleAuthor)
-            return false;
-
-        var readPositionsStat = await Chats.GetReadPositionsStat(Session, entry.ChatId, cancellationToken).ConfigureAwait(false);
-        var canCalculateHasRead = readPositionsStat.CanCalculateHasReadByAnotherAuthor(entry);
-        // Do not show `Unread` label for old messages (before the feature was introduced)
-        // until we have at least more or less good enough read positions stat.
-        if (!canCalculateHasRead)
-            return false;
-
-        var hasBeenRead = readPositionsStat.HasReadByAnotherAuthor(entry, ownAuthorId);
-        if (hasBeenRead)
-            _hasBeenReadEntryId = entry.Id; // Remember that message has been read, so we don't need to recalculate it on next ComputeState cycle.
-        return !hasBeenRead;
     }
 
     // Nested types
 
     public sealed record Model {
-        public static readonly Model None = new();
+        public static readonly Model Loading = new() { ChatState = ChatState.Loading };
+        public static readonly Model None = new() { ChatState = ChatState.None };
 
-        public Chat? Chat { get; init; }
-        public Place? Place { get; init; }
-        public ChatAudioState AudioState { get; init; }
-        public string LastTextEntryText { get; init; } = "";
-        public ChatEntry? LastTextEntry { get; init; }
-        public bool IsSelected { get; init; }
+        public ChatState ChatState { get; init; } = ChatState.None;
+        public SearchMatch TitleMatch { get; init; } = SearchMatch.Empty;
+        public ChatEntry? Entry { get; init; }
+        public LocalUrl Link { get; init; }
+        public Author? Author { get; init; }
     }
 }

@@ -1,0 +1,82 @@
+.found-result {
+    @apply relative;
+    @apply flex-x justify-start items-center gap-x-1;
+    @apply min-h-14 h-14;
+    @apply px-2;
+    @apply rounded-lg;
+}
+body.hoverable .found-result:hover {
+    @apply bg-hover;
+    @apply cursor-pointer;
+}
+.found-result .c-content {
+    @apply flex-1 flex-x;
+    @apply h-full;
+    @apply overflow-hidden;
+    @apply text-02;
+}
+.found-result .c-container {
+    @apply flex-1 flex-x items-center gap-x-2;
+    @apply overflow-hidden;
+}
+.found-result .c-container .c-description {
+    @apply flex-1 flex-y gap-y-0;
+    @apply overflow-hidden;
+}
+.found-result .c-container .c-description > .c-first-line {
+    @apply flex-wrap flex-x items-center gap-x-2;
+}
+.found-result .c-container .c-description > .c-first-line > .c-title {
+    @apply flex-1;
+    @apply truncate;
+    @apply text-headline-1 text-01;
+}
+.found-result .c-container .c-description > .c-first-line > .c-members {
+    @apply flex-none text-caption-4 text-04;
+}
+.found-result .c-container .c-description > .c-second-line,
+.found-result .c-container .c-description > .c-third-line {
+    @apply text-caption-4 text-03;
+    @apply line-clamp-2;
+    @apply whitespace-normal;
+}
+.found-result .c-container .c-description > .c-second-line.bio {
+    @apply text-01;
+}
+.found-result .c-container .c-description:has(.c-third-line) .c-second-line {
+    @apply line-clamp-1;
+}
+.found-result .c-container .c-description:has(.c-second-line) .c-third-line {
+    @apply line-clamp-1;
+}
+.found-result .c-container .c-description > .c-second-line .c-place-title {
+    @apply text-01;
+}
+.found-result .c-last-message {
+    @apply flex-x items-end gap-x-1;
+    @apply w-full h-3.5;
+    @apply truncate;
+}
+.found-result .c-last-message .c-name {
+    @apply flex;
+    @apply truncate;
+    @apply whitespace-pre;
+}
+.found-result .c-last-message .avatar-name,
+.found-result .c-last-message .c-colon {
+    @apply text-01;
+}
+.found-result .c-last-message .c-name:has(.non-shrinkable) {
+    @apply flex-none;
+}
+.found-result .c-last-message .c-name:has(.shrinkable) {
+    @apply min-w-16;
+}
+.found-result .c-last-message .c-colon {
+    @apply -ml-1;
+}
+.found-result .c-last-message .c-text {
+    @apply min-w-8;
+    @apply truncate;
+    @apply pointer-events-none;
+}
