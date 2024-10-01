@@ -3,13 +3,12 @@
 import '../../../../nodejs/styles/index.css';
 
 export const messageStyles = css`
+    .animated-skeleton {
+        animation: pulse 2s infinite;
+    }
     .message-skeleton {
         display: flex;
         flex-direction: row;
-        column-gap: 0.25rem;
-    }
-    .animated-skeleton.message-skeleton {
-        animation: pulse 2s infinite;
     }
     .message-skeleton.place {
         padding: 0.125rem 0;
@@ -71,16 +70,13 @@ export const messageStyles = css`
         column-gap: 0.25rem;
         margin-bottom: 0.5rem;
     }
-    .animated-skeleton.message-list {
-        animation: pulse 2s infinite;
-    }
     .message-wrapper {
         display: flex;
-        flex-direction: flex-row;
+        flex-direction: row;
         flex-wrap: wrap;
         align-items: center;
         row-gap: 0.5rem;
-        padding: 0.25rem 3.25rem 0.25rem 3.75rem;
+        padding: 0.25rem 3.25rem 0.25rem 3.5rem;
     }
     .message {
         display: flex;
@@ -101,10 +97,6 @@ export const messageStyles = css`
     .string-skeleton {
         background-color: var(--skeleton);
         border-radius: 0.5rem;
-        animation: pulse 2s infinite;
-    }
-    .header-skeleton,
-    .animated-skeleton.round-skeleton {
         animation: pulse 2s infinite;
     }
     .round-skeleton {

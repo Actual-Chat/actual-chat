@@ -29,6 +29,9 @@ class NarrowRecordingSvg extends LitElement {
         }
     `];
 
+    private recorderStateChangedSubscription: Subscription;
+    private signalPowerSubscription: Subscription;
+
     @state()
     private opacity: number = null;
 
@@ -42,11 +45,8 @@ class NarrowRecordingSvg extends LitElement {
 
     get isRecording() { return this._isRecording };
 
-    private readonly recorderStateChangedSubscription: Subscription;
-    private readonly signalPowerSubscription: Subscription;
-
-    constructor() {
-        super();
+    connectedCallback() {
+        super.connectedCallback();
 
         const minOpacity = 60;
         const maxOpacity = 100;

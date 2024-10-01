@@ -3,21 +3,24 @@
     _lastSkeletonCount = SkeletonCount;
 }
 
-<SkeletonContainer Class="skeleton-container">
+<div class="skeleton-container">
     @if (Skeleton != null) {
         @for (var i = 0; i < SkeletonCount; ++i) {
-            <div @key="@i" class="skeleton">
-                @Skeleton(i)
-            </div>
+            @Skeleton(i)
         }
     }
-</SkeletonContainer>
+    else if (SkeletonBatch != null) {
+        @SkeletonBatch(SkeletonCount)
+    }
+
+</div>
 
 @code {
     private int? _lastSkeletonCount;
 
     [Parameter, EditorRequired] public int SkeletonCount { get; set; }
     [Parameter] public RenderFragment<int>? Skeleton { get; set; }
+    [Parameter] public RenderFragment<int>? SkeletonBatch { get; set; }
 
     protected override bool ShouldRender()
         => SkeletonCount != _lastSkeletonCount;

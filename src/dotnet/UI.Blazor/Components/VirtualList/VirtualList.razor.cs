@@ -38,7 +38,8 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     public IVirtualListDataSource<TItem> DataSource { get; set; } = VirtualListDataSource<TItem>.Empty;
     [Parameter] // NOTE(AY): Putting EditorRequired here triggers a warning in Rider (likely their issue)
     public RenderFragment<TItem> Item { get; set; } = null!;
-    [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
+    [Parameter] public RenderFragment<int>? Skeleton { get; set; }
+    [Parameter] public RenderFragment<int>? SkeletonBatch { get; set; }
     [Parameter] public int SkeletonCount { get; set; } = 10;
     [Parameter] public double SpacerSize { get; set; } = 200;
     [Parameter] public VirtualListEdge DefaultEdge { get; set; }

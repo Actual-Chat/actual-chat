@@ -21,9 +21,9 @@
             IsLastItemInBlock="@context.IsLastItemInBlock"
             IsFirstItem="@context.IsFirstItem"/>
     </Item>
-    <Skeleton>
-        <ChatListItemSkeleton />
-    </Skeleton>
+    <SkeletonBatch>
+        <chat-list-skeleton count="@context" />
+    </SkeletonBatch>
 </VirtualList>
 
 @code {

@@ -25,6 +25,12 @@
         ScrollToKey = data.ScrollToKey,
     };
     var tiles = data.Tiles;
+    var startSkeletonCount = data.BeforeCount.HasValue && data.BeforeCount < SkeletonCount
+        ? data.BeforeCount.Value
+        : SkeletonCount;
+    var endSkeletonCount = data.AfterCount.HasValue && data.AfterCount < SkeletonCount
+        ? data.AfterCount.Value
+        : SkeletonCount;
     LastData = data;
     Query = VirtualListDataQuery.None;
 }
@@ -48,7 +54,7 @@
 
     <div @key="@VirtualListSpecialKeys.Spacer"
          class="c-spacer-start">
-        <VirtualListSkeletonView SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
+        <VirtualListSkeletonView SkeletonCount="@startSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
     </div>
 
     <ul @key="@VirtualListSpecialKeys.Container"
@@ -62,7 +68,7 @@
 
     <div @key="@VirtualListSpecialKeys.EndSpacer"
          class="c-spacer-end">
-        <VirtualListSkeletonView SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
+        <VirtualListSkeletonView SkeletonCount="@endSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
     </div>
 
     <div @key="@VirtualListSpecialKeys.EndAnchor"

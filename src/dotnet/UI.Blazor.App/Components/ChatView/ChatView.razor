@@ -1,6 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Comparison
 @using ActualChat.UI.Blazor.App.Events
+
+@{
+    // Render more skeletons when there are no entries rendered yet
+    var skeletonCount = ItemVisibility.Value.VisibleEntryLids.Count > 0
+        ? 2
+        : 10;
+}
 
 <OnUIEvent TEvent="@NavigateToChatEntryEvent" Handler="@OnNavigateToChatEntry" />
 <VirtualList
@@ -9,13 +15,14 @@
     DataSource="@this"
     Identity="@Chat.Id"
     DefaultEdge="@VirtualListEdge.End"
+    SkeletonCount="@skeletonCount"
     ItemVisibilityChanged="@OnItemVisibilityChanged">
     <Item>
         <ChatMessageView ChatContext="@ChatContext" Message="@context" />
     </Item>
-    <Skeleton>
-        <chat-message-skeleton />
-    </Skeleton>
+    <SkeletonBatch>
+        <chat-view-skeleton count="@context" />
+    </SkeletonBatch>
 </VirtualList>
 
 <RenderIntoStack Name="SubFooter" Order="-1000_000" Key="NavigateToEndSubFooter">

@@ -78,6 +78,9 @@ class ActiveRecordingSvg extends LitElement {
     `];
 
     private _isRecording = null;
+    private observer: IntersectionObserver;
+    private recorderStateChangedSubscription: Subscription;
+    private signalPowerChangedSubscription: Subscription;
 
     @state({
         hasChanged: (value: AudioPowerState, oldValue: AudioPowerState | null): boolean =>
@@ -86,6 +89,8 @@ class ActiveRecordingSvg extends LitElement {
     private audioPowerState: AudioPowerState = DEFAULT_STATE;
     @state()
     private isVoiceActive = false;
+    @state()
+    private isVisible = false;
 
     @property({type: Number})
     size = 10;
@@ -99,11 +104,14 @@ class ActiveRecordingSvg extends LitElement {
 
     get isRecording() { return this._isRecording };
 
-    private readonly recorderStateChangedSubscription: Subscription;
-    private readonly signalPowerChangedSubscription: Subscription;
+    connectedCallback() {
+        super.connectedCallback();
 
-    constructor() {
-        super();
+        this.observer = new IntersectionObserver(entries => {
+            this.isVisible = entries.some(e => e.isIntersecting);
+            // console.warn('isVisible', isVisible, entries);
+        });
+        this.observer.observe(this);
 
         const recorderState$ = OpusMediaRecorder.recorderStateChanged$;
         const signalPower$ = OpusMediaRecorder.audioPowerChanged$
@@ -154,7 +162,7 @@ class ActiveRecordingSvg extends LitElement {
     }
 
     protected render(): unknown {
-        const { size, audioPowerState, isVoiceActive, isRecording } = this;
+        const { size, audioPowerState, isVoiceActive, isRecording, isVisible } = this;
         if (isRecording === false)
             return html``;
 
@@ -163,15 +171,16 @@ class ActiveRecordingSvg extends LitElement {
             return html``;
 
         const width = 10;
-        const height1 = isVoiceActive ? audioPowerState.height1 : MIN_HEIGHT;
-        const height2 = isVoiceActive ? audioPowerState.height2 : MIN_HEIGHT;
-        const height3 = isVoiceActive ? audioPowerState.height3 : MIN_HEIGHT;
+        const shouldAnimate = isVoiceActive && isVisible;
+        const height1 = shouldAnimate ? audioPowerState.height1 : MIN_HEIGHT;
+        const height2 = shouldAnimate ? audioPowerState.height2 : MIN_HEIGHT;
+        const height3 = shouldAnimate ? audioPowerState.height3 : MIN_HEIGHT;
         const offset1 = 50 - height1 / 2;
         const offset2 = 50 - height2 / 2;
         const offset3 = 50 - height3 / 2;
 
-        const edgeDotCls = isVoiceActive ? "active" : "non-active";
-        const centerDotCls = isVoiceActive ? "" : "in-rest";
+        const edgeDotCls = shouldAnimate  ? "active" : "non-active";
+        const centerDotCls = isVoiceActive || !isVisible ? "" : "in-rest";
 
         return html`
             <svg xmlns='http://www.w3.org/2000/svg' width='${size * 4}' height='${size * 4}'
