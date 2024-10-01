@@ -539,11 +539,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
                     });
         });
         try {
-            const timerTask = delayAsync(MaxInteractionWaitTimeMs).then(() => false);
-            const success = await Promise.race([resumeTask, timerTask]);
-            if (!success)
-                throw new Error(`${logScope}.interactiveResume: timed out while waiting for interaction`);
-
+            await resumeTask;
             Interactive.isInteractive = true;
             debugLog?.log(`interactiveResume: succeeded on interaction`);
         }
