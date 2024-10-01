@@ -3,6 +3,7 @@ using ActualChat.Db;
 using ActualChat.Flows;
 using ActualChat.Flows.Infrastructure;
 using ActualLab.Fusion.EntityFramework;
+using ActualLab.Rpc;
 using MemoryPack;
 using OpenSearch.Client;
 
@@ -86,10 +87,11 @@ public partial record  IndexAllChatsCursor(
 );
 
 internal sealed class ChatEntryIndexingFlow(
-    MomentClock clock,
-    IChatsBackend chats,
-    ILogger<ChatEntryIndexingFlow> log
-) {
+    //MomentClock clock,
+    //IChatsBackend chats,
+    //ILogger<ChatEntryIndexingFlow> log
+) : IBackendService
+{
     public TimeSpan? AllChatsIndexingIdleInterval { get; init; } = TimeSpan.FromMinutes(1);
 
     public enum IndexChatResult {
@@ -126,6 +128,7 @@ internal sealed class ChatEntryIndexingFlow(
         } else {
             return null;
         }
+        /*
         const int BatchSize = 100;
         ApiArray<Chat.Chat> batch = await chats.ListChanged(
             new ChangedChatsQuery {
@@ -144,6 +147,7 @@ internal sealed class ChatEntryIndexingFlow(
             last = chat;
         }
         return new IndexAllChatsCursor(last.Id, last.Version);
+        */
     }
 
     private async Task<IndexChatResult> IndexChat(ChatId chatId, CancellationToken cancellationToken) {

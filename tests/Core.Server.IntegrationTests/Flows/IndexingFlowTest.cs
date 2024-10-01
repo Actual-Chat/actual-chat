@@ -8,6 +8,7 @@ public class IndexingFlowTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(IndexingFlowTest)}", TestAppHostOptions.Default with {
         ConfigureServices = (_, services) => {
             services.AddFlows().Add<IndexingFlowState>();
+            services.AddSingleton<ChatEntryIndexingFlow>();
         },
     }, @out)
 {
