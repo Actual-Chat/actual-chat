@@ -7,7 +7,7 @@ using ActualLab.Versioning;
 using MemoryPack;
 
 namespace ActualChat.Flows.Builder;
-
+/*
 public delegate Task<IFlowEvent> TEventHandler<T>(T @event, CancellationToken cancellationToken);
 public sealed class NoHandlerSet {
     public sealed class FlowEvent: IFlowEvent {
@@ -99,3 +99,5 @@ public class FlowBuilder<TEvent0, TEvent1, TEvent2, TEvent3>(
     }
 
 }
+
+*/
