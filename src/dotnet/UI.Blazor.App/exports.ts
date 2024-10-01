@@ -13,7 +13,6 @@ export * from './Components/ChatAudioPanel/recorder-toggle';
 export * from './Components/ChatAudioPanel/active-recording-svg.lit';
 export * from './Components/ChatAudioPanel/narrow-recording-svg.lit';
 export * from './Components/ChatList/chat-activity-svg.lit';
-export * from './Components/ChatList/chat-list-item-streaming-svg.lit';
 export * from './Components/ChatMessageEditor/attachment-list';
 export * from './Components/ChatMessageEditor/chat-message-editor';
 export * from './Components/ChatNotFound/chat-not-found-svg.lit';
