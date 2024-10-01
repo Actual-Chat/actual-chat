@@ -28,6 +28,7 @@ public class ChatAttentionService
     private static readonly TimeSpan RemindInterval = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan SnoozeInterval = TimeSpan.FromMinutes(60);
 
+    private readonly object _syncObject = new();
     private AlarmManager? _alarmManager;
     private Option<State?> _cachedState = Option<State?>.None;
     private bool _isInitialized;
@@ -60,11 +61,29 @@ public class ChatAttentionService
             return;
 
         _ = Task.Delay(TimeSpan.FromSeconds(30))
-            .ContinueWith(_ => DoJob(null), TaskScheduler.FromCurrentSynchronizationContext());
+            .ContinueWith(_ => InitInternal(), TaskScheduler.Default);
         _isInitialized = true;
     }
 
     public void Ask(ChatAttentionRequest request)
+        => DispatchOnNonMainThread(() => AskInternal(request));
+
+    public void Clear(Symbol chatId, long chatPosition)
+        => DispatchOnNonMainThread(() => ClearInternal(chatId, chatPosition));
+
+    public void OnHandleIntent(Intent intent)
+    {
+        var action = intent.Action;
+        if (OrdinalEquals(action, AlarmAction))
+            DispatchOnNonMainThread(OnAlarmTriggered);
+        else if (OrdinalEquals(action, SnoozeAction))
+            DispatchOnNonMainThread(OnSnooze);
+    }
+
+    private void InitInternal()
+        => DoJob(null);
+
+    private void AskInternal(ChatAttentionRequest request)
     {
         var state = GetPersistedState();
         state ??= State.None;
@@ -81,7 +100,7 @@ public class ChatAttentionService
         DoJob(state);
     }
 
-    public void Clear(Symbol chatId, long chatPosition)
+    private void ClearInternal(Symbol chatId, long chatPosition)
     {
         var originalState = GetPersistedState();
         var state = originalState;
@@ -95,15 +114,6 @@ public class ChatAttentionService
         }
         if (!ReferenceEquals(originalState, state))
             DoJob(state ?? State.None);
-    }
-
-    public void OnHandleIntent(Intent intent)
-    {
-        var action = intent.Action;
-        if (OrdinalEquals(action, AlarmAction))
-            OnAlarmTriggered();
-        else if (OrdinalEquals(action, SnoozeAction))
-            OnSnooze();
     }
 
     private void OnAlarmTriggered()
@@ -264,6 +274,23 @@ public class ChatAttentionService
         if (contentIntent != null)
             builder.SetContentIntent(contentIntent);
         return builder;
+    }
+
+    private void DispatchOnNonMainThread(Action action)
+    {
+        // Notify method use NotificationHelper.GetImage may invoke AndroidUtils.WaitForAndApplyImageDownload
+        // which uses blocking API https://developers.google.com/android/reference/com/google/android/gms/tasks/Tasks#await(com.google.android.gms.tasks.Task%3CTResult%3E)
+        // that is not allowed for using on main application thread.
+        // So we offload all work to non-main thread.
+        if (AndroidUtils.IsMainThread())
+            _ = Task.Run(SyncAction);
+        else
+            SyncAction();
+
+        void SyncAction() {
+            lock (_syncObject)
+                action();
+        }
     }
 
     private State? GetPersistedState()

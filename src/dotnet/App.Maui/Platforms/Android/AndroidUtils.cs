@@ -2,6 +2,7 @@ using Android.App;
 using Android.Content;
 using Android.Gms.Common.Util.Concurrent;
 using Android.Graphics;
+using Android.OS;
 using Android.Util;
 using Firebase.Messaging;
 using Java.Lang;
@@ -41,6 +42,9 @@ public static class AndroidUtils
         }
         return false;
     }
+
+    public static bool IsMainThread()
+        => Looper.MainLooper!.IsCurrentThread;
 
     public static IExecutorService NewNetworkIoExecutor()
         => Executors.NewSingleThreadExecutor(new NamedThreadFactory(ThreadNetworkIo))!;
