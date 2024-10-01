@@ -1,7 +1,13 @@
+using Cysharp.Text;
+
 namespace ActualChat;
 
 public static class ActivityExt
 {
+    private static ILogger? _log;
+
+    private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger(typeof(ActivityExt));
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void RecordException(this Activity activity, Exception? ex)
     {
@@ -30,7 +36,6 @@ public static class ActivityExt
         }
     }
 
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Activity AddSentrySimulatedEvent(this Activity activity, ActivityEvent e)
     {
@@ -43,8 +48,27 @@ public static class ActivityExt
             innerSpan?.SetEndTime(innerSpan.StartTimeUtc.AddTicks(1));
         }
         finally {
-            Activity.Current = currentActivity;
+            if (CanSetCurrent(currentActivity))
+                Activity.Current = currentActivity;
+            else {
+                Log.LogWarning("Activity '{ActivityDescription}' can not be set back as Activity.Current. Will set Activity.Current to <null>.", GetDescription(activity));
+                Activity.Current = null;
+            }
         }
         return activity;
     }
+
+    private static string GetDescription(Activity activity)
+    {
+        using var sb = ZString.CreateStringBuilder();
+        sb.Append("Id: ");
+        sb.Append(activity.Id ?? "<null>");
+        sb.Append(", DisplayName: ");
+        sb.Append(activity.DisplayName);
+        return sb.ToString();
+    }
+
+    // This check is taken from Activity.Current setter.
+    private static bool CanSetCurrent(Activity? activity)
+        => activity == null || (activity.Id != null && !activity.IsStopped);
 }
