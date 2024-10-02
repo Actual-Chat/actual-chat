@@ -3,7 +3,6 @@ using ActualChat.IO;
 using Google.Api.Gax;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V2;
-using Google.Protobuf;
 using ActualLab.IO;
 
 namespace ActualChat.Transcription.IntegrationTests;
@@ -98,7 +97,7 @@ public class GoogleSpeechToTextTest(ITestOutputHelper @out, ILogger<GoogleSpeech
             await foreach (var chunk in byteStream.ConfigureAwait(false)) {
                 var request = new StreamingRecognizeRequest {
                     StreamingConfig = streamingRecognitionConfig,
-                    Audio = ByteString.CopyFrom(chunk),
+                    Audio = Google.Protobuf.ByteString.CopyFrom(chunk),
                 };
                 await recognizeRequests.WriteAsync(request).ConfigureAwait(false);
             }
