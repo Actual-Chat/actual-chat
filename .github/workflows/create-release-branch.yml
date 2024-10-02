@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # otherwise, the token used is the GITHUB_TOKEN, instead of your personal access token.
           persist-credentials: false
@@ -37,7 +37,7 @@ jobs:
         uses: dotnet/nbgv@master
         with:
           setAllVars: true
-      
+
       - run: echo 'Current SemVer2=${{ steps.nbgv.outputs.SemVer2 }}'
 
       - name: ⚙️ Setup CI GIT
