@@ -77,7 +77,7 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
         var externalContacts = await List(deviceId);
 
         // assert
-        externalContacts.Should().BeEquivalentTo(new[] { externalContact }, Including);
+        externalContacts.Should().BeEquivalentTo([externalContact], Including);
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
         var externalContacts = await List(deviceId);
 
         // assert
-        externalContacts.Should().BeEquivalentTo(new[] { externalContact }, Including);
+        externalContacts.Should().BeEquivalentTo([externalContact], Including);
     }
 
     [Fact]
