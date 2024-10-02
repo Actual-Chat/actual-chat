@@ -23,6 +23,7 @@
     private IJSRuntime JS => Hub.JSRuntime();
     private IChats Chats => Hub.Chats;
     private Session Session => Hub.Session();
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
 
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
@@ -62,7 +63,7 @@
             return string.Empty;
 
         var beginsDateTime = chatEntry.BeginsAt.ToDateTime();
-        var dateString = beginsDateTime.ToString("d MMMM yyyy");
-        return dateString;
+        var localDateTime = DateTimeConverter.ToLocalTime(beginsDateTime);
+        return localDateTime.ToString("d MMMM yyyy");
     }
 }
