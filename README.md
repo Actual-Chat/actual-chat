@@ -1,6 +1,6 @@
 # Actual Chat
 
-![unit tests](https://github.com/Actual-Chat/actual-chat/actions/workflows/unit-tests.yml/badge.svg)
+![unit tests](https://github.com/Actual-Chat/actual-chat/actions/workflows/build-test-deploy-dev.yml/badge.svg)
 
 Web site: [actual.chat](https://actual.chat)
 
