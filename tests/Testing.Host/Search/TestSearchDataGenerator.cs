@@ -53,7 +53,7 @@ public static class TestSearchDataGenerator
             => $"{GetPlaceTitle(contactOwner, key.PlaceKey)} - {GetTitleChatPart(key)}";
 
         string GetTitleChatPart(TestGroupKey key)
-            => $"{GetVisibilityString(key.IsPublic)} chat {GetIndexString(key.Index)} {uniquePart} {GetMembershipSuffix(contactOwner, key.MustJoin)}";
+            => $"{GetVisibilityString(key.IsPublic)} chat {GetIndexString(key.Index)} {GetMembershipSuffix(contactOwner, key.MustJoin)} {uniquePart}".Trim();
 
         async Task GenerateChats(TestPlaceKey? placeKey, int chatCount, Place? place)
         {
@@ -136,14 +136,14 @@ public static class TestSearchDataGenerator
         var map = new Dictionary<TestEntryKey, ChatEntry>();
         for (int i = 0; i < entryIndexCount; i++)
             foreach (var group in groups)
-                map[new TestEntryKey(group.Key, i)] = await tester.CreateTextEntry(group.Value.Id, $"{uniquePart} Message {GetIndexString(i)} in chat #{group.Value.Id}");
+                map[new TestEntryKey(group.Key, i)] = await tester.CreateTextEntry(group.Value.Id, $"Message {GetIndexString(i)} in chat #{group.Value.Id} {uniquePart}".Trim());
         var userToRestore = await tester.GetOwnAccount();
         await tester.SignIn(contactOwner);
         for (int i = 0; i < entryIndexCount; i++)
             foreach (var user in users.Where(x => x.Key.MustJoin)) {
                 var chatId = new PeerChatId(contactOwner.Id, user.Value.Id);
                 map[new TestEntryKey(user.Key, i)] =
-                    await tester.CreateTextEntry(chatId, $"{uniquePart} Message {GetIndexString(i)}");
+                    await tester.CreateTextEntry(chatId, $"Message {GetIndexString(i)} {uniquePart}".Trim());
             }
         await tester.SignIn(userToRestore);
         return map;
@@ -152,7 +152,7 @@ public static class TestSearchDataGenerator
     private static string GetPlaceTitle(AccountFull contactOwner, TestPlaceKey? key, string uniquePart = "")
         => key == null
             ? "Non-place"
-            : $"{GetVisibilityString(key.IsPublic)} place {GetIndexString(key.Index)} {uniquePart} {GetMembershipSuffix(contactOwner, key.MustJoin)}";
+            : $"{GetVisibilityString(key.IsPublic)} place {GetIndexString(key.Index)} {GetMembershipSuffix(contactOwner, key.MustJoin)} {uniquePart}".Trim();
 
     private static string GetVisibilityString(bool isPublic)
         => isPublic ? "public" : "private";
