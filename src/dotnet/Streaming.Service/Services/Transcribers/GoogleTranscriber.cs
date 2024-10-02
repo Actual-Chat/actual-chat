@@ -401,9 +401,12 @@ public partial class GoogleTranscriber : ITranscriber
             Parent = recognizerParent,
             RecognizerId = recognizerId,
             Recognizer = new Recognizer {
+ #pragma warning disable CS0612 // Type or member is obsolete -
+                // NOTE(AY): We anyway using the newer properties, search for "RecognitionConfig" here
                 Model = "long",
                 DisplayName = recognizerId,
                 LanguageCodes = { recognizerOptions.LanguageCode },
+ #pragma warning restore CS0612 // Type or member is obsolete
                 DefaultRecognitionConfig = new RecognitionConfig {
                     Features = new RecognitionFeatures {
                         EnableAutomaticPunctuation = recognizerOptions.EnableAutomaticPunctuation,

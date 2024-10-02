@@ -18,7 +18,6 @@ public abstract class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub
     private volatile List<(LocalUrl Url, AutoNavigationReason Reason)>? _autoNavigationCandidates = new();
 
     protected History History => Hub.History;
-    protected HostInfo HostInfo => Hub.HostInfo();
     protected AppBlazorCircuitContext CircuitContext => Hub.CircuitContext;
     protected Dispatcher Dispatcher => Hub.Dispatcher;
 

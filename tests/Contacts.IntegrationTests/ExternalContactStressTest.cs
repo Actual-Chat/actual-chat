@@ -106,6 +106,8 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
         }
     }
 
+    // Private methods
+
     private async Task Add(params ExternalContactFull[] externalContacts)
     {
         var changes = externalContacts.Select(x => new ExternalContactChange(x.Id, null, Change.Create(x)));
@@ -146,7 +148,6 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
         var ids = await _contacts.ListIds(_tester.Session, PlaceId.None, CancellationToken.None);
         return ids.Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
     }
-
 
     private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
         => new (new ExternalContactId(new UserDeviceId(owner.Id, ownerDeviceId), NewDeviceContactId()));
