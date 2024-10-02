@@ -475,7 +475,7 @@ jobs:
         if: |
           github.ref == 'refs/heads/dev' ||
           startsWith(github.ref, 'refs/heads/release/')
-        uses: akhilerm/tag-push-action@v2.0.0
+        uses: akhilerm/tag-push-action@v2.2.0
         with:
           src: ghcr.io/actual-chat/actual-chat-app:${{needs.build.outputs.semver2}}
           dst: |
@@ -485,7 +485,7 @@ jobs:
         if: |
           github.ref == 'refs/heads/dev' ||
           startsWith(github.ref, 'refs/heads/release/')
-        uses: akhilerm/tag-push-action@v2.0.0
+        uses: akhilerm/tag-push-action@v2.2.0
         with:
           src: ghcr.io/actual-chat/actual-chat-migration:${{needs.build.outputs.semver2}}
           dst: |
@@ -495,7 +495,7 @@ jobs:
         if: |
           github.ref == 'refs/heads/dev' ||
           startsWith(github.ref, 'refs/heads/release/')
-        uses: akhilerm/tag-push-action@v2.0.0
+        uses: akhilerm/tag-push-action@v2.2.0
         with:
           src: ghcr.io/actual-chat/actual-chat-opensearch-configurator:${{needs.build.outputs.semver2}}
           dst: |
@@ -505,7 +505,7 @@ jobs:
         if: |
           github.ref == 'refs/heads/dev' ||
           startsWith(github.ref, 'refs/heads/release/')
-        uses: akhilerm/tag-push-action@v2.0.0
+        uses: akhilerm/tag-push-action@v2.2.0
         with:
           src: ghcr.io/actual-chat/actual-chat-bot:${{needs.build.outputs.semver2}}
           dst: |
@@ -551,28 +551,28 @@ jobs:
           password: ${{ steps.auth.outputs.access_token }}
 
       - name: Deploy prod
-        uses: akhilerm/tag-push-action@v2.0.0
+        uses: akhilerm/tag-push-action@v2.2.0
         with:
           src: ghcr.io/actual-chat/actual-chat-app:${{needs.build.outputs.semver2}}
           dst: |
             us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-app:${{needs.build.outputs.simple-version}}
 
       - name: Deploy prod migrations
-        uses: akhilerm/tag-push-action@v2.0.0
+        uses: akhilerm/tag-push-action@v2.2.0
         with:
           src: ghcr.io/actual-chat/actual-chat-migration:${{needs.build.outputs.semver2}}
           dst: |
             us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-migration:${{needs.build.outputs.semver2}}
 
       - name: Deploy prod opensearch configurator
-        uses: akhilerm/tag-push-action@v2.0.0
+        uses: akhilerm/tag-push-action@v2.2.0
         with:
           src: ghcr.io/actual-chat/actual-chat-opensearch-configurator:${{needs.build.outputs.semver2}}
           dst: |
             us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-opensearch-configurator:${{needs.build.outputs.semver2}}
 
       - name: Deploy prod chat bot
-        uses: akhilerm/tag-push-action@v2.0.0
+        uses: akhilerm/tag-push-action@v2.2.0
         with:
           src: ghcr.io/actual-chat/actual-chat-bot:${{needs.build.outputs.semver2}}
           dst: |
