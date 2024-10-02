@@ -137,17 +137,19 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var placeId = PlaceId;
-        var place = await Places.Get(Hub.Session(), placeId, default).Require().ConfigureAwait(false);
+        var place = await Places.Get(Session, placeId, default).ConfigureAwait(false);
+        if (place is null)
+            return Model.None;
+
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
         var ownerIds = await Places.ListOwnerIds(Session, placeId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = await Places.GetOwn(Session, placeId, cancellationToken).ConfigureAwait(false);
-
         var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
         return new() {
             Place = place,
             AuthorIds = allAuthorIds,
             OwnerIds = ownerIds,
-            OwnAuthorId = ownAuthor!.Id,
+            OwnAuthorId = ownAuthor?.Id ?? AuthorId.None,
             MemberCount = allAuthorIds.Count,
             EnableIncompleteUI = enableIncompleteUI,
         };
@@ -157,6 +159,7 @@
 
     public sealed record Model {
         public static readonly Model Loading = new();
+        public static readonly Model None = new();
 
         public Place? Place { get; init; }
         public int MemberCount { get; init; }
@@ -168,6 +171,6 @@
         public bool IsOwner(AuthorId authorId)
             => OwnerIds.Contains(authorId);
         public bool IsOwn(AuthorId authorId)
-            => OwnAuthorId.Equals(authorId);
+            => !OwnAuthorId.IsNone && OwnAuthorId.Equals(authorId);
     }
 }
