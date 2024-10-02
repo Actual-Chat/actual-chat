@@ -30,11 +30,8 @@
                             <SearchMatchHighlighter Match="@m.TitleMatch"/>
                         </span>
                     </div>
-                    <div class="c-second-line bio">
-                        @m.Author?.Avatar.Bio
-                    </div>
                     @if (m.Entry != null) {
-                        <div class="c-third-line">
+                        <div class="c-second-line">
                             <div class="c-last-message">
                                 <AuthorName
                                     AuthorSid="@m.Entry.AuthorId"
@@ -49,6 +46,10 @@
                                     </span>
                                 }
                             </div>
+                        </div>
+                    } else {
+                        <div class="c-second-line bio">
+                            @m.Author?.Avatar.Bio
                         </div>
                     }
                 </div>
