@@ -23,10 +23,8 @@ public abstract class DateTimeConverter
     }
 }
 
-public sealed class ClientSizeDateTimeConverter : DateTimeConverter
+public sealed class ClientSizeDateTimeConverter(IServiceProvider services) : DateTimeConverter(services)
 {
-    public ClientSizeDateTimeConverter(IServiceProvider services) : base(services) { }
-
     public override DateTime ToLocalTime(DateTime utcTime)
     {
         utcTime = AssertUtcTime(utcTime);
@@ -37,11 +35,9 @@ public sealed class ClientSizeDateTimeConverter : DateTimeConverter
         => utcTime.ToLocalTime();
 }
 
-public sealed class ServerSideDateTimeConverter : DateTimeConverter
+public sealed class ServerSideDateTimeConverter(IServiceProvider services) : DateTimeConverter(services)
 {
     private TimeSpan _utcOffset;
-
-    public ServerSideDateTimeConverter(IServiceProvider services) : base(services) { }
 
     public void Initialize(TimeSpan utcOffset)
         => _utcOffset = utcOffset;
