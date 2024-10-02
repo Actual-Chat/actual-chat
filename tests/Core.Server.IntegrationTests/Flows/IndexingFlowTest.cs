@@ -1,5 +1,4 @@
 using ActualChat.Flows;
-using ActualChat.Flows.Infrastructure;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
@@ -25,19 +24,20 @@ public class IndexingFlowTest(ITestOutputHelper @out)
         f1.Should().NotBeNull();
 
         await Task.WhenAll(
-            WhenEnded(flows, f0.Id),
-            WhenEnded(flows, f1.Id));
+            WhenIndexed(flows, f0.Id),
+            WhenIndexed(flows, f1.Id));
 
         Out.WriteLine("Test ended");
     }
 
     // Private methods
 
-    private Task WhenEnded(IFlows flows, FlowId flowId)
+    private Task WhenIndexed(IFlows flows, FlowId flowId)
         => ComputedTest.When(async ct => {
-            var flow = await flows.Get(flowId, ct);
+            var flow = await flows.Get<IndexingFlowState>(flowId.Arguments, ct);
             Out.WriteLine($"[*] {flow?.ToString() ?? "null"}");
             flow.Should().NotBeNull();
-            flow!.Step.Should().Be(FlowSteps.OnEnd);
+            flow!.Step.Should().Be("OnDispatch");
+            flow.Cursor?.LastIndexedChatVersion.Should().BeGreaterThan(0);
         }, TimeSpan.FromSeconds(30));
 }

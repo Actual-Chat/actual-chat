@@ -33,23 +33,20 @@ public sealed partial record NewChatCreatedFlowEvent (
 }
 */
 
-
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 internal sealed partial class IndexingFlowState : Flow
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public IndexAllChatsCursor? Cursor { get; set; }
-    
-    protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken){
-        // Entry point.
+
+    protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
+    {
         Cursor = new IndexAllChatsCursor(ChatId.None, 0);
-        return StoreAndResume(nameof(Dispatch));
+        return StoreAndResume(nameof(OnDispatch));
     }
 
-    public async Task<FlowTransition> Dispatch(CancellationToken cancellationToken) {
-        if (this.Event.Is<FlowResumeEvent>(out var _e)) {
-            return await IndexNextBatch(cancellationToken).ConfigureAwait(false);
-        }
+    private async Task<FlowTransition> OnDispatch(CancellationToken cancellationToken)
+    {
         /*
         if (this.Event.Is<NewChatCreatedFlowEvent>(out var e)) {
             var parameters = e.ChatId;
@@ -57,12 +54,15 @@ internal sealed partial class IndexingFlowState : Flow
             return StoreAndResume(nameof(Dispatch));
         }
         */
-        return WaitForEvent(nameof(Dispatch), InfiniteHardResumeAt);
+        Cursor = new IndexAllChatsCursor(ChatId.None, 1);
+        return WaitForEvent(nameof(OnDispatch), InfiniteHardResumeAt);
     }
-    public async Task<FlowTransition> IndexNextBatch(CancellationToken cancellationToken) {
+
+    private async Task<FlowTransition> IndexNextBatch(CancellationToken cancellationToken)
+    {
         var indexator = this.Host.Services.GetRequiredService<ChatEntryIndexingFlow>();
         var next = await indexator.IndexAllChats(
-            Cursor ?? new (ChatId.None, 0), 
+            Cursor ?? new (ChatId.None, 0),
             async (ChatId chatId, CancellationToken cancellationToken) => {
                 Symbol parameters = chatId;
                 //await this.Host.Flows.GetOrStart<IndexingFlowState>(parameters, cancellationToken).ConfigureAwait(false);
@@ -71,18 +71,17 @@ internal sealed partial class IndexingFlowState : Flow
         ).ConfigureAwait(false);
         if (next != null) {
             Cursor = next;
-            return StoreAndResume(nameof(Dispatch));
+            return StoreAndResume(nameof(OnDispatch));
         } else {
             return End();
             //return this.WaitForEvent(nameof(Dispatch), InfiniteHardResumeAt);
         }
     }
-    
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record  IndexAllChatsCursor(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] ChatId LastIndexedChatId, 
+public sealed partial record IndexAllChatsCursor(
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] ChatId LastIndexedChatId,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] long LastIndexedChatVersion
 );
 
@@ -99,7 +98,6 @@ internal sealed class ChatEntryIndexingFlow(
         HasMoreEntriesToIndex
     }
 
-    
     public record IndexChatCursor(long LastVersion);
 
     [EventHandler]
@@ -109,8 +107,8 @@ internal sealed class ChatEntryIndexingFlow(
     private void TriggerChatEntriesIndexing(ChatId chatId) {
         /*
         var flowEvent = new TriggerChatEntryIndexingFlowEvent(
-            this.Host.Registry.NewId<ChatEntryIndexingFlow>(nameof(IndexChat)), 
-            
+            this.Host.Registry.NewId<ChatEntryIndexingFlow>(nameof(IndexChat)),
+
         );
         CommandContext.GetCurrent().Operation.AddEvent(flowEvent);
         */
@@ -151,9 +149,9 @@ internal sealed class ChatEntryIndexingFlow(
     }
 
     private async Task<IndexChatResult> IndexChat(ChatId chatId, CancellationToken cancellationToken) {
-        
+
         return IndexChatResult.IndexedToTheEnd;
     }
 
-    
+
 }
