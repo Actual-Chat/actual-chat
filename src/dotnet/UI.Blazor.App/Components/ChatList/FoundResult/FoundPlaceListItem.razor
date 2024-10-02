@@ -1,48 +1,51 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Media
 @using ActualChat.Search
-@using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI
 @inherits ComputedRenderStateComponent<FoundPlaceListItem.Model>
 @{
     var m = State.Value;
+    var place = m.Place;
     if (m == Model.None)
-        return;
-
-    var chatState = m.ChatState;
-    if (ReferenceEquals(m.Place, null) || m.Place.Id.IsNone)
         return;
 }
 
 @if (m == Model.Loading) {
     <ChatListItemSkeleton />
-} else {
-    <div class="found-result place">
-        <div class="c-content" data-href="@m.Link">
-            <div class="c-container">
-                <ChatIcon Chat="chatState.Chat"/>
-                <div class="c-description">
-                    <div class="c-first-line">
-                        <span class="c-title">
-                            <SearchMatchHighlighter Match="@m.TitleMatch"/>
-                        </span>
-                        <span class="c-members">@m.MemberCount @("member".Pluralize(m.MemberCount))</span>
-                    </div>
-                    <div class="c-second-line two-line">
-                        <p class="line-clamp-2">
-                            @m.Place.Description
-                        </p>
-                    </div>
+    return;
+}
+
+<div class="found-result place">
+    <div class="c-content" data-href="@m.Link">
+        <div class="c-container">
+            <Pic
+                Title="@place.Title"
+                Picture="@place.Picture.ToPicture()"
+                Size="@SquareSize.Size10"
+                IsSquare="@false"
+                AvatarKind="@AvatarKind.Marble"
+                AvatarKey="@place.Id.Value"/>
+            <div class="c-description">
+                <div class="c-first-line">
+                    <span class="c-title">
+                        <SearchMatchHighlighter Match="@m.TitleMatch"/>
+                    </span>
+                    <span class="c-members">@m.MemberCount @("member".Pluralize(m.MemberCount))</span>
+                </div>
+                <div class="c-second-line two-line">
+                    <p class="line-clamp-2">
+                        @place.Description
+                    </p>
                 </div>
             </div>
         </div>
     </div>
-}
+</div>
 
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ChatUI ChatUI => Hub.ChatUI;
-    private IAuthors Authors => Hub.Authors;
-    private IPlaces Places => Hub.Places;
     private Session Session => Hub.Session();
+    private IPlaces Places => Hub.Places;
+    private IAuthors Authors => Hub.Authors;
 
     [Parameter] public FoundItem FoundItem { get; set; } = null!;
 
@@ -58,14 +61,7 @@
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.
         var foundItem = FoundItem;
-        var chatId = foundItem.ChatId;
-        var titleMatch = foundItem.ContactSearchMatch;
-
-        var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
-        if (chatState == null)
-            return Model.None;
-
-        var placeId = chatId.PlaceChatId.PlaceId;
+        var placeId = foundItem.ChatId.PlaceChatId.PlaceId;
         if (placeId.IsNone)
             return Model.None;
 
@@ -74,12 +70,9 @@
             return Model.None;
 
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
-        var welcomeChatId = await Places.GetWelcomeChatId(Session, chatId.PlaceChatId.PlaceId, cancellationToken).ConfigureAwait(false);
-
-        return new() {
-            ChatState = chatState,
-            TitleMatch = titleMatch.IsEmpty ? SearchMatch.New(chatState.Chat.Title) : titleMatch,
-            Place = place,
+        var titleMatch = foundItem.ContactSearchMatch;
+        return new(place) {
+            TitleMatch = titleMatch.IsEmpty ? SearchMatch.New(place.Title) : titleMatch,
             MemberCount = allAuthorIds.Count,
             Link = Links.PlaceInfo(placeId),
         };
@@ -87,13 +80,11 @@
 
     // Nested types
 
-    public sealed record Model {
-        public static readonly Model Loading = new() { ChatState = ChatState.Loading };
-        public static readonly Model None = new() { ChatState = ChatState.None };
+    public sealed record Model(Place Place) {
+        public static readonly Model Loading = new(SpecialPlace.Loading);
+        public static readonly Model None = new(SpecialPlace.Unavailable);
 
-        public ChatState ChatState { get; init; } = ChatState.None;
         public SearchMatch TitleMatch { get; init; } = SearchMatch.Empty;
-        public Place? Place { get; init; }
         public int MemberCount { get; init; }
         public LocalUrl Link { get; init; }
     }
