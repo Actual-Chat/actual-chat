@@ -29,25 +29,52 @@
                         <span class="c-title">
                             @chat.Title
                         </span>
+                        <LastEntryTime LastEntry="@m.Entry"/>
                     </div>
-                    <div class="c-second-line bio">
-                        @m.Author?.Avatar.Bio
-                    </div>
-                    @if (m.Entry != null) {
-                        <div class="c-third-line">
-                            <div class="c-last-message">
+                    @if (chat.Kind == ChatKind.Peer) {
+                        // Peer chat message
+                        <div class="c-second-line">
+                            @if (ReferenceEquals(m.Author, m.OwnAuthor)) {
+                                <span class="c-name">
+                                    <AuthorName
+                                        AuthorSid="@m.Entry.AuthorId"
+                                        ShowDetailsOnClick="false"
+                                        ShowAsYou="true"/>
+                                </span>
+                                <span class="c-colon">:</span>
+                            }
+                            <div class="c-entry">
+                                <SearchMatchHighlighter Match="@m.MessageMatch"/>
+                            </div>
+                        </div>
+                    } else if (chat.Kind == ChatKind.Group) {
+                        // Group chat message
+                        <div class="c-second-line">
+                            <span class="c-name">
                                 <AuthorName
                                     AuthorSid="@m.Entry.AuthorId"
                                     ShowDetailsOnClick="false"
                                     ShowAsYou="true"/>
-                                <span class="c-colon">:</span>
-                                @if (m.Entry.IsStreaming) {
-                                    <chat-activity-svg size="4" isActive="true"/>
-                                } else {
-                                    <span class="c-text">
-                                        <SearchMatchHighlighter Match="@m.MessageMatch"/>
-                                    </span>
-                                }
+                            </span>
+                        </div>
+                        <div class="c-third-line public-chat">
+                            <SearchMatchHighlighter Match="@m.MessageMatch"/>
+                        </div>
+                    } else {
+                        // Place chat message
+                        <div class="c-second-line message">
+                            In <span class="c-place-title">@m.Place?.Title</span>
+                        </div>
+                        <div class="c-third-line place-chat">
+                            <span class="c-name">
+                                <AuthorName
+                                    AuthorSid="@m.Entry.AuthorId"
+                                    ShowDetailsOnClick="false"
+                                    ShowAsYou="true"/>
+                            </span>
+                            <span class="c-colon">:</span>
+                            <div class="c-entry">
+                                <SearchMatchHighlighter Match="@m.MessageMatch"/>
                             </div>
                         </div>
                     }
@@ -63,6 +90,7 @@
     private IAuthors Authors => Hub.Authors;
     private AccountUI AccountUI => Hub.AccountUI;
     private Session Session => Hub.Session();
+    private IPlaces Places => Hub.Places;
 
     [Parameter] public FoundItem? FoundItem { get; set; }
 
@@ -77,7 +105,8 @@
     {
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.
-        Author? entryAuthor = null;
+        AuthorFull? entryAuthorFull = null;
+        Place? place = null;
         var foundItem = FoundItem;
         if (foundItem == null)
             return Model.None;
@@ -90,17 +119,24 @@
         if (chatState == null)
             return Model.None;
 
+        var placeId = chatId.PlaceChatId.PlaceId;
+        if (!placeId.IsNone)
+            place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+
         var entry = entryId.IsNone ? chatState.Info.LastTextEntry : await ChatUI.GetEntry(entryId, cancellationToken);
         if (entry != null) {
             var authorId = entry.AuthorId;
-            entryAuthor = await Authors.Get(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
+            entryAuthorFull = await Authors.GetFull(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         }
+        var ownAuthorFull = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
 
         return new() {
             ChatState = chatState,
             MessageMatch = messageMatch.IsEmpty ? SearchMatch.New(chatState.Info.LastTextEntryText) : messageMatch,
             Entry = entry,
-            Author = entryAuthor,
+            Author = entryAuthorFull,
+            OwnAuthor = ownAuthorFull,
+            Place = place,
             Link = Links.Chat(chatId),
         };
     }
@@ -114,7 +150,8 @@
         public ChatState ChatState { get; init; } = ChatState.None;
         public SearchMatch MessageMatch { get; init; } = SearchMatch.Empty;
         public ChatEntry? Entry { get; init; }
-        public Author? Author { get; init; }
+        public AuthorFull? Author { get; init; }
+        public AuthorFull? OwnAuthor { get; init; }
         public Place? Place {get; init;}
         public LocalUrl Link { get; init; }
     }
