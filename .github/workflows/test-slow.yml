@@ -121,7 +121,7 @@ jobs:
         run: PGPASSWORD=postgres psql -h localhost -U postgres -c 'SHOW max_connections;'
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # Avoid shallow clone for Nerdbank.GitVersioning
           fetch-depth: 0
