@@ -33,24 +33,21 @@ internal static class MauiDeviceData
             // ? = deviceInfo.Platform;
             // ? = deviceInfo.VersionString;
 
-            // Battery API for Android requires `android.permission.BATTERY_STATS`.
-            // But we don't want to give it, hence ignore filling battery info.
-#if !ANDROID
+            // Do not collect battery info.
             // https://docs.microsoft.com/dotnet/maui/platform-integration/device/battery
-            try {
-                var battery = Battery.Default;
-                device.BatteryLevel ??= battery.ChargeLevel < 0 ? null : (short)battery.ChargeLevel;
-                device.BatteryStatus ??= battery.State.ToString();
-                device.IsCharging ??= battery.State switch {
-                    BatteryState.Unknown => null,
-                    BatteryState.Charging => true,
-                    _ => false
-                };
-            }
-            catch (PermissionException) {
-                logger?.LogDebug("No permission to read battery state from the device");
-            }
-#endif
+            // try {
+            //     var battery = Battery.Default;
+            //     device.BatteryLevel ??= battery.ChargeLevel < 0 ? null : (short)battery.ChargeLevel;
+            //     device.BatteryStatus ??= battery.State.ToString();
+            //     device.IsCharging ??= battery.State switch {
+            //         BatteryState.Unknown => null,
+            //         BatteryState.Charging => true,
+            //         _ => false
+            //     };
+            // }
+            // catch (PermissionException) {
+            //     logger?.LogDebug("No permission to read battery state from the device");
+            // }
 
             // https://docs.microsoft.com/dotnet/maui/platform-integration/communication/networking#using-connectivity
             try {
