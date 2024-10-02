@@ -179,7 +179,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             ? GetDefaultPeerChatAuthor(peerChatId, authorId, userId).RequireValid(userId)
             : null;
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         // Can't use .ForUpdate() here due to join
@@ -359,7 +359,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             return;
         }
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var authors = new List<AuthorFull>();
@@ -427,7 +427,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         var newAuthorIds = new List<AuthorId>();
         var newAuthorUserIds = new List<UserId>();
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         // Create place members and update chat authors.

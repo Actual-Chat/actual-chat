@@ -77,7 +77,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         var context = CommandContext.GetCurrent();
 
         var shard = DbHub.ShardResolver.Resolve(flowId);
-        var dbContext = await DbHub.CreateCommandDbContext(shard, cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(shard, cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
         dbContext.EnableChangeTracking(true);
 

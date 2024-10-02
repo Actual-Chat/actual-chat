@@ -57,7 +57,7 @@ public class ReactionsBackend(IServiceProvider services)
         var entryAuthor = await AuthorsBackend.Get(chatId, entry.AuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).Require().ConfigureAwait(false);
         var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).Require().ConfigureAwait(false);
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var id = DbReaction.ComposeId(entryId, authorId);

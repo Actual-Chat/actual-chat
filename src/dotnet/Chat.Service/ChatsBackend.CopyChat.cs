@@ -164,7 +164,7 @@ public partial class ChatsBackend
                 .ConfigureAwait(false);
         }
         if (!lastProcessedEntryId.IsNone) {
-            var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
             dbContext.Database.SetCommandTimeout(commandTimeout);
             await using var __ = dbContext.ConfigureAwait(false);
             Log.LogInformation(

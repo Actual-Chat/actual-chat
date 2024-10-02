@@ -580,7 +580,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
 
         change.RequireValid();
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbChat = chatId.IsNone ? null :
@@ -887,7 +887,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         change.RequireValid();
         ChatEntry entry;
         ChatEntry? oldEntry;
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using (var __ = dbContext.ConfigureAwait(false)) {
             var dbEntry = chatEntryId.IsNone
                 ? null
@@ -1077,7 +1077,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return default!;
         }
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbAttachments = new List<DbTextEntryAttachment>();
@@ -1108,7 +1108,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return; // It just spawns other commands, so nothing to do here
 
         var userId = command.UserId;
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var chatIdsToDelete = new List<string>();
@@ -1171,7 +1171,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var chatEntriesToInvalidate = new Dictionary<string, long>(StringComparer.Ordinal);
         var userId = command.UserId;
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var chatAuthors = await dbContext.Authors
@@ -1245,7 +1245,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return; // It just spawns other commands, so nothing to do here
 
         var userId = command.UserId;
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var hasNotesChat = await dbContext.Chats
@@ -1289,7 +1289,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         change.RequireValid();
         ChatCopyState chatCopyState;
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var dbChatCopyState = await dbContext.ChatCopyStates.ForUpdate()
             // ReSharper disable once AccessToModifiedClosure
@@ -1364,7 +1364,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var userId = command.UserId;
         var positionId = command.PositionId;
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var dbReadPositionsStat = await dbContext.ReadPositionsStats.ForUpdate()
             .FirstOrDefaultAsync(c => c.ChatId == chatId, cancellationToken)

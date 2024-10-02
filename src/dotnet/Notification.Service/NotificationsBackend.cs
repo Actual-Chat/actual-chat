@@ -146,7 +146,7 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         try {
-            var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
             await using var __ = dbContext.ConfigureAwait(false);
 
             var dbNotification = await dbContext.Notifications.ForUpdate()
@@ -203,7 +203,7 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         var (userId, deviceId, deviceType, sessionHash) = command;
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var existingDbDevice = await dbContext.Devices.ForUpdate()
             .FirstOrDefaultAsync(d => d.Id == deviceId.Value, cancellationToken)

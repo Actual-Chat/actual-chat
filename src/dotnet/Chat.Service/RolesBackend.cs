@@ -125,7 +125,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         change.RequireValid();
         chatId.Require("Command.ChatId");
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         // Fetching chat: if it doesn't exist, this command can't proceed anyway

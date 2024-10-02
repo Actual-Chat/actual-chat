@@ -81,7 +81,7 @@ public class LinkPreviewsBackend(MediaSettings settings, IChatsBackend chatsBack
     private async Task<LinkPreview> RefreshUnsafe(Symbol id, string url, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbLinkPreview = await dbContext.LinkPreviews.AsNoTracking()

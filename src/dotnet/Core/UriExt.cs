@@ -25,16 +25,16 @@ public static class UriExt
         return b.Uri;
     }
 
-    private static string RenderQuery(NameValueCollection parms)
+    private static string RenderQuery(NameValueCollection @params)
     {
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
-        for (int i = 0; i < parms.Count; i++) {
+        for (int i = 0; i < @params.Count; i++) {
             if (sb.Length > 0)
                 sb.Append('&');
-            var key = parms.Keys[i];
+            var key = @params.Keys[i];
             sb.Append(key);
             sb.Append('=');
-            sb.Append(parms[key]);
+            sb.Append(@params[key]);
         }
         return sb.ToStringAndRelease();
     }

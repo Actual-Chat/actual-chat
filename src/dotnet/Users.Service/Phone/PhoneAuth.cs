@@ -97,7 +97,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
 
         // save phone identity + phone claim
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbUser = await DbUsers.Get(dbContext, account.Id, true, cancellationToken).ConfigureAwait(false);

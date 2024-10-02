@@ -42,7 +42,7 @@ public class ChatUsagesBackend(IServiceProvider services)
         }
 
         var accessTime = accessTimeOpt ?? Clocks.SystemClock.Now;
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var id = DbChatUsage.ComposeId(userId, kind, chatId);
@@ -82,7 +82,7 @@ public class ChatUsagesBackend(IServiceProvider services)
             return;
         }
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var chatUsages = GetRecencyList(dbContext, userId, kind);

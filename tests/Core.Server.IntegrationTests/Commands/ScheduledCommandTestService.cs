@@ -40,7 +40,7 @@ public class ScheduledCommandTestService(IServiceProvider services)
 
         var context = CommandContext.GetCurrent();
         // CommandDbContext is required to enqueue events
-        await using var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         context.Operation.AddEvent(new TestEvent1(command.Error));
     }
 
@@ -53,7 +53,7 @@ public class ScheduledCommandTestService(IServiceProvider services)
 
         var context = CommandContext.GetCurrent();
         // CommandDbContext is required to enqueue events
-        await using var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         context.Operation.AddEvent(new TestEvent1(null));
         context.Operation.AddEvent(new TestEvent2());
     }
@@ -67,7 +67,7 @@ public class ScheduledCommandTestService(IServiceProvider services)
 
         var context = CommandContext.GetCurrent();
         // CommandDbContext is required to enqueue events
-        await using var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         context.Operation.AddEvent(new TestEvent1(null));
         context.Operation.AddEvent(new TestEvent2()); // Same as above, actually, but for UserId.None
     }

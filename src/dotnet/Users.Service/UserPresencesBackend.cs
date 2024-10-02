@@ -43,7 +43,7 @@ public class UserPresencesBackend : DbServiceBase<UsersDbContext>, IUserPresence
             return;
         }
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbUserPresence = await dbContext.UserPresences.ForUpdate()

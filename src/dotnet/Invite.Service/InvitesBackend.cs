@@ -68,7 +68,7 @@ public class InvitesBackend(IServiceProvider services)
             return default!;
         }
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var expiresOn = command.Invite.ExpiresOn;
@@ -109,7 +109,7 @@ public class InvitesBackend(IServiceProvider services)
         var session = command.Session;
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbInvite = await dbContext.Invites
@@ -191,7 +191,7 @@ public class InvitesBackend(IServiceProvider services)
             return;
         }
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbInvite = await dbContext.Invites

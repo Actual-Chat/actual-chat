@@ -6,7 +6,6 @@ using ActualChat.Transcription;
 using Google.Api.Gax;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V2;
-using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using static ActualChat.Constants.Transcription.Google;
@@ -192,7 +191,7 @@ public partial class GoogleTranscriber : ITranscriber
 
                 var request = new StreamingRecognizeRequest {
                     StreamingConfig = GetStreamingRecognitionConfig(state.Options),
-                    Audio = ByteString.CopyFrom(chunk),
+                    Audio = Google.Protobuf.ByteString.CopyFrom(chunk),
                 };
                 await recognizeStream.WriteAsync(request).ConfigureAwait(false);
 

@@ -214,7 +214,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         change.RequireValid();
         var oldContactIds = await ListIds(ownerId, placeId, cancellationToken).ConfigureAwait(false);
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbContact = await dbContext.Contacts.ForUpdate()
@@ -291,7 +291,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         var contactIds = await ListIds(ownerId, placeId, cancellationToken).ConfigureAwait(false);
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbContact = await dbContext.Contacts.ForUpdate()
@@ -320,7 +320,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         // var contactIds = await ListIds(userId, cancellationToken).ConfigureAwait(false);
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var idPrefix = userId.Value + ' ';
@@ -362,7 +362,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (chatId.IsPlaceChat && chatId.PlaceChatId.IsRoot) {
             var placeId = chatId.PlaceId;
 
-            var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
             await using var __ = dbContext.ConfigureAwait(false);
 
             await dbContext.PlaceContacts
@@ -374,7 +374,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             context.Operation.Items.Set(placeId);
         }
         else {
-            var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
             await using var __ = dbContext.ConfigureAwait(false);
 
             await dbContext.Contacts
@@ -455,7 +455,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         ownerId.Require();
         placeId.Require();
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var id = DbPlaceContact.FormatId(ownerId, placeId);

@@ -134,7 +134,7 @@ public class ExternalContactsBackend(
         id.Require();
         change.RequireValid();
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         // Can't use .ForUpdate() here due to join
@@ -186,7 +186,7 @@ public class ExternalContactsBackend(
         if (Invalidation.IsActive)
             return; // we can skip invalidation for own contacts
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var idPrefix = ExternalContactId.Prefix(userId);

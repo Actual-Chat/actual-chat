@@ -63,6 +63,7 @@ public static class ClientAppStartup
         // Rpc & Fusion defaults
         RpcDefaults.Mode = RpcMode.Client;
         FusionDefaults.Mode = FusionMode.Client;
+        RpcFrameDelayers.DefaultProvider = RpcFrameDelayers.Auto();
         RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connect
         RemoteComputedSynchronizer.Default = new RemoteComputedSynchronizer() {
             TimeoutFactory = (_, ct) => Task.Delay(TimeSpan.FromSeconds(1), ct),

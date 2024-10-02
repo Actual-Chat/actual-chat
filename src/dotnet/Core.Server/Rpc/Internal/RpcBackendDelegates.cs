@@ -69,14 +69,19 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
             return null; // Causes RPC connection to hang waiting for RpcPeerRef.RerouteToken cancellation
         }
 
+        var settings = client.Settings;
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append("ws://");
         sb.Append(node.Endpoint);
-        sb.Append(client.Settings.BackendRequestPath);
+        sb.Append(settings.BackendRequestPath);
         sb.Append('?');
-        sb.Append(client.Settings.ClientIdParameterName);
+        sb.Append(settings.ClientIdParameterName);
         sb.Append('=');
-        sb.Append(peer.ClientId); // Always Url-encoded
+        sb.Append(peer.ClientId.Value); // Always Url-encoded
+        sb.Append('&');
+        sb.Append(settings.SerializationFormatParameterName);
+        sb.Append('=');
+        sb.Append(peer.SerializationFormat.Key.Value);
         return sb.ToStringAndRelease().ToUri();
     }
 

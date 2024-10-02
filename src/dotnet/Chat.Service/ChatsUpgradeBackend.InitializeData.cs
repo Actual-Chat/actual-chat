@@ -165,7 +165,7 @@ public partial class ChatsUpgradeBackend
         await AddAudioBlob("0000.webm", "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm").ConfigureAwait(false);
         await AddAudioBlob("0001.webm", "audio-record/01FKRJ5P2C87TYP1V3JTNB228D/0000.webm").ConfigureAwait(false);
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         await AddEntries(adminAuthor, 0.1, 2000, null).ConfigureAwait(false);

@@ -15,14 +15,15 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
     public new record Options : BatchingKvas.Options
     {
         public string Version { get; init; } = Constants.Api.StringVersion;
-        public ImmutableHashSet<(Symbol, Symbol)> ForceFlushFor { get; init; } =
-            ImmutableHashSet<(Symbol, Symbol)>.Empty.Add((nameof(IAccounts), nameof(IAccounts.GetOwn)));
+        public ImmutableHashSet<Symbol> ForceFlushFor { get; init; } =
+            ImmutableHashSet<Symbol>.Empty.Add(RpcMethodDef.ComposeFullName(nameof(IAccounts), nameof(IAccounts.GetOwn)));
     }
 
     protected new Options Settings { get; }
-    protected HashSet<(Symbol, Symbol)> ForceFlushFor { get; }
+    protected HashSet<Symbol> ForceFlushFor { get; }
     protected RpcHub Hub { get; }
     protected RpcArgumentSerializer ArgumentSerializer { get; }
+    protected RpcMethodResolver AnyMethodResolver { get; }
     protected static bool DebugMode => Constants.DebugMode.RemoteComputedCache;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 
@@ -33,16 +34,16 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
     {
         Settings = settings;
         Hub = services.RpcHub();
-        ArgumentSerializer = Hub.InternalServices.ArgumentSerializer;
-        ForceFlushFor = new HashSet<(Symbol, Symbol)>(Settings.ForceFlushFor); // Read-only copy
+        ArgumentSerializer = Hub.SerializationFormats.GetDefault(false).ArgumentSerializer;
+        AnyMethodResolver = Hub.ServiceRegistry.AnyMethodResolver;
+        ForceFlushFor = [..Settings.ForceFlushFor]; // Read-only copy
     }
 
     [RequiresUnreferencedCode(UnreferencedCode.Serialization)]
     public async ValueTask<RpcCacheEntry<T>?> Get<T>(
         ComputeMethodInput input, RpcCacheKey key, CancellationToken cancellationToken)
     {
-        var serviceDef = Hub.ServiceRegistry.Get(key.Service);
-        var methodDef = serviceDef?.GetMethod(key.Method);
+        var methodDef = AnyMethodResolver[key.Name];
         if (methodDef == null)
             return null;
 
@@ -79,7 +80,7 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
 
         DebugLog?.LogDebug("Set({Key})", key);
         _ = Set(key.ToString(), ToBytes(value));
-        if (ForceFlushFor.Contains((key.Service, key.Method)))
+        if (ForceFlushFor.Contains(key.Name))
             _ = Flush();
     }
 
@@ -90,7 +91,7 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
 
         DebugLog?.LogDebug("Remove({Key})", key);
         _ = Set(key.ToString(), null);
-        if (ForceFlushFor.Contains((key.Service, key.Method)))
+        if (ForceFlushFor.Contains(key.Name))
             _ = Flush();
     }
 

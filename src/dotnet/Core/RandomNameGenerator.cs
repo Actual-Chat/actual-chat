@@ -80,7 +80,7 @@ public sealed record RandomNameGenerator
     public char WordDelimiter { get; init; } = ' ';
 
     public string Generate() => Generate(Random.Shared.Next());
-    public string Generate(string seed) => Generate(seed.GetDjb2HashCode());
+    public string Generate(string seed) => Generate(seed.GetXxHash3());
     public string Generate(int seed)
     {
         var prefixIndex = IntArithmetics.Default.Mod(seed, Prefixes.Length);

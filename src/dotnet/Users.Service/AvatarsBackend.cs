@@ -41,7 +41,7 @@ public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbCo
 
         change.RequireValid();
         var context = CommandContext.GetCurrent();
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         AvatarFull? existingAvatar = null;

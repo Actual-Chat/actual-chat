@@ -37,7 +37,7 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
             return;
         }
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var id = DbChatPosition.ComposeId(userId, chatId, kind);

@@ -31,7 +31,7 @@ public class ExternalContactHashesBackend(
             return default!;
         }
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbHash = await dbContext.ExternalContactsHashes.ForUpdate()
@@ -82,7 +82,7 @@ public class ExternalContactHashesBackend(
         if (Invalidation.IsActive)
             return; // we can skip invalidation for own contacts
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var idPrefix = UserDeviceId.Prefix(userId);

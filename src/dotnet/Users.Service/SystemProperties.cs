@@ -40,8 +40,8 @@ public class SystemProperties(IServiceProvider services)
         var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeAdmin);
 
-        // We must call CreateCommandDbContext to make sure this operation is logged in the Users DB
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        // We must call CreateOperationDbContext to make sure this operation is logged in the Users DB
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
     }
 
@@ -69,8 +69,8 @@ public class SystemProperties(IServiceProvider services)
         var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeAdmin);
 
-        // We must call CreateCommandDbContext to make sure this operation is logged in the Users DB
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        // We must call CreateOperationDbContext to make sure this operation is logged in the Users DB
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
     }
 }

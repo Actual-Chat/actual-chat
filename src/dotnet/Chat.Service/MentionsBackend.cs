@@ -44,7 +44,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
             return;
         }
 
-        var dbContext = await DbHub.CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var existingMentions = await dbContext.Mentions

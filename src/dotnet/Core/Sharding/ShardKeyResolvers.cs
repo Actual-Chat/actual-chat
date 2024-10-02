@@ -42,7 +42,7 @@ public static class ShardKeyResolvers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int ForRandom() => Random.Shared.Next();
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int ForString(string? x) => x?.GetDjb2HashCode() ?? 0;
+    public static int ForString(string? x) => x?.GetXxHash3() ?? 0;
 
     static ShardKeyResolvers()
     {
