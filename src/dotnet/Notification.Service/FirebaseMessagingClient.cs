@@ -137,7 +137,7 @@ public class FirebaseMessagingClient(
                     var tokensToRemove = responseGroup
                         .Select(g => g.DeviceId)
                         .ToApiArray();
-                    _ = Commander.Start(new NotificationsBackend_RemoveDevices(tokensToRemove), CancellationToken.None);
+                    _ = Commander.Start(new NotificationsBackend_RemoveDevices(tokensToRemove), true, CancellationToken.None);
                 }
                 else if (responseGroup.Key.HasValue) {
                     var firstErrorItem = responseGroup.First();
