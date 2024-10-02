@@ -2,6 +2,8 @@
 
 ![unit tests](https://github.com/Actual-Chat/actual-chat/actions/workflows/build-test-deploy-dev.yml/badge.svg)
 
+![slow tests](https://github.com/Actual-Chat/actual-chat/actions/workflows/test-slow.yml/badge.svg)
+
 Web site: [actual.chat](https://actual.chat)
 
 ## Join Team Chats 
