@@ -68,7 +68,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		git-prevent-tracking.cmd = git-prevent-tracking.cmd
 		global.json = global.json
 		icons-to-font.cmd = icons-to-font.cmd
-		monitor.Dockerfile = monitor.Dockerfile
 		npm-build.cmd = npm-build.cmd
 		npm-install.cmd = npm-install.cmd
 		npm-watch.cmd = npm-watch.cmd
