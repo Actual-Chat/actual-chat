@@ -13,14 +13,24 @@
 }
 
 @code {
-    private SearchUI SearchUI => ChatContext.Hub.SearchUI;
+    private ChatUIHub Hub => ChatContext.Hub;
+    private SearchUI SearchUI => Hub.SearchUI;
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
-    [CascadingParameter] private ScreenSize ScreenSize { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = new Model(false),
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (!ScreenSize.IsNarrow())
+        var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
+        if (!screenSize.IsNarrow())
             return new Model(false);
 
         var hasSearchResults = await SearchUI.IsResultsNavigationOn.Use(cancellationToken).ConfigureAwait(false);
