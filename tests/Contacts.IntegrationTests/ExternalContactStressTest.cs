@@ -3,6 +3,7 @@ using System.Security.Claims;
 using ActualChat.Performance;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
+using CommunityToolkit.HighPerformance;
 using Microsoft.AspNetCore.Authentication.Google;
 
 namespace ActualChat.Contacts.IntegrationTests;
