@@ -254,7 +254,7 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         var affectedUserIds = new HashSet<UserId>();
-        var dbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         foreach (var deviceId in command.DeviceIds) {
