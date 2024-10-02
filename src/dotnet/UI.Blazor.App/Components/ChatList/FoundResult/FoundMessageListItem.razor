@@ -8,9 +8,6 @@
     if (m == Model.None)
         return;
 
-    if (ReferenceEquals(FoundItem, null))
-        return;
-
     var chatState = m.ChatState;
     var chat = chatState.Chat;
     if (ReferenceEquals(chat, null) || ReferenceEquals(m.Entry, null))
@@ -92,7 +89,7 @@
     private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
 
-    [Parameter] public FoundItem? FoundItem { get; set; }
+    [Parameter] public FoundItem FoundItem { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -108,9 +105,6 @@
         AuthorFull? entryAuthorFull = null;
         Place? place = null;
         var foundItem = FoundItem;
-        if (foundItem == null)
-            return Model.None;
-
         var chatId = foundItem.ChatId;
         var messageMatch = foundItem.MessageSearchMatch;
         var entryId = foundItem.EntryId;

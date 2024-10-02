@@ -7,9 +7,6 @@
     if (m == Model.None)
         return;
 
-    if (ReferenceEquals(FoundItem, null))
-        return;
-
     var chatState = m.ChatState;
     if (ReferenceEquals(m.Place, null) || m.Place.Id.IsNone)
         return;
@@ -56,7 +53,7 @@
     private IPlaces Places => Hub.Places;
     private Session Session => Hub.Session();
 
-    [Parameter] public FoundItem? FoundItem { get; set; }
+    [Parameter] public FoundItem FoundItem { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -71,9 +68,6 @@
         // Properties are copied to local vars because of this.
         Place? place = null;
         var foundItem = FoundItem;
-        if (foundItem == null)
-            return Model.None;
-
         var chatId = foundItem.ChatId;
         var titleMatch = foundItem.ContactSearchMatch;
 
