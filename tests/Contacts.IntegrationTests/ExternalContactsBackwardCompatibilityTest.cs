@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using ActualChat.Performance;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using ActualLab.Rpc;
@@ -43,22 +42,22 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
     public void ShouldExposeCorrectRpcLegacyMethods()
     {
         var serviceRegistry = AppHost.Services.RpcHub().ServiceRegistry;
-        var mExternalContactList = (Service: (Symbol)nameof(IExternalContacts), Method: (Symbol)"List");
+        var mExternalContactList = RpcMethodDef.ComposeFullName(nameof(IExternalContacts), "List");
 
         var r = serviceRegistry.GetServerMethodResolver(new VersionSet($"Api={Constants.Api.StringVersion}"));
         Out.WriteLine(r.ToString());
-        r.LegacyMethods.Should().BeNull();
+        r.MethodByFullName.Should().BeNull();
 
         var testedVersions = new[] { "", "Api=1.5", "Api=1.10", "Api=1.10.0.0" };
         foreach (var version in testedVersions) {
             r = serviceRegistry.GetServerMethodResolver(new VersionSet(version));
             Out.WriteLine(r.ToString());
-            r.LegacyMethods.SingleOrDefault(x => x.Key == mExternalContactList).Should().NotBeNull();
+            r.MethodByFullName.SingleOrDefault(x => x.Key == mExternalContactList).Should().NotBeNull();
         }
 
         r = serviceRegistry.GetServerMethodResolver(new VersionSet("Api=1.11"));
         Out.WriteLine(r.ToString());
-        (r.LegacyMethods?.SingleOrDefault(x => x.Key == mExternalContactList) ?? null).Should().BeNull();
+        (r.MethodByFullName?.SingleOrDefault(x => x.Key == mExternalContactList) ?? null).Should().BeNull();
     }
 
     [Fact]
@@ -154,7 +153,6 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
     private Task<ApiArray<Result<ExternalContactFull?>>> Remove(ExternalContactFull externalContactFull)
         => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
             ApiArray.New(new ExternalContactChange(externalContactFull.Id, null, Change.Remove<ExternalContactFull>()))));
-
 
     private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
         => new (new ExternalContactId(new UserDeviceId(owner.Id, ownerDeviceId), NewDeviceContactId()));
