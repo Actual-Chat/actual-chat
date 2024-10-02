@@ -3,6 +3,7 @@ using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Search;
 using ActualChat.Users;
 using ActualLab.Mathematics;
+using Bunit.Extensions;
 
 namespace ActualChat.Testing.Host;
 
@@ -89,7 +90,10 @@ public static class ContactSearchResultUtil
 
     public static SearchMatch BuildSearchMatch(this Range<int>[]? searchMatchPartRanges, string fullName)
     {
-        var searchMatchParts = searchMatchPartRanges?.Select(x => new SearchMatchPart(x, 1)).ToArray();
-        return searchMatchParts == null ? SearchMatch.New(fullName) : new SearchMatch(fullName, 1, searchMatchParts);
+        if (searchMatchPartRanges.IsNullOrEmpty())
+            return SearchMatch.New(fullName);
+
+        var searchMatchParts = searchMatchPartRanges.Select(x => new SearchMatchPart(x, 1)).ToArray();
+        return new SearchMatch(fullName, 1, searchMatchParts);
     }
 }

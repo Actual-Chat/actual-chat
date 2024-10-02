@@ -43,6 +43,25 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
+    public async Task ShouldShowCorrectHighlight()
+    {
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chatId, _) = await Tester.CreateChat(false);
+
+        var entry = await CreateEntry(chatId, "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum test has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.");
+
+        // act, assert
+        var searchResults = await Find("test");
+        searchResults.Should()
+            .BeEquivalentTo([
+                entry.BuildSearchResult(
+                    $"…Lorem Ipsum test has been the industry's standard dummy text ever since the 1500s, when an unknown printer…",
+                    (13, 17)),
+            ]);
+    }
+
+    [Fact]
     public async Task ShouldFindOnlyUserRelatedEntries()
     {
         // arrange
@@ -182,10 +201,10 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     private async Task<ChatEntry> CreateEntry(ChatId chatId, string text)
-        => await Tester.CreateTextEntry(chatId, $"{UniquePart} {text}");
+        => await Tester.CreateTextEntry(chatId, $"{text} {UniquePart}");
 
     private Task<ChatEntry> UpdateEntry(ChatEntryId id, string text)
-        => Tester.UpdateTextEntry(id, $"{UniquePart} {text}");
+        => Tester.UpdateTextEntry(id, $"{text} {UniquePart}");
 
     private async Task<ApiArray<EntrySearchResult>> Find(string criteria, PlaceId? placeId = null, ChatId chatId = default, int expected = 1)
     {

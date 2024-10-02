@@ -73,6 +73,9 @@ public static partial class StringExt
     public static string Pluralize(this string source, int count)
         => count == 1 ? source : source + "s";
 
+    public static string EnsurePrefix(this string source, string prefix)
+        => source.OrdinalStartsWith(prefix) ? source : prefix + source;
+
     public static string EnsureSuffix(this string source, string suffix)
         => source.OrdinalEndsWith(suffix) ? source : source + suffix;
 
