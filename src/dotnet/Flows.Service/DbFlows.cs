@@ -109,6 +109,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
                 context.Operation.AddEvent(new FlowStartEvent(flowId));
             break;
         case (true, false):  // Remove
+            version = 0;
             dbContext.Remove(dbFlow!);
             break;
         case (true, true):  // Update

@@ -9,6 +9,12 @@ namespace ActualChat.Flows;
 
 public abstract class Flow : IHasId<FlowId>, IFlowImpl
 {
+    public static class Defaults
+    {
+        public static TimeSpan KeepAliveFor { get; } = TimeSpan.FromSeconds(10);
+        public static RetryDelaySeq FailureDelays { get; } = RetryDelaySeq.Exp(0.5, 3);
+    }
+
     public static Moment InfiniteHardResumeAt { get; } = new DateTime(2100, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     private static readonly bool DebugMode = Constants.DebugMode.Flows;
@@ -27,7 +33,9 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
 
     // Used by FlowWorklet
     [IgnoreDataMember, MemoryPackIgnore]
-    public TimeSpan KeepAliveFor { get; set; } = TimeSpan.FromSeconds(10);
+    public TimeSpan KeepAliveFor { get; set; } = Defaults.KeepAliveFor;
+    [IgnoreDataMember, MemoryPackIgnore]
+    public RetryDelaySeq FailureDelays { get; set; } = Defaults.FailureDelays;
 
     protected FlowHost Host => Worklet.Host;
     protected FlowWorklet Worklet => RequireWorklet();
@@ -53,7 +61,7 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
     public virtual Flow Clone()
         => MemberwiseCloner.Invoke(this);
 
-    public virtual async Task<FlowTransition> HandleEvent(IFlowEvent evt, CancellationToken cancellationToken)
+    public virtual async Task<FlowTransition> ProcessEvent(IFlowEvent evt, CancellationToken cancellationToken)
     {
         Event = new FlowEventBin(this, evt);
         var step = Step;

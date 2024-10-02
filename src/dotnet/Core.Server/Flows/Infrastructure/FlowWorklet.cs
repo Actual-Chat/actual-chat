@@ -6,6 +6,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
 {
     protected readonly TaskCompletionSource WhenReadySource = new();
     protected Channel<QueueEntry> Queue { get; init; }
+    protected ChannelReader<QueueEntry> Reader { get; init; }
     protected ChannelWriter<QueueEntry> Writer { get; init; }
 
     public FlowHostShard Shard { get; }
@@ -25,6 +26,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
             SingleReader = true,
             SingleWriter = false,
         });
+        Reader = Queue.Reader;
         Writer = Queue.Writer;
         StopToken.Register(() => Writer.TryComplete());
     }
@@ -36,7 +38,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
         => $"{GetType().Name}('{FlowId}')";
 
     // The `long` it returns is DbFlow/FlowData.Version
-    public Task<long> ProcessEvent(IFlowEvent evt, CancellationToken cancellationToken)
+    public Task<long> EnqueueAndProcessEvent(IFlowEvent evt, CancellationToken cancellationToken)
     {
         var whenReady = WhenReadySource.Task;
         if (!whenReady.IsCompleted)
@@ -63,41 +65,56 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var flow = await Host.Flows.GetOrStart(FlowId, cancellationToken).ConfigureAwait(false);
-        flow = flow.Clone();
-        flow.Initialize(flow.Id, flow.Version, flow.Step, flow.HardResumeAt, this);
-        if (flow.Step == FlowSteps.Starting) {
-            var entry = new QueueEntry(new FlowStartEvent(FlowId), cancellationToken);
-            if (!Writer.TryWrite(entry))
-                return; // Already stopped
-        }
-        WhenReadySource.TrySetResult();
-
         var clock = Timeouts.Generic.Clock;
-        var reader = Queue.Reader;
-        do {
-            // We don't pass cancellationToken to WaitToReadAsync, coz
-            // the channel is reliably getting closed on dispose -
-            // see DisposeAsyncCore and IGenericTimeoutHandler.OnTimeout.
-            var canReadTask = reader.WaitToReadAsync(CancellationToken.None);
-            if (canReadTask.IsCompleted) {
-                if (!await canReadTask.ConfigureAwait(false))
-                    return;
-            }
-            else {
-                // Enlist this worklet for timeout-based removal
-                Timeouts.Generic.AddOrUpdateToLater(this, clock.Now + flow.KeepAliveFor);
-                if (!await canReadTask.ConfigureAwait(false))
-                    return;
+        var failureDelays = Flow.Defaults.FailureDelays;
+        var failureCount = 0;
+        while (true) {
+            Flow? flow = null;
+            try {
+                flow = await Host.Flows.GetOrStart(FlowId, cancellationToken).ConfigureAwait(false);
+                flow = flow.Clone();
+                failureDelays = flow.FailureDelays;
+                flow.Initialize(flow.Id, flow.Version, flow.Step, flow.HardResumeAt, this);
+                if (flow.Step == FlowSteps.Starting) {
+                    var entry = new QueueEntry(new FlowStartEvent(FlowId), cancellationToken);
+                    if (!Writer.TryWrite(entry))
+                        return; // Already stopped
+                }
+                WhenReadySource.TrySetResult();
 
-                // Un-enlist this worklet for timeout-based removal
-                Timeouts.Generic.Remove(this);
-            }
-            if (!reader.TryRead(out var entry))
-                continue;
+                do {
+                    // We don't pass cancellationToken to WaitToReadAsync, coz
+                    // the channel is reliably getting closed on dispose -
+                    // see DisposeAsyncCore and IGenericTimeoutHandler.OnTimeout.
+                    var canReadTask = Reader.WaitToReadAsync(CancellationToken.None);
+                    if (canReadTask.IsCompleted) {
+                        if (!await canReadTask.ConfigureAwait(false))
+                            return;
+                    }
+                    else {
+                        // Enlist this worklet for timeout-based removal
+                        Timeouts.Generic.AddOrUpdateToLater(this, clock.Now + flow.KeepAliveFor);
+                        if (!await canReadTask.ConfigureAwait(false))
+                            return;
 
-            flow = await HandleEvent(flow, entry, cancellationToken).ConfigureAwait(false);
-        } while (flow.Step != FlowSteps.Removed);
+                        // Un-enlist this worklet for timeout-based removal
+                        Timeouts.Generic.Remove(this);
+                    }
+                    if (!Reader.TryRead(out var entry))
+                        continue;
+
+                    await ProcessEvent(flow, entry, cancellationToken).ConfigureAwait(false);
+                    failureCount = 0;
+                } while (flow.Step != FlowSteps.Removed);
+            }
+            catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                var delay = failureDelays[++failureCount];
+                Log.LogError(e,
+                    "`{Id}` @ {NextStep} failed (#{FailureCount}), will resume in {Delay}",
+                    FlowId, flow?.Step ?? "n/a", failureCount, delay);
+                await clock.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
     protected override async Task OnStop()
@@ -110,52 +127,44 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
 
     // Private methods
 
-    private async Task<Flow> HandleEvent(Flow flow, QueueEntry entry, CancellationToken cancellationToken)
+    private async Task ProcessEvent(Flow flow, QueueEntry entry, CancellationToken cancellationToken)
     {
         // This method should never throw!
         if (entry.CancellationToken.IsCancellationRequested) {
             // Entry is cancelled by the moment we dequeue it
             entry.ResultSource.TrySetCanceled(entry.CancellationToken);
-            return flow;
+            return;
         }
         if (cancellationToken.IsCancellationRequested) {
             // The worklet is already terminating
             entry.ResultSource.TrySetCanceled(cancellationToken);
-            return flow;
+            return;
         }
 
-        var backup = flow.Clone();
         try {
-            var evt = entry.Event;
-            while (true) {
-                var transition = await flow.HandleEvent(evt, cancellationToken).ConfigureAwait(false);
-                if (transition.IsNone)
-                    break; // No transition
-                if (transition.HardResumeAt.HasValue)
-                    break; // Transition implies waiting for event
-
-                evt = new FlowResumeEvent(flow.Id, false, transition.Tag);
-            }
+            var transition = await flow.ProcessEvent(entry.Event, cancellationToken).ConfigureAwait(false);
             entry.ResultSource.TrySetResult(flow.Version);
+            if (transition is { IsNone: false, HardResumeAt: null }) {
+                entry = new QueueEntry(new FlowResumeEvent(flow.Id, false, transition.Tag), CancellationToken.None);
+                await Writer.WriteAsync(entry, cancellationToken).ConfigureAwait(false);
+            }
         }
         catch (Exception e) {
-            flow = backup;
-            if (e.IsCancellationOf(cancellationToken))
-                entry.ResultSource.TrySetCanceled(cancellationToken);
-            else {
-                entry.ResultSource.TrySetException(e);
-                Log.LogError(e, "`{Id}` @ {NextStep} failed", flow.Id, flow.Step);
-            }
+            entry.ResultSource.TrySetException(e);
+            throw;
         }
-        return flow;
     }
 
     // Nested types
 
     public readonly record struct QueueEntry(
         IFlowEvent Event,
-        CancellationToken CancellationToken)
+        CancellationToken CancellationToken
+        ) : ICanBeNone<QueueEntry>
     {
+        public static QueueEntry None => default;
+
+        public bool IsNone => Event == null;
         public TaskCompletionSource<long> ResultSource { get; init; } = new ();
     }
 }

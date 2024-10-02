@@ -63,7 +63,7 @@ public sealed class FlowHost : ShardWorker, IHasServices
             var worklet = this[flowId];
             try {
                 var version = await worklet
-                    .ProcessEvent(evt, cancellationToken)
+                    .EnqueueAndProcessEvent(evt, cancellationToken)
                     .WaitAsync(cancellationToken) // It's important to have it here, read below
                     .ConfigureAwait(false);
                 // .WaitAsync ensures that even if queue is clogged,
