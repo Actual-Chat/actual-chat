@@ -10,7 +10,7 @@
 
     var chatState = m.ChatState;
     var chat = chatState.Chat;
-    if (ReferenceEquals(chat, null) || ReferenceEquals(m.Entry, null))
+    if (ReferenceEquals(m.Entry, null))
         return;
 }
 
@@ -117,7 +117,7 @@
         if (!placeId.IsNone)
             place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
 
-        var entry = entryId.IsNone ? chatState.Info.LastTextEntry : await ChatUI.GetEntry(entryId, cancellationToken);
+        var entry = await ChatUI.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
         if (entry != null) {
             var authorId = entry.AuthorId;
             entryAuthorFull = await Authors.GetFull(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
