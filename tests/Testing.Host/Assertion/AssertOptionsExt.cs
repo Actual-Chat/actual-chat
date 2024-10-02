@@ -28,6 +28,12 @@ public static class AssertOptionsExt
             .For(x => x.SearchMatch.Parts)
             .Exclude(x => x.Rank);
 
+    public static EquivalencyAssertionOptions<ContactSearchResult> ExcludingUniquePart(
+        this EquivalencyAssertionOptions<ContactSearchResult> options)
+        => options.Excluding(x => x.SearchMatch.Rank)
+            .For(x => x.SearchMatch.Parts)
+            .Exclude(x => x.Rank);
+
     public static EquivalencyAssertionOptions<ContactSearchResult> ExcludingSearchMatch(
         this EquivalencyAssertionOptions<ContactSearchResult> options)
         => options.Excluding(x => x.SearchMatch);

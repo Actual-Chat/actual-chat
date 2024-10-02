@@ -49,15 +49,15 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         searchResults = await Find("place one", true);
         searchResults.Should()
             .BeEquivalentTo([
-                    bob.BuildSearchResult(places.JoinedPublicPlace1(), [new (7, 12), new (16, 19), (20, 25)]),
-                    bob.BuildSearchResult(places.JoinedPrivatePlace1(), [new (8, 13), new (17, 20), (21, 26)]),
+                    bob.BuildSearchResult(places.JoinedPublicPlace1(), UniquePart, [new (7, 12), new (16, 19)]),
+                    bob.BuildSearchResult(places.JoinedPrivatePlace1(), UniquePart, [new (8, 13), new (17, 20)]),
                 ],
                 o => o.ExcludingRank());
 
         searchResults = await Find("place one", false);
         searchResults.Should()
             .BeEquivalentTo(
-                [bob.BuildSearchResult(places.OtherPublicPlace1(), [new (7, 12), new (16, 19), (20, 25)])],
+                [bob.BuildSearchResult(places.OtherPublicPlace1(), UniquePart, [new (7, 12), new (16, 19)])],
                 o => o.ExcludingRank());
     }
 
