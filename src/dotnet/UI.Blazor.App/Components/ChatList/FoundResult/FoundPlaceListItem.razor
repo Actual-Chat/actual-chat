@@ -7,9 +7,6 @@
     if (m == Model.None)
         return;
 
-    if (ReferenceEquals(FoundItem, null))
-        return;
-
     var chatState = m.ChatState;
     if (ReferenceEquals(m.Place, null) || m.Place.Id.IsNone)
         return;
@@ -47,7 +44,7 @@
     private IPlaces Places => Hub.Places;
     private Session Session => Hub.Session();
 
-    [Parameter] public FoundItem? FoundItem { get; set; }
+    [Parameter] public FoundItem FoundItem { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -61,9 +58,6 @@
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.
         var foundItem = FoundItem;
-        if (foundItem == null)
-            return Model.None;
-
         var chatId = foundItem.ChatId;
         var titleMatch = foundItem.ContactSearchMatch;
 
