@@ -1,5 +1,4 @@
 using Cysharp.Text;
-using Microsoft.Toolkit.HighPerformance;
 using ActualLab.Mathematics.Internal;
 
 namespace ActualChat;

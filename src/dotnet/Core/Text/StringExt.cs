@@ -4,8 +4,8 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using ActualChat.Search;
+using CommunityToolkit.HighPerformance;
 using Cysharp.Text;
-using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat;
 

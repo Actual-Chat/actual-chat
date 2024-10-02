@@ -1,6 +1,6 @@
 using ActualChat.Core.UnitTests.Kvas.Services;
 using ActualChat.Kvas;
-using Microsoft.Toolkit.HighPerformance.Buffers;
+using CommunityToolkit.HighPerformance.Buffers;
 
 namespace ActualChat.Core.UnitTests.Kvas;
 

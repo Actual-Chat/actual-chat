@@ -1,6 +1,5 @@
 using System.Text;
 using ActualLab.Scalability;
-using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Kubernetes;
 

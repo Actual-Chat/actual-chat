@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using ActualChat.Db;
 using ActualChat.Users.Db;
-using Microsoft.Toolkit.HighPerformance;
+using CommunityToolkit.HighPerformance;
 
 namespace ActualChat.Users.Module;
 
@@ -15,7 +15,6 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
             await EnsureTestBotsExist(cancellationToken).ConfigureAwait(false);
             await EnsureTestUsersExist(cancellationToken).ConfigureAwait(false);
         }
-
     }
 
     // Private methods

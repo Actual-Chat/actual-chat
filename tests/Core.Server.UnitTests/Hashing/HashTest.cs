@@ -1,7 +1,7 @@
 using System.Text;
 using ActualChat.Hashing;
+using CommunityToolkit.HighPerformance;
 using MemoryPack;
-using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Core.Server.UnitTests.Hashing;
 
@@ -13,6 +13,13 @@ public class HashTest(ITestOutputHelper @out) : TestBase(@out)
         sizeof(HashOutput16).Should().Be(16);
         sizeof(HashOutput20).Should().Be(20);
         sizeof(HashOutput32).Should().Be(32);
+    }
+
+    [Fact]
+    public void XxHash3_Test()
+    {
+        "".GetXxHash3();
+        "".GetXxHash3L();
     }
 
     [Fact]

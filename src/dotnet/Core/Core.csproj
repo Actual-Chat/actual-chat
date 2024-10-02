@@ -7,12 +7,12 @@
 
   <ItemGroup>
     <PackageReference Include="MemoryPack" />
+    <PackageReference Include="CommunityToolkit.HighPerformance" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
     <PackageReference Include="Microsoft.JSInterop" />
-    <PackageReference Include="Microsoft.Toolkit.HighPerformance" />
     <PackageReference Include="ActualLab.Fusion" />
     <PackageReference Include="ActualLab.Fusion.Ext.Contracts" />
     <PackageReference Include="ActualLab.Rpc" />

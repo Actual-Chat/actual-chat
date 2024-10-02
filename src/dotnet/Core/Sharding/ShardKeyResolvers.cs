@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat;
 

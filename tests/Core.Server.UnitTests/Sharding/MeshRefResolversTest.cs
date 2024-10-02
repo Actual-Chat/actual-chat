@@ -1,5 +1,3 @@
-using Microsoft.Toolkit.HighPerformance;
-
 namespace ActualChat.Core.Server.UnitTests.Sharding;
 
 public class MeshRefResolversTest(ITestOutputHelper @out) : TestBase(@out)
@@ -44,7 +42,7 @@ public class MeshRefResolversTest(ITestOutputHelper @out) : TestBase(@out)
         r3n.Invoke(null).Should().Be(MeshRef.None);
 
         var r4 = MeshRefResolvers.Get<PlaceId>(requester);
-        r4.Invoke(placeId).ShardRef.Key.Should().Be(placeId.Value.GetDjb2HashCode());
+        r4.Invoke(placeId).ShardRef.Key.Should().Be(placeId.Value.GetXxHash3());
 
         var r5 = MeshRefResolvers.Get<TestShardCommand>(requester);
         r5.Invoke(new TestShardCommand(10)).Should().Be(MeshRef.Shard(10));
