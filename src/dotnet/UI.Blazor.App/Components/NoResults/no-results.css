@@ -1,0 +1,11 @@
+.no-results-container {
+    @apply flex items-center justify-center;
+    @apply h-full;
+}
+.no-results-container > .c-wrapper {
+    @apply flex-y items-center justify-center gap-y-9;
+}
+.no-results-container > .c-wrapper > .text-wrapper {
+    @apply flex-y items-center;
+    @apply text-headline-6 text-03;
+}
