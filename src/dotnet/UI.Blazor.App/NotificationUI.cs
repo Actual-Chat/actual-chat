@@ -137,26 +137,37 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
 
     public async Task DeregisterDevice(CancellationToken cancellationToken = default)
     {
+        Log.LogInformation("-> DeregisterDevice");
         var deviceId = await DeviceTokenRetriever.GetDeviceToken(cancellationToken).ConfigureAwait(false);
         if (deviceId == null)
             return;
 
+        Log.LogInformation("DeregisterDevice. About to execute DeleteDeviceToken");
         var deleteTokenTask = DeviceTokenRetriever.DeleteDeviceToken(cancellationToken);
+        Log.LogInformation("DeregisterDevice. About to execute DeregisterDevice command");
         var command = new Notifications_DeregisterDevice(Session, deviceId);
         var deregisterDeviceTask =  Hub.Commander().Call(command, cancellationToken);
         await Task.WhenAll(deleteTokenTask, deregisterDeviceTask).ConfigureAwait(false);
+        Log.LogInformation("DeregisterDevice. DeleteDeviceToken and DeregisterDevice command are executed");
     }
 
     public async Task EnsureDeviceRegistered(CancellationToken cancellationToken = default)
     {
+        Log.LogInformation("-> EnsureDeviceRegistered");
         var deviceId = await DeviceTokenRetriever.GetDeviceToken(cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("EnsureDeviceRegistered. Got device token");
         var existingTask = _registerDeviceTask;
         if (existingTask != null) {
+            Log.LogInformation("EnsureDeviceRegistered. RegisterDeviceTask exists");
             var alreadyRegisteredDeviceId = await existingTask.ConfigureAwait(false);
-            if (OrdinalEquals(alreadyRegisteredDeviceId, deviceId))
+            Log.LogInformation("EnsureDeviceRegistered. RegisterDeviceTask has completed");
+            if (OrdinalEquals(alreadyRegisteredDeviceId, deviceId)) {
+                Log.LogInformation("EnsureDeviceRegistered. Device token is already registered");
                 return;
+            }
         }
         lock (Lock) {
+            Log.LogInformation("EnsureDeviceRegistered. Registered device token does not match. Will try again");
             _registerDeviceTask = null;
             RegisterDevice(deviceId, cancellationToken);
             existingTask = _registerDeviceTask;
@@ -179,25 +190,34 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
                 : cancellationToken;
             _registerDeviceTask = Task.Run(async () => {
                 // Wait for sign-in
+                Log.LogInformation("-> RegisterDeviceTask has started. Waiting for loading account...");
                 await Hub.AccountUI.WhenLoaded.ConfigureAwait(false);
                 for (int i = 0; i < MaxRetryCount; i++) {
                     using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
                     using var cts = parentToken.LinkWith(timeoutCts.Token);
                     var linkedToken = cts.Token;
                     try {
+                        Log.LogInformation("RegisterDeviceTask. Attempt: {Attempt}/{MaxRetryCount}", i + 1, MaxRetryCount);
                         await Hub.RpcHub().WhenClientPeerConnected(linkedToken).ConfigureAwait(false);
+                        Log.LogInformation("RegisterDeviceTask. Peer has got connected");
                         deviceId ??= await DeviceTokenRetriever.GetDeviceToken(linkedToken).ConfigureAwait(false);
                         if (deviceId == null) {
                             Log.LogError("Failed to get notification device token");
                             return deviceId;
                         }
 
-                        var isGuest = Hub.AccountUI.OwnAccount.Value.User.IsGuest();
-                        if (isGuest)
-                            await Hub.AccountUI.OwnAccount.When(acc => !acc.User.IsGuest(), cts.Token).ConfigureAwait(false);
+                        Log.LogInformation("RegisterDeviceTask. Retrieved device token");
+                        var isGuest = Hub.AccountUI.OwnAccount.Value.IsGuestOrNone;
+                        if (isGuest) {
+                            Log.LogInformation("RegisterDeviceTask. Awaiting user is signed in");
+                            await Hub.AccountUI.OwnAccount.When(acc => !acc.IsGuestOrNone, cts.Token)
+                                .ConfigureAwait(false);
+                        }
 
+                        Log.LogInformation("RegisterDeviceTask. About to send register command. UserId is {UserId}", Hub.AccountUI.OwnAccount.Value.Id);
                         var command = new Notifications_RegisterDevice(Session, deviceId, GetDeviceType());
                         await Hub.Commander().Call(command, linkedToken).ConfigureAwait(false);
+                        Log.LogInformation("RegisterDeviceTask. Register command has been executed");
                         return deviceId;
                     }
                     catch (Exception e) when (!StopToken.IsCancellationRequested) {

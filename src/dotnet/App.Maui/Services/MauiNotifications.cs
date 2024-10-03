@@ -11,12 +11,17 @@ public class MauiNotifications(IServiceProvider services)
     private RpcHub RpcHub { get; } = services.GetRequiredService<RpcHub>();
     private ICommander Commander { get; } = services.GetRequiredService<ICommander>();
     private TrueSessionResolver SessionResolver { get; } = services.GetRequiredService<TrueSessionResolver>();
+    private ILogger Log { get; } = services.LogFor<MauiNotifications>();
 
-    public async Task RefreshNotificationToken(string token, DeviceType deviceType, CancellationToken cancelationToken = default)
+    public async Task RefreshNotificationToken(string token, DeviceType deviceType, CancellationToken cancellationToken = default)
     {
-        await RpcHub.WhenClientPeerConnected(cancelationToken).ConfigureAwait(false);
-        var session = await SessionResolver.GetSession(cancelationToken).ConfigureAwait(false);
+        Log.LogInformation("-> RefreshNotificationToken");
+        await RpcHub.WhenClientPeerConnected(cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("RefreshNotificationToken. Peer got connected");
+        var session = await SessionResolver.GetSession(cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("RefreshNotificationToken. Got session");
         var command = new Notifications_RegisterDevice(session, token, deviceType);
-        await Commander.Call(command, cancelationToken).ConfigureAwait(false);
+        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("<- RefreshNotificationToken");
     }
 }
