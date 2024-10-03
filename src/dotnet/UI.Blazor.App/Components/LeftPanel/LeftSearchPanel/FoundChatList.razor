@@ -15,8 +15,7 @@
                 Scope="foundItem.Scope" />
         }
 
-        <FoundResult @key=@foundItem.SearchResult.Id
-                     FoundItem="@foundItem"/>
+        <FoundResult @key=@foundItem.SearchResult.Id FoundItem="@foundItem"/>
 
         @if (foundItem.IsLastInGroup) {
             <Divider Class="mx-1 my-1.5" />
