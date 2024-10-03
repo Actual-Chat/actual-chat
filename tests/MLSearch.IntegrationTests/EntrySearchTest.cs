@@ -55,9 +55,30 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         var searchResults = await Find("test");
         searchResults.Should()
             .BeEquivalentTo([
-                entry.BuildSearchResult(
-                    $"…Lorem Ipsum test has been the industry's standard dummy text ever since the 1500s, when an unknown printer…",
+                entry.Id.BuildSearchResult(
+                    "…Lorem Ipsum test has been the industry's standard dummy text ever since the 1500s, when an unknown printer…",
+                    UniquePart,
                     (13, 17)),
+            ]);
+    }
+
+    [Fact]
+    public async Task ShouldFindLinksByPart()
+    {
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chatId, _) = await Tester.CreateChat(false);
+
+        var entry = await CreateEntry(chatId, "https://actual.chat");
+
+        // act, assert
+        var searchResults = await Find("actual");
+        // var searchResults = await Find("chat"); TODO: uncomment when links are handled properly
+        searchResults.Should()
+            .BeEquivalentTo([
+                entry.BuildSearchResult(
+                    UniquePart,
+                    (8, 19)),
             ]);
     }
 
