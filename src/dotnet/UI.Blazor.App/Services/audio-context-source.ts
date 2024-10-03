@@ -17,6 +17,7 @@ import { BrowserInfo } from '../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { AudioContextRef, AudioContextRefOptions } from './audio-context-ref';
 import { AudioContextDestinationFallback } from './audio-context-destination-fallback';
 import { Log } from 'logging';
+import { AudioInitializer, BackgroundState } from './audio-initializer';
 
 const { logScope, infoLog, debugLog, warnLog } = Log.get('AudioContextSource');
 
@@ -26,12 +27,12 @@ const MaxResumeTimeMs = 600;
 const MaxResumeCount = 60;
 const MaxInteractiveResumeCount = 3;
 const MaxSuspendTimeMs = 300;
-const MaxInteractionWaitTimeMs = 60_000;
 const ShortTestIntervalMs = 60;
 const LongTestIntervalMs = 1000;
 const SilencePlaybackDuration = 0.280;
 const WakeUpDetectionIntervalMs = 5000;
 const SuspendDebounceTimeMs: number = 2000;
+const CloseUnusedContextDebounce: number = 5000;
 
 const Debug = {
     brokenKey: 'debugging_isBroken',
@@ -61,11 +62,9 @@ export interface AudioContextSource {
 
     initContextInteractively(): Promise<void>;
 
-    terminate(): Promise<void>;
+    reset(): Promise<void>;
 
-    resumeAudio(): Promise<void>;
-
-    suspendAudio(): Promise<void>;
+    updateBackgroundState(state: BackgroundState): Promise<void>;
 
     useRef(): void;
 
@@ -127,11 +126,9 @@ abstract class AudioContextSourceBase implements AudioContextSource {
 
     public abstract initContextInteractively(): Promise<void>;
 
-    public abstract terminate(): Promise<void>;
+    public abstract reset(): Promise<void>;
 
-    public abstract resumeAudio(): Promise<void>;
-
-    public abstract suspendAudio(): Promise<void>;
+    public abstract updateBackgroundState(state: BackgroundState): Promise<void>;
 
     public abstract useRef(): void;
 
@@ -158,8 +155,10 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         debugLog?.log(`close:`, Log.ref(context));
         if (!context)
             return;
+
         if (context.state === 'closed')
             return;
+
         this.fallbackDestination?.detach();
         try {
             await context.close();
@@ -217,17 +216,16 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
     private isInteractiveWasReset = false;
     private resumeCount = 0;
     private interactiveResumeCount = 0;
+    private _maintain: Promise<void> | null = null;
     private _whenReady = new PromiseSource<AudioContext | null>();
-    // private _whenClosed = new PromiseSource<AudioContext | null>();
     private _whenNotReady = new PromiseSource<void>();
-    private isTerminated = false;
 
     // Key properties
     public get isActive(): boolean { return this._isActive }
 
     public constructor(purpose: AudioContextPurpose) {
         super(purpose);
-        void this.maintain();
+        this._maintain = this.maintain();
     }
 
     public whenReady(cancel?: Promise<Cancelled>): Promise<AudioContext> {
@@ -256,22 +254,28 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         this.markReady(context);
     }
 
-    public async terminate(): Promise<void> {
-        this.isTerminated = true;
+    public async reset(): Promise<void> {
         this._isActive = false;
         await this.closeSilently(this._context);
-    }
-
-    public async resumeAudio(): Promise<void> {
-        debugLog?.log(`resumeAudio:`, this._isActive);
-        if (!this._isActive)
-            void this.maintain();
-    }
-
-    public async suspendAudio(): Promise<void> {
-        debugLog?.log(`suspendAudio:`, this._isActive);
-        this._isActive = false;
         this.markNotReady();
+        if (this._maintain)
+            await this._maintain;
+        this._maintain = this.maintain();
+    }
+
+    public async updateBackgroundState(state: BackgroundState): Promise<void> {
+        debugLog?.log(`updateBackgroundState:`, state, this._isActive);
+        if (state === 'BackgroundIdle') {
+            this._isActive = false;
+            this.markNotReady();
+            return;
+        }
+
+        if (!this._isActive) {
+            if (this._maintain)
+                await this._maintain;
+            this._maintain = this.maintain();
+        }
     }
 
     public pauseRef(): void { }
@@ -354,6 +358,9 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
                         await Promise.race([this._whenNotReady, whenDelayCompleted]);
                     }
 
+                    if (!this._isActive)
+                        break;
+
                     // Let's try to test whether AudioContext is broken and fix if it is in use by any audioContextRef
                     if (!this.hasRefsInUse || !Interactive.isInteractive)
                         continue;
@@ -373,9 +380,6 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
                     }
 
                     while (this._isActive) {
-                        if (this.isTerminated)
-                            return;
-
                         this.throwIfUnused();
                         this.throwIfClosed(context);
                         this.throwIfTooManyResumes();
@@ -401,8 +405,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
                 }
             }
             finally {
-                if (!this.isTerminated)
-                    this.markNotReady();
+                this.markNotReady();
                 await this.closeSilently(context);
             }
         }
@@ -665,6 +668,8 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
 }
 
 class MauiAudioContextSource extends AudioContextSourceBase implements AudioContextSource {
+    private whileBackgroundIdle: PromiseSource<void> | null = null;
+
     get isActive(): boolean { return true; }
 
     public constructor(purpose: AudioContextPurpose) {
@@ -672,7 +677,11 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
     }
 
     public async whenReady(cancel?: Promise<symbol>): Promise<AudioContext> {
-        if (this._context == null || this._context.state === 'closed') {
+        const context = this._context;
+        if (context == null || context.state === 'closed') {
+            const whileBackgroundIdle = this.whileBackgroundIdle;
+            if (whileBackgroundIdle)
+                await whileBackgroundIdle;
             this._context = await this.create();
         }
         return this._context;
@@ -687,56 +696,86 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
         return Promise.resolve();
     }
 
-    public async terminate(): Promise<void> {
-        await this.closeSilently(this._context);
-        this._context = null;
+    public async reset(): Promise<void> {
+        await this.closeContext();
     }
 
-    public async resumeAudio(): Promise<void> {
-        const context = this._context;
-        if (context && context.state !== 'closed' && this._refCount > 0) {
-            await context.resume();
-            await this.fallbackDestination?.play();
+    public async updateBackgroundState(state: BackgroundState): Promise<void> {
+        debugLog?.log(`updateBackgroundState:`, state, this.hasRefsInUse);
+        if (state === 'BackgroundIdle') {
+            if (!this.whileBackgroundIdle)
+                this.whileBackgroundIdle = new PromiseSource<void>();
+            if (!this.hasRefsInUse)
+                this.suspendContextDebounced();
+        }
+        else {
+            this.whileBackgroundIdle?.resolve(undefined);
+            this.whileBackgroundIdle = null;
         }
     }
 
-    public async suspendAudio(): Promise<void> {
-        const context = this._context;
-        if (context && context.state !== 'closed')
-            await context.suspend();
-        this.fallbackDestination?.pause();
-    }
-
     public pauseRef(): void {
-        if (!this.hasRefsInUse)
+        const hasRefsInUse = this.hasRefsInUse;
+        const backgroundState = AudioInitializer.backgroundState;
+        infoLog?.log('pauseRef:', hasRefsInUse, backgroundState);
+        if (!hasRefsInUse) {
             this.suspendContextDebounced();
+            if (backgroundState === 'BackgroundIdle')
+                this.closeContextDebounced();
+        }
     }
 
     public useRef(): void {
         this.suspendContextDebounced.reset();
-        if (!this._context || this._context.state === 'closed')
+        this.closeContextDebounced.reset();
+        const context = this._context;
+        if (!context || context.state === 'closed')
             void this.whenReady();
-        else if (this._context.state === 'suspended')
-            void this._context.resume().then(() => {
+        else if (context.state === 'suspended') {
+            void context.resume().then(async () => {
                 infoLog?.log('useRef: resume context');
+                await this.fallbackDestination?.play();
             });
+        }
     }
 
     private suspendContextDebounced = debounce(this.suspendContext, SuspendDebounceTimeMs);
     private async suspendContext(): Promise<void> {
         infoLog?.log('suspendContext()');
-        return this._context.suspend();
+        const context = this._context;
+        if (!context)
+            return;
+
+        if (context.state === 'closed') {
+            await this.closeContext();
+            return;
+        }
+
+        await context.suspend();
+        this.fallbackDestination?.pause();
+        if (AudioInitializer.backgroundState === 'BackgroundIdle')
+            this.closeContextDebounced();
+    }
+
+    private closeContextDebounced = debounce(() => this.closeContext(), CloseUnusedContextDebounce);
+    private async closeContext(): Promise<void> {
+        infoLog?.log('closeContext()');
+        const context = this._context;
+        this._context = null;
+        await this.closeSilently(context);
+        this.whileBackgroundIdle?.resolve(undefined);
+        this.whileBackgroundIdle = null;
     }
 
     private async create(): Promise<AudioContext> {
         debugLog?.log(`create`);
-
+        this.suspendContextDebounced.reset();
+        this.closeContextDebounced.reset();
         const context = new AudioContext({
             latencyHint: 'balanced',
             sampleRate: this.purpose === 'playback' ? AP.SAMPLE_RATE : AR.SAMPLE_RATE,
         });
         Interactive.isInteractive = true;
-        await context.resume();
         await this.fallbackDestination?.attach(context);
         await this.loadContextWorklets(context);
 
@@ -747,7 +786,7 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
     protected async onDeviceAwake(): Promise<void> {
         debugLog?.log(`onDeviceAwake`);
         // Close current AudioContext as it might be corrupted and can produce clicking sound
-        await this.closeSilently(this._context);
+        await this.closeContext();
     }
 }
 

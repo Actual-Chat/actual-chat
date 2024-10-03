@@ -7,7 +7,7 @@ import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
 import { Observable, Subject } from 'rxjs';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
-import { recordingAudioContextSource } from '../../Services/audio-context-source';
+import { audioContextSource, recordingAudioContextSource } from '../../Services/audio-context-source';
 import { AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
 import { AudioVadWorker } from './workers/audio-vad-worker-contract';
 import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
@@ -473,11 +473,9 @@ export class OpusMediaRecorder implements RecorderStateServer {
         diagnosticsState = (await Promise.race([this.vadWorklet?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
         diagnosticsState = (await Promise.race([this.encoderWorklet?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
 
-        if (diagnosticsState.lastFrameProcessedAt == 0 || diagnosticsState.lastEncoderWorkletFrameProcessedAt) {
-            await recordingAudioContextSource.context.suspend();
-            if (BrowserInfo.hostKind === 'MauiApp')
-                await recordingAudioContextSource.context.resume(); // we don't need user interaction to resume
-        }
+        // As we are having issues with starting recording - let's recreate AudioContext
+        await recordingAudioContextSource.reset();
+        await audioContextSource.reset();
 
         return diagnosticsState;
     }
