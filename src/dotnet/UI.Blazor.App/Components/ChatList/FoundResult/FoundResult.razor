@@ -3,12 +3,12 @@
 
 @switch (FoundItem.Scope) {
     case SearchScope.People:
-        // Contact found
-        <FoundContactListItem FoundItem="@FoundItem"/>
+        // User found
+        <FoundUserListItem FoundItem="@FoundItem"/>
         break;
     case SearchScope.Groups:
-        // Chat found
-        <FoundChatListItem FoundItem="@FoundItem"/>
+        // Group found
+        <FoundGroupListItem FoundItem="@FoundItem"/>
         break;
     case SearchScope.Places:
         // Place found

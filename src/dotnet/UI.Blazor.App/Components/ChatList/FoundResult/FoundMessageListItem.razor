@@ -16,7 +16,7 @@
     <ChatListItemSkeleton />
 } else {
     <div class="found-result message">
-        <div class="c-content" data-href="@m.Link">
+        <div class="c-content" data-href="@m.Link"  @onclick="@(() => SearchUI.Select(m.Item))">
             <div class="c-container">
                 <ChatIcon Chat="@chatState.Chat"/>
                 <div class="c-description">
@@ -82,6 +82,7 @@
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ChatUI ChatUI => Hub.ChatUI;
+    private SearchUI SearchUI => Hub.SearchUI;
     private IAuthors Authors => Hub.Authors;
     private AccountUI AccountUI => Hub.AccountUI;
     private Session Session => Hub.Session();
@@ -130,6 +131,7 @@
             OwnAuthor = ownAuthorFull,
             Place = place,
             Link = Links.Chat(chatId),
+            Item = foundItem,
         };
     }
 
@@ -146,5 +148,6 @@
         public AuthorFull? OwnAuthor { get; init; }
         public Place? Place {get; init;}
         public LocalUrl Link { get; init; }
+        public FoundItem Item { get; init; } = null!;
     }
 }
