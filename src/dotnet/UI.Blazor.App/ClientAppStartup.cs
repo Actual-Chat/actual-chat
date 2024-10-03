@@ -63,11 +63,17 @@ public static class ClientAppStartup
         // Rpc & Fusion defaults
         RpcDefaults.Mode = RpcMode.Client;
         FusionDefaults.Mode = FusionMode.Client;
-        RpcFrameDelayers.DefaultProvider = RpcFrameDelayers.Auto();
+        RpcDefaultDelegates.FrameDelayerProvider = RpcFrameDelayerProviders.Auto();
         RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connect
+#if !DEBUG
+        RpcSerializationFormatResolver.Default = RpcSerializationFormatResolver.Default with {
+            DefaultClientFormatKey = "mempack2c", // "Compact", i.e. use method name hashes instead of actual names
+        };
+#endif
         RemoteComputedSynchronizer.Default = new RemoteComputedSynchronizer() {
             TimeoutFactory = (_, ct) => Task.Delay(TimeSpan.FromSeconds(1), ct),
         };
+
 #if DEBUG
         if (Constants.DebugMode.LogAnyThrownException)
             FirstChanceExceptionLogger.Use();
@@ -76,7 +82,7 @@ public static class ClientAppStartup
                 LogCacheEntryUpdateSettings = (LogLevel.Information, int.MaxValue),
             };
 #endif
-        var remoteComputedCacheUpdateDelayTask = Task.Delay(2200)
+        var remoteComputedCacheUpdateDelayTask = Task.Delay(3000)
             .ContinueWith(_ => RemoteComputedCache.UpdateDelayer = null, TaskScheduler.Default);
         RemoteComputedCache.UpdateDelayer = (_, _) => remoteComputedCacheUpdateDelayTask;
     }

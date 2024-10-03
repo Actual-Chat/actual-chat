@@ -40,7 +40,7 @@ public readonly struct RpcHostBuilder
 
         // Common services
         if (IsApiHost)
-            RpcFrameDelayers.DefaultProvider = RpcFrameDelayers.Auto(); // Only for API host!
+            RpcDefaultDelegates.FrameDelayerProvider = RpcFrameDelayerProviders.Auto(); // Only for API host!
         RpcServiceRegistry.ConstructionDumpLogLevel = LogLevel.Information;
         Services.AddSingleton(c => new BackendServiceDefs(c));
         Services.AddSingleton(c => new RpcMeshRefResolvers(c));
