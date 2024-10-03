@@ -19,6 +19,7 @@ class SearchTypeState(BaseModel):
     messages: Annotated[list[AnyMessage], add_messages]
     # Here we store last detected search type
     search_type: Optional[str] = None
+    last_seen_msg_id: Optional[str] = None
 
 class SearchTypeResolver:
     type_of_search_prompt = '''As an expert in searching for information in chats, you follow a clear process to identify the target search area.
@@ -60,11 +61,6 @@ class SearchTypeResolver:
                 search_type = response.content
 
         return search_type
-        # system_message = [SystemMessage(content=self.type_of_search_prompt)]
-        # messages = [msg for msg in state.messages if isinstance(msg, HumanMessage)]
-        # response = self.model.invoke(system_message + messages)
-        # return response.content if response and response.content in ["PUBLIC", "PRIVATE"] else "GENERAL"
-
 
 claude_api_key = os.getenv("CLAUDE_API_KEY")
 classifier_model = ChatAnthropic(
@@ -92,11 +88,24 @@ def call_model(state: SearchTypeState):
     response = model.invoke(messages)
     return {"messages": [response]}
 
-def first_message(state) -> SearchTypeState:
+def first_message(state: SearchTypeState) -> SearchTypeState:
     return state
 
 def ask_human(state):
     pass
+
+def update_state(state: SearchTypeState) -> SearchTypeState:
+    stop_msg_id = state.last_seen_msg_id
+    for message in reversed(state.messages):
+        if message.id == stop_msg_id:
+            break
+        if isinstance(message, ToolMessage) and message.name=="resolve_search_type" and message.status=="success":
+            state.search_type = message.content
+
+    if state.messages:
+        state.last_seen_msg_id = state.messages[-1].id
+
+    return state
 
 def should_continue(state: SearchTypeState) -> Literal["tools", "ask_human"]:
     messages = state.messages
@@ -112,6 +121,7 @@ workflow = StateGraph(SearchTypeState)
 workflow.add_node("first_message", first_message)
 workflow.add_node("agent", call_model)
 workflow.add_node("tools", tool_node)
+workflow.add_node("update_state", update_state)
 workflow.add_node("ask_human", ask_human)
 
 workflow.add_edge(START, "first_message")
@@ -120,8 +130,10 @@ workflow.add_conditional_edges(
     "agent",
     should_continue,
 )
-workflow.add_edge("tools", "agent")
+workflow.add_edge("tools", "update_state")
+workflow.add_edge("update_state", "agent")
 workflow.add_edge("ask_human", "agent")
+
 graph = workflow.compile(
     checkpointer = memory,
     interrupt_before=["ask_human"]
