@@ -76,10 +76,10 @@ export class AudioPlayer implements Resettable {
     }
 
     /** Called from Blazor */
-    public static async create(blazorRef: DotNet.DotNetObject, id: string, preSkip: number): Promise<AudioPlayer> {
+    public static async create(blazorRef: DotNet.DotNetObject, id: string, preSkip: number, title: string, album: string): Promise<AudioPlayer> {
         await AudioPlayer.init();
         const player = AudioPlayer.pool.get();
-        await player.startPlayback(blazorRef, id, preSkip);
+        await player.startPlayback(blazorRef, id, preSkip, title, album);
         return player;
     }
 
@@ -164,7 +164,13 @@ export class AudioPlayer implements Resettable {
         });
     }
 
-    public async startPlayback(blazorRef: DotNet.DotNetObject, id: string, preSkip: number): Promise<void> {
+    public async startPlayback(
+        blazorRef: DotNet.DotNetObject,
+        id: string,
+        preSkip: number,
+        title: string,
+        album: string): Promise<void> {
+
         debugLog?.log(`#${this.internalId} -> startPlayback()`);
         this.blazorRef = blazorRef;
         await this.whenReady;
@@ -174,6 +180,26 @@ export class AudioPlayer implements Resettable {
         await this.feederNode.resume(preSkip);
         this.playbackState = 'paused';
         this.whenEnded = new PromiseSource<void>();
+
+        try {
+            if (navigator.mediaSession) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: `${title} @ ${album}`,
+                    album: album,
+                    artist: 'Actual Chat',
+                    artwork: [{ src: '/_applogo-dark.svg' }]
+                });
+                navigator.mediaSession.playbackState = 'playing';
+                navigator.mediaSession.setPositionState({
+                   playbackRate: 1,
+                   position: 0,
+                   duration: 0,
+                });
+            }
+        }
+        catch (e) {
+            warnLog?.log(`#${this.internalId}.startPlayback: error setting metadata:`, e);
+        }
         debugLog?.log(`#${this.internalId} <- startPlayback()`);
     }
 
@@ -183,6 +209,15 @@ export class AudioPlayer implements Resettable {
         this.playbackState = 'ended';
         this.contextRefUsage?.dispose();
         this.contextRefUsage = null;
+        try {
+            if (navigator.mediaSession) {
+                navigator.mediaSession.metadata = null;
+                navigator.mediaSession.playbackState = 'none';
+            }
+        }
+        catch (e) {
+            warnLog?.log(`#${this.internalId} reset(): error clearing metadata:`, e);
+        }
     }
 
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
@@ -214,6 +249,15 @@ export class AudioPlayer implements Resettable {
         await this.whenEnded;
         this.contextRefUsage?.dispose();
         this.contextRefUsage = null;
+        try {
+            if (navigator.mediaSession) {
+                navigator.mediaSession.metadata = null;
+                navigator.mediaSession.playbackState = 'none';
+            }
+        }
+        catch (e) {
+            warnLog?.log(`#${this.internalId} end(): error clearing metadata:`, e);
+        }
     }
 
     /** Called by Blazor */
@@ -227,6 +271,14 @@ export class AudioPlayer implements Resettable {
 
         debugLog?.log(`#${this.internalId}.pause`);
         await this.feederNode.pause(rpcNoWait);
+        try {
+            if (navigator.mediaSession) {
+                navigator.mediaSession.playbackState = 'paused';
+            }
+        }
+        catch (e) {
+            warnLog?.log(`#${this.internalId} pause(): error settings playback state:`, e);
+        }
     }
 
     /** Called by Blazor */
@@ -239,6 +291,14 @@ export class AudioPlayer implements Resettable {
 
         debugLog?.log(`#${this.internalId}.resume`);
         await this.feederNode.resume(0);
+        try {
+            if (navigator.mediaSession) {
+                navigator.mediaSession.playbackState = 'playing';
+            }
+        }
+        catch (e) {
+            warnLog?.log(`#${this.internalId} resume(): error settings playback state:`, e);
+        }
     }
 
     // Event handlers

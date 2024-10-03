@@ -124,10 +124,15 @@ public sealed class ChatEntryPlayer : ProcessorBase
         Moment playAt,
         CancellationToken cancellationToken)
     {
-        var audio = await StreamClient
-            .GetAudio(audioEntry.StreamId, skipTo, cancellationToken)
-            .ConfigureAwait(false);
-        var trackInfo = new ChatAudioTrackInfo(audioEntry) {
+        var audioTask = StreamClient.GetAudio(audioEntry.StreamId, skipTo, cancellationToken);
+        var chatTask = Hub.Chats.Get(Hub.Session(), audioEntry.ChatId, cancellationToken);
+        var authorTask = Hub.Authors.Get(Hub.Session(), audioEntry.ChatId, audioEntry.AuthorId, cancellationToken);
+        await Task.WhenAll(audioTask, chatTask, authorTask).ConfigureAwait(false);
+        var audio = await audioTask;
+        var chat = await chatTask;
+        var author = await authorTask;
+
+        var trackInfo = new ChatAudioTrackInfo(audioEntry, chat!, author!) {
             RecordedAt = audioEntry.BeginsAt + skipTo,
             ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
         };
@@ -153,10 +158,14 @@ public sealed class ChatEntryPlayer : ProcessorBase
         CancellationToken cancellationToken)
     {
         var audioBlobUrl = UrlMapper.AudioBlobUrl(audioEntry);
-        var audio = await AudioDownloader
-            .Download(audioBlobUrl, skipTo, cancellationToken)
-            .ConfigureAwait(false);
-        var trackInfo = new ChatAudioTrackInfo(audioEntry) {
+        var audioTask = AudioDownloader.Download(audioBlobUrl, skipTo, cancellationToken);
+        var chatTask = Hub.Chats.Get(Hub.Session(), audioEntry.ChatId, cancellationToken);
+        var authorTask = Hub.Authors.Get(Hub.Session(), audioEntry.ChatId, audioEntry.AuthorId, cancellationToken);
+        await Task.WhenAll(audioTask, chatTask, authorTask).ConfigureAwait(false);
+        var audio = await audioTask;
+        var chat = await chatTask;
+        var author = await authorTask;
+        var trackInfo = new ChatAudioTrackInfo(audioEntry, chat!, author!) {
             RecordedAt = audioEntry.BeginsAt + skipTo,
             ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
         };

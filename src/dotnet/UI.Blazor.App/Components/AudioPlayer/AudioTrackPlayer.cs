@@ -3,6 +3,7 @@ using ActualChat.Audio;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Module;
+using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
@@ -26,9 +27,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioTrackPlayer))]
     public AudioTrackPlayer(
         string id,
+        TrackInfo trackInfo,
         IMediaSource source,
-        IServiceProvider services
-    ) : base(source, services.LogFor<AudioTrackPlayer>())
+        IServiceProvider services) : base(trackInfo, source, services.LogFor<AudioTrackPlayer>())
     {
         Services = services;
         _id = id;
@@ -71,12 +72,15 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         throw StandardError.StateTransition(GetType(), "Repeated PlayCommand.");
                     _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
 
+                    var trackInfo = (ChatAudioTrackInfo)TrackInfo;
+                    var chat = trackInfo.Chat;
+                    var author = trackInfo.Author;
                     var audioSource = (AudioSource)Source;
                     var preSkip = audioSource.Format.PreSkip;
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Creating audio player in JS", _id);
                     _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod,
                         CancellationToken.None,
-                        _blazorRef, _id, preSkip);
+                        _blazorRef, _id, preSkip, author.Avatar.Name, chat.Title);
                     break;
                 case PauseCommand:
                     if (_jsRef == null)

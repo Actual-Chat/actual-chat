@@ -3,7 +3,7 @@ using Cysharp.Text;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public record ChatAudioTrackInfo(ChatEntry AudioEntry) : TrackInfo(ComposeTrackId(AudioEntry))
+public record ChatAudioTrackInfo(ChatEntry AudioEntry, Chat.Chat Chat, Author Author) : TrackInfo(ComposeTrackId(AudioEntry))
 {
     public static Symbol ComposeTrackId(ChatEntry entry)
         => entry.Kind == ChatEntryKind.Audio

@@ -4,5 +4,5 @@ namespace ActualChat.MediaPlayback;
 
 public interface ITrackPlayerFactory
 {
-    TrackPlayer Create(IMediaSource source);
+    TrackPlayer Create(TrackInfo trackInfo, IMediaSource source);
 }

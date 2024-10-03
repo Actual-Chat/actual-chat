@@ -6,7 +6,7 @@ namespace ActualChat.MediaPlayback;
 public interface IPlaybackCommand
 { }
 
-public sealed class PlayTrackCommand : IPlaybackCommand
+public sealed class PlayTrackCommand(TrackInfo trackInfo, IMediaSource source) : IPlaybackCommand
 {
     public static readonly PlayTrackCommand PlayNothing = new(null!, null!);
     public static readonly IMessageProcess<PlayTrackCommand> PlayNothingProcess =
@@ -16,14 +16,8 @@ public sealed class PlayTrackCommand : IPlaybackCommand
             TaskCompletionSourceExt.New().WithResult(),
             TaskCompletionSourceExt.New<object?>().WithResult(null));
 
-    public TrackInfo TrackInfo { get; }
-    public IMediaSource Source { get; }
+    public TrackInfo TrackInfo { get; } = trackInfo;
+    public IMediaSource Source { get; } = source;
     public Moment PlayAt { get; init; } // rel. to CpuClock.Now
     public Symbol TrackId => TrackInfo.TrackId;
-
-    public PlayTrackCommand(TrackInfo trackInfo, IMediaSource source)
-    {
-        TrackInfo = trackInfo;
-        Source = source;
-    }
 }

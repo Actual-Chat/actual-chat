@@ -99,7 +99,7 @@ public sealed class Playback : ProcessorBase
 
             TrackPlayer trackPlayer;
             try {
-                trackPlayer = _trackPlayerFactory.Create(cmd.Source);
+                trackPlayer = _trackPlayerFactory.Create(cmd.TrackInfo, cmd.Source);
             }
             catch (ObjectDisposedException) {
                 // This error happens when circuit or container is being disposed,

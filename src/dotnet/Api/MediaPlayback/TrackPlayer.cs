@@ -5,7 +5,7 @@ namespace ActualChat.MediaPlayback;
 
 public record struct PlayerStateChangedEventArgs(PlayerState PreviousState, PlayerState State);
 
-public abstract class TrackPlayer(IMediaSource source, ILogger log) : ProcessorBase
+public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILogger log) : ProcessorBase
 {
     private readonly TaskCompletionSource _whenCompletedSource = TaskCompletionSourceExt.New();
     private volatile Task? _whenPlaying;
@@ -19,6 +19,7 @@ public abstract class TrackPlayer(IMediaSource source, ILogger log) : ProcessorB
             AllowSynchronousContinuations = false,
         });
 
+    protected TrackInfo TrackInfo { get; } = trackInfo;
     protected IMediaSource Source { get; } = source;
     protected CancellationTokenSource? PlayTokenSource;
     protected CancellationToken PlayToken;

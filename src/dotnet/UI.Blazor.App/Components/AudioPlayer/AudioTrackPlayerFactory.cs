@@ -7,8 +7,9 @@ public sealed class AudioTrackPlayerFactory(IServiceProvider services) : ITrackP
 {
     private ulong _lastCreatedId;
 
-    public TrackPlayer Create(IMediaSource source) => new AudioTrackPlayer(
+    public TrackPlayer Create(TrackInfo trackInfo, IMediaSource source) => new AudioTrackPlayer(
         Interlocked.Increment(ref _lastCreatedId).Format(),
+        trackInfo,
         source,
         services);
 }
