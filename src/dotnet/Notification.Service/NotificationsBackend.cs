@@ -203,6 +203,8 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         var (userId, deviceId, deviceType, sessionHash) = command;
+        DebugLog?.LogInformation("-> OnRegisterDevice. UserId={UserId}, DeviceId={DeviceId}, DeviceType={DeviceType}, SessionHash={SessionHash}",
+            userId, deviceId, deviceType, sessionHash);
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var existingDbDevice = await dbContext.Devices.ForUpdate()
@@ -222,6 +224,9 @@ public class NotificationsBackend(IServiceProvider services)
             dbContext.Add(dbDevice);
         }
         else {
+            DebugLog?.LogInformation("-- OnRegisterDevice. Existing DbDevice found:" +
+                " UserId={UserId}, DeviceId={DeviceId}, DeviceType={DeviceType}, SessionHash={SessionHash}, AccessedAt={AccessedAt}",
+                dbDevice.UserId, dbDevice.Id, dbDevice.Type, dbDevice.SessionHash, dbDevice.AccessedAt);
             dbDevice.AccessedAt = Clocks.SystemClock.Now;
             if (dbDevice.Type == DeviceType.WebBrowser && deviceType != DeviceType.WebBrowser)
                 dbDevice.Type = deviceType; // Now MAUI app reports device type properly, lets update it.
