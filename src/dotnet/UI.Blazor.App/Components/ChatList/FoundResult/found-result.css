@@ -55,7 +55,6 @@ body.hoverable .found-result:hover {
     @apply text-01;
 }
 .found-result .c-container .c-description .c-colon {
-    @apply -ml-1;
     @apply text-01;
 }
 .found-result .c-last-message {
