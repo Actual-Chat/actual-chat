@@ -1,7 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
-@using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI
-@using ActualChat.Contacts
 @inherits ComputedRenderStateComponent<FoundMessageListItem.Model>
 @{
     var m = State.Value;
@@ -37,8 +35,8 @@
                                         AuthorSid="@m.Entry.AuthorId"
                                         ShowDetailsOnClick="false"
                                         ShowAsYou="true"/>
+                                    <span class="c-colon">:</span>
                                 </span>
-                                <span class="c-colon">:</span>
                             }
                             <div class="c-entry">
                                 <SearchMatchHighlighter Match="@m.MessageMatch"/>
