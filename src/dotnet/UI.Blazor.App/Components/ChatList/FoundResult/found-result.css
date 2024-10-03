@@ -10,7 +10,7 @@ body.hoverable .found-result:hover {
     @apply cursor-pointer;
 }
 .found-result .c-content {
-    @apply flex;
+    @apply flex flex-1;
     @apply overflow-hidden;
     @apply text-02;
 }
