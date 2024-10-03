@@ -54,6 +54,12 @@ public class Notifications(IServiceProvider services) : INotifications
     {
         var (session, deviceId, deviceType) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNone) {
+            Log.LogWarning("Skipping RegisterDevice for guest or none user." +
+                " DeviceId: '{DeviceId}', DeviceType: '{DeviceType}', SessionHash: '{SessionHash}', UserId: '{UserId}'" ,
+                deviceId, deviceType, session.Hash, account.Id);
+            return;
+        }
         var registerDeviceCommand = new NotificationsBackend_RegisterDevice(account.Id, deviceId, deviceType, session.Hash);
         await Commander.Run(registerDeviceCommand, cancellationToken).ConfigureAwait(false);
     }

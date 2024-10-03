@@ -233,8 +233,11 @@ public class NotificationsBackend(IServiceProvider services)
             if (dbDevice.SessionHash.IsNullOrEmpty() && !sessionHash.IsEmpty)
                 dbDevice.SessionHash = sessionHash;
             if (UserId.TryParse(dbDevice.UserId, out var existingUserId) && existingUserId != userId) {
-                if (existingUserId.IsGuest)
+                if (existingUserId.IsGuest) {
                     dbDevice.UserId = userId;
+                    DebugLog?.LogInformation("Guest UserId for Device '{DeviceId}' has been updated: '{OldUserId}'->'{NewUserId}'",
+                        existingUserId, existingUserId, userId);
+                }
                 else
                     Log.LogWarning("User {UserId} is trying to register device for {ExistingUserId}. Skipped", userId, existingUserId);
             }
