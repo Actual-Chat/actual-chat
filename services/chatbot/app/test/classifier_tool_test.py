@@ -1,7 +1,6 @@
 import os
 
-from collections import deque
-from typing import Annotated, Literal, Optional, TypedDict
+from typing import Annotated, Literal, Optional
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_anthropic import ChatAnthropic
@@ -11,7 +10,7 @@ from langchain_core.tools import tool
 from langchain_core.runnables import RunnableLambda, RunnableConfig
 
 from langgraph.prebuilt import ToolNode, InjectedState
-from langgraph.graph import StateGraph, MessagesState, add_messages, START, END
+from langgraph.graph import StateGraph, add_messages, START, END
 from langgraph.checkpoint.memory import MemorySaver
 
 from pydantic import BaseModel
@@ -28,13 +27,13 @@ class SearchTypeResolver:
     * PUBLIC - search in the publicly available chats
     * PRIVATE - search in the chats where the user is a member or owner
     * GENERAL - search in all chats, both PUBLIC and PRIVATE
-    There is also one special value UNCERTAIN.
+    There is also one special value UNCERTAIN, when it is unclear from the user's message where to run next search.
     Instructions:
     * If the user says "search all chats" or "search everywhere," the search area is GENERAL
-    * If the user requested to reset or start the search over or similar, the search area is GENERAL
+    * If the user requested to reset or start the search over, the search area is GENERAL
     * If the user explicitly mentions "public chats" or similar, the search area is PUBLIC
     * If the user refers to "private chats" or "my chats" or similar, the search area is PRIVATE
-    * In all other cases the search area is UNCERTAIN
+    * In all other cases when user's message is unrelated to chats the search area is UNCERTAIN
     Important:
     * Every user message in the list redefines search area unless search area is UNCERTAIN.
     * Return only one word in the output (PUBLIC, PRIVATE, GENERAL or UNCERTAIN).
@@ -45,7 +44,7 @@ class SearchTypeResolver:
         self.tool_node_name = tool_node_name
 
     def process(self, state: SearchTypeState):
-        stack = deque()
+        stack = list()
         search_type = state.search_type if state.search_type else "GENERAL"
         for message in reversed(state.messages):
             if isinstance(message, HumanMessage):
@@ -141,6 +140,7 @@ app = RunnableLambda(invoke_graph)
 inputs = [
     "Search in public chats",
     "search in all chats",
+    "London is the capital of the Great Britain",
     "search in my chats",
     "plese start over",
     "search in public chats"
