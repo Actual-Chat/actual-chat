@@ -15,7 +15,7 @@
 }
 
 <div class="found-result place">
-    <div class="c-content" data-href="@m.Link">
+    <div class="c-content" data-href="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
         <div class="c-container">
             <Pic
                 Title="@place.Title"
@@ -43,6 +43,7 @@
 
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private SearchUI SearchUI => Hub.SearchUI;
     private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
     private IAuthors Authors => Hub.Authors;
@@ -75,6 +76,7 @@
             TitleMatch = titleMatch.IsEmpty ? SearchMatch.New(place.Title) : titleMatch,
             MemberCount = allAuthorIds.Count,
             Link = Links.PlaceInfo(placeId),
+            Item = foundItem,
         };
     }
 
@@ -87,5 +89,6 @@
         public SearchMatch TitleMatch { get; init; } = SearchMatch.Empty;
         public int MemberCount { get; init; }
         public LocalUrl Link { get; init; }
+        public FoundItem Item { get; init; } = null!;
     }
 }

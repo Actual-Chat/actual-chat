@@ -1,8 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
 @using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI
-@using ActualChat.Contacts
-@inherits ComputedRenderStateComponent<FoundContactListItem.Model>
+@inherits ComputedRenderStateComponent<FoundUserListItem.Model>
 @{
     var m = State.Value;
     if (m == Model.None)
@@ -15,7 +14,7 @@
     <ChatListItemSkeleton />
 } else {
     <div class="found-result contact">
-        <div class="c-content" data-href="@m.Link">
+        <div class="c-content" data-href="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
             <div class="c-container">
                 <ChatIcon Chat="@chatState.Chat"/>
                 <div class="c-description">
@@ -55,6 +54,7 @@
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ChatUI ChatUI => Hub.ChatUI;
+    private SearchUI SearchUI => Hub.SearchUI;
     private IAuthors Authors => Hub.Authors;
     private AccountUI AccountUI => Hub.AccountUI;
     private Session Session => Hub.Session();
@@ -102,6 +102,7 @@
             Entry = lastTextEntry,
             Link = Links.Chat(chatId),
             Author = anotherAuthor,
+            Item = foundItem,
         };
     }
 
@@ -116,5 +117,6 @@
         public ChatEntry? Entry { get; init; }
         public LocalUrl Link { get; init; }
         public Author? Author { get; init; }
+        public FoundItem Item { get; init; } = null!;
     }
 }
