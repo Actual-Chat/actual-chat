@@ -41,16 +41,20 @@
                 AvatarKey="@place.Id.Value"/>
 
             <div class="c-buttons">
-                <ButtonRound Class="btn-sm join-btn" ContentClass="gap-x-2">
-                    <i class="icon-person-add text-xl"></i>
-                    <span>Join</span>
-                </ButtonRound>
-                <ButtonRound Class="btn-sm">
-                    <i class="icon-message-ellipse text-xl"></i>
-                </ButtonRound>
-                <ButtonRound Class="btn-sm">
-                    <i class="icon-more-vertical text-xl"></i>
-                </ButtonRound>
+                @if (m.CanJoinPlace) {
+                    <ButtonRound Class="btn-sm join-btn" ContentClass="gap-x-2" Click="OnJoinPlace">
+                        <i class="icon-person-add text-xl"></i>
+                        <span>Join</span>
+                    </ButtonRound>
+                }
+                @if (m.EnableIncompleteUI) {
+                    <ButtonRound Class="btn-sm">
+                        <i class="icon-message-ellipse text-xl"></i>
+                    </ButtonRound>
+                    <ButtonRound Class="btn-sm">
+                        <i class="icon-more-vertical text-xl"></i>
+                    </ButtonRound>
+                }
             </div>
         </div>
     </div>
@@ -122,6 +126,8 @@
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
+    private UICommander UICommander => Hub.UICommander();
+    private IAvatars Avatars => Hub.Avatars;
     private IContacts Contacts => Hub.Contacts;
     private IPlaces Places => Hub.Places;
     private IChats Chats => Hub.Chats;
@@ -144,10 +150,11 @@
         if (place is null)
             return Model.None;
 
+        var ownAuthor = place.Rules.Author;
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
         var ownerIds = await Places.ListOwnerIds(Session, placeId, cancellationToken).ConfigureAwait(false);
-        var ownAuthor = await Places.GetOwn(Session, placeId, cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        var isPlaceMember = ownAuthor is { HasLeft: false };
         return new() {
             Place = place,
             AuthorIds = allAuthorIds,
@@ -155,7 +162,27 @@
             OwnAuthorId = ownAuthor?.Id ?? AuthorId.None,
             MemberCount = allAuthorIds.Count,
             EnableIncompleteUI = enableIncompleteUI,
+            IsPlaceMember = isPlaceMember,
+            CanJoinPlace = !isPlaceMember && place.Rules.CanJoin(),
         };
+    }
+
+    private async Task OnJoinPlace() {
+        var avatars = await Avatars.ListOwnAvatarIds(Session, default);
+        var hasMultipleAvatars = avatars.Count > 1;
+
+        if (!hasMultipleAvatars) {
+            var command = new Places_Join(Session, PlaceId);
+            await UICommander.Run(command);
+            return;
+        }
+
+        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, false, JoinWithAvatar));
+
+        async Task JoinWithAvatar(AvatarFull avatar) {
+            var command = new Places_Join(Session, PlaceId, avatar.Id);
+            await UICommander.Run(command);
+        }
     }
 
     // Nested types
@@ -170,6 +197,8 @@
         public ApiArray<AuthorId> OwnerIds { get; init; }
         public AuthorId OwnAuthorId { get; init; }
         public bool EnableIncompleteUI { get; init; }
+        public bool IsPlaceMember { get; init; }
+        public bool CanJoinPlace { get; init; }
 
         public bool IsOwner(AuthorId authorId)
             => OwnerIds.Contains(authorId);

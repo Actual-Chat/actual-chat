@@ -232,7 +232,7 @@
                     .ListOwnAvatarIds(session, cancellationToken)
                     .WaitAsync(LoadTimeout, cancellationToken)
                     .ConfigureAwait(false);
-                hasMultipleAvatars = avatars.Count > 1 || canJoinAnonymously;
+                hasMultipleAvatars = avatars.Count > 1;
             }
         }
 
