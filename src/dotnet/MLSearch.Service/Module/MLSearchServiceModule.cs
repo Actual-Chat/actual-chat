@@ -1,7 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography.X509Certificates;
+using ActualChat.Chat.ML;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
+using ActualChat.Integrations.Anthropic;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.MLSearch.Bot;
 using ActualChat.MLSearch.Bot.External;
@@ -137,10 +139,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IChatContentDocumentLoader, ChatContentDocumentLoader>();
         services.AddSingleton<IChatContentMapper, ChatContentMapper>();
         services.AddSingleton(_ => new DialogFragmentAnalyzer.Options { IsDiagnosticsEnabled = true });
-        services.AddSingleton<IDialogFragmentAnalyzer>(c => new DialogFragmentAnalyzer(
-            c.GetRequiredService<DialogFragmentAnalyzer.Options>(),
-            c.LogFor<DialogFragmentAnalyzer>()));
-        services.AddSingleton<IChatDialogFormatter, ChatDialogFormatter>();
+        services.AddSingleton<IDialogFragmentAnalyzer, DialogFragmentAnalyzer>();
         services.AddSingleton<ChatContentArranger>();
         services.AddSingleton<ChatContentArranger2>();
         services.AddAlias<IChatContentArranger, ChatContentArranger>(ServiceLifetime.Scoped);
@@ -173,6 +172,10 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddWorkerPool<ChatEntryIndexWorker, MLSearch_TriggerChatIndexing, (ChatId, IndexingKind), ChatId>(
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
+
+        // Other
+        services.AddChatMLServices();
+        services.AddAnthropicServices();
     }
 
     private void InjectBotServices(RpcHostBuilder rpcHost, bool isBackendClient)

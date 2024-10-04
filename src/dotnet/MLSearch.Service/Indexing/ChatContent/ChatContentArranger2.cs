@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.Chat.ML;
 using ActualChat.MLSearch.Documents;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;
@@ -27,7 +28,7 @@ internal sealed class ChatContentArranger2(
             var tailEntries = await LoadTailEntries(tailDocument, cancellationToken)
                 .ConfigureAwait(false);
             builder.Entries.AddRange(tailEntries);
-            builder.Dialog = await chatDialogFormatter.BuildUpDialog(tailEntries).ConfigureAwait(false);
+            builder.Dialog = await chatDialogFormatter.EntriesToText(tailEntries).ConfigureAwait(false);
         }
 
         foreach (var entry in bufferedEntries) {
@@ -42,7 +43,7 @@ internal sealed class ChatContentArranger2(
                 };
                 builders.Add(builder);
                 builder.Entries.Add(entry);
-                builder.Dialog = await chatDialogFormatter.BuildUpDialog(builder.Entries).ConfigureAwait(false);
+                builder.Dialog = await chatDialogFormatter.EntriesToText(builder.Entries).ConfigureAwait(false);
             }
             else {
                 DocumentBuilder? builderToAdd = null;
@@ -113,7 +114,7 @@ internal sealed class ChatContentArranger2(
                         HasModified = true
                     };
                     builder.Entries.Add(entry);
-                    builder.Dialog = await chatDialogFormatter.BuildUpDialog(builder.Entries).ConfigureAwait(false);
+                    builder.Dialog = await chatDialogFormatter.EntriesToText(builder.Entries).ConfigureAwait(false);
                     builders.Add(builder);
                 }
             }
@@ -138,7 +139,7 @@ internal sealed class ChatContentArranger2(
                     };
 
                     tailBuilder.Entries.AddRange(entriesTail);
-                    tailBuilder.Dialog = await chatDialogFormatter.BuildUpDialog(tailBuilder.Entries).ConfigureAwait(false);
+                    tailBuilder.Dialog = await chatDialogFormatter.EntriesToText(tailBuilder.Entries).ConfigureAwait(false);
                     var index = builders.IndexOf(builder);
                     builders.Remove(builder);
                     builders.Insert(index, tailBuilder);
