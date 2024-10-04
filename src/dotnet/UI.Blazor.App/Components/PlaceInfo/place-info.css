@@ -97,6 +97,9 @@ body.narrow .place-info {
     @apply overflow-y-auto;
     scrollbar-width: none;
 }
+.place-info > .c-bottom .tab-panel .tab::-webkit-scrollbar {
+    display: none;
+}
 
 .place-info .member-list {
     @apply p-4;
