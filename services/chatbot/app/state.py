@@ -9,3 +9,4 @@ class State(BaseModel):
     summary: Optional[str] = None
     search_type: Optional[str] = None
     last_seen_msg_id: Optional[str] = None
+    last_search_result: Optional[str] = None

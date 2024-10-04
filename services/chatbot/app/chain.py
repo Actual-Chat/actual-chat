@@ -26,9 +26,7 @@ from langfuse.decorators import langfuse_context, observe
 from .tools import (
     all as all_tools,
     _reply as call_reply,
-    reply as reply_tool,
-    forward_search_results as forward_search_results_tool,
-    filter_last_search_in_public_chats_results
+    filter_last_search_results
 )
 from . import utils
 from .state import State
@@ -42,14 +40,14 @@ def user_input(input: str) -> State:
     return {"messages": [HumanMessage(content=input)]}
 
 def should_continue(state: State) -> Literal["tools", "final_answer"]:
-    messages = state["messages"]
+    messages = state.messages
     last_message = messages[-1]
     if last_message.tool_calls:
         return "tools"
     return "final_answer"
 
 def should_summarize(state: State) -> Literal["summarize_conversation", "human_input"]:
-    if len(state["messages"]) < MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION:
+    if len(state.messages) < MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION:
         # Nothing to do
         return "human_input"
     else:
@@ -75,7 +73,7 @@ def final_answer(state: State, config: RunnableConfig):
         )
         return
     Ok = {"messages":[]}
-    messages = state["messages"]
+    messages = state.messages
     if len(messages) > 0:
         last_message = messages[-1]
         _try_add_answer(last_message.content)
@@ -122,19 +120,19 @@ def create(*,
         # Using guide at:
         # https://langchain-ai.github.io/langgraph/how-tos/memory/add-summary-conversation-history/
         # If a summary exists, we add this in as a system message
-        summary = state.get("summary", "")
+        summary = state.summary or ""
         if summary:
             system_message = f"Summary of conversation earlier: {summary}"
-            messages = [SystemMessage(content=system_message)] + state["messages"]
+            messages = [SystemMessage(content=system_message)] + state.messages
         else:
-            messages = state["messages"]
+            messages = state.messages
         response = llm.invoke(messages)
         return {
             "messages": [response]
         }
 
     def summarize_conversation(state: State):
-        summary = state.get("summary", "")
+        summary = state.summary or ""
         if summary:
             # If a summary already exists, we use a different system prompt
             # to summarize it than if one didn't
@@ -148,7 +146,7 @@ def create(*,
         messages = [
             SystemMessage(
                 content = get_buffer_string(
-                    state["messages"]
+                    state.messages
                 )
             ),
             HumanMessage(content=summary_message)
@@ -158,11 +156,11 @@ def create(*,
         # Note: It deletes ALL messages and keeps the summary.
         # Otherwise it requires to keep pairs of tools invocations and their results.
         # If pairs are not kept together it fails on the next llm invocation.
-        delete_messages = [RemoveMessage(id=m.id) for m in state["messages"][:]]
+        delete_messages = [RemoveMessage(id=m.id) for m in state.messages]
         return {
             "summary": response.content,
             "messages": delete_messages,
-            "last_search_result": filter_last_search_in_public_chats_results(state)
+            "last_search_result": filter_last_search_results(state)
         }
 
 
