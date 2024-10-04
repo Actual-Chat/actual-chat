@@ -14,9 +14,7 @@
     </div>
 </RenderIntoSlot>
 
-<div class="place-info-wrapper">
-    <PlaceInfo PlaceId="@m.SelectedPlaceId"/>
-</div>
+<PlaceInfo PlaceId="@m.SelectedPlaceId"/>
 
 @code {
     private PlaceId _selectedPlaceId = PlaceId.None;
