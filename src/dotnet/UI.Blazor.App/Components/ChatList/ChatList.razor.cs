@@ -36,8 +36,6 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
         DebugLog?.LogDebug(
             "GetData: {PlaceId}/{UsePlaceChatListSettings}/{ChatId} (#{ChatIndex}/{ChatCount})",
             placeId, usePlaceChatListSettings, chatId, chatIndex, chatCount);
-        if (chatCount == 0)
-            return VirtualListData<ChatListItemModel>.None; // TODO(AY): This leaves the list in "loading" state, AK please fix this
 
         var firstItem = renderedData.FirstItem;
         var lastItem = renderedData.LastItem;
