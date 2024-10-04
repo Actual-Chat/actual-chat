@@ -57,9 +57,7 @@
                             <i class="icon-emoji-2 text-2xl"></i>
                         </ButtonRound>
                     }
-                    @if (IsAdmin) {
-                        <NotifyAllButton Chat="@Chat"/>
-                    }
+                    <NotifyAllButton Chat="@Chat"/>
                     <div class="c-incut"></div>
                     <button class="post-panel-btn post-message btn btn-round btn-transparent btn-xs unhovered"
                             @onmousedown="@(_ => Post())"
