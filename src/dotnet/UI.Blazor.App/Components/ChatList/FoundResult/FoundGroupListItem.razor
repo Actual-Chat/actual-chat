@@ -4,16 +4,10 @@
 @inherits ComputedRenderStateComponent<FoundGroupListItem.Model>
 @{
     var m = State.Value;
-    if (m == Model.None)
+    if (ReferenceEquals(m, Model.None))
         return;
 
-    var chatState = m.ChatState;
-    if (ReferenceEquals(m.Place, null) || m.Place.Id.IsNone)
-        return;
-
-    var chat = chatState.Chat;
-    if (ReferenceEquals(chat, null))
-        return;
+    var chat = m.ChatState.Chat;
 }
 
 @if (m == Model.Loading) {
@@ -22,7 +16,7 @@
     <div class="found-result chat">
         <div class="c-content" data-href="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
             <div class="c-container">
-                <ChatIcon Chat="chatState.Chat"/>
+                <ChatIcon Chat="@chat"/>
                 <div class="c-description">
                     <div class="c-first-line">
                         <span class="c-title">
@@ -30,12 +24,12 @@
                         </span>
                         <span class="c-members">@m.MemberCount @("member".Pluralize(m.MemberCount))</span>
                     </div>
-                    @if (!ReferenceEquals(m.Place, null)) {
+                    @if (m.Place is not null) {
                         <div class="c-second-line">
                             In <span class="c-place-title">@m.Place.Title</span>
                         </div>
                     }
-                    @if (!string.IsNullOrEmpty(chat.Description)) {
+                    @if (!chat.Description.IsNullOrEmpty()) {
                         <div class="c-third-line">
                             @chat.Description
                         </div>
