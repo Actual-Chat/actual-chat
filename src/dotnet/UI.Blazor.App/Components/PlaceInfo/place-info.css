@@ -10,8 +10,6 @@
 }
 .place-info {
     @apply flex-y;
-}
-.place-info-wrapper .place-info {
     @apply w-160;
 }
 .place-info > div {

@@ -6,37 +6,39 @@
     if (ReferenceEquals(m, Model.Loading))
         return;
 
-    if (m.Place == null)
+    var place = m.Place;
+    if (place == null)
         return;
 
-    var isPublic = m.Place.IsPublic;
+    var isPublic = place.IsPublic;
 }
 
+<div class="place-info-wrapper">
 <div class="place-info">
     <div class="c-top">
         <div class="pic-wrapper">
             @{
-                var picture = m.Place.Background ?? m.Place.Picture;
-                var isBlurred = m.Place.Background == null;
+                var background = place.Background ?? place.Picture;
+                var isBlurred = place.Background == null;
             }
             <Pic
-                Picture="@picture.ToPicture()"
+                Picture="@background.ToPicture()"
                 Size="@SquareSize.SizeFull"
                 IsSquare="@true"
                 IsBlurred="@isBlurred"
                 AvatarKind="@AvatarKind.Marble"
-                AvatarKey="@m.Place.Id.Value"/>
+                AvatarKey="@place.Id.Value"/>
         </div>
         <div class="c-incut h-5"></div>
         <div class="c-subheader">
             <Pic
                 Class="place-avatar"
-                Picture="@m.Place.Picture.ToPicture()"
+                Title="@place.Title"
+                Picture="@place.Picture.ToPicture()"
                 Size="@SquareSize.Size16"
                 IsSquare="@true"
-                IsBlurred="@false"
                 AvatarKind="@AvatarKind.Marble"
-                AvatarKey="@m.Place.Id.Value"/>
+                AvatarKey="@place.Id.Value"/>
 
             <div class="c-buttons">
                 <ButtonRound Class="btn-sm join-btn" ContentClass="gap-x-2">
@@ -54,7 +56,7 @@
     </div>
     <div class="c-center">
         <div class="c-title">
-            @m.Place.Title
+            @place.Title
         </div>
         <div class="c-info">
             <span>@m.MemberCount @("Member".Pluralize(m.MemberCount))</span>
@@ -66,10 +68,10 @@
                 <i class="icon-lock"></i>
             }
         </div>
-        @if (!string.IsNullOrEmpty(m.Place.Description)) {
+        @if (!string.IsNullOrEmpty(place.Description)) {
             <div class="c-description">
-                @m.Place.Description
-            </div>
+                @place.Description
+    </div>
         } else if (m.EnableIncompleteUI) {
             <div class="c-description">
                 (Seen only for developers) Five generations, one family. We understand family because we are family. This is the family which has led
@@ -100,18 +102,19 @@
     </div>
     <div class="c-bottom">
         <TabPanel
-            @key="@m.Place.Id.Value"
+            @key="@place.Id.Value"
             TabsClass="left-panel-tabs wide-left-panel-tabs"
             BottomHill="true">
 
             <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
-                <ChatList @key="@m.Place.Id.Value" PlaceId="@m.Place.Id" />
+                <ChatList @key="@place.Id.Value" PlaceId="@place.Id" />
             </Tab>
             <Tab @key="@("members")" Id="members" Title="Members" Order="1">
                 <PlaceInfoMembersTab Data="@m"/>
             </Tab>
         </TabPanel>
     </div>
+</div>
 </div>
 
 @code {
