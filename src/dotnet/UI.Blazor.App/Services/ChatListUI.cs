@@ -37,15 +37,11 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     private Moment CpuNow => Clocks.CpuClock.Now;
 
-    // public IState<ChatListView?> ActiveChatListView => _activeChatListView;
-
     public ChatListUI(ChatUIHub hub) : base(hub)
     {
         var type = GetType();
         _isSelectedChatUnlisted = StateFactory.NewMutable(false,
             StateCategories.Get(type, nameof(_isSelectedChatUnlisted)));
-        // _activeChatListView = StateFactory.NewMutable((ChatListView?)null,
-        //     StateCategories.Get(type, nameof(ActiveChatListView)));
     }
 
     void INotifyInitialized.Initialized()
@@ -65,29 +61,16 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         => _placeChatLists.GetOrAdd(placeId,
             static (placeId1, self) => new PlaceChatListSettings(placeId1, self.Hub), this);
 
-#pragma warning disable CA1822 // Can be static
-    public int GetCountWhenLoading(ChatListKind listKind)
-#pragma warning restore CA1822
-        => listKind switch {
-            ChatListKind.All => AllItemCountWhenLoading,
-            ChatListKind.Active => ActiveItemCountWhenLoading,
-            _ => throw new ArgumentOutOfRangeException(nameof(listKind), listKind, null)
-        };
-
     [ComputeMethod]
-    public virtual async Task<int> GetCount(PlaceId placeId, CancellationToken cancellationToken)
+    public virtual async Task<int> GetCount(PlaceId placeId, ChatListSettings chatListSettings, CancellationToken cancellationToken)
     {
-        var placeChatListSettings = GetPlaceChatListSettings(placeId);
-        var chatListSettings = await placeChatListSettings.Get(cancellationToken).ConfigureAwait(false);
         var chatById = await ListUnordered(placeId, chatListSettings.Filter, cancellationToken).ConfigureAwait(false);
         return chatById.Count;
     }
 
     [ComputeMethod]
-    public virtual async Task<int> IndexOf(PlaceId placeId, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<int> IndexOf(PlaceId placeId, ChatId chatId, ChatListSettings chatListSettings, CancellationToken cancellationToken)
     {
-        var placeChatListSettings = GetPlaceChatListSettings(placeId);
-        var chatListSettings = await placeChatListSettings.Get(cancellationToken).ConfigureAwait(false);
         var items = await List(placeId, chatListSettings, cancellationToken).ConfigureAwait(false);
         return items.FirstIndexOf(x => x.Id == chatId);
     }
@@ -207,12 +190,10 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     [ComputeMethod]
     public virtual async Task<VirtualListTile<ChatListItemModel>> GetTile(
-        PlaceId placeId, Tile<int> indexTile, CancellationToken cancellationToken)
+        PlaceId placeId, Tile<int> indexTile, ChatListSettings chatListSettings, CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("GetTile: -> {PlaceId}, {Indexes}", placeId, indexTile);
+        DebugLog?.LogDebug("GetTile: -> {PlaceId}, {Indexes}, {Settings}", placeId, indexTile, chatListSettings);
         var longRange = indexTile.Range.AsLongRange();
-        var placeChatListSettings = GetPlaceChatListSettings(placeId);
-        var chatListSettings = await placeChatListSettings.Get(cancellationToken).ConfigureAwait(false);
         var chatInfos = await List(placeId, chatListSettings, cancellationToken).ConfigureAwait(false);
         var chatInfoTile = chatInfos
             .Take(indexTile.Start..indexTile.End)

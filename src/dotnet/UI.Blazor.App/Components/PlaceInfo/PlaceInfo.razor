@@ -111,7 +111,7 @@
             BottomHill="true">
 
             <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
-                <ChatList @key="@place.Id.Value" PlaceId="@place.Id" />
+                <ChatList @key="@place.Id.Value" PlaceId="@place.Id" UsePlaceChatListSettings="@m.IsPlaceMember" />
             </Tab>
             <Tab @key="@("members")" Id="members" Title="Members" Order="1">
                 <PlaceInfoMembersTab Data="@m"/>

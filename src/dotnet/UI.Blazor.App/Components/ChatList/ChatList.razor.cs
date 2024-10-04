@@ -11,15 +11,31 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
         VirtualListData<ChatListItemModel> renderedData,
         CancellationToken cancellationToken)
     {
-        var chatId = ChatUI.SelectedChatId.Value;
-        var placeId = await ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
-        var chatIndexTask = ChatListUI.IndexOf(placeId, chatId, cancellationToken);
-        var chatCountTask = ChatListUI.GetCount(placeId, cancellationToken);
+        var placeId = PlaceId;
+        var usePlaceChatListSettings = UsePlaceChatListSettings;
+
+        ChatListSettings chatListSettings;
+        Task<int> chatIndexTask;
+        ChatId chatId;
+        if (usePlaceChatListSettings) {
+            var placeChatListSettings = ChatListUI.GetPlaceChatListSettings(placeId);
+            chatListSettings = await placeChatListSettings.Get(cancellationToken).ConfigureAwait(false);
+            chatId = ChatUI.SelectedChatId.Value;
+            chatIndexTask = ChatListUI.IndexOf(placeId, chatId, chatListSettings, cancellationToken);
+        }
+        else {
+            chatListSettings = new ChatListSettings { Order = ChatListOrder.ByAlphabet, FilterId = ChatListFilter.Groups.Id };
+            chatId = ChatId.None;
+            chatIndexTask = Task.FromResult(-1);
+        }
+
+        var chatCountTask = ChatListUI.GetCount(placeId, chatListSettings, cancellationToken);
         var chatIndex = await chatIndexTask.ConfigureAwait(false);
         var chatCount = await chatCountTask.ConfigureAwait(false);
+
         DebugLog?.LogDebug(
-            "GetData: {PlaceId}/{ChatId} (#{ChatIndex}/{ChatCount})",
-            placeId, chatId, chatIndex, chatCount);
+            "GetData: {PlaceId}/{UsePlaceChatListSettings}/{ChatId} (#{ChatIndex}/{ChatCount})",
+            placeId, usePlaceChatListSettings, chatId, chatIndex, chatCount);
         if (chatCount == 0)
             return VirtualListData<ChatListItemModel>.None; // TODO(AY): This leaves the list in "loading" state, AK please fix this
 
@@ -54,7 +70,7 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
         var indexTiles = indexTileLayer.GetCoveringTiles(range);
         var resultItems = new List<ChatListItemModel>();
         foreach (var indexTile in indexTiles) {
-            var tile = await ChatListUI.GetTile(placeId, indexTile, cancellationToken).ConfigureAwait(false);
+            var tile = await ChatListUI.GetTile(placeId, indexTile, chatListSettings, cancellationToken).ConfigureAwait(false);
             if (tile.Items.Count != 0)
                 resultItems.AddRange(tile.Items);
         }
