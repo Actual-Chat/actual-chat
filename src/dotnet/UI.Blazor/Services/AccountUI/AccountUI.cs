@@ -11,7 +11,9 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     private readonly MutableState<Moment> _lastChangedAt;
     private readonly MutableState<SignInRequest?> _activeSignInRequest;
     private readonly TimeSpan _maxInvalidationDelay;
+    private readonly object _postponeOnSignedInWorkflowTasksSyncObject = new();
     private IClientAuth? _clientAuth;
+    private List<Task>? _postponeOnSignedInWorkflowTasks;
 
     private IAccounts Accounts => Hub.Accounts;
     private AppBlazorCircuitContext CircuitContext => Hub.CircuitContext;
@@ -131,10 +133,59 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     public Task Kick(Session session, string otherSessionHash, bool force = false)
         => Commander.Call(new Auth_SignOut(session, otherSessionHash, force));
 
+    public void PostponeOnSignInWorkflow(Task taskToAwait)
+    {
+        DebugLog?.LogInformation("Adding postpone on sign-in workflow task");
+        lock (_postponeOnSignedInWorkflowTasksSyncObject) {
+            if (taskToAwait.IsCompleted)
+                return;
+
+            _postponeOnSignedInWorkflowTasks ??= new List<Task>();
+            _postponeOnSignedInWorkflowTasks.Add(taskToAwait);
+        }
+    }
+
     // Private methods
 
     private void TryResetSignInRequest(SignInRequest expected)
         => _activeSignInRequest.Set(expected, (expected1, x) => ReferenceEquals(x.Value, expected1) ? null : x.Value);
+
+    private async Task PostponeOnSignedInWorkflow()
+    {
+        // TODO(DF): rewrite with using AsyncCountdownEvent.
+        // TODO(DF): May be we can combine this with SignInRequest.
+        while (true) {
+            Task[]? tasksToAwait = null;
+            lock (_postponeOnSignedInWorkflowTasksSyncObject) {
+                if (_postponeOnSignedInWorkflowTasks is not null) {
+                    _postponeOnSignedInWorkflowTasks.RemoveAll(t => t.IsCompleted);
+                    if (_postponeOnSignedInWorkflowTasks.Count > 0)
+                        tasksToAwait = _postponeOnSignedInWorkflowTasks.ToArray();
+                }
+            }
+
+            if (tasksToAwait is null || tasksToAwait.Length == 0)
+                return;
+
+            try {
+                DebugLog?.LogInformation("{NumberOfTasksToAwait} tasks are postponing OnSignedInWorkflow", tasksToAwait.Length);
+                await Task.WhenAny(tasksToAwait).ConfigureAwait(false);
+            }
+            catch {
+                // Ignore intended
+            }
+
+            lock (_postponeOnSignedInWorkflowTasksSyncObject) {
+                if (_postponeOnSignedInWorkflowTasks is not null) {
+                    foreach (var task in tasksToAwait)
+                        if (task.IsCompleted)
+                            _postponeOnSignedInWorkflowTasks!.Remove(task);
+                    if (_postponeOnSignedInWorkflowTasks!.Count == 0)
+                        _postponeOnSignedInWorkflowTasks = null;
+                }
+            }
+        }
+    }
 
     // Nested types
 
