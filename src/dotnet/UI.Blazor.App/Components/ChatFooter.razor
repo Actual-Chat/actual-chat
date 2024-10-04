@@ -58,7 +58,8 @@
     [Parameter, EditorRequired] public ChatPage.FooterModel Model { get; set; } = null!;
 
     private async Task OnJoin() {
-        if (!Model.HasMultipleAvatars) {
+        var avatarSelectionRequired = Model.HasMultipleAvatars || Model.CanJoinAnonymously;
+        if (!avatarSelectionRequired) {
             var command = new Authors_Join(Session, Chat.Id);
             await UICommander.Run(command);
             return;
@@ -79,7 +80,7 @@
             return;
         }
 
-        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, Model.CanJoinAnonymously, JoinWithAvatar));
+        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, false, JoinWithAvatar));
 
         async Task JoinWithAvatar(AvatarFull avatar) {
             var command = new Places_Join(Session, place.Id, avatar.Id);
