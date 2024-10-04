@@ -72,6 +72,14 @@ public partial class AccountUI
             return;
         }
 
+        _ = StartOnSignedInWorkflow();
+    }
+
+    private async Task StartOnSignedInWorkflow()
+    {
+        DebugLog?.LogInformation("Starting OnSignedInWorkflow");
+        await PostponeOnSignedInWorkflow().ConfigureAwait(true); // Continue on Blazor UI Context.
+
         // We were signed out -> it's a sign-in
         _ = OnboardingUI.TryShow();
         if (_activeSignInRequest.Value != null)

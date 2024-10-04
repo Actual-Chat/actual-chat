@@ -24,6 +24,11 @@
     [Inject] UIHub Hub { get; init; } = null!;
     private AccountUI AccountUI => Hub.AccountUI;
 
+    protected override void OnInitialized() {
+        AccountUI.PostponeOnSignInWorkflow(Modal.Ref.WhenClosed);
+        base.OnInitialized();
+    }
+
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
             InitialValue = AccountUI.OwnAccount.Value,
