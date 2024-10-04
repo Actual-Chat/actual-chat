@@ -1,5 +1,6 @@
 using System.Globalization;
 using ActualChat.Chat;
+using ActualChat.Chat.ML;
 using ActualChat.MLSearch.Indexing.ChatContent;
 
 namespace ActualChat.MLSearch.UnitTests.Indexing.ChatContent;

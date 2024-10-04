@@ -1,10 +1,9 @@
 using ActualChat.Chat;
+using ActualChat.Chat.ML;
 using ActualChat.Contacts;
-using ActualChat.Time;
 using ActualChat.Users.Email;
 using ActualChat.Users.Templates;
 using Mjml.Net;
-using TimeZoneConverter;
 using Unit = System.Reactive.Unit;
 
 namespace ActualChat.Users;
@@ -15,9 +14,9 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
-    private IAuthorsBackend Authors { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IEmailSender EmailSender { get; } = services.GetRequiredService<IEmailSender>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
+    private IChatDigestSummarizer ChatDigestSummarizer { get; } = services.GetRequiredService<IChatDigestSummarizer>();
     private MomentClockSet Clocks { get; } = services.Clocks();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
 
@@ -33,9 +32,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         if (account is null)
             return default;
 
-        var timeZoneInfo = TZConvert.GetTimeZoneInfo(account.TimeZone);
-        var userNow = TimeZoneInfo.ConvertTimeFromUtc(Clocks.SystemClock.Now, timeZoneInfo);
-        var digestParameters = await FindUnreadChats(account, userNow, timeZoneInfo, cancellationToken).ConfigureAwait(false);
+        var digestParameters = await FindUnreadChats(account, cancellationToken).ConfigureAwait(false);
         if (digestParameters.UnreadChats.Count == 0)
             return default;
 
@@ -65,8 +62,6 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
 
     private async Task<DigestParameters> FindUnreadChats(
         AccountFull account,
-        DateTime userNow,
-        TimeZoneInfo timeZoneInfo,
         CancellationToken cancellationToken)
     {
         const int takeChats = 5;
@@ -74,7 +69,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         var unreadChats = new List<DigestParameters.DigestChat>();
         var accountSettings = ServerKvasBackend.GetUserClient(account.Id);
         var contactIds = await ContactsBackend
-            .ListIdsForSearch(account.Id, null, false, cancellationToken)
+            .ListIds(account.Id, PlaceId.None, cancellationToken)
             .ConfigureAwait(false);
         foreach (var contactId in contactIds) {
             var digestChat = await GetDigestChat(contactId).ConfigureAwait(false);
@@ -125,34 +120,25 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             if (chat.Id.IsPlaceRootChat)
                 return default;
 
-            var unreadMessages = await ChatsBackend
-                .ListNewEntries(contactId.ChatId, chatPosition.EntryLid, 100, cancellationToken)
+            var messages = await ChatsBackend
+                .ListEntries(contactId.ChatId, Clocks.SystemClock.Now + TimeSpan.FromDays(-1), cancellationToken)
                 .ConfigureAwait(false);
-            if (unreadMessages.Count == 0)
+            if (messages.Count == 0)
                 return default;
 
-            var firstUnreadMessage = unreadMessages.FirstOrDefault(x => !x.IsSystemEntry);
-            if (firstUnreadMessage is null)
+            var nonSystemMessages = messages.Where(x => !x.IsSystemEntry).ToList();
+            if (nonSystemMessages.Count == 0)
                 return default;
 
-            var author = await Authors
-                .Get(firstUnreadMessage.ChatId, firstUnreadMessage.AuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
-                .ConfigureAwait(false);
-            if (author is null)
+            var bulletPoints = await ChatDigestSummarizer.Summarize(nonSystemMessages, cancellationToken).ConfigureAwait(false);
+            if (bulletPoints.Count == 0)
                 return default;
 
-            var userBeginsAt = TimeZoneInfo.ConvertTimeFromUtc(firstUnreadMessage.BeginsAt.ToDateTime(), timeZoneInfo);
             var digestChat = new DigestParameters.DigestChat {
                 Name = chat.Title,
                 Link = UrlMapper.ToAbsolute(Links.Chat(chat.Id)),
                 UnreadCount = maxEntryId - chatPosition.EntryLid,
-                FirstUnreadChatEntry = new DigestParameters.DigestChatEntry {
-                    At = DeltaText.Get(userBeginsAt, userNow).Text,
-                    AuthorName = author.Avatar.Name,
-                    Text = firstUnreadMessage.Content.IsNullOrEmpty()
-                        ? "N/A"
-                        : firstUnreadMessage.Content,
-                },
+                BulletPoints = bulletPoints,
             };
             return digestChat;
         }

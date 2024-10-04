@@ -11,22 +11,26 @@
             Padding="10px"
             FontWeight="500"
             FontSize="16px">
-            @Chat.FirstUnreadChatEntry.AuthorName
-            <span style="color: #A0A0A0; font-size: 12px;">
-                @Chat.FirstUnreadChatEntry.At
-            </span>
+            @Chat.Name
         </MjmlText>
-        <MjmlText
-            Padding="0 10px 10px 10px"
-            FontWeight="300"
-            Color="#1C1C1C"
-            FontSize="16px">
-            @Chat.FirstUnreadChatEntry.Text
-        </MjmlText>
+        @foreach (var bulletPoint in Chat.BulletPoints) {
+            <MjmlText
+                Padding="0 10px 5px 10px"
+                FontWeight="300"
+                Color="#1C1C1C"
+                FontSize="16px">
+                @bulletPoint
+            </MjmlText>
+        }
         @if (Chat.UnreadCount > 0) {
             <DigestButton
                 Link="@Chat.Link">
                 Open @Chat.UnreadCount new from @Chat.Name
+            </DigestButton>
+        } else {
+            <DigestButton
+                Link="@Chat.Link">
+                Open @Chat.Name
             </DigestButton>
         }
     </MjmlColumn>

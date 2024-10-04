@@ -1,4 +1,6 @@
 using ActualChat.Chat;
+using ActualChat.Chat.ML;
+using ActualChat.Integrations.Anthropic;
 using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.UnitTests.Indexing.ChatContent;
 
@@ -15,7 +17,11 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
         var chatDialogFormatter = new ChatDialogFormatter(authorsBackend);
         var contentArranger = new ChatContentArranger2(
             Mock.Of<IChatsBackend>(),
-            new DialogFragmentAnalyzer(DialogFragmentAnalyzer.Options.Default, Mock.Of<ILogger>()),
+            new DialogFragmentAnalyzer(
+                DialogFragmentAnalyzer.Options.Default,
+                Mock.Of<ILogger<DialogFragmentAnalyzer>>(),
+                Mock.Of<IPromptUtils>(),
+                Mock.Of<IAnthropicClient>()),
             chatDialogFormatter);
         var sourceGroups = await contentArranger.ArrangeAsync(entries, [], CancellationToken.None).ToListAsync();
         sourceGroups.Count.Should().Be(2);

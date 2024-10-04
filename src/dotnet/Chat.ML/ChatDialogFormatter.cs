@@ -1,18 +1,32 @@
 using System.Text;
-using ActualChat.Chat;
+using Cysharp.Text;
 
-namespace ActualChat.MLSearch.Indexing.ChatContent;
+namespace ActualChat.Chat.ML;
 
 public interface IChatDialogFormatter
 {
-    Task<string> EntryToText(ChatEntry entry, ChatEntry? prevChatEntry);
+    Task<string> EntriesToText(IEnumerable<ChatEntry> chatEntries, bool displayTimestamp = false);
+    Task<string> EntryToText(ChatEntry entry, ChatEntry? prevChatEntry, bool displayTimestamp = false);
 }
 
-public class ChatDialogFormatter(IAuthorsBackend authorsBackend, bool displayTimestamp = false) : IChatDialogFormatter
+internal sealed class ChatDialogFormatter(IAuthorsBackend authorsBackend) : IChatDialogFormatter
 {
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
 
-    public async Task<string> EntryToText(ChatEntry entry, ChatEntry? prevChatEntry)
+    public async Task<string> EntriesToText(IEnumerable<ChatEntry> chatEntries, bool displayTimestamp = false)
+    {
+        using var sb = ZString.CreateStringBuilder();
+        ChatEntry? prevChatEntry = null;
+        foreach (var chatEntry in chatEntries) {
+            if (sb.Length > 0)
+                sb.AppendLine();
+            var entryText = await EntryToText(chatEntry, prevChatEntry, displayTimestamp).ConfigureAwait(false);
+            sb.Append(entryText);
+        }
+        return sb.ToString();
+    }
+
+    public async Task<string> EntryToText(ChatEntry entry, ChatEntry? prevChatEntry, bool displayTimestamp = false)
     {
         var isBlockStart = IsBlockStart(prevChatEntry, entry);
         var isReply = entry.RepliedEntryLid is not null;
