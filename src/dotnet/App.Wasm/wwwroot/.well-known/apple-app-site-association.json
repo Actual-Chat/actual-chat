@@ -9,6 +9,7 @@
         ],
         "paths": [
           "/chat/*",
+          "/place/*",
           "/u/*",
           "/join/*",
           "/user/invite/*"
