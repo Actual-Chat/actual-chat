@@ -11,5 +11,6 @@ the_chain = chain.create(
 #    prompt = dynamic_prompt
 )
 
-print(the_chain.get_graph(xray=True).draw_mermaid())
+#print(the_chain.get_graph(xray=True).draw_mermaid())
+print(the_chain.get_graph().draw_mermaid())
 #the_chain.invoke({"aggregate": []})

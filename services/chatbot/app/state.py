@@ -1,16 +1,11 @@
-from langgraph.graph import MessagesState
-from typing import List, Dict, Any, Annotated
+from pydantic import BaseModel
+from typing import Annotated, Optional
+from langchain_core.messages import AnyMessage
+from langgraph.graph import add_messages
 
-def _update(left, right):
-    if right is None or len(right) == 0:
-        return left
-    else:
-        return right
+class State(BaseModel):
+    messages: Annotated[list[AnyMessage], add_messages]
 
-
-class State(MessagesState):
-    # This allows us to keep conversation length under control
-    summary: str
-    # Tools utilitary state
-    last_search_result: Annotated[List[Any], _update]
-
+    summary: Optional[str] = None
+    search_type: Optional[str] = None
+    last_seen_msg_id: Optional[str] = None

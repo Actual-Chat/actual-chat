@@ -1,6 +1,4 @@
-from typing import Annotated, Literal
-
-from typing_extensions import TypedDict
+from typing import Literal
 
 import os
 
@@ -8,21 +6,17 @@ from langchain_core.messages import (
     HumanMessage,
     SystemMessage,
     RemoveMessage,
-    AIMessage,
-    filter_messages,
-    trim_messages,
     get_buffer_string
 )
 from langgraph.graph import StateGraph, START, END
 
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.runnables.config import RunnableConfig
+from langchain_core.messages import ToolMessage
 from langgraph.prebuilt import ToolNode
-from langgraph.graph.message import add_messages
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.runnables import RunnableLambda
-from langchain_core.tools import tool
 
 import pydantic
 assert(pydantic.VERSION.startswith("2."))
@@ -92,21 +86,34 @@ def final_answer(state: State, config: RunnableConfig):
 def human_input(state):
     pass
 
+def update_state(state: State) -> State:
+    stop_msg_id = state.last_seen_msg_id
+    for message in reversed(state.messages):
+        if message.id == stop_msg_id:
+            break
+        if isinstance(message, ToolMessage) and message.name=="resolve_search_type" and message.status=="success":
+            state.search_type = message.content
+
+    if state.messages:
+        state.last_seen_msg_id = state.messages[-1].id
+
+    return state
+
 def create(*,
     claude_api_key,
 #    prompt = None
 ):
     memory = MemorySaver()
-    tools = all_tools()
-    graph_builder = StateGraph(State)
-    llm = ChatAnthropic(
-        model="claude-3-haiku-20240307",
-        api_key = claude_api_key
-    ).bind_tools(tools)
     llm_no_tools = ChatAnthropic(
         model="claude-3-haiku-20240307",
         api_key = claude_api_key
     )
+
+    tools = all_tools(classifier_model = llm_no_tools)
+    llm = ChatAnthropic(
+        model="claude-3-haiku-20240307",
+        api_key = claude_api_key
+    ).bind_tools(tools)
 
     tool_node = ToolNode(tools)
 
@@ -159,8 +166,11 @@ def create(*,
         }
 
 
+    graph_builder = StateGraph(State)
+
     graph_builder.add_node("agent", call_model)
     graph_builder.add_node("tools", tool_node)
+    graph_builder.add_node("update_state", update_state)
     graph_builder.add_node("summarize_conversation", summarize_conversation)
     graph_builder.add_node("final_answer", final_answer)
     graph_builder.add_node("human_input", human_input)
@@ -175,7 +185,8 @@ def create(*,
         should_summarize
     )
     graph_builder.add_edge("summarize_conversation", "human_input")
-    graph_builder.add_edge("tools", "agent")
+    graph_builder.add_edge("tools", "update_state")
+    graph_builder.add_edge("update_state", "agent")
     graph_builder.add_edge("human_input", "agent")
 
 

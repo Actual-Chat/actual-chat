@@ -4,10 +4,17 @@ from langchain_core.tools import tool
 from langgraph.graph import MessagesState
 from langgraph.prebuilt import InjectedState
 from langchain_core.runnables.config import RunnableConfig
-from datetime import date as _date
-from datetime import datetime
+from langchain_core.language_models.chat_models import BaseChatModel
+
+
 import requests
 import json
+
+import sys
+sys.path.insert(1, '/app/services/chatbot')
+
+from app.state import State
+from app.tools.resolver import SearchTypeResolver
 
 TOOLS_AUTH_FORWARD_CONTEXT = "forward-auth-context"
 
@@ -201,10 +208,19 @@ def _post(url, data, config: RunnableConfig):
     return result.json()
 
 
-def all():
+def all(*, classifier_model: BaseChatModel):
+
+    search_type_resolver = SearchTypeResolver(classifier_model, "resolve_search_type")
+
+    @tool
+    def resolve_search_type(state: Annotated[State, InjectedState]) -> str:
+        """Call to get the search type."""
+        return search_type_resolver.process(state)
+
     return [
         reply,
         search_in_public_chats,
         search_in_my_chats,
-        forward_search_results
+        forward_search_results,
+        resolve_search_type
     ]

@@ -1,8 +1,7 @@
 from langchain_core.runnables.configurable import RunnableConfigurableAlternatives
 from typing import List, Mapping, Any
 
-from langchain_core.pydantic_v1 import BaseModel, Field
-
+from pydantic import Field
 
 class RunnableConfigurableRuntimeAlternatives(RunnableConfigurableAlternatives):
     partial_variables: Mapping[str, Any] = Field(default_factory=dict)

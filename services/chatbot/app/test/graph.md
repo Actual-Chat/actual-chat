@@ -1,21 +1,22 @@
 ```mermaid
 %%{init: {'flowchart': {'curve': 'linear'}}}%%
 graph TD;
-        user_input_input([user_input_input]):::first
-        user_input(user_input)
+        __start__([<p>__start__</p>]):::first
         agent(agent)
         tools(tools)
-        start_input(start_input)
-        ask_human(ask_human<hr/><small><em>__interrupt = before</em></small>)
-        __end__([<p>__end__</p>]):::last
-        user_input_input --> user_input;
-        start_input --> agent;
-        tools --> agent;
+        update_state(update_state)
+        summarize_conversation(summarize_conversation)
+        final_answer(final_answer)
+        human_input(human_input<hr/><small><em>__interrupt = before</em></small>)
+        __start__ --> agent;
+        human_input --> agent;
+        summarize_conversation --> human_input;
+        tools --> update_state;
+        update_state --> agent;
         agent -.-> tools;
-        agent -.-> ask_human;
-        ask_human -.-> agent;
-        ask_human -.-> __end__;
-        user_input --> start_input;
+        agent -.-> final_answer;
+        final_answer -.-> summarize_conversation;
+        final_answer -.-> human_input;
         classDef default fill:#f2f0ff,line-height:1.2
         classDef first fill-opacity:0
         classDef last fill:#bfb6fc
