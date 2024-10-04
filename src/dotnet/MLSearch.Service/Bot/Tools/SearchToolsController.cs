@@ -36,7 +36,7 @@ public sealed class SearchToolsController(
     public async Task<ActionResult<List<SearchQueryDocumentResult>>> PublicChatsText([FromBody]SearchQueryRequest search, CancellationToken cancellationToken)
     {
         var context = botToolsContext.GetContext(Request);
-        if (!context.IsValid || (context.ConversationId is var conversationId && string.IsNullOrEmpty(conversationId))) {
+        if (!context.IsValid || (context.ConversationId is var conversationId && conversationId.IsNullOrEmpty())) {
             throw new UnauthorizedAccessException();
         }
         if (!ChatId.TryParse(conversationId, out var chatId)) {
@@ -80,8 +80,8 @@ public sealed class SearchToolsController(
     {
         var context = botToolsContext.GetContext(Request);
         if (!context.IsValid
-            || (context.ConversationId is var conversationId && string.IsNullOrEmpty(conversationId))
-            || (context.UserId is var contextUserId && string.IsNullOrEmpty(contextUserId))) {
+            || (context.ConversationId is var conversationId && conversationId.IsNullOrEmpty())
+            || (context.UserId is var contextUserId && contextUserId.IsNullOrEmpty())) {
             throw new UnauthorizedAccessException();
         }
         if (!ChatId.TryParse(conversationId, out var chatId) || !UserId.TryParse(contextUserId, out var userId)) {

@@ -22,7 +22,7 @@ internal sealed class TestableInMemoryOpenSearchConnection(Action<RequestData> p
             ? responses[_requestCounter]
             : (500, string.Empty);
 
-        var stream = !string.IsNullOrEmpty(response)
+        var stream = !response.IsNullOrEmpty()
             ? requestData.MemoryStreamFactory.Create(Encoding.UTF8.GetBytes(response))
             : requestData.MemoryStreamFactory.Create(EmptyBody);
 
@@ -41,7 +41,7 @@ internal sealed class TestableInMemoryOpenSearchConnection(Action<RequestData> p
             ? responses[_requestCounter]
             : (500, string.Empty);
 
-        var stream = !string.IsNullOrEmpty(response)
+        var stream = !response.IsNullOrEmpty()
             ? requestData.MemoryStreamFactory.Create(Encoding.UTF8.GetBytes(response))
             : requestData.MemoryStreamFactory.Create(EmptyBody);
 
