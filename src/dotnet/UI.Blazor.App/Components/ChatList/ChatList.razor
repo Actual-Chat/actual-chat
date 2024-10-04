@@ -39,6 +39,7 @@
     private ILogger? DebugLog => Constants.DebugMode.ChatListRelated ? Log : null;
 
     [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
+    [Parameter, EditorRequired] public bool UsePlaceChatListSettings { get; set; } = true;
 
     protected override void OnInitialized() {
         DebugLog?.LogDebug("OnInitialized: {List}", ChatListKind.All);
