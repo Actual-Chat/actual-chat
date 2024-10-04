@@ -101,14 +101,31 @@ abstract class AudioContextSourceBase implements AudioContextSource {
 
     protected constructor(public readonly purpose: AudioContextPurpose) {
         this.onDeviceAwakeHandler = OnDeviceAwake.events.add(() => this.onDeviceAwake());
-        if (purpose === 'playback' && AudioContextDestinationFallback.isRequired) {
-            this.fallbackDestination = new AudioContextDestinationFallback();
+        if (purpose === 'playback') {
+            if (AudioContextDestinationFallback.isRequired)
+                this.fallbackDestination = new AudioContextDestinationFallback();
+
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: `Ready`,
+                    artist: 'Actual Chat',
+                    artwork: [{ src: '/_applogo-dark.svg' }]
+                });
+                navigator.mediaSession.playbackState = 'none';
+                navigator.mediaSession.setPositionState({
+                    playbackRate: 1,
+                    position: 0,
+                    duration: 0,
+                });
+            }
+            if ('audioSession' in navigator) {
+                navigator.audioSession['type'] = 'playback'; // 'playback'
+            }
         }
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.playbackState = 'none';
-        }
-        if ('audioSession' in navigator) {
-            navigator.audioSession['type'] = 'play-and-record'; // 'playback'
+        else {
+            if ('audioSession' in navigator) {
+                navigator.audioSession['type'] = 'play-and-record'; // 'recording'
+            }
         }
     }
 
@@ -280,7 +297,17 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
 
     public pauseRef(): void { }
 
-    public useRef(): void { }
+    public useRef(): void {
+        if (!this._isActive) {
+            this._maintain = this.maintain();
+            return;
+        }
+        const context = this._context;
+        if (context.state !== 'running') {
+            this.markNotReady();
+            void this.closeSilently(context);
+        }
+    }
 
     // Must be private, but good to keep it near markNotReady
     private markReady(context: AudioContext | null) {
@@ -763,8 +790,10 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
         const context = this._context;
         this._context = null;
         await this.closeSilently(context);
-        this.whileBackgroundIdle?.resolve(undefined);
-        this.whileBackgroundIdle = null;
+        if (AudioInitializer.backgroundState !== 'BackgroundIdle') {
+            this.whileBackgroundIdle?.resolve(undefined);
+            this.whileBackgroundIdle = null;
+        }
     }
 
     private async create(): Promise<AudioContext> {
