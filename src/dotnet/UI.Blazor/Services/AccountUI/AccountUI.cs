@@ -11,7 +11,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     private readonly MutableState<Moment> _lastChangedAt;
     private readonly MutableState<SignInRequest?> _activeSignInRequest;
     private readonly TimeSpan _maxInvalidationDelay;
-    private readonly object _postponeOnSignedInWorkflowTasksSyncObject = new();
+    private readonly object _postponeOnSignedInWorkflowTasksLock = new();
     private IClientAuth? _clientAuth;
     private List<Task>? _postponeOnSignedInWorkflowTasks;
 
@@ -136,7 +136,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     public void PostponeOnSignInWorkflow(Task taskToAwait)
     {
         DebugLog?.LogInformation("Adding postpone on sign-in workflow task");
-        lock (_postponeOnSignedInWorkflowTasksSyncObject) {
+        lock (_postponeOnSignedInWorkflowTasksLock) {
             if (taskToAwait.IsCompleted)
                 return;
 
@@ -156,7 +156,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
         // TODO(DF): May be we can combine this with SignInRequest.
         while (true) {
             Task[]? tasksToAwait = null;
-            lock (_postponeOnSignedInWorkflowTasksSyncObject) {
+            lock (_postponeOnSignedInWorkflowTasksLock) {
                 if (_postponeOnSignedInWorkflowTasks is not null) {
                     _postponeOnSignedInWorkflowTasks.RemoveAll(t => t.IsCompleted);
                     if (_postponeOnSignedInWorkflowTasks.Count > 0)
@@ -175,7 +175,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
                 // Ignore intended
             }
 
-            lock (_postponeOnSignedInWorkflowTasksSyncObject) {
+            lock (_postponeOnSignedInWorkflowTasksLock) {
                 if (_postponeOnSignedInWorkflowTasks is not null) {
                     foreach (var task in tasksToAwait)
                         if (task.IsCompleted)
