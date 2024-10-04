@@ -51,7 +51,7 @@ public static class OpenGraphParser
         {
             foreach (var key in keys) {
                 var url = GetUrl(metaMap, key);
-                if (!string.IsNullOrEmpty(url))
+                if (!url.IsNullOrEmpty())
                     return url;
             }
             return "";

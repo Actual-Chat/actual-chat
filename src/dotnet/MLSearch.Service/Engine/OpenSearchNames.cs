@@ -21,8 +21,8 @@ internal sealed class OpenSearchNames
     public static string MLIndexPattern => $"{MLPrefix}-*";
     public static string MLTestIndexPattern => $"{MLPrefix}-{TestPrefix}-*";
     public static string MLTemplateName => $"{MLPrefix}-{TemplateNameSuffix}";
-    private string MLFullPrefix => string.IsNullOrEmpty(UniquePart) ? MLPrefix : $"{MLPrefix}-{UniquePart}";
-    private string Prefix => string.IsNullOrEmpty(UniquePart) ? "sm-" : $"sm-{UniquePart}-"; // sm == "Search Module"
+    private string MLFullPrefix => UniquePart.IsNullOrEmpty() ? MLPrefix : $"{MLPrefix}-{UniquePart}";
+    private string Prefix => UniquePart.IsNullOrEmpty() ? "sm-" : $"sm-{UniquePart}-"; // sm == "Search Module"
     public string CommonIndexTemplateName => $"{Prefix}common";
     public string CommonIndexPattern => $"{Prefix}*";
     public string UserIndexName => $"{Prefix}users-{UserIndexVersion}";

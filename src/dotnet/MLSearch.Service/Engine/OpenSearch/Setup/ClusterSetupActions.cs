@@ -99,7 +99,7 @@ internal sealed class ClusterSetupActions(
         }
         var modelState = (string) modelStateObj;
         if (!OrdinalEquals(modelState, "DEPLOYED")) {
-            modelState = string.IsNullOrEmpty(modelState) ? "<Empty>" : modelState;
+            modelState = modelState.IsNullOrEmpty() ? "<Empty>" : modelState;
             // Throw standard external error as it is transient
             throw StandardError.External(
                 $"Invalid model state. Expecting deployed model, but was {modelState}."

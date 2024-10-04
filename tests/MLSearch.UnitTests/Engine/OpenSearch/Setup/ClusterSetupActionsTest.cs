@@ -199,7 +199,7 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
             () => actions.RetrieveEmbeddingModelPropsAsync(ModelGroupName, CancellationToken.None)
         );
         Assert.StartsWith("Invalid model state", exception.Message, StringComparison.Ordinal);
-        Assert.Contains(string.IsNullOrEmpty(modelState) ? "<Empty>" : modelState, exception.Message, StringComparison.Ordinal);
+        Assert.Contains(modelState.IsNullOrEmpty() ? "<Empty>" : modelState, exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
