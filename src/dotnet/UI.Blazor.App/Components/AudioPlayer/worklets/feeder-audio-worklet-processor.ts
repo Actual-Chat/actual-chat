@@ -91,7 +91,6 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
     public resume(preSkip: number): Promise<void> {
         this.playingAt = 0;
-        this.buffer.reset();
         this.skipSamples = preSkip;
 
         if (this.playbackState === 'playing')
