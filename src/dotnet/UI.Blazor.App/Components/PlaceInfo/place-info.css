@@ -12,6 +12,9 @@
     @apply flex-y;
     @apply w-160;
 }
+body.narrow .place-info {
+    @apply w-full;
+}
 .place-info > div {
     @apply bg-01;
 }
@@ -91,7 +94,7 @@
 }
 .place-info > .c-bottom .tab-panel .tab {
     @apply h-full;
-    @apply overflow-auto;
+    @apply overflow-y-auto;
     scrollbar-width: none;
 }
 
