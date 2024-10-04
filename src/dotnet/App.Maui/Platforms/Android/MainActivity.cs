@@ -35,13 +35,13 @@ namespace ActualChat.App.Maui;
         ConfigChanges.Touchscreen | ConfigChanges.Keyboard | ConfigChanges.KeyboardHidden
     )]
 [IntentFilter(
-    new [] { Intent.ActionView },
-    DataSchemes = new [] { "http", "https" },
+    [Intent.ActionView],
+    DataSchemes = ["http", "https"],
     DataHost = MauiSettings.DefaultHost, /* TODO(DF): rework dynamic intent filter configuration */
-    DataPaths = new [] { "/" },
-    DataPathPrefixes = new [] { "/chat/", "/join/", "/u/", "/user/invite/" },
+    DataPaths = ["/"],
+    DataPathPrefixes = ["/chat/", "/place/", "/join/", "/u/", "/user/invite/"],
     AutoVerify = true,
-    Categories = new [] { Intent.CategoryDefault, Intent.CategoryBrowsable })]
+    Categories = [Intent.CategoryDefault, Intent.CategoryBrowsable])]
 public partial class MainActivity : MauiAppCompatActivity
 {
     private static volatile MainActivity? _current;
