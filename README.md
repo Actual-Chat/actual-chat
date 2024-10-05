@@ -16,7 +16,7 @@ Web site: [actual.chat](https://actual.chat)
 Install:
 - [Git](https://git-scm.com/downloads)
 - [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0)
-- `dotnet workload install wasm-tools`  
+- `dotnet workload install wasm-tools maui aspire`  
 - [Docker](https://www.docker.com/get-started)
 - [NodeJS 16+](https://nodejs.org/en/) and the latest `npm`;
   [npm-windows-update](https://www.npmjs.com/package/npm-windows-upgrade)
@@ -30,8 +30,7 @@ Install:
 Run:
 ```bash
 dotnet tool restore
-dotnet workload install wasm-tools
-dotnet workload install maui
+dotnet workload install wasm-tools maui aspire
 ```
 
 Recommended IDEs:

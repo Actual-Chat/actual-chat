@@ -40,7 +40,7 @@ runs:
       if: ${{ inputs.restore-workloads == 'true' && inputs.maui-rollback-version == '' }}
       run: |
         echo :: Installing workloads
-        dotnet workload restore
+        dotnet workload install wasm-tools aspire
 
     - name: Install workloads with specific version ${{ inputs.maui-rollback-version }}
       shell: bash
@@ -54,5 +54,5 @@ runs:
       if: ${{ inputs.restore == 'true' }}
       # wasm-tools is required by restore, but restore-workloads is too heavy for that
       run: |
-        echo :: installing wasm-tools and resting packages
-        dotnet workload install wasm-tools && ./run-build.cmd restore
+        echo :: Installing wasm-tools, aspire, and resting packages
+        dotnet workload install wasm-tools aspire && ./run-build.cmd restore
