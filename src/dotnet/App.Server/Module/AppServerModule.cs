@@ -24,6 +24,7 @@ using ActualLab.Rpc.Diagnostics;
 using ActualLab.Rpc.Server;
 using ActualChat.MLSearch.Diagnostics;
 using ActualLab.Fusion.Server;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace ActualChat.App.Server.Module;
 
@@ -138,8 +139,20 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         services.AddSingleton<LivelinessHealthCheck>(c => new LivelinessHealthCheck(c));
         services.AddSingleton<ReadinessHealthCheck>(c => new ReadinessHealthCheck(c));
         services.AddHealthChecks()
-            .AddCheck<LivelinessHealthCheck>("App-Liveliness", tags: new[] { HealthTags.Live })
-            .AddCheck<ReadinessHealthCheck>("App-Readiness", tags: new[] { HealthTags.Ready });
+            .AddCheck<LivelinessHealthCheck>("App-Liveliness", tags: [HealthTags.Live])
+            .AddCheck<ReadinessHealthCheck>("App-Readiness", tags: [HealthTags.Ready]);
+
+        // Aspire-related
+        if (Settings.IsAspireManaged) {
+            services.AddServiceDiscovery();
+            services.ConfigureHttpClientDefaults(http => {
+                // http.AddStandardResilienceHandler();
+                http.AddServiceDiscovery();
+            });
+            services.AddHealthChecks()
+                // Add a default liveness check to ensure app is responsive
+                .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
+        }
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
@@ -237,93 +250,103 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         });
         services.AddBlazorCircuitActivitySuppressor();
 
-        // OpenTelemetry
-        var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;
-        if (openTelemetryEndpoint.IsNullOrEmpty())
-            openTelemetryEndpoint = "localhost";
+        // Open Telemetry
+        ConfigureOpenTelemetry(services);
+    }
 
-        var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
-        var openTelemetryEndpointUri = $"http://{host}:{port.Format()}".ToUri();
-        Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
-        services.AddOpenTelemetry()
-            .ConfigureResource(builder => _ = Env.IsDevelopment()
-                    ? builder.AddService("App", "actualchat", AppVersion, false, "dev")
-                    : builder.AddService("App", "actualchat", AppVersion))
-            .WithMetrics(builder => builder
-                // gcloud exporter doesn't support some of metrics yet:
-                // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
-                .AddAspNetCoreInstrumentation()
-                .AddHttpClientInstrumentation()
-                .AddRuntimeInstrumentation()
-                .AddProcessInstrumentation()
-                .AddMeter("Npgsql") // Npgsql meter at Npgsql.MetricsReporter
-                .AddMeter(RpcInstruments.Meter.Name) // ActualLab.Rpc
-                .AddMeter(CommanderInstruments.Meter.Name) // ActualLab.Commander
-                .AddMeter(FusionInstruments.Meter.Name) // ActualLab.Fusion
-                // Our own meters (one per assembly)
-                .AddMeter(DbInstruments.Meter.Name)
-                .AddMeter(CoreServerInstruments.Meter.Name)
-                .AddMeter(AppInstruments.Meter.Name)
-                .AddMeter(AppUIInstruments.Meter.Name)
-                .AddMeter(MLSearchInstruments.Meter.Name)
-                // Disabled prometheus endpoint to test Otlp
-                // .AddPrometheusExporter(cfg => { // OtlpExporter doesn't work for metrics ???
-                //     cfg.ScrapeEndpointPath = "/metrics";
-                //     cfg.ScrapeResponseCacheDurationMilliseconds = 300;
-                //     // commented out as OpenTelemetry.Exporter.Prometheus.AspNetCore 1.7.0-rc.1 doesn't support it
-                //     // and 1.8.0 doesn't allow the managed Prometheus collector to collect metrics
-                //     // cfg.DisableTotalNameSuffixForCounters = true;
-                // })
-                .AddOtlpExporter(cfg => {
-                    cfg.ExportProcessorType = ExportProcessorType.Batch;
-                    cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions {
-                        ExporterTimeoutMilliseconds = 10_000,
-                        MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
-                        MaxQueueSize = 1024,
-                        ScheduledDelayMilliseconds = 20_000,
-                    };
-                    cfg.Protocol = OtlpExportProtocol.Grpc;
-                    cfg.Endpoint = openTelemetryEndpointUri;
-                })
-            )
-            .WithTracing(builder => builder
-                .SetErrorStatusOnException()
-                .AddSource(RpcInstruments.ActivitySource.Name) // ActualLab.Rpc
-                .AddSource(CommanderInstruments.ActivitySource.Name) // ActualLab.Commander
-                .AddSource(FusionInstruments.ActivitySource.Name) // ActualLab.Fusion
-                // Our own activity sources (one per assembly)
-                .AddSource(DbInstruments.ActivitySource.Name)
-                .AddSource(CoreServerInstruments.ActivitySource.Name)
-                .AddSource(AppInstruments.ActivitySource.Name)
-                .AddSource(AppUIInstruments.ActivitySource.Name)
-                .AddSource(MLSearchInstruments.ActivitySource.Name)
-                .AddAspNetCoreInstrumentation(opt => {
-                    var excludedPaths = new PathString[] {
-                        "/favicon.ico",
-                        "/metrics",
-                        "/status",
-                        "/_blazor",
-                        "/_framework",
-                        "/healthz",
-                    };
-                    opt.Filter = httpContext =>
-                        !excludedPaths.Any(x
-                            => httpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase));
-                })
-                .AddHttpClientInstrumentation(cfg => cfg.RecordException = true)
-                .AddGrpcClientInstrumentation()
-                .AddNpgsql()
-                .AddOtlpExporter(cfg => {
-                    cfg.ExportProcessorType = ExportProcessorType.Batch;
-                    cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
-                        ExporterTimeoutMilliseconds = 10_000,
-                        MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
-                        MaxQueueSize = 1024,
-                        ScheduledDelayMilliseconds = 20_000,
-                    };
-                    cfg.Protocol = OtlpExportProtocol.Grpc;
-                    cfg.Endpoint = openTelemetryEndpointUri;
-                })
-            );
+    // Private methods
+
+    private void ConfigureOpenTelemetry(IServiceCollection services)
+    {
+        var serviceName = Cfg["OTEL_SERVICE_NAME"].NullIfEmpty() ?? "App";
+        var endpointUrl = Cfg["OTEL_EXPORTER_OTLP_ENDPOINT"];
+        if (endpointUrl.IsNullOrEmpty()) {
+            var endpoint = Settings.OpenTelemetryEndpoint.NullIfEmpty() ?? "localhost";
+            var (host, port) = endpoint.ParseHostPort(4317);
+            endpointUrl = $"http://{host}:{port.Format()}";
+        }
+        Log.LogInformation("OpenTelemetry: '{ServiceName}' @ {Endpoint}", serviceName, endpointUrl);
+
+        var otel = services.AddOpenTelemetry();
+        otel.ConfigureResource(resource => _ = Env.IsDevelopment()
+            ? resource.AddService(serviceName, "actualchat", AppVersion, false, "dev")
+            : resource.AddService(serviceName, "actualchat", AppVersion));
+
+        otel.WithMetrics(meter => meter
+            // gcloud exporter doesn't support some of metrics yet:
+            // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddProcessInstrumentation()
+            .AddMeter("Npgsql") // Npgsql meter at Npgsql.MetricsReporter
+            .AddMeter(RpcInstruments.Meter.Name) // ActualLab.Rpc
+            .AddMeter(CommanderInstruments.Meter.Name) // ActualLab.Commander
+            .AddMeter(FusionInstruments.Meter.Name) // ActualLab.Fusion
+            // Our own meters (one per assembly)
+            .AddMeter(DbInstruments.Meter.Name)
+            .AddMeter(CoreServerInstruments.Meter.Name)
+            .AddMeter(AppInstruments.Meter.Name)
+            .AddMeter(AppUIInstruments.Meter.Name)
+            .AddMeter(MLSearchInstruments.Meter.Name)
+            // Disabled prometheus endpoint to test Otlp
+            // .AddPrometheusExporter(cfg => { // OtlpExporter doesn't work for metrics ???
+            //     cfg.ScrapeEndpointPath = "/metrics";
+            //     cfg.ScrapeResponseCacheDurationMilliseconds = 300;
+            //     // commented out as OpenTelemetry.Exporter.Prometheus.AspNetCore 1.7.0-rc.1 doesn't support it
+            //     // and 1.8.0 doesn't allow the managed Prometheus collector to collect metrics
+            //     // cfg.DisableTotalNameSuffixForCounters = true;
+            // })
+            .AddOtlpExporter(cfg => {
+                cfg.ExportProcessorType = ExportProcessorType.Batch;
+                cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions {
+                    ExporterTimeoutMilliseconds = 10_000,
+                    MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
+                    MaxQueueSize = 1024,
+                    ScheduledDelayMilliseconds = 20_000,
+                };
+                cfg.Protocol = OtlpExportProtocol.Grpc;
+                cfg.Endpoint = endpointUrl.ToUri();
+            })
+        );
+        otel.WithTracing(tracer => tracer
+            .SetErrorStatusOnException()
+            .AddSource(RpcInstruments.ActivitySource.Name) // ActualLab.Rpc
+            .AddSource(CommanderInstruments.ActivitySource.Name) // ActualLab.Commander
+            .AddSource(FusionInstruments.ActivitySource.Name) // ActualLab.Fusion
+            // Our own activity sources (one per assembly)
+            .AddSource(DbInstruments.ActivitySource.Name)
+            .AddSource(CoreServerInstruments.ActivitySource.Name)
+            .AddSource(AppInstruments.ActivitySource.Name)
+            .AddSource(AppUIInstruments.ActivitySource.Name)
+            .AddSource(MLSearchInstruments.ActivitySource.Name)
+            .AddAspNetCoreInstrumentation(opt => {
+                var excludedPaths = new PathString[] {
+                    "/favicon.ico",
+                    "/metrics",
+                    "/status",
+                    "/_blazor",
+                    "/_framework",
+                    "/healthz",
+                };
+                opt.Filter = httpContext =>
+                    !excludedPaths.Any(x
+                        => httpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase));
+            })
+            .AddHttpClientInstrumentation(cfg => cfg.RecordException = true)
+            .AddGrpcClientInstrumentation()
+            .AddNpgsql()
+            .AddOtlpExporter(cfg => {
+                cfg.ExportProcessorType = ExportProcessorType.Batch;
+                cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
+                    ExporterTimeoutMilliseconds = 10_000,
+                    MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
+                    MaxQueueSize = 1024,
+                    ScheduledDelayMilliseconds = 20_000,
+                };
+                cfg.Protocol = OtlpExportProtocol.Grpc;
+                cfg.Endpoint = endpointUrl.ToUri();
+            })
+        );
     }
 }

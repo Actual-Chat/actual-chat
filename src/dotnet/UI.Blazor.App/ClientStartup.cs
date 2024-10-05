@@ -1,11 +1,14 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.ExceptionServices;
 using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
+using ActualChat.Module;
+using ActualChat.UI.Blazor.App.Module;
+using ActualChat.UI.Blazor.Module;
 using ActualLab.Fusion.Client;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.Fusion.Client.Interception;
 using ActualLab.Fusion.Trimming;
+using ActualLab.Interception;
 using ActualLab.Interception.Trimming;
 using ActualLab.Internal;
 using ActualLab.Rpc;
@@ -16,7 +19,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.UI.Blazor.App;
 
-public static class ClientAppStartup
+public static class ClientStartup
 {
     // Libraries
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PriorityQueue<,>))] // MemoryPack uses it
@@ -111,14 +114,45 @@ public static class ClientAppStartup
     public static void ConfigureServices(
         IServiceCollection services,
         HostInfo hostInfo,
+        Func<IServiceProvider, HostModule[]>? platformModuleFactory,
         Tracer? rootTracer = null)
     {
+        var tracer = (rootTracer ?? Tracer.Default)[typeof(ClientStartup)];
+        var hostKind = hostInfo.HostKind;
+
+#if !DEBUG
+        Interceptor.Options.Defaults.IsValidationEnabled = false;
+#else
+        if (hostKind.IsMauiApp())
+            Interceptor.Options.Defaults.IsValidationEnabled = false;
+#endif
+
         // Logging
-        services.AddLogging(logging => logging.ConfigureClientFilters(hostInfo.AppKind));
+        if (!hostKind.IsMauiApp()) // MauiDiagnostics takes care of that
+            services.AddLogging(logging => logging.ConfigureClientFilters(hostInfo.AppKind));
 
         // Other services shared with plugins
         services.AddSingleton(hostInfo);
         services.AddSingleton(hostInfo.Configuration);
-        AppStartup.ConfigureServices(services, hostInfo.HostKind, null, rootTracer);
+
+        // Creating modules
+        using var _ = tracer.Region($"{nameof(ModuleHostBuilder)}.{nameof(ModuleHostBuilder.Build)}");
+        var moduleServices = services.BuildServiceProvider();
+        var moduleHostBuilder = new ModuleHostBuilder()
+            // From less dependent to more dependent!
+            .AddModules(
+                // Core modules
+                new CoreModule(moduleServices),
+                // API
+                new ApiModule(moduleServices),
+                new ApiContractsModule(moduleServices),
+                // UI modules
+                new BlazorUICoreModule(moduleServices),
+                // This module should be the last one
+                new BlazorUIAppModule(moduleServices)
+            );
+        if (platformModuleFactory != null)
+            moduleHostBuilder = moduleHostBuilder.AddModules(platformModuleFactory.Invoke(moduleServices));
+        moduleHostBuilder.Build(services);
     }
 }

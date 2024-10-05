@@ -92,14 +92,14 @@ public class WebClientTester : IWebClientTester
     {
         var services = new ServiceCollection();
         var configuration = AppServices.Configuration();
-        var hostInfo = ClientAppStartup.CreateHostInfo(configuration,
+        var hostInfo = ClientStartup.CreateHostInfo(configuration,
             Environments.Development,
             "Browser",
             HostKind.WasmApp,
             AppKind.Wasm,
             UrlMapper.BaseUrl,
             true);
-        ClientAppStartup.ConfigureServices(services, hostInfo, Out.NewTracer());
+        ClientStartup.ConfigureServices(services, hostInfo, null, Out.NewTracer());
         services.AddTestLogging(output); // Override logging
         services.AddSingleton<IDispatcherResolver>(c => new TestDispatcherResolver(c));
         configureClientServices?.Invoke(services);

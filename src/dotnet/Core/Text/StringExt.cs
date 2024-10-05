@@ -148,39 +148,45 @@ public static partial class StringExt
 
     // ParseXxx
 
-    public static (string Host, ushort Port) ParseHostPort(this string hostPort, ushort defaultPort)
+    public static (string Host, ushort Port) ParseHostPort(this string hostPortOrUrl, ushort defaultPort)
     {
-        var (host, port) = hostPort.ParseHostPort();
+        var (host, port) = hostPortOrUrl.ParseHostPort();
         port ??= defaultPort;
         return (host, port.GetValueOrDefault());
     }
 
-    public static (string Host, ushort? Port) ParseHostPort(this string hostPort)
+    public static (string Host, ushort? Port) ParseHostPort(this string hostPortOrUrl)
     {
-        if (!hostPort.TryParseHostPort(out var host, out var port))
-            throw new ArgumentOutOfRangeException(nameof(hostPort),
-                "Input string should have 'host[:port]' format.");
+        if (!hostPortOrUrl.TryParseHostPort(out var host, out var port))
+            throw new ArgumentOutOfRangeException(nameof(hostPortOrUrl),
+                $"This string should have 'host[:port]' format: '{hostPortOrUrl}'");
         return (host, port);
     }
 
     public static bool TryParseHostPort(
-        this string hostPort,
+        this string hostPortOrUrl,
         out string host,
         out ushort? port)
     {
-        host = "";
-        port = null;
-        if (hostPort.IsNullOrEmpty())
-            return false;
-
-        var columnIndex = hostPort.OrdinalIndexOf(":");
-        if (columnIndex <= 0) {
-            host = hostPort;
+        if (Uri.TryCreate(hostPortOrUrl, UriKind.Absolute, out var uri)) {
+            host = uri.Host;
+            port = uri.IsDefaultPort ? null : (ushort)uri.Port;
             return true;
         }
 
-        host = hostPort[..columnIndex];
-        var portStr = hostPort[(columnIndex + 1)..];
+        host = "";
+        port = null;
+        if (hostPortOrUrl.IsNullOrEmpty())
+            return false;
+
+        var columnIndex = hostPortOrUrl.OrdinalIndexOf(":");
+        if (columnIndex <= 0) {
+            host = hostPortOrUrl;
+            return true;
+        }
+
+        host = hostPortOrUrl[..columnIndex];
+        var portStr = hostPortOrUrl[(columnIndex + 1)..];
         if (portStr.IsNullOrEmpty())
             return true;
 

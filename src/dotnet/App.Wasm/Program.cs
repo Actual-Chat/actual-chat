@@ -22,7 +22,7 @@ public static class Program
     {
         Tracer.Default.Point();
 
-        ClientAppStartup.Initialize();
+        ClientStartup.Initialize();
         AppUIOtelSetup.SetupConditionalPropagator();
         // NOTE(AY): This thing takes 1 second on Windows!
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -30,14 +30,14 @@ public static class Program
         var baseUrl = builder.HostEnvironment.BaseAddress;
         var services = builder.Services;
         services.AddTracers(Tracer.Default, useScopedTracers: false);
-        var hostInfo = Constants.HostInfo = ClientAppStartup.CreateHostInfo(
+        var hostInfo = Constants.HostInfo = ClientStartup.CreateHostInfo(
             builder.Configuration,
             builder.HostEnvironment.Environment,
             "Browser",
             HostKind.WasmApp,
             AppKind.Wasm,
             baseUrl);
-        ClientAppStartup.ConfigureServices(services, hostInfo);
+        ClientStartup.ConfigureServices(services, hostInfo, null);
         var host = builder.Build();
 
         StaticLog.Factory = host.Services.LoggerFactory();

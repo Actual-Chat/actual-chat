@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsAspireHost>true</IsAspireHost>
+    <UserSecretsId>1d23294e-c28b-4290-8c7c-71749a106ec1</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\App.Server\App.Server.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Remove all global usings - they'll fail, coz we don't reference any ActualLab.* projects here -->
+    <Using Remove="*" />
+  </ItemGroup>
+
+</Project>

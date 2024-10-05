@@ -4,7 +4,7 @@ using ActualLab.IO;
 
 namespace ActualChat.UI.Blazor.App;
 
-public static class AppLogging
+public static class ClientLogging
 {
     public const string OutputTemplate = "{Timestamp:HH:mm:ss.fff} {Level:u3} T{ThreadID} [{SourceContext}] {Message:l}{NewLine}{Exception}";
     public const string DebugOutputTemplate = "{Timestamp:mm:ss.fff} {Level:u3} T{ThreadID} [{SourceContext}] {Message:l}{NewLine}{Exception}";
@@ -15,7 +15,7 @@ public static class AppLogging
     public static readonly FilePath DevLog;
     public static LogLevel MinLevel { get; private set; }
 
-    static AppLogging()
+    static ClientLogging()
     {
         var devLogEnvVar = Environment.GetEnvironmentVariable("ActualChat_DevLog");
         DevLog = FilePath.New(devLogEnvVar);

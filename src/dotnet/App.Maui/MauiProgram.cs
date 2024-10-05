@@ -61,7 +61,7 @@ public static partial class MauiProgram
     {
         using var _1 = Tracer.Region();
 
-        ClientAppStartup.Initialize();
+        ClientStartup.Initialize();
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
 #if WINDOWS
@@ -96,7 +96,7 @@ public static partial class MauiProgram
 #else
                 Environments.Development;
 #endif
-            Constants.HostInfo = ClientAppStartup.CreateHostInfo(
+            Constants.HostInfo = ClientStartup.CreateHostInfo(
                 appBuilder.Configuration,
                 environment,
                 DeviceInfo.Current.Model,
@@ -264,7 +264,7 @@ public static partial class MauiProgram
             ConfigureNonLazyServicesVisibleFromLazyServices(services);
 
         // All other (module) services
-        AppStartup.ConfigureServices(services, HostKind.MauiApp, c => [new Module.MauiAppModule(c)]);
+        ClientStartup.ConfigureServices(services, Constants.HostInfo, c => [new Module.MauiAppModule(c)]);
 
         // Platform services
         services.AddPlatformServices();

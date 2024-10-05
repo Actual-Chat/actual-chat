@@ -84,15 +84,15 @@ public partial class AppHost
             logging.AddOpenTelemetry(options => options.AddOtlpExporter());
             logging.AddConsole();
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
-            if (!AppLogging.DevLog.IsEmpty && appKind.IsServer() && !isTested) {
+            if (!ClientLogging.DevLog.IsEmpty && appKind.IsServer() && !isTested) {
                 var serilog = new LoggerConfiguration()
                     .MinimumLevel.Is(LogEventLevel.Verbose)
                     .Enrich.FromLogContext()
                     .Enrich.With(new ProcessIdLogEventEnricher())
                     .Enrich.With(new ThreadIdLogEventEnricher())
-                    .WriteTo.File(AppLogging.DevLog,
-                        outputTemplate: AppLogging.DevLogOutputTemplate,
-                        fileSizeLimitBytes: AppLogging.DevLogFileSizeLimit,
+                    .WriteTo.File(ClientLogging.DevLog,
+                        outputTemplate: ClientLogging.DevLogOutputTemplate,
+                        fileSizeLimitBytes: ClientLogging.DevLogFileSizeLimit,
                         shared: true)
                     .CreateLogger();
                 logging.AddFilteringSerilog(serilog, true);

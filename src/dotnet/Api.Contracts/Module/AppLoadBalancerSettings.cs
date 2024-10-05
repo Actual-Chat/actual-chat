@@ -1,16 +1,16 @@
 using ActualLab.Rpc.Infrastructure;
 
-namespace ActualChat.UI.Blazor.App;
+namespace ActualChat.Module;
 
 public sealed record AppLoadBalancerSettings(string RouteId)
 {
-    private static readonly object _lock = new();
+    private static readonly object Lock = new();
     private static volatile AppLoadBalancerSettings _instance = new();
 
     public static AppLoadBalancerSettings Instance {
         get => _instance;
         set {
-            lock (_lock)
+            lock (Lock)
                 _instance = value;
         }
     }

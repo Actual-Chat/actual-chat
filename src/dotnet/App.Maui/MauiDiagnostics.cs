@@ -100,10 +100,10 @@ public static class MauiDiagnostics
         // We should not use FilePath here, since it triggers MemoryPack formatter registration for FilePath
 #if WINDOWS
         LogFilePath = Path.Combine(FileSystem.AppDataDirectory, LogFolder, LogFile);
-        logging = logging.WriteTo.Debug(outputTemplate: AppLogging.DebugOutputTemplate);
+        logging = logging.WriteTo.Debug(outputTemplate: ClientLogging.DebugOutputTemplate);
         logging = logging.WriteTo.File(LogFilePath,
-            outputTemplate: AppLogging.OutputTemplate,
-            fileSizeLimitBytes: AppLogging.FileSizeLimit);
+            outputTemplate: ClientLogging.OutputTemplate,
+            fileSizeLimitBytes: ClientLogging.FileSizeLimit);
 #elif ANDROID
         logging = logging.WriteTo.AndroidTaggedLog(LogTag, outputTemplate: AndroidOutputTemplate);
 #elif IOS
