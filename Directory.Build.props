@@ -12,6 +12,7 @@
   <PropertyGroup>
     <ProjectKind>Other</ProjectKind>
     <IsServerSideProject>false</IsServerSideProject>
+    <IsStandaloneProject>false</IsStandaloneProject>
     <IsMauiProject>false</IsMauiProject>
   </PropertyGroup>
   <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
@@ -35,7 +36,6 @@
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Redis'">Redis</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Testing'">Testing</ProjectKind>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'App.AspireHost'">true</IsServerSideProject>
-    <IsServerSideProject Condition="'$(ProjectKind)' == 'App.ConsoleClient'">true</IsServerSideProject>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'App.Server'">true</IsServerSideProject>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Core.Server'">true</IsServerSideProject>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Db'">true</IsServerSideProject>
@@ -45,6 +45,7 @@
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Migration'">true</IsServerSideProject>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Testing'">true</IsServerSideProject>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Tests'">true</IsServerSideProject>
+    <IsStandaloneProject Condition="'$(ProjectKind)' == 'App.ConsoleClient'">true</IsStandaloneProject>
     <IsMauiProject Condition="'$(ProjectKind)' == 'App.Maui'">true</IsMauiProject>
   </PropertyGroup>
 

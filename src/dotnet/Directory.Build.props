@@ -4,7 +4,7 @@
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../../'))" />
 
   <!-- Analyzers & warnings -->
-  <PropertyGroup Condition="$(IsServerSideProject)">
+  <PropertyGroup Condition="$(IsServerSideProject) or $(IsStandaloneProject)">
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer> <!-- Disable it for server-side logic -->
   </PropertyGroup>
   <PropertyGroup Condition="'$(ProjectKind)' == 'Migration'">
