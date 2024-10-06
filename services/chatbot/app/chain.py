@@ -1,5 +1,6 @@
 import os
 
+from enum import StrEnum, auto
 from typing import Literal
 
 import pydantic
@@ -33,6 +34,14 @@ MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION = int(os.getenv(
     "BOT_MESSAGES_COUNT_TO_TRIGGER_SUMMARIZATION",
     default = 1000
 ))
+
+class Node(StrEnum):
+    Agent = auto()
+    Tools = auto()
+    UpdateState = auto()
+    Summarize = auto()
+    FinalAnswer = auto()
+    AskHuman = auto()
 
 @observe()
 def final_answer(state: State, config: RunnableConfig):
@@ -144,48 +153,48 @@ def create(*,
             "last_search_result": filter_last_search_results(state)
         }
 
-    def tools_or_final_answer(state: State) -> Literal["tools", "final_answer"]:
+    def tools_or_final_answer(state: State) -> Literal[Node.Tools, Node.FinalAnswer]:
         last_message = state.messages[-1]
-        return "tools" if last_message.tool_calls else "final_answer"
+        return Node.Tools if last_message.tool_calls else Node.FinalAnswer
 
-    def summarize_or_ask_human(state: State) -> Literal["summarize", "ask_human"]:
+    def summarize_or_ask_human(state: State) -> Literal[Node.Summarize, Node.AskHuman]:
         should_summarize = len(state.messages) >= MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION
-        return "summarize" if should_summarize else "ask_human"
+        return Node.Summarize if should_summarize else Node.AskHuman
 
     graph_builder = StateGraph(State)
 
-    graph_builder.add_node("agent", call_model)
-    graph_builder.add_node("tools", tool_node)
-    graph_builder.add_node("update_state", update_state)
-    graph_builder.add_node("summarize", summarize)
-    graph_builder.add_node("final_answer", final_answer)
-    graph_builder.add_node("ask_human", ask_human)
+    graph_builder.add_node(Node.Agent, call_model)
+    graph_builder.add_node(Node.Tools, tool_node)
+    graph_builder.add_node(Node.UpdateState, update_state)
+    graph_builder.add_node(Node.Summarize, summarize)
+    graph_builder.add_node(Node.FinalAnswer, final_answer)
+    graph_builder.add_node(Node.AskHuman, ask_human)
 
-    graph_builder.add_edge(START, "agent")
+    graph_builder.add_edge(START, Node.Agent)
     graph_builder.add_conditional_edges(
-        "agent",
+        Node.Agent,
         tools_or_final_answer,
     )
     graph_builder.add_conditional_edges(
-        "final_answer",
+        Node.FinalAnswer,
         summarize_or_ask_human
     )
-    graph_builder.add_edge("summarize", "ask_human")
-    graph_builder.add_edge("tools", "update_state")
-    graph_builder.add_edge("update_state", "agent")
-    graph_builder.add_edge("ask_human", "agent")
+    graph_builder.add_edge(Node.Summarize, Node.AskHuman)
+    graph_builder.add_edge(Node.Tools, Node.UpdateState)
+    graph_builder.add_edge(Node.UpdateState, Node.Agent)
+    graph_builder.add_edge(Node.AskHuman, Node.Agent)
 
 
     graph = graph_builder.compile(
         checkpointer = memory,
-        interrupt_before=["ask_human"]
+        interrupt_before=[Node.AskHuman]
     )
 
     def invoke_graph(input_text, config: RunnableConfig) -> State:
         messages = {"messages": [HumanMessage(content=input_text)]}
-        if graph.get_state(config).next==("ask_human",):
+        if graph.get_state(config).next==(Node.AskHuman,):
             # Update state & resume execution after human input
-            graph.update_state(config, messages, as_node="ask_human")
+            graph.update_state(config, messages, as_node=Node.AskHuman)
             return graph.invoke(None, config)
         # Invoke graph from the start
         return graph.invoke(messages, config)
