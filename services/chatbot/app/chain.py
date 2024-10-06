@@ -39,19 +39,13 @@ MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION = int(os.getenv(
 def user_input(input: str) -> State:
     return {"messages": [HumanMessage(content=input)]}
 
-def should_continue(state: State) -> Literal["tools", "final_answer"]:
-    messages = state.messages
-    last_message = messages[-1]
-    if last_message.tool_calls:
-        return "tools"
-    return "final_answer"
+def tools_or_final_answer(state: State) -> Literal["tools", "final_answer"]:
+    last_message = state.messages[-1]
+    return "tools" if last_message.tool_calls else "final_answer"
 
-def should_summarize(state: State) -> Literal["summarize_conversation", "human_input"]:
-    if len(state.messages) < MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION:
-        # Nothing to do
-        return "human_input"
-    else:
-        return "summarize_conversation"
+def summarize_or_ask_human(state: State) -> Literal["summarize", "ask_human"]:
+    should_summarize = len(state.messages) >= MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION
+    return "summarize" if should_summarize else "ask_human"
 
 @observe()
 def final_answer(state: State, config: RunnableConfig):
@@ -81,7 +75,7 @@ def final_answer(state: State, config: RunnableConfig):
     return Ok
 
 # Fake node to interrupt and wait for human feedback
-def human_input(state):
+def ask_human(state):
     pass
 
 def update_state(state: State) -> State:
@@ -131,7 +125,7 @@ def create(*,
             "messages": [response]
         }
 
-    def summarize_conversation(state: State):
+    def summarize(state: State):
         summary = state.summary or ""
         if summary:
             # If a summary already exists, we use a different system prompt
@@ -169,35 +163,35 @@ def create(*,
     graph_builder.add_node("agent", call_model)
     graph_builder.add_node("tools", tool_node)
     graph_builder.add_node("update_state", update_state)
-    graph_builder.add_node("summarize_conversation", summarize_conversation)
+    graph_builder.add_node("summarize", summarize)
     graph_builder.add_node("final_answer", final_answer)
-    graph_builder.add_node("human_input", human_input)
+    graph_builder.add_node("ask_human", ask_human)
 
     graph_builder.add_edge(START, "agent")
     graph_builder.add_conditional_edges(
         "agent",
-        should_continue,
+        tools_or_final_answer,
     )
     graph_builder.add_conditional_edges(
         "final_answer",
-        should_summarize
+        summarize_or_ask_human
     )
-    graph_builder.add_edge("summarize_conversation", "human_input")
+    graph_builder.add_edge("summarize", "ask_human")
     graph_builder.add_edge("tools", "update_state")
     graph_builder.add_edge("update_state", "agent")
-    graph_builder.add_edge("human_input", "agent")
+    graph_builder.add_edge("ask_human", "agent")
 
 
     graph = graph_builder.compile(
         checkpointer = memory,
-        interrupt_before=["human_input"]
+        interrupt_before=["ask_human"]
     )
 
     def invoke_graph(input_text, config: RunnableConfig) -> State:
         messages = user_input(input_text)
-        if graph.get_state(config).next==("human_input",):
+        if graph.get_state(config).next==("ask_human",):
             # Update state & resume execution after human input
-            graph.update_state(config, messages, as_node="human_input")
+            graph.update_state(config, messages, as_node="ask_human")
             return graph.invoke(None, config)
         # Invoke graph from the start
         return graph.invoke(messages, config)
