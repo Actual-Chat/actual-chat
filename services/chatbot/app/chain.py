@@ -1,5 +1,7 @@
 import os
 
+from itertools import takewhile
+
 from enum import StrEnum, auto
 from typing import Literal
 
@@ -75,13 +77,10 @@ def ask_human(state):
     pass
 
 def update_state(state: State) -> State:
-    stop_msg_id = state.last_seen_msg_id
-    tool_messages: list[ToolMessage] = []
-    for message in reversed(state.messages):
-        if message.id == stop_msg_id:
-            break
-        if isinstance(message, ToolMessage):
-            tool_messages.append(message)
+    stop_id = state.last_seen_msg_id
+    tool_messages: list[ToolMessage] = [
+        msg for msg in takewhile(lambda m: m.id != stop_id, reversed(state.messages)) if isinstance(msg, ToolMessage)
+    ]
 
     while tool_messages:
         message = tool_messages.pop()
