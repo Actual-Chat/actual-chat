@@ -1,8 +1,10 @@
-from typing import Annotated
-from typing import List, Any
+from itertools import takewhile
+
+from typing import Annotated, List, Any
 from langchain_core.tools import tool
 from langgraph.graph import MessagesState
 from langgraph.prebuilt import InjectedState
+from langchain_core.messages import ToolMessage
 from langchain_core.runnables.config import RunnableConfig
 from langchain_core.language_models.chat_models import BaseChatModel
 
@@ -132,6 +134,22 @@ def forward_search_results(
         config
     )
     return
+
+def save_tool_results_to_state(state: State) -> State:
+    stop_id = state.last_seen_msg_id
+    tool_messages: list[ToolMessage] = [
+        msg for msg in takewhile(lambda m: m.id != stop_id, reversed(state.messages)) if isinstance(msg, ToolMessage)
+    ]
+
+    while tool_messages:
+        message = tool_messages.pop()
+        if message.name=="resolve_search_type" and message.status=="success":
+            state.search_type = message.content
+
+    if state.messages:
+        state.last_seen_msg_id = state.messages[-1].id
+
+    return state
 
 def _reply(message, config):
     _result = _post(

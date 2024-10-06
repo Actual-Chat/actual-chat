@@ -1,7 +1,5 @@
 import os
 
-from itertools import takewhile
-
 from enum import StrEnum, auto
 from typing import Literal
 
@@ -11,7 +9,6 @@ assert(pydantic.VERSION.startswith("2."))
 from langchain_core.runnables import RunnableLambda
 from langchain_core.runnables.config import RunnableConfig
 from langchain_core.messages import (
-    ToolMessage,
     HumanMessage,
     SystemMessage,
     RemoveMessage,
@@ -29,6 +26,7 @@ from .state import State
 from .tools import (
     all as all_tools,
     _reply as call_reply,
+    save_tool_results_to_state as update_state,
     filter_last_search_results
 )
 
@@ -75,22 +73,6 @@ def final_answer(state: State, config: RunnableConfig):
 # Fake node to interrupt and wait for human feedback
 def ask_human(state):
     pass
-
-def update_state(state: State) -> State:
-    stop_id = state.last_seen_msg_id
-    tool_messages: list[ToolMessage] = [
-        msg for msg in takewhile(lambda m: m.id != stop_id, reversed(state.messages)) if isinstance(msg, ToolMessage)
-    ]
-
-    while tool_messages:
-        message = tool_messages.pop()
-        if message.name=="resolve_search_type" and message.status=="success":
-            state.search_type = message.content
-
-    if state.messages:
-        state.last_seen_msg_id = state.messages[-1].id
-
-    return state
 
 def create(*,
     claude_api_key,
