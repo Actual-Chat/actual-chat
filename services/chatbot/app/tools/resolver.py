@@ -6,7 +6,6 @@ sys.path.insert(1, '/app/services/chatbot')
 
 from app.state import State
 
-
 class SearchTypeResolver:
     type_of_search_prompt = '''As an expert in searching for information in chats, you follow a clear process to identify the target search area.
     Depending on your answer, the search process runs through different subsets of chats, so the answer is critical.
@@ -26,9 +25,9 @@ class SearchTypeResolver:
     * Return only one word in the output (PUBLIC, PRIVATE, GENERAL or UNCERTAIN).
     '''
 
-    def __init__(self, model: BaseChatModel, tool_node_name: str):
+    def __init__(self, model: BaseChatModel, tool_name: str):
         self.model = model
-        self.tool_node_name = tool_node_name
+        self.tool_name = tool_name
 
     def process(self, state: State):
         stack = list()
@@ -36,7 +35,7 @@ class SearchTypeResolver:
         for message in reversed(state.messages):
             if isinstance(message, HumanMessage):
                 stack.append(message)
-            elif isinstance(message, ToolMessage) and message.name==self.tool_node_name and message.status=="success":
+            elif isinstance(message, ToolMessage) and message.name==self.tool_name and message.status=="success":
                 break
 
         system_message = [SystemMessage(content=self.type_of_search_prompt)]
@@ -47,3 +46,9 @@ class SearchTypeResolver:
                 search_type = response.content
 
         return search_type
+
+    @staticmethod
+    def try_update_state(state: State, message: ToolMessage, tool_name: str):
+        if message.name==tool_name and message.status=="success":
+            state.search_type = message.content
+

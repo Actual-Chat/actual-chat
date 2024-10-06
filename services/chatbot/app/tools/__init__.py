@@ -1,3 +1,4 @@
+from enum import StrEnum, auto
 from itertools import takewhile
 
 from typing import Annotated, List, Any
@@ -19,6 +20,9 @@ from app.state import State
 from app.tools.resolver import SearchTypeResolver
 
 TOOLS_AUTH_FORWARD_CONTEXT = "forward-auth-context"
+
+class ToolNames(StrEnum):
+    ResolveSearchType = auto()
 
 class _Tools(object):
     REPLY = None
@@ -143,8 +147,7 @@ def save_tool_results_to_state(state: State) -> State:
 
     while tool_messages:
         message = tool_messages.pop()
-        if message.name=="resolve_search_type" and message.status=="success":
-            state.search_type = message.content
+        SearchTypeResolver.try_update_state(state, message, ToolNames.ResolveSearchType)
 
     if state.messages:
         state.last_seen_msg_id = state.messages[-1].id
@@ -184,9 +187,9 @@ def _post(url, data, config: RunnableConfig):
 
 def all(*, classifier_model: BaseChatModel):
 
-    search_type_resolver = SearchTypeResolver(classifier_model, "resolve_search_type")
+    search_type_resolver = SearchTypeResolver(classifier_model, ToolNames.ResolveSearchType)
 
-    @tool
+    @tool(ToolNames.ResolveSearchType)
     def resolve_search_type(state: Annotated[State, InjectedState]) -> str:
         """Call to get the search type."""
         return search_type_resolver.process(state)
