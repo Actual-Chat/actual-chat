@@ -28,24 +28,12 @@ from .tools import (
     _reply as call_reply,
     filter_last_search_results
 )
-from . import utils
 from .state import State
 
 MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION = int(os.getenv(
     "BOT_MESSAGES_COUNT_TO_TRIGGER_SUMMARIZATION",
     default = 1000
 ))
-
-def user_input(input: str) -> State:
-    return {"messages": [HumanMessage(content=input)]}
-
-def tools_or_final_answer(state: State) -> Literal["tools", "final_answer"]:
-    last_message = state.messages[-1]
-    return "tools" if last_message.tool_calls else "final_answer"
-
-def summarize_or_ask_human(state: State) -> Literal["summarize", "ask_human"]:
-    should_summarize = len(state.messages) >= MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION
-    return "summarize" if should_summarize else "ask_human"
 
 @observe()
 def final_answer(state: State, config: RunnableConfig):
@@ -157,6 +145,13 @@ def create(*,
             "last_search_result": filter_last_search_results(state)
         }
 
+    def tools_or_final_answer(state: State) -> Literal["tools", "final_answer"]:
+        last_message = state.messages[-1]
+        return "tools" if last_message.tool_calls else "final_answer"
+
+    def summarize_or_ask_human(state: State) -> Literal["summarize", "ask_human"]:
+        should_summarize = len(state.messages) >= MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION
+        return "summarize" if should_summarize else "ask_human"
 
     graph_builder = StateGraph(State)
 
@@ -188,7 +183,7 @@ def create(*,
     )
 
     def invoke_graph(input_text, config: RunnableConfig) -> State:
-        messages = user_input(input_text)
+        messages = {"messages": [HumanMessage(content=input_text)]}
         if graph.get_state(config).next==("ask_human",):
             # Update state & resume execution after human input
             graph.update_state(config, messages, as_node="ask_human")
