@@ -1,34 +1,33 @@
-from typing import Literal
-
 import os
 
+from typing import Literal
+
+import pydantic
+assert(pydantic.VERSION.startswith("2."))
+
+from langchain_core.runnables import RunnableLambda
+from langchain_core.runnables.config import RunnableConfig
 from langchain_core.messages import (
+    ToolMessage,
     HumanMessage,
     SystemMessage,
     RemoveMessage,
     get_buffer_string
 )
-from langgraph.graph import StateGraph, START, END
-
-from langgraph.checkpoint.memory import MemorySaver
-from langchain_core.runnables.config import RunnableConfig
-from langchain_core.messages import ToolMessage
-from langgraph.prebuilt import ToolNode
-
 from langchain_anthropic import ChatAnthropic
-from langchain_core.runnables import RunnableLambda
 
-import pydantic
-assert(pydantic.VERSION.startswith("2."))
+from langgraph.graph import StateGraph, START, END
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.prebuilt import ToolNode
 
 from langfuse.decorators import langfuse_context, observe
 
+from .state import State
 from .tools import (
     all as all_tools,
     _reply as call_reply,
     filter_last_search_results
 )
-from .state import State
 
 MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION = int(os.getenv(
     "BOT_MESSAGES_COUNT_TO_TRIGGER_SUMMARIZATION",
