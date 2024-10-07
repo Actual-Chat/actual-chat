@@ -726,6 +726,7 @@ public class Chats(IServiceProvider services) : IChats
         Session session, ChatId chatId,
         CancellationToken cancellationToken)
     {
+        // NOTE(DF): PrincipalId seems to be a legacy stuff. Now we have userId even for guest users.
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author != null)
             return new PrincipalId(author.Id, AssumeValid.Option);

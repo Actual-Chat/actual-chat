@@ -1631,11 +1631,26 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             author = await AuthorsBackend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
         }
         else if (principalId.IsAuthor(out var authorId)) {
+            userId = UserId.None;
             author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
-            if (author == null)
-                return AuthorRules.None(chatId);
+            if (author != null)
+                userId = author.UserId;
+            else {
+                if (chatId is { IsPlaceChat: true, IsPlaceRootChat: false }) {
+                    var rootChatId = chatId.PlaceChatId.PlaceId.ToRootChatId();
+                    var rootChatAuthorId = new AuthorId(rootChatId, authorId.LocalId, AssumeValid.Option);
+                    var rootAuthor = await AuthorsBackend
+                        .Get(rootChatId, rootChatAuthorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (rootAuthor != null)
+                        userId = rootAuthor.UserId;
+                }
+            }
 
-            account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
+            if (!userId.IsNone)
+                account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+            else
+                account = null;
             if (account == null)
                 return AuthorRules.None(chatId);
         }
