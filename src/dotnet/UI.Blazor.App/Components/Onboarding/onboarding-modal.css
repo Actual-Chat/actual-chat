@@ -62,3 +62,18 @@
 body.hoverable .analytics-step > .c-content > a:hover {
     @apply text-primary;
 }
+
+.step-tile > .c-docs {
+    @apply flex;
+    @apply flex-y gap-y-2;
+    @apply flex-1;
+}
+
+.step-tile > .c-docs a {
+    @apply bg-transparent;
+    @apply underline;
+}
+
+body.hoverable .step-tile > .c-docs a:hover {
+    @apply text-primary;
+}
