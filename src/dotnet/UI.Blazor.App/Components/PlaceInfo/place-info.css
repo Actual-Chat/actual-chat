@@ -105,6 +105,10 @@ body.narrow .place-info {
     @apply p-4;
 }
 
+.place-info-search-results-navigator .c-content {
+    @apply mb-14;
+}
+
 .place-info-wide-left-panel {
     @apply flex-y;
     @apply w-80;

@@ -1,6 +1,10 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<bool>
+@if (!State.Value) {
+    return;
+}
 
-<div class="chat-view-search-results-navigator">
+<div class="chat-view-search-results-navigator @Class">
     <div class="c-content">
         <ButtonRound Tooltip="Navigate to previous search result" Click="@SearchUI.SelectPrevious">
             <i class="icon-chevron-compact-up text-2xl font-thin"></i>
@@ -12,7 +16,19 @@
 </div>
 
 @code {
-    private SearchUI SearchUI => ChatContext.Hub.SearchUI;
+    [Inject] private ChatUIHub ChatUIHub { get; init; } = null!;
+    private SearchUI SearchUI => ChatUIHub.SearchUI;
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter] public string Class { get; set; } = "";
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<bool>.Options() {
+                InitialValue = false,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
+        => SearchUI.IsResultsNavigationOn.Use(cancellationToken).AsTask();
 }
