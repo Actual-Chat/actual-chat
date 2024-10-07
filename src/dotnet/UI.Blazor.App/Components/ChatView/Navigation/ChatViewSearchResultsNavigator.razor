@@ -16,8 +16,9 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub ChatUIHub { get; init; } = null!;
-    private SearchUI SearchUI => ChatUIHub.SearchUI;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private SearchUI SearchUI => Hub.SearchUI;
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
     [Parameter] public string Class { get; set; } = "";
 
@@ -29,6 +30,11 @@
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
 
-    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
-        => SearchUI.IsResultsNavigationOn.Use(cancellationToken).AsTask();
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
+        if (!screenSize.IsNarrow())
+            return false;
+
+        return await SearchUI.IsResultsNavigationOn.Use(cancellationToken);
+    }
 }
