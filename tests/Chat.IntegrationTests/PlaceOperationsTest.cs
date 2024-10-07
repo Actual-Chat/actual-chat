@@ -774,6 +774,60 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         }
     }
 
+    [Fact]
+    public async Task UserShouldBeAbleToSeePublicPlaceChatListAfterLeavingThePlace()
+    {
+        var appHost = AppHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var session1 = tester.Session;
+        await tester.SignInAsBob();
+        var commander1 = tester.Commander;
+
+        var place = await CreatePlace(commander1, session1, true);
+        var placeId = place.Id;
+        var chat = await CreateChat(commander1, session1, placeId, true);
+        var chatId = chat.Id;
+
+        await using var tester2 = appHost.NewBlazorTester(Out);
+        var session2 = tester2.Session;
+        await tester2.SignInAsAlice();
+        var accounts2 = tester2.ScopedAppServices.GetRequiredService<IAccounts>();
+        var user2 = await accounts2.GetOwn(session2, default);
+
+        var chatFromUser2Perspective = await tester2.Chats.Get(session2, chatId, default);
+        chatFromUser2Perspective.Should().NotBeNull();
+
+        await commander1.Call(new Places_Invite(session1, placeId, [user2.Id]));
+        var placeFromUser2Perspective = await tester2.Places.Get(session2, placeId, default).Require();
+        var user2PlaceMember = placeFromUser2Perspective.Rules.Author.Require();
+
+        var placeMembers = await tester.Places.ListAuthorIds(session1, placeId, default);
+        placeMembers.Should().HaveCount(2).And.Contain(user2PlaceMember.Id);
+
+        var contacts = tester2.AppServices.GetRequiredService<IContacts>();
+        var contactIds = await contacts.ListIds(session2, placeId, default);
+        contactIds.Should().HaveCount(1);
+        contactIds[0].ChatId.Should().Be(chatId);
+
+        await commander1.Call(new Places_Exclude(session1, user2PlaceMember.Id));
+
+        placeFromUser2Perspective = await tester2.Places.Get(session2, placeId, default).Require(); // Place
+        placeFromUser2Perspective.Rules.Author.Require();
+        placeFromUser2Perspective.Rules.Author.HasLeft.Should().BeTrue();
+        var canJoin = placeFromUser2Perspective.Rules.CanJoin();
+        canJoin.Should().BeTrue();
+
+        contactIds = await contacts.ListIds(session2, placeId, default);
+        contactIds.Should().HaveCount(1);
+        contactIds[0].ChatId.Should().Be(chatId);
+
+        chatFromUser2Perspective = await tester2.Chats.Get(session2, chatId, default);
+        chatFromUser2Perspective.Should().NotBeNull();
+
+        var chatContactForUser2 = await contacts.GetForChat(session2, chatId, default);
+        chatContactForUser2.Should().NotBeNull();
+    }
+
     // TODO(DF): fix it
     [Fact(Skip = "Flaky")]
     public async Task UserShouldBeAbleToRejoinPlacePrivateChatOnlyAfterRejoingPlace()
