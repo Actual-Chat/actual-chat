@@ -64,7 +64,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Upload photos to share with other users or to change your avatar.</string>
 	<key>NSContactsUsageDescription</key>
-	<string>Find friends, relatives, colleagues, etc.</string>
+	<string>We collect this information to help you find friends in your contact list who are already using Actual Chat. If you grant access to your contact list, we will send the contact names and the hashed values of phone numbers and email addresses to our servers.</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
 	<key>ITSAppUsesNonExemptEncryption</key>
