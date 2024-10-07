@@ -11,7 +11,8 @@ public class FoundItemFormatter : IValueFormatter
     public void Format(object value, FormattedObjectGraph formattedGraph, FormattingContext context, FormatChild formatChild)
     {
         var foundContact = (FoundItem)value;
-        var result = $"{foundContact.SearchResult.SearchMatch.Text} (#{foundContact.SearchResult.Id})";
+        var scope = foundContact.IsGlobalSearchResult ? "Global" : foundContact.Scope.ToString();
+        var result = $"{foundContact.SearchResult.SearchMatch.Text} (#{foundContact.SearchResult.Id}) {scope}";
         if (context.UseLineBreaks)
             formattedGraph.AddLine(result);
         else

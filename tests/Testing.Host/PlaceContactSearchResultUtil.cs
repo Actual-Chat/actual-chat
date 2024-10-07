@@ -10,11 +10,12 @@ public static class PlaceContactSearchResultUtil
 {
     public static IEnumerable<FoundItem> BuildFoundContacts(
         this Account owner,
+        bool areGlobalSearchResults,
         params Place[] places)
-        => places.Select(owner.BuildFoundContact);
+        => places.Select(x => owner.BuildFoundContact(x, areGlobalSearchResults));
 
-    public static FoundItem BuildFoundContact(this Account owner, Place place)
-        => new (owner.BuildSearchResult(place), SearchScope.Places);
+    public static FoundItem BuildFoundContact(this Account owner, Place place, bool isGlobalSearchResult)
+        => new (owner.BuildSearchResult(place), SearchScope.Places, isGlobalSearchResult);
 
     public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params Place[] places)
         => places.Select(x => owner.BuildSearchResult(x));

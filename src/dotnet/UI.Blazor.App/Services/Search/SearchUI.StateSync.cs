@@ -44,26 +44,50 @@ public partial class SearchUI
             var searchResultMap = await Find(criteria, searchCts.Token).ConfigureAwait(false);
             foundItems = new List<FoundItem>(searchResultMap.Sum(x => x.Value.Count));
 
-            foreach (var scope in Scopes) {
-                var own = searchResultMap.GetValueOrDefault(new (scope, true)) ?? [];
-                var other = searchResultMap.GetValueOrDefault(new (scope, false)) ?? [];
-                var scopeResults = own.Concat(other).ToList();
-                for (int i = 0; i < scopeResults.Count; i++) {
-                    var searchResult = scopeResults[i];
-                    foundItems.Add(new (searchResult,
-                        scope,
-                        i == 0,
-                        i == scopeResults.Count - 1,
-                        own.Count >= Constants.Search.DefaultPageSize
-                        || other.Count >= Constants.Search.DefaultPageSize));
-                }
-            }
+            AddUserRelatedSearchResults(searchResultMap);
+            AddGlobalSearchResults(searchResultMap);
         }
         _isSearchModeOn.Value = !criteria.Text.IsNullOrEmpty();
         _isResultsNavigationOn.Value = false;
         _cached = new Cached(foundItems);
         using (Invalidation.Begin())
             _ = GetSearchResults();
+        return;
+
+        void AddUserRelatedSearchResults(Dictionary<SubgroupKey, IReadOnlyList<SearchResult>> searchResultMap)
+        {
+            foreach (var scope in Scopes) {
+                var scopeResults = searchResultMap.GetValueOrDefault(new (scope, true)) ?? [];
+                for (int i = 0; i < scopeResults.Count; i++) {
+                    var searchResult = scopeResults[i];
+                    foundItems.Add(new (searchResult,
+                        scope,
+                        false,
+                        i == 0,
+                        i == scopeResults.Count - 1,
+                        scopeResults.Count >= Constants.Search.DefaultPageSize));
+                }
+            }
+        }
+
+        void AddGlobalSearchResults(Dictionary<SubgroupKey, IReadOnlyList<SearchResult>> searchResultMap)
+        {
+            var globalSearchResultCount = Scopes.Sum(x => searchResultMap.GetValueOrDefault(new (x, false))?.Count ?? 0);
+            var canGlobalSearchResultsBeExpanded = Scopes.Any(x => searchResultMap.GetValueOrDefault(new (x, false))?.Count >= Constants.Search.DefaultPageSize);
+            var i = 0;
+            foreach (var scope in Scopes) {
+                var scopeResults = searchResultMap.GetValueOrDefault(new (scope, false)) ?? [];
+                foreach (var searchResult in scopeResults) {
+                    foundItems.Add(new (searchResult,
+                        scope,
+                        true,
+                        i == 0,
+                        i == globalSearchResultCount - 1,
+                        canGlobalSearchResultsBeExpanded));
+                    i++;
+                }
+            }
+        }
     }
 
     private async Task<Dictionary<SubgroupKey, IReadOnlyList<SearchResult>>> Find(

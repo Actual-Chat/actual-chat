@@ -9,11 +9,12 @@ public static class GroupContactSearchResultUtil
 {
     public static IEnumerable<FoundItem> BuildFoundContacts(
         this Account owner,
+        bool isGlobalSearchResult,
         params Chat.Chat[] chats)
-        => chats.Select(owner.BuildFoundContact);
+        => chats.Select(x => owner.BuildFoundContact(x, isGlobalSearchResult));
 
-    public static FoundItem BuildFoundContact(this Account owner, Chat.Chat chat)
-        => new (owner.BuildSearchResult(chat), SearchScope.Groups);
+    public static FoundItem BuildFoundContact(this Account owner, Chat.Chat chat, bool isGlobalSearchResult)
+        => new (owner.BuildSearchResult(chat), SearchScope.Groups, isGlobalSearchResult);
 
     public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params Chat.Chat[] chats)
         => chats.Select(x => BuildSearchResult(owner, x));

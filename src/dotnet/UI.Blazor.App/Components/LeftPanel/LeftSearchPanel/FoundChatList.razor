@@ -17,7 +17,8 @@
         @if (foundItem.IsFirstInGroup) {
             <SearchResultGroupHeader
                 CanExpandOrCollapse="foundItem.CanScopeBeExpanded"
-                Scope="foundItem.Scope" />
+                Scope="foundItem.Scope"
+                IsGlobalSearchResult="foundItem.IsGlobalSearchResult" />
         }
 
         <FoundResult @key=@foundItem.SearchResult.Id FoundItem="@foundItem"/>
