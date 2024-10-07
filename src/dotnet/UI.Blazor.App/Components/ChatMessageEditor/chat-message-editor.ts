@@ -1,3 +1,4 @@
+import { DeviceInfo } from 'device-info';
 import {
     Subject,
     takeUntil,
@@ -12,13 +13,13 @@ import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { localSettings } from '../../../UI.Blazor/Services/Settings/local-settings';
 import { Log } from 'logging';
-import { DeviceInfo } from 'device-info';
 
-const { debugLog } = Log.get('MessageEditor');
+const { debugLog, infoLog, warnLog } = Log.get('MessageEditor');
 
 export type PanelMode = 'Normal' | 'Narrow';
 
 export class ChatMessageEditor {
+    private readonly isSmooth: boolean = false;
     private readonly backupRequired$ = new Subject<void>();
     private readonly disposed$: Subject<void> = new Subject<void>();
     private readonly editorDiv: HTMLDivElement;
@@ -37,7 +38,6 @@ export class ChatMessageEditor {
     private panelModel: PanelMode = null; // Intended: updateLayout needs this on the first run
     private hasContent: boolean = null; // Intended: updateHasContent needs this on the first run
     private chatId: string;
-    private smooth: boolean = false;
 
     static create(editorDiv: HTMLDivElement): ChatMessageEditor {
         return new ChatMessageEditor(editorDiv);
@@ -45,13 +45,12 @@ export class ChatMessageEditor {
 
     constructor(editorDiv: HTMLDivElement) {
         let domClassList = document.documentElement.classList;
-        this.smooth = !domClassList.contains('device-ios');
         this.editorDiv = editorDiv;
         this.postPanelDiv = this.editorDiv.querySelector(':scope .post-panel');
         this.attachButton = this.postPanelDiv.querySelector(':scope .attach-btn');
         this.input = this.postPanelDiv.querySelector(':scope .message-input');
-
-        if (this.smooth)
+        this.isSmooth = !domClassList.contains('device-ios');
+        if (this.isSmooth)
             editorDiv.classList.add('smooth');
 
         this.updateLayout();
@@ -286,13 +285,14 @@ export class ChatMessageEditor {
     }
 
     private updateHasContent() {
-        const text = this.markupEditor?.getText() ?? '';
-        const isTextMode = text.trim().length != 0 || this.attachmentList?.some();
-        if (this.hasContent === isTextMode)
+        const hasText = this.markupEditor?.hasContent ?? false;
+        const hasAttachments = this.attachmentList?.some();
+        const hasContent = hasText || hasAttachments;
+        if (this.hasContent === hasContent)
             return;
 
-        this.hasContent = isTextMode;
-        if (isTextMode) {
+        this.hasContent = hasContent;
+        if (hasContent) {
             this.editorDiv.classList.remove('default-mode');
             this.editorDiv.classList.add('text-mode');
         } else {

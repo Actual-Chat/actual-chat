@@ -5,12 +5,12 @@
 @using System.Diagnostics.CodeAnalysis
 
 <div @ref="Ref" id="@Id" class="@Class markup-editor">
+    <div class="c-cursor"></div>
+    <div class="c-placeholder">@Placeholder</div>
     <div class="editor-content"
          enterkeyhint="enter"
-         contenteditable="true"
-         data-placeholder="@Placeholder">
+         contenteditable="true">
     </div>
-    <div class="c-cursor"></div>
 </div>
 
 @code {

@@ -38,8 +38,7 @@ body.narrow .chat-message-editor > .c-content {
     body.narrow .post-panel {
         @apply py-3;
     }
-}
-@media (orientation: portrait) {
+
     body.narrow .text-mode .post-panel,
     body.narrow .narrow-panel .post-panel {
         @apply py-1 pb-10;
@@ -59,8 +58,7 @@ body.narrow .chat-message-editor > .c-content {
     body.narrow .narrow-panel .post-panel .c-buttons {
         @apply absolute bottom-2 left-10 right-0;
     }
-}
-@media (orientation: portrait) {
+
     body.narrow .text-mode .post-panel .c-buttons .c-incut,
     body.narrow .narrow-panel .post-panel .c-buttons .c-incut {
         @apply flex-1;
@@ -164,12 +162,6 @@ body.hoverable .post-panel-btn:hover {
     body.narrow .narrow-panel .post-panel-btn.attach-btn {
         @apply absolute left-0 bottom-2;
     }
-}
-
-[contenteditable=true]:empty:before {
-    @apply truncate;
-    @apply text-placeholder text-base;
-    content:attr(data-text)
 }
 
 /* Notify Call Panel */

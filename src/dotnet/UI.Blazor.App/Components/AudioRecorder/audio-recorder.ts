@@ -1,5 +1,6 @@
 import { DeviceInfo } from 'device-info';
 import { EventHandler } from 'event-handling';
+import { tryQueryPermissionState } from 'permissions';
 import { OpusMediaRecorder, opusMediaRecorder } from './opus-media-recorder';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
@@ -73,11 +74,9 @@ export class AudioRecorder {
             const hasMicrophone = await this.hasMicrophone();
             debugLog?.log(`checkPermission(): hasMicrophone=`, hasMicrophone);
 
-            if ('permissions' in navigator && !DeviceInfo.isFirefox) {
-                // @ts-ignore
-                const status = await navigator.permissions.query({ name: 'microphone' });
-                return status.state;
-            }
+            const state = await tryQueryPermissionState('microphone');
+            if (state !== null)
+                return state;
 
             return hasMicrophone
                 ? 'prompt'
@@ -232,12 +231,6 @@ export class AudioRecorder {
     }
 
     private async hasPermission(): Promise<boolean> {
-        let hasPermission = false;
-        if ('permissions' in navigator && !DeviceInfo.isFirefox) {
-            // @ts-ignore
-            const status = await navigator.permissions.query({ name: 'microphone' });
-            hasPermission = status.state === 'granted';
-        }
-        return hasPermission;
+        return (await tryQueryPermissionState('microphone')) === 'granted';
     }
 }

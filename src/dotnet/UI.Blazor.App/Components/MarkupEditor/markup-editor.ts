@@ -11,9 +11,10 @@ const { debugLog, errorLog } = Log.get('MarkupEditor');
 const MentionListId = '@';
 const ZeroWidthSpace = "\u200b";
 const ZeroWidthSpaceRe = new RegExp(ZeroWidthSpace, "g");
-const CrlfRe = /\r\n/g
-const DoubleLfRe = /\n\n/g
-const SingleLfRe = /[^\n^]\n[^\n$]/g
+const CrlfRe = /\r\n/g;
+const DoubleLfRe = /\n\n/g;
+const SingleLfRe = /[^\n^]\n[^\n$]/g;
+const emptyHtmlVariants = new Set<string>(['', '\n', '\r\n', '<br>', '<br >', '<br/>', '<br />']);
 
 export class MarkupEditor {
     static create(
@@ -25,12 +26,13 @@ export class MarkupEditor {
     }
 
     public readonly contentDiv: HTMLDivElement;
+    public hasContent: boolean = null;
     public changed: (html: string, text: string) => void = () => { };
 
     private isContentDivInitialized = false;
     private lastSelectedRange?: Range = null;
     private undoStack: UndoStack<string>;
-    private currentTransaction: () => void | null;
+    private currentTransaction: () => void | null = null;
     private lastHtml: string = null;
 
     private readonly listHandlers: Array<ListHandler>;
@@ -40,7 +42,7 @@ export class MarkupEditor {
     constructor(
         public readonly editorDiv: HTMLDivElement,
         public readonly blazorRef: DotNet.DotNetObject,
-        private readonly autofocus: boolean,
+        autofocus: boolean,
     ) {
         debugLog?.log(`constructor`);
 
@@ -70,6 +72,7 @@ export class MarkupEditor {
         document.addEventListener("selectionchange", this.onSelectionChange);
         document.addEventListener("click", this.onDocumentClick);
 
+        this.updateHasContent(this.contentDiv.innerHTML);
         if (autofocus)
             this.focus();
     }
@@ -99,6 +102,7 @@ export class MarkupEditor {
                 const html = this.contentDiv.innerHTML;
                 if (html != this.lastHtml) {
                     this.lastHtml = html;
+                    this.updateHasContent(html);
                     this.changed(html, this.getText());
                 }
             }
@@ -409,6 +413,28 @@ export class MarkupEditor {
         this.updateListUIThrottled();
     }
 
+    private updateHasContent(html: string): void {
+        /* Old check:
+        const childNodes = this.contentDiv.childNodes;
+        const theOnlyChild = childNodes.length === 1 ? childNodes.item(0) : null;
+        this.hasContent = childNodes.length !== 0 && !(theOnlyChild?.nodeName === 'BR' && theOnlyChild?.nodeValue == null);
+        */
+        const hasContent = html.length > 8 || !emptyHtmlVariants.has(html.toLowerCase());
+        if (this.hasContent === hasContent)
+            return;
+
+        this.hasContent = hasContent;
+        const classList = this.contentDiv.classList;
+        if (hasContent) {
+            classList.remove('is-empty');
+            classList.add('has-content');
+        }
+        else {
+            classList.remove('has-content');
+            classList.add('is-empty');
+        }
+    }
+
     // List UI (lists, etc.) support
 
     private updateListUIThrottled = throttle(() => this.updateListUI(), 250);
@@ -575,49 +601,40 @@ export class MarkupEditor {
         const process = (parent: Node) => {
             let mustNormalize = false;
             let skipNode: Node = null;
-            if (parent.childNodes.length == 1
-                && parent.childNodes.item(0).nodeName == 'BR'
-                && parent.childNodes.item(0).nodeValue == null) {
-                let clsList = this.contentDiv.classList;
-                if (!clsList.contains('empty-editor'))
-                    clsList.add('empty-editor');
-            } else {
-                this.contentDiv.classList.remove('empty-editor');
-                for (const node of parent.childNodes) {
-                    if (node === skipNode) {
-                        skipNode = null;
-                        continue;
-                    }
-
-                    debugLog?.log('fixContent: processing', node);
-                    let text = asText(node);
-                    if (text) {
-                        const oldText = text.textContent;
-                        const newText = oldText.replace(ZeroWidthSpaceRe, ""); // \u200B (hex) = 8203 (dec)
-                        if (newText.length !== oldText.length) {
-                            text.textContent = newText;
-                            mustNormalize = true;
-                        }
-                        continue;
-                    }
-
-                    const element = asHTMLElement(node);
-                    if (!element)
-                        continue;
-
-                    const mention = asMention(element);
-                    if (!mention) {
-                        process(element);
-                        continue;
-                    }
-
-                    text = getPostMentionText(element);
-                    if (!text || !text.textContent.startsWith(ZeroWidthSpace)) {
-                        debugLog?.log('fixContent: removing mention', mention);
-                        mention.remove();
-                    } else
-                        skipNode = text;
+            for (const node of parent.childNodes) {
+                if (node === skipNode) {
+                    skipNode = null;
+                    continue;
                 }
+
+                debugLog?.log('fixContent: processing', node);
+                let text = asText(node);
+                if (text) {
+                    const oldText = text.textContent;
+                    const newText = oldText.replace(ZeroWidthSpaceRe, ""); // \u200B (hex) = 8203 (dec)
+                    if (newText.length !== oldText.length) {
+                        text.textContent = newText;
+                        mustNormalize = true;
+                    }
+                    continue;
+                }
+
+                const element = asHTMLElement(node);
+                if (!element)
+                    continue;
+
+                const mention = asMention(element);
+                if (!mention) {
+                    process(element);
+                    continue;
+                }
+
+                text = getPostMentionText(element);
+                if (!text || !text.textContent.startsWith(ZeroWidthSpace)) {
+                    debugLog?.log('fixContent: removing mention', mention);
+                    mention.remove();
+                } else
+                    skipNode = text;
             }
 
             if (mustNormalize)

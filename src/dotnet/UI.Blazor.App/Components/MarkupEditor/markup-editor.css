@@ -29,18 +29,17 @@
 }
 
 /* Placeholder */
-.markup-editor .editor-content:empty {
-    @apply text-04;
-}
-.markup-editor .editor-content:empty:before,
-.markup-editor .editor-content.empty-editor:before {
-    content: attr(data-placeholder);
+.markup-editor > .c-placeholder {
+    @apply absolute;
+    @apply w-full h-5;
     @apply truncate;
     @apply text-03;
 }
-body.narrow .markup-editor .editor-content:empty:before,
-body.narrow .markup-editor .editor-content.empty-editor:before {
+body.narrow .markup-editor > .c-placeholder {
     @apply text-text-1;
+}
+.markup-editor:has(.editor-content.has-content) > .c-placeholder {
+    @apply hidden;
 }
 
 /* Permanent mobile cursor */
@@ -50,8 +49,8 @@ body.narrow .markup-editor .editor-content.empty-editor:before {
     @apply bg-scrollbar;
     animation: cursor 1s infinite step-end;
 }
-body.wide .editor-content + .c-cursor,
-body.narrow .editor-content:focus + .c-cursor {
+body.wide .markup-editor > .c-cursor,
+body.narrow .markup-editor:has(.editor-content:focus) > .c-cursor {
     @apply hidden;
 }
 body.narrow .editor-content:focus {
