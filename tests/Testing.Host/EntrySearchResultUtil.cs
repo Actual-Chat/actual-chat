@@ -12,7 +12,7 @@ public static class EntrySearchResultUtil
         => entries.Select(x => x.BuildFoundEntry());
 
     public static FoundItem BuildFoundEntry(this ChatEntry entry)
-        => new (entry.BuildSearchResult(), SearchScope.Messages);
+        => new (entry.BuildSearchResult(), SearchScope.Messages, false);
 
     public static IEnumerable<EntrySearchResult> BuildSearchResults(this IEnumerable<ChatEntry> entries)
         => entries.Select(x => x.BuildSearchResult());

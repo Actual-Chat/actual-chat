@@ -5,6 +5,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public sealed record FoundItem(
     SearchResult SearchResult,
     SearchScope Scope,
+    bool IsGlobalSearchResult,
     bool IsFirstInGroup = false,
     bool IsLastInGroup = false,
     bool CanScopeBeExpanded = false)
@@ -20,7 +21,6 @@ public sealed record FoundItem(
         => SearchResult is ContactSearchResult ? SearchResult.SearchMatch : SearchMatch.Empty;
     public SearchMatch MessageSearchMatch
         => SearchResult is EntrySearchResult ? SearchResult.SearchMatch : SearchMatch.Empty;
-
     public LocalUrl Link => Scope switch {
         SearchScope.Groups => Links.Chat(ChatId),
         SearchScope.People => Links.Chat(ChatId),
