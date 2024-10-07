@@ -31,6 +31,12 @@
     @apply flex-1 flex-y;
     @apply overflow-y-hidden;
 }
+.navbar-chats .c-all-chats:has(.own-chat-list) .tab-panel-tabs {
+    @apply hidden;
+}
+.navbar-chats .c-all-chats .chat-list.own-chat-list {
+    @apply p-2;
+}
 .navbar-chats .c-all-chats > .tab-panel {
     @apply overflow-y-hidden;
 }
