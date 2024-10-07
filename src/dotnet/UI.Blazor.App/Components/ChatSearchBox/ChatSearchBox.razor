@@ -12,45 +12,43 @@
         Click="OnExpandClick"
         Tooltip="@Placeholder"
         TooltipPosition="FloatingPosition.Bottom">
-        <i class="icon-search text-xl"></i>
+        <i class="icon-search text-2xl"></i>
     </ButtonRound>
 
     <div class="@Class chat-search-box @boxCls">
-        <label>
-            <HeaderButton
-                Class="btn-lg search-button blackout inactive"
-                Click="OnSearchButtonClick"
-                IsDisabled="!CanBeTriggered"
-                Tooltip="@Placeholder"
-                TooltipPosition="FloatingPosition.Bottom">
-                <i class="icon-search"></i>
-            </HeaderButton>
-            <TextInput
-                @ref="_inputRef"
-                Text="@InitialText"
-                Class="w-full"
-                Placeholder="@Placeholder"
-                MaxLength="@MaxLength"
-                TabIndex="@TabIndex"
-                TextChanged="OnInput"
-                KeyUp="OnKeyUp">
-            </TextInput>
-            @if (ShowSpinner && _isBusy) {
-                <div style="border-top-color:transparent"
-                     class="search-box-spinner">
-                </div>
-            } else {
-                @if (ShowClose) {
-                    <HeaderButton
-                        Class="cancel-button"
-                        Click="@Cancel"
-                        Tooltip="Close"
-                        TooltipPosition="FloatingPosition.Bottom">
-                        <i class="icon-close"></i>
-                    </HeaderButton>
-                }
+        <HeaderButton
+            Class="btn-lg search-button blackout inactive"
+            Click="OnSearchButtonClick"
+            IsDisabled="!CanBeTriggered"
+            Tooltip="@Placeholder"
+            TooltipPosition="FloatingPosition.Bottom">
+            <i class="icon-search"></i>
+        </HeaderButton>
+        <TextInput
+            @ref="_inputRef"
+            Text="@InitialText"
+            Class="w-full"
+            Placeholder="@Placeholder"
+            MaxLength="@MaxLength"
+            TabIndex="@TabIndex"
+            TextChanged="OnInput"
+            KeyUp="OnKeyUp">
+        </TextInput>
+        @if (ShowSpinner && _isBusy) {
+            <div style="border-top-color:transparent"
+                 class="search-box-spinner">
+            </div>
+        } else {
+            @if (ShowClose) {
+                <HeaderButton
+                    Class="cancel-button"
+                    Click="@Cancel"
+                    Tooltip="Close"
+                    TooltipPosition="FloatingPosition.Bottom">
+                    <i class="icon-close"></i>
+                </HeaderButton>
             }
-        </label>
+        }
     </div>
 </div>
 
