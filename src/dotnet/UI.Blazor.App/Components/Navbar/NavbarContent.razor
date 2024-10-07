@@ -12,9 +12,6 @@
     var isAdministration = NavbarUI.SelectedGroupId == NavbarGroupIds.Administration;
     var isTestPages = NavbarUI.SelectedGroupId == NavbarGroupIds.TestPages;
     var cls = isChats ? "navbar-chats" : "navbar-pages";
-    if (!placeId.IsNone) {
-        cls += " place";
-    }
 }
 
 <div class="navbar-content">
