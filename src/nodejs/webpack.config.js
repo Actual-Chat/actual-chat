@@ -49,7 +49,6 @@ class WatchRunPlugin {
 
 
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-
 const outputPath = _('./../dotnet/App.Wasm/wwwroot/dist');
 const mauiOutputPath = _('./../dotnet/App.Maui/wwwroot/dist');
 
@@ -168,7 +167,7 @@ module.exports = (env, args) => {
             }),
             new BundleAnalyzerPlugin({
                 analyzerMode: 'disabled',
-                generateStatsFile: true,
+                generateStatsFile: false,
                 statsOptions: { source: false }
             }),
         ],
