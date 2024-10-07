@@ -5,11 +5,12 @@
     var isExpanded = State.ValueOrDefault;
     var btnText = isExpanded ? "Show less" : "Show more";
     var isExpandedCls = isExpanded ? "expanded" : "";
+    var title = IsGlobalSearchResult ? "Global search" : Scope.ToString();
 }
 
 <div class="search-result-group-header @isExpandedCls">
     <div class="c-title">
-        @Scope.ToString()
+        @title
     </div>
     @if (CanExpandOrCollapse) {
         <Button Class="show-more-btn btn-transparent unhovered btn-sm" Click="@OnClick">
@@ -25,6 +26,7 @@
 
     [Parameter, EditorRequired] public bool CanExpandOrCollapse { get; set; }
     [Parameter, EditorRequired] public SearchScope Scope { get; set; }
+    [Parameter, EditorRequired] public bool IsGlobalSearchResult { get; set; }
 
     private async Task OnClick(MouseEventArgs e) {
         var scope = Scope;
