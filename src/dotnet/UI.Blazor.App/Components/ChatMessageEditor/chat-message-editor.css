@@ -168,18 +168,16 @@ body.hoverable .post-panel-btn:hover {
 .notify-call-btn {
     @apply hidden;
     @apply absolute right-0 md:right-2;
-    @apply duration-150 delay-150;
     @apply opacity-0;
-    transition-behavior: allow-discrete;
     transition-property: display, opacity;
 }
 .default-mode .notify-call-btn {
     @apply static right-auto;
     @apply flex;
     @apply opacity-100;
-    @starting-style {
-        opacity: 0;
-    }
+}
+.text-mode .post-panel-btn.notify-call-btn {
+    @apply hidden;
 }
 @media (orientation: portrait) {
     body.narrow .notify-call-btn {
@@ -188,13 +186,7 @@ body.hoverable .post-panel-btn:hover {
         @apply opacity-100;
     }
 }
-@media (orientation: portrait) {
-    body.narrow .default-mode .notify-call-btn {
-        @starting-style {
-            opacity: 100;
-        }
-    }
-}
+
 .notify-call-panel {
     @apply hidden;
     @apply absolute inset-0;
@@ -267,9 +259,7 @@ body.hoverable .post-panel-btn:hover {
     @apply flex-none self-end;
     @apply outline-none;
     @apply text-primary;
-    @apply duration-150 delay-150;
     @apply opacity-0;
-    transition-behavior: allow-discrete;
     transition-property: display, opacity;
 }
 @media (orientation: portrait) {
@@ -282,9 +272,6 @@ body.hoverable .post-panel-btn:hover {
     @apply static right-auto;
     @apply flex;
     @apply opacity-100;
-    @starting-style {
-        opacity: 0;
-    }
 }
 body.wide .attachment-mode .post-panel-btn.post-message {
     @apply flex;
