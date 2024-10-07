@@ -68,11 +68,6 @@
     @apply bg-transparent;
     @apply text-03;
 }
-/*.chat-search-box label {*/
-/*    @apply relative;*/
-/*    @apply flex-x;*/
-/*    @apply w-full;*/
-/*}*/
 .chat-search-box-spinner {
     @apply absolute right-0;
     @apply self-center;
