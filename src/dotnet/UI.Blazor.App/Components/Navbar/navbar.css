@@ -95,6 +95,9 @@ body.narrow .navbar-button .btn-square {
     @apply overflow-hidden;
     @apply text-02;
 }
+body.narrow .navbar-item:has(.message-counter-badge) .navbar-item-content .last-entry-time {
+    @apply hidden;
+}
 .navbar-item .navbar-item-ending {
     @apply flex-none justify-self-end;
     @apply flex-x justify-end items-center gap-x-2;
