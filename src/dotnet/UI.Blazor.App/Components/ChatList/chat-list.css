@@ -254,9 +254,6 @@ body.hoverable .chat-list .navbar-item:hover .navbar-item-ending .slot.hoverable
     @apply mx-0;
     @apply text-primary-title;
 }
-.navbar-group.place .tab-panel .tab-panel-tabs {
-    @apply hidden;
-}
 
 .sort-menu > .c-title {
     @apply p-2;
