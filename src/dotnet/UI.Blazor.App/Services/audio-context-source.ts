@@ -401,8 +401,10 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
                     if (!this.hasRefsInUse || !Interactive.isInteractive) {
                         // Wait for the next user interaction as refs can appear after some user interactions
                         const whenInteractive = firstValueFrom(Interactive.interactionEvent$);
-                        await Promise.race([this._whenNotReady, whenInteractive]);
-                        continue;
+                        const whenNotReady = this._whenNotReady;
+                        await Promise.race([whenNotReady, whenInteractive]);
+                        if (!whenNotReady.isCompleted())
+                            continue; // Go to the test/fix below when not ready
                     }
 
                     try {
