@@ -71,7 +71,11 @@ body.hoverable .found-result.navbar-item:hover {
     @apply text-01;
 }
 .found-result.navbar-item .c-description .c-name:has(.non-shrinkable) {
-    @apply flex-none;
+    @apply inline whitespace-normal;
+}
+.found-result.navbar-item .c-description:has(.c-name .non-shrinkable) .c-entry {
+    @apply inline whitespace-normal;
+    @apply ml-0.5;
 }
 .found-result.navbar-item .c-description .c-name:has(.shrinkable) {
     @apply min-w-16;
