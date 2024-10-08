@@ -27,7 +27,7 @@ const MaxResumeTimeMs = 600;
 const MaxResumeCount = 60;
 const MaxInteractiveResumeCount = 3;
 const MaxSuspendTimeMs = 300;
-const ShortTestIntervalMs = 60;
+const ShortTestIntervalMs = 150;
 const LongTestIntervalMs = 1000;
 const SilencePlaybackDuration = 0.280;
 const WakeUpDetectionIntervalMs = 5000;
@@ -153,7 +153,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
 
     protected async loadContextWorklets(context: AudioContext): Promise<void> {
         try {
-            debugLog?.log(`create: loading modules`);
+            debugLog?.log(`loadContextWorklets: loading modules`);
             const feederWorkletPath = Versioning.mapPath('/dist/feederWorklet.js');
             const encoderWorkletPath = Versioning.mapPath('/dist/opusEncoderWorklet.js');
             const vadWorkerPath = Versioning.mapPath('/dist/vadWorklet.js');
@@ -163,6 +163,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
             await Promise.all([whenModule1, whenModule2, whenModule3]);
         }
         catch (e) {
+            warnLog?.log(`loadContextWorklets: failed to load modules:`, e);
             await this.closeSilently(context);
             throw e;
         }
@@ -258,6 +259,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
 
     public async initContextInteractively(): Promise<void> {
         Interactive.isInteractive = true;
+        debugLog?.log(`initContextInteractively()`);
 
         if (this._context && this._context.state === 'running') {
             debugLog?.log(`initContextInteractively: already running`);
@@ -282,17 +284,17 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
 
     public async updateBackgroundState(state: BackgroundState): Promise<void> {
         debugLog?.log(`updateBackgroundState:`, state, this._isActive);
-        if (state === 'BackgroundIdle') {
-            this._isActive = false;
-            this.markNotReady();
-            return;
-        }
-
-        if (!this._isActive) {
-            if (this._maintain)
-                await this._maintain;
-            this._maintain = this.maintain();
-        }
+        // if (state === 'BackgroundIdle') {
+        //     this._isActive = false;
+        //     this.markNotReady();
+        //     return;
+        // }
+        //
+        // if (!this._isActive) {
+        //     if (this._maintain)
+        //         await this._maintain;
+        //     this._maintain = this.maintain();
+        // }
     }
 
     public pauseRef(): void { }
@@ -303,9 +305,8 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
             return;
         }
         const context = this._context;
-        if (context.state !== 'running') {
-            this.markNotReady();
-            void this.closeSilently(context);
+        if (context && context.state !== 'running') {
+            warnLog?.log('useRef: context is not running', context.state);
         }
     }
 
@@ -362,6 +363,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
     // Protected methods
 
     protected async maintain(): Promise<void> {
+        debugLog?.log('maintain: starting');
         this._isActive = true;
         // The only case this method starts is application start,
         // so it makes sense let other tasks to make some progress first.
@@ -369,13 +371,20 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         // noinspection InfiniteLoopJS
         let retryCount = 0;
         while (this._isActive) { // Renew loop
+            debugLog?.log('maintain: loop 1');
             let context = await this.create();
             this.markReady(context);
+            if (context.state === 'suspended') {
+                // Wait for the next user interaction to resume the context
+                const whenInteractive = firstValueFrom(Interactive.interactionEvent$);
+                await Promise.race([this._whenNotReady, whenInteractive]);
+            }
             try {
                 let lastTestAt = Date.now();
 
                 // noinspection InfiniteLoopJS
                 while (this._isActive) { // Fix loop
+                    debugLog?.log('maintain: loop 2');
                     const minDelay = lastTestAt + MaintainCyclePeriodMs - Date.now();
                     if (minDelay > 0) {
                         await delayAsync(minDelay);
@@ -389,8 +398,12 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
                         break;
 
                     // Let's try to test whether AudioContext is broken and fix if it is in use by any audioContextRef
-                    if (!this.hasRefsInUse || !Interactive.isInteractive)
+                    if (!this.hasRefsInUse || !Interactive.isInteractive) {
+                        // Wait for the next user interaction as refs can appear after some user interactions
+                        const whenInteractive = firstValueFrom(Interactive.interactionEvent$);
+                        await Promise.race([this._whenNotReady, whenInteractive]);
                         continue;
+                    }
 
                     try {
                         lastTestAt = Date.now();
@@ -407,7 +420,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
                     }
 
                     while (this._isActive) {
-                        this.throwIfUnused();
+                        debugLog?.log('maintain: loop 3');
                         this.throwIfClosed(context);
                         this.throwIfTooManyResumes();
                         try {
@@ -479,6 +492,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
             return context;
         }
         catch (e) {
+            warnLog?.log('create: failed to create', e);
             await this.closeSilently(context);
             throw e;
         }
@@ -495,7 +509,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
 
         const lastTime = context.currentTime;
         const testCycleCount = 5;
-        const testIntervalMs = isLongTest ? ShortTestIntervalMs : LongTestIntervalMs;
+        const testIntervalMs = isLongTest ? LongTestIntervalMs : ShortTestIntervalMs;
         for (let i = 0; i < testCycleCount; i++) {
             await delayAsync(testIntervalMs);
             if (context.state !== 'running')
@@ -659,11 +673,6 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
 
     private createSilenceBuffer(context: AudioContext): AudioBuffer {
         return context.createBuffer(1, 1, this.purpose === 'playback' ? AP.SAMPLE_RATE : AR.SAMPLE_RATE);
-    }
-
-    private throwIfUnused(): void {
-        if (this._refCount == 0)
-            throw new Error(`${logScope}.throwIfUnused: context is unused.`);
     }
 
     private throwIfTooManyResumes(): void {
