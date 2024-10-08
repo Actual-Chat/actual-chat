@@ -720,7 +720,7 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
     }
 
     public initContextInteractively(): Promise<void> {
-        return Promise.resolve();
+        return ResolvedPromise.Void;
     }
 
     public async reset(): Promise<void> {

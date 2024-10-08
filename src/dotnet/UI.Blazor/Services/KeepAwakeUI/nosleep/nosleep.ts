@@ -1,3 +1,4 @@
+import { ResolvedPromise } from 'promises';
 import { webm, mp4 } from './media';
 import { Log } from 'logging';
 
@@ -78,7 +79,7 @@ export class NoSleep {
         return this.enabled;
     }
 
-    public enable() {
+    public enable(): Promise<void> {
         if (this.isNativeWakeLockSupported) {
             return navigator.wakeLock
                 .request('screen')
@@ -101,10 +102,10 @@ export class NoSleep {
         } else if (isOldIOS()) {
             this.disable();
             warnLog?.log(`
-        NoSleep enabled for older iOS devices. This can interrupt
-        active or long-running network requests from completing successfully.
-        See https://github.com/richtr/NoSleep.js/issues/15 for more details.
-      `);
+                NoSleep enabled for older iOS devices. This can interrupt
+                active or long-running network requests from completing successfully.
+                See https://github.com/richtr/NoSleep.js/issues/15 for more details.
+            `);
             this.noSleepTimer = window.setInterval(() => {
                 if (!document.hidden) {
                     window.location.href = window.location.href.split("#")[0];
@@ -112,7 +113,7 @@ export class NoSleep {
                 }
             }, 15000);
             this.enabled = true;
-            return Promise.resolve();
+            return ResolvedPromise.Void;
         } else {
             let playPromise = this.noSleepVideo.play();
             return playPromise

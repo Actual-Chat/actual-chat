@@ -2,7 +2,7 @@
 import { AUDIO_REC as AR } from '_constants';
 import { Disposable } from 'disposable';
 import { Versioning } from 'versioning';
-import { catchErrors, debounce, delayAsync, delayAsyncWith, PromiseSource, retry } from 'promises';
+import { catchErrors, debounce, delayAsync, delayAsyncWith, PromiseSource, ResolvedPromise, retry } from 'promises';
 import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
 import { Observable, Subject } from 'rxjs';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
@@ -484,43 +484,42 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
     public onConnectionStateChanged(isConnected: boolean, _noWait?: RpcNoWait): Promise<void> {
         if (this.isConnected === isConnected)
-            return Promise.resolve(undefined);
+            return ResolvedPromise.Void;
 
         this.isConnected = isConnected;
         this.stateChanged();
-        return Promise.resolve(undefined);
+        return ResolvedPromise.Void;
     }
 
     public onRecordingStateChanged(isRecording: boolean, _noWait?: RpcNoWait): Promise<void> {
         if (this.isRecording === isRecording)
-            return Promise.resolve(undefined);
+            return ResolvedPromise.Void;
 
         this.isRecording = isRecording;
         this.stateChanged();
-        return Promise.resolve(undefined);
+        return ResolvedPromise.Void;
     }
 
     public onVoiceStateChanged(isVoiceActive: boolean, _noWait?: RpcNoWait): Promise<void> {
         if (this.isVoiceActive === isVoiceActive)
-            return Promise.resolve(undefined);
+            return ResolvedPromise.Void;
 
         this.isVoiceActive = isVoiceActive;
         this.stateChanged();
-        return Promise.resolve(undefined);
+        return ResolvedPromise.Void;
     }
 
     public onAudioPowerChange(power: number, _noWait?: RpcNoWait): Promise<void> {
         OpusMediaRecorder.audioPowerChangedSubject.next(power);
-
-        return Promise.resolve(undefined);
+        return ResolvedPromise.Void;
     }
 
     public recordingInProgress(noWait?: RpcNoWait): Promise<void> {
-        if (!this.isRecording) {
+        if (!this.isRecording)
             void this.onRecordingStateChanged(true);
-        }
+
         this.recordingFailedDebounced();
-        return Promise.resolve(undefined);
+        return ResolvedPromise.Void;
     }
 
     // Private methods

@@ -1,6 +1,6 @@
-
 import { AUDIO_REC as AR, AUDIO_VAD as AV } from '_constants';
 import { clamp, lerp, RunningUnitMedian, RunningEMA, approximateGain } from 'math';
+import { ResolvedPromise } from 'promises';
 // @ts-ignore - it works, but fails validation
 import * as ort from 'onnxruntime-web/wasm';
 import { WebRtcVad } from '@actual-chat/webrtc-vad';
@@ -182,8 +182,7 @@ export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
     }
 
     public override init(): Promise<void> {
-        // @ts-ignore
-        return Promise.resolve(undefined);
+        return ResolvedPromise.Void;
     }
 
     protected override appendChunkInternal(monoPcm: Float32Array): Promise<number | null> {
