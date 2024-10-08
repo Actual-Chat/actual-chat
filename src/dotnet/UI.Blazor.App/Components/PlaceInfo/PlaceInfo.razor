@@ -135,6 +135,7 @@
     private IContacts Contacts => Hub.Contacts;
     private IPlaces Places => Hub.Places;
     private IChats Chats => Hub.Chats;
+    private ChatUI ChatUI => Hub.ChatUI;
     private ModalUI ModalUI => Hub.ModalUI;
     private Features Features => Hub.Features();
     private ChatListUI ChatListUI => Hub.ChatListUI;
@@ -171,23 +172,8 @@
         };
     }
 
-    private async Task OnJoinPlace() {
-        var avatars = await Avatars.ListOwnAvatarIds(Session, default);
-        var hasMultipleAvatars = avatars.Count > 1;
-
-        if (!hasMultipleAvatars) {
-            var command = new Places_Join(Session, PlaceId);
-            await UICommander.Run(command);
-            return;
-        }
-
-        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, false, JoinWithAvatar));
-
-        async Task JoinWithAvatar(AvatarFull avatar) {
-            var command = new Places_Join(Session, PlaceId, avatar.Id);
-            await UICommander.Run(command);
-        }
-    }
+    private void OnJoinPlace()
+        => _ = ChatUI.JoinPlace(PlaceId);
 
     // Nested types
 

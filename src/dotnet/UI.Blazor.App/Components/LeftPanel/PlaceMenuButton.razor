@@ -27,11 +27,19 @@
             <i class="icon-more-vertical text-2xl"></i>
         </ButtonRound>
     </div>
+} else if (m.CanJoin) {
+    <div class="c-right">
+        <ButtonRound Class="btn-sm join-btn" ContentClass="gap-x-2" Click="OnJoinPlace">
+            <i class="icon-person-add text-xl"></i>
+            <span>Join</span>
+        </ButtonRound>
+    </div>
 }
 
 @code {
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
+    private ChatUI ChatUI => Hub.ChatUI;
     private IContacts Contacts => Hub.Contacts;
     private IPlaces Places => Hub.Places;
     private ModalUI ModalUI => Hub.ModalUI;
@@ -51,13 +59,18 @@
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
         var places = await Contacts.ListPlaceIds(Session, default).ConfigureAwait(false);
         var isMember = places.Contains(placeId);
+        var canJoin = place.Rules.CanJoin() && !isMember;
 
         return new() {
             Place = place,
             MemberCount = allAuthorIds.Count,
             IsMember = isMember,
+            CanJoin = canJoin,
         };
     }
+
+    private void OnJoinPlace()
+        => _ = ChatUI.JoinPlace(PlaceId);
 
     private void OnPlaceSettingsClick(PlaceId placeId)
         => _ = ModalUI.Show(new PlaceSettingsModal.Model(placeId));
@@ -70,5 +83,6 @@
         public Place? Place { get; init; }
         public int MemberCount { get; init; }
         public bool IsMember { get; init; }
+        public bool CanJoin { get; init; }
     }
 }
