@@ -50,6 +50,7 @@ public partial class SearchUI
         _isSearchModeOn.Value = !criteria.Text.IsNullOrEmpty();
         _isResultsNavigationOn.Value = false;
         _cached = new Cached(foundItems);
+        _selectedItem.Invalidate();
         using (Invalidation.Begin())
             _ = GetSearchResults();
         return;
