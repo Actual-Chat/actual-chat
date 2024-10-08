@@ -60,6 +60,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var chatId = chat.Id;
+        // Locals captured, ConfigureAwait(false) below is fine
 
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var isAnimated = false;

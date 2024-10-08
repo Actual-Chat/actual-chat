@@ -146,7 +146,8 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = Chat.Id; // Capture to locals to make sure we can use .ConfigureAwait(false) below
+        var chatId = Chat.Id;
+        // Locals captured, ConfigureAwait(false) below is fine
 
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
         var language = await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);

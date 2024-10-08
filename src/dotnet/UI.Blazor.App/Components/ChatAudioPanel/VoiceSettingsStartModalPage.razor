@@ -63,6 +63,7 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
+        // Locals captured, ConfigureAwait(false) below is fine
 
         var settings = await ChatVoiceSettings.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
