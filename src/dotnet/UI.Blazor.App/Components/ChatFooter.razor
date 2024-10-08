@@ -14,7 +14,7 @@
     } else {
         @if (m.CanPost) {
             <ChatMessageEditor @key="@chat.Id.Value" Chat="@chat" />
-        } else if (m.CanJoin) {
+        } else if (m.CanJoin || m.ShouldJoinPlaceFirst) {
             <div class="chat-footer">
                 @if (!m.IsGuest) {
                     <div>
