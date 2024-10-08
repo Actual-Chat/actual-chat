@@ -547,7 +547,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         chat.Rules.CanRead().Should().BeTrue();
         chat.Rules.CanWrite().Should().BeFalse();
 
-        // But even Owner should not see in it the contacts
+        // But even the owner should not see in it contacts
         await ComputedTest.When(services, async ct => {
             var contactIds = await contacts.ListIds(session, PlaceId.None, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
