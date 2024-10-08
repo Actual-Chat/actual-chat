@@ -71,7 +71,8 @@ def search_in_chats(
     results = _post(
         _Tools.SEARCH_IN_CHATS,
         {
-            "text": text
+            "text": text,
+            "searchType": search_type
         },
         config
     )
