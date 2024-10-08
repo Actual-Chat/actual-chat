@@ -1,7 +1,7 @@
 from enum import StrEnum, auto
 from itertools import takewhile
 
-from typing import Annotated, List, Any
+from typing import Annotated, List, Any, Literal
 from langchain_core.tools import tool
 from langgraph.graph import MessagesState
 from langgraph.prebuilt import InjectedState
@@ -56,23 +56,25 @@ def reply(
 @tool(parse_docstring=True)
 def search_in_chats(
     text: str,
-    search_type: str,
+    search_type: Literal["PUBLIC", "PRIVATE", "GENERAL"],
     config: RunnableConfig
 ) -> List[Any]:
     """Search in all public chats.
 
     Args:
         text: Text to search for.
-        search_type: Identifies type of the search to run.
+        search_type: Identifies type of the search to run. Possible values are PUBLIC, PRIVATE, or GENERAL
 
     Returns:
         List: ranked search results.
     """
+    # search_type_value = "Public" if search_type=="PUBLIC" else "Private" if search_type=="PRIVATE" else "General"
+    search_type_value = 1 if search_type=="PUBLIC" else 2 if search_type=="PRIVATE" else 3
     results = _post(
         _Tools.SEARCH_IN_CHATS,
         {
             "text": text,
-            "searchType": search_type
+            "searchType": search_type_value
         },
         config
     )
@@ -108,7 +110,7 @@ def filter_last_search_results(state: State):
 @tool(parse_docstring=True)
 def forward_search_results(
     comment: str,
-    state: Annotated[MessagesState, InjectedState],
+    state: Annotated[State, InjectedState],
     config: RunnableConfig
 ):
     """
