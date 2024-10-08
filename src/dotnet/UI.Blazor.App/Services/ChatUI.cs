@@ -28,6 +28,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
     private IUserPresences UserPresences => Hub.UserPresences;
     private IAccounts Accounts => Hub.Accounts;
+    private IAvatars Avatars => Hub.Avatars;
     private AccountUI AccountUI => Hub.AccountUI;
     private IContacts Contacts => Hub.Contacts;
     private IChats Chats => Hub.Chats;
@@ -310,6 +311,24 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             Title = "Archive chat",
             ConfirmButtonText = "Archive"
         });
+    }
+
+    public async Task JoinPlace(PlaceId placeId) {
+        var avatars = await Avatars.ListOwnAvatarIds(Session, default).ConfigureAwait(false); // Continue on Blazor context.
+        var hasMultipleAvatars = avatars.Count > 1;
+
+        if (!hasMultipleAvatars) {
+            var command = new Places_Join(Session, placeId);
+            await UICommander.Run(command).ConfigureAwait(false);
+            return;
+        }
+
+        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, false, JoinWithAvatar)).ConfigureAwait(false);
+
+        async Task JoinWithAvatar(AvatarFull avatar) {
+            var command = new Places_Join(Session, placeId, avatar.Id);
+            await UICommander.Run(command).ConfigureAwait(false);
+        }
     }
 
     // Helpers

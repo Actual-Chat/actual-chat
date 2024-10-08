@@ -53,6 +53,7 @@
     private Chat Chat => ChatContext.Chat;
     private ModalUI ModalUI => ChatContext.Hub.ModalUI;
     private UICommander UICommander => ChatContext.Hub.UICommander();
+    private ChatUI ChatUI => ChatContext.Hub.ChatUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatPage.FooterModel Model { get; set; } = null!;
@@ -73,20 +74,8 @@
         }
     }
 
-    private async Task OnJoinPlace(Place place) {
-        if (!Model.HasMultipleAvatars) {
-            var command = new Places_Join(Session, place.Id);
-            await UICommander.Run(command);
-            return;
-        }
-
-        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, false, JoinWithAvatar));
-
-        async Task JoinWithAvatar(AvatarFull avatar) {
-            var command = new Places_Join(Session, place.Id, avatar.Id);
-            await UICommander.Run(command);
-        }
-    }
+    private void OnJoinPlace(Place place)
+        => _ = ChatUI.JoinPlace(place.Id);
 
     private Task SignIn()
         => ModalUI.Show(new SignInModal.Model());
