@@ -91,7 +91,7 @@
     @apply grid items-center gap-x-4;
     @apply min-h-14.5;
     @apply p-2 pl-4;
-    grid-template-columns: 1fr repeat(1, 2.5rem);
+    grid-template-columns: 1fr auto;
 }
 .left-panel-content-header.place .c-info > .c-left {
     @apply flex-1 flex-y;
@@ -134,4 +134,12 @@ body.hoverable .left-panel-content-header.place .c-info > .c-left > .c-top:hover
 .left-panel-content-header.place .chat-search-box .btn-h i,
 .left-panel-content-header.place .chat-search-box *::placeholder {
     @apply text-place-header-text;
+}
+
+.left-panel-content-header.place .btn.btn-round.join-btn {
+    @apply w-fit;
+    @apply px-4;
+    @apply bg-[var(--round-right-panel)];
+    @apply text-primary;
+    @apply shadow-sm shadow-shadow-main;
 }
