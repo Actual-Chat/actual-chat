@@ -14,8 +14,8 @@
     return;
 }
 
-<div class="found-result place">
-    <div class="c-content" data-href="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
+<NavbarItem Class="found-result place" IsSelected="@m.IsSelected" Url="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
+    <div class="c-content">
         <div class="c-container">
             <Pic
                 Title="@place.Title"
@@ -39,7 +39,7 @@
             </div>
         </div>
     </div>
-</div>
+</NavbarItem>
 
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -72,11 +72,13 @@
 
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
         var titleMatch = foundItem.ContactSearchMatch;
+        var selectedFoundItem = await SearchUI.SelectedItem.Use(cancellationToken).ConfigureAwait(false);
         return new(place) {
             TitleMatch = titleMatch.IsEmpty ? SearchMatch.New(place.Title) : titleMatch,
             MemberCount = allAuthorIds.Count,
             Link = Links.PlaceInfo(placeId),
             Item = foundItem,
+            IsSelected = selectedFoundItem == foundItem,
         };
     }
 
@@ -90,5 +92,6 @@
         public int MemberCount { get; init; }
         public LocalUrl Link { get; init; }
         public FoundItem Item { get; init; } = null!;
+        public bool IsSelected { get; init; }
     }
 }

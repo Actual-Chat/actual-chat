@@ -13,8 +13,8 @@
 @if (m == Model.Loading) {
     <ChatListItemSkeleton />
 } else {
-    <div class="found-result contact">
-        <div class="c-content" data-href="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
+    <NavbarItem Class="found-result contact" IsSelected="@m.IsSelected">
+        <div class="c-content" Url="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
             <div class="c-container">
                 <ChatIcon Chat="@chatState.Chat"/>
                 <div class="c-description">
@@ -48,7 +48,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </NavbarItem>
 }
 
 @code {
@@ -92,9 +92,9 @@
             return Model.None;
 
         var entry = chatState.Info.LastTextEntry;
-        if (entry is { Id.IsNone: false, IsSystemEntry: false }) {
+        if (entry is { Id.IsNone: false, IsSystemEntry: false })
             lastTextEntry = entry;
-        }
+        var selectedFoundItem = await SearchUI.SelectedItem.Use(cancellationToken).ConfigureAwait(false);
 
         return new() {
             ChatState = chatState,
@@ -103,6 +103,7 @@
             Link = Links.Chat(chatId),
             Author = anotherAuthor,
             Item = foundItem,
+            IsSelected = selectedFoundItem == foundItem,
         };
     }
 
@@ -118,5 +119,6 @@
         public LocalUrl Link { get; init; }
         public Author? Author { get; init; }
         public FoundItem Item { get; init; } = null!;
+        public bool IsSelected { get; init; }
     }
 }

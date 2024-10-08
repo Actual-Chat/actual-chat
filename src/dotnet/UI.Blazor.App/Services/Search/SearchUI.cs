@@ -13,11 +13,13 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     private readonly MutableState<PlaceId> _placeId;
     private readonly MutableState<bool> _isSearchModeOn;
     private readonly MutableState<bool> _isResultsNavigationOn;
+    private readonly ComputedState<FoundItem?> _selectedItem;
 
     public IMutableState<string> Text => _text;
     public IMutableState<PlaceId> PlaceId => _placeId;
     public IState<bool> IsSearchModeOn => _isSearchModeOn;
     public IState<bool> IsResultsNavigationOn => _isResultsNavigationOn;
+    public IState<FoundItem?> SelectedItem => _selectedItem;
     private IMutableState<ImmutableHashSet<SearchScope>> ExtendedLimits { get; }
     private History History => Hub.History;
     private ISearch Search => Hub.Search;
@@ -31,6 +33,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         _placeId = stateFactory.NewMutable(ActualChat.PlaceId.None, StateCategories.Get(GetType(), nameof(_placeId)));
         _isSearchModeOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchModeOn)));
         _isResultsNavigationOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsResultsNavigationOn)));
+        _selectedItem = stateFactory.NewComputed<FoundItem?>((FoundItem?)null, _ => Task.FromResult(_cached.Selected), StateCategories.Get(GetType(), nameof(SelectedItem)));
         ExtendedLimits = stateFactory
             .NewMutable(ImmutableHashSet<SearchScope>.Empty, StateCategories.Get(GetType(), nameof(ExtendedLimits)));
         NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;
@@ -97,15 +100,25 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
 
     public void Select(FoundItem foundItem)
     {
-        if (_cached.TrySelect(foundItem))
+        if (_cached.TrySelect(foundItem)) {
             _isResultsNavigationOn.Value = true;
+            _selectedItem.Invalidate();
+        }
     }
 
     public Task SelectPrevious()
-        => NavigateTo(_cached.SelectPrevious());
+    {
+        var selected = _cached.SelectPrevious();
+        _selectedItem.Invalidate();
+        return NavigateTo(selected);
+    }
 
     public Task SelectNext()
-        => NavigateTo(_cached.SelectNext());
+    {
+        var selected = _cached.SelectNext();
+        _selectedItem.Invalidate();
+        return NavigateTo(selected);
+    }
 
     private Task NavigateTo(FoundItem? foundItem)
         => foundItem is not null ? History.NavigateTo(foundItem.Link) : Task.CompletedTask;
@@ -117,6 +130,8 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         private int _activeIndex = -1;
         public IReadOnlyList<FoundItem> FoundItems { get; } = foundItems;
         public static readonly Cached None = new ([]);
+
+        public FoundItem? Selected => _activeIndex >= 0 ? FoundItems[_activeIndex] : null;
 
         public bool TrySelect(FoundItem foundItem)
         {
