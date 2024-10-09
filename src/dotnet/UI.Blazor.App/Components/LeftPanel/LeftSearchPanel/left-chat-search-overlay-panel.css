@@ -1,0 +1,61 @@
+.left-search-overlay-panel {
+    @apply z-10;
+    @apply absolute inset-0;
+    @apply hidden;
+    @apply opacity-0;
+    @apply -translate-y-full;
+    @apply duration-300 delay-0;
+    transition-behavior: allow-discrete;
+    transition-property: display, opacity, transform;
+}
+.left-search-overlay-panel.open {
+    @apply flex-y;
+    @apply opacity-100;
+    @apply translate-y-0;
+    @apply duration-300 delay-300;
+    @starting-style {
+        opacity: 0;
+        transform: translateY(-100%);
+    }
+}
+.left-chat-search-overlay-panel {
+    @apply py-2;
+    @apply overflow-hidden;
+    @apply bg-03;
+}
+
+.left-chat-search-overlay-panel .tab-panel {
+    @apply overflow-hidden;
+}
+.left-chat-search-overlay-panel .tab-panel .tab {
+    @apply py-2;
+    @apply overflow-hidden;
+}
+.left-chat-search-overlay-panel .tab-panel .btn-group {
+    @apply gap-x-4;
+    @apply py-0 px-2;
+}
+.left-chat-search-overlay-panel .c-search-tab.c-container, /* TODO: Remove when migrated to new search UI */
+.left-chat-search-overlay-panel .tab > .c-container {
+    @apply flex-y;
+    @apply h-full;
+    @apply overflow-y-auto;
+    @apply custom-scrollbar;
+}
+.left-chat-search-overlay-panel .own-chat-list {
+    @apply px-2;
+}
+.left-chat-search-overlay-panel .chat-list .c-header .btn-h {
+    @apply text-xs text-primary;
+}
+
+.left-chat-search-overlay-panel .ai-btn .btn {
+    @apply min-w-full;
+}
+body.narrow .left-chat-search-overlay-panel .ai-btn .btn {
+    @apply min-h-10 max-h-10;
+}
+.left-chat-search-overlay-panel .ai-btn .btn .btn-content {
+    @apply gap-x-3;
+    @apply text-text-1;
+}

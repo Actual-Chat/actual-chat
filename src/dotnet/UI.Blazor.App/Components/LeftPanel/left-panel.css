@@ -49,6 +49,15 @@
     @apply bg-03;
     @apply overflow-hidden;
 }
+.left-panel-content .left-panel-content-main-wrapper {
+    @apply relative;
+    @apply flex-y;
+    @apply grow;
+}
+.left-panel-content-main {
+    @apply flex-y;
+    @apply grow;
+}
 .left-panel-content-header.place {
     @apply relative;
     @apply flex-y;

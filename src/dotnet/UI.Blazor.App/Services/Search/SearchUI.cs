@@ -1,3 +1,4 @@
+using ActualChat.MLSearch;
 using ActualChat.Search;
 using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.Services;
@@ -12,19 +13,24 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     private readonly MutableState<string> _text;
     private readonly MutableState<PlaceId> _placeId;
     private readonly MutableState<bool> _isSearchModeOn;
+    private readonly MutableState<bool> _isShowRecentOn;
     private readonly MutableState<bool> _isResultsNavigationOn;
     private readonly ComputedState<FoundItem?> _selectedItem;
 
     public IMutableState<string> Text => _text;
     public IMutableState<PlaceId> PlaceId => _placeId;
     public IState<bool> IsSearchModeOn => _isSearchModeOn;
+    public IState<bool> IsShowRecentOn => _isShowRecentOn;
     public IState<bool> IsResultsNavigationOn => _isResultsNavigationOn;
     public IState<FoundItem?> SelectedItem => _selectedItem;
     private IMutableState<ImmutableHashSet<SearchScope>> ExtendedLimits { get; }
     private History History => Hub.History;
     private ISearch Search => Hub.Search;
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private NavbarUI NavbarUI => Hub.NavbarUI;
+    private PanelsUI PanelsUI => Hub.PanelsUI;
     private UIEventHub UIEventHub => Hub.UIEventHub();
+    private UICommander UICommander => Hub.UICommander();
 
     public SearchUI(ChatUIHub uiHub) : base(uiHub)
     {
@@ -32,6 +38,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         _text = stateFactory.NewMutable("", StateCategories.Get(GetType(), nameof(Text)));
         _placeId = stateFactory.NewMutable(ActualChat.PlaceId.None, StateCategories.Get(GetType(), nameof(_placeId)));
         _isSearchModeOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchModeOn)));
+        _isShowRecentOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsShowRecentOn)));
         _isResultsNavigationOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsResultsNavigationOn)));
         _selectedItem = stateFactory.NewComputed<FoundItem?>((FoundItem?)null, _ => Task.FromResult(_cached.Selected), StateCategories.Get(GetType(), nameof(SelectedItem)));
         ExtendedLimits = stateFactory
@@ -90,12 +97,29 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         ExtendedLimits.Value = current.Remove(chatKind);
     }
 
-    private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
+    public void ShowRecent(bool isOn)
+        => _isShowRecentOn.Set(isOn);
+
+    public async Task LaunchAISearch()
     {
-        if (!e.IsUserAction)
+        var chatIdOpt = await CreateSearchChat().ConfigureAwait(true); // Continue on Blazor Context
+        if (!chatIdOpt.HasValue)
             return;
 
-        PlaceId.Value = NavbarUI.IsPlaceSelected(out var placeId) ? placeId : ActualChat.PlaceId.None;
+        var searchChatId = chatIdOpt.Value;
+        NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
+        if (BrowserInfo.ScreenSize.Value.IsNarrow())
+            PanelsUI.HidePanels();
+        await History.NavigateTo(Links.Chat(searchChatId)).ConfigureAwait(false);
+    }
+
+    private async Task<ChatId?> CreateSearchChat() {
+        var createSearchChatCommand = new MLSearch_CreateChat(Session, "Search", default);
+        var (searchChat, error) = await UICommander.Run(createSearchChatCommand).ConfigureAwait(false);
+        if (error != null)
+            return null;
+
+        return searchChat.Id;
     }
 
     public Task Select(FoundItem foundItem, bool mustNavigate = false)
@@ -124,6 +148,14 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
 
     private Task NavigateTo(FoundItem? foundItem)
         => foundItem is not null ? History.NavigateTo(foundItem.Link) : Task.CompletedTask;
+
+    private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
+    {
+        if (!e.IsUserAction)
+            return;
+
+        PlaceId.Value = NavbarUI.IsPlaceSelected(out var placeId) ? placeId : ActualChat.PlaceId.None;
+    }
 
     // Nested types
 

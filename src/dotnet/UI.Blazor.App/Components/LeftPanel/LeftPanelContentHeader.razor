@@ -8,14 +8,8 @@
 @if (m != null) {
     <LeftPanelPlaceContentHeader Place="@m"/>
 } else {
-    <div class="left-panel-content-header">
-        <LeftChatSearchPanel />
-        <div class="c-content">
-            <div class="c-title">
-                Chats
-            </div>
-        </div>
-    </div>
+    <LeftPanelChatContentHeader />
+    <LeftChatSearchOverlayPanel />
 }
 
 @code {

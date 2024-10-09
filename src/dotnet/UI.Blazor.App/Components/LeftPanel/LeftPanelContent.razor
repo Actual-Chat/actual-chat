@@ -1,0 +1,23 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="left-panel-content">
+    <LeftPanelContentHeader/>
+    <div class="left-panel-content-main-wrapper">
+        <div class="left-panel-content-main">
+            @if (ScreenSize.IsNarrow()) {
+                <ReconnectBanner/>
+            }
+            <DownloadAppBanner CanBeClosed="true"/>
+            <NavbarContent/>
+        </div>
+        <RenderStack Name="@Regions.LeftPanelContentOverlay"/>
+    </div>
+</div>
+
+@code {
+    public static class Regions {
+        public const string LeftPanelContentOverlay = "LeftPanelContentOverlay";
+    }
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+}

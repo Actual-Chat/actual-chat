@@ -41,7 +41,8 @@
 @import './Components/LeftPanel/left-panel.css';
 @import './Components/LeftPanel/LeftSearchPanel/found-chat-list.css';
 @import './Components/LeftPanel/LeftSearchPanel/search-result-group-header.css';
-@import './Components/LeftPanel/LeftSearchPanel/left-search-panel.css';
+@import './Components/LeftPanel/LeftSearchPanel/left-chat-search-input.css';
+@import './Components/LeftPanel/LeftSearchPanel/left-chat-search-overlay-panel.css';
 @import './Components/LeftPanel/LeftSearchPanel/recently-viewed-groups.css';
 @import './Components/LeftPanel/LeftSearchPanel/recently-contacted-people.css';
 @import './Components/LeftPanel/LeftSearchPanel/recently-contacted-user.css';
