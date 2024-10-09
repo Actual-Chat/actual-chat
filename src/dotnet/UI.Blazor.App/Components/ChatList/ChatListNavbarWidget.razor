@@ -38,7 +38,7 @@
                 }
             </ChildContent>
             <TabContent>
-                <SearchableChatList PlaceId="@PlaceId" />
+                <ChatList @key="@PlaceId.Value" PlaceId="@PlaceId" UsePlaceChatListSettings="@true" />
             </TabContent>
         </TabPanel>
     </div>

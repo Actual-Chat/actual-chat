@@ -1,0 +1,35 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<LeftPlaceSearchOverlayPanel.Model>
+@{
+    var m = State.Value;
+    var cls = m.IsOpen ? "open" : "closed";
+}
+
+<RenderIntoStack Name="@LeftPanelContent.Regions.LeftPanelContentOverlay" Key="ChatsSearchResults">
+    <div class="left-search-overlay-panel left-place-search-overlay-panel @cls">
+        <FoundChatList />
+    </div>
+</RenderIntoStack>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+
+    private SearchUI SearchUI => Hub.SearchUI;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<Model>.Options() {
+                InitialValue = new Model(SearchUI.IsSearchModeOn.ValueOrDefault),
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isOpen = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
+        return new Model(isOpen);
+    }
+
+    // Nested types
+
+    public sealed record Model(bool IsOpen);
+}

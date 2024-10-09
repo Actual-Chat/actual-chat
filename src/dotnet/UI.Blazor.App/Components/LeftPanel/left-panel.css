@@ -53,6 +53,7 @@
     @apply relative;
     @apply flex-y;
     @apply grow;
+    @apply overflow-hidden;
 }
 .left-panel-content-main {
     @apply flex-y;
