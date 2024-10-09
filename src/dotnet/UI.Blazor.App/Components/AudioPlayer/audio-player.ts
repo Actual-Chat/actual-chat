@@ -27,11 +27,11 @@ export class AudioPlayer implements Resettable {
     private static initStarted = false;
 
     private readonly internalId: string;
+    private readonly contextRef: AudioContextRef;
 
     private blazorRef?: DotNet.DotNetObject;
     private playing?: Disposable;
 
-    private contextRef: AudioContextRef | null = null;
     private playbackState: PlaybackState = 'paused';
     private decoderToFeederWorkletChannel: MessageChannel = null;
     private feederNode?: FeederAudioWorkletNode = null;
@@ -144,14 +144,12 @@ export class AudioPlayer implements Resettable {
             }
         }
 
-        if (this.contextRef == null) {
-            const options: AudioContextRefOptions = {
-                attach: attach,
-                detach: detach,
-                dispose: () => this.end(true),
-            }
-            this.contextRef = audioContextSource.getRef('playback', options);
+        const options: AudioContextRefOptions = {
+            attach: attach,
+            detach: detach,
+            dispose: () => this.end(true),
         }
+        this.contextRef = audioContextSource.getRef('playback', options);
     }
 
     public async startPlayback(
@@ -198,6 +196,8 @@ export class AudioPlayer implements Resettable {
             return;
 
         // debugLog?.log(`#${this.internalId}.frame, ${bytes.length} byte(s)`);
+        await this.contextRef.whenReady();
+
         void decoderWorker.frame(
             this.internalId,
             bytes.buffer,
@@ -212,6 +212,7 @@ export class AudioPlayer implements Resettable {
             return;
 
         debugLog?.log(`#${this.internalId}.end, mustAbort:`, mustAbort);
+        await this.contextRef.whenReady();
 
         // This ensures 'end' hit the feeder processor which in turn sends feeder status back and resolves this.whenEnded
         await decoderWorker.end(this.internalId, mustAbort);
@@ -224,6 +225,7 @@ export class AudioPlayer implements Resettable {
             return;
 
         debugLog?.log(`#${this.internalId}.pause`);
+        await this.contextRef.whenReady();
         await this.feederNode.pause(rpcNoWait);
         this.playing?.dispose();
         this.playing = null;

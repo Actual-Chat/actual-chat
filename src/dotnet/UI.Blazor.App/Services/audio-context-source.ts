@@ -18,6 +18,7 @@ import { AudioContextRef, AudioContextRefOptions } from './audio-context-ref';
 import { AudioContextDestinationFallback } from './audio-context-destination-fallback';
 import { Log } from 'logging';
 import { AudioInitializer, BackgroundState } from './audio-initializer';
+import { Disposable, Disposables } from 'disposable';
 
 const { logScope, infoLog, debugLog, warnLog } = Log.get('AudioContextSource');
 
@@ -66,9 +67,7 @@ export interface AudioContextSource {
 
     updateBackgroundState(state: BackgroundState): Promise<void>;
 
-    useRef(ref: AudioContextRef): void;
-
-    pauseRef(ref: AudioContextRef): void;
+    useRef(ref: AudioContextRef): Disposable;
 }
 
 abstract class AudioContextSourceBase implements AudioContextSource {
@@ -147,9 +146,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
 
     public abstract updateBackgroundState(state: BackgroundState): Promise<void>;
 
-    public abstract useRef(ref: AudioContextRef): void;
-
-    public abstract pauseRef(ref: AudioContextRef): void;
+    public abstract useRef(ref: AudioContextRef): Disposable;
 
     protected async loadContextWorklets(context: AudioContext): Promise<void> {
         try {
@@ -297,9 +294,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         // }
     }
 
-    public pauseRef(ref: AudioContextRef): void { }
-
-    public useRef(ref: AudioContextRef): void {
+    public useRef(ref: AudioContextRef): Disposable {
         if (!this._isActive) {
             this._maintain = this.maintain();
             return;
@@ -308,6 +303,8 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         if (context && context.state !== 'running') {
             warnLog?.log('useRef: context is not running', context.state);
         }
+
+        return Disposables.empty();
     }
 
     // Must be private, but good to keep it near markNotReady
@@ -752,18 +749,7 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
         }
     }
 
-    public pauseRef(ref: AudioContextRef): void {
-        const hasRefsInUse = this.hasRefsInUse;
-        const backgroundState = AudioInitializer.backgroundState;
-        infoLog?.log('pauseRef:', hasRefsInUse, backgroundState);
-        if (!hasRefsInUse) {
-            this.suspendContextDebounced();
-            if (backgroundState === 'BackgroundIdle')
-                this.closeContextDebounced();
-        }
-    }
-
-    public useRef(ref: AudioContextRef): void {
+    public useRef(ref: AudioContextRef): Disposable {
         this.suspendContextDebounced.reset();
         this.closeContextDebounced.reset();
         const context = this._context;
@@ -775,6 +761,18 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
                 await this.fallbackDestination?.play();
             });
         }
+
+        return Disposables.fromAction(() => {
+            const hasRefsInUse = this.hasRefsInUse;
+            const backgroundState = AudioInitializer.backgroundState;
+            infoLog?.log('pauseRef:', hasRefsInUse, backgroundState);
+            if (hasRefsInUse)
+                return;
+
+            this.suspendContextDebounced();
+            if (backgroundState === 'BackgroundIdle')
+                this.closeContextDebounced();
+        });
     }
 
     private suspendContextDebounced = debounce(this.suspendContext, SuspendDebounceTimeMs);

@@ -24,13 +24,13 @@ export interface AudioContextRefOptions {
 
 export class AudioContextRef implements AsyncDisposable {
     private readonly name: string;
-    private readonly _whenFirstTimeReady = new PromiseSource<OverridenAudioContext>;
     private readonly whenRunning: Promise<void>;
-    private readonly whenDisposeRequested = new PromiseSource<Cancelled>;
-    private context: OverridenAudioContext;
-    private _isUsed = false;
+    private readonly whenDisposeRequested = new PromiseSource<Cancelled>();
+    private _whenReady = new PromiseSource<OverridenAudioContext>();
+    private context?: OverridenAudioContext = null;
+    private inUse?: Disposable = null;
 
-    public get isUsed(): boolean { return this._isUsed; }
+    public get isUsed(): boolean { return this.inUse != null; }
 
     constructor(
         public readonly source: AudioContextSource,
@@ -43,17 +43,17 @@ export class AudioContextRef implements AsyncDisposable {
 
     async disposeAsync() : Promise<void> {
         debugLog?.log(`${this.name}.disposeAsync`);
-        this._isUsed = false;
+        this.inUse?.dispose();
+        this.inUse = null;
+
         if (!this.whenDisposeRequested.isCompleted())
             this.whenDisposeRequested.resolve(cancelled)
 
-        this._isUsed = false;
-        this.source.pauseRef(this);
         await this.whenRunning;
     }
 
-    public whenFirstTimeReady() {
-        return waitAsync(this._whenFirstTimeReady, this.whenDisposeRequested);
+    public async whenReady(): Promise<void> {
+        await waitAsync(this._whenReady, this.whenDisposeRequested);
     }
 
     public async whenDisposed() {
@@ -61,20 +61,19 @@ export class AudioContextRef implements AsyncDisposable {
     }
 
     public use(whenContextInUse: (audioContext: OverridenAudioContext) => Promise<void>): Disposable & Promise<void> {
-        this._isUsed = true;
         const dispose = () => {
-            if (!this._isUsed)
+            if (!this.isUsed)
                 return;
 
-            this._isUsed = false;
-            this.source.pauseRef(this);
+            this.inUse?.dispose();
+            this.inUse = null;
         };
         const resultPromise = new PromiseSource<void>();
-        this.whenFirstTimeReady()
+        this.whenReady()
             .then(() => {
                 const context = this.context;
-                this.source.useRef(this);
-                return whenContextInUse(context);
+                this.inUse = this.source.useRef(this);
+                return waitAsync(whenContextInUse(context), this.whenDisposeRequested);
             })
             .then(() => resultPromise.resolve(undefined))
             .catch(e => {
@@ -84,12 +83,14 @@ export class AudioContextRef implements AsyncDisposable {
             });
         return {
             [Symbol.toStringTag]: 'Promise',
-            dispose: dispose,
+            dispose: dispose, // Dispose can be called directly without awaiting
             then: (onFulfilled, onRejected) => {
+                // If result is awaited directly, we should dispose it
                 dispose();
                 return resultPromise.then(onFulfilled, onRejected);
             },
             catch: onRejected => {
+                // If result is awaited directly, we should dispose it
                 dispose();
                 return resultPromise.catch(onRejected);
             },
@@ -129,11 +130,12 @@ export class AudioContextRef implements AsyncDisposable {
                     debugLog?.log(`${this.name}: attach, context:`, Log.ref(this.context));
                     await this.options.attach?.(this.context);
                     lastContext = this.context;
-                    this._whenFirstTimeReady.resolve(this.context);
+                    this._whenReady.resolve(this.context);
                 }
 
                 debugLog?.log(`${this.name}: awaiting whenNotReady`);
                 await this.source.whenNotReady(this.context, this.whenDisposeRequested);
+                this._whenReady = new PromiseSource<OverridenAudioContext>();
                 if (!this.source.isActive || this.context.state === 'closed')
                     await this.options.detach?.(this.context);
             }
