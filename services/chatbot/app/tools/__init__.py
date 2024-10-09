@@ -3,7 +3,6 @@ from itertools import takewhile
 
 from typing import Annotated, List, Any, Literal
 from langchain_core.tools import tool
-from langgraph.graph import MessagesState
 from langgraph.prebuilt import InjectedState
 from langchain_core.messages import ToolMessage
 from langchain_core.runnables.config import RunnableConfig
@@ -84,28 +83,15 @@ def search_in_chats(
     # return text_results
     return results
 
-def filter_last_search_results(state: State):
-    # Note:
-    # Messages in the state have different types.
-    # Some of them are Dict type and some objects.
-    # They also have different properties
-    def _read(message, key):
-        try:
-            return getattr(message, key)
-        except:
-            return None
-    for past_message in reversed(state.messages):
-        tool_calls = _read(past_message, "tool_calls")
-        if not tool_calls:
-            continue
-        for tool_invocation in tool_calls:
-            tool_name = _read(tool_invocation, "name")
-            if tool_name != search_in_chats.name:
-                continue
-            tool_invocation_content = _read(past_message, "content")
-            return json.loads(tool_invocation_content) if tool_invocation_content else []
+def get_last_search_results(state: State) -> List[Any]:
+    for message in reversed(state.messages):
+        if isinstance(message, ToolMessage) and message.name==search_in_chats.name:
+            if message.status=="success":
+                state.last_search_result = message.content
+            else:
+                state.last_search_result = ""
 
-    return state.last_search_result or []
+    return json.loads(state.last_search_result) if state.last_search_result else []
 
 @tool(parse_docstring=True)
 def forward_search_results(
@@ -121,16 +107,11 @@ def forward_search_results(
     Args:
         comment: A comment to add along with the search results.
     """
-    last_tool_invocation_results = filter_last_search_results(state)
-    if not last_tool_invocation_results:
+    last_search_results = get_last_search_results(state)
+    if not last_search_results:
         raise Exception("Can not forward last search result. It could be that the last search_in_public_chats tool call was not successfull or returned an empty result.")
 
-    links = []
-    for result in last_tool_invocation_results:
-        link = result.get("link", None)
-        if link is None:
-            continue
-        links.append(link)
+    links = [link for link in map(lambda result: result.get("link", None), last_search_results) if link is not None]
 
     _post(
         _Tools.FORWARD_CHAT_LINKS,

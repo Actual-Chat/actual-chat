@@ -26,8 +26,7 @@ from .state import State
 from .tools import (
     all as all_tools,
     _reply as call_reply,
-    save_tool_results_to_state as update_state,
-    filter_last_search_results
+    save_tool_results_to_state as update_state
 )
 
 MAX_MESSAGES_TO_TRIGGER_SUMMARIZATION = int(os.getenv(
@@ -136,8 +135,7 @@ def create(*,
         delete_messages = [RemoveMessage(id=m.id) for m in state.messages]
         return {
             "summary": response.content,
-            "messages": delete_messages,
-            "last_search_result": filter_last_search_results(state)
+            "messages": delete_messages
         }
 
     def tools_or_final_answer(state: State) -> Literal[Node.Tools, Node.FinalAnswer]:
