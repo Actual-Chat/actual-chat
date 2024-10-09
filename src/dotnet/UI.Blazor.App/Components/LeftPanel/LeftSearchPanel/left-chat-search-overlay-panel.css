@@ -18,7 +18,7 @@
         transform: translateY(-100%);
     }
 }
-.left-chat-search-overlay-panel {
+.left-search-overlay-panel {
     @apply py-2;
     @apply overflow-hidden;
     @apply bg-03;
@@ -42,7 +42,7 @@
     @apply overflow-y-auto;
     @apply custom-scrollbar;
 }
-.left-chat-search-overlay-panel .own-chat-list {
+.left-search-overlay-panel .own-chat-list {
     @apply px-2;
 }
 .left-chat-search-overlay-panel .chat-list .c-header .btn-h {
