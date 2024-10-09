@@ -37,7 +37,8 @@ body.hoverable .navbar-item:hover .chat-message-sending-status {
     @apply hidden;
 }
 
-/*Sending status in attachments*/
-.message-attachments .chat-message-sending-status {
+/*Sending status in attachments and with code markup*/
+.message-attachments .chat-message-sending-status,
+.chat-message-markup:has(.code-block-markup) .chat-message-sending-status {
     @apply -right-1 bottom-0;
 }
