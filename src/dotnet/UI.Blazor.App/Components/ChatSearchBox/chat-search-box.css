@@ -5,39 +5,44 @@
 }
 
 .chat-search-box {
-    @apply hidden;
-    @apply w-full;
+    @apply relative;
+    @apply flex-x;
+    @apply w-10;
     @apply duration-200 delay-200;
     @apply opacity-0;
+    @apply invisible;
     @apply rounded-full;
     @apply overflow-hidden;
-    transform: translateX(-100%);
     transition-behavior: allow-discrete;
-    transition-property: display, opacity, transform, backdrop-filter;
+    transition-property: opacity, width, backdrop-filter, visibility;
 }
 .chat-search-box.show-box {
-    @apply block;
     @apply opacity-100;
-    transform: translateX(0);
+    @apply visible;
+    @apply w-full;
     backdrop-filter: blur(4px);
     @starting-style {
         opacity: 0;
-        transform: translateX(-100%);
+        width: 2.5rem;
+        visibility: hidden;
     }
 }
 .search-box-btn.btn-round {
-    @apply hidden absolute;
+    @apply absolute;
     @apply bg-place-header-search;
     @apply text-place-header-text;
     @apply opacity-0;
+    @apply invisible;
     transition-behavior: allow-discrete;
-    transition-property: display, opacity;
+    transition-property: display, opacity, visibility;
 }
 .search-box-btn.btn-round.hide-box {
     @apply flex;
     @apply opacity-100;
+    @apply visible;
     @starting-style {
         opacity: 0;
+        visibility: hidden;
     }
 }
 
@@ -62,10 +67,6 @@
 .chat-search-box .btn.btn-round .btn-content {
     @apply bg-transparent;
     @apply text-03;
-}
-.chat-search-box label {
-    @apply relative;
-    @apply flex-x;
 }
 .chat-search-box-spinner {
     @apply absolute right-0;
