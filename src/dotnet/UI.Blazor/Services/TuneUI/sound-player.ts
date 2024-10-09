@@ -1,14 +1,15 @@
-import { delayAsync, PromiseSourceWithTimeout } from 'promises';
+import { PromiseSourceWithTimeout } from 'promises';
 import { audioContextSource } from '../../../UI.Blazor.App/Services/audio-context-source';
 import { Log } from 'logging';
+import { AUDIO_PLAY as AP } from '_constants';
 
 const { debugLog, warnLog } = Log.get('SoundsPlayer');
 const DEFAULT_COOLDOWN = 3; // 3s
 
 export class SoundPlayer {
     private readonly buffers = new Map<string, AudioBuffer>();
+    private readonly offlineContext = new OfflineAudioContext(1, 5000 * AP.SAMPLES_PER_MS, AP.SAMPLE_RATE);
     private readonly recentlyPlayedMap = new Map<string, number>;
-    private context?: AudioContext;
 
     public async play(url: string, cooldown?: number): Promise<void> {
         debugLog?.log('-> play', url);
@@ -19,12 +20,13 @@ export class SoundPlayer {
             return; // do not play same sound too often
 
         const contextRef = audioContextSource.getRef('play-tunes', {
-            attach: context => this.onAttach(context),
-            detach: context => this.onDetach(context),
+            attach: () => { },
+            detach: () => { },
         });
-        const context = await contextRef.whenFirstTimeReady();
+        const contextPromise = contextRef.whenFirstTimeReady();
+        const buffer = await this.getSound(url);
+        const context = await contextPromise;
         const contextRefUsage = contextRef.use();
-        const buffer = await this.getSound(context, url);
         if (!context) {
             warnLog?.log('play: failed to play sound: audioContext became unavailable')
             return;
@@ -39,7 +41,6 @@ export class SoundPlayer {
             playTask.setTimeout(5000);
             source.onended = () => playTask.resolve(null);
             await playTask;
-            await delayAsync(500);
         } catch (e) {
             warnLog?.log('play: failed to play sound', url);
         } finally {
@@ -51,19 +52,7 @@ export class SoundPlayer {
         debugLog?.log('<- play', url);
     }
 
-    private async onAttach(context: AudioContext) {
-        if (this.context !== context)
-            this.buffers.clear();
-
-        this.context = context;
-    }
-
-    private onDetach(context: AudioContext) {
-        this.context = null;
-        this.buffers.clear();
-    }
-
-    private async getSound(context: AudioContext, url: string) {
+    private async getSound(url: string): Promise<AudioBuffer> {
         debugLog?.log('-> getSound', url);
         try {
             if (this.buffers.has(url))
@@ -71,11 +60,7 @@ export class SoundPlayer {
 
             const resp = await fetch(url);
             const soundBytes = await resp.arrayBuffer();
-            if (!context) {
-                warnLog?.log('getSound: failed to prepare sound: audioContext became unavailable')
-                return;
-            }
-
+            const context = this.offlineContext;
             const buffer = await context.decodeAudioData(soundBytes);
             this.buffers.set(url, buffer);
             debugLog?.log('<- getSound', url);
