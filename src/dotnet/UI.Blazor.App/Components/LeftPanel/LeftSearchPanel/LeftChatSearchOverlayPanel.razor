@@ -1,0 +1,81 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<LeftChatSearchOverlayPanel.Model>
+@{
+    var m = State.Value;
+    var cls = m.IsOpen ? "open" : "closed";
+}
+
+<RenderIntoStack Name="@LeftPanelContent.Regions.LeftPanelContentOverlay" Key="ChatsSearchResults">
+    <div class="left-search-overlay-panel left-chat-search-overlay-panel @cls">
+        @if (m.EnableIncompleteUI) {
+            <TabPanel
+                @key="@("left-chat-search-panel")"
+                TabsClass="left-panel-tabs wide-left-panel-tabs"
+                BottomHill="true">
+
+                <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
+                    <div class="c-container">
+                        <ChatSearchTab/>
+                    </div>
+                </Tab>
+                <Tab @key="@("ai-search")" Id="ai-search" Title="Search" Order="1">
+                    <div class="c-container">
+                        <RecentlyViewedGroups
+                            Title="Recent searches"
+                            ListKind="@ChatUsageListKind.SearchChats"/>
+                    </div>
+                </Tab>
+                <Tab @key="@("threads")" Id="Threads" Title="Threads" Order="2">
+                    <ToBeDone/>
+                </Tab>
+                <Tab @key="@("tags")" Id="tags" Title="Tags" Order="3">
+                    <ToBeDone/>
+                </Tab>
+                <Tab @key="@("media")" Id="media" Title="Media" Order="4">
+                    <ToBeDone/>
+                </Tab>
+            </TabPanel>
+
+            <div class="ai-btn">
+                <Button Class="btn-primary" Click="@OnAISearchClicked">
+                    <i class="icon-ai-search"></i>
+                    Open AI Search
+                </Button>
+            </div>
+        } else {
+            // TODO: remove when migrated to markup above
+            <div class="c-search-tab c-container">
+                <ChatSearchTab/>
+            </div>
+        }
+    </div>
+</RenderIntoStack>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+
+    private SearchUI SearchUI => Hub.SearchUI;
+    private Features Features => Hub.Features();
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<Model>.Options() {
+                InitialValue = new Model(SearchUI.IsSearchModeOn.ValueOrDefault || SearchUI.IsShowRecentOn.ValueOrDefault, false),
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isOpen = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false)
+                     || await SearchUI.IsShowRecentOn.Use(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        return new Model(isOpen, enableIncompleteUI);
+    }
+
+    private Task OnAISearchClicked()
+        => SearchUI.LaunchAISearch();
+
+    // Nested types
+
+    public sealed record Model(bool IsOpen, bool EnableIncompleteUI);
+}

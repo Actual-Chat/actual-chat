@@ -14,14 +14,7 @@
                     @WidePanelBottomContent
                 </SkeletonWideLeftPanel>
             } else {
-                <div class="left-panel-content">
-                    <LeftPanelContentHeader/>
-                    @if (ScreenSize.IsNarrow()) {
-                        <ReconnectBanner/>
-                    }
-                    <DownloadAppBanner CanBeClosed="true"/>
-                    <NavbarContent/>
-                </div>
+                <LeftPanelContent />
             }
         </ErrorBarrier>
     </div>
@@ -33,7 +26,6 @@
 
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
 
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public bool IsSkeletonWidePanel { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? WidePanelBottomContent { get; set; }

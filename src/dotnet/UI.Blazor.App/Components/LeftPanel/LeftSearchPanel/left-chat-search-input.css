@@ -1,0 +1,80 @@
+.left-chat-search-input {
+    @apply absolute inset-0 z-50 gap-y-0;
+    @apply flex-y gap-y-0;
+    @apply h-14;
+    @apply p-0;
+    @apply bg-transparent;
+    @apply duration-300 delay-0;
+}
+.left-chat-search-input > .c-search {
+    @apply z-20;
+    @apply flex items-center self-end;
+    @apply min-h-14;
+    @apply px-2;
+    @apply bg-transparent;
+    @apply border-b border-separator;
+    @apply duration-300 delay-300;
+    width: calc(100% - 4rem);
+    transition-behavior: allow-discrete;
+    transition-property: width, background-color;
+}
+.left-chat-search-input.open > .c-search {
+    width: 100%;
+    @apply bg-03;
+    @apply delay-0;
+    @starting-style {
+        width: calc(100% - 4rem);
+    }
+}
+.left-chat-search-input .search-input input {
+    @apply px-4;
+}
+.left-chat-search-input .c-ai-btn {
+    @apply absolute right-1 top-1;
+    @apply flex items-center justify-center;
+    @apply w-8 h-8;
+    @apply bg-primary;
+    @apply text-white;
+}
+.left-chat-search-input .c-ai-btn.search-btn {
+    @apply bg-04;
+    @apply text-03;
+}
+.left-chat-search-input.open .c-ai-btn {
+    @apply hidden;
+    @apply opacity-0;
+    @apply duration-300 delay-0;
+    transition-behavior: allow-discrete;
+    transition-property: display, opacity;
+}
+.left-chat-search-input.closed .c-ai-btn {
+    @apply opacity-100;
+    @apply delay-300;
+    @starting-style {
+        opacity: 0;
+    }
+}
+
+.left-chat-search-input .c-close-btn {
+    @apply flex;
+}
+.left-chat-search-input.closed .c-close-btn {
+    @apply hidden;
+    @apply opacity-0;
+    @apply duration-300 delay-0;
+    transition-behavior: allow-discrete;
+    transition-property: display, opacity;
+}
+.left-chat-search-input.open .c-close-btn {
+    @apply opacity-100;
+    @apply delay-300;
+    @starting-style {
+        opacity: 0;
+    }
+}
+body.hoverable .left-chat-search-input .c-ai-btn.btn-round:hover {
+    @apply bg-primary;
+}
+body.hoverable .left-chat-search-input .c-ai-btn.search-btn.btn-round:hover {
+    @apply bg-04;
+}
