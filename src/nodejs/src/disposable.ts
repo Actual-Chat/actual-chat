@@ -8,20 +8,33 @@ export interface AsyncDisposable {
     disposeAsync(): Promise<void>;
 }
 
+export class Disposables {
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    public static readonly None: Disposable = { dispose() { } };
+
+    public static fromAction(dispose: () => void): Disposable {
+        return { dispose };
+    }
+
+    public static fromSubscription(subscription: Subscription): Disposable {
+        return {
+            dispose() {
+                subscription.unsubscribe();
+            }
+        }
+    }
+
+    public static empty(): Disposable {
+        return Disposables.None;
+    }
+}
+
 export function isDisposable<T>(obj: T | Disposable): obj is Disposable {
     return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['dispose'] === 'function';
 }
 
 export function isAsyncDisposable<T>(obj: T | AsyncDisposable): obj is AsyncDisposable {
     return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['disposeAsync'] === 'function';
-}
-
-export function fromSubscription(subscription: Subscription): Disposable {
-    return {
-        dispose() {
-            subscription.unsubscribe();
-        }
-    }
 }
 
 export class DisposableBag implements Disposable {

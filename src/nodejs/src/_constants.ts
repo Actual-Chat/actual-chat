@@ -24,6 +24,7 @@ export const AUDIO_PLAY = {
     BUFFER_TO_PLAY_DURATION: 0.1, // !DELAYER: How much to buffer before we start playing
     BUFFER_LOW_DURATION: 10.0, // Buffer is "low" while it's less than this
     STATE_UPDATE_PERIOD: 0.2, // The period between feeder state update signals
+    MEDIA_SESSION_RESET_DEBOUNCE_MS: 5000, // The period to debounce media session metadata (displays info that Actual Chat is playing at iOS) reset
 }
 
 const ENC_FRAME_DURATION_MS = 20; // 20ms

@@ -66,9 +66,9 @@ export interface AudioContextSource {
 
     updateBackgroundState(state: BackgroundState): Promise<void>;
 
-    useRef(): void;
+    useRef(ref: AudioContextRef): void;
 
-    pauseRef(): void;
+    pauseRef(ref: AudioContextRef): void;
 }
 
 abstract class AudioContextSourceBase implements AudioContextSource {
@@ -147,9 +147,9 @@ abstract class AudioContextSourceBase implements AudioContextSource {
 
     public abstract updateBackgroundState(state: BackgroundState): Promise<void>;
 
-    public abstract useRef(): void;
+    public abstract useRef(ref: AudioContextRef): void;
 
-    public abstract pauseRef(): void;
+    public abstract pauseRef(ref: AudioContextRef): void;
 
     protected async loadContextWorklets(context: AudioContext): Promise<void> {
         try {
@@ -297,9 +297,9 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         // }
     }
 
-    public pauseRef(): void { }
+    public pauseRef(ref: AudioContextRef): void { }
 
-    public useRef(): void {
+    public useRef(ref: AudioContextRef): void {
         if (!this._isActive) {
             this._maintain = this.maintain();
             return;
@@ -752,7 +752,7 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
         }
     }
 
-    public pauseRef(): void {
+    public pauseRef(ref: AudioContextRef): void {
         const hasRefsInUse = this.hasRefsInUse;
         const backgroundState = AudioInitializer.backgroundState;
         infoLog?.log('pauseRef:', hasRefsInUse, backgroundState);
@@ -763,7 +763,7 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
         }
     }
 
-    public useRef(): void {
+    public useRef(ref: AudioContextRef): void {
         this.suspendContextDebounced.reset();
         this.closeContextDebounced.reset();
         const context = this._context;

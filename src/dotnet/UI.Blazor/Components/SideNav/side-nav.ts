@@ -1,7 +1,7 @@
 import { clamp, Vector2D } from 'math';
 import { delayAsync, PromiseSourceWithTimeout, serialize } from 'promises';
 import { DeviceInfo } from 'device-info';
-import { Disposable, DisposableBag, fromSubscription } from 'disposable';
+import { Disposable, DisposableBag, Disposables } from 'disposable';
 import { DocumentEvents, tryPreventDefaultForEvent } from 'event-handling';
 import { fromEvent } from 'rxjs';
 import { Gesture, Gestures } from 'gestures';
@@ -158,7 +158,7 @@ class SideNavPullDetectGesture extends Gesture {
             ? DocumentEvents.capturedActive.touchStart$
             : DocumentEvents.capturedPassive.touchStart$;
 
-        return fromSubscription(touchStartEvent.subscribe(async (event: TouchEvent) => {
+        return Disposables.fromSubscription(touchStartEvent.subscribe(async (event: TouchEvent) => {
             if (ScreenSize.isWide())
                 return;
 
@@ -284,7 +284,7 @@ class SideNavPullDetectGesture extends Gesture {
             }),
             DocumentEvents.capturedPassive.touchMove$.subscribe(e => move(e)),
             chatViewDiv
-                ? fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(_ => this.dispose()))
+                ? Disposables.fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(_ => this.dispose()))
                 : null,
         );
     }
@@ -428,7 +428,7 @@ class SideNavPullGesture extends Gesture {
                         DocumentEvents.active.touchStart$.subscribe(e => endMove(e, true)), // Just in case
                         DocumentEvents.active.touchMove$.subscribe(move),
                         chatViewDiv
-                        ? fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(_ => {
+                        ? Disposables.fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(_ => {
                             // This doesn't work on Safari - i.e. it still drags the chat view while you move:
                             // chatViewDiv.scrollTop = initialChatViewScrollTop;
                             if (Math.abs(chatViewDiv.scrollTop - initialChatViewScrollTop) > MaxChatViewScroll)

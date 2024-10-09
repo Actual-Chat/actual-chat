@@ -23,32 +23,25 @@ export class SoundPlayer {
             attach: () => { },
             detach: () => { },
         });
-        const contextPromise = contextRef.whenFirstTimeReady();
         const buffer = await this.getSound(url);
-        const context = await contextPromise;
-        const contextRefUsage = contextRef.use();
-        if (!context) {
-            warnLog?.log('play: failed to play sound: audioContext became unavailable')
-            return;
-        }
 
-        const source = context.createBufferSource();
-        try {
-            source.buffer = buffer;
-            source.connect(context.destination);
-            source.start();
-            const playTask = new PromiseSourceWithTimeout();
-            playTask.setTimeout(5000);
-            source.onended = () => playTask.resolve(null);
-            await playTask;
-        } catch (e) {
-            warnLog?.log('play: failed to play sound', url);
-        } finally {
-            source.stop();
-            source.disconnect();
-            contextRefUsage.dispose();
-            await contextRef.disposeAsync();
-        }
+        await contextRef.use(async context => {
+            const source = context.createBufferSource();
+            try {
+                source.buffer = buffer;
+                source.connect(context.destination);
+                source.start();
+                const playTask = new PromiseSourceWithTimeout();
+                playTask.setTimeout(5000);
+                source.onended = () => playTask.resolve(null);
+                await playTask;
+            } catch (e) {
+                warnLog?.log('play: failed to play sound', url);
+            } finally {
+                source.stop();
+                source.disconnect();
+            }
+        });
         debugLog?.log('<- play', url);
     }
 

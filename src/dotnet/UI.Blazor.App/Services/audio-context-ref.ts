@@ -1,4 +1,4 @@
-import { AsyncDisposable, Disposable } from 'disposable';
+import { AsyncDisposable, Disposable, Disposables } from 'disposable';
 import {
     cancelled,
     Cancelled,
@@ -31,7 +31,6 @@ export class AudioContextRef implements AsyncDisposable {
     private _isUsed = false;
 
     public get isUsed(): boolean { return this._isUsed; }
-    public get currentContext(): AudioContext { return this.context; }
 
     constructor(
         public readonly source: AudioContextSource,
@@ -49,7 +48,7 @@ export class AudioContextRef implements AsyncDisposable {
             this.whenDisposeRequested.resolve(cancelled)
 
         this._isUsed = false;
-        this.source.pauseRef();
+        this.source.pauseRef(this);
         await this.whenRunning;
     }
 
@@ -61,14 +60,40 @@ export class AudioContextRef implements AsyncDisposable {
         await this.whenRunning;
     }
 
-    public use(): Disposable {
+    public use(whenContextInUse: (audioContext: OverridenAudioContext) => Promise<void>): Disposable & Promise<void> {
         this._isUsed = true;
-        this.source.useRef();
+        const dispose = () => {
+            if (!this._isUsed)
+                return;
+
+            this._isUsed = false;
+            this.source.pauseRef(this);
+        };
+        const resultPromise = new PromiseSource<void>();
+        this.whenFirstTimeReady()
+            .then(() => {
+                const context = this.context;
+                this.source.useRef(this);
+                return whenContextInUse(context);
+            })
+            .then(() => resultPromise.resolve(undefined))
+            .catch(e => {
+                errorLog?.log(`${this.name}.use: error:`, e);
+                dispose();
+                resultPromise.reject(e);
+            });
         return {
-            dispose: () => {
-                this._isUsed = false;
-                this.source.pauseRef();
+            [Symbol.toStringTag]: 'Promise',
+            dispose: dispose,
+            then: (onFulfilled, onRejected) => {
+                dispose();
+                return resultPromise.then(onFulfilled, onRejected);
             },
+            catch: onRejected => {
+                dispose();
+                return resultPromise.catch(onRejected);
+            },
+            finally: resultPromise.finally,
         };
     }
 

@@ -71,7 +71,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     private vadWorkletInstance: AudioWorkletNode = null;
     private vadWorklet: AudioVadWorklet & Disposable = null;
     private contextRef: AudioContextRef = null;
-    private contextRefUsage: Disposable | null = null;
+    private recording?: Disposable = null;
     private onStateChanged?: RecorderStateChanged;
     private isRecording: boolean = false;
     private isConnected: boolean = false;
@@ -371,29 +371,25 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
         this.state = 'recording';
         const contextRef = this.contextRef;
-        this.contextRefUsage = contextRef.use();
-        try {
-            debugLog?.log(`start(): awaiting whenFirstTimeReady...`);
-            await contextRef.whenFirstTimeReady();
+        this.recording = contextRef.use(async context => {
+            try {
+                debugLog?.log(`start(): awaiting encoder worker start, worklet start and vad worker reset ...`);
+                await Promise.all([
+                    this.encoderWorker.start(chatId, repliedChatEntryId),
+                    this.vadWorker.reset(),
+                    this.encoderWorklet.start(rpcNoWait)
+                ]);
 
+                await this.startMicrophoneStream(context);
+            }
+            catch (e) {
+                this.state = 'stopped';
+                await this.stopMicrophoneStream();
+                throw e;
+            }
+            debugLog?.log('<- start()');
+        });
 
-            debugLog?.log(`start(): awaiting encoder worker start, worklet start and vad worker reset ...`);
-            await Promise.all([
-                this.encoderWorker.start(chatId, repliedChatEntryId),
-                this.vadWorker.reset(),
-                this.encoderWorklet.start(rpcNoWait)
-            ]);
-
-            await this.startMicrophoneStream(contextRef.currentContext);
-        }
-        catch (e) {
-            this.state = 'stopped';
-            await this.stopMicrophoneStream();
-            this.contextRefUsage?.dispose();
-            this.contextRefUsage = null;
-            throw e;
-        }
-        debugLog?.log('<- start()');
     }
 
     public setSessionToken(sessionToken: string): void {
@@ -430,8 +426,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
             await this.encoderWorker?.stop();
         }
         finally {
-            this.contextRefUsage?.dispose();
-            this.contextRefUsage = null;
+            this.recording?.dispose();
+            this.recording = null;
             debugLog?.log(`<- stop()`);
         }
     }
@@ -439,8 +435,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
     public async terminate(): Promise<void> {
         await this.encoderWorker?.stop();
         await this.vadWorker?.reset();
-        this.contextRefUsage?.dispose();
-        this.contextRefUsage = null;
+        this.recording?.dispose();
+        this.recording = null;
         this.contextRef = null;
         this.encoderWorkerInstance.terminate();
         this.vadWorkerInstance.terminate();
