@@ -98,12 +98,14 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         PlaceId.Value = NavbarUI.IsPlaceSelected(out var placeId) ? placeId : ActualChat.PlaceId.None;
     }
 
-    public void Select(FoundItem foundItem)
+    public Task Select(FoundItem foundItem, bool mustNavigate = false)
     {
-        if (_cached.TrySelect(foundItem)) {
-            _isResultsNavigationOn.Value = true;
-            _selectedItem.Invalidate();
-        }
+        if (!_cached.TrySelect(foundItem))
+            return Task.CompletedTask;
+
+        _isResultsNavigationOn.Value = true;
+        _selectedItem.Invalidate();
+        return mustNavigate ? NavigateTo(foundItem) : Task.CompletedTask;
     }
 
     public Task SelectPrevious()
