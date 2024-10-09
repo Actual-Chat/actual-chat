@@ -28,7 +28,7 @@
     overflow-anchor: none;
 }
 body.narrow .virtual-list > .c-end-anchor {
-    @apply portrait:min-h-12 landscape:min-h-0;
+    @apply min-h-12;
 }
 
 .virtual-list > .c-spacer-end {
