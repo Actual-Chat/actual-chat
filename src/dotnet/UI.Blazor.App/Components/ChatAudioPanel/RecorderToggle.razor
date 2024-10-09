@@ -1,13 +1,14 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<RecorderToggle.Model>
 @{
     var m = State.Value;
     _animator.State = m.IsRecordingHere;
-    var animatorClass = "record-" + _animator.Class;
     var language = m.Language;
+    var hasMicrophonePermission = m.HasMicrophonePermission != false;
+    var animatorClass = "record-" + _animator.Class;
     var transitioningClass = m.IsTransitioning || m is { IsRecordingHere: true, IsConnected: false } ? "applying-changes" : "";
+    var permissionClass = hasMicrophonePermission ? "" : "mic-disabled";
     var (showStatus, statusText, autoHide) = (m.IsRecordingHere, m.IsMicrophoneCaptured, m.IsConnected) switch {
         (false, _, _) => (false, "", false),
         (_, false, _) => (true, "Starting recording...", false),
@@ -30,66 +31,61 @@
         recBtnCls += "record-off-btn";
     var tooltip = m.IsRecordingHere ? "Stop recording" : "Start recording";
     var mustKeepAwake = !m.IsRecordingHere;
-}
-
-@if (ReferenceEquals(m, Model.Loading) && ScreenSize.IsNarrow()) {
-    <div class="recorder-btn-skeleton"></div>
-} else {
-    @if (m.HasMicrophonePermission != false) {
-        @if (showStatus) {
-            <div class="narrow-recorder-tooltip">
-                <div class="c-tooltip-text">@statusText</div>
-                <div class="c-tooltip-arrow"></div>
-            </div>
-        }
-
-        <div class="recorder-wrapper @animatorClass @transitioningClass" data-tooltip="@tooltipText" data-tooltip-position="@(tooltipPosition.ToPositionString())">
-            @if (showStatus) {
-                <div class="c-tooltip">
-                    <div class="c-tooltip-text">@statusText</div>
-                    <div class="c-tooltip-arrow"></div>
-                </div>
-            }
-            <ButtonRound
-                Class="@recBtnCls"
-                Click="@OnClick"
-                MustKeepAwake="@mustKeepAwake"
-                Tooltip="@tooltip"
-                TooltipPosition="FloatingPosition.Top"
-                @onmouseup="@OnPointerUp"
-                @ontouchend="@OnPointerUp"
-                @ontouchcancel="@OnPointerUp"
-                @oncontextmenu="@OnContextMenu"
-                data-context-menu-delay="200">
-
-                @* Icon for OFF state *@
-                <div class="rec-icon off">
-                    <i class="icon-recorder-left-half left"></i>
-                    <i class="icon-recorder-right-half right"></i>
-                </div>
-
-                @* Icon for narrow-panel and text-mode *@
-                <narrow-recording-svg
-                    isRecording="@m.IsRecordingHere"
-                    class="rec-icon on text-mode-on"/>
-
-                @* Icon for ON state *@
-                <active-recording-svg
-                    size="@recordingIconSize"
-                    isRecording="@m.IsRecordingHere"
-                    class="rec-icon on text-mode-off"/>
-            </ButtonRound>
-        </div>
-    } else {
-        <div class="recorder-wrapper mic-disabled">
-            <ButtonRound
-                Class="mic-disabled"
-                Click="@OnClick">
-                <i class="icon-mic-off"></i>
-            </ButtonRound>
-        </div>
+    if (!hasMicrophonePermission) {
+        recBtnCls = "mic-disabled";
+        animatorClass = "";
+        transitioningClass = "";
     }
 }
+
+@if (showStatus) {
+    <div class="narrow-recorder-tooltip">
+        <div class="c-tooltip-text">@statusText</div>
+        <div class="c-tooltip-arrow"></div>
+    </div>
+}
+
+<div class="recorder-wrapper @permissionClass @animatorClass @transitioningClass" data-tooltip="@tooltipText" data-tooltip-position="@(tooltipPosition.ToPositionString())">
+    @if (showStatus) {
+        <div class="c-tooltip">
+            <div class="c-tooltip-text">@statusText</div>
+            <div class="c-tooltip-arrow"></div>
+        </div>
+    }
+    <ButtonRound
+        Class="@recBtnCls"
+        Click="@OnClick"
+        MustKeepAwake="@mustKeepAwake"
+        Tooltip="@tooltip"
+        TooltipPosition="FloatingPosition.Top"
+        @onmouseup="@OnPointerUp"
+        @ontouchend="@OnPointerUp"
+        @ontouchcancel="@OnPointerUp"
+        @oncontextmenu="@OnContextMenu"
+        data-context-menu-delay="200">
+
+        @if (hasMicrophonePermission) {
+            @* Icon for OFF state *@
+            <div class="rec-icon off">
+                <i class="icon-recorder-left-half left"></i>
+                <i class="icon-recorder-right-half right"></i>
+            </div>
+
+            @* Icon for narrow-panel and text-mode *@
+            <narrow-recording-svg
+                isRecording="@m.IsRecordingHere"
+                class="rec-icon on text-mode-on"/>
+
+            @* Icon for ON state *@
+            <active-recording-svg
+                size="@recordingIconSize"
+                isRecording="@m.IsRecordingHere"
+                class="rec-icon on text-mode-off"/>
+        } else {
+            <i class="icon-mic-off"></i>
+        }
+    </ButtonRound>
+</div>
 
 @code {
     private static readonly string JSInitMethod = $"{BlazorUIAppModule.ImportName}.RecorderToggle.init";
