@@ -7,8 +7,6 @@ using MemoryPack;
 
 namespace ActualChat.Users.Flows;
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class MasterFlow : Flow
 {

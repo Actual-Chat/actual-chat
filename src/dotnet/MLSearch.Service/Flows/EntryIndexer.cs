@@ -1,35 +1,28 @@
 using ActualChat.Chat;
-using ActualChat.MLSearch.ApiAdapters.ShardWorker;
-using ActualChat.MLSearch.Documents;
+using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
+using ActualChat.MLSearch.Indexing;
+using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.Queues;
 using ActualChat.Search;
-using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
 
-namespace ActualChat.MLSearch.Indexing.ChatContent;
+namespace ActualChat.MLSearch.Flows;
 
-// TODO: remove cause it's replaced with EntryIndexingFlow
-internal sealed class ChatEntryIndexWorker(
-    IChatContentUpdateLoader updateLoader,
-    ICursorStates<ChatEntryCursor> cursorStates,
+// TODO: move to Indexing folder
+internal sealed class EntryIndexer(
     IChatsBackend chatsBackend,
     IPlacesBackend placesBackend,
-    ISink<IndexedChat, ChatId> chatSink,
-    ISink<IndexedEntry, TextEntryId> sink,
+    IChatContentUpdateLoader updateLoader,
+    ICursorStates<ChatEntryCursor> cursorStates,
+    IndexedDocuments indexedDocuments,
     IQueues queues,
-    MomentClockSet clocks
-) :  IWorker<MLSearch_TriggerChatIndexing>
+    MomentClockSet clocks)
 {
     private const int BatchSize = 100;
     private const int Quota = 1_000;
 
-    public async Task ExecuteAsync(MLSearch_TriggerChatIndexing job, CancellationToken cancellationToken)
+    public async Task Index(ChatId chatId, CancellationToken cancellationToken)
     {
-        var (chatId, indexingKind) = job;
-        if (indexingKind != IndexingKind.ChatEntries)
-            return;
-
-        // ensures chat info is created
-        if (!await IndexChat(chatId, cancellationToken).ConfigureAwait(false))
+        if (!await EnsureChatInfoIndexed(chatId, cancellationToken).ConfigureAwait(false))
             return;
 
         var cursor = await cursorStates.LoadAsync(chatId, cancellationToken).ConfigureAwait(false)
@@ -45,23 +38,16 @@ internal sealed class ChatEntryIndexWorker(
         await foreach (var batch in batches) {
             var updated = batch.Where(x => !x.IsRemoved).Select(x => x.ToIndexedEntry()).ToList();
             var removed = batch.Where(x => x.IsRemoved).Select(x => x.Id.AsTextEntryId()).ToList();
-            await sink.ExecuteAsync(updated, removed, cancellationToken).ConfigureAwait(false);
+            await indexedDocuments.Update(x => x.EntryIndexName, updated, removed, cancellationToken).ConfigureAwait(false);
             var newCursor = new ChatEntryCursor(batch[^1]);
             await cursorStates.SaveAsync(chatId, newCursor, cancellationToken).ConfigureAwait(false);
             handledCount += batch.Count;
         }
         if (handledCount > 0)
             await queues.Enqueue(new SearchBackend_Refresh(RefreshEntries: true), cancellationToken).ConfigureAwait(false);
-
-        if (handledCount < Quota) {
-            var completionNotification = new MLSearch_TriggerChatIndexingCompletion(chatId);
-            await queues.Enqueue(completionNotification, cancellationToken).ConfigureAwait(false);
-        }
-        else
-            await queues.Enqueue(job, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<bool> IndexChat(ChatId chatId, CancellationToken cancellationToken)
+    private async Task<bool> EnsureChatInfoIndexed(ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await chatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null)
@@ -75,7 +61,7 @@ internal sealed class ChatEntryIndexWorker(
         }
 
         var indexedChat = chat.ToIndexedChat(place);
-        await chatSink.ExecuteAsync([indexedChat], [], cancellationToken).ConfigureAwait(false);
+        await indexedDocuments.Update([indexedChat], cancellationToken).ConfigureAwait(false);
         return true;
     }
 }

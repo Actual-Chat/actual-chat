@@ -153,10 +153,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // Note: This is correct. ChatInfo  must be indexed into the same index as ChatSlice and ChatEntry for Join field to work
         services.AddSingleton<ISink<ChatInfo, string>>(
             static c => c.CreateInstance<SemanticIndexSink<ChatInfo>>(OpenSearchNames.ChatContent));
-        services.AddSingleton<ISink<IndexedEntry, TextEntryId>>(
-            static c => c.CreateInstance<IndexSink<IndexedEntry, TextEntryId>>(c.GetRequiredService<OpenSearchNames>().EntryIndexName));
-        services.AddSingleton<ISink<IndexedChat, ChatId>>(
-            static c => c.CreateInstance<IndexSink<IndexedChat, ChatId>>(c.GetRequiredService<OpenSearchNames>().EntryIndexName));
 
         // Workers
         services.AddSingleton<IChatContentIndexWorker>(
