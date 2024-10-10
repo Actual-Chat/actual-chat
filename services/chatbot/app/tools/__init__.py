@@ -90,6 +90,7 @@ def get_last_search_results(state: State) -> List[Any]:
                 state.last_search_result = message.content
             else:
                 state.last_search_result = ""
+            break
 
     return json.loads(state.last_search_result) if state.last_search_result else []
 
