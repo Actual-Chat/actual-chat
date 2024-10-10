@@ -1,4 +1,4 @@
-import { PromiseSourceWithTimeout } from 'promises';
+import { PromiseSource, PromiseSourceWithTimeout } from 'promises';
 import { audioContextSource } from '../../../UI.Blazor.App/Services/audio-context-source';
 import { Log } from 'logging';
 import { AUDIO_PLAY as AP } from '_constants';
@@ -25,8 +25,8 @@ export class SoundPlayer {
         });
         try {
             const buffer = await this.getSound(url);
-
-            await contextRef.use(async context => {
+            const whilePlaying = new PromiseSource<void>();
+            const playing = contextRef.use(async context => {
                 const source = context.createBufferSource();
                 try {
                     source.buffer = buffer;
@@ -39,10 +39,13 @@ export class SoundPlayer {
                 } catch (e) {
                     warnLog?.log('play: failed to play sound', url);
                 } finally {
+                    whilePlaying.resolve(undefined);
                     source.stop();
                     source.disconnect();
                 }
             });
+            await whilePlaying;
+            playing.dispose();
         }
         finally {
             await contextRef.disposeAsync();

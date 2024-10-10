@@ -287,8 +287,8 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         public bool? IsPlayerInitialized { get; init; }
         public bool? IsRecorderInitialized { get; init; }
         public bool? HasMicrophonePermission { get; init; }
-        public bool? IsAudioContextSourceActive { get; init; }
-        public bool? IsAudioContextActive { get; init; }
+        public bool? IsAudioContextSourceMaintained { get; init; }
+        public bool? IsAudioContextRunning { get; init; }
         public bool? HasMicrophoneStream { get; init; }
         public bool? IsVadActive { get; init; }
         public VadEvent? LastVadEvent { get; init; }
@@ -301,7 +301,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         public long? LastEncoderWorkletFrameProcessedAt { get; init; }
 
         public override string ToString()
-            => $"{nameof(AudioDiagnosticsState)} {{ {nameof(IsPlayerInitialized)}: {IsPlayerInitialized}, {nameof(IsRecorderInitialized)}: {IsRecorderInitialized}, {nameof(HasMicrophonePermission)}: {HasMicrophonePermission}, {nameof(IsAudioContextSourceActive)}: {IsAudioContextSourceActive}, {nameof(IsAudioContextActive)}: {IsAudioContextActive}, {nameof(HasMicrophoneStream)}: {HasMicrophoneStream}, {nameof(IsVadActive)}: {IsVadActive}, {nameof(LastVadEvent)}: {LastVadEvent}, {nameof(LastVadFrameProcessedAt)}: {LastVadFrameProcessedAt}, {nameof(IsConnected)}: {IsConnected}, {nameof(LastFrameProcessedAt)}: {LastFrameProcessedAt}, {nameof(VadWorkletState)}: {VadWorkletState}, {nameof(LastVadWorkletFrameProcessedAt)}: {LastVadWorkletFrameProcessedAt}, {nameof(EncoderWorkletState)}: {EncoderWorkletState}, {nameof(LastEncoderWorkletFrameProcessedAt)}: {LastEncoderWorkletFrameProcessedAt} }}";
+            => $"{nameof(AudioDiagnosticsState)} {{ {nameof(IsPlayerInitialized)}: {IsPlayerInitialized}, {nameof(IsRecorderInitialized)}: {IsRecorderInitialized}, {nameof(HasMicrophonePermission)}: {HasMicrophonePermission}, {nameof(IsAudioContextSourceMaintained)}: {IsAudioContextSourceMaintained}, {nameof(IsAudioContextRunning)}: {IsAudioContextRunning}, {nameof(HasMicrophoneStream)}: {HasMicrophoneStream}, {nameof(IsVadActive)}: {IsVadActive}, {nameof(LastVadEvent)}: {LastVadEvent}, {nameof(LastVadFrameProcessedAt)}: {LastVadFrameProcessedAt}, {nameof(IsConnected)}: {IsConnected}, {nameof(LastFrameProcessedAt)}: {LastFrameProcessedAt}, {nameof(VadWorkletState)}: {VadWorkletState}, {nameof(LastVadWorkletFrameProcessedAt)}: {LastVadWorkletFrameProcessedAt}, {nameof(EncoderWorkletState)}: {EncoderWorkletState}, {nameof(LastEncoderWorkletFrameProcessedAt)}: {LastEncoderWorkletFrameProcessedAt} }}";
     }
 
     public class VadEvent

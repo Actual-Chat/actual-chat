@@ -196,7 +196,7 @@ export class AudioPlayer implements Resettable {
             return;
 
         // debugLog?.log(`#${this.internalId}.frame, ${bytes.length} byte(s)`);
-        await this.contextRef.whenReady();
+        await AudioPlayer.whenInitialized;
 
         void decoderWorker.frame(
             this.internalId,
@@ -212,7 +212,7 @@ export class AudioPlayer implements Resettable {
             return;
 
         debugLog?.log(`#${this.internalId}.end, mustAbort:`, mustAbort);
-        await this.contextRef.whenReady();
+        await AudioPlayer.whenInitialized;
 
         // This ensures 'end' hit the feeder processor which in turn sends feeder status back and resolves this.whenEnded
         await decoderWorker.end(this.internalId, mustAbort);
@@ -225,8 +225,8 @@ export class AudioPlayer implements Resettable {
             return;
 
         debugLog?.log(`#${this.internalId}.pause`);
-        await this.contextRef.whenReady();
-        await this.feederNode.pause(rpcNoWait);
+        await AudioPlayer.whenInitialized;
+        await this.feederNode?.pause(rpcNoWait);
         this.playing?.dispose();
         this.playing = null;
         this.playbackState = 'paused';

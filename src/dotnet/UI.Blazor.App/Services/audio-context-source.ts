@@ -4,7 +4,6 @@ import {
     debounce,
     delayAsync,
     PromiseSource,
-    PromiseSourceWithTimeout,
     ResolvedPromise,
     waitAsync,
 } from 'promises';
@@ -46,16 +45,15 @@ export type OverridenAudioContext = AudioContext & {
 };
 
 export interface AudioContextSource {
-    get context(): AudioContext;
-
-    get refCount(): number;
-
-    get isActive(): boolean;
+    get isMaintained(): boolean;
+    get isContextRunning(): boolean;
 
     contextCreated$: Observable<AudioContext>;
     contextClosed$: Observable<AudioContext>;
 
     getRef(operationName: string, options: AudioContextRefOptions): AudioContextRef;
+
+    useRef(ref: AudioContextRef): Disposable;
 
     whenReady(cancel?: Promise<Cancelled>): Promise<AudioContext>;
 
@@ -66,8 +64,6 @@ export interface AudioContextSource {
     reset(): Promise<void>;
 
     updateBackgroundState(state: BackgroundState): Promise<void>;
-
-    useRef(ref: AudioContextRef): Disposable;
 }
 
 abstract class AudioContextSourceBase implements AudioContextSource {
@@ -84,9 +80,8 @@ abstract class AudioContextSourceBase implements AudioContextSource {
     public readonly contextClosed$: Observable<AudioContext> = this._contextClosed$.asObservable();
 
     // Key properties
-    public get context(): OverridenAudioContext { return this._context; }
-    public get refCount(): number { return this._refCount }
-    public abstract get isActive(): boolean;
+    public get isContextRunning(): boolean { return this._context && this._context.state === 'running'; }
+    public abstract get isMaintained(): boolean;
 
     public get hasRefsInUse(): boolean {
         for (let [_, refs] of this.refs) {
@@ -236,7 +231,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
     private _whenNotReady = new PromiseSource<void>();
 
     // Key properties
-    public get isActive(): boolean { return this._isActive }
+    public get isMaintained(): boolean { return this._isActive }
 
     public constructor(purpose: AudioContextPurpose) {
         super(purpose);
@@ -281,17 +276,17 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
 
     public async updateBackgroundState(state: BackgroundState): Promise<void> {
         debugLog?.log(`updateBackgroundState:`, state, this._isActive);
-        // if (state === 'BackgroundIdle') {
-        //     this._isActive = false;
-        //     this.markNotReady();
-        //     return;
-        // }
-        //
-        // if (!this._isActive) {
-        //     if (this._maintain)
-        //         await this._maintain;
-        //     this._maintain = this.maintain();
-        // }
+        if (state === 'BackgroundIdle') {
+            this._isActive = false;
+            this.markNotReady();
+            return;
+        }
+
+        if (!this._isActive) {
+            if (this._maintain)
+                await this._maintain;
+            this._maintain = this.maintain();
+        }
     }
 
     public useRef(ref: AudioContextRef): Disposable {
@@ -348,12 +343,12 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
     }
 
     public break() {
-        if (!this.context) {
+        if (!this._context) {
             warnLog?.log(`break: no AudioContext, so nothing to break`);
             return;
         }
 
-        this.context[Debug.brokenKey] = true;
+        this._context[Debug.brokenKey] = true;
         warnLog?.log(`break: done`);
     }
 
@@ -705,7 +700,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
 class MauiAudioContextSource extends AudioContextSourceBase implements AudioContextSource {
     private whileBackgroundIdle: PromiseSource<void> | null = null;
 
-    get isActive(): boolean { return true; }
+    get isMaintained(): boolean { return true; }
 
     public constructor(purpose: AudioContextPurpose) {
         super(purpose);

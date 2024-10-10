@@ -52,15 +52,11 @@ export class AudioContextRef implements AsyncDisposable {
         await this.whenRunning;
     }
 
-    public async whenReady(): Promise<void> {
-        await waitAsync(this._whenReady, this.whenDisposeRequested);
-    }
-
     public async whenDisposed(): Promise<void> {
         await this.whenRunning;
     }
 
-    public use(whenContextInUse: (audioContext: OverridenAudioContext) => Promise<void>): Disposable & Promise<void> {
+    public use(whenContextInUse: (audioContext: OverridenAudioContext) => Promise<void>): Disposable {
         const dispose = () => {
             debugLog?.log(`${this.name}.use.dispose()`);
             if (!this.isUsed)
@@ -69,35 +65,17 @@ export class AudioContextRef implements AsyncDisposable {
             this.inUse?.dispose();
             this.inUse = null;
         };
-        const resultPromise = new PromiseSource<void>();
-        this.whenReady()
-            .then(() => {
-                const context = this.context;
+        waitAsync(this._whenReady, this.whenDisposeRequested)
+            .then(context => {
                 this.inUse = this.source.useRef(this);
                 return waitAsync(whenContextInUse(context), this.whenDisposeRequested);
             })
-            .then(() => resultPromise.resolve(undefined))
             .catch(e => {
                 errorLog?.log(`${this.name}.use: error:`, e);
                 dispose();
-                resultPromise.reject(e);
             });
         return {
-            [Symbol.toStringTag]: 'Promise',
-            dispose: dispose, // Dispose can be called directly without awaiting
-            then: (onFulfilled, onRejected) => {
-                // If result is awaited directly, we should dispose it
-                return resultPromise
-                    .then(() => dispose(), reason => { dispose(); throw reason; })
-                    .then(onFulfilled, onRejected);
-            },
-            catch: onRejected => {
-                // If result is awaited directly, we should dispose it
-                return resultPromise
-                    .catch(reason => { dispose(); throw reason; })
-                    .catch(onRejected);
-            },
-            finally: resultPromise.finally,
+            dispose: dispose,
         };
     }
 
@@ -108,8 +86,9 @@ export class AudioContextRef implements AsyncDisposable {
         await nextTickAsync();
 
         let lastContext: AudioContext = null;
-        try {
-            while (!this.whenDisposeRequested.isCompleted()) {
+
+        while (!this.whenDisposeRequested.isCompleted()) {
+            try {
                 debugLog?.log(`${this.name}: awaiting whenReady`);
                 const whenContextClosed = firstValueFrom(this.source.contextClosed$);
                 const context = await Promise.race([this.source.whenReady(this.whenDisposeRequested), whenContextClosed]);
@@ -139,19 +118,20 @@ export class AudioContextRef implements AsyncDisposable {
                 debugLog?.log(`${this.name}: awaiting whenNotReady`);
                 await this.source.whenNotReady(this.context, this.whenDisposeRequested);
                 this._whenReady = new PromiseSource<OverridenAudioContext>();
-                if (!this.source.isActive || this.context.state === 'closed')
+                if (this.context.state === 'closed')
                     await this.options.detach?.(this.context);
             }
-        }
-        catch (e) {
-            const mustReport = !((e instanceof OperationCancelledError) && this.whenDisposeRequested.isCompleted());
-            if (mustReport)
-                errorLog?.log(`${this.name}.maintain: error:`, e);
+            catch (e) {
+                const isDisposeRequested = ((e instanceof OperationCancelledError) && this.whenDisposeRequested.isCompleted());
+                if (!isDisposeRequested) {
+                    errorLog?.log(`${this.name}.maintain: error:`, e);
+                    await this.options.detach?.(lastContext);
+                    lastContext = null;
+                }
+            }
         }
 
         debugLog?.log(`${this.name}.maintain: shutting down...`);
-        if (!this.whenDisposeRequested.isCompleted())
-            this.whenDisposeRequested.resolve(cancelled); // Just for the consistency
 
         try {
             if (lastContext) {

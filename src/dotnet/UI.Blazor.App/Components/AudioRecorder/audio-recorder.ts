@@ -15,8 +15,8 @@ export class AudioDiagnosticsState {
     public isPlayerInitialized?: boolean = null;
     public isRecorderInitialized?: boolean = null;
     public hasMicrophonePermission?: boolean = null;
-    public isAudioContextSourceActive?: boolean = null;
-    public isAudioContextActive?: boolean = null;
+    public isAudioContextSourceMaintained?: boolean = null;
+    public isAudioContextRunning?: boolean = null;
     public hasMicrophoneStream?: boolean = null;
     public isVadActive?: boolean = null;
     public lastVadEvent?: VoiceActivityChange = null;
@@ -203,8 +203,8 @@ export class AudioRecorder {
         if (!isMaui)
             diagnosticsState.hasMicrophonePermission = hasMicrophone && hasPermission;
 
-        diagnosticsState.isAudioContextSourceActive = recordingAudioContextSource.isActive;
-        diagnosticsState.isAudioContextActive = recordingAudioContextSource.context && recordingAudioContextSource.context.state === 'running';
+        diagnosticsState.isAudioContextSourceMaintained = recordingAudioContextSource.isMaintained;
+        diagnosticsState.isAudioContextRunning = recordingAudioContextSource.isContextRunning;
         warnLog?.log('runDiagnostics: ', diagnosticsState);
         return await opusMediaRecorder.runDiagnostics(diagnosticsState);
     }
