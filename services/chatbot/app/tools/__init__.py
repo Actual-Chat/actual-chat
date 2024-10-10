@@ -1,28 +1,38 @@
-from typing import Annotated
-from typing import List, Any
+from enum import StrEnum, auto
+from itertools import takewhile
+
+from typing import Annotated, List, Any, Literal
 from langchain_core.tools import tool
-from langgraph.graph import MessagesState
 from langgraph.prebuilt import InjectedState
+from langchain_core.messages import ToolMessage
 from langchain_core.runnables.config import RunnableConfig
-from datetime import date as _date
-from datetime import datetime
+from langchain_core.language_models.chat_models import BaseChatModel
+
+
 import requests
 import json
 
+import sys
+sys.path.insert(1, '/app/services/chatbot')
+
+from app.state import State
+from app.tools.resolver import SearchTypeResolver
+
 TOOLS_AUTH_FORWARD_CONTEXT = "forward-auth-context"
+
+class ToolNames(StrEnum):
+    ResolveSearchType = auto()
 
 class _Tools(object):
     REPLY = None
     FORWARD_CHAT_LINKS = None
-    SEARCH_PUBLIC_CHATS = None
-    SEARCH_MY_CHATS = None
+    SEARCH_IN_CHATS = None
 
     @classmethod
     def init(cls, *, base_url):
         cls.REPLY = base_url + "/api/bot/conversation/reply"
         cls.FORWARD_CHAT_LINKS = base_url + "/api/bot/conversation/forward-chat-links"
-        cls.SEARCH_PUBLIC_CHATS = base_url + "/api/bot/search/public-chats"
-        cls.SEARCH_MY_CHATS = base_url + "/api/bot/search/my-chats"
+        cls.SEARCH_IN_CHATS = base_url + "/api/bot/search/chats"
 
 @tool(parse_docstring=True)
 def reply(
@@ -43,22 +53,27 @@ def reply(
     return
 
 @tool(parse_docstring=True)
-def search_in_public_chats(
+def search_in_chats(
     text: str,
+    search_type: Literal["PUBLIC", "PRIVATE", "GENERAL"],
     config: RunnableConfig
 ) -> List[Any]:
     """Search in all public chats.
 
     Args:
         text: Text to search for.
+        search_type: Identifies type of the search to run. Possible values are PUBLIC, PRIVATE, or GENERAL
 
     Returns:
         List: ranked search results.
     """
+    # search_type_value = "Public" if search_type=="PUBLIC" else "Private" if search_type=="PRIVATE" else "General"
+    search_type_value = 1 if search_type=="PUBLIC" else 2 if search_type=="PRIVATE" else 3
     results = _post(
-        _Tools.SEARCH_PUBLIC_CHATS,
+        _Tools.SEARCH_IN_CHATS,
         {
-            "text": text
+            "text": text,
+            "searchType": search_type_value
         },
         config
     )
@@ -68,77 +83,21 @@ def search_in_public_chats(
     # return text_results
     return results
 
-@tool(parse_docstring=True)
-def search_in_my_chats(
-    text: str,
-    config: RunnableConfig
-) -> List[Any]:
-    """Search in private chats or, in other words, the chats user calls my chats.
+def get_last_search_results(state: State) -> List[Any]:
+    for message in reversed(state.messages):
+        if isinstance(message, ToolMessage) and message.name==search_in_chats.name:
+            if message.status=="success":
+                state.last_search_result = message.content
+            else:
+                state.last_search_result = ""
+            break
 
-    Args:
-        text: Text to search for.
-
-    Returns:
-        List: ranked search results.
-    """
-    results = _post(
-        _Tools.SEARCH_MY_CHATS,
-        {
-            "text": text
-        },
-        config
-    )
-
-    # Note: For some reason if results are formatted into a plain text
-    # the agent doesn't want to send relevand search results to the user.
-    # return text_results
-    return results
-
-def filter_last_search_in_public_chats_results(state):
-    # Note:
-    # Messages in the state have different types.
-    # Some of them are Dict type and some objects.
-    # They also have different properties
-    def _read(message, key):
-        try:
-            return getattr(message, key)
-        except:
-            pass
-        try:
-            return message[key]
-        except:
-            return None
-    last_tool_invocation_id = None
-    last_tool_invocation_results = state.get("last_search_result", [])
-    for past_message in state["messages"]:
-        tool_calls = _read(past_message, "tool_calls")
-        if not tool_calls:
-            continue
-        for tool_invocation in tool_calls:
-            tool_name = _read(tool_invocation, "name")
-            if tool_name != search_in_public_chats.name:
-                continue
-            last_tool_invocation_id = tool_invocation["id"]
-    if not last_tool_invocation_id:
-        return last_tool_invocation_results
-    for past_message in state["messages"]:
-        tool_call_id = _read(past_message, "tool_call_id")
-        if tool_call_id != last_tool_invocation_id:
-            continue
-        last_tool_invocation_results = _read(past_message, "content")
-        break
-    # Note: Apparently tool invocation results are serialized into strings.
-    # And it seems to be a correctly serialized json object.
-    if last_tool_invocation_results is not None:
-        last_tool_invocation_results = json.loads(last_tool_invocation_results)
-    else:
-        last_tool_invocation_results = []
-    return last_tool_invocation_results
+    return json.loads(state.last_search_result) if state.last_search_result else []
 
 @tool(parse_docstring=True)
 def forward_search_results(
     comment: str,
-    state: Annotated[MessagesState, InjectedState],
+    state: Annotated[State, InjectedState],
     config: RunnableConfig
 ):
     """
@@ -149,16 +108,11 @@ def forward_search_results(
     Args:
         comment: A comment to add along with the search results.
     """
-    last_tool_invocation_results = filter_last_search_in_public_chats_results(state)
-    if not last_tool_invocation_results:
+    last_search_results = get_last_search_results(state)
+    if not last_search_results:
         raise Exception("Can not forward last search result. It could be that the last search_in_public_chats tool call was not successfull or returned an empty result.")
 
-    links = []
-    for result in last_tool_invocation_results:
-        link = result.get("link", None)
-        if link is None:
-            continue
-        links.append(link)
+    links = [link for link in map(lambda result: result.get("link", None), last_search_results) if link is not None]
 
     _post(
         _Tools.FORWARD_CHAT_LINKS,
@@ -169,6 +123,21 @@ def forward_search_results(
         config
     )
     return
+
+def save_tool_results_to_state(state: State) -> State:
+    stop_id = state.last_seen_msg_id
+    tool_messages: list[ToolMessage] = [
+        msg for msg in takewhile(lambda m: m.id != stop_id, reversed(state.messages)) if isinstance(msg, ToolMessage)
+    ]
+
+    while tool_messages:
+        message = tool_messages.pop()
+        SearchTypeResolver.try_update_state(state, message, ToolNames.ResolveSearchType)
+
+    if state.messages:
+        state.last_seen_msg_id = state.messages[-1].id
+
+    return state
 
 def _reply(message, config):
     _result = _post(
@@ -201,10 +170,18 @@ def _post(url, data, config: RunnableConfig):
     return result.json()
 
 
-def all():
+def all(*, classifier_model: BaseChatModel):
+
+    search_type_resolver = SearchTypeResolver(classifier_model, ToolNames.ResolveSearchType)
+
+    @tool(ToolNames.ResolveSearchType)
+    def resolve_search_type(state: Annotated[State, InjectedState]) -> str:
+        """Call to get the search type."""
+        return search_type_resolver.process(state)
+
     return [
         reply,
-        search_in_public_chats,
-        search_in_my_chats,
-        forward_search_results
+        search_in_chats,
+        forward_search_results,
+        resolve_search_type
     ]

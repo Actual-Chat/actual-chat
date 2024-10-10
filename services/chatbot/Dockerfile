@@ -1,6 +1,6 @@
 FROM python:3.12.2-slim
 
-RUN pip install poetry==1.6.1
+RUN pip install poetry==1.8.3
 
 RUN poetry config virtualenvs.create false
 

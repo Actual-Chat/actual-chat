@@ -9,7 +9,7 @@ RUN \
     apt-get update && \
     apt-get -y install git-lfs && \
     # Install & configure Python tools
-    pipx install poetry==1.6.1 && \
+    pipx install poetry==1.8.3 && \
     poetry config virtualenvs.create false && \
     # Update container user
     groupmod -n ${USER_NAME} vscode && \
