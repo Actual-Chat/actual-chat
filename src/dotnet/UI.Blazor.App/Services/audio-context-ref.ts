@@ -56,12 +56,13 @@ export class AudioContextRef implements AsyncDisposable {
         await waitAsync(this._whenReady, this.whenDisposeRequested);
     }
 
-    public async whenDisposed() {
+    public async whenDisposed(): Promise<void> {
         await this.whenRunning;
     }
 
     public use(whenContextInUse: (audioContext: OverridenAudioContext) => Promise<void>): Disposable & Promise<void> {
         const dispose = () => {
+            debugLog?.log(`${this.name}.use.dispose()`);
             if (!this.isUsed)
                 return;
 
@@ -86,13 +87,15 @@ export class AudioContextRef implements AsyncDisposable {
             dispose: dispose, // Dispose can be called directly without awaiting
             then: (onFulfilled, onRejected) => {
                 // If result is awaited directly, we should dispose it
-                dispose();
-                return resultPromise.then(onFulfilled, onRejected);
+                return resultPromise
+                    .then(() => dispose(), reason => { dispose(); throw reason; })
+                    .then(onFulfilled, onRejected);
             },
             catch: onRejected => {
                 // If result is awaited directly, we should dispose it
-                dispose();
-                return resultPromise.catch(onRejected);
+                return resultPromise
+                    .catch(reason => { dispose(); throw reason; })
+                    .catch(onRejected);
             },
             finally: resultPromise.finally,
         };

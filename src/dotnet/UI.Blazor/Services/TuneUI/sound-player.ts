@@ -23,25 +23,30 @@ export class SoundPlayer {
             attach: () => { },
             detach: () => { },
         });
-        const buffer = await this.getSound(url);
+        try {
+            const buffer = await this.getSound(url);
 
-        await contextRef.use(async context => {
-            const source = context.createBufferSource();
-            try {
-                source.buffer = buffer;
-                source.connect(context.destination);
-                source.start();
-                const playTask = new PromiseSourceWithTimeout();
-                playTask.setTimeout(5000);
-                source.onended = () => playTask.resolve(null);
-                await playTask;
-            } catch (e) {
-                warnLog?.log('play: failed to play sound', url);
-            } finally {
-                source.stop();
-                source.disconnect();
-            }
-        });
+            await contextRef.use(async context => {
+                const source = context.createBufferSource();
+                try {
+                    source.buffer = buffer;
+                    source.connect(context.destination);
+                    source.start();
+                    const playTask = new PromiseSourceWithTimeout();
+                    playTask.setTimeout(5000);
+                    source.onended = () => playTask.resolve(null);
+                    await playTask;
+                } catch (e) {
+                    warnLog?.log('play: failed to play sound', url);
+                } finally {
+                    source.stop();
+                    source.disconnect();
+                }
+            });
+        }
+        finally {
+            await contextRef.disposeAsync();
+        }
         debugLog?.log('<- play', url);
     }
 
