@@ -3,7 +3,9 @@
     @apply text-xl md:text-base;
 }
 .markup-editor .editor-content {
-    @apply relative inline-block overflow-auto;
+    @apply relative;
+    @apply inline-block overflow-auto;
+    @apply min-h-6;
     @apply text-base;
     @apply whitespace-pre-wrap text-ellipsis;
     word-wrap: break-word;
@@ -31,7 +33,7 @@
 /* Placeholder */
 .markup-editor > .c-placeholder {
     @apply absolute;
-    @apply w-full h-5;
+    @apply w-full h-5 md:h-6;
     @apply truncate;
     @apply text-03;
 }
@@ -48,6 +50,9 @@ body.narrow .markup-editor > .c-placeholder {
     @apply w-px h-5;
     @apply bg-scrollbar;
     animation: cursor 1s infinite step-end;
+}
+body.narrow .markup-editor > .c-cursor {
+    @apply top-0;
 }
 body.wide .markup-editor > .c-cursor,
 body.narrow .markup-editor:has(.editor-content:focus) > .c-cursor {

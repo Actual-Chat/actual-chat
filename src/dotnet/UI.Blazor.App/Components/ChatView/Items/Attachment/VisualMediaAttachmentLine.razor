@@ -2,7 +2,7 @@
 
 <div class="image-line @Class @Row.HeightCls">
     @foreach (var tile in Row.Tiles) {
-        <div class="image-item" style="max-width: @Row.GetTileDesiredWidthRem(tile, ScreenSize)rem; width: @Row.GetTileWidthPercent(tile)%">
+        <div class="image-item" style="width: @Row.GetTileWidthPercent(tile)%">
             <VisualMediaAttachment Attachment="@tile.Attachment" ChatEntry="@ChatEntry" />
         </div>
     }

@@ -16,17 +16,16 @@
 <OnUIEvent TEvent="@CancelChatMessageEditEvent" Handler="OnCancelChatMessageEditEvent" />
 <div @ref="Ref" class="chat-message-editor">
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@ChatMarkupHub.MentionSearchProvider">
-        <AttachmentList
-            @key="AttachmentListKey"
-            @ref="AttachmentListRef"
-            OnSendClick="@(() => Post())"/>
+        @if (ScreenSize.IsWide()) {
+            <AttachmentList
+                @key="AttachmentListKey"
+                @ref="AttachmentListRef"
+                OnSendClick="@(() => Post())"/>
+        }
         @if (ScreenSize.IsWide()) {
             <RelatedChatEntryPanel/>
         }
         <div class="c-content">
-            @if (ScreenSize.IsNarrow()) {
-                <div class="rounded-sub-footer"></div>
-            }
             <div class="post-panel"
                  data-bubble="@(BubbleRef.New<TextMessagePanelBubble>())"
                  data-bubble-priority="150"
@@ -66,6 +65,15 @@
                     </button>
                 </div>
             </div>
+            @if (ScreenSize.IsNarrow()) {
+                <AttachmentList
+                    @key="AttachmentListKey"
+                    @ref="AttachmentListRef"
+                    OnSendClick="@(() => Post())"/>
+            }
+            @if (ScreenSize.IsNarrow()) {
+                <div class="rounded-sub-footer"></div>
+            }
             @if (ScreenSize.IsNarrow()) {
                 <RelatedChatEntryPanel/>
             }
