@@ -10,6 +10,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "~3.12.2"
+pytest = "^8.3.3"
 uvicorn = "^0.23.2"
 langchain = "0.3.1"
 langchain-core = "0.3.6"
@@ -17,7 +18,7 @@ langgraph = "0.2.28"
 langchain-anthropic = "0.2.1"
 langserve = {extras = ["server"], version = "0.3.0"}
 pydantic = "2.9.2"
-cleandoc = "0.0.13"
+cleandoc = "^0.0.14"
 anthropic = "0.34.2"
 # TODO: remove
 # Obsolete:
