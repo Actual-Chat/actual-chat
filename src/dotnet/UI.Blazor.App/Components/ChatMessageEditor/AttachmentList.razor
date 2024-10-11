@@ -12,6 +12,9 @@
 <input @ref="FilePickerRef" type="file" hidden multiple/>
 
 @if (_attachments.Count > 0) {
+    <div class="editor-separator">
+        <div class="c-separator"></div>
+    </div>
     <div class="attachment-list-wrapper">
         <div class="c-btn-group">
             <Button Class="attachment-list-btn btn-danger btn-transparent unhovered c-remove" Click="_ => Clear()">
@@ -21,9 +24,9 @@
                 Send @_attachments.Count @("file".Pluralize(_attachments.Count))
             </Button>
         </div>
-        <ButtonRound Class="remove-all-btn btn-sm" Click="_ => Clear()">
-            <i class="icon-trash03 text-2xl text-danger"></i>
-        </ButtonRound>
+        <HeaderButton Class="remove-all-btn" Click="_ => Clear()">
+            <i class="icon-trash03 text-xl text-danger"></i>
+        </HeaderButton>
         <ul class="attachment-list custom-scrollbar-x">
             @foreach (var attachment in _attachments) {
                 var progress = attachment.Progress;
@@ -31,8 +34,7 @@
                 if (attachment.Failed) {
                     progress = Math.Max(progress, 30);
                     uploadProgressClass += " attachment-upload-failed";
-                }
-                else if (attachment.Uploaded) {
+                } else if (attachment.Uploaded) {
                     uploadProgressClass += " attachment-upload-completed";
                 }
                 var uploadStyle = $"width: {progress}%;";
@@ -46,7 +48,7 @@
                                 <img src="@attachment.Url" alt="Image attachment"/>
                             } else if (attachment.IsVideo) {
                                 <video preload="metadata">
-                                    <source src="@attachment.Url#t=0.5" />
+                                    <source src="@attachment.Url#t=0.5"/>
                                 </video>
                             } else {
                                 <div class="c-file">
@@ -69,9 +71,9 @@
                 Count="@_attachments.Count"
                 AddClick="@OnAddClick"/>
         </ul>
-        <ButtonRound Class="close-keyboard-btn btn-sm">
+        <HeaderButton Class="close-keyboard-btn">
             <i class="icon-chevron-up text-2xl text-03"></i>
-        </ButtonRound>
+        </HeaderButton>
     </div>
 }
 

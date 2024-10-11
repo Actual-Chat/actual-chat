@@ -237,7 +237,8 @@ body.wide .attachment-mode .post-panel-btn.post-message {
     @apply border-y border-bg-02;
 }
 body.narrow .attachment-list-wrapper {
-    @apply pb-6;
+    @apply border-none;
+    @apply bg-post-panel;
 }
 .chat-message-editor:not(.narrow-panel) .attachment-list-wrapper .close-keyboard-btn,
 .chat-message-editor:not(.narrow-panel) .attachment-list-wrapper .remove-all-btn {
@@ -264,8 +265,11 @@ body.narrow .attachment-list-wrapper > .c-btn-group {
     @apply p-1 md:p-2;
     @apply overflow-x-auto;
 }
+body.narrow .attachment-list {
+    @apply gap-x-2;
+}
 .narrow-panel .attachment-list {
-    @apply gap-x-1;
+    @apply gap-x-1 items-center;
 }
 
 .attachment-list-btn.btn {
@@ -287,6 +291,10 @@ body.narrow .attachment-list-btn.btn {
     @apply rounded-lg;
     @apply bg-03;
 }
+body.narrow .attachment-wrapper {
+    @apply p-0;
+    @apply bg-post-panel;
+}
 .attachment-wrapper.last-element {
     @apply flex items-center justify-center;
     @apply min-w-34;
@@ -302,7 +310,8 @@ body.narrow .attachment-wrapper.last-element {
     @apply flex-y;
 }
 .attachment-item {
-    @apply flex-none relative flex-y justify-center gap-x-1;
+    @apply relative;
+    @apply flex-none flex-y justify-center gap-x-1;
     @apply h-34 w-34;
     @apply mt-auto;
     @apply rounded-t-lg;
@@ -515,4 +524,17 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply absolute right-0;
     @apply w-8 h-8;
     background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 60%)
+}
+
+.editor-separator {
+    @apply relative z-10;
+    @apply flex md:hidden items-end justify-center;
+    @apply h-1;
+    @apply bg-post-panel;
+}
+.editor-separator > .c-separator {
+    @apply h-px;
+    @apply px-4;
+    @apply bg-mobile-landscape-audio-panel-button-text;
+    width: calc(100% - 2rem);
 }
