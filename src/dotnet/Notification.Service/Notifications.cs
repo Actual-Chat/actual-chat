@@ -8,6 +8,7 @@ public class Notifications(IServiceProvider services) : INotifications
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private INotificationsBackend Backend { get; } = services.GetRequiredService<INotificationsBackend>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
+    private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private ILogger Log { get; } = services.LogFor<Notifications>();
 
     private MomentClockSet Clocks { get; } = services.Clocks();
@@ -88,6 +89,13 @@ public class Notifications(IServiceProvider services) : INotifications
         var author = chat.Rules.Author.Require();
         chat.Rules.Require(ChatPermissions.Write);
         var account = chat.Rules.Account;
+
+        if (!chatId.IsPeerChat(out _)) {
+            var authorIds = await Authors.ListAuthorIds(session, chatId, cancellationToken).ConfigureAwait(false);
+            // Always disabled for middle and large groups.
+            if (authorIds.Count > 10)
+                throw StandardError.Unavailable("Notify All is unavailable in chats with more than 10 people.");
+        }
 
         var entryId = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
         var changeEntry = new ChatsBackend_ChangeEntry(

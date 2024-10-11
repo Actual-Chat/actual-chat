@@ -3,14 +3,16 @@
 @inherits ComputedStateComponent<NotifyAllButton.Model>
 @{
     var m = State.Value;
+    var cls = "post-panel-btn notify-call-btn btn-xs btn-transparent btn-primary";
+    if (!m.IsActive)
+        cls += " pseudo-disabled";
 }
 
 <ButtonRound
-    Class="post-panel-btn notify-call-btn btn-xs btn-transparent btn-primary"
+    Class="@cls"
     Tooltip="Notify All"
-    IsDisabled="@(!m.IsActive)"
     TooltipPosition="FloatingPosition.Top"
-    Click="@OnNotifyAllClick">
+    Click="@(() => OnNotifyAllClick(m))">
     <i class="icon-notify-phone text-2xl"></i>
 </ButtonRound>
 
@@ -23,6 +25,7 @@
     private IAuthors Authors => Hub.Authors;
     private IChats Chats => Hub.Chats;
     private ModalUI ModalUI => Hub.ModalUI;
+    private ToastUI ToastUI => Hub.ToastUI;
     private UICommander UICommander => Hub.UICommander();
     private MomentClock Clock => Hub.Clocks().SystemClock;
     private LiveTime LiveTime => Hub.LiveTime;
@@ -31,7 +34,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new Model(Chat.Id.Kind is ChatKind.Peer),
+            InitialValue = new Model(Chat.Id.Kind is ChatKind.Peer, ""),
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
@@ -39,17 +42,21 @@
         var chat = Chat;
         var chatId = chat.Id;
         if (chatId.Kind is ChatKind.Peer)
-            return new Model(true); // Always allowed for peer chats.
+            return Model.Enabled(true); // Always allowed for peer chats.
+
+        var authorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (authorIds.Count > 10)
+            return Model.DisabledForLargeGroup(); // Always disabled for middle and large groups.
 
         var ownAuthor = chat.Rules.Author;
         if (ownAuthor is null)
-            return new Model(false); // Disabled if no own author.
+            return Model.DisabledNoMessage(); // Disabled if no own author -> no own message.
 
         var chatIdRange = await Chats
             .GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken)
             .ConfigureAwait(false);
         if (chatIdRange.IsEmpty)
-            return new Model(false); // Disabled if no messages yet.
+            return Model.DisabledNoMessage(); // Disabled if no messages yet.
 
         var readPositionsStat = await Chats.GetReadPositionsStat(Session, chatId, cancellationToken).ConfigureAwait(false);
         var isRecentDuration = TimeSpan.FromSeconds(10);
@@ -77,17 +84,19 @@
                 cancellationToken)
             .ConfigureAwait(false);
 
-        if (foundEntry is null)
-            return new Model(false);
-
-        if (foundEntry.AuthorId != ownAuthor.Id)
-            return new Model(false); // No own unread or recent messages found.
+        if (foundEntry is null || foundEntry.AuthorId != ownAuthor.Id)
+            return Model.DisabledNoMessage(); // No own unread or recent messages found.
 
         // Own message found. Has it been read?
         var hasRead = readPositionsStat.HasReadByAnotherAuthor(foundEntry.Id, ownAuthor.Id);
         if (!hasRead) {
+            if (foundEntry.BeginsAt < Clock.Now - TimeSpan.FromDays(1)) {
+                // Unread message is too old.
+                _lastKnownOwnUnreadEntryInfo = null;
+                return Model.DisabledNoMessage();
+            }
             _lastKnownOwnUnreadEntryInfo = (foundEntry, Moment.MaxValue);
-            return new Model(true, true); // Unread own message found.
+            return Model.Enabled(true); // Unread own message found.
         }
 
         // Here we try to predict HasRead moment. It's possible if component exists since moment when message has been unread.
@@ -100,30 +109,35 @@
 
             var elapsed = Clock.Now - _lastKnownOwnUnreadEntryInfo.Value.Item2;
             if (elapsed > isRecentDuration)
-                return new Model(false); // Too much time passed since message has been read.
+                return Model.DisabledNoMessage(); // Too much time passed since message has been read.
 
             Computed.GetCurrent().Invalidate(isRecentDuration - elapsed + TimeSpan.FromMilliseconds(100), false); // Recalculate state when message recency will expire.
-            return new Model(true);
+            return Model.Enabled(false);
         }
 
         // How long time ago has it been read?
-        // We can't answer this question because we don't have info when messages have been read.
+        // We can't answer this question definitely because we don't have info when messages have been read.
         // So check creation time instead.
         var isRecentMessage = foundEntry.BeginsAt > oldMessageBeginsAtThreshold;
         if (!isRecentMessage)
-            return new Model(false);
+            return Model.DisabledNoMessage();
 
         // If the message is recent then it has been read recently.
         var delay = foundEntry.BeginsAt + isRecentDuration - Clock.Now;
         if (delay.Ticks <= 0)
-            return new Model(false); // Recency has expired.
+            return Model.DisabledNoMessage(); // Recency has expired.
 
         Computed.GetCurrent().Invalidate(delay + TimeSpan.FromMilliseconds(100), false); // Recalculate state when message recency will expire.
-        return new Model(true);
+        return Model.Enabled(false);
     }
 
-    private void OnNotifyAllClick() {
-        var message = State.Value.IsUnread
+    private void OnNotifyAllClick(Model m) {
+        if (!m.IsActive) {
+            ToastUI.Show(m.DisableReason, ToastDismissDelay.Short);
+            return;
+        }
+
+        var message = m.IsUnread
             ? "Are you sure you want to Notify All members?"
             : "Your messages have read recently. Do you still want to Notify All members?";
         _ = ModalUI.Show(new ConfirmModal.Model(
@@ -139,5 +153,14 @@
 
     // Nested types
 
-    public sealed record Model(bool IsActive, bool IsUnread = false);
+    public sealed record Model(bool IsActive, string DisableReason, bool IsUnread = false) {
+        public static Model Enabled(bool isUnread)
+            => new (true, "", isUnread);
+
+        public static Model DisabledForLargeGroup()
+            => new (false, "Notify All is unavailable in chats with more than 10 people.");
+
+        public static Model DisabledNoMessage()
+            => new (false, "Notify All is disabled. You need to send a message first.");
+    }
 }

@@ -66,10 +66,12 @@ body.device-ios * {
 }
 
 /* Disabled */
+.btn.pseudo-disabled,
 .btn:disabled {
     @apply !bg-03;
     @apply !text-04;
 }
+.btn.pseudo-disabled::after,
 .btn:disabled::after {
     @apply !bg-transparent;
 }
@@ -127,6 +129,7 @@ body.hoverable .btn.btn-cancel:hover::after {
 }
 
 /* Outline Disabled */
+.btn.btn-outline.pseudo-disabled,
 .btn.btn-outline:disabled {
     @apply !bg-transparent;
     @apply !text-cancel-text;
@@ -183,6 +186,7 @@ body.hoverable .btn.btn-outline.btn-cancel:hover::after {
 }
 
 /* Transparent Disabled */
+.btn.btn-transparent.pseudo-disabled,
 .btn.btn-transparent:disabled {
     @apply !bg-transparent;
     @apply !text-cancel-text;
@@ -245,6 +249,7 @@ body.hoverable .btn.btn-transparent.btn-cancel:hover::after {
 }
 
 /* Modal Disabled */
+.btn.btn-modal.pseudo-disabled,
 .btn.btn-modal:disabled {
     @apply !bg-cancel;
     @apply !text-cancel-text;
@@ -278,6 +283,7 @@ body.hoverable .btn.btn-modal:hover::after {
     @apply bg-square;
     @apply text-square-title;
 }
+.btn.btn-square.pseudo-disabled,
 .btn.btn-square:disabled {
     @apply opacity-70;
 }
@@ -348,6 +354,7 @@ body.hoverable .btn.btn-square.btn-cancel:hover {
     @apply bg-round;
     @apply text-round-title;
 }
+.btn.btn-round.pseudo-disabled,
 .btn.btn-round:disabled {
     @apply opacity-70;
 }
@@ -519,6 +526,7 @@ body.narrow .btn-h.inverted {
     @apply text-headline-1;
     @apply text-primary;
 }
+.btn-submit.pseudo-disabled,
 .btn-submit:disabled {
     @apply text-04;
 }
