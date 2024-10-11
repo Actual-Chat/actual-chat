@@ -5,7 +5,7 @@ import { RpcNoWait, RpcTimeout } from 'rpc';
 export interface OpusEncoderWorker {
     create(artifactVersions: Map<string, string>, hubUrl: string, timeout?: RpcTimeout): Promise<void>;
     init(workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void>;
-    start(chatId: string, repliedChatEntryId: string): Promise<void>;
+    start(chatId?: string, repliedChatEntryId?: string): Promise<void>;
     setSessionToken(sessionToken: string, noWait?: RpcNoWait): Promise<void>;
     stop(): Promise<void>;
     ensureConnected(quickReconnect: boolean, noWait?: RpcNoWait): Promise<void>;

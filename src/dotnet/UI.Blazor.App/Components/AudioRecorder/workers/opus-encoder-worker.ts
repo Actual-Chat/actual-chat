@@ -100,7 +100,10 @@ const serverImpl: OpusEncoderWorker = {
     },
 
     start: async (chatId: string, repliedChatEntryId: string): Promise<void> => {
-        lastStartArguments = { chatId, repliedChatEntryId };
+        if (chatId !== null)
+            lastStartArguments = { chatId, repliedChatEntryId };
+        else if (!lastStartArguments)
+            throw new Error('Unable to start recording: chatId is required.');
         debugLog?.log(`start`);
 
         state = 'encoding';

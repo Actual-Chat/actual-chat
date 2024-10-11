@@ -332,10 +332,21 @@ export class OpusMediaRecorder implements RecorderStateServer {
             }
 
             // Acquire new stream and terminate old one if recording
-            if (this.state === 'recording')
+            if (this.state === 'recording' && this.recording) {
+                debugLog?.log(`attach(): awaiting encoder worker start, worklet start and vad worker reset ...`);
+                await Promise.all([
+                    this.encoderWorker.start(null, ""), // Reuse chatId and repliedChatEntryId, last rpc arg cannot be null
+                    this.vadWorker.reset(),
+                    this.encoderWorklet.start(rpcNoWait)
+                ]);
                 await this.startMicrophoneStream(context);
-            else
+            }
+            else {
                 await this.stopMicrophoneStream();
+                this.state = 'stopped';
+                this.recording?.dispose();
+                this.recording = null;
+            }
 
             debugLog?.log(`<- init.attach()`);
         }
