@@ -58,6 +58,7 @@
 .left-panel-content-main {
     @apply flex-y;
     @apply grow;
+    @apply overflow-hidden;
 }
 .left-panel-content-header.place {
     @apply relative;
@@ -132,7 +133,7 @@ body.hoverable .left-panel-content-header.place .c-info > .c-left > .c-top:hover
     @apply flex-none flex items-center justify-center;
 }
 
-.left-panel-content > .download-app-banner {
+.left-panel-content-main > .download-app-banner {
     @apply px-2 pt-2;
 }
 
