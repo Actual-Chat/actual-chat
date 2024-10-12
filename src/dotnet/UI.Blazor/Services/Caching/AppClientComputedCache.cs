@@ -112,16 +112,16 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
             return null;
 
         var hash = cacheValue.Hash;
-        var data = cacheValue.Data.Bytes;
+        var data = cacheValue.Data;
         var hashPrefixLength = 1 + (hash.Length << 1);
-        var bytes = new byte[hashPrefixLength + data.Length];
+        var result = new byte[hashPrefixLength + data.Length];
         // Hash prefix
-        bytes[0] = checked((byte)hash.Length);
+        result[0] = checked((byte)hash.Length);
         var hashBytes = MemoryMarshal.Cast<char, byte>(hash.AsSpan());
-        hashBytes.CopyTo(bytes.AsSpan(1));
+        hashBytes.CopyTo(result.AsSpan(1));
         // Data suffix
-        data.CopyTo(bytes.AsSpan(hashPrefixLength));
-        return bytes;
+        data.Span.CopyTo(result.AsSpan(hashPrefixLength));
+        return result;
     }
 
     protected RpcCacheValue FromBytes(byte[]? bytes)
@@ -131,7 +131,7 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
 
         var byteHashLength = bytes[0] << 1;
         if (byteHashLength == 0) // Empty hash
-            return new RpcCacheValue(new TextOrBytes(bytes.AsMemory(1)), "");
+            return new RpcCacheValue(bytes.AsMemory(1), "");
 
         if (byteHashLength != 48) {
             // Current hash length is 24 characters
@@ -142,6 +142,6 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
         var span = bytes.AsSpan(1);
         var hash = new string(MemoryMarshal.Cast<byte, char>(span[..byteHashLength]));
         var data = bytes.AsMemory(1 + byteHashLength);
-        return new RpcCacheValue(new TextOrBytes(data), hash);
+        return new RpcCacheValue(data, hash);
     }
 }

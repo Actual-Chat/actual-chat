@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>9.5.26</ActualLabFusionVersion>
+    <ActualLabFusionVersion>9.5.39</ActualLabFusionVersion>
     <AspNetCoreVersion>8.0.4</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>8.0.4</EntityFrameworkCoreVersion>
@@ -21,7 +21,7 @@
     <OpenTelemetryVersion>1.9.0</OpenTelemetryVersion>
     <SentryVersion>4.4.0</SentryVersion>
     <!-- NOTE(AY): v1.20.X is broken, please don't upgrade to it! -->
-    <MemoryPackVersion>1.21.2</MemoryPackVersion>
+    <MemoryPackVersion>1.21.3</MemoryPackVersion>
     <MessagePackVersion>2.4.59</MessagePackVersion>
   </PropertyGroup>
 
