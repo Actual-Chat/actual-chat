@@ -1,9 +1,8 @@
 using ActualChat.Chat;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
-using ActualChat.MLSearch.Documents;
+using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.Queues;
 using ActualChat.Search;
-using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;
 
@@ -13,8 +12,7 @@ internal sealed class ChatEntryIndexWorker(
     ICursorStates<ChatEntryCursor> cursorStates,
     IChatsBackend chatsBackend,
     IPlacesBackend placesBackend,
-    ISink<IndexedChat, ChatId> chatSink,
-    ISink<IndexedEntry, TextEntryId> sink,
+    IndexedDocuments indexedDocuments,
     IQueues queues,
     MomentClockSet clocks
 ) :  IWorker<MLSearch_TriggerChatIndexing>
@@ -45,7 +43,7 @@ internal sealed class ChatEntryIndexWorker(
         await foreach (var batch in batches) {
             var updated = batch.Where(x => !x.IsRemoved).Select(x => x.ToIndexedEntry()).ToList();
             var removed = batch.Where(x => x.IsRemoved).Select(x => x.Id.AsTextEntryId()).ToList();
-            await sink.ExecuteAsync(updated, removed, cancellationToken).ConfigureAwait(false);
+            await indexedDocuments.Update(updated, removed, cancellationToken).ConfigureAwait(false);
             var newCursor = new ChatEntryCursor(batch[^1]);
             await cursorStates.SaveAsync(chatId, newCursor, cancellationToken).ConfigureAwait(false);
             handledCount += batch.Count;
@@ -75,7 +73,7 @@ internal sealed class ChatEntryIndexWorker(
         }
 
         var indexedChat = chat.ToIndexedChat(place);
-        await chatSink.ExecuteAsync([indexedChat], [], cancellationToken).ConfigureAwait(false);
+        await indexedDocuments.Update([indexedChat], cancellationToken).ConfigureAwait(false);
         return true;
     }
 }

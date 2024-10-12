@@ -22,6 +22,7 @@ using Microsoft.IdentityModel.Tokens;
 using ActualChat.Module;
 using Microsoft.AspNetCore.Builder;
 using ActualChat.MLSearch.Bot.Tools.Context;
+using ActualChat.MLSearch.Flows;
 using ActualChat.Rpc;
 using ActualChat.Search;
 using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
@@ -104,6 +105,10 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             .AddWorkerPoolDependencies();
         services.AddSingleton<OpenSearchConfigurator>()
             .AddHostedService(c => c.GetRequiredService<OpenSearchConfigurator>());
+
+        // Flows
+        services.AddFlows()
+            .Add<EntryIndexingFlow>();
     }
 
     private static void InjectIndexingServices(RpcHostBuilder rpcHost, bool isBackendClient)
@@ -146,6 +151,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IChatInfoIndexer, ChatInfoIndexer>();
         services.AddSingleton<IChatContentIndexerFactory, ChatContentIndexerFactory>();
         services.AddSingleton<IChatContentArrangerSelector, ChatContentArrangerSelector>();
+        services.AddSingleton<IndexedDocuments>();
 
         // Indexing sinks
         services.AddSingleton<ISink<ChatSlice, string>>(
@@ -168,6 +174,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddWorkerPool<ChatEntryIndexWorker, MLSearch_TriggerChatIndexing, (ChatId, IndexingKind), ChatId>(
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
+        services.AddSingleton<EntryIndexer>();
 
         // Other
         services.AddChatMLServices();
@@ -241,7 +248,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 rpcHost.AddBackend<IChatBotConversationTrigger, ChatBotConversationTrigger>();
                 services.Configure<ExternalChatbotSettings>( e => {
                     e.IsEnabled = true;
-                    e.WebHookUri = Settings!.Integrations!.Bot!.WebHookUri!;
+                    e.WebHookUri = Settings.Integrations!.Bot!.WebHookUri!;
                 });
                 services.AddSingleton<IFilters, Filters>();
                 services.AddSingleton<IBotConversationHandler, ExternalChatBotConversationHandler>();
