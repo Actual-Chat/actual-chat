@@ -12,15 +12,14 @@ from langchain_core.language_models.chat_models import BaseChatModel
 import requests
 import json
 
-import sys
-sys.path.insert(1, '/app/services/chatbot')
-
 from app.state import State
+from app.tools.reset import ResetHandler
 from app.tools.resolver import SearchTypeResolver
 
 TOOLS_AUTH_FORWARD_CONTEXT = "forward-auth-context"
 
 class ToolNames(StrEnum):
+    Reset = auto()
     ResolveSearchType = auto()
 
 class _Tools(object):
@@ -124,6 +123,16 @@ def forward_search_results(
     )
     return
 
+@tool(ToolNames.Reset, parse_docstring=True)
+def reset(state: Annotated[State, InjectedState]):
+    """
+    Clears the state if user requests to reset or start the search over.
+
+    Args:
+    """
+    # The actual job is done in the ResetHandler
+    pass
+
 def save_tool_results_to_state(state: State) -> State:
     stop_id = state.last_seen_msg_id
     tool_messages: list[ToolMessage] = [
@@ -133,6 +142,7 @@ def save_tool_results_to_state(state: State) -> State:
     while tool_messages:
         message = tool_messages.pop()
         SearchTypeResolver.try_update_state(state, message, ToolNames.ResolveSearchType)
+        ResetHandler.try_update_state(state, message, ToolNames.Reset)
 
     if state.messages:
         state.last_seen_msg_id = state.messages[-1].id
@@ -183,5 +193,6 @@ def all(*, classifier_model: BaseChatModel):
         reply,
         search_in_chats,
         forward_search_results,
-        resolve_search_type
+        resolve_search_type,
+        reset
     ]

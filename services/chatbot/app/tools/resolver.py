@@ -1,9 +1,6 @@
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import SystemMessage, ToolMessage, HumanMessage
 
-import sys
-sys.path.insert(1, '/app/services/chatbot')
-
 from app.state import State
 
 class SearchTypeResolver:

@@ -24,3 +24,9 @@ class State(BaseModel):
     search_type: Optional[str] = None
     last_seen_msg_id: Optional[str] = None
     last_search_result: Optional[str] = None
+
+    def clear(self):
+        self.summary = None
+        self.search_type = None
+        self.last_search_result = None
+        # Do not clear last_seen_msg_id
