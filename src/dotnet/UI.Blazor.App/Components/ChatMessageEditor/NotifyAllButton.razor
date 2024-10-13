@@ -3,6 +3,9 @@
 @inherits ComputedStateComponent<NotifyAllButton.Model>
 @{
     var m = State.Value;
+    if (m.IsUnavailable)
+        return;
+
     var cls = "post-panel-btn notify-call-btn btn-xs btn-transparent btn-primary";
     if (!m.IsActive)
         cls += " pseudo-disabled";
@@ -34,7 +37,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new Model(Chat.Id.Kind is ChatKind.Peer, ""),
+            InitialValue = Chat.Id.Kind is ChatKind.Peer ? Model.EnabledUnread : Model.Unavailable,
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
@@ -42,21 +45,24 @@
         var chat = Chat;
         var chatId = chat.Id;
         if (chatId.Kind is ChatKind.Peer)
-            return Model.Enabled(true); // Always allowed for peer chats.
+            return Model.EnabledUnread; // Always allowed for peer chats.
 
         var authorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (authorIds.Count < 2)
+            return Model.Unavailable;
+
         if (authorIds.Count > 10)
-            return Model.DisabledForLargeGroup(); // Always disabled for middle and large groups.
+            return Model.DisabledForLargeGroup; // Always disabled for large groups.
 
         var ownAuthor = chat.Rules.Author;
         if (ownAuthor is null)
-            return Model.DisabledNoMessage(); // Disabled if no own author -> no own message.
+            return Model.DisabledNoMessage; // Disabled if no own author -> no own message.
 
         var chatIdRange = await Chats
             .GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken)
             .ConfigureAwait(false);
         if (chatIdRange.IsEmpty)
-            return Model.DisabledNoMessage(); // Disabled if no messages yet.
+            return Model.DisabledNoMessage; // Disabled if no messages yet.
 
         var readPositionsStat = await Chats.GetReadPositionsStat(Session, chatId, cancellationToken).ConfigureAwait(false);
         var isRecentDuration = TimeSpan.FromSeconds(10);
@@ -85,7 +91,7 @@
             .ConfigureAwait(false);
 
         if (foundEntry is null || foundEntry.AuthorId != ownAuthor.Id)
-            return Model.DisabledNoMessage(); // No own unread or recent messages found.
+            return Model.DisabledNoMessage; // No own unread or recent messages found.
 
         // Own message found. Has it been read?
         var hasRead = readPositionsStat.HasReadByAnotherAuthor(foundEntry.Id, ownAuthor.Id);
@@ -93,10 +99,10 @@
             if (foundEntry.BeginsAt < Clock.Now - TimeSpan.FromDays(1)) {
                 // Unread message is too old.
                 _lastKnownOwnUnreadEntryInfo = null;
-                return Model.DisabledNoMessage();
+                return Model.DisabledNoMessage;
             }
             _lastKnownOwnUnreadEntryInfo = (foundEntry, Moment.MaxValue);
-            return Model.Enabled(true); // Unread own message found.
+            return Model.EnabledUnread; // Unread own message found.
         }
 
         // Here we try to predict HasRead moment. It's possible if component exists since moment when message has been unread.
@@ -109,10 +115,10 @@
 
             var elapsed = Clock.Now - _lastKnownOwnUnreadEntryInfo.Value.Item2;
             if (elapsed > isRecentDuration)
-                return Model.DisabledNoMessage(); // Too much time passed since message has been read.
+                return Model.DisabledNoMessage; // Too much time passed since message has been read.
 
             Computed.GetCurrent().Invalidate(isRecentDuration - elapsed + TimeSpan.FromMilliseconds(100), false); // Recalculate state when message recency will expire.
-            return Model.Enabled(false);
+            return Model.Enabled;
         }
 
         // How long time ago has it been read?
@@ -120,15 +126,15 @@
         // So check creation time instead.
         var isRecentMessage = foundEntry.BeginsAt > oldMessageBeginsAtThreshold;
         if (!isRecentMessage)
-            return Model.DisabledNoMessage();
+            return Model.DisabledNoMessage;
 
         // If the message is recent then it has been read recently.
         var delay = foundEntry.BeginsAt + isRecentDuration - Clock.Now;
         if (delay.Ticks <= 0)
-            return Model.DisabledNoMessage(); // Recency has expired.
+            return Model.DisabledNoMessage; // Recency has expired.
 
         Computed.GetCurrent().Invalidate(delay + TimeSpan.FromMilliseconds(100), false); // Recalculate state when message recency will expire.
-        return Model.Enabled(false);
+        return Model.Enabled;
     }
 
     private void OnNotifyAllClick(Model m) {
@@ -153,14 +159,24 @@
 
     // Nested types
 
-    public sealed record Model(bool IsActive, string DisableReason, bool IsUnread = false) {
-        public static Model Enabled(bool isUnread)
-            => new (true, "", isUnread);
+    public sealed record Model {
+        public static readonly Model Unavailable = new() { IsUnavailable = true };
+        public static readonly Model EnabledUnread = new() { IsActive = true, IsUnread = true };
+        public static readonly Model Enabled = new() { IsActive = true };
 
-        public static Model DisabledForLargeGroup()
-            => new (false, "Notify All is unavailable in chats with more than 10 people.");
+        public static readonly Model DisabledForLargeGroup = new() {
+            IsActive = false,
+            DisableReason = "Notify All is unavailable in chats with more than 10 people."
+        };
 
-        public static Model DisabledNoMessage()
-            => new (false, "Notify All is disabled. You need to send a message first.");
+        public static readonly Model DisabledNoMessage = new() {
+            IsActive = false,
+            DisableReason = "Notify All is disabled. You need to send a message first."
+        };
+
+        public bool IsUnavailable { get; private init; }
+        public bool IsActive { get; private init; }
+        public string DisableReason { get; private init; } = "";
+        public bool IsUnread { get; private init; }
     }
 }
