@@ -483,7 +483,7 @@ body.hoverable .btn.btn-x:hover .btn-content {
 
 /* Header Button */
 .btn-h {
-    @apply relative z-20;
+    @apply relative;
     @apply flex-none flex items-center justify-center;
     @apply text-03;
 }
@@ -492,7 +492,7 @@ body.hoverable .btn-h.inactive:hover {
     @apply text-03;
 }
 .btn-h > .c-content {
-    @apply relative z-20;
+    @apply relative;
     @apply flex items-center;
 }
 .btn-h i {
