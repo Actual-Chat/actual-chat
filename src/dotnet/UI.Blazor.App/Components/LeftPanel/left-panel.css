@@ -59,6 +59,7 @@
     @apply flex-y;
     @apply grow;
     @apply overflow-hidden;
+    @apply relative z-0;
 }
 .left-panel-content-header.place {
     @apply relative;
