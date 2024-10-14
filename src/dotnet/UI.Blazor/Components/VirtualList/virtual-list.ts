@@ -1273,7 +1273,7 @@ export class VirtualList {
 
         const query = this.getDataQuery();
         if (!this.mustRequestData(query)) {
-            debugLog?.log(`requestData: request is unnecessary`);
+            // debugLog?.log(`requestData: request is unnecessary`);
             return;
         }
         if (query.isNone)

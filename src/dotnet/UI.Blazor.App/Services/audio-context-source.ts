@@ -26,7 +26,7 @@ const FixCyclePeriodMs = 300;
 const MaxResumeTimeMs = 600;
 const MaxResumeCount = 60;
 const MaxInteractiveResumeCount = 3;
-const MaxSuspendTimeMs = 300;
+const MaxSuspendTimeMs = 600;
 const ShortTestIntervalMs = 150;
 const LongTestIntervalMs = 1000;
 const SilencePlaybackDuration = 0.280;
@@ -72,6 +72,11 @@ abstract class AudioContextSourceBase implements AudioContextSource {
     protected readonly _contextCreated$: Subject<AudioContext> = new Subject<AudioContext>();
     protected readonly _contextClosed$: Subject<AudioContext> = new Subject<AudioContext>();
 
+    protected deviceWokeUpAt = 0;
+    protected isInteractiveWasReset = false;
+    protected resumeCount = 0;
+    protected interactiveResumeCount = 0;
+    protected whileBackgroundIdle: PromiseSource<void> | null = null;
     protected onDeviceAwakeHandler: EventHandler<number>;
     protected _context: OverridenAudioContext | null = null;
     protected _refCount = 0;
@@ -131,6 +136,8 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         return result;
     }
 
+    public abstract useRef(ref: AudioContextRef): Disposable;
+
     public abstract whenReady(cancel?: Promise<symbol>): Promise<AudioContext>;
 
     public abstract whenNotReady(context: AudioContext, cancel?: Promise<symbol>): Promise<void>;
@@ -139,26 +146,193 @@ abstract class AudioContextSourceBase implements AudioContextSource {
 
     public abstract reset(): Promise<void>;
 
-    public abstract updateBackgroundState(state: BackgroundState): Promise<void>;
+    public async updateBackgroundState(state: BackgroundState): Promise<void> {
+        debugLog?.log(`updateBackgroundState:`, state, this.hasRefsInUse);
+        if (state === 'BackgroundIdle') {
+            if (!this.whileBackgroundIdle)
+                this.whileBackgroundIdle = new PromiseSource<void>();
+            if (!this.hasRefsInUse)
+                this.suspendContextDebounced();
+        }
+        else {
+            this.whileBackgroundIdle?.resolve(undefined);
+            this.whileBackgroundIdle = null;
+        }
+    }
 
-    public abstract useRef(ref: AudioContextRef): Disposable;
+    // Protected methods
+
+    protected async create(isAlreadyInteractiveToResume = false): Promise<AudioContext> {
+        debugLog?.log(`create`, isAlreadyInteractiveToResume);
+        this.suspendContextDebounced.reset();
+        this.closeContextDebounced.reset();
+        this.resumeCount = 0;
+        this.interactiveResumeCount = 0;
+        // Try to create audio context early w/o waiting for user interaction.
+        // It might be in suspended state in this case.
+        const context: OverridenAudioContext = new AudioContext({
+            latencyHint: 'balanced',
+            sampleRate: this.purpose === 'playback' ? AP.SAMPLE_RATE : AR.SAMPLE_RATE,
+        });
+        try {
+            debugLog?.log(`create: loading modules`);
+            const whenWorkletsLoaded =  this.loadContextWorklets(context);
+
+            if (isAlreadyInteractiveToResume) {
+                debugLog?.log(`create: isAlreadyInteractiveToResume == true`);
+                await this.resume(context, true);
+                Interactive.isInteractive = true;
+            }
+            else {
+                void this.interactiveResume(context);
+            }
+
+            await whenWorkletsLoaded;
+            if (this.fallbackDestination) {
+                context.destinationOverride = this.fallbackDestination.destination;
+                await this.fallbackDestination.attach(context);
+            }
+            this._contextCreated$.next(context);
+
+            return context;
+        }
+        catch (e) {
+            warnLog?.log('create: failed to create', e);
+            await this.closeSilently(context);
+            throw e;
+        }
+    }
+
+    protected async interactiveResume(context: AudioContext): Promise<void> {
+        debugLog?.log(`interactiveResume:`, Log.ref(context));
+        if (context && this.isRunning(context)) {
+            debugLog?.log(`interactiveResume: succeeded (AudioContext is already in running state)`);
+            await this.fallbackDestination?.play();
+            return;
+        }
+
+        if (!Interactive.isAlwaysInteractive)
+            await BrowserInfo.whenReady; // This is where isAlwaysInteractive flag gets set - it checked further
+        if (Interactive.isAlwaysInteractive) {
+            debugLog?.log(`interactiveResume: Interactive.isAlwaysInteractive == true`);
+            await this.resume(context, false);
+            Interactive.isInteractive = true;
+        }
+        else {
+            // Resume can be called during user interaction only
+            const isWakeUp = this.isWakeUp();
+            if (isWakeUp && !this.isInteractiveWasReset) {
+                this.isInteractiveWasReset = true;
+                Interactive.isInteractive = false;
+                debugLog?.log(`interactiveResume: Interactive.isInteractive was reset on wake up`);
+            }
+        }
+
+        debugLog?.log(`interactiveResume: waiting for interaction`);
+        const resumeTask = new PromiseSource<boolean>();
+        // Keep user gesture stack without async!!!
+        const handler = Interactive.interactionEvents.add( (e) => {
+            // this resume should be called without async in the same sync stack as user gesture!!!
+            debugLog?.log(`interactiveResume: Interactive.interactionEvents triggered`, e);
+            const currentContext = this._context;
+            let contextToResume = context;
+            if (currentContext && currentContext !== context) {
+                warnLog?.log('interactiveResume: context has already been changed, will try to use the new one');
+                contextToResume = currentContext;
+            }
+            this.resume(contextToResume, true)
+                .then(
+                    () => resumeTask.resolve(true),
+                    reason => {
+                        warnLog?.log(reason, 'resume() failed with an error');
+                        resumeTask.reject(reason);
+                    });
+        });
+        try {
+            await resumeTask;
+            Interactive.isInteractive = true;
+            debugLog?.log(`interactiveResume: succeeded on interaction`);
+        }
+        finally {
+            handler.dispose();
+        }
+    }
+
+    private async resume(context: AudioContext, isInteractive: boolean): Promise<void> {
+        debugLog?.log(`resume:`, Log.ref(context), isInteractive);
+
+        const resumeTask = context.resume().then(() => true);
+        this.resumeCount++;
+        if (isInteractive)
+            this.interactiveResumeCount++;
+
+        void this.fallbackDestination?.play();
+        if (this.isRunning(context)) {
+            debugLog?.log(`resume: already resumed, AudioContext:`, Log.ref(context));
+            return;
+        }
+
+        const timerTask = delayAsync(MaxResumeTimeMs).then(() => false);
+        if (!await Promise.race([resumeTask, timerTask]))
+            throw new Error(`${logScope}.resume: AudioContext.resume() has timed out.`);
+        if (!this.isRunning(context))
+            throw new Error(`${logScope}.resume: completed resume, but AudioContext.state != 'running'.`);
+
+        debugLog?.log(`resume: resumed, AudioContext:`, Log.ref(context));
+    }
 
     protected async loadContextWorklets(context: AudioContext): Promise<void> {
         try {
             debugLog?.log(`loadContextWorklets: loading modules`);
-            const feederWorkletPath = Versioning.mapPath('/dist/feederWorklet.js');
-            const encoderWorkletPath = Versioning.mapPath('/dist/opusEncoderWorklet.js');
-            const vadWorkerPath = Versioning.mapPath('/dist/vadWorklet.js');
-            const whenModule1 = context.audioWorklet.addModule(feederWorkletPath);
-            const whenModule2 = context.audioWorklet.addModule(encoderWorkletPath);
-            const whenModule3 = context.audioWorklet.addModule(vadWorkerPath);
-            await Promise.all([whenModule1, whenModule2, whenModule3]);
+            if (this.purpose === 'playback') {
+                const feederWorkletPath = Versioning.mapPath('/dist/feederWorklet.js');
+                await context.audioWorklet.addModule(feederWorkletPath);
+            }
+            else {
+                const vadWorkletPath = Versioning.mapPath('/dist/vadWorklet.js');
+                const encoderWorkletPath = Versioning.mapPath('/dist/opusEncoderWorklet.js');
+                const whenModule1 = context.audioWorklet.addModule(vadWorkletPath);
+                const whenModule2 = context.audioWorklet.addModule(encoderWorkletPath);
+                await Promise.all([whenModule1, whenModule2]);
+            }
         }
         catch (e) {
             warnLog?.log(`loadContextWorklets: failed to load modules:`, e);
             await this.closeSilently(context);
             throw e;
         }
+    }
+
+    protected isRunning(context: AudioContext): boolean {
+        // This method addresses some weird issues in how AudioContext behaves in different browsers:
+        // - Chromium 110 AudioContext can be in 'running' even after
+        //   calling constructor, and even without user interaction.
+        // - Safari doesn't start incrementing 'currentTime' after 'resume' call,
+        //   so we have to warm it up w/ silent audio
+        if (context.state !== 'running')
+            return false;
+
+        const silenceBuffer = context['silenceBuffer'] as AudioBuffer ?? this.createSilenceBuffer(context);
+        const source = context.createBufferSource();
+        source.buffer = silenceBuffer;
+        source.connect(context.destination);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        source.onended = () => source.disconnect();
+        context['silenceBuffer'] = silenceBuffer;
+        source.start(0);
+        // Schedule to stop silence playback in the future
+        source.stop(context.currentTime + SilencePlaybackDuration);
+        // NOTE(AK): Somehow - sporadically - currentTime starts ticking only when you log the context!
+        console.log(`AudioContext is:`, Log.ref(context), `, its currentTime:`, context.currentTime);
+        const isRunning = context.state === 'running';
+        if (isRunning) {
+            // Resume call was successful
+            this.resumeCount = 0;
+            this.interactiveResumeCount = 0;
+            context[Debug.brokenKey] = undefined;
+        }
+        return isRunning;
     }
 
     protected async closeSilently(context?: AudioContext): Promise<void> {
@@ -181,9 +355,48 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         }
     }
 
+    protected suspendContextDebounced = debounce(this.suspendContext, SuspendDebounceTimeMs);
+    protected async suspendContext(): Promise<void> {
+        infoLog?.log('suspendContext()');
+        const context = this._context;
+        if (!context)
+            return;
+
+        if (context.state === 'closed') {
+            await this.closeContext();
+            return;
+        }
+
+        await context.suspend();
+        this.fallbackDestination?.pause();
+        if (Interactive.isAlwaysInteractive && AudioInitializer.backgroundState === 'BackgroundIdle')
+            this.closeContextDebounced();
+    }
+
+    protected closeContextDebounced = debounce(() => this.closeContext(), CloseUnusedContextDebounce);
+    protected async closeContext(): Promise<void> {
+        infoLog?.log('closeContext()');
+        const context = this._context;
+        this._context = null;
+        await this.closeSilently(context);
+        if (AudioInitializer.backgroundState !== 'BackgroundIdle') {
+            this.whileBackgroundIdle?.resolve(undefined);
+            this.whileBackgroundIdle = null;
+        }
+    }
+
     // Event handlers
 
-    protected abstract onDeviceAwake(): Promise<void>;
+    protected async onDeviceAwake(): Promise<void> {
+        debugLog?.log(`onDeviceAwake`);
+        this.deviceWokeUpAt = Date.now();
+        this.isInteractiveWasReset = false;
+        // Close current AudioContext as it might be corrupted and can produce clicking sound
+        await this.closeContext();
+    }
+
+
+    // Private methods
 
     private registerRef(operationName: string, ref: AudioContextRef) {
         const { refs } = this;
@@ -218,14 +431,18 @@ abstract class AudioContextSourceBase implements AudioContextSource {
             warnLog?.log(`getRef(${operationName}): negative refCount:`, this._refCount);
         debugLog?.log(`- AudioContextRef(${operationName}), refCount: ${operationName} =`, count, ', total =', this._refCount);
     }
+
+    private createSilenceBuffer(context: AudioContext): AudioBuffer {
+        return context.createBuffer(1, 1, this.purpose === 'playback' ? AP.SAMPLE_RATE : AR.SAMPLE_RATE);
+    }
+
+    private isWakeUp(): boolean {
+        return (Date.now() - this.deviceWokeUpAt) <= WakeUpDetectionIntervalMs;
+    }
 }
 
 class WebAudioContextSource extends AudioContextSourceBase implements AudioContextSource {
     private _isActive = false;
-    private deviceWokeUpAt = 0;
-    private isInteractiveWasReset = false;
-    private resumeCount = 0;
-    private interactiveResumeCount = 0;
     private _maintain: Promise<void> | null = null;
     private _whenReady = new PromiseSource<AudioContext | null>();
     private _whenNotReady = new PromiseSource<void>();
@@ -235,10 +452,21 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
 
     public constructor(purpose: AudioContextPurpose) {
         super(purpose);
-        this._maintain = this.maintain();
+        // The only case this method starts is application start,
+        // so it makes sense let other tasks to make some progress first.
+        delayAsync(300)
+            .then(() => {
+                this._maintain = this.maintain();
+            });
     }
 
-    public whenReady(cancel?: Promise<Cancelled>): Promise<AudioContext> {
+    public async whenReady(cancel?: Promise<Cancelled>): Promise<AudioContext> {
+        const whenReady = this._whenReady;
+        if (whenReady.isCompleted()) {
+            const context = await whenReady;
+            if (!context || context.state === 'closed')
+                this.markNotReady(); // Reset ready state
+        }
         return waitAsync(this._whenReady, cancel);
     }
 
@@ -261,24 +489,26 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
             return;
         }
 
-        const context = await this.create(true);
-        this.markReady(context);
+        if (!this._isActive) {
+            if (this._maintain)
+                await this._maintain;
+            this._maintain = this.maintain();
+        }
     }
 
     public async reset(): Promise<void> {
         this._isActive = false;
-        await this.closeSilently(this._context);
-        this.markNotReady();
+        await this.closeContext();
         if (this._maintain)
             await this._maintain;
         this._maintain = this.maintain();
     }
 
     public async updateBackgroundState(state: BackgroundState): Promise<void> {
-        debugLog?.log(`updateBackgroundState:`, state, this._isActive);
+        await super.updateBackgroundState(state);
+
         if (state === 'BackgroundIdle') {
             this._isActive = false;
-            this.markNotReady();
             return;
         }
 
@@ -290,6 +520,8 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
     }
 
     public useRef(ref: AudioContextRef): Disposable {
+        this.suspendContextDebounced.reset();
+        this.closeContextDebounced.reset();
         if (!this._isActive) {
             this._maintain = this.maintain();
             return;
@@ -309,7 +541,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         // - _whenReady is completed
         // - _whenNotReady is NOT completed.
 
-        if (this._context)
+        if (this._context === context)
             return; // Already ready
 
         this._context = context;
@@ -327,10 +559,6 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         // - _context == null
         // - _whenReady is NOT completed
         // - _whenNotReady is completed.
-
-        const audioContext = this._context;
-        if (!audioContext)
-            return; // Already not ready
 
         this._context = null;
         debugLog?.log(`markNotReady`);
@@ -354,29 +582,39 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
 
     // Protected methods
 
-    protected async maintain(): Promise<void> {
+    protected async closeSilently(context?: AudioContext): Promise<void> {
+        this.markNotReady();
+        await super.closeSilently(context);
+    }
+
+    // Private methods
+
+    private async maintain(): Promise<void> {
         debugLog?.log('maintain: starting');
         this._isActive = true;
-        // The only case this method starts is application start,
-        // so it makes sense let other tasks to make some progress first.
-        await delayAsync(300);
+
         // noinspection InfiniteLoopJS
         let retryCount = 0;
         while (this._isActive) { // Renew loop
-            debugLog?.log('maintain: loop 1');
-            let context = await this.create();
-            this.markReady(context);
+            // debugLog?.log('maintain: loop 1');
+            let context = this._context;
+            // Try to maintain existing context and create a new one if it's broken or closed
+            if (!context || context.state === 'closed') {
+                context = await this.create();
+                this.markReady(context);
+            }
+
             if (context.state === 'suspended') {
                 // Wait for the next user interaction to resume the context
-                const whenInteractive = firstValueFrom(Interactive.interactionEvent$);
-                await Promise.race([this._whenNotReady, whenInteractive]);
+                const interactiveResume = this.interactiveResume(context);
+                await Promise.race([this._whenNotReady, interactiveResume]);
             }
             try {
                 let lastTestAt = Date.now();
 
                 // noinspection InfiniteLoopJS
                 while (this._isActive) { // Fix loop
-                    debugLog?.log('maintain: loop 2');
+                    // debugLog?.log('maintain: loop 2');
                     const minDelay = lastTestAt + MaintainCyclePeriodMs - Date.now();
                     if (minDelay > 0) {
                         await delayAsync(minDelay);
@@ -414,7 +652,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
                     }
 
                     while (this._isActive) {
-                        debugLog?.log('maintain: loop 3');
+                        // debugLog?.log('maintain: loop 3');
                         this.throwIfClosed(context);
                         this.throwIfTooManyResumes();
                         try {
@@ -434,61 +672,18 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
                 if (retryCount++ > 1) {
                     // wait for the next user interaction to prevent creating broken AudioContexts
                     warnLog?.log(`maintain: waiting for user interaction...`);
-                    await firstValueFrom(Interactive.interactionEvent$);
+                    const whileBackgroundIdle = this.whileBackgroundIdle;
+                    if (whileBackgroundIdle)
+                        await whileBackgroundIdle;
+                    else
+                        await firstValueFrom(Interactive.interactionEvent$);
                     warnLog?.log(`maintain: resuming maintain cycle`);
                 }
             }
             finally {
-                this.markNotReady();
-                await this.closeSilently(context);
+                if (this._isActive)
+                    await this.closeContext();
             }
-        }
-        if (this._context?.state !== 'closed')
-            await this.closeSilently(this._context);
-    }
-
-    private async create(isAlreadyInteractiveToResume = false): Promise<AudioContext> {
-        debugLog?.log(`create`, isAlreadyInteractiveToResume);
-
-        this.resumeCount = 0;
-        this.interactiveResumeCount = 0;
-        // Try to create audio context early w/o waiting for user interaction.
-        // It might be in suspended state in this case.
-        const context: OverridenAudioContext = new AudioContext({
-            latencyHint: 'balanced',
-            sampleRate: this.purpose === 'playback' ? AP.SAMPLE_RATE : AR.SAMPLE_RATE,
-        });
-        this._contextCreated$.next(context);
-        try {
-            debugLog?.log(`create: loading modules`);
-            const feederWorkletPath = Versioning.mapPath('/dist/feederWorklet.js');
-            const encoderWorkletPath = Versioning.mapPath('/dist/opusEncoderWorklet.js');
-            const vadWorkerPath = Versioning.mapPath('/dist/vadWorklet.js');
-            const whenModule1 = context.audioWorklet.addModule(feederWorkletPath);
-            const whenModule2 = context.audioWorklet.addModule(encoderWorkletPath);
-            const whenModule3 = context.audioWorklet.addModule(vadWorkerPath);
-
-            if (isAlreadyInteractiveToResume) {
-                debugLog?.log(`create: isAlreadyInteractiveToResume == true`);
-                await this.resume(context, true);
-                Interactive.isInteractive = true;
-            }
-            else {
-                void this.interactiveResume(context);
-            }
-
-            await Promise.all([whenModule1, whenModule2, whenModule3]);
-            if (this.fallbackDestination) {
-                context.destinationOverride = this.fallbackDestination.destination;
-                await this.fallbackDestination.attach(context);
-            }
-
-            return context;
-        }
-        catch (e) {
-            warnLog?.log('create: failed to create', e);
-            await this.closeSilently(context);
-            throw e;
         }
     }
 
@@ -537,78 +732,6 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         }
     }
 
-    private async interactiveResume(context: AudioContext): Promise<void> {
-        debugLog?.log(`interactiveResume:`, Log.ref(context));
-        if (context && this.isRunning(context)) {
-            debugLog?.log(`interactiveResume: succeeded (AudioContext is already in running state)`);
-            await this.fallbackDestination?.play();
-            return;
-        }
-
-        if (!Interactive.isAlwaysInteractive)
-            await BrowserInfo.whenReady; // This is where isAlwaysInteractive flag gets set - it checked further
-        if (Interactive.isAlwaysInteractive) {
-            debugLog?.log(`interactiveResume: Interactive.isAlwaysInteractive == true`);
-            await this.resume(context, false);
-            Interactive.isInteractive = true;
-        }
-        else {
-            // Resume can be called during user interaction only
-            const isWakeUp = this.isWakeUp();
-            if (isWakeUp && !this.isInteractiveWasReset) {
-                this.isInteractiveWasReset = true;
-                Interactive.isInteractive = false;
-                debugLog?.log(`interactiveResume: Interactive.isInteractive was reset on wake up`);
-            }
-        }
-
-        debugLog?.log(`interactiveResume: waiting for interaction`);
-        const resumeTask = new PromiseSource<boolean>();
-        // Keep user gesture stack without async!!!
-        const handler = Interactive.interactionEvents.add( (e) => {
-            // this resume should be called without async in the same sync stack as user gesture!!!
-            debugLog?.log(`interactiveResume: Interactive.interactionEvents triggered`, e);
-            this.resume(context, true)
-                .then(
-                    () => resumeTask.resolve(true),
-                    reason => {
-                        warnLog?.log(reason, 'resume() failed with an error');
-                        resumeTask.reject(reason);
-                    });
-        });
-        try {
-            await resumeTask;
-            Interactive.isInteractive = true;
-            debugLog?.log(`interactiveResume: succeeded on interaction`);
-        }
-        finally {
-            handler.dispose();
-        }
-    }
-
-    private async resume(context: AudioContext, isInteractive: boolean): Promise<void> {
-        debugLog?.log(`resume:`, Log.ref(context), isInteractive);
-
-        this.resumeCount++;
-        if (isInteractive)
-            this.interactiveResumeCount++;
-
-        void this.fallbackDestination?.play();
-        if (this.isRunning(context)) {
-            debugLog?.log(`resume: already resumed, AudioContext:`, Log.ref(context));
-            return;
-        }
-
-        const resumeTask = context.resume().then(() => true);
-        const timerTask = delayAsync(MaxResumeTimeMs).then(() => false);
-        if (!await Promise.race([resumeTask, timerTask]))
-            throw new Error(`${logScope}.resume: AudioContext.resume() has timed out.`);
-        if (!this.isRunning(context))
-            throw new Error(`${logScope}.resume: completed resume, but AudioContext.state != 'running'.`);
-
-        debugLog?.log(`resume: resumed, AudioContext:`, Log.ref(context));
-    }
-
     private async trySuspend(context: AudioContext): Promise<boolean> {
         this.fallbackDestination?.pause();
         if (context.state === 'suspended') {
@@ -639,36 +762,6 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         }
     }
 
-
-    private isRunning(context: AudioContext): boolean {
-        // This method addresses some weird issues in how AudioContext behaves in different browsers:
-        // - Chromium 110 AudioContext can be in 'running' even after
-        //   calling constructor, and even without user interaction.
-        // - Safari doesn't start incrementing 'currentTime' after 'resume' call,
-        //   so we have to warm it up w/ silent audio
-        if (context.state !== 'running')
-            return false;
-
-        const silenceBuffer = context['silenceBuffer'] as AudioBuffer ?? this.createSilenceBuffer(context);
-        const source = context.createBufferSource();
-        source.buffer = silenceBuffer;
-        source.connect(context.destination);
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        source.onended = () => source.disconnect();
-        context['silenceBuffer'] = silenceBuffer;
-        source.start(0);
-        // Schedule to stop silence playback in the future
-        source.stop(context.currentTime + SilencePlaybackDuration);
-        // NOTE(AK): Somehow - sporadically - currentTime starts ticking only when you log the context!
-        console.log(`AudioContext is:`, Log.ref(context), `, its currentTime:`, context.currentTime);
-        return context.state === 'running';
-    }
-
-    private createSilenceBuffer(context: AudioContext): AudioBuffer {
-        return context.createBuffer(1, 1, this.purpose === 'playback' ? AP.SAMPLE_RATE : AR.SAMPLE_RATE);
-    }
-
     private throwIfTooManyResumes(): void {
         if (this.resumeCount >= MaxResumeCount)
             throw new Error(`maintain: resume attempt count is too high (${this.resumeCount}).`);
@@ -680,26 +773,9 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         if (context.state === 'closed')
             throw new Error(`${logScope}.throwIfClosed: context is closed.`);
     }
-
-    private isWakeUp(): boolean {
-        return (Date.now() - this.deviceWokeUpAt) <= WakeUpDetectionIntervalMs;
-    }
-
-    // Event handlers
-
-    protected async onDeviceAwake(): Promise<void> {
-        debugLog?.log(`onDeviceAwake`);
-        this.deviceWokeUpAt = Date.now();
-        this.isInteractiveWasReset = false;
-        // Close current AudioContext as it might be corrupted and can produce clicking sound
-        await this.closeSilently(this._context);
-        this.markNotReady();
-    }
 }
 
 class MauiAudioContextSource extends AudioContextSourceBase implements AudioContextSource {
-    private whileBackgroundIdle: PromiseSource<void> | null = null;
-
     get isMaintained(): boolean { return true; }
 
     public constructor(purpose: AudioContextPurpose) {
@@ -712,7 +788,7 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
             const whileBackgroundIdle = this.whileBackgroundIdle;
             if (whileBackgroundIdle)
                 await whileBackgroundIdle;
-            this._context = await this.create();
+            this._context = await this.create(true);
         }
         return this._context;
     }
@@ -728,20 +804,6 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
 
     public async reset(): Promise<void> {
         await this.closeContext();
-    }
-
-    public async updateBackgroundState(state: BackgroundState): Promise<void> {
-        debugLog?.log(`updateBackgroundState:`, state, this.hasRefsInUse);
-        if (state === 'BackgroundIdle') {
-            if (!this.whileBackgroundIdle)
-                this.whileBackgroundIdle = new PromiseSource<void>();
-            if (!this.hasRefsInUse)
-                this.suspendContextDebounced();
-        }
-        else {
-            this.whileBackgroundIdle?.resolve(undefined);
-            this.whileBackgroundIdle = null;
-        }
     }
 
     public useRef(ref: AudioContextRef): Disposable {
@@ -768,58 +830,6 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
             if (backgroundState === 'BackgroundIdle')
                 this.closeContextDebounced();
         });
-    }
-
-    private suspendContextDebounced = debounce(this.suspendContext, SuspendDebounceTimeMs);
-    private async suspendContext(): Promise<void> {
-        infoLog?.log('suspendContext()');
-        const context = this._context;
-        if (!context)
-            return;
-
-        if (context.state === 'closed') {
-            await this.closeContext();
-            return;
-        }
-
-        await context.suspend();
-        this.fallbackDestination?.pause();
-        if (AudioInitializer.backgroundState === 'BackgroundIdle')
-            this.closeContextDebounced();
-    }
-
-    private closeContextDebounced = debounce(() => this.closeContext(), CloseUnusedContextDebounce);
-    private async closeContext(): Promise<void> {
-        infoLog?.log('closeContext()');
-        const context = this._context;
-        this._context = null;
-        await this.closeSilently(context);
-        if (AudioInitializer.backgroundState !== 'BackgroundIdle') {
-            this.whileBackgroundIdle?.resolve(undefined);
-            this.whileBackgroundIdle = null;
-        }
-    }
-
-    private async create(): Promise<AudioContext> {
-        debugLog?.log(`create`);
-        this.suspendContextDebounced.reset();
-        this.closeContextDebounced.reset();
-        const context = new AudioContext({
-            latencyHint: 'balanced',
-            sampleRate: this.purpose === 'playback' ? AP.SAMPLE_RATE : AR.SAMPLE_RATE,
-        });
-        Interactive.isInteractive = true;
-        await this.fallbackDestination?.attach(context);
-        await this.loadContextWorklets(context);
-
-        this._contextCreated$.next(context);
-        return context;
-    }
-
-    protected async onDeviceAwake(): Promise<void> {
-        debugLog?.log(`onDeviceAwake`);
-        // Close current AudioContext as it might be corrupted and can produce clicking sound
-        await this.closeContext();
     }
 }
 
