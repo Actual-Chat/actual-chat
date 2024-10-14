@@ -10,6 +10,7 @@
     var iconSize = ScreenSize.IsNarrow() ? 6 : 5;
     var isActive = m.IsAnyoneTalking;
     var iconColor = IsListening ? "primary" : "text-03";
+    var btnIconColor = IsListening ? "text-primary" : "";
 }
 
 <div class="chat-activity-panel" @onclick:preventDefault="true" @onclick:stopPropagation="true">
@@ -27,23 +28,13 @@
     }
     <div class="c-incut"></div>
     <div class="c-buttons">
-        @if (!IsListening) {
-            <ButtonRound
-                Class="btn-primary c-listen"
-                StopPropagation="true"
-                PreventDefault="true"
-                Click="@OnListenClick">
-                    <i class="icon-listen text-xl"></i>
-            </ButtonRound>
-        } else {
-            <ButtonRound
-                Class="btn-cancel c-mute"
-                StopPropagation="true"
-                PreventDefault="true"
-                Click="@OnListenClick">
-                    <i class="icon-listen text-xl text-primary"></i>
-            </ButtonRound>
-        }
+        <ButtonRound
+            Class="c-listen"
+            StopPropagation="true"
+            PreventDefault="true"
+            Click="@OnListenClick">
+                <i class="icon-listen @btnIconColor"></i>
+        </ButtonRound>
     </div>
 </div>
 

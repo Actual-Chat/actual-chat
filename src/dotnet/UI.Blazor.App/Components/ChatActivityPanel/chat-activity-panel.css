@@ -32,11 +32,11 @@ body.wide .chat-activity-panel {
     @apply text-base;
     @apply rounded-full;
 }
-.chat-activity-panel > .c-buttons > .btn.c-mute {
-    @apply text-01;
-}
 .chat-activity-panel > .c-buttons > .btn .btn-title {
     @apply flex-1;
+}
+.chat-activity-panel > .c-buttons > .btn i {
+    @apply text-2xl md:text-xl;
 }
 .chat-activity-panel > .c-icon {
     @apply flex items-center justify-center;
