@@ -9,12 +9,14 @@
     Class="chat-activity-group"
     MaxIconCount="@MaxIconCount"
     Size="@size"
+    IsListening="@IsListening"
     AuthorSids="@m.RecordingAuthorSids" />
 
 @* !!! For testing ChatActivityPanel only *@
 @* <AuthorCircleGroupTest *@
 @*      Class="chat-activity-group" *@
 @*      MaxIconCount="@MaxIconCount" *@
+@*      IsListening="@IsListening" *@
 @*      Size="@size" /> *@
 
 @code {
@@ -27,6 +29,7 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public bool IsListening { get; set; }
     [Parameter] public int MaxIconCount { get; set; } = 5;
 
     public override async ValueTask DisposeAsync() {
