@@ -70,11 +70,7 @@
                     @key="AttachmentListKey"
                     @ref="AttachmentListRef"
                     OnSendClick="@(() => Post())"/>
-            }
-            @if (ScreenSize.IsNarrow()) {
                 <div class="rounded-sub-footer"></div>
-            }
-            @if (ScreenSize.IsNarrow()) {
                 <RelatedChatEntryPanel/>
             }
             <ChatAudioPanel Chat="@Chat"/>
