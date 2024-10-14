@@ -24,8 +24,15 @@
     @apply overflow-hidden;
     background-image: linear-gradient(180deg, #2970FF 0.32%, #C60077 133.76%);
 }
+.non-active .back .author-circle-group-item {
+    @apply bg-05;
+    background-image: none;
+}
 .forward .author-circle-group-item {
     @apply border-2 border-bg-01;
+}
+.non-active .forward .author-circle-group-item {
+    filter: grayscale(1);
 }
 
 .author-circle-group-item.last-author {
@@ -49,10 +56,16 @@
     @apply animate-none;
     background-image: linear-gradient(180deg, #2970FF 0.32%, #C60077 133.76%);
 }
+.non-active .back .author-circle-group-item.last {
+    @apply bg-05;
+    background-image: none;
+}
 .forward .author-circle-group-item.last {
     @apply -ml-2 mr-1;
     @apply bg-01;
-
+}
+.non-active .forward .author-circle-group-item.last {
+    filter: grayscale(1);
 }
 .author-circle-group-item.last > .avatar-text {
     @apply w-full h-full;

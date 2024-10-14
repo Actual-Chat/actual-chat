@@ -8,50 +8,41 @@
 
     var maxCount = 5;
     var iconSize = ScreenSize.IsNarrow() ? 6 : 5;
+    var isActive = m.IsAnyoneTalking;
+    var iconColor = IsListening ? "primary" : "text-03";
 }
 
-@if (!ScreenSize.IsNarrow()) {
-    <div class="chat-activity-border"></div>
-}
 <div class="chat-activity-panel" @onclick:preventDefault="true" @onclick:stopPropagation="true">
     <div class="c-icon">
-        <chat-activity-svg size="@iconSize" isActive="@m.IsAnyoneTalking" activeColor="primary" inactiveColor="text-03"/>
+        <chat-activity-svg size="@iconSize" isActive="@isActive" activeColor="@iconColor" inactiveColor="text-03"/>
     </div>
     @if (m.IsAnyoneTalking) {
-        <ChatActivities @key="@Chat.Id.Value" Chat="@Chat" MaxIconCount="@maxCount"/>
+        <ChatActivities
+            @key="@Chat.Id.Value"
+            Chat="@Chat"
+            MaxIconCount="@maxCount"
+            IsListening="@IsListening"/>
     } else {
-        @if (ScreenSize.IsNarrow()) {
-            <div class="silence-text">No one is talking</div>
-        }
+        <div class="silence-text">You are listening...</div>
     }
     <div class="c-incut"></div>
     <div class="c-buttons">
         @if (!IsListening) {
-            <Button
+            <ButtonRound
                 Class="btn-primary c-listen"
                 StopPropagation="true"
                 PreventDefault="true"
                 Click="@OnListenClick">
-                <Icon>
                     <i class="icon-listen text-xl"></i>
-                </Icon>
-                <Title>
-                    Listen
-                </Title>
-            </Button>
+            </ButtonRound>
         } else {
-            <Button
+            <ButtonRound
                 Class="btn-cancel c-mute"
                 StopPropagation="true"
                 PreventDefault="true"
                 Click="@OnListenClick">
-                <Icon>
-                    <i class="icon-not-listen text-xl text-03"></i>
-                </Icon>
-                <Title>
-                    Mute
-                </Title>
-            </Button>
+                    <i class="icon-listen text-xl text-primary"></i>
+            </ButtonRound>
         }
     </div>
 </div>
