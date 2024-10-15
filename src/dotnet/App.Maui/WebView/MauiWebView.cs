@@ -85,7 +85,6 @@ public sealed partial class MauiWebView
             isSessionChanged = Session != session;
             ScopedServices = scopedServices;
             Session = session;
-            scopedServices.GetRequiredService<Mutable<MauiWebView?>>().Value = this;
             AppServicesAccessor.ScopedServices = scopedServices;
         }
         if (isSessionChanged)
@@ -102,12 +101,6 @@ public sealed partial class MauiWebView
                 return;
             }
 
-            try {
-                scopedServices.GetRequiredService<Mutable<MauiWebView?>>().Value = null;
-            }
-            catch {
-                // Intended, may fail on dispose
-            }
             ScopedServices = null;
         }
     }

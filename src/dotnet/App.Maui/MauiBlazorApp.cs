@@ -10,7 +10,6 @@ public sealed class MauiBlazorApp : AppBase, IDisposable
 {
     private MauiWebView? _mauiWebView;
 
-    [Inject] private Mutable<MauiWebView?> MauiWebViewRef { get; init; } = null!;
     [Inject] private ScopedServicesDisposeTracker ScopedServicesDisposeTracker { get; init; } = null!;
 
     public void Dispose()
