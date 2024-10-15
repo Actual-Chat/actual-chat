@@ -10,14 +10,14 @@ public sealed class SearchQuery
 
 public enum QuerySortOrder
 {
-    Ascending = 1,
-    Descenging = 2,
+    Ascending = 0,
+    Descending = 1,
 }
 
-public enum MultivalueFieldMode
+public enum MultiValueFieldMode
 {
-    Min = 1,
-    Max = 2,
+    Min = 0,
+    Max = 1,
 }
 
-public record SortStatement(string Field, QuerySortOrder SortOrder, MultivalueFieldMode Mode);
+public record SortStatement(string Field, QuerySortOrder SortOrder, MultiValueFieldMode Mode);

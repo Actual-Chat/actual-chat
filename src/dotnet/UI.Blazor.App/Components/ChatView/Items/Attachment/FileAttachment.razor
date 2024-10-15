@@ -32,7 +32,9 @@
 </a>
 
 @code {
+    #pragma warning disable 0649
     private bool _isLoaded;
+    #pragma warning restore 0649
 
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 

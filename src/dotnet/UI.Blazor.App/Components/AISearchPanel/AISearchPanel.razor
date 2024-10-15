@@ -43,7 +43,8 @@
     private string _markup = "";
     private Markup _parsedMarkup = null!;
     private IChatMarkupHub _chatMarkupHub = null!;
-    private SearchPanel? _searchPanelRef;
+    // TODO(DF): review SearchPanel usages. Seems it's no longer used.
+    // private SearchPanel? _searchPanelRef;
     private ChatId _chatId = ChatId.None;
 
     [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
@@ -57,10 +58,11 @@
         _chatMarkupHub = ChatMarkupHubFactory[Constants.Chat.DefaultChatId];
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (_searchPanelRef != null)
-            await _searchPanelRef.Focus();
-    }
+    // TODO(DF): review SearchPanel usages. Seems it's no longer used.
+    // protected override async Task OnAfterRenderAsync(bool firstRender) {
+    //     if (_searchPanelRef != null)
+    //         await _searchPanelRef.Focus();
+    // }
 
     private void CloseSearchPanel() {
         ChatContext.Hub.PanelsUI.Right.SearchToggle();

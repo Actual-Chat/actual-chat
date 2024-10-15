@@ -128,9 +128,9 @@ public sealed class ChatEntryPlayer : ProcessorBase
         var chatTask = Hub.Chats.Get(Hub.Session(), audioEntry.ChatId, cancellationToken);
         var authorTask = Hub.Authors.Get(Hub.Session(), audioEntry.ChatId, audioEntry.AuthorId, cancellationToken);
         await Task.WhenAll(audioTask, chatTask, authorTask).ConfigureAwait(false);
-        var audio = await audioTask;
-        var chat = await chatTask;
-        var author = await authorTask;
+        var audio = await audioTask.ConfigureAwait(false);
+        var chat = await chatTask.ConfigureAwait(false);
+        var author = await authorTask.ConfigureAwait(false);
 
         var trackInfo = new ChatAudioTrackInfo(audioEntry, chat!, author!) {
             RecordedAt = audioEntry.BeginsAt + skipTo,
@@ -162,9 +162,9 @@ public sealed class ChatEntryPlayer : ProcessorBase
         var chatTask = Hub.Chats.Get(Hub.Session(), audioEntry.ChatId, cancellationToken);
         var authorTask = Hub.Authors.Get(Hub.Session(), audioEntry.ChatId, audioEntry.AuthorId, cancellationToken);
         await Task.WhenAll(audioTask, chatTask, authorTask).ConfigureAwait(false);
-        var audio = await audioTask;
-        var chat = await chatTask;
-        var author = await authorTask;
+        var audio = await audioTask.ConfigureAwait(false);
+        var chat = await chatTask.ConfigureAwait(false);
+        var author = await authorTask.ConfigureAwait(false);
         var trackInfo = new ChatAudioTrackInfo(audioEntry, chat!, author!) {
             RecordedAt = audioEntry.BeginsAt + skipTo,
             ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,

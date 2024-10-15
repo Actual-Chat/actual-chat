@@ -64,14 +64,7 @@ public sealed class ConversationToolsController(ICommander commander, IBotToolsC
             null,
             Change.Create(new ChatEntryDiff {
                 AuthorId = botId,
-                Content = string.Format(
-                    format: "{0}\n{1}",
-                    reply.Comment,
-                    string.Join(
-                        '\n',
-                        reply.LocalUrls.Select(e => e.ToAbsolute(urlMapper))
-                    )
-                ),
+                Content = reply.Comment + "\n" + string.Join('\n', reply.LocalUrls.Select(e => e.ToAbsolute(urlMapper))),
             }));
         await commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         return;

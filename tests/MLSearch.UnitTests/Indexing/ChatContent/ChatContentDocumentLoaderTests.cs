@@ -112,7 +112,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
                     .Cast<Int64RangeFilter>()
                     .Where(f => !f.From.HasValue && f.To.HasValue && f.To.Value.Value == lastLocalId && f.To.Value.Include)
                     .Single() != null
-                && x.SortStatements![0].SortOrder == QuerySortOrder.Descenging),
+                && x.SortStatements![0].SortOrder == QuerySortOrder.Descending),
             It.Is<CancellationToken>(x => x == ctSource.Token)
         ));
     }
