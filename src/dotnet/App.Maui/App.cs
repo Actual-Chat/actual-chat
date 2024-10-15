@@ -12,7 +12,7 @@ public class App : Application
     private IServiceProvider Services { get; }
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
-    public App(MainPage mainPage, IServiceProvider services)
+    public App(IServiceProvider services)
     {
         Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific.Application.SetWindowSoftInputModeAdjust(
             this,
@@ -24,7 +24,7 @@ public class App : Application
             "--disable-features=AutoupgradeMixedContent");
 #endif
         Services = services;
-        MainPage = mainPage;
+        MainPage = new MainPage();
     }
 
     protected override Window CreateWindow(IActivationState? activationState)
