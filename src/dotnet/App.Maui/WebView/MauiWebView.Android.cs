@@ -1,6 +1,7 @@
 using Android.Webkit;
 using AndroidX.Activity;
 using Microsoft.AspNetCore.Components.WebView;
+using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Maui.Platform;
 using Color = Android.Graphics.Color;
 using WebView = Android.Webkit.WebView;
@@ -39,6 +40,7 @@ public partial class MauiWebView
 
     private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs)
     {
+        var blazorWebView = (BlazorWebView)sender!;
         var webView = eventArgs.WebView;
         SetPlatformWebView(webView);
         if (webView.Context?.GetActivity() is not ComponentActivity activity)
@@ -61,17 +63,18 @@ public partial class MauiWebView
         var jsInterface = new AndroidJSInterface(webView);
         webView.AddJavascriptInterface(jsInterface, "Android");
 
+        var services = blazorWebView.Handler!.MauiContext!.Services;
         webView.SetWebViewClient(
             new AndroidWebViewClient(
                 webView.WebViewClient,
-                AppServices.GetRequiredService<AndroidContentDownloader>(),
-                AppServices.LogFor<AndroidWebViewClient>()));
+                services.GetRequiredService<AndroidContentDownloader>(),
+                services.LogFor<AndroidWebViewClient>()));
 
         webView.SetWebChromeClient(
             new AndroidWebChromeClient(
                 webView.WebChromeClient!,
                 activity,
-                new AndroidFileChooser(AppServices.LogFor<AndroidFileChooser>())));
+                new AndroidFileChooser(services.LogFor<AndroidFileChooser>())));
     }
 
     private partial void OnLoaded(object? sender, EventArgs eventArgs) { }
