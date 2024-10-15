@@ -31,6 +31,7 @@ export class AudioPlayer implements Resettable {
 
     private blazorRef?: DotNet.DotNetObject;
     private playing?: AudioContextInUse;
+    private whenEnded?: PromiseSource<void>;
 
     private playbackState: PlaybackState = 'paused';
     private decoderToFeederWorkletChannel: MessageChannel = null;
@@ -77,7 +78,7 @@ export class AudioPlayer implements Resettable {
     public static async create(blazorRef: DotNet.DotNetObject, id: string, preSkip: number, title: string, album: string): Promise<AudioPlayer> {
         await AudioPlayer.init();
         const player = AudioPlayer.pool.get();
-        player.startPlayback(blazorRef, id, preSkip, title, album);
+        await player.startPlayback(blazorRef, id, preSkip, title, album);
         return player;
     }
 
@@ -152,31 +153,34 @@ export class AudioPlayer implements Resettable {
         this.contextRef = audioContextSource.getRef('playback', options);
     }
 
-    public startPlayback(
+    public async startPlayback(
         blazorRef: DotNet.DotNetObject,
         id: string,
         preSkip: number,
         title: string,
-        album: string): void {
+        album: string): Promise<void> {
 
         debugLog?.log(`#${this.internalId} -> startPlayback()`);
         this.blazorRef = blazorRef;
         this.playing = this.contextRef.use(async () => {
-            if (this.playbackState === 'ended')
-                await decoderWorker.resume(this.internalId, rpcNoWait);
+            await decoderWorker.resume(this.internalId, rpcNoWait);
             await this.feederNode.resume(preSkip);
-            this.playbackState = 'paused';
         });
+        this.playbackState = 'paused';
+        this.whenEnded = new PromiseSource<void>();
+        await this.playing.whenInUse;
         this.setMediaSession(title, album);
         debugLog?.log(`#${this.internalId} <- startPlayback()`);
     }
 
     public reset(): void {
         debugLog?.log(`#${this.internalId} reset()`);
+        void this.feederNode?.pause(rpcNoWait);
         this.blazorRef = null;
         this.playbackState = 'ended';
         this.playing?.dispose();
         this.playing = null;
+        this.whenEnded?.resolve(undefined);
         this.resetMediaSessionDebounced();
         try {
             if (navigator.mediaSession) {
@@ -216,6 +220,9 @@ export class AudioPlayer implements Resettable {
 
         // This ensures 'end' hit the feeder processor which in turn sends feeder status back and resolves this.whenEnded
         await decoderWorker.end(this.internalId, mustAbort);
+        await this.whenEnded;
+        this.playing?.dispose();
+        this.playing = null;
         this.resetMediaSessionDebounced();
     }
 
@@ -242,8 +249,8 @@ export class AudioPlayer implements Resettable {
         debugLog?.log(`#${this.internalId}.resume`);
         this.playing = this.contextRef.use(async () => {
             await this.feederNode.resume(0);
-            this.playbackState = 'playing';
         });
+        this.playbackState = 'paused';
 
         this.setMediaSessionState('playing');
     }
@@ -314,6 +321,7 @@ export class AudioPlayer implements Resettable {
             finally {
                 this.playing?.dispose();
                 this.playing = null;
+                this.whenEnded.resolve(undefined);
                 AudioPlayer.pool.release(this);
             }
         }
