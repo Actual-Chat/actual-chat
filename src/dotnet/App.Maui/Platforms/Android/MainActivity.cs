@@ -54,7 +54,7 @@ public partial class MainActivity : MauiAppCompatActivity
     private ActivityResultLauncher _permissionRequestLauncher = null!;
     private TaskCompletionSource? _permissionRequestCompletedSource;
 
-    private ILogger Log { get; set; } = NullLogger.Instance;
+    private ILogger Log { get; } = StaticLog.For<MainActivity>();
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
@@ -74,7 +74,6 @@ public partial class MainActivity : MauiAppCompatActivity
             // As a result, splash screen is getting hidden early and user sees index.html w/o any content yet.
             // TODO: to think how we can gracefully handle this partial recreation.
         }
-        Log = AppServices.LogFor(GetType());
 
         Log.LogInformation("OnCreate. IsLoaded={IsLoaded}", isLoaded);
 
