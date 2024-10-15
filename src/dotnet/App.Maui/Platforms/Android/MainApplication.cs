@@ -41,8 +41,5 @@ public class MainApplication : MauiApplication, ILifecycleObserver
         => MauiProgram.CreateMauiApp();
 
     private static void SetBackgroundState(bool isBackground)
-        => _ = WhenAppServicesReady().ContinueWith(_ => {
-            var t = (MauiBackgroundStateTracker)AppServices.GetRequiredService<BackgroundStateTracker>();
-            t.IsBackground.Value = isBackground;
-        }, TaskScheduler.Default);
+        => MauiBackgroundStateTracker.SetBackgroundState(isBackground);
 }
