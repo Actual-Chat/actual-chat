@@ -1,4 +1,5 @@
 @using ActualChat.UI.Blazor.Services
+@using Cysharp.Text
 @using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.Components
 @{
@@ -14,9 +15,23 @@
     var chatListLoadedTime = (int)LoadingUI.ChatListLoadTime.TotalMilliseconds;
     if (loadTime <= 0)
         return;
+
+    string tooltip;
+    using (var tooltipBuilder = ZString.CreateStringBuilder()) {
+        if (appBuildTime > 0)
+            tooltipBuilder.AppendLine($"App build time: {appBuildTime}ms");
+        tooltipBuilder.AppendLine($"App creation time: {appCreationTime}ms");
+        tooltipBuilder.AppendLine($"App load time: {loadTime}ms");
+        tooltipBuilder.AppendLine($"Render duration: {renderTime-loadTime}ms");
+        tooltipBuilder.Append($"Chat list load time: {chatListLoadedTime}ms");
+        tooltip = tooltipBuilder.ToString();
+    }
 }
 
-<div class="blazor-mode-toggle px-1">
+<div
+    class="blazor-mode-toggle px-1"
+    data-tooltip="@tooltip"
+    data-tooltip-position="@(FloatingPosition.Top.ToPositionString())">
     @if (appBuildTime > 0) {
         @(appBuildTime + "/")
     }
