@@ -28,6 +28,7 @@ public class AppActivityTest: TestBase
     [Fact]
     public async Task BasicTest()
     {
+        MauiBackgroundStateTracker.SetBackgroundState(false);
         var backgroundStateTracker = (MauiBackgroundStateTracker)Services.GetRequiredService<BackgroundStateTracker>();
         backgroundStateTracker.IsBackground.Value.Should().BeFalse();
 
@@ -35,7 +36,7 @@ public class AppActivityTest: TestBase
         appActivity.Start();
         appActivity.State.Value.Should().Be(ActivityState.Foreground);
 
-        backgroundStateTracker.IsBackground.Value = true;
+        MauiBackgroundStateTracker.SetBackgroundState(true);
         await appActivity.State
             .When(x => x == ActivityState.BackgroundIdle)
             .WaitAsync(TimeSpan.FromSeconds(2));
@@ -49,9 +50,11 @@ public class AppActivityTest: TestBase
     [Fact]
     public async Task MassUpdateTest()
     {
+        MauiBackgroundStateTracker.SetBackgroundState(false);
         var random = Random.Shared;
         var log = Services.LogFor(GetType());
         var backgroundStateTracker = (MauiBackgroundStateTracker)Services.GetRequiredService<BackgroundStateTracker>();
+        backgroundStateTracker.IsBackground.Value.Should().BeFalse();
         var appActivity = (TestAppActivity)Services.GetRequiredService<AppActivity>();
         appActivity.Start();
 
@@ -61,7 +64,7 @@ public class AppActivityTest: TestBase
         _ = BackgroundTask.Run(async () => {
             for (int i = 0; i < 10; i++) {
                 await Task.Delay(random.Next(10,200), cts.Token);
-                backgroundStateTracker.IsBackground.Value = random.Next(3) >= 1;
+                MauiBackgroundStateTracker.SetBackgroundState(random.Next(3) >= 1);
             }
         }, cts.Token);
 
