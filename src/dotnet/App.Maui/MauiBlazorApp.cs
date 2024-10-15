@@ -32,7 +32,7 @@ public sealed class MauiBlazorApp : AppBase, IDisposable
         }
         catch (Exception e) {
             Log.LogError(e, "OnInitializedAsync failed, will reload...");
-            AppServices.GetRequiredService<ReloadUI>().Reload(); // ReloadUI is a singleton on MAUI
+            Services.GetRequiredService<ReloadUI>().Reload(); // ReloadUI is a singleton on MAUI
         }
     }
 }
