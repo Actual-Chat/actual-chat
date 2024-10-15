@@ -155,6 +155,8 @@ abstract class AudioContextSourceBase implements AudioContextSource {
                 this.suspendContextDebounced();
         }
         else {
+            this.suspendContextDebounced.reset();
+            this.closeContextDebounced.reset();
             this.whileBackgroundIdle?.resolve(undefined);
             this.whileBackgroundIdle = null;
         }

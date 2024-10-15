@@ -22,6 +22,11 @@ export interface AudioContextRefOptions {
     retryCount?: number,
 }
 
+export interface AudioContextInUse extends Disposable {
+    dispose(): void;
+    whenInUse: Promise<void>;
+}
+
 export class AudioContextRef implements AsyncDisposable {
     private readonly name: string;
     private readonly whenRunning: Promise<void>;
@@ -56,7 +61,8 @@ export class AudioContextRef implements AsyncDisposable {
         await this.whenRunning;
     }
 
-    public use(whenContextInUse: (audioContext: OverridenAudioContext) => Promise<void>): Disposable {
+    public use(whenContextInUse: (audioContext: OverridenAudioContext) => Promise<void>): AudioContextInUse {
+        const whenInUse = new PromiseSource<void>();
         const dispose = () => {
             debugLog?.log(`${this.name}.use.dispose()`);
             if (!this.isUsed)
@@ -68,14 +74,17 @@ export class AudioContextRef implements AsyncDisposable {
         waitAsync(this._whenReady, this.whenDisposeRequested)
             .then(context => {
                 this.inUse = this.source.useRef(this);
+                whenInUse.resolve(undefined);
                 return waitAsync(whenContextInUse(context), this.whenDisposeRequested);
             })
             .catch(e => {
+                whenInUse.reject(e);
                 errorLog?.log(`${this.name}.use: error:`, e);
                 dispose();
             });
         return {
             dispose: dispose,
+            whenInUse: whenInUse,
         };
     }
 

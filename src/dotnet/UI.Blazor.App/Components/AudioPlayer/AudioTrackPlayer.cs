@@ -18,6 +18,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private Dispatcher? _dispatcher;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
     private IJSObjectReference? _jsRef;
+    private Task? _whenPlayerCreated;
     private volatile TaskCompletionSource _whenBufferLowSource = TaskCompletionSourceExt.New();
 
     private IServiceProvider Services { get; }
@@ -78,29 +79,39 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     var audioSource = (AudioSource)Source;
                     var preSkip = audioSource.Format.PreSkip;
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Creating audio player in JS", _id);
-                    _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod,
+                    var whenPlayerCreated = JS.InvokeAsync<IJSObjectReference>(JSCreateMethod,
                         CancellationToken.None,
                         _blazorRef, _id, preSkip, author.Avatar.Name, chat.Title);
+                    _whenPlayerCreated = whenPlayerCreated.AsTask();
+                    _jsRef = await whenPlayerCreated;
                     break;
                 case PauseCommand:
+                    if (_jsRef == null && _whenPlayerCreated != null)
+                        await _whenPlayerCreated;
                     if (_jsRef == null)
                         throw StandardError.StateTransition(GetType(), "Start command should be called first.");
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Pause command to JS", _id);
                     _ = _jsRef.InvokeVoidAsync("pause", CancellationToken.None);
                     break;
                 case ResumeCommand:
+                    if (_jsRef == null && _whenPlayerCreated != null)
+                        await _whenPlayerCreated;
                     if (_jsRef == null)
                         throw StandardError.StateTransition(GetType(), "Start command should be called first.");
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Resume command to JS", _id);
                     _ = _jsRef.InvokeVoidAsync("resume", CancellationToken.None);
                     break;
                 case AbortCommand:
+                    if (_jsRef == null && _whenPlayerCreated != null)
+                        await _whenPlayerCreated;
                     if (_jsRef == null)
                         throw StandardError.StateTransition(GetType(), "Start command should be called first.");
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Abort command to JS", _id);
                     _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None, true);
                     break;
                 case EndCommand:
+                    if (_jsRef == null && _whenPlayerCreated != null)
+                        await _whenPlayerCreated;
                     if (_jsRef == null)
                         throw StandardError.StateTransition(GetType(), "Start command should be called first.");
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending End command to JS", _id);

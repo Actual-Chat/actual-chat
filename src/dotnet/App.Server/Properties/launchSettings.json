@@ -2,18 +2,20 @@
   "profiles": {
     "Blazor Debug": {
       "commandName": "Project",
-      "workingDirectory": "..\\..\\..\\artifacts\\bin\\",
+      "workingDirectory": "..\\..\\..\\artifacts\\bin\\App.Server\\debug\\",
       "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
-      "applicationUrl": "http://localhost:7080;https://localhost:7081",
+      "applicationUrl": "http://localhost:7080",
+      "launchUrl": "https://local.actual.chat/chat/the-actual-one",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
     "Debug": {
       "commandName": "Project",
-      "workingDirectory": "..\\..\\..\\artifacts\\bin\\",
+      "workingDirectory": "..\\..\\..\\artifacts\\bin\\App.Server\\debug\\",
       "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
-      "applicationUrl": "http://localhost:7080;https://localhost:7081",
+      "applicationUrl": "http://localhost:7080",
+      "launchUrl": "https://local.actual.chat/chat/the-actual-one",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

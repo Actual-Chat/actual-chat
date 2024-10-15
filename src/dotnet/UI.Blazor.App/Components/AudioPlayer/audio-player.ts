@@ -1,5 +1,5 @@
 import { audioContextSource, OverridenAudioContext } from '../../Services/audio-context-source';
-import { AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
+import { AudioContextInUse, AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
 import { FeederState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
 import { Disposable } from 'disposable';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
@@ -30,7 +30,7 @@ export class AudioPlayer implements Resettable {
     private readonly contextRef: AudioContextRef;
 
     private blazorRef?: DotNet.DotNetObject;
-    private playing?: Disposable;
+    private playing?: AudioContextInUse;
 
     private playbackState: PlaybackState = 'paused';
     private decoderToFeederWorkletChannel: MessageChannel = null;
@@ -77,7 +77,7 @@ export class AudioPlayer implements Resettable {
     public static async create(blazorRef: DotNet.DotNetObject, id: string, preSkip: number, title: string, album: string): Promise<AudioPlayer> {
         await AudioPlayer.init();
         const player = AudioPlayer.pool.get();
-        await player.startPlayback(blazorRef, id, preSkip, title, album);
+        player.startPlayback(blazorRef, id, preSkip, title, album);
         return player;
     }
 
@@ -152,12 +152,12 @@ export class AudioPlayer implements Resettable {
         this.contextRef = audioContextSource.getRef('playback', options);
     }
 
-    public async startPlayback(
+    public startPlayback(
         blazorRef: DotNet.DotNetObject,
         id: string,
         preSkip: number,
         title: string,
-        album: string): Promise<void> {
+        album: string): void {
 
         debugLog?.log(`#${this.internalId} -> startPlayback()`);
         this.blazorRef = blazorRef;
@@ -196,7 +196,7 @@ export class AudioPlayer implements Resettable {
             return;
 
         // debugLog?.log(`#${this.internalId}.frame, ${bytes.length} byte(s)`);
-        await AudioPlayer.whenInitialized;
+        await this.playing.whenInUse;
 
         void decoderWorker.frame(
             this.internalId,
@@ -212,7 +212,7 @@ export class AudioPlayer implements Resettable {
             return;
 
         debugLog?.log(`#${this.internalId}.end, mustAbort:`, mustAbort);
-        await AudioPlayer.whenInitialized;
+        await this.playing.whenInUse;
 
         // This ensures 'end' hit the feeder processor which in turn sends feeder status back and resolves this.whenEnded
         await decoderWorker.end(this.internalId, mustAbort);
@@ -225,7 +225,7 @@ export class AudioPlayer implements Resettable {
             return;
 
         debugLog?.log(`#${this.internalId}.pause`);
-        await AudioPlayer.whenInitialized;
+        await this.playing.whenInUse;
         await this.feederNode?.pause(rpcNoWait);
         this.playing?.dispose();
         this.playing = null;
@@ -350,3 +350,5 @@ export class AudioPlayer implements Resettable {
         }
     }
 }
+
+void AudioPlayer.init();
