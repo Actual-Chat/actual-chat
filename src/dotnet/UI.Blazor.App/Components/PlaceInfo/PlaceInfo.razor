@@ -126,8 +126,6 @@
 </RenderIntoStack>
 
 @code {
-    private TabPanel _tabPanel = null!;
-
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
     private UICommander UICommander => Hub.UICommander();

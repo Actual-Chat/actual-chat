@@ -144,7 +144,7 @@ internal sealed class SemanticSearchQueryBuilder(
                 ss.Field(_ => new FieldSort {
                     Field = sortStatement.Field,
                     Order = sortStatement.SortOrder == QuerySortOrder.Ascending ? SortOrder.Ascending : SortOrder.Descending,
-                    Mode = sortStatement.Mode == MultivalueFieldMode.Min ? SortMode.Min : SortMode.Max,
+                    Mode = sortStatement.Mode == MultiValueFieldMode.Min ? SortMode.Min : SortMode.Max,
                 });
             }
             return ss;

@@ -33,7 +33,7 @@
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.SearchPanel.create";
 
-    TextInput? _inputRef = null;
+    TextInput? _inputRef;
 
     [Inject] private SearchUI SearchUI { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;

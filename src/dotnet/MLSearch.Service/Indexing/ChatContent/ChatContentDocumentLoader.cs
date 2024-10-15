@@ -51,7 +51,7 @@ internal class ChatContentDocumentLoader(
                 new Int64RangeFilter(_chatEntryLocalIdField, null, new RangeBound<long>(cursor.LastEntryLocalId, true)),
             ],
             SortStatements = [
-                new SortStatement(_chatEntryLocalIdField, QuerySortOrder.Descenging, MultivalueFieldMode.Max),
+                new SortStatement(_chatEntryLocalIdField, QuerySortOrder.Descending, MultiValueFieldMode.Max),
             ],
             Limit = tailSetSize,
         };
