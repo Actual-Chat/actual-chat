@@ -30,7 +30,6 @@ public static class MauiHostBuilderExtensions
         builder
             .ConfigureMauiHandlers(handlers =>
             {
-                handlers.AddHandler<WebView, WebViewHandler>();
                 handlers.AddHandler<Page, PageHandler>();
                 handlers.AddHandler<Window, WindowHandler>();
                 handlers.AddHandler<Application, ApplicationHandler>();
@@ -38,7 +37,6 @@ public static class MauiHostBuilderExtensions
 
         typeof(VisualElement).GetMethod("RemapForControls", BindingFlags.Static | BindingFlags.NonPublic, [])!.Invoke(null, []);
         typeof(ContentPage).GetMethod("RemapForControls", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, []);
-
 
         return builder;
     }
