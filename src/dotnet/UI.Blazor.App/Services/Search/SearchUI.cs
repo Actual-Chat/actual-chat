@@ -124,7 +124,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
 
     public Task Select(FoundItem foundItem, bool mustNavigate = false)
     {
-        if (!_cached.TrySelect(foundItem))
+        if (_cached.TrySelect(foundItem))
             return Task.CompletedTask;
 
         _isResultsNavigationOn.Value = true;

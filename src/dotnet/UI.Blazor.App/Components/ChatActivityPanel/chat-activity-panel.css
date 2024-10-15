@@ -5,9 +5,12 @@
 body.wide .chat-activity-panel {
     @apply h-10;
     @apply rounded-lg;
+    @apply px-1;
+    @apply rounded-full;
+    @apply bg-03;
 }
 .chat-activity-panel .silence-text {
-    @apply flex-1 text-start md:hidden;
+    @apply flex-1 text-start;
     @apply text-headline-1 text-03;
 }
 .chat-activity-panel > .author-circle-group {
@@ -23,10 +26,20 @@ body.wide .chat-activity-panel {
     @apply flex-none;
 }
 .chat-activity-panel > .c-buttons > .btn {
-    @apply min-h-8 h-8 min-w-22;
+    @apply h-10 w-10 md:h-8 md:w-8;
     @apply px-2;
+    @apply bg-04;
     @apply text-base;
+    @apply rounded-full;
 }
-.chat-activity-panel > .c-buttons > .btn.c-mute {
-    @apply text-01;
+.chat-activity-panel > .c-buttons > .btn .btn-title {
+    @apply flex-1;
+}
+.chat-activity-panel > .c-buttons > .btn i {
+    @apply text-2xl md:text-xl;
+}
+.chat-activity-panel > .c-icon {
+    @apply flex items-center justify-center;
+    @apply h-8 w-8;
+    @apply rounded-full;
 }

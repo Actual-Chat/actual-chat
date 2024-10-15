@@ -1,5 +1,5 @@
 .mention-list-manager {
-    @apply absolute inset-x-0 top-0;
+    @apply absolute inset-x-0 top-0 z-10;
 }
 .mention-list-manager > div {
     @apply absolute inset-x-0 bottom-0;
@@ -7,16 +7,23 @@
 
 .mention-list {
     @apply flex-y;
-    @apply max-h-48 md:max-h-64;
+    @apply max-h-40 md:max-h-64;
     @apply overflow-x-hidden overflow-y-auto;
-    @apply border-y border-separator;
+    @apply border-t-2 border-separator;
     @apply bg-01 text-03;
 }
 body.narrow .mention-list {
-    @apply pb-6;
+    @apply border-post-panel;
+    @apply bg-post-panel text-post-panel-text;
+}
+body.narrow .narrow-panel .mention-list {
+    @apply h-32;
+}
+.mention-list.non-visible {
+    @apply hidden;
 }
 /* Firefox workaround: it somehow displays the border otherwise */
-.mention-list.hidden {
+.mention-list.non-visible {
     @apply border-y-0;
 }
 
@@ -30,10 +37,13 @@ body.narrow .mention-list {
 .mention-list .mention-list-item > .c-content {
     @apply flex-x items-center gap-x-2;
     @apply h-9;
-    @apply px-4;
+    @apply px-2 md:px-4;
 }
 .mention-list .mention-list-item > .c-content > .c-center {
     @apply flex-auto;
     @apply truncate;
-    @apply text-headline-1 text-02;
+    @apply text-headline-1;
+}
+.mention-list-manager:has(.mention-list.non-visible) + .editor-separator {
+    @apply hidden;
 }
