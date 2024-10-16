@@ -55,6 +55,7 @@ body.hoverable .found-result.navbar-item:hover {
     @apply text-01;
 }
 .found-result.navbar-item .c-container .c-description .c-colon {
+    @apply -ml-0.5;
     @apply text-01;
 }
 .found-result.navbar-item .c-last-message {
@@ -91,11 +92,13 @@ body.hoverable .found-result.navbar-item:hover {
     @apply truncate;
     @apply text-03;
 }
-.found-result.navbar-item.message .c-container .c-description .c-third-line.place-chat,
+.found-result.navbar-item.message .c-container .c-description .c-third-line.place-chat {
+    @apply line-clamp-2;
+}
 .found-result.navbar-item.message .c-container .c-description:has(.c-second-line) .c-third-line.place-chat {
     @apply flex-x gap-x-0.5;
     -webkit-line-clamp: none;
 }
-.found-result.navbar-item.message .c-container .c-description .c-third-line.place-chat .c-entry {
+.found-result.navbar-item.message .c-container .c-description:has(.c-second-line) .c-third-line.place-chat .c-entry {
     @apply truncate;
 }

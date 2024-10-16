@@ -8,7 +8,7 @@
         break;
     case SearchScope.Groups:
         // Group found
-        <FoundGroupListItem FoundItem="@FoundItem"/>
+        <FoundGroupListItem FoundItem="@FoundItem" IsPlace="@IsPlace"/>
         break;
     case SearchScope.Places:
         // Place found
@@ -16,10 +16,11 @@
         break;
     case SearchScope.Messages:
         // Message found
-        <FoundMessageListItem FoundItem="@FoundItem"/>
+        <FoundMessageListItem FoundItem="@FoundItem" IsPlace="@IsPlace"/>
         break;
 }
 
 @code {
     [Parameter] public FoundItem FoundItem { get; set; } = null!;
+    [Parameter] public bool IsPlace { get; set; }
 }

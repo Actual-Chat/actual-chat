@@ -57,9 +57,11 @@
                         </div>
                     } else {
                         // Place chat message
-                        <div class="c-second-line message">
-                            In <span class="c-place-title">@m.Place?.Title</span>
-                        </div>
+                        @if (!IsPlace) {
+                            <div class="c-second-line message">
+                                In <span class="c-place-title">@m.Place?.Title</span>
+                            </div>
+                        }
                         <div class="c-third-line place-chat">
                             <span class="c-name">
                                 <AuthorName
@@ -89,6 +91,7 @@
     private IPlaces Places => Hub.Places;
 
     [Parameter] public FoundItem FoundItem { get; set; } = null!;
+    [Parameter] public bool IsPlace { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

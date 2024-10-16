@@ -28,7 +28,6 @@ body.wide .chat-activity-panel {
 .chat-activity-panel > .c-buttons > .btn {
     @apply h-10 w-10 md:h-8 md:w-8;
     @apply px-2;
-    @apply bg-04;
     @apply text-base;
     @apply rounded-full;
 }

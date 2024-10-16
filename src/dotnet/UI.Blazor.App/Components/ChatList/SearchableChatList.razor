@@ -2,10 +2,11 @@
 @inherits ComputedStateComponent<SearchableChatList.Model>
 @{
     var m = State.Value;
+    var isPlace = !m.PlaceId.IsNone;
 }
 
 @if (m is { IsSearchOn: true }) {
-    <FoundChatList @key="@(m.PlaceId.Value + "-found")"/>
+    <FoundChatList @key="@(m.PlaceId.Value + "-found")" IsPlace="@isPlace"/>
 } else {
     <ChatList @key="@m.PlaceId.Value" PlaceId="@PlaceId" UsePlaceChatListSettings="@true" />
 }
