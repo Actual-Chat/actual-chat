@@ -324,9 +324,9 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
 
     public class EntryToDocMap(int numDocs, bool isFirst, bool isLast) : IXunitSerializable
     {
-        public int NumDocs => numDocs;
-        public bool IsFirst => isFirst;
-        public bool IsLast => isLast;
+        public int NumDocs { get; private set; } = numDocs;
+        public bool IsFirst { get; private set; } = isFirst;
+        public bool IsLast { get; private set; } = isLast;
 
         [Obsolete("Called by the de-serializer; should only be called by deriving classes for de-serialization purposes")]
         public EntryToDocMap() : this(default, default, default)
@@ -334,16 +334,16 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
 
         public void Deserialize(IXunitSerializationInfo info)
         {
-            numDocs = info.GetValue<int>(nameof(numDocs));
-            isFirst = info.GetValue<bool>(nameof(isFirst));
-            isLast = info.GetValue<bool>(nameof(isLast));
+            NumDocs = info.GetValue<int>(nameof(NumDocs));
+            IsFirst = info.GetValue<bool>(nameof(IsFirst));
+            IsLast = info.GetValue<bool>(nameof(IsLast));
         }
 
         public void Serialize(IXunitSerializationInfo info)
         {
-            info.AddValue(nameof(numDocs), numDocs);
-            info.AddValue(nameof(isFirst), isFirst);
-            info.AddValue(nameof(isLast), isLast);
+            info.AddValue(nameof(numDocs), NumDocs);
+            info.AddValue(nameof(isFirst), IsFirst);
+            info.AddValue(nameof(isLast), IsLast);
         }
     }
 

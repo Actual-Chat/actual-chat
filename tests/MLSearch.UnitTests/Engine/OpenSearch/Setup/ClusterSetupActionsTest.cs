@@ -335,7 +335,6 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
         Assert.StartsWith("OpenSearch request failed", exception.Message, StringComparison.Ordinal);
     }
 
-
     [Theory]
     [InlineData(CheckTemplateAction)]
     [InlineData(CheckPipelineAction)]
@@ -350,9 +349,9 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
 
     public class IsTemplateValidParams(string name, string pattern, int? numberOfReplicas) : IXunitSerializable
     {
-        public string Name => name;
-        public string Pattern => pattern;
-        public int? NumberOfReplicas => numberOfReplicas;
+        public string Name { get; private set; } = name;
+        public string Pattern { get; private set; } = pattern;
+        public int? NumberOfReplicas { get; private set; } = numberOfReplicas;
 
         [Obsolete("Called by the de-serializer; should only be called by deriving classes for de-serialization purposes")]
         public IsTemplateValidParams() : this(string.Empty, string.Empty, default)
@@ -360,16 +359,16 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
 
         public void Deserialize(IXunitSerializationInfo info)
         {
-            name = info.GetValue<string>(nameof(name));
-            pattern = info.GetValue<string>(nameof(pattern));
-            numberOfReplicas = info.GetValue<int?>(nameof(numberOfReplicas));
+            Name = info.GetValue<string>(nameof(name));
+            Pattern = info.GetValue<string>(nameof(pattern));
+            NumberOfReplicas = info.GetValue<int?>(nameof(numberOfReplicas));
         }
 
         public void Serialize(IXunitSerializationInfo info)
         {
-            info.AddValue(nameof(name), name);
-            info.AddValue(nameof(pattern), pattern);
-            info.AddValue(nameof(numberOfReplicas), numberOfReplicas);
+            info.AddValue(nameof(name), Name);
+            info.AddValue(nameof(pattern), Pattern);
+            info.AddValue(nameof(numberOfReplicas), NumberOfReplicas);
         }
     }
 
