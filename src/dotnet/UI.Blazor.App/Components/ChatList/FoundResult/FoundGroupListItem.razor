@@ -24,7 +24,7 @@
                         </span>
                         <span class="c-members">@m.MemberCount @("member".Pluralize(m.MemberCount))</span>
                     </div>
-                    @if (m.Place is not null) {
+                    @if (m.Place is not null && !IsPlace) {
                         <div class="c-second-line">
                             In <span class="c-place-title">@m.Place.Title</span>
                         </div>
@@ -49,6 +49,7 @@
     private Session Session => Hub.Session();
 
     [Parameter] public FoundItem FoundItem { get; set; } = null!;
+    [Parameter] public bool IsPlace { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

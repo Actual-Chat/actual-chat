@@ -5,6 +5,8 @@
     if (foundItems == null)
         // TODO: loading view
         return;
+
+    var listCls = IsPlace ? "place" : "";
 }
 
 @if (foundItems.Count == 0) {
@@ -12,7 +14,7 @@
     return;
 }
 
-<div class="chat-list own-chat-list">
+<div class="chat-list own-chat-list @listCls">
     @foreach (var foundItem in foundItems) {
         @if (foundItem.IsFirstInGroup) {
             <SearchResultGroupHeader
@@ -21,7 +23,7 @@
                 IsGlobalSearchResult="foundItem.IsGlobalSearchResult" />
         }
 
-        <FoundResult @key=@foundItem.SearchResult.Id FoundItem="@foundItem"/>
+        <FoundResult @key=@foundItem.SearchResult.Id FoundItem="@foundItem" IsPlace="@IsPlace"/>
 
         @if (foundItem.IsLastInGroup) {
             <Divider Class="mx-1 my-1.5" />
@@ -32,6 +34,8 @@
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private SearchUI SearchUI => Hub.SearchUI;
+
+    [Parameter] public bool IsPlace { get; set; }
 
     protected override async Task<IReadOnlyList<FoundItem>> ComputeState(CancellationToken cancellationToken) {
         var isOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
