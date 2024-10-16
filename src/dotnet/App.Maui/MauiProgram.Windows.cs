@@ -6,7 +6,7 @@ namespace ActualChat.App.Maui;
 
 public static partial class MauiProgram
 {
-    private static partial void AddPlatformServices(this IServiceCollection services)
+    private static partial void ConfigureBlazorWebViewAppPlatformServices(this IServiceCollection services)
     {
         services.AddTransient<IAppIconBadge>(_ => new WindowsAppIconBadge());
         services.AddTransient<IDeviceTokenRetriever>(_ => new WindowsDeviceTokenRetriever());
@@ -15,9 +15,6 @@ public static partial class MauiProgram
         services.AddScoped<IRecordingPermissionRequester>(_ => new WindowsRecordingPermissionRequester());
         services.AddScoped<IMauiLogAccessor>(c => new WindowsLogAccessor(c.LogFor<WindowsLogAccessor>()));
     }
-
-    private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)
-    { }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
     {

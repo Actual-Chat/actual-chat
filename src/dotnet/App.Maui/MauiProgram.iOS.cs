@@ -14,7 +14,7 @@ namespace ActualChat.App.Maui;
 
 public static partial class MauiProgram
 {
-    private static partial void AddPlatformServices(this IServiceCollection services)
+    private static partial void ConfigureBlazorWebViewAppPlatformServices(this IServiceCollection services)
     {
         services.AddSingleton(CrossFirebaseCloudMessaging.Current);
         services.AddSingleton(CrossFirebaseAnalytics.Current);
@@ -31,9 +31,6 @@ public static partial class MauiProgram
         services.AddScoped<AddPhotoPermissionHandler>(c => new AddPhotoPermissionHandler(c.UIHub()));
         services.AddTransient<IAppIconBadge>(_ => new IosAppIconBadge());
     }
-
-    private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)
-    { }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddiOS(ios => ios.FinishedLaunching((app, options) => {

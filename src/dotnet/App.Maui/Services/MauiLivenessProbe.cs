@@ -139,7 +139,7 @@ public class MauiLivenessProbe : WorkerBase
                     return (scopedServices, JSRuntimeErrors.Disconnected(), false);
             }
             else
-                scopedServices = await WhenScopedServicesReady(true, cancellationToken).ConfigureAwait(false);
+                scopedServices = await WhenBlazorAppServicesReady(true, cancellationToken).ConfigureAwait(false);
             safeJSRuntime = scopedServices.GetRequiredService<SafeJSRuntime>();
             if (safeJSRuntime.IsDisconnected)
                 return (scopedServices, JSRuntimeErrors.Disconnected(), false);
@@ -153,7 +153,7 @@ public class MauiLivenessProbe : WorkerBase
             return (scopedServices, isAlive ? null : JSRuntimeErrors.Disconnected(), false);
         }
         catch (Exception e) {
-            var whenScopedServicesChanged = WhenScopedServicesChanged(cancellationToken);
+            var whenScopedServicesChanged = WhenBlazorAppServicesChanged(cancellationToken);
             var now = CpuTimestamp.Now;
             await MainThread.InvokeOnMainThreadAsync(() => { }).ConfigureAwait(false);
             var isMainThreadBusy = now.Elapsed >= MainThreadBusyTimeout;

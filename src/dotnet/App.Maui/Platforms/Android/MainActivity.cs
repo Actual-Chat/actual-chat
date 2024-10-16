@@ -60,6 +60,8 @@ public partial class MainActivity : MauiAppCompatActivity
     {
         using var _1 = Tracer.Region();
 
+        BlazorWebViewApp.EnsureStarted();
+
         var isLoaded = false;
         Interlocked.Exchange(ref _current, this);
         if (TryGetScopedServices(out var scopedServices)) {

@@ -27,34 +27,24 @@ public static class MauiDiagnostics
     private const string AndroidOutputTemplate = "({ThreadID}) [{SourceContext}] {Message:l}{NewLine:l}{Exception}";
     private static readonly TimeSpan SentryStartDelay = TimeSpan.FromSeconds(10);
 
-#if DEBUG
-    public const string LogTag = "dev.actual.chat";
-#else
-    public const string LogTag = "actual.chat";
-#endif
-
     private static SentryOptions? _sentryOptions;
 
+    public static readonly string LogTag;
     public static readonly Tracer Tracer;
     public static TracerProvider? TracerProvider { get; private set; }
     public static string LogFilePath { get; private set; } = "";
 
     static MauiDiagnostics()
     {
+        LogTag = MauiSettings.IsDevApp ?  "dev.actual.chat" : "actual.chat";
         Log.Logger = CreateAppLogger();
         StaticLog.Factory = new SerilogLoggerFactory(Log.Logger);
-        Tracer.Default = Tracer = CreateAppTracer();
+        Tracer.Default = Tracer = Tracer.IsSwitchedOn ? CreateAppTracer() : Tracer.None;
 
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = StaticLog.Factory.CreateLogger(typeof(WebMReader));
 
-        if (_sentryOptions != null)
-            _ = LoadingUI.WhenAppRendered
-                .WithDelay(SentryStartDelay)
-                .ContinueWith(_ => {
-                    InitSentrySdk(_sentryOptions);
-                    var _1 = CreateSentryTraceProvider();
-                }, TaskScheduler.Default);
+        InitSentrySdk();
     }
 
     public static IServiceCollection AddMauiDiagnostics(this IServiceCollection services, bool dispose)
@@ -86,13 +76,9 @@ public static class MauiDiagnostics
 
     private static Tracer CreateAppTracer()
     {
-#if DEBUG
         var logger = Log.Logger.ForContext(Serilog.Core.Constants.SourceContextPropertyName, "@trace");
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
         return new Tracer("MauiApp", x => logger.Information(x.Format()));
-#else
-        return Tracer.None;
-#endif
     }
 
     private static LoggerConfiguration AddPlatformLoggerSinks(LoggerConfiguration logging)
@@ -133,6 +119,19 @@ public static class MauiDiagnostics
         _sentryOptions = options;
     }
 
+    // Prevent invoking LoadingUI static constructor before Tracer.Default is initialized.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void InitSentrySdk()
+    {
+        if (_sentryOptions != null)
+            _ = LoadingUI.WhenAppRendered
+                .WithDelay(SentryStartDelay)
+                .ContinueWith(_ => {
+                    InitSentrySdk(_sentryOptions);
+                    var _1 = CreateSentryTraceProvider();
+                }, TaskScheduler.Default);
+    }
+
     private static void InitSentrySdk(SentryOptions options)
     {
         // We can use MAUI's network connectivity information to inform the CachingTransport when we're offline.
@@ -142,18 +141,17 @@ public static class MauiDiagnostics
         // Initialize the Sentry SDK.
         var disposable = SentrySdk.Init(options);
         // TODO(DF): It seems disposer is not invoked on application closing. Look up for another solution to flush client data.
-        var disposer = AppServices.GetRequiredService<Disposer>();
-        // Register the return value from initializing the SDK with the disposer.
-        // This will ensure that it gets disposed when the service provider is disposed.
-        disposer.Register(disposable);
+        // var disposer = AppServices.GetRequiredService<Disposer>();
+        // // Register the return value from initializing the SDK with the disposer.
+        // // This will ensure that it gets disposed when the service provider is disposed.
+        // disposer.Register(disposable);
     }
 
     private static async Task CreateSentryTraceProvider()
     {
         // Initialize client trace provider only in development environment or for admin users.
-        var urlMapper = AppServices.UrlMapper();
-        if (urlMapper.IsActualChat) {
-            var scopedServices = await WhenScopedServicesReady().ConfigureAwait(false);
+        if (!MauiSettings.IsDevApp) {
+            var scopedServices = await WhenBlazorAppServicesReady().ConfigureAwait(false);
             var accountUI = scopedServices.GetRequiredService<AccountUI>();
             await accountUI.WhenLoaded.ConfigureAwait(false);
             var ownAccount = await accountUI.OwnAccount.Use().ConfigureAwait(false);

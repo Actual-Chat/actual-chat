@@ -1,3 +1,4 @@
+#define TRACER_IS_ENABLED
 using Cysharp.Text;
 
 namespace ActualChat.Performance;
@@ -6,13 +7,15 @@ public sealed class Tracer
 {
     private readonly CpuTimestamp _startedAt;
 
+#if DEBUG || TRACER_IS_ENABLED
+    public const bool IsSwitchedOn = true;
+#else
+    public const bool IsSwitchedOn = false;
+#endif
+
     public static readonly Tracer None = new("None", null);
     public static Tracer Default { get; set; } =
-#if DEBUG
-        new("Default", static x => Console.WriteLine("@ " + x.Format()));
-#else
-        None;
-#endif
+        IsSwitchedOn ? new("Default", static x => Console.WriteLine("@ " + x.Format())) : None;
 
     public readonly string Name;
     public TimeSpan Elapsed => _startedAt.Elapsed;
