@@ -160,8 +160,23 @@ body.hoverable .chat-message:hover .message-reactions-add {
 .chat-message-transcript .retained {
 }
 
+.chat-message-transcript .changes:empty {
+    filter: opacity(0);
+}
 .chat-message-transcript .changes {
     @apply underline;
+}
+.change-item {
+    transition-behavior: allow-discrete;
+}
+.chat-message-transcript .changes .change-item {
+    filter: opacity(1);
+    transition-property: filter, --webkit-filter;
+    transition-timing-function: linear;
+    transition-duration: 200ms;
+    @starting-style {
+        filter: opacity(0);
+    }
 }
 
 body.hoverable .chat-header-title:hover {
