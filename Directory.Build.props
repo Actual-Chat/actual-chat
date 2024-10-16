@@ -147,6 +147,10 @@
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <AnalysisLevel>preview</AnalysisLevel>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <!-- Roslynator and Meziantou analyzers -->
+    <EnableExtraAnalyzers>false</EnableExtraAnalyzers>
+    <EnableExtraAnalyzers Condition="'$(Configuration)' == 'Release'">true</EnableExtraAnalyzers>
+    <!-- Warnings -->
     <WarningLevel>4</WarningLevel>
     <!-- NU1902, NU1903, NU1904: Package 'X' has a known moderate/high/critical security vulnerability -->
     <NoWarn>$(NoWarn);NU1902;NU1903;NU1904</NoWarn>

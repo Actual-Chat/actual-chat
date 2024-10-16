@@ -29,18 +29,13 @@
     <InternalsVisibleTo Include="$(RootNamespace).UnitTests" />
     <InternalsVisibleTo Include="$(RootNamespace).IntegrationTests" />
   </ItemGroup>
+
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
     <!-- <InternalsVisibleTo Include="DynamicProxyGenAssembly2" /> -->
     <InternalsVisibleTo Include="$(AssemblyName).UnitTests$(AssemblyPublicKey)" />
     <InternalsVisibleTo Include="$(AssemblyName).IntegrationTests$(AssemblyPublicKey)" />
     <InternalsVisibleTo Include="$(BaseName).Testing$(AssemblyPublicKey)" />
     <InternalsVisibleTo Include="$(BaseName).Testing.Host$(AssemblyPublicKey)" />
-
-    <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
-    <PackageReference Include="Roslynator.Analyzers" PrivateAssets="all" />
-    <PackageReference Include="Meziantou.Analyzer" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" PrivateAssets="all" />
 
     <!-- Global usings -->
     <Using Include="ActualChat" />
@@ -93,10 +88,6 @@
     <Using Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and !($(MSBuildProjectFile.Contains('App.Maui')))">
-    <PackageReference Include="ActualLab.Generators" />
-  </ItemGroup>
-
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(MSBuildProjectFile.Contains('UI.Blazor'))">
     <!-- Global usings for UI.Blazor projects -->
     <Using Include="ActualChat.UI.Blazor" />
@@ -113,6 +104,23 @@
     <Using Include="Microsoft.AspNetCore.Components.WebAssembly.Http" />
     <Using Include="Microsoft.JSInterop" />
     <Using Include="System.Net.Http" />
+  </ItemGroup>
+
+  <!-- Genrators -->
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and !($(MSBuildProjectFile.Contains('App.Maui')))">
+    <PackageReference Include="ActualLab.Generators" PrivateAssets="all" />
+    <PackageReference Include="MemoryPack.Generator" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Analyzers -->
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(EnableExtraAnalyzers)">
+    <PackageReference Include="Roslynator.Analyzers" PrivateAssets="all" />
+    <PackageReference Include="Meziantou.Analyzer" PrivateAssets="all" />
   </ItemGroup>
 
   <!-- Trimmable assemblies -->
