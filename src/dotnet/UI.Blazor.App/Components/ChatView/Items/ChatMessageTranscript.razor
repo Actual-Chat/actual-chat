@@ -3,9 +3,6 @@
 @implements IAsyncDisposable
 @using ActualChat.Transcription
 @using ActualChat.Streaming
-@{
-    var delay = 25;
-}
 
 <p class="@Class chat-message-transcript">
     @if (ShowEntryKind) {
@@ -15,16 +12,29 @@
             <ChatEntryKindView Kind="@ChatEntryKind.Text"/>
         }
     }@*
-    *@<span class="retained">@RetainedPart</span>@*
-    *@<span class="changes">
-        @for (var i = 0; i < ChangedPart.Length; i++) {
-            var style = $"transition-delay: {delay * i}ms;";
-            <span class="change-item" style="@style">@ChangedPart[i]</span>
-        }
-    </span>
+    *@<span class="retained">@RetainedText</span>@*
+    *@<span class="changes">@*
+        *@<span>@ChangedText</span>@*
+        *@@{
+            for (var spanIndex = 0; spanIndex < AnimationSpanCount; spanIndex++) {
+                var spanStart = AnimatedText.Length * spanIndex / AnimationSpanCount;
+                var spanEnd = AnimatedText.Length * (spanIndex + 1) / AnimationSpanCount;
+                if (spanStart >= spanEnd)
+                    continue;
+
+                var spanDelay = (int)Math.Round(AnimationSpanDurationMs * spanIndex);
+                var style = $"transition-delay: {spanDelay}ms;";
+                <span class="change-item" style="@style">@AnimatedText[spanStart..spanEnd]</span>
+            }
+        }@*
+    *@</span>
 </p>
 
 @code {
+    private static readonly double AnimationDurationMs = Constants.Transcription.ThrottlePeriod.TotalMilliseconds;
+    private static readonly int AnimationSpanCount = (int)Math.Round(AnimationDurationMs / (1000.0 / 15));
+    private static readonly double AnimationSpanDurationMs = AnimationDurationMs / AnimationSpanCount;
+
     private ILogger? _log;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -38,8 +48,9 @@
 
     private CancellationTokenSource? RestartCts { get; set; }
     private Transcript Transcript { get; set; } = Transcript.New();
-    private string RetainedPart { get; set; } = "";
-    private string ChangedPart { get; set; } = "";
+    private string RetainedText { get; set; } = "";
+    private string ChangedText { get; set; } = "";
+    private string AnimatedText { get; set; } = "";
 
     public ValueTask DisposeAsync() {
         RestartCts.CancelAndDisposeSilently();
@@ -66,11 +77,15 @@
             var lastText = "";
             await foreach (var transcript in transcripts.ConfigureAwait(false)) {
                 var text = transcript.Text;
-                var commonPrefixLength = lastText.GetCommonPrefixLength(text);
+                var retainedLength = lastText.GetCommonPrefixLength(text);
+                var changedPart = text[retainedLength..];
+                var animatedLength = (text.Length - lastText.Length).Clamp(0, changedPart.Length);
+                var animatedStartIndex = changedPart.Length - animatedLength;
                 await Dispatcher.InvokeSafeAsync(() => {
                     Transcript = transcript;
-                    RetainedPart = text[..commonPrefixLength];
-                    ChangedPart = text[commonPrefixLength..];
+                    RetainedText = text[..retainedLength];
+                    ChangedText = changedPart[..animatedStartIndex];
+                    AnimatedText = changedPart[animatedStartIndex..];
                     StateHasChanged();
                 }, Log).ConfigureAwait(false); // Ok here
                 lastText = text;
