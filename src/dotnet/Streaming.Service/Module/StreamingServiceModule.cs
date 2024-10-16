@@ -56,7 +56,6 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<GoogleTranscriber>();
         services.AddSingleton<DeepgramTranscriber>();
         services.AddSingleton<AudioSegmentSaver>();
-        services.AddSingleton<StreamingBackend.Options>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

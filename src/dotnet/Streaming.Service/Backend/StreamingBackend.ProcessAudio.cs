@@ -22,16 +22,8 @@ public partial class StreamingBackend
     {
         ValidateStreamId(record.StreamId);
         Log.LogTrace(nameof(ProcessAudio) + ": record #{StreamId} = {Record}", record.StreamId, record);
-        var delayedCts = new CancellationTokenSource();
+        var delayedCts = cancellationToken.CreateDelayedTokenSource(Constants.Transcription.CancellationDelay);
         var delayedCancellationToken = delayedCts.Token;
- #pragma warning disable MA0147, VSTHRD101
-        // ReSharper disable once AsyncVoidLambda
-        var registration = cancellationToken.Register(async () => {
-            await Task.Delay(Settings.CancellationDelay, CancellationToken.None).ConfigureAwait(false);
-            // ReSharper disable once AccessToDisposedClosure
-            delayedCts.CancelAndDisposeSilently();
-        });
- #pragma warning restore MA0147, VSTHRD101
         try {
             var augmentedFrames = frames.AsAsyncEnumerable();
             if (Constants.DebugMode.AudioRecordingStream)
@@ -47,7 +39,6 @@ public partial class StreamingBackend
             throw;
         }
         finally {
-            await registration.DisposeAsync().ConfigureAwait(false);
             delayedCts.CancelAndDisposeSilently();
         }
     }
@@ -177,7 +168,7 @@ public partial class StreamingBackend
         var transcriber = TranscriberFactory.Get(transcriptionEngine);
         var transcripts = transcriber
             .Transcribe(audioSegment.StreamId, audioSegment.Source, transcriptionOptions, cancellationToken)
-            .Throttle(Settings.TranscriptDebouncePeriod, Clocks.CpuClock, cancellationToken)
+            .Throttle(Constants.Transcription.ThrottlePeriod, Clocks.CpuClock, cancellationToken)
             .Memoize(CancellationToken.None);
         cancellationToken = CancellationToken.None; // We already accounted for it in TrimOnCancellation
 

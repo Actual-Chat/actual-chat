@@ -11,13 +11,6 @@ namespace ActualChat.Streaming;
 
 public partial class StreamingBackend : IStreamingBackend, IDisposable
 {
-    public record Options
-    {
-        public TimeSpan TranscriptDebouncePeriod { get; set; } = TimeSpan.FromSeconds(0.2);
-        public TimeSpan CancellationDelay { get; set; } = TimeSpan.FromSeconds(3);
-        public bool IsEnabled { get; init; } = true;
-    }
-
     private readonly StreamStore<byte[]> _audioStreams;
     private readonly StreamStore<TranscriptDiff> _transcriptStreams;
 
@@ -27,7 +20,6 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     private static bool DebugMode => Constants.DebugMode.AudioProcessor;
     private ILogger? DebugLog => DebugMode ? Log : null;
 
-    private Options Settings { get; }
     private IServiceProvider Services { get; }
     private MeshNode OwnNode { get; }
     private AudioSegmentSaver AudioSegmentSaver { get; }
@@ -38,9 +30,8 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     private ICommander Commander { get; }
     private MomentClockSet Clocks { get; }
 
-    public StreamingBackend(Options settings, IServiceProvider services)
+    public StreamingBackend(IServiceProvider services)
     {
-        Settings = settings;
         Services = services;
         Log = services.LogFor(GetType());
         OpenAudioSegmentLog = services.LogFor<OpenAudioSegment>();

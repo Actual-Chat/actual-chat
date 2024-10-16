@@ -241,7 +241,7 @@
     }
 
     public sealed record Model {
-        public static readonly Model None = new Model();
+        public static readonly Model None = new();
 
         public WordPlayback[]? Map { get; init; }
         public PlayableTextColor? Color { get; init; }
