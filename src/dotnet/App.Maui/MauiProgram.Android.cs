@@ -15,7 +15,7 @@ namespace ActualChat.App.Maui;
 
 public static partial class MauiProgram
 {
-    private static partial void AddPlatformServices(this IServiceCollection services)
+    private static partial void ConfigureBlazorWebViewAppPlatformServices(this IServiceCollection services)
     {
         if (MauiSettings.IsDevApp)
             // Enable delivery data export per instance.
@@ -39,12 +39,6 @@ public static partial class MauiProgram
         services.AddSingleton(c => new NativeGoogleAuth(c));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
         services.AddScoped<IMauiLogAccessor>(c => new AndroidLogAccessor(c.LogFor<AndroidLogAccessor>()));
-    }
-
-    private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)
-    {
-        servicesToSkip.Add(typeof(Android.Views.LayoutInflater));
-        servicesToSkip.Add(typeof(AndroidX.Fragment.App.FragmentManager));
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)

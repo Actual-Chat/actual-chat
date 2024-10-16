@@ -10,7 +10,10 @@ using Microsoft.Maui.LifecycleEvents;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Diagnostics;
 using banditoth.MAUI.DeviceId;
+using banditoth.MAUI.DeviceId.Interfaces;
 using Microsoft.AspNetCore.Components.WebView;
+using Microsoft.AspNetCore.Components.WebView.Maui;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.JSInterop;
 using OpenTelemetry.Trace;
@@ -61,18 +64,18 @@ public static partial class MauiProgram
     {
         using var _1 = Tracer.Region();
 
-        ClientStartup.Initialize();
+        using(Tracer.Region(nameof(ClientStartup)+"." + nameof(ClientStartup.Initialize)))
+            ClientStartup.Initialize();
+        //MainThreadTracker.Activate();
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
+
 #if WINDOWS
         FixStaticContentProvider();
 #endif
 #if IOS
         FixIosBaseAddress();
         NSHttpCookieStorage.SharedStorage.AcceptPolicy = NSHttpCookieAcceptPolicy.Always;
-#endif
-#if ANDROID || WINDOWS
-        _ = Task.Run(() => new SentryOptions()); // JIT compile SentryOptions in advance
 #endif
         AppUIOtelSetup.SetupConditionalPropagator();
 #if WINDOWS
@@ -83,54 +86,92 @@ public static partial class MauiProgram
 #endif
 
         try {
-            _ = MauiSession.Start();
-
-            var appBuilder = MauiApp.CreateBuilder().UseMauiBlazorApp<App>();
+            // Maui app plays host role for a blazor app running in a web view.
+            MauiAppBuilder? appBuilder;
+            using (Tracer.Region($"{nameof(MauiApp)}.{nameof(MauiApp.CreateBuilder)}")) {
+                appBuilder = MauiApp.CreateBuilder();
+                Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
+                ConfigureMauiApp(appBuilder);
+            }
 #if DEBUG
             // NOTE: It's enabled in Debug mode only hence there is no performance penalties in Release mode.
             EnableContainerValidation(appBuilder);
 #endif
-            var environment =
-#if IS_PRODUCTION_ENV || !DEBUG
-                Environments.Production;
-#else
-                Environments.Development;
-#endif
-            Constants.HostInfo = ClientStartup.CreateHostInfo(
-                appBuilder.Configuration,
-                environment,
-                DeviceInfo.Current.Model,
-                HostKind.MauiApp,
-                MauiSettings.AppKind,
-                MauiSettings.BaseUrl);
-            AppNonScopedServiceStarter.WarmupStaticServices(HostInfo);
-#if true
-            // Normal start
-            ConfigureApp(appBuilder, false);
             var app = appBuilder.Build();
-            AppServicesReady(app);
+            StaticLog.Factory = app.Services.LoggerFactory();
+
+            AppNonScopedServiceStarter.WarmupStaticServices(HostInfo);
+
+            BlazorWebViewApp.Initialize(() => BuildBlazorViewAppInternal(app));
+
+            SetupBlazorViewAppPostBuildRoutine();
+
+            LoadingUI.MarkAppBuilt();
+
             return app;
-#else
-            // Lazy start
-            var earlyApp = ConfigureApp(appBuilder, true).Build();
-            var whenAppServicesReady = Task.Run(() => CreateLazyAppServices(earlyApp.Services));
-            var appServices = new CompositeServiceProvider(
-                earlyApp.Services,
-                whenAppServicesReady,
-                CreateLazyServiceFilter(),
-                earlyApp);
-            var app = (MauiApp)typeof(MauiApp)
-                .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
-                .First()
-                .Invoke(new object[] { appServices });
-            AppServicesReady(app);
-            return app;
-#endif
         }
         catch (Exception ex) {
             Log.LogCritical(ex, "Failed to build MAUI app");
             throw;
         }
+    }
+
+    private static HostInfo CreateHostInfo(IConfiguration configuration)
+    {
+        var environment =
+#if IS_PRODUCTION_ENV || !DEBUG
+            Environments.Production;
+#else
+            Environments.Development;
+#endif
+        var hostInfo = ClientStartup.CreateHostInfo(
+            configuration,
+            environment,
+            DeviceInfo.Current.Model,
+            HostKind.MauiApp,
+            MauiSettings.AppKind,
+            MauiSettings.BaseUrl);
+        return hostInfo;
+    }
+
+    private static Task<BlazorWebViewApp> BuildBlazorViewAppInternal(MauiApp app)
+    {
+        using var _1 = Tracer.Region();
+        _ = MauiSession.Start();
+        BlazorWebViewApp blazorViewApp;
+        // ReSharper disable once ExplicitCallerInfoArgument
+        using (Tracer.Region("RunBlazorViewAppBuilder")) {
+            var blazorViewAppBuilder = BlazorWebViewApp.CreateBuilder();
+            ConfigureBlazorApp(blazorViewAppBuilder);
+            InjectMauiAppServices(blazorViewAppBuilder, app);
+            blazorViewApp = blazorViewAppBuilder.Build();
+        }
+        return Task.FromResult(blazorViewApp);
+    }
+
+    private static void SetupBlazorViewAppPostBuildRoutine()
+        => _ = Task.Run(BlazorViewAppPostBuildRoutine);
+
+    private static async Task BlazorViewAppPostBuildRoutine()
+    {
+        var blazorViewApp = await BlazorWebViewApp.WhenAppReady.ConfigureAwait(false);
+        var services = blazorViewApp.Services;
+        var mauiSession = services.GetRequiredService<MauiSession>();
+        _ = mauiSession.Acquire();
+        var trueSessionResolver = services.GetRequiredService<TrueSessionResolver>();
+        await trueSessionResolver.SessionTask.ConfigureAwait(false);
+        var appRootServiceStarter = services.GetRequiredService<AppNonScopedServiceStarter>();
+        _ = appRootServiceStarter.StartNonScopedServices();
+    }
+
+    private static void InjectMauiAppServices(BlazorWebViewAppBuilder blazorViewAppBuilder, MauiApp app)
+    {
+        var services = blazorViewAppBuilder.Services;
+        var svp = app.Services;
+        services.Replace(ServiceDescriptor.Singleton(svp.GetRequiredService<ILoggerFactory>()));
+        services.AddSingleton(new ParentContainerAccessor(svp));
+        var dispatcher = svp.GetRequiredService<IDispatcher>();
+        services.AddSingleton(dispatcher);
     }
 
 #if WINDOWS
@@ -156,15 +197,17 @@ public static partial class MauiProgram
     }
 #endif
 
-    private static void ConfigureApp(MauiAppBuilder builder, bool isEarlyApp)
+    private static void ConfigureMauiApp(MauiAppBuilder builder)
     {
         using var _ = Tracer.Region();
 
         builder = builder
+            .UseMauiBlazorApp<App>()
+            .ConfigureMauiHandlers(static handlers
+                => handlers.AddHandler<IBlazorWebView>(_ => new CustomBlazorWebViewHandler()))
             .ConfigureFonts(fonts => {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             })
-            .ConfigureDeviceIdProvider()
             .ConfigureLifecycleEvents(ConfigurePlatformLifecycleEvents)
             .UseAppLinks();
 
@@ -174,19 +217,29 @@ public static partial class MauiProgram
         services.AddSingleton(HostInfo);
         services.AddSingleton(HostInfo.Configuration);
         services.AddMauiDiagnostics(true);
+    }
 
+    private static void ConfigureBlazorApp(BlazorWebViewAppBuilder builder)
+    {
+        using var _ = Tracer.Region();
+        var services = builder.Services;
+        // Core services
+        services.AddLogging(logging => logging.ClearProviders());
+        services.AddSingleton(Tracer.Default);
+        services.Add(GetDeviceIdProviderServiceDescriptor());
         // Core MAUI services
         services.AddMauiBlazorWebView();
         AddSafeJSRuntime(services);
-        services.AddScoped<Mutable<MauiWebView?>>();
-// #if DEBUG
+#if DEBUG
         services.AddBlazorWebViewDeveloperTools();
-// #endif
-
-        services.AddTransient(_ => new MainPage());
-        if (!isEarlyApp)
-            ConfigureAppServices(services, null);
+#endif
+        ConfigureBlazorWebViewAppServices(services);
     }
+
+    private static ServiceDescriptor GetDeviceIdProviderServiceDescriptor()
+        => MauiApp.CreateBuilder(false)
+            .ConfigureDeviceIdProvider()
+            .Services.First(c => c.ServiceType == typeof(IDeviceIdProvider));
 
     private static void AddSafeJSRuntime(IServiceCollection services)
     {
@@ -215,39 +268,16 @@ public static partial class MauiProgram
                     // specifically for this call, and after that we can return SafeJSRuntime.
                     // See https://github.com/dotnet/aspnetcore/blob/410efd482f494d1ab05ce25b932b5788699c2308/src/Components/WebView/WebView/src/PageContext.cs#L44
                     return safeJSRuntime.WebViewJSRuntime;
+
                 // After that there is no more bindings with implementation type, so we can return protected JSRuntime.
                 return safeJSRuntime;
             },
             ServiceLifetime.Transient));
     }
 
-    private static Task<IServiceProvider> CreateLazyAppServices(IServiceProvider earlyServices)
-    {
-        using var _1 = Tracer.Region();
-        var services = new ServiceCollection();
-        ConfigureAppServices(services, earlyServices);
-        var appServices = services.BuildServiceProvider();
-        return Task.FromResult((IServiceProvider)appServices);
-    }
-
-    private static void AppServicesReady(MauiApp app)
-    {
-        StaticLog.Factory = app.Services.LoggerFactory();
-        AppServices = app.Services;
-        LoadingUI.MarkAppBuilt();
-        _ = Task.Run(async () => {
-            var mauiSession = AppServices.GetRequiredService<MauiSession>();
-            _ = mauiSession.Acquire();
-            var trueSessionResolver = AppServices.GetRequiredService<TrueSessionResolver>();
-            await trueSessionResolver.SessionTask.ConfigureAwait(false);
-            var appRootServiceStarter = AppServices.GetRequiredService<AppNonScopedServiceStarter>();
-            _ = appRootServiceStarter.StartNonScopedServices();
-        });
-    }
-
     // ConfigureXxx
 
-    private static void ConfigureAppServices(IServiceCollection services, IServiceProvider? earlyServices)
+    private static void ConfigureBlazorWebViewAppServices(IServiceCollection services)
     {
         using var _ = Tracer.Region();
 
@@ -259,62 +289,11 @@ public static partial class MauiProgram
         services.AddSingleton<IHttpMessageHandlerFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
 #endif
 
-        // Other non-lazy services visible from lazy services
-        if (earlyServices != null)
-            ConfigureNonLazyServicesVisibleFromLazyServices(services);
-
         // All other (module) services
         ClientStartup.ConfigureServices(services, Constants.HostInfo, c => [new Module.MauiAppModule(c)]);
 
         // Platform services
-        services.AddPlatformServices();
-    }
-
-    private static void ConfigureNonLazyServicesVisibleFromLazyServices(IServiceCollection services)
-    {
-        services.AddSingleton(HostInfo);
-        services.AddSingleton(HostInfo.Configuration);
-        services.AddMauiDiagnostics(false);
-
-        // The services listed below are resolved by other services from lazy service provider,
-        // and since it doesn't have them registered (inside the actual service provider
-        // backing the lazy one), they won't be resolved unless we re-register them somehow.
-        var externallyResolvedTypes = new [] {
-            typeof(IJSRuntime),
-            typeof(Microsoft.AspNetCore.Components.Routing.INavigationInterception),
-            typeof(Microsoft.AspNetCore.Components.NavigationManager),
-            typeof(Microsoft.AspNetCore.Components.Web.IErrorBoundaryLogger),
-        };
-
-        services.AddScoped(_ => new NonLazyServiceAccessor());
-
-        foreach (var serviceType in externallyResolvedTypes) {
-            var serviceDescriptor = ServiceDescriptor.Scoped(serviceType, ImplementationFactory);
-            services.Add(serviceDescriptor);
-
-            object ImplementationFactory(IServiceProvider c) {
-                var accessor = c.GetRequiredService<NonLazyServiceAccessor>();
-                var result = accessor.GetService(serviceType);
-                if (result == null)
-                    throw StandardError.Internal($"Couldn't resolve non-lazy service: '{serviceType.GetName()}'.");
-
-                return result;
-            }
-        }
-    }
-
-    private static Func<Type, bool> CreateLazyServiceFilter()
-    {
-        // The services listed here will always resolve to null if they're requested
-        // via composite service provider. In fact, these services are optional
-        // and aren't supposed to be used, but an attempt to resolve them triggers
-        // the build of lazy service provider, so we must explicitly filter them out.
-        var servicesToSkip = new HashSet<Type> {
-            typeof(Microsoft.AspNetCore.Components.IComponentActivator),
-            typeof(IEnumerable<IMauiInitializeScopedService>),
-        };
-        AddPlatformServicesToSkip(servicesToSkip);
-        return serviceType => !servicesToSkip.Contains(serviceType);
+        services.ConfigureBlazorWebViewAppPlatformServices();
     }
 
 #if DEBUG
@@ -335,8 +314,7 @@ public static partial class MauiProgram
     }
 #endif
 
-    private static partial void AddPlatformServices(this IServiceCollection services);
-    private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip);
+    private static partial void ConfigureBlazorWebViewAppPlatformServices(this IServiceCollection services);
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events);
 
     private static void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)

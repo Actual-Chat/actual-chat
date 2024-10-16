@@ -21,27 +21,27 @@ public static class AndroidLifecycleLogger
     }
 
     private static void OnCreate(Activity activity, Bundle? savedInstanceState)
-        => Trace(nameof(OnCreate) + $", Intent: '{Formatters.DumpIntent(activity.Intent)}'");
+        => Trace(activity, nameof(OnCreate) + $", Intent: '{Formatters.DumpIntent(activity.Intent)}'");
 
     private static void OnStart(Activity activity)
-        => Trace();
+        => Trace(activity);
 
     private static void OnResume(Activity activity)
-        => Trace();
+        => Trace(activity);
 
     private static void OnPause(Activity activity)
-        => Trace();
+        => Trace(activity);
 
     private static void OnStop(Activity activity)
-        => Trace();
+        => Trace(activity);
 
     private static void OnNewIntent(Activity activity, Intent? intent)
-        => Trace(nameof(OnNewIntent) + $", In-Intent: '{Formatters.DumpIntent(intent)}', Intent: '{Formatters.DumpIntent(activity.Intent)}'");
+        => Trace(activity, nameof(OnNewIntent) + $", In-Intent: '{Formatters.DumpIntent(intent)}', Intent: '{Formatters.DumpIntent(activity.Intent)}'");
 
     private static void OnDestroy(Activity activity)
-        => Trace();
+        => Trace(activity);
 
-    private static void Trace([CallerMemberName] string label = "")
+    private static void Trace(Activity activity, [CallerMemberName] string label = "")
     // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        => Log.LogInformation(label);
+        => Log.LogInformation(activity.GetType().Name + ": " + label);
 }

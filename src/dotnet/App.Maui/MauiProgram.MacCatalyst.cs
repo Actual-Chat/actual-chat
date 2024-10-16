@@ -5,7 +5,7 @@ namespace ActualChat.App.Maui;
 
 public static partial class MauiProgram
 {
-    private static partial void AddPlatformServices(this IServiceCollection services)
+    private static partial void ConfigureBlazorWebViewAppPlatformServices(this IServiceCollection services)
     {
         services.AddTransient<IDeviceTokenRetriever>(_ => new MacDeviceTokenRetriever());
         services.AddScoped<INotificationsPermission>(_ => new MacNotificationsPermission());
