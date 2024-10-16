@@ -3,6 +3,9 @@
 @implements IAsyncDisposable
 @using ActualChat.Transcription
 @using ActualChat.Streaming
+@{
+    var delay = 25;
+}
 
 <p class="@Class chat-message-transcript">
     @if (ShowEntryKind) {
@@ -13,7 +16,12 @@
         }
     }@*
     *@<span class="retained">@RetainedPart</span>@*
-    *@<span class="changes">@ChangedPart</span>
+    *@<span class="changes">
+        @for (var i = 0; i < ChangedPart.Length; i++) {
+            var style = $"transition-delay: {delay * i}ms;";
+            <span class="change-item" style="@style">@ChangedPart[i]</span>
+        }
+    </span>
 </p>
 
 @code {
