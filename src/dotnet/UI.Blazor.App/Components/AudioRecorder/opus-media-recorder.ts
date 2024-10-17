@@ -72,6 +72,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     private vadWorklet: AudioVadWorklet & Disposable = null;
     private contextRef: AudioContextRef = null;
     private recording?: Disposable = null;
+    private chatId?: string = null;
     private onStateChanged?: RecorderStateChanged;
     private isRecording: boolean = false;
     private isConnected: boolean = false;
@@ -333,13 +334,16 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
             // Acquire new stream and terminate old one if recording
             if (this.state === 'recording' && this.recording) {
-                debugLog?.log(`attach(): awaiting encoder worker start, worklet start and vad worker reset ...`);
-                await Promise.all([
-                    this.encoderWorker.start(null, ""), // Reuse chatId and repliedChatEntryId, last rpc arg cannot be null
-                    this.vadWorker.reset(),
-                    this.encoderWorklet.start(rpcNoWait)
-                ]);
-                await this.startMicrophoneStream(context);
+                const chatId = this.chatId;
+                if (chatId) {
+                    debugLog?.log(`attach(): awaiting encoder worker start, worklet start and vad worker reset ...`);
+                    await Promise.all([
+                        this.encoderWorker.start(chatId, ""), // Reuse chatId and repliedChatEntryId, last rpc arg cannot be null
+                        this.vadWorker.reset(),
+                        this.encoderWorklet.start(rpcNoWait)
+                    ]);
+                    await this.startMicrophoneStream(context);
+                }
             }
             else {
                 await this.stopMicrophoneStream();
@@ -392,6 +396,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
                 ]);
 
                 await this.startMicrophoneStream(context);
+                this.chatId = chatId;
             }
             catch (e) {
                 this.state = 'stopped';
@@ -419,6 +424,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
     public async stop(): Promise<void> {
         this.state = 'stopped';
+        this.chatId = null;
 
         if (!this.stream && !this.source)
             return;

@@ -466,7 +466,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         const whenReady = this._whenReady;
         if (whenReady.isCompleted()) {
             const context = await whenReady;
-            if (!context || context.state === 'closed')
+            if (!context || context.state === 'closed' || context !== this._context)
                 this.markNotReady(); // Reset ready state
         }
         return waitAsync(this._whenReady, cancel);
