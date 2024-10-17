@@ -50,9 +50,11 @@
     <PackageReference Include="Moq.Autocomplete" PrivateAssets="all" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="MemoryPack.Generator" PrivateAssets="all" />
     <PackageReference Include="ActualLab.CommandR" />
     <PackageReference Include="ActualLab.Fusion" />
     <PackageReference Include="ActualLab.Testing" />
+    <PackageReference Include="ActualLab.Generators" PrivateAssets="all" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.analyzers" PrivateAssets="all" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
