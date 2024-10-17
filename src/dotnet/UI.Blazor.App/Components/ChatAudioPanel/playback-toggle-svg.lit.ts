@@ -50,7 +50,7 @@ class PlaybackToggleSvg extends LitElement {
     `];
 
     protected render(): unknown {
-        let pause = this.isActivityPanel ? 'end+3s' : 'end+30s';
+        const pause = this.isActivityPanel ? 'end+3s' : 'end+30s';
 
         if (this.isOn)
             return html`

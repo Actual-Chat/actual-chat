@@ -46,8 +46,6 @@
     private ChatActivity ChatActivity => Hub.ChatActivity;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
-    private IAuthors Authors => Hub.Authors;
-    private Session Session => Hub.Session();
     private ChatUI ChatUI => Hub.ChatUI;
 
     private IChatStreamingActivity? ChatRecordingActivity { get; set; }
@@ -85,7 +83,7 @@
         if (!audioState.IsListening) {
             var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
             if (chatInfo?.News.LastTextEntry is { IsStreaming: true, HasAudioEntry: true } lastTextEntry) {
-                var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+                var ownAuthor = chatInfo.Chat.Rules.Author;
                 isAnimated = ownAuthor == null || lastTextEntry.AuthorId != ownAuthor.Id;
             }
         }
