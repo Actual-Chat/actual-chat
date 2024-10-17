@@ -55,7 +55,6 @@
 
 @code {
     private ChatSearchBox? _searchBoxRef = null;
-    private PlaceId _placeId;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
@@ -71,15 +70,15 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new(Place, 0,false, true, SearchUI.Text.ValueOrDefault ?? ""),
+            InitialValue = new(Place, 0, false, true, SearchUI.Text.ValueOrDefault ?? ""),
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var place = Place;
-        _placeId = Place.Id;
+        var placeId = Place.Id;
         var places = await Contacts.ListPlaceIds(Session, default).ConfigureAwait(false);
-        var isMember = places.Contains(_placeId);
+        var isMember = places.Contains(placeId);
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
         var initialText = SearchUI.Text.ValueOrDefault ?? ""; // intentionally avoid recompute
         return new(place, allAuthorIds.Count, isMember, InitialText: initialText);
@@ -101,7 +100,7 @@
     }
 
     private void OnInviteMembersClick()
-        => _ = ModalUI.Show(new AddMemberModal.Model(_placeId));
+        => _ = ModalUI.Show(new AddMemberModal.Model(Place.Id));
 
     // Nested types
 

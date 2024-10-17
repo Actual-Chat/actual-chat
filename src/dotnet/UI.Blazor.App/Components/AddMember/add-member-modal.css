@@ -36,6 +36,7 @@
 }
 
 .modal-frame .share-block {
+    @apply gap-y-2;
     @apply py-0;
     @apply border-none;
 }

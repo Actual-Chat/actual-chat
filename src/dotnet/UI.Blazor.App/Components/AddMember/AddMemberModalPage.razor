@@ -8,8 +8,9 @@
         ListSource="@_backend"
         Changed="OnSelectionChanged" />
 </FormBlock>
-@if (Context.Model is PlaceId && !string.IsNullOrEmpty(_placeLink)) {
-    <FormBlock Class="share-block gap-y-2">
+@if (_shareRequest is not null) {
+    // TODO: need invite links for private places (for Alexey K)
+    <FormBlock Class="share-block">
         <CopyTrigger Tooltip="Copy Place Invite link" CopyText="@_placeLink">
             <Button Class="btn-modal">
                 <Icon>
@@ -19,7 +20,7 @@
                 <Title>Copy Place Invite link</Title>
             </Button>
         </CopyTrigger>
-        <ShareExternallyButton Request="@_shareRequest"/>
+        <ShareExternallyButton Request="@_shareRequest.Value"/>
     </FormBlock>
 }
 
@@ -28,7 +29,7 @@
     private IMemberSelector _backend = null!;
     private MemberSelector? _memberSelector;
     private string _placeLink = "";
-    private ShareRequest _shareRequest;
+    private ShareRequest? _shareRequest;
 
     private CancellationTokenSource DisposeTokenSource { get; set; } = null!;
     private CancellationToken DisposeToken { get; set; }
@@ -54,7 +55,7 @@
         else if (Context.Model is PlaceId placeId) {
             _backend = new NewPlaceMemberSelector(Hub, placeId);
             _shareRequest = new ShareRequest(Links.PlaceInfo(placeId));
-            _placeLink = _shareRequest.GetShareLink(UrlMapper);
+            _placeLink = _shareRequest.Value.GetShareLink(UrlMapper);
         } else
             throw StandardError.NotSupported("Not supported model type");
         Context.Title = "Add members";
