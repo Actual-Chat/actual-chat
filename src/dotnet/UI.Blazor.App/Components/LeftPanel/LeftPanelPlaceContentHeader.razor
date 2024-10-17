@@ -45,10 +45,17 @@
             <PlaceMenuButton PlaceId="@m.Place.Id"/>
         </div>
     }
+    @if (m.MemberCount < 2) {
+        <div class="add-members-btn" @onclick="@OnInviteMembersClick">
+            <i class="icon-person-add text-2xl"></i>
+            <span class="c-text">Add new members</span>
+        </div>
+    }
 </div>
 
 @code {
     private ChatSearchBox? _searchBoxRef = null;
+    private PlaceId _placeId;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
@@ -56,23 +63,26 @@
     private NavbarUI NavbarUI => Hub.NavbarUI;
     private SearchUI SearchUI => Hub.SearchUI;
     private IContacts Contacts => Hub.Contacts;
+    private IPlaces Places => Hub.Places;
     private Session Session => Hub.Session();
+    private ModalUI ModalUI => Hub.ModalUI;
 
     [Parameter, EditorRequired] public Place Place { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new(Place, false, true, SearchUI.Text.ValueOrDefault ?? ""),
+            InitialValue = new(Place, 0,false, true, SearchUI.Text.ValueOrDefault ?? ""),
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var place = Place;
-        var placeId = Place.Id;
+        _placeId = Place.Id;
         var places = await Contacts.ListPlaceIds(Session, default).ConfigureAwait(false);
-        var isMember = places.Contains(placeId);
+        var isMember = places.Contains(_placeId);
+        var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
         var initialText = SearchUI.Text.ValueOrDefault ?? ""; // intentionally avoid recompute
-        return new(place, isMember, InitialText: initialText);
+        return new(place, allAuthorIds.Count, isMember, InitialText: initialText);
     }
 
     private void OnSearchBoxTextChanged(string text) {
@@ -90,7 +100,10 @@
         }
     }
 
+    private void OnInviteMembersClick()
+        => _ = ModalUI.Show(new AddMemberModal.Model(_placeId));
+
     // Nested types
 
-    public sealed record Model(Place Place, bool IsMember = false, bool IsLoading = false, string InitialText = "");
+    public sealed record Model(Place Place, int MemberCount, bool IsMember = false, bool IsLoading = false, string InitialText = "");
 }
