@@ -34,3 +34,12 @@
 .c-contact-list > .c-item:hover > .avatar-name {
     @apply text-01;
 }
+
+.modal-frame .share-block {
+    @apply py-0;
+    @apply border-none;
+}
+.modal-frame .share-block .copy-btn span,
+.modal-frame .share-block .share-externally-button .btn span {
+    @apply text-primary;
+}
