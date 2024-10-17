@@ -287,3 +287,10 @@ body.hoverable .navbar-item:not(.high-item):hover > .c-container > .c-descriptio
 body.hoverable .navbar-item:hover > .c-container > .c-description .message-counter-badge {
     @apply hidden;
 }
+
+.navbar-chats .download-app-banner {
+    @apply p-2;
+}
+.left-panel-content-header.place:not(:has(.add-members-btn)) + .left-panel-content-main-wrapper .navbar-chats .download-app-banner {
+    @apply hidden;
+}

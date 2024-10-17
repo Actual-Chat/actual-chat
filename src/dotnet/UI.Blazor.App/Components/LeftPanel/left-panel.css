@@ -155,3 +155,19 @@ body.hoverable .left-panel-content-header.place .c-info > .c-left > .c-top:hover
     @apply text-primary;
     @apply shadow-sm shadow-shadow-main;
 }
+
+.add-members-btn {
+    @apply flex-x items-center justify-center gap-x-3;
+    @apply h-10;
+    @apply mx-2;
+    @apply rounded-lg overflow-hidden;
+    @apply bg-01;
+    @apply text-primary text-headline-1;
+    @apply cursor-pointer;
+}
+body.hoverable .add-members-btn:hover {
+    @apply bg-hover;
+}
+.left-panel-content-header.place + .left-panel-content-main-wrapper .left-panel-content-main > .download-app-banner {
+    @apply hidden;
+}

@@ -42,3 +42,6 @@ body.wide .chat-activity-panel {
     @apply h-8 w-8;
     @apply rounded-full;
 }
+.activity-svg {
+    @apply mt-1;
+}
