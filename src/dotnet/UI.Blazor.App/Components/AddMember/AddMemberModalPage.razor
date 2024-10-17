@@ -8,11 +8,27 @@
         ListSource="@_backend"
         Changed="OnSelectionChanged" />
 </FormBlock>
+@if (Context.Model is PlaceId && !string.IsNullOrEmpty(_placeLink)) {
+    <FormBlock Class="share-block gap-y-2">
+        <CopyTrigger Tooltip="Copy Place Invite link" CopyText="@_placeLink">
+            <Button Class="btn-modal">
+                <Icon>
+                    <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
+                    <i class="copied-hint icon-checkmark-simple text-xl" aria-hidden="true"></i>
+                </Icon>
+                <Title>Copy Place Invite link</Title>
+            </Button>
+        </CopyTrigger>
+        <ShareExternallyButton Request="@_shareRequest"/>
+    </FormBlock>
+}
 
 @code {
     private DialogButtonInfo _submitButtonInfo = null!;
     private IMemberSelector _backend = null!;
     private MemberSelector? _memberSelector;
+    private string _placeLink = "";
+    private ShareRequest _shareRequest;
 
     private CancellationTokenSource DisposeTokenSource { get; set; } = null!;
     private CancellationToken DisposeToken { get; set; }
@@ -23,6 +39,8 @@
         => _memberSelector?.SelectedUserIds.Value ?? ImmutableHashSet<UserId>.Empty;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
+
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     protected override void OnInitialized() {
@@ -33,9 +51,11 @@
         _submitButtonInfo.CanExecute = false;
         if (Context.Model is ChatId chatId)
             _backend = new NewChatMemberSelector(Hub, chatId);
-        else if (Context.Model is PlaceId placeId)
+        else if (Context.Model is PlaceId placeId) {
             _backend = new NewPlaceMemberSelector(Hub, placeId);
-        else
+            _shareRequest = new ShareRequest(Links.PlaceInfo(placeId));
+            _placeLink = _shareRequest.GetShareLink(UrlMapper);
+        } else
             throw StandardError.NotSupported("Not supported model type");
         Context.Title = "Add members";
         Context.Class = "add-member-modal-content";

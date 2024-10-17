@@ -11,6 +11,8 @@ class PlaybackToggleSvg extends LitElement {
     isAnimated = false;
     @property({ type: Boolean })
     isOn = false;
+    @property({ type: Boolean })
+    isActivityPanel = false;
 
     static styles = [css`
         :host {}
@@ -48,6 +50,8 @@ class PlaybackToggleSvg extends LitElement {
     `];
 
     protected render(): unknown {
+        let pause = this.isActivityPanel ? 'end+3s' : 'end+30s';
+
         if (this.isOn)
             return html`
                 <svg class="spin-and-on" width="${this.size}" height="${this.size}" viewBox="${this.viewBox}" fill="${this.isOn ? "var(--primary)" : "var(--text-color)"}" xmlns="http://www.w3.org/2000/svg">
@@ -96,7 +100,7 @@ class PlaybackToggleSvg extends LitElement {
                         attributeName="transform"
                         type="rotate"
                         attributeType="XML"
-                        begin="0s;ring.end+30s"
+                        begin="0s;ring.${pause}"
                         dur="1.8s"
                         repeatCount="1"
                         values="0 10 0; 10 14 10; 0 10 0; -10 14 10; 0 10 0;
@@ -109,7 +113,7 @@ class PlaybackToggleSvg extends LitElement {
                     <animateMotion
                         id="up"
                         href="#playback-toggle-1"
-                        begin="0s;up.end+30s"
+                        begin="0s;up.${pause}"
                         dur="1.8s"
                         repeatCount="1"
                         values="0 0 0; 0 0 0; 0 0 0;
@@ -123,7 +127,7 @@ class PlaybackToggleSvg extends LitElement {
                         id="color"
                         href="#playback-toggle-1"
                         attributeName="fill"
-                        begin="0s;color.end+30s"
+                        begin="0s;color.${pause}"
                         dur="1.8s"
                         repeatCount="1"
                         values="

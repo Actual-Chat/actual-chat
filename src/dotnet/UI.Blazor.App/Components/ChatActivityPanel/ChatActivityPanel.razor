@@ -10,7 +10,7 @@
     var iconSize = ScreenSize.IsNarrow() ? 6 : 5;
     var isActive = m.IsAnyoneTalking;
     var iconColor = IsListening ? "primary" : "text-03";
-    var btnIconColor = IsListening ? "text-primary" : "";
+    var svgSize = ScreenSize.IsNarrow() ? "24" : "20";
 }
 
 <div class="chat-activity-panel" @onclick:preventDefault="true" @onclick:stopPropagation="true">
@@ -29,11 +29,13 @@
     <div class="c-incut"></div>
     <div class="c-buttons">
         <ButtonRound
-            Class="c-listen btn-transparent"
+            Class="btn-transparent"
             StopPropagation="true"
             PreventDefault="true"
-            Click="@OnListenClick">
-                <i class="icon-listen @btnIconColor"></i>
+            Click="@OnListenClick"
+            TooltipPosition="FloatingPosition.Top"
+            MustKeepAwake="@(!IsListening)">
+            <playback-toggle-svg isAnimated="@m.IsAnimated" isOn="@IsListening" size="@svgSize" isActivityPanel="true" class="activity-svg"/>
         </ButtonRound>
     </div>
 </div>
@@ -44,6 +46,9 @@
     private ChatActivity ChatActivity => Hub.ChatActivity;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+    private IAuthors Authors => Hub.Authors;
+    private Session Session => Hub.Session();
+    private ChatUI ChatUI => Hub.ChatUI;
 
     private IChatStreamingActivity? ChatRecordingActivity { get; set; }
     private ChatId RecordingChatId => ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId;
@@ -72,11 +77,19 @@
         if (ChatRecordingActivity == null)
             return Model.None;
 
+        var isAnimated = false;
         var chat = Chat;
         var chatId = chat.Id;
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
-        return new (chat, audioState, authorIds.Count > 0);
+        if (!audioState.IsListening) {
+            var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (chatInfo?.News.LastTextEntry is { IsStreaming: true, HasAudioEntry: true } lastTextEntry) {
+                var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+                isAnimated = ownAuthor == null || lastTextEntry.AuthorId != ownAuthor.Id;
+            }
+        }
+        return new (chat, audioState, authorIds.Count > 0, isAnimated);
     }
 
     private void OnListenClick() {
@@ -91,8 +104,9 @@
     public sealed record Model(
         Chat Chat,
         ChatAudioState AudioState,
-        bool IsAnyoneTalking
+        bool IsAnyoneTalking,
+        bool IsAnimated
     ) {
-        public static readonly Model None = new(SpecialChat.Loading, ChatAudioState.None, false);
+        public static readonly Model None = new(SpecialChat.Loading, ChatAudioState.None, false, false);
     }
 }
