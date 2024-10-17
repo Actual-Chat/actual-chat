@@ -5,6 +5,7 @@ public sealed class UsersSettings
     // Auth provider settings
     public string GoogleClientId { get; set; } = "";
     public string GoogleClientSecret { get; set; } = "";
+    public string GoogleRecaptchaSiteKey { get; set; } = "";
     public string MicrosoftAccountClientId { get; set; } = "";
     public string MicrosoftAccountClientSecret { get; set; } = "";
     public string AppleClientId { get; set; } = "";

@@ -34,6 +34,7 @@ public class AppScopedServiceStarter
             var baseUri = HostInfo.BaseUrl;
 
             // Creating core services - this should be done as early as possible
+            var recaptchaUI = Services.GetRequiredService<CaptchaUI>();
             var browserInfo = Services.GetRequiredService<BrowserInfo>();
             var browserInit = Services.GetRequiredService<BrowserInit>();
             _ = browserInit.Initialize(
@@ -43,6 +44,7 @@ public class AppScopedServiceStarter
                 baseUri,
                 sessionHash,
                 browserInfo.BlazorRef);
+            _ = recaptchaUI.EnsureInitialized();
 
             // Start AccountUI & UIEventHub
             Services.GetRequiredService<AccountUI>();

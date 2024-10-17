@@ -22,6 +22,7 @@ export * from './Services/Settings/local-settings';
 export * from './Services/TuneUI/tune-ui'
 export * from './Services/InteractiveUI/interactive-ui';
 export * from './Services/UserActivityUI/user-activity-ui';
+export * from './Services/CaptchaUI/captcha-ui';
 
 export * from './Components/Avatar/beam-avatar.lit';
 export * from './Components/Avatar/marble-avatar.lit';

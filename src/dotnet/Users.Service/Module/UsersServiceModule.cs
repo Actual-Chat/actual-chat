@@ -166,6 +166,9 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             rpc.Service<IMobileAuth>().HasServer<IMobileSessions>(); // Alias of IMobileSessions
 #pragma warning restore CS0618
 
+        // reCAPTCHA
+        rpcHost.AddApiOrLocal<ICaptcha, Captcha>();
+
         // NOTE(AY): We don't have a clear separation between the backend and the front-end
         // due to IAuth & IAuthBackend, so these services are always local, and thus
         // they drag the DB, Redis & everything they depend on.
