@@ -442,13 +442,13 @@ body.narrow .narrow-panel .narrow-recorder-tooltip {
 .selected-language {
     @apply absolute z-menu-container -top-1 -right-0.5;
     @apply flex items-center justify-center;
-    @apply w-6 h-4;
+    @apply min-w-6 max-w-12 h-4;
+    @apply px-1;
     @apply rounded-full;
     @apply bg-05;
     @apply text-primary-title text-xxs;
 }
 body.narrow .selected-language {
-    @apply w-6 h-4;
     @apply text-caption-6;
 }
 
