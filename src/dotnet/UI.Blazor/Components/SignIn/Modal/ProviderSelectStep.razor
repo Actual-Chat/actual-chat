@@ -57,26 +57,53 @@
                     type="tel"
                     inputmode="tel"/>
             </FormSection>
-             <FormButtons IsEndAligned="false">
-                <Button Type="@ButtonType.Submit" Class="btn-primary btn-modal sign-in">Continue</Button>
+            @if (CaptchaUI.IsConfigured) {
+                <div class="c-recaptcha-info">
+                    This site is protected by reCAPTCHA and the Google
+                    <a href="https://policies.google.com/privacy">Privacy Policy</a> and
+                    <a href="https://policies.google.com/terms">Terms of Service</a> apply.
+                </div>
+            }
+            <FormButtons IsEndAligned="false">
+                <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState == ValidationState.Invalid)">
+                    @switch (_validationState) {
+                        case ValidationState.Validating:
+                            <i class="icon-refresh"></i><span>Validating...</span>
+                            break;
+                        case ValidationState.Invalid:
+                            <span>Unavailable</span>
+                            break;
+                        case ValidationState.None:
+                        case ValidationState.Valid:
+                        default:
+                            <span>Continue</span>
+                            break;
+                    }
+                </Button>
             </FormButtons>
+
         </Form>
     }
 </div>
 
 @code {
+    private ValidationState _validationState = ValidationState.None;
     private StepModel _stepModel = null!;
     private List<AuthSchemaModel>? _authSchemas;
     private bool _isPhoneAuthEnabled;
     private AsyncDataAnnotationsValidator _validator = null!;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private UIHub UIHub { get; init; } = null!;
+    [Inject] private CaptchaUI CaptchaUI { get; init; } = null!;
+    [Inject] private ICaptcha Captcha { get; init; } = null!;
     [Inject] private IPhones Phones { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
+    private Session Session => UIHub.Session();
+    private Features Features => UIHub.Features();
+    private UICommander UICommander => UIHub.UICommander();
+    private AccountUI AccountUI => UIHub.AccountUI;
+    private ModalUI ModalUI => UIHub.ModalUI;
+
 
     [Parameter, EditorRequired] public PhoneSignInModel PhoneSignInModel { get; set; } = null!;
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -99,6 +126,7 @@
             .ToList();
         _isPhoneAuthEnabled = await Features.Get<Features_EnablePhoneAuth, bool>(CancellationToken.None);
         _stepModel = new StepModel(ComponentIdGenerator).CopyToBase();
+        await CaptchaUI.EnsureInitialized().ConfigureAwait(false);
     }
 
     protected override Task<bool> Validate()
@@ -113,8 +141,25 @@
     private void OnSignInWith(string schema)
         => _ = AccountUI.SignIn(schema);
 
-    private Task OnSignInWithPhone()
-        => Stepper.TryMoveForward().AsTask();
+    private async Task OnSignInWithPhone() {
+        _validationState = ValidationState.Validating;
+        StateHasChanged();
+        try {
+            var captchaToken = await CaptchaUI.GetActionToken(Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
+            var validationResult = await Captcha.Validate(captchaToken, Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
+            _validationState = validationResult.Success
+                ? ValidationState.Valid
+                : ValidationState.Invalid;
+        }
+        catch {
+            _validationState = ValidationState.Invalid;
+        }
+        finally {
+            StateHasChanged();
+        }
+
+        await Stepper.TryMoveForward().AsTask();
+    }
 
     // Nested types
 
@@ -125,9 +170,17 @@
         public string Class { get; init; } = null!;
     }
 
+    private enum ValidationState {
+        None = 0,
+        Validating,
+        Valid,
+        Invalid,
+    }
+
     public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
         : FormModel<StepModel>("phone-signin", componentIdGenerator) {
         [Required, PhoneNumber] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
         public string PhoneFieldId { get; set; } = "";
     }
+
 }
