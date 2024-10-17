@@ -86,3 +86,7 @@
 .sign-in-step .c-separator:not(:empty)::after {
     @apply ml-3;
 }
+
+.sign-in-step .c-recaptcha-info {
+    @apply text-caption-1 text-03;
+}

@@ -334,3 +334,6 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply md:transition-width;
     @apply md:duration-200;
 }
+
+/* Hide Google Recaptcha V3 anchor badge */
+.grecaptcha-badge { visibility: hidden; }

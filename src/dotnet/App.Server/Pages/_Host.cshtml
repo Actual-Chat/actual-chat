@@ -6,6 +6,7 @@
 @using ActualChat.UI.Blazor.App
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
+@using ActualChat.Users.Module
 @using ActualLab.Fusion.Server.Endpoints
 @using ActualLab.Generators
 @using Microsoft.AspNetCore.Mvc.TagHelpers
@@ -16,6 +17,8 @@
 @inject IServiceProvider Services
 @inject UrlMapper UrlMapper
 @inject IWebHostEnvironment Env
+@inject UsersSettings UserSettings
+@inject CaptchaUI CaptchaUI
 @{
     var cancellationToken = HttpContext.RequestAborted;
     var (session, isNewSession) = await ServerAuth.Authenticate(HttpContext, cancellationToken);
@@ -41,6 +44,10 @@
     // unsafe-eval is required for 'eval-source-map' to debug during local development
     var unsafeEval = isLocal ? "'unsafe-eval'" : "'wasm-unsafe-eval'";
     var connectLocalhost = Env.IsDevelopment() ? "ws://localhost:* wss://localhost:*" : "";
+    var hasRecaptchaConfigured = !UserSettings.GoogleRecaptchaSiteKey.IsNullOrEmpty();
+    var recaptchaKey = UserSettings.GoogleRecaptchaSiteKey;
+    var recaptchaNonce = nonceGenerator.Next(12);
+    CaptchaUI.Initialize(UserSettings.GoogleRecaptchaSiteKey);
 }
 
 <!DOCTYPE html>
@@ -58,6 +65,7 @@
                     https://*.stg.local.actual.chat
                     https://*.dicebear.com
                     https://i.ytimg.com
+                    https://www.googletagmanager.com
                     blob: data:;
         media-src 'self'
                     https://*.actual.chat
@@ -70,7 +78,8 @@
                     https://fonts.googleapis.com/css;
         font-src 'self'
                     https://fonts.gstatic.com/s/ubuntu/;
-        frame-src https://www.youtube.com/;
+        frame-src https://www.youtube.com/
+                  https://www.google.com/recaptcha/;
         object-src 'none';
         script-src 'self'
                     @unsafeEval
@@ -78,6 +87,7 @@
                     'nonce-@blazorReloadNonce'
                     'nonce-@showOverlayNonce'
                     'nonce-@closeLoginNonce'
+                    'nonce-@recaptchaNonce'
                     'sha256-IWFoCSRBx0i01sF31ty8kSeDtD8PRi/efpTSg/fumWo='
                     'sha256-zU2GIxfpzdHVMmYxjdLyOs4r4XWtc9oFoEFrwbxzdQg='
                     https://www.youtube.com/iframe_api
@@ -156,6 +166,9 @@
     <link rel="prefetch" href="/dist/wasm/ort-wasm-simd-threaded.wasm" as="fetch" asp-append-version="true" crossorigin />
     *@
     <link href="/dist/bundle.css" rel="stylesheet" asp-append-version="true"/>
+    @if (hasRecaptchaConfigured) {
+        <script id="recaptcha-head-script" nonce="@recaptchaNonce" src="https://www.google.com/recaptcha/enterprise.js?render=@recaptchaKey" async defer></script>
+    }
     <script nonce="@startupNonce">
         history.scrollRestoration = "manual";
         window.App = {
@@ -180,6 +193,9 @@
         window.App.whenBundleReady = new Promise((resolve, _) => {
             window.App.markBundleReady = resolve;
         });
+        function onSubmit2(token) {
+            const form = [...document.getElementsByClassName("c-phone-form")];
+        }
     </script>
     <script async src="/dist/bundle.js" asp-append-version="true"></script>
     @if (isBlazorServer) {
