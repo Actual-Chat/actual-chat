@@ -23,6 +23,7 @@
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
     <PackageReference Include="TimeZoneNames" />
     <PackageReference Include="TimeZoneConverter" />
+    <PackageReference Include="Google.Cloud.RecaptchaEnterprise.V1" />
   </ItemGroup>
 
 </Project>

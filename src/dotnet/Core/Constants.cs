@@ -174,6 +174,16 @@ public static partial class Constants
         }
     }
 
+    public static class Recaptcha
+    {
+        public static class Actions
+        {
+            public static readonly string PhoneSignIn = nameof(PhoneSignIn);
+        }
+
+        public static readonly float ValidScore = 0.5f;
+    }
+
     // Diagnostics, etc.
 
     public static class Sentry
