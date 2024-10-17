@@ -5,8 +5,4 @@
     <ProjectReference Include="..\..\src\dotnet\UI.Blazor\UI.Blazor.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="ActualLab.Generators" PrivateAssets="all" />
-  </ItemGroup>
-
 </Project>
