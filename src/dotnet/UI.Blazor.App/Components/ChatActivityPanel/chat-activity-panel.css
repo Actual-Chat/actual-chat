@@ -45,3 +45,16 @@ body.wide .chat-activity-panel {
 .activity-svg {
     @apply mt-1;
 }
+.btn.c-glow {
+    animation: glow-btn 1s steps(10, start) infinite;
+    animation-direction: alternate;
+}
+
+@keyframes glow-btn {
+    from {
+        filter: drop-shadow(0 0 0.125rem var(--primary));
+    }
+    to {
+        filter: drop-shadow(0 0 0.5rem var(--primary));
+    }
+}

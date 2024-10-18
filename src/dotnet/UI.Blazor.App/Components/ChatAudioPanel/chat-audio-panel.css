@@ -403,13 +403,19 @@ body.narrow .narrow-panel .narrow-recorder-tooltip {
     @apply mb-2;
     @apply text-02;
 }
+.transcription-options-modal .language-btn-group > .c-title > .c-edit {
+    @apply text-primary;
+}
+body.hoverable .transcription-options-modal .language-btn-group > .c-title > .c-edit:hover {
+    @apply cursor-pointer;
+}
 .transcription-options-modal .language-btn-group a.link {
     @apply md:cursor-pointer;
     @apply text-primary;
     @apply underline;
 }
 
-.transcription-options-modal .language-btn-group > .c-languages{
+.transcription-options-modal .language-btn-group > .c-languages {
     @apply flex-x gap-x-2;
     @apply p-2;
     @apply rounded-lg;
@@ -423,12 +429,18 @@ body.narrow .narrow-panel .narrow-recorder-tooltip {
     @apply flex-1 flex items-center justify-center;
     @apply h-8;
     @apply rounded-lg;
-    @apply bg-transparent;
+    @apply bg-modal;
     @apply text-02;
 }
 .transcription-options-modal .language-btn-group > .c-languages > button.active {
-    @apply bg-cancel;
     @apply text-primary;
+}
+body.hoverable .transcription-options-modal .language-btn-group > .c-languages > button:not(.active):hover {
+    @apply bg-round;
+}
+.transcription-options-modal .language-btn-group > .c-languages > .c-none {
+    @apply flex-1 flex items-center justify-center;
+    @apply text-03;
 }
 
 .options-item {
@@ -450,6 +462,13 @@ body.narrow .narrow-panel .narrow-recorder-tooltip {
 }
 body.narrow .selected-language {
     @apply text-caption-6;
+}
+.inactivity-item {
+    @apply text-text-1;
+}
+.inactivity-item > u {
+    @apply font-medium;
+    @apply underline decoration-from-font underline-offset-2;
 }
 
 /*Recorder icon*/
