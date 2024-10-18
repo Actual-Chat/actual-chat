@@ -11,9 +11,6 @@ public static partial class MauiProgram
         services.AddScoped<INotificationsPermission>(_ => new MacNotificationsPermission());
     }
 
-    private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)
-    { }
-
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
     { }
 }
