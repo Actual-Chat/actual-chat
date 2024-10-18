@@ -22,6 +22,8 @@ public sealed class MauiBlazorApp : AppBase, IDisposable
         var session = await TrueSessionResolver.SessionTask.ConfigureAwait(true);
         _mauiWebView?.SetScopedServices(Services, session);
 
+        FirebaseAnalyticsExt.ActivateOwnAnalyticsCollection(Services);
+
         // Uncomment to gather Fusion stats for profiling
         // var debugUI = Services.GetRequiredService<DebugUI>();
         // debugUI.StartFusionMonitor();

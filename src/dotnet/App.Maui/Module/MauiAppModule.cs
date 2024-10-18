@@ -40,11 +40,11 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<IMauiHostSwitcher>(c => new MauiHostSwitcher(c.UIHub().UrlMapper(), c.GetRequiredService<ReloadUI>()));
         services.AddScoped<IDeveloperTools>(_ => new MauiDeveloperTools());
         services.AddScoped<SystemSettingsUI>(_ => new MauiSystemSettingsUI());
+        services.AddSingleton<MauiTestPage.IMauiTestPageBackend>(_ => new MauiTestPageBackend());
 
         // Permissions
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
-        if (!HostInfo.HostKind.IsServerOrWasmApp())
-            services.AddScoped<IDataCollectionSettingsUI>(_ => new MauiDataCollectionSettingsUI());
+        services.AddScoped<IDataCollectionSettingsUI>(_ => new MauiDataCollectionSettingsUI());
 
         // Notifications
         services.AddSingleton<MauiNotifications>(c => new MauiNotifications(c));
