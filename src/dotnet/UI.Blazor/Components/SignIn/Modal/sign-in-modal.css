@@ -58,6 +58,10 @@
     @apply flex-y gap-y-4;
 }
 
+.sign-in-step .c-phone-form i.icon-refresh {
+    @apply animate-spin;
+}
+
 /* Sign-in step - verify code step */
 .verify-phone-step .c-text-container {
     @apply flex-y gap-y-2;
