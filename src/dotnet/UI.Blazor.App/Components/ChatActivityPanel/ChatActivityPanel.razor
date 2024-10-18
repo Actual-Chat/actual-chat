@@ -10,7 +10,7 @@
     var iconSize = ScreenSize.IsNarrow() ? 6 : 5;
     var isActive = m.IsAnyoneTalking;
     var iconColor = IsListening ? "primary" : "text-03";
-    var svgSize = ScreenSize.IsNarrow() ? "24" : "20";
+    var btnCls = m is { IsAnyoneTalking: true, AudioState.IsListening: true } ? "btn-transparent c-glow" : "btn-transparent";
 }
 
 <div class="chat-activity-panel" @onclick:preventDefault="true" @onclick:stopPropagation="true">
@@ -29,13 +29,14 @@
     <div class="c-incut"></div>
     <div class="c-buttons">
         <ButtonRound
-            Class="btn-transparent"
+            Class="@btnCls"
             StopPropagation="true"
             PreventDefault="true"
             Click="@OnListenClick"
             TooltipPosition="FloatingPosition.Top"
             MustKeepAwake="@(!IsListening)">
-            <playback-toggle-svg isAnimated="@m.IsAnimated" isOn="@IsListening" size="@svgSize" isActivityPanel="true" class="activity-svg"/>
+            <playback-toggle-svg isAnimated="@m.IsAnimated" isOn="@IsListening" isActivityPanel="true" class="activity-svg"/>
+            <div class="c-glow"></div>
         </ButtonRound>
     </div>
 </div>
