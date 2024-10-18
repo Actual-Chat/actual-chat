@@ -10,9 +10,9 @@
     @foreach (var info in ListeningModeInfo.All) {
         RenderFragment content;
         if (info.Duration < TimeSpan.MaxValue) {
-            content = @<span>After <u>@info.Text</u> of inactivity</span>;
+            content = @<span class="inactivity-item">After <u>@info.Text</u> of inactivity</span>;
         } else {
-            content = @<span><u>Keep listening</u> while the app is active</span>;
+            content = @<span class="inactivity-item"><u>Keep listening</u> while the app is active</span>;
         }
         <TileItem Click="@(() => SetListeningMode(info.Mode))">
             <Content>@content</Content>

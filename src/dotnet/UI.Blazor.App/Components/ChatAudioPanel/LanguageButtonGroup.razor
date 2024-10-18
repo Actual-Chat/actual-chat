@@ -18,7 +18,11 @@
         </div>
     }
     <div class="c-title">
-        Transcription language:
+        Transcription language@**@
+        @if (languages.Count > 1) {
+            <span @onclick="@OnConfigureSecondLanguage" class="c-edit"> edit</span>
+        }
+        @**@:
     </div>
     <div class="c-languages">
         @foreach (var l in languages) {
@@ -27,6 +31,9 @@
                 @onclick="@(() => OnClick(l))">
                 @(useShortTitle ? l.ShortTitle : l.Title)
             </button>
+        }
+        @if (languages.Count == 1) {
+            <div class="c-none">None</div>
         }
     </div>
 </div>
