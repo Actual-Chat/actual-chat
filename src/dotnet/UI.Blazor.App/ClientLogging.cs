@@ -33,7 +33,7 @@ public static class ClientLogging
             .AddFilter(null, LogLevel.Information)
             .AddFilter("System", LogLevel.Warning)
             .AddFilter("Microsoft", LogLevel.Warning)
-            .AddFilter("ActualChat", Tracer.IsSwitchedOn ? LogLevel.Debug : LogLevel.Information);
+            .AddFilter("ActualChat", Tracer.IsDefaultTracerEnabled ? LogLevel.Debug : LogLevel.Information);
         // Enable extra logging for profiling: web view creation and Blazor UI rendering.
         // logging
         //    .AddFilter("Microsoft.AspNetCore.Components.WebView", LogLevel.Debug) // WebView
