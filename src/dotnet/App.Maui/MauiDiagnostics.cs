@@ -39,7 +39,7 @@ public static class MauiDiagnostics
         LogTag = MauiSettings.IsDevApp ?  "dev.actual.chat" : "actual.chat";
         Log.Logger = CreateAppLogger();
         StaticLog.Factory = new SerilogLoggerFactory(Log.Logger);
-        Tracer.Default = Tracer = Tracer.IsSwitchedOn ? CreateAppTracer() : Tracer.None;
+        Tracer.Default = Tracer = Tracer.IsDefaultTracerEnabled ? CreateAppTracer() : Tracer.None;
 
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = StaticLog.Factory.CreateLogger(typeof(WebMReader));
