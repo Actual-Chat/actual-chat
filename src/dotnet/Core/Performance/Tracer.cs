@@ -1,4 +1,4 @@
-#define TRACER_IS_ENABLED
+//#define TRACER_IS_ENABLED
 using Cysharp.Text;
 
 namespace ActualChat.Performance;
