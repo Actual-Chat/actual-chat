@@ -1,4 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
+  <!--
+  If we're going to override SDK targets, we need to import .props here.
+  See https://stackoverflow.com/questions/47179705/net-core-override-default-build-targets
+  -->
+  <!-- <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk.Razor" /> -->
 
   <PropertyGroup>
     <TargetFrameworks>net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>
@@ -247,12 +252,10 @@
     <!-- Disabled for now, see https://github.com/dotnet/runtime/issues/101135 -->
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
     <AndroidStripILAfterAOT>true</AndroidStripILAfterAOT>
-    <EnableLLVM>false</EnableLLVM> <!-- Almost works, but no WebSocket connection: https://github.com/dotnet/runtime/issues/104599 -->
+    <EnableLLVM>true</EnableLLVM>
 
     <!-- Runtime -->
-    <!-- Unnecessary:
-    <RuntimeIdentifier>android-arm64</RuntimeIdentifier>
-    -->
+    <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
     <!-- Has no effect, because android-env.txt contains MONO_GC_PARAMS
     <AndroidEnableSGenConcurrent>false</AndroidEnableSGenConcurrent>
     -->
@@ -287,22 +290,6 @@
     <AndroidEnablePreloadAssemblies>True</AndroidEnablePreloadAssemblies>
     <AndroidAotEnableLazyLoad>False</AndroidAotEnableLazyLoad>
   </PropertyGroup>
-
-  <!--
-  AndroidEnablePreloadAssemblies=True doesn't work without the workaround below,
-  See https://github.com/dotnet/android/issues/8141
-  -->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
-    <_AfterAddStaticResources>
-      $(_AfterAddStaticResources);
-      ForcePreloadAssemblies;
-    </_AfterAddStaticResources>
-  </PropertyGroup>
-  <Target Name="ForcePreloadAssemblies">
-    <PropertyGroup>
-      <_AndroidEnablePreloadAssembliesDefault>True</_AndroidEnablePreloadAssembliesDefault>
-    </PropertyGroup>
-  </Target>
 
   <!-- Android: Profile-guided AOT profiles -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
@@ -502,6 +489,38 @@
     <Content Remove="wwwroot\dist\images\webonly\**" />
     <None Remove="wwwroot\dist\images\webonly\**" />
   </ItemGroup>
+
+  <!-- Targets & overrides.
+  If we're going to override SDK targets, we need to import them here.
+  See https://stackoverflow.com/questions/47179705/net-core-override-default-build-targets
+  -->
+  <!-- <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk.Razor" /> -->
+
+  <!--
+  LLVM fails in runtime if it processes System.Net.Sockets.dll.
+  See https://github.com/dotnet/runtime/issues/104599
+  -->
+  <Target Name="_FixAndroidAotInputs" DependsOnTargets="_AndroidAotInputs" BeforeTargets="_AndroidAotCompilation">
+    <ItemGroup Condition="$(EnableLLVM)">
+      <_AndroidAotInputs Remove="$(IntermediateLinkDir)**\System.Net.Sockets.dll" />
+    </ItemGroup>
+  </Target>
+
+  <!--
+  AndroidEnablePreloadAssemblies=True doesn't work without the workaround below.
+  See https://github.com/dotnet/android/issues/8141
+  -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+    <_AfterAddStaticResources>
+      $(_AfterAddStaticResources);
+      ForcePreloadAssemblies;
+    </_AfterAddStaticResources>
+  </PropertyGroup>
+  <Target Name="ForcePreloadAssemblies">
+    <PropertyGroup>
+      <_AndroidEnablePreloadAssembliesDefault>True</_AndroidEnablePreloadAssembliesDefault>
+    </PropertyGroup>
+  </Target>
 
   <Target Name="UpdateBundleHash" AfterTargets="Build">
     <PropertyGroup>
