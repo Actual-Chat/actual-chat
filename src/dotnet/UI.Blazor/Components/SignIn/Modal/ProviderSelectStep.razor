@@ -2,14 +2,18 @@
 @using ActualChat.UI.Blazor.Services
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Users
-@inherits Step;
-@if (CurrentStep != this) {
-    return;
+@inherits Step<ProviderSelectStep.Model>;
+@{
+    if (CurrentStep != this)
+        return;
+
+    if (_authSchemas is null)
+        return;
+
+    var m = State.LastNonErrorValue;
+    var codeHasBeenSent = m.HasSentCodeRecently;
 }
 
-@if (_authSchemas is null) {
-    return;
-}
 
 <div class="sign-in-step provider-select-step">
     <div class="c-auth-providers">
@@ -53,9 +57,16 @@
                 <InputText
                     id="@_stepModel.PhoneFieldId"
                     @bind-Value="_stepModel.Phone"
+                    disabled="@(codeHasBeenSent)"
                     autocomplete="tel"
                     type="tel"
                     inputmode="tel"/>
+                @if (codeHasBeenSent) {
+                    <div class="c-info">
+                        <i class="icon-info"></i>
+                        <span>Code sent. Check your phone.</span>
+                    </div>
+                }
             </FormSection>
             @if (CaptchaUI.IsConfigured) {
                 <div class="c-recaptcha-info">
@@ -75,6 +86,7 @@
                             break;
                         case ValidationState.None:
                         case ValidationState.Valid:
+                        case ValidationState.CodeSentRecently:
                         default:
                             <span>Continue</span>
                             break;
@@ -97,6 +109,7 @@
     [Inject] private CaptchaUI CaptchaUI { get; init; } = null!;
     [Inject] private ICaptcha Captcha { get; init; } = null!;
     [Inject] private IPhones Phones { get; init; } = null!;
+    [Inject] private TotpUI TotpUI { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     private Session Session => UIHub.Session();
     private Features Features => UIHub.Features();
@@ -129,6 +142,19 @@
         await CaptchaUI.EnsureInitialized().ConfigureAwait(false);
     }
 
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new() {
+            InitialValue = new (),
+            UpdateDelayer = FixedDelayer.MinDelay,
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
+        return new (hasSentCodeRecently);
+    }
+
     protected override Task<bool> Validate()
         => _validator.Validate();
 
@@ -142,20 +168,30 @@
         => _ = AccountUI.SignIn(schema);
 
     private async Task OnSignInWithPhone() {
-        _validationState = ValidationState.Validating;
-        StateHasChanged();
-        try {
-            var captchaToken = await CaptchaUI.GetActionToken(Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
-            var validationResult = await Captcha.Validate(captchaToken, Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
-            _validationState = validationResult.Success
-                ? ValidationState.Valid
-                : ValidationState.Invalid;
-        }
-        catch {
-            _validationState = ValidationState.Invalid;
-        }
-        finally {
+        var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
+        if (hasSentCodeRecently) {
+            _validationState = ValidationState.CodeSentRecently;
             StateHasChanged();
+            await Stepper.TryMoveForward().AsTask();
+            return;
+        }
+
+        if (CaptchaUI.IsConfigured) {
+            _validationState = ValidationState.Validating;
+            StateHasChanged();
+            try {
+                var captchaToken = await CaptchaUI.GetActionToken(Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
+                var validationResult = await Captcha.Validate(captchaToken, Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
+                _validationState = validationResult.Success
+                    ? ValidationState.Valid
+                    : ValidationState.Invalid;
+            }
+            catch {
+                _validationState = ValidationState.Invalid;
+            }
+            finally {
+                StateHasChanged();
+            }
         }
 
         await Stepper.TryMoveForward().AsTask();
@@ -170,17 +206,11 @@
         public string Class { get; init; } = null!;
     }
 
-    private enum ValidationState {
-        None = 0,
-        Validating,
-        Valid,
-        Invalid,
-    }
+    public sealed record Model(bool HasSentCodeRecently = false);
 
     public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
         : FormModel<StepModel>("phone-signin", componentIdGenerator) {
         [Required, PhoneNumber] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
         public string PhoneFieldId { get; set; } = "";
     }
-
 }

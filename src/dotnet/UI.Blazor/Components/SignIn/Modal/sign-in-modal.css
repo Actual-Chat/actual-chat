@@ -61,6 +61,13 @@
 .sign-in-step .c-phone-form i.icon-refresh {
     @apply animate-spin;
 }
+.sign-in-step .c-phone-form .c-info {
+    @apply text-caption-1 text-03 flex items-center gap-1;
+}
+.sign-in-step .c-phone-form .c-info i.icon-info {
+    @apply text-sm align-bottom;
+}
+
 
 /* Sign-in step - verify code step */
 .verify-phone-step .c-text-container {

@@ -1,12 +1,23 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public abstract class Step : ComponentBase
+public sealed record StepState
+{
+    public static StepState None { get; } = new StepState();
+}
+
+public abstract class Step : Step<StepState>
+{
+    protected override Task<StepState> ComputeState(CancellationToken cancellationToken)
+        => Task.FromResult(StepState.None);
+}
+
+public abstract class Step<TState> : ComputedStateComponent<TState>, IStep where TState : class
 {
     public virtual bool CanSkip => false;
     public virtual bool IsCompleted => false;
     public virtual string SkipTitle => "Skip";
     public virtual string NextTitle => "Next";
-    public Step? CurrentStep => Stepper.CurrentStep;
+    public IStep? CurrentStep => Stepper.CurrentStep;
 
     [CascadingParameter] public Stepper Stepper { get; set; } = null!;
 
