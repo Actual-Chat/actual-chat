@@ -4,6 +4,7 @@ using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
+using Android.Content;
 using Android.OS;
 using Firebase;
 using Firebase.Messaging;
@@ -15,6 +16,8 @@ namespace ActualChat.App.Maui;
 
 public static partial class MauiProgram
 {
+    private static bool _firebaseAppInitialized;
+
     private static partial void ConfigureBlazorWebViewAppPlatformServices(this IServiceCollection services)
     {
         if (MauiSettings.IsDevApp)
@@ -65,15 +68,36 @@ public static partial class MauiProgram
 
     private static void OnCreate(Activity activity, Bundle? savedInstanceState)
     {
-        FirebaseApp.InitializeApp(activity);
-        FirebaseAnalyticsImplementation.Initialize(activity);
-        var isAnalyticsEnabled = Preferences.Default.Get(Constants.Preferences.EnableDataCollectionKey, false);
-        CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isAnalyticsEnabled;
+        InitFirebaseApp(activity);
+        CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = IsDataCollectionEnabled();
     }
 
     private static void OnPostCreate(Activity activity, Bundle? savedInstanceState)
     {
         NotificationHelper.EnsureDefaultNotificationChannelExist(activity, NotificationHelper.Constants.DefaultChannelId);
         ChatAttentionService.Instance.Init();
+    }
+
+    private static bool IsDataCollectionEnabled()
+        => Preferences.Default.Get(Constants.Preferences.EnableDataCollectionKey, false);
+
+    private static void ActivateDataCollectionIfEnabled(Context context)
+    {
+        if (!IsDataCollectionEnabled())
+            return;
+
+        InitFirebaseApp(context);
+        CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = true;
+    }
+
+    private static bool InitFirebaseApp(Context context)
+    {
+        if (_firebaseAppInitialized)
+            return true;
+
+        _firebaseAppInitialized = true;
+        FirebaseApp.InitializeApp(context);
+        FirebaseAnalyticsImplementation.Initialize(context);
+        return false;
     }
 }
