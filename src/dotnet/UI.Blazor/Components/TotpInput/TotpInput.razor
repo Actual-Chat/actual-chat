@@ -37,7 +37,7 @@
     private int?[] _digits = new int?[Length];
     private ElementReference _ref;
     private DotNetObjectReference<TotpInput> _blazorRef = null!;
-    private IJSObjectReference _jsRef = null!;
+    private IJSObjectReference? _jsRef = null!;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private FocusUI FocusUI { get; init; } = null!;
@@ -63,13 +63,13 @@
     }
 
     public ValueTask Focus()
-        => _jsRef.InvokeVoidAsync("focus");
+        => _jsRef?.InvokeVoidAsync("focus") ?? ValueTask.CompletedTask;
 
     public ValueTask Clear()
-        => _jsRef.InvokeVoidAsync("clear");
+        => _jsRef?.InvokeVoidAsync("clear") ?? ValueTask.CompletedTask;
 
     public ValueTask ShowError()
-        => _jsRef.InvokeVoidAsync("showError");
+        => _jsRef?.InvokeVoidAsync("showError") ?? ValueTask.CompletedTask;
 
     [JSInvokable]
     public Task OnCompleted(int value)

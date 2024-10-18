@@ -57,7 +57,6 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
             services.AddScoped(_ => new BlazorRenderMode());
         services.AddScoped(c => new BrowserInit(c));
         services.AddScoped(c => new CaptchaUI(c.UIHub()));
-        services.AddScoped(c => new TotpUI(c.UIHub()));
         services.AddScoped(c => new BrowserInfo(c.UIHub()));
         services.AddScoped(c => new WebShareInfo(c));
         services.AddScoped(_ => new ComponentIdGenerator());
@@ -109,6 +108,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new ShareUI(c.UIHub()));
         services.AddScoped(_ => new ToastUI());
         fusion.AddService<LiveTime>(ServiceLifetime.Scoped);
+        fusion.AddService<TotpUI>(ServiceLifetime.Scoped);
 
         // Actual Chat-specific UI services
         services.AddScoped(c => new ThemeUI(c.UIHub()));

@@ -2,8 +2,24 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
+@{
+    var showVerifier = _validationState is ValidationState.Valid or ValidationState.CodeSentRecently;
+    var buttonText = _validationState switch {
+        ValidationState.Validating => "Validating...",
+        ValidationState.Invalid => "Unavailable",
+        ValidationState.CodeSentRecently => "Code sent",
+        _ => "Verify by SMS",
+    };
+    var description = _validationState switch {
+        ValidationState.Invalid => "Please try again later.",
+        ValidationState.CodeSentRecently => "You can try again in a few minutes.",
+        _ => "Verify your phone number to be able to sign in with it.",
+    };
+    var isDisabled = _validationState is ValidationState.Invalid or ValidationState.Validating;
+}
+
 <div class="phone-verifier @Class">
-    @if (_phoneUnderVerification == Phone) {
+    @if (showVerifier) {
         <TotpVerifier
             @ref="_totpVerifier"
             Purpose="TotpPurpose.VerifyPhone"
@@ -12,18 +28,28 @@
             Verified="Verified"/>
     } else {
         <div class="c-verify">
-            <Button Class="btn-outline c-verify-btn" Click="OnVerifyPhoneClick">Verify by SMS</Button>
-            <p class="c-description">Verify your phone number to be able to sign in with it.</p>
+            <Button Class="btn-outline c-verify-btn" IsDisabled="@isDisabled" Click="OnVerifyPhoneClick">@buttonText</Button>
+            <p class="c-description">@description</p>
         </div>
+        @if (CaptchaUI.IsConfigured) {
+            <div class="c-recaptcha-info">
+                This site is protected by reCAPTCHA and the Google
+                <a href="https://policies.google.com/privacy">Privacy Policy</a> and
+                <a href="https://policies.google.com/terms">Terms of Service</a> apply.
+            </div>
+        }
     }
 </div>
 
 @code {
     private TotpVerifier? _totpVerifier;
-    private Phone? _phoneUnderVerification;
+    private ValidationState _validationState = ValidationState.None;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private CaptchaUI CaptchaUI { get; init; } = null!;
+    [Inject] private ICaptcha Captcha { get; init; } = null!;
+    [Inject] private TotpUI TotpUI { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
@@ -32,13 +58,42 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback Verified { get; set; }
 
+    protected override Task OnInitializedAsync()
+        => CaptchaUI.EnsureInitialized().AsTask();
+
     protected override void OnParametersSet() {
-        if (_phoneUnderVerification != Phone)
-            _phoneUnderVerification = null!;
+        _validationState = ValidationState.None;
     }
 
-    private Task OnVerifyPhoneClick() {
-        _phoneUnderVerification = new Phone(Phone);
-        return _totpVerifier?.Focus().AsTask() ?? Task.CompletedTask;
+    private async Task OnVerifyPhoneClick() {
+        var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
+        if (hasSentCodeRecently) {
+            _validationState = ValidationState.CodeSentRecently;
+            StateHasChanged();
+            return;
+        }
+
+        if (CaptchaUI.IsConfigured) {
+            _validationState = ValidationState.Validating;
+            StateHasChanged();
+            try {
+                var captchaToken = await CaptchaUI.GetActionToken(Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
+                var validationResult = await Captcha.Validate(captchaToken, Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
+                _validationState = validationResult.Success
+                    ? ValidationState.Valid
+                    : ValidationState.Invalid;
+            }
+            catch {
+                _validationState = ValidationState.Invalid;
+            }
+            finally {
+                StateHasChanged();
+            }
+        }
+
+        if (_totpVerifier == null)
+            return;
+
+        await _totpVerifier.Focus().AsTask();
     }
 }
