@@ -25,8 +25,8 @@
 </div>
 
 @code {
-    private readonly List<Step> _steps = new();
-    private Step? _currentStep;
+    private readonly List<IStep> _steps = new();
+    private IStep? _currentStep;
 
     [Parameter] public RenderFragment<Stepper>? Header { get; set; }
     [Parameter] public RenderFragment<Stepper>? Footer { get; set; }
@@ -42,9 +42,9 @@
     public bool CanSkip => _currentStep is { CanSkip: true };
     public string SkipTitle => _currentStep?.SkipTitle ?? "Skip";
     public string NextTitle => _currentStep?.NextTitle ?? "Next";
-    public Step? CurrentStep => _currentStep;
+    public IStep? CurrentStep => _currentStep;
 
-    public void AddStep(Step step) {
+    public void AddStep(IStep step) {
         _steps.Add(step);
         if (_steps.Count == 1)
             _currentStep = step;

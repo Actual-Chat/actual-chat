@@ -8,3 +8,6 @@
     @apply flex-none;
     @apply text-sm;
 }
+.phone-verifier .c-recaptcha-info {
+    @apply text-caption-1 text-03 my-1;
+}
