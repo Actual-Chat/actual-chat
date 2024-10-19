@@ -1,12 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Security.Cryptography.X509Certificates;
 using ActualChat.Chat.ML;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Integrations.Anthropic;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.MLSearch.Bot;
-using ActualChat.MLSearch.Bot.External;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
@@ -17,14 +15,12 @@ using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.Redis.Module;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using ActualChat.Module;
 using Microsoft.AspNetCore.Builder;
-using ActualChat.MLSearch.Bot.Tools.Context;
 using ActualChat.Rpc;
 using ActualChat.Search;
 using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
+using Microsoft.SemanticKernel;
 
 // Note: Temporary disabled. Will be re-enabled with OpenAPI PR
 // using Swashbuckle.AspNetCore.SwaggerGen;
@@ -216,39 +212,25 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // so I assume what's below shouldn't be available on ApiHost / front-end.
 
         services.Configure<ChatBotConversationTriggerOptions>(e => {
-            e.AllowPeerBotChat = Settings.Integrations?.Bot?.AllowPeerBotChat ?? false;
+            e.AllowPeerBotChat = Settings.Bot?.AllowPeerBotChat ?? false;
         });
-        if (Settings.Integrations != null) {
-            var x509 = X509Certificate2.CreateFromPemFile(
-                Settings.Integrations.CertPemFilePath,
-                Settings.Integrations.KeyPemFilePath
-            );
-            var privateKey = x509.GetECDsaPrivateKey();
-            var securityKey = new ECDsaSecurityKey(privateKey);
-            var signingCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha384);
-
-            // This is a workaround. Read notes above the ConversationToolsController class
-            services.Configure<BotToolsContextHandlerOptions>(e => {
-                e.Audience = Settings.Integrations.Audience;
-                e.Issuer = Settings.Integrations.Issuer;
-                e.SigningCredentials = signingCredentials;
-                e.ContextLifetime = Settings.Integrations.ContextLifetime;
-            });
-            services.AddSingleton<IBotToolsContextHandler>(c => {
-                var options = c.GetRequiredService<IOptionsMonitor<BotToolsContextHandlerOptions>>();
-                return c.CreateInstance<BotToolsContextHandler>(options);
-            });
-            var isBotEnabled =
-                Settings is { IsEnabled: true, Integrations.Bot.IsEnabled: true }
-                && Settings.Integrations.Bot.WebHookUri != null!;
+        if (Settings.Bot is var chatbotSettings && chatbotSettings is not null) {
+            var isBotEnabled = Settings is { IsEnabled: true, Bot.IsEnabled: true };
             if (isBotEnabled) {
                 rpcHost.AddBackend<IChatBotConversationTrigger, ChatBotConversationTrigger>();
-                services.Configure<ExternalChatbotSettings>( e => {
+
+                // Add Semantic Kernel
+                services.AddKernel().AddOpenAIChatCompletion(
+                    apiKey: chatbotSettings.OpenAI!.ApiKey,
+                    modelId: chatbotSettings.OpenAI!.ChatModel);
+
+                services.AddSingleton(sp => KernelPluginFactory.CreateFromType<SearchToolPlugin>(serviceProvider: sp));
+                // Add bot
+                services.Configure<ChatbotSettings>(e => {
                     e.IsEnabled = true;
-                    e.WebHookUri = Settings!.Integrations!.Bot!.WebHookUri!;
                 });
                 services.AddSingleton<IFilters, Filters>();
-                services.AddSingleton<IBotConversationHandler, ExternalChatBotConversationHandler>();
+                services.AddSingleton<IBotConversationHandler, ChatBotConversationHandler>();
                 services.AddSingleton<IChatBotWorker>(
                     static c => c.CreateInstance<ChatBotWorker>());
                 services.AddWorkerPool<IChatBotWorker, MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId>(

@@ -14,10 +14,22 @@ public sealed class MLSearchSettings
     public string Db { get; set; } = "";
     public string Redis { get; set; } = "";
 
-    public MLIntegrations? Integrations { get; set; }
+    public ChatbotSettings? Bot { get; set; }
     public TimeSpan RefreshInterval { get; set; } = TimeSpan.FromSeconds(30);
     public TimeSpan ContactIndexingDelay { get; set; } = TimeSpan.FromSeconds(10);
     public TimeSpan ContactIndexingSignalInterval { get; set; } = TimeSpan.FromSeconds(1);
+}
+
+public sealed class OpenAISettings
+{
+    public string ChatModel { get; set; } = string.Empty;
+    public string ApiKey { get; set; } = string.Empty;
+}
+
+public sealed class ChatbotSettings {
+    public bool IsEnabled { get; set; }
+    public bool AllowPeerBotChat { get; set; }
+    public OpenAISettings? OpenAI { get; set; }
 }
 
 public sealed class OpenSearchSettings
