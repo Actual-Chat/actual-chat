@@ -77,3 +77,10 @@ body.hoverable .analytics-step > .c-content > a:hover {
 body.hoverable .step-tile > .c-docs a:hover {
     @apply text-primary;
 }
+
+.sign-in-step .c-recaptcha-info {
+    font-size: 0.875rem;
+    line-height: 1rem;
+    font-weight: 500;
+    color: var(--text-03);
+}
