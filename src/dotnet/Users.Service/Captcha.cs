@@ -6,7 +6,7 @@ using Grpc.Core;
 
 namespace ActualChat.Users;
 
-public class Captcha(UsersSettings settings, CoreServerSettings serverSettings, ILogger<Captcha> log) : ICaptcha, IDisposable
+public class Captcha(UsersSettings settings, CoreServerSettings serverSettings, ILogger<Captcha> log) : ICaptcha
 {
     private readonly RecaptchaEnterpriseServiceClient _client = RecaptchaEnterpriseServiceClient.Create();
     private readonly ProjectName _projectName = new (serverSettings.GoogleProjectId);
@@ -45,7 +45,4 @@ public class Captcha(UsersSettings settings, CoreServerSettings serverSettings, 
             return new RecaptchaValidationResult(false, "reCAPTCHA validation failed.");
         }
     }
-
-    public void Dispose()
-    { }
 }
