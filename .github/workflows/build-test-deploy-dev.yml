@@ -753,6 +753,7 @@ jobs:
       IS_DEV_MAUI: ${{ needs.calc-pkg-params.outputs.IS_DEV_MAUI }}
       APP_ID: ${{ needs.calc-pkg-params.outputs.APP_ID }}
       PACKAGE_FILE_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}-Signed.aab
+      AndroidSdkDirectory: /usr/local/lib/android-sdk
     outputs:
       ARTIFACT_NAME: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.aab
       PACKAGE_FILE_NAME: ${{env.PACKAGE_FILE_NAME}}
