@@ -11,7 +11,7 @@ inputs:
     default: "true"
     description: Whether restore workloads or not required by build
   maui-rollback-version:
-    default: "8.0.82" # NOTE: set to "" to use the latest version of maui workload
+    default: "8.0.92" # NOTE: set to "" to use the latest version of maui workload
     description: Version of dotnet maui rollback file
 runs:
   using: "composite"
@@ -20,7 +20,7 @@ runs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-quality: 'ga'
-        dotnet-version: '8.0.303' # NOTE: keep it in sync with global.json file
+        dotnet-version: '8.0' # NOTE: keep it in sync with global.json file
 
     - name: Use cached dependencies
       uses: actions/cache@v4

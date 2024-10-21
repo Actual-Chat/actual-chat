@@ -163,7 +163,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="7.5.1" />
-    <PackageVersion Include="Microsoft.IO.RecyclableMemoryStream" Version="3.0.0" />
+    <PackageVersion Include="Microsoft.IO.RecyclableMemoryStream" Version="3.0.1" />
     <PackageVersion Include="Microsoft.JSInterop" Version="8.0.4" />
     <PackageVersion Include="Microsoft.JSInterop.WebAssembly" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="MimeKit" Version="4.5.0" />
