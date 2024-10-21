@@ -53,8 +53,11 @@
     @apply px-1;
 }
 .form.form-y section .form-section-content.label-inside-input {
-    @apply h-12;
+    @apply min-h-12;
     @apply px-4;
+}
+.form.form-y section .form-section-content.label-inside-input input:disabled {
+    @apply text-04 cursor-not-allowed;
 }
 .form.form-y section .form-section-content.label-inside-input:has(.form-section-label) .text-box-btn {
     @apply -mt-4;

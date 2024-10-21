@@ -15,7 +15,7 @@
                 <Countdown Class="w-9" EndsAt="totpExpiresAt"/>
             </div>
         } else {
-            <Button Class="btn-modal sign-in" Click="SendTotp">Resend</Button>
+            <Button Class="btn-modal sign-in" Click="@SendTotp">Resend</Button>
         }
     }
 </div>
@@ -26,10 +26,12 @@
     private Moment? _totpExpiresAt;
     private bool _isVerifying;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private TuneUI TuneUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private UIHub UIHub { get; init; } = null!;
+    [Inject] private TotpUI TotpUI { get; init; } = null!;
+    private Session Session => UIHub.Session();
+    private UICommander UICommander => UIHub.UICommander();
+    private MomentClockSet Clocks => UIHub.Clocks();
+    private TuneUI TuneUI => UIHub.TuneUI;
 
     [Parameter] public string Phone { get; set; } = "";
     [Parameter] public string Email { get; set; } = "";
@@ -44,8 +46,18 @@
             ? totpExpiresAt - Clocks.SystemClock.Now + TimeSpan.FromMilliseconds(10)
             : default; // No ticks
 
-    protected override Task OnInitializedAsync()
-        => SendTotp();
+    protected override Task OnParametersSetAsync() {
+        var now = Clocks.ServerClock.Now;
+        var totpExpiresAt = TotpUI.TotpExpiresAt.Value;
+        if (totpExpiresAt > now) {
+            _totpExpiresAt = totpExpiresAt;
+            _timerKey = new(); // To make sure the timer is renewed
+        } else {
+            _totpExpiresAt = null;
+            return SendTotp();
+        }
+        return Task.CompletedTask;
+    }
 
     public ValueTask Focus()
         => _totpInput?.Focus() ?? ValueTask.CompletedTask;
@@ -83,13 +95,13 @@
     }
 
     private async Task SendTotp() {
-        ICommand<Moment> cmd = Purpose switch {
-            TotpPurpose.SignIn or TotpPurpose.VerifyPhone => new PhoneAuth_SendTotp(Session, new Phone(Phone), Purpose),
-            TotpPurpose.VerifyEmail => new Emails_SendTotp(Session),
-            _ => throw new ArgumentOutOfRangeException(nameof(Purpose)),
-        };
-        var (totpExpiresAt, error) = await UICommander.Run(cmd);
-        _totpExpiresAt = error == null ? totpExpiresAt : null;
+        var codeSent = Purpose == TotpPurpose.VerifyEmail
+            ? await TotpUI.SendEmailCode(CancellationToken.None)
+            : await TotpUI.SendPhoneCode(Purpose, Phone, CancellationToken.None);
+        if (!codeSent)
+            return;
+
+        _totpExpiresAt = TotpUI.TotpExpiresAt.Value;
         _timerKey = new(); // To make sure the timer is renewed
         StateHasChanged();
     }

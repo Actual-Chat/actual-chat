@@ -6,7 +6,7 @@
     return;
 }
 
-<div>
+<div class="phone-verifier">
     @if (Stepper.CurrentStepIndex == 0) {
         <p class="text-title-1 text-center">Welcome to Actual Chat!</p>
     }
@@ -43,22 +43,34 @@
                 }
             </Right>
         </FormSection>
+        @if (CaptchaUI.IsConfigured) {
+        <div class="c-recaptcha-info">
+            This site is protected by reCAPTCHA and the Google
+            <a href="https://policies.google.com/privacy">Privacy Policy</a> and
+            <a href="https://policies.google.com/terms">Terms of Service</a> apply.
+        </div>
+        }
     </Form>
 </div>
 
 @code {
     private readonly Model _model = new();
+    private ValidationState _validationState = ValidationState.None;
     private bool _showVerificationStatus;
     private bool? _isVerified;
     private bool? _skipped;
     private AsyncDataAnnotationsValidator _validator = null!;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private UIHub UIHub { get; init; } = null!;
     [Inject] private IPhones Phones { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private CaptchaUI CaptchaUI { get; init; } = null!;
+    [Inject] private ICaptcha Captcha { get; init; } = null!;
+    [Inject] private TotpUI TotpUI { get; init; } = null!;
+    private Session Session => UIHub.Session();
+    private IAccounts Accounts => UIHub.Accounts;
+    private UICommander UICommander => UIHub.UICommander();
+    private ModalUI ModalUI => UIHub.ModalUI;
 
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
 
@@ -91,6 +103,8 @@
         _showVerificationStatus = !account.HasVerifiedPhone();
         if (!account.Phone.IsNone)
             _model.Phone = account.Phone.ToReadable();
+
+        await CaptchaUI.EnsureInitialized();
     }
 
     protected override Task<bool> Validate()
@@ -110,6 +124,37 @@
             return false;
 
         if (!account.HasVerifiedPhone()) {
+            var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
+            if (hasSentCodeRecently) {
+                _validationState = ValidationState.CodeSentRecently;
+                StateHasChanged();
+                return await ShowTotpVerificationModal();
+            }
+
+            if (CaptchaUI.IsConfigured) {
+                _validationState = ValidationState.Validating;
+                StateHasChanged();
+                try {
+                    var captchaToken = await CaptchaUI.GetActionToken(Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
+                    var validationResult = await Captcha.Validate(captchaToken, Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
+                    _validationState = validationResult.Success
+                        ? ValidationState.Valid
+                        : ValidationState.Invalid;
+                }
+                catch {
+                    _validationState = ValidationState.Invalid;
+                }
+                finally {
+                    StateHasChanged();
+                }
+            }
+
+            return await ShowTotpVerificationModal();
+        }
+
+        return true;
+
+        async Task<bool> ShowTotpVerificationModal() {
             var verificationModel = new PhoneVerificationModal.Model(phone);
             var modalRef = await ModalUI.Show(verificationModel);
             await modalRef.WhenClosed;
@@ -118,9 +163,8 @@
             if (verificationModel is { IsVerified: false, CanSkip: false })
                 return false;
             _showVerificationStatus = true;
+            return true;
         }
-
-        return true;
     }
 
     public class Model {
