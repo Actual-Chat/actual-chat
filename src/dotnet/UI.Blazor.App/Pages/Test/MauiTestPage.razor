@@ -5,3 +5,18 @@
 
 <BackendStatusTest />
 <ExternalImageTest />
+
+<div>
+    <Button Click="OnSimulateAppCrashClicked">Simulate App crash</Button>
+</div>
+
+@code {
+    [Inject] private IServiceProvider Services { get; set; } = null!;
+
+    private void OnSimulateAppCrashClicked()
+        => Services.GetService<IMauiTestPageBackend>()?.SimulateAppCrash();
+
+    public interface IMauiTestPageBackend {
+        void SimulateAppCrash();
+    }
+}
