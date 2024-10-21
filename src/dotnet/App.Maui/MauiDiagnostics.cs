@@ -33,13 +33,14 @@ public static class MauiDiagnostics
     public static readonly Tracer Tracer;
     public static TracerProvider? TracerProvider { get; private set; }
     public static string LogFilePath { get; private set; } = "";
+    public static bool IsAnalyticsCollectionEnabled { get; private set; }
 
     static MauiDiagnostics()
     {
         LogTag = MauiSettings.IsDevApp ?  "dev.actual.chat" : "actual.chat";
         Log.Logger = CreateAppLogger();
         StaticLog.Factory = new SerilogLoggerFactory(Log.Logger);
-        Tracer.Default = Tracer = Tracer.IsDefaultTracerEnabled ? CreateAppTracer() : Tracer.None;
+        Tracer.Default = Tracer = CreateAppTracer();
 
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = StaticLog.Factory.CreateLogger(typeof(WebMReader));
@@ -59,6 +60,9 @@ public static class MauiDiagnostics
         return services;
     }
 
+    public static void SetIsAnalyticsCollectionEnabled(bool isEnabled)
+        => IsAnalyticsCollectionEnabled = isEnabled;
+
     // Private methods
 
     private static ILogger CreateAppLogger()
@@ -71,6 +75,9 @@ public static class MauiDiagnostics
         logging = AddPlatformLoggerSinks(logging);
         if (Constants.Sentry.EnabledFor.Contains(HostKind.MauiApp))
             logging = logging.WriteTo.Sentry(ConfigureSentrySerilog);
+#if ANDROID
+        logging = logging.WriteTo.Sink(new AndroidFirebaseCrashlyticsSink());
+#endif
         return logging.CreateLogger();
     }
 
@@ -78,7 +85,18 @@ public static class MauiDiagnostics
     {
         var logger = Log.Logger.ForContext(Serilog.Core.Constants.SourceContextPropertyName, "@trace");
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        return new Tracer("MauiApp", x => logger.Information(x.Format()));
+        return new Tracer("MauiApp", IsEnabled, TraceWriter);
+
+        static bool IsEnabled()
+        {
+            return Tracer.IsDefaultTracerEnabled || IsAnalyticsCollectionEnabled;
+        }
+
+        void TraceWriter(ActualChat.Performance.TracePoint tracePoint)
+        {
+            // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+            logger.Information(tracePoint.Format());
+        }
     }
 
     private static LoggerConfiguration AddPlatformLoggerSinks(LoggerConfiguration logging)
@@ -150,6 +168,7 @@ public static class MauiDiagnostics
     private static async Task CreateSentryTraceProvider()
     {
         // Initialize client trace provider only in development environment or for admin users.
+ #pragma warning disable CS0162 // Unreachable code detected
         if (!MauiSettings.IsDevApp) {
             var scopedServices = await WhenBlazorAppServicesReady().ConfigureAwait(false);
             var accountUI = scopedServices.GetRequiredService<AccountUI>();
@@ -158,6 +177,7 @@ public static class MauiDiagnostics
             if (!ownAccount.IsAdmin)
                 return;
         }
+ #pragma warning restore CS0162 // Unreachable code detected
         TracerProvider = SentryExt.CreateSentryTraceProvider("MauiApp");
     }
 

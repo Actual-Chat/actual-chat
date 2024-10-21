@@ -17,6 +17,7 @@ public class MauiDataCollectionSettingsUI : IDataCollectionSettingsUI
         Preferences.Default.Set(Constants.Preferences.EnableDataCollectionKey, isEnabled);
 #if IOS || ANDROID
         CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isEnabled;
+        MauiDiagnostics.SetIsAnalyticsCollectionEnabled(isEnabled);
 #endif
         return Task.CompletedTask;
     }
