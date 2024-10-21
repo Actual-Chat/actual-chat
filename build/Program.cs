@@ -348,6 +348,8 @@ internal static class Program
             var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
             var signingKeyPass = Utils.GetEnv("ActualChat_AndroidSigningKeyPass");
             var signingStorePass = Utils.GetEnv("ActualChat_AndroidSigningStorePass");
+            var androidSdkDirectory = Utils.GetEnv("AndroidSdkDirectory", "");
+            var hasAndroidSdkDirectory = !string.IsNullOrEmpty(androidSdkDirectory);
             isDevMaui ??= !isProduction;
             await Cli
                 .Wrap(dotnet)
@@ -358,6 +360,7 @@ internal static class Program
                     "-f net8.0-android",
                     @"/p:TargetFrameworks=\""net8.0-android;net8.0\""", // otherwise needs maui-ios etc
                     $"/p:AndroidSigningKeyPass={signingKeyPass} /p:AndroidSigningStorePass={signingStorePass}",
+                    hasAndroidSdkDirectory ? $"/p:AndroidSdkDirectory={androidSdkDirectory}" : "",
                     $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}")
                 .WithWorkingDirectory("src/dotnet/App.Maui")
