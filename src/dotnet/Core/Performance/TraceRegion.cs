@@ -8,6 +8,7 @@ public readonly struct TraceRegion : IDisposable
     public readonly string Label;
     public readonly TimeSpan StartedAt;
     public readonly bool LogEnter;
+    public readonly bool IsEnabled;
 
     public TraceRegion(Tracer tracer, string label, bool logEnter = false)
     {
@@ -15,7 +16,8 @@ public readonly struct TraceRegion : IDisposable
         Label = label;
         LogEnter = logEnter;
         StartedAt = tracer.Elapsed;
-        if (logEnter && Tracer.IsEnabled)
+        IsEnabled = Tracer.IsEnabled;
+        if (logEnter && IsEnabled)
             Tracer.Point(ZString.Concat("-> ", label), StartedAt);
     }
 
@@ -25,7 +27,7 @@ public readonly struct TraceRegion : IDisposable
 
     public void Close()
     {
-        if (!Tracer.IsEnabled)
+        if (!IsEnabled)
             return;
 
         var elapsed = Tracer.Elapsed;

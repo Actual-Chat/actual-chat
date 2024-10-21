@@ -69,7 +69,9 @@ public static partial class MauiProgram
     private static void OnCreate(Activity activity, Bundle? savedInstanceState)
     {
         InitFirebaseApp(activity);
-        CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = IsDataCollectionEnabled();
+        var isDataCollectionEnabled = IsDataCollectionEnabled();
+        CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isDataCollectionEnabled;
+        MauiDiagnostics.SetIsAnalyticsCollectionEnabled(isDataCollectionEnabled);
     }
 
     private static void OnPostCreate(Activity activity, Bundle? savedInstanceState)
@@ -88,6 +90,7 @@ public static partial class MauiProgram
 
         InitFirebaseApp(context);
         CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = true;
+        MauiDiagnostics.SetIsAnalyticsCollectionEnabled(true);
     }
 
     private static bool InitFirebaseApp(Context context)

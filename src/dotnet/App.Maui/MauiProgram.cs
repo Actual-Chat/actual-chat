@@ -64,6 +64,10 @@ public static partial class MauiProgram
     {
         using var _1 = Tracer.Region();
 
+#if Release
+        // Enable FCE in Release to add breadcrumbs to crashlytics. It's also enabled for Debug build from ClientStartup.Initialize.
+        FirstChanceExceptionLogger.Use();
+#endif
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
 #if ANDROID
         ActivateDataCollectionIfEnabled(Android.App.Application.Context);

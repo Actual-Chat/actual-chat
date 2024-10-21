@@ -4,8 +4,7 @@ namespace ActualChat.UI.Blazor.App;
 
 public static class FirstChanceExceptionLogger
 {
-    private static readonly object Lock = new();
-    private static LogBox? _logBox;
+    private static readonly ILogger Log = StaticLog.Factory.CreateLogger("FCE");
 
     public static void Use()
         => AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
@@ -16,21 +15,29 @@ public static class FirstChanceExceptionLogger
         if (error is OperationCanceledException)
             return; // This one has to be skipped
 
-        var now = CpuTimestamp.Now;
-        // ReSharper disable once InconsistentlySynchronizedField
-        var logBox = _logBox;
-        if (logBox == null || logBox.ExpiresAt <= now) {
-            lock (Lock) {
-                logBox = _logBox;
-                if (logBox == null || logBox.ExpiresAt <= now)
-                    logBox = _logBox = new LogBox(StaticLog.Factory.CreateLogger("FCE"), now);
-            }
-        }
-        var stackTrace = error.StackTrace ?? new StackTrace().ToString();
-        logBox.Log.LogWarning("{Type}, {Message}\r\n{StackTrace}", error.GetType().Name, error.Message, stackTrace);
+        var withStackTrace = true;
+        // Handles System.IO.FileNotFoundException and Java.IO.FileNotFoundException exceptions as well
+        if (OrdinalEquals(error.GetType().Name, nameof(FileNotFoundException)))
+            if (error.Message.OrdinalStartsWith("wwwroot/"))
+                withStackTrace = false;
+
+        LogInternal(error, withStackTrace);
+
+        // NOTE(DF): Perhaps it's redundant and inner exception has been already logged with FCE earlier.
+        // But I saw TargetInvocationException in Crashes reports in 'Google console/Android Vitals'
+        //  and want to be sure that it's been logged to find details of crash.
+        if (error is TargetInvocationException { InnerException: not null } tie)
+            LogInternal(tie.InnerException);
     }
 
-    // Nested types
+    private static void LogInternal(Exception error, bool withStackTrace = true)
+    {
+        if (!withStackTrace) {
+            Log.LogWarning("{Type}, {Message}", error.GetType().Name, error.Message);
+            return;
+        }
 
-    private sealed record LogBox(ILogger Log, CpuTimestamp ExpiresAt);
+        var stackTrace = error.StackTrace ?? new StackTrace().ToString();
+        Log.LogWarning("{Type}, {Message}\r\n{StackTrace}", error.GetType().Name, error.Message, stackTrace);
+    }
 }
