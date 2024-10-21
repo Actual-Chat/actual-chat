@@ -744,7 +744,7 @@ jobs:
     needs:
       - calc-pkg-params
     if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
@@ -753,7 +753,6 @@ jobs:
       IS_DEV_MAUI: ${{ needs.calc-pkg-params.outputs.IS_DEV_MAUI }}
       APP_ID: ${{ needs.calc-pkg-params.outputs.APP_ID }}
       PACKAGE_FILE_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}-Signed.aab
-      AndroidSdkDirectory: /usr/local/lib/android-sdk
     outputs:
       ARTIFACT_NAME: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.aab
       PACKAGE_FILE_NAME: ${{env.PACKAGE_FILE_NAME}}
@@ -770,7 +769,7 @@ jobs:
         uses: ./.github/actions/setup-dotnet
 
       - name: Replace git+ssh://git@ to https://
-        run: sed -i -E 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
+        run: (Get-Content src/nodejs/package-lock.json) -replace 'git\+ssh:\/\/git@', 'https://' | Set-Content src/nodejs/package-lock.json
 
       - name: Generate version variables
         id: nbgv
@@ -781,16 +780,16 @@ jobs:
       - name: Prepare GoogleServices file for dev
         if: ${{env.IS_DEV_MAUI == 'true'}}
         run: |-
-          tee src/dotnet/App.Maui/Platforms/Android/Resources/google-services.json.dev <<EOF
+          @"
           ${{ secrets.GOOGLE_SERVICES_JSON_DEV }}
-          EOF
+          "@ | Set-Content -Path src/dotnet/App.Maui/Platforms/Android/Resources/google-services.json.dev
 
       - name: Prepare GoogleServices file for prod
         if: ${{env.IS_DEV_MAUI == 'false'}}
         run: |-
-          tee src/dotnet/App.Maui/Platforms/Android/Resources/google-services.json.prod <<EOF
+          @"
           ${{ secrets.GOOGLE_SERVICES_JSON_PROD }}
-          EOF
+          "@ | Set-Content -Path src/dotnet/App.Maui/Platforms/Android/Resources/google-services.json.prod
 
       - name: Build app package
         run: |-
