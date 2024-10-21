@@ -8,7 +8,7 @@ namespace ActualChat.App.Maui;
 // Adds WriteTo.AndroidLog() to the logger configuration
 public static class LoggerConfigurationXamarinExtensions
 {
-    private const string DefaultAndroidTaggedLogOutputTemplate =
+    public const string DefaultAndroidTaggedLogOutputTemplate =
         "[{SourceContext}] {Message:l{NewLine:l}{Exception:l}";
 
     public static LoggerConfiguration AndroidTaggedLog(
