@@ -11,7 +11,7 @@ inputs:
     default: "true"
     description: Whether restore workloads or not required by build
   maui-rollback-version:
-    default: "8.0.92" # NOTE: set to "" to use the latest version of maui workload
+    default: "" # NOTE: set to "" to use the latest version of maui workload
     description: Version of dotnet maui rollback file
 runs:
   using: "composite"
