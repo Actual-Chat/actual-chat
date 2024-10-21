@@ -9,14 +9,14 @@ public class CaptchaUI : ICaptchaUIBackend
     private readonly DotNetObjectReference<ICaptchaUIBackend> _blazorRef;
     private UIHub Hub { get; }
 
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(SiteKey);
+    public string SiteKey { get; private set; } = "";
+
     public CaptchaUI(UIHub hub)
     {
         Hub = hub;
         _blazorRef = DotNetObjectReference.Create<ICaptchaUIBackend>(this);
     }
-
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(SiteKey);
-    public string SiteKey { get; private set; } = "";
 
     public void Initialize(string siteKey)
     {

@@ -13,7 +13,7 @@
     var description = _validationState switch {
         ValidationState.Invalid => "Please try again later.",
         ValidationState.CodeSentRecently => "You can try again in a few minutes.",
-        _ => "Verify your phone number to be able to sign in with it.",
+        _ => "Verify your phone number to sign in to Actual Chat.",
     };
     var isDisabled = _validationState is ValidationState.Invalid or ValidationState.Validating;
 }
