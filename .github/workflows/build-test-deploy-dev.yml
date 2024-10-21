@@ -644,7 +644,7 @@ jobs:
         uses: ./.github/actions/setup-dotnet
 
       - name: Install workloads
-        run: dotnet workload install maui ios maui-ios
+        run: dotnet workload install maui ios maui-ios --version 8.0.402
 
       - name: Replace git+ssh://git@ to https://
         run: sed -i -E 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
