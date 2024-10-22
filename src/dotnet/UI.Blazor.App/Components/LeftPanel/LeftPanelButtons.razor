@@ -7,9 +7,9 @@
         <NavbarButton
             Class="settings-btn"
             ButtonClass="unhovered"
-            Tooltip="Settings"
-            TooltipPosition="FloatingPosition.Right"
-            Click="@OnClick">
+            data-menu="@(MenuRef.New<TopNavbarMenu>())"
+            data-menu-trigger="@MenuTrigger.Primary"
+            data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
             <ChildContent>
                 <logo-button-svg />
             </ChildContent>
@@ -27,7 +27,6 @@
 
 @code {
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+    [Inject] protected UIHub Hub { get; init; } = null!;
 
-    private void OnClick()
-        => _ = UIEventHub.Publish(new ShowSettingsEvent());
 }

@@ -30,7 +30,7 @@
                     </div>
                     @if (ScreenSize.IsNarrow()) {
                         @if (chat.IsPublic) {
-                            <i class="icon-globe title-icon"></i>
+                            <i class="icon-place title-icon"></i>
                         } else {
                             <i class="icon-lock title-icon"></i>
                         }
@@ -43,7 +43,7 @@
                         }
                     }
                     @if (chat.Id.IsPeerChat(out _)) {
-                        <StatusBadge ChatContext="@ChatContext" IsColorful="@false" ShowLastSeen="true"/>
+                        <StatusBadge ChatContext="@ChatContext" IsColorful="@false"/>
                     }
                 </div>
             </div>

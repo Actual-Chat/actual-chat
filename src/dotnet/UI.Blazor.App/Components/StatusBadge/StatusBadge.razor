@@ -6,12 +6,12 @@
 
 <span class="status-badge @m.BadgeClass">
     @switch (Chat) {
-        case { Kind: ChatKind.Group or ChatKind.Place, IsPublic: false } when ShowLockIcon:
-            <i class="icon-lock text-sm"></i>
-            @m.Status
-            break;
-        case { Kind: ChatKind.Group or ChatKind.Place, IsPublic: true }:
-            <i class="icon-globe text-sm"></i>
+        case { Kind: ChatKind.Group }:
+            @if (Chat.IsPublic) {
+                <i class="icon-globe text-sm"></i>
+            } else {
+                <i class="icon-lock text-sm"></i>
+            }
             @m.Status
             break;
         case { Kind: ChatKind.Peer } when ShowLastSeen:
@@ -20,13 +20,27 @@
         case { Kind: ChatKind.Peer }:
             @m.Status
             break;
+        case { Kind: ChatKind.Place} when m.Place != null:
+            @if (!Chat.IsPublic) {
+                <i class="icon-lock text-sm"></i>
+            } else {
+                if (m.Place.IsPublic) {
+                    <i class="icon-globe text-sm"></i>
+                } else {
+                    <i class="icon-place text-sm"></i>
+                }
+            }
+            @m.Status
+            break;
     }
 </span>
 
 @code {
     private Chat Chat => ChatContext.Chat;
-    private Session Session => ChatContext.Hub.Session();
-    private IAuthors Authors => ChatContext.Hub.Authors;
+    private ChatUIHub Hub => ChatContext.Hub;
+    private Session Session => Hub.Session();
+    private IAuthors Authors => Hub.Authors;
+    private IPlaces Places => Hub.Places;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter] public bool IsColorful { get; set; } = true;
@@ -43,60 +57,68 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var status = "";
         var badgeClass = "default";
-        if (Chat.Kind is ChatKind.Group or ChatKind.Place) {
-            status = Chat.IsPublic
-                ? Chat.Kind == ChatKind.Place
-                    ? "Place\u00A0chat"
-                    : "Public"
-                : "Private";
-            if (IsColorful) {
+
+        switch (Chat.Kind) {
+            case ChatKind.Group:
                 badgeClass = "public";
-            }
-            return new() {
-                Status = status,
-                BadgeClass = badgeClass,
-            };
+                status = Chat.IsPublic ? "Public\u00A0chat" : "Private\u00A0chat";
+                return new() {
+                    Status = status,
+                    BadgeClass = badgeClass,
+                };
+            case ChatKind.Place:
+                badgeClass = "public";
+                status = "Place\u00A0chat";
+                var placeId = Chat.Id.PlaceChatId.PlaceId;
+                var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+                if (ReferenceEquals(place, null))
+                    return Model.Loading;
+
+                return new Model() {
+                    Status = status,
+                    BadgeClass = badgeClass,
+                    Place = place,
+                };
+            default:
+                var ownAccount = ChatContext.OwnAccount;
+                var chatId = Chat.Id;
+                if (!chatId.IsPeerChat(out var peerChatId))
+                    return Model.Loading;
+
+                var peerAccountId = peerChatId.UserIds.OtherThanOrDefault(ownAccount.Id);
+                if (peerAccountId.IsNone)
+                    return Model.Loading;
+
+                var ownAuthor = await Authors.GetOwn(Session, peerChatId, cancellationToken).ConfigureAwait(false);
+                var anotherAuthorId = new AuthorId(peerChatId, ownAuthor != null && peerChatId.UserId1 == ownAuthor.UserId ? 2 : 1, AssumeValid.Option);
+                var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken).ConfigureAwait(false);
+
+                if (anotherAuthor == null)
+                    return Model.Loading;
+
+                var presence = await Authors.GetPresence(Session, chatId, anotherAuthor.Id, cancellationToken).ConfigureAwait(false);
+                status = presence switch {
+                    Presence.Offline => "Offline",
+                    Presence.Away => "Away",
+                    Presence.Online => "Online",
+                    Presence.Recording => "Online",
+                    _ => "",
+                };
+                if (IsColorful) {
+                    badgeClass = presence switch {
+                        Presence.Offline => "offline",
+                        Presence.Away => "away",
+                        Presence.Online => "online",
+                        Presence.Recording => "recording",
+                        _ => "",
+                    };
+                }
+                return new() {
+                    Status = status,
+                    BadgeClass = badgeClass,
+                    AuthorSid = anotherAuthorId,
+                };
         }
-        var ownAccount = ChatContext.OwnAccount;
-        var chatId = Chat.Id;
-        if (!chatId.IsPeerChat(out var peerChatId))
-            return Model.Loading;
-
-        var peerAccountId = peerChatId.UserIds.OtherThanOrDefault(ownAccount.Id);
-        if (peerAccountId.IsNone)
-            return Model.Loading;
-
-        var ownAuthor = await Authors.GetOwn(Session, peerChatId, cancellationToken).ConfigureAwait(false);
-        var anotherAuthorId = new AuthorId(peerChatId, ownAuthor != null && peerChatId.UserId1 == ownAuthor.UserId ? 2 : 1, AssumeValid.Option);
-        var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken).ConfigureAwait(false);
-
-        if (anotherAuthor == null)
-            return Model.Loading;
-
-        var presence = await Authors.GetPresence(Session, chatId, anotherAuthor.Id, cancellationToken).ConfigureAwait(false);
-
-        status = presence switch {
-            Presence.Offline => "Offline",
-            Presence.Away => "Away",
-            Presence.Online => "Online",
-            Presence.Recording => "Online",
-            _ => "",
-        };
-        if (IsColorful) {
-            badgeClass = presence switch {
-                Presence.Offline => "offline",
-                Presence.Away => "away",
-                Presence.Online => "online",
-                Presence.Recording => "recording",
-                _ => "",
-            };
-        }
-
-        return new() {
-            Status = status,
-            BadgeClass = badgeClass,
-            AuthorSid = anotherAuthorId,
-        };
     }
 
     // Nested types
@@ -107,5 +129,6 @@
         public string Status { get; init; } = "";
         public string BadgeClass { get; init; } = "";
         public string AuthorSid { get; init; } = "";
+        public Place? Place { get; init; }
     }
 }
