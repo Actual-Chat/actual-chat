@@ -1,5 +1,4 @@
-
-using ActualChat.MLSearch.Bot;
+using ActualChat.MLSearch.Bot.Services;
 using ActualChat.MLSearch.Module;
 using ActualLab.IO;
 using Microsoft.Extensions.Configuration;
