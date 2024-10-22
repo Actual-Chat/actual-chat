@@ -47,6 +47,7 @@ public class SearchTypeDetectorTest(ITestOutputHelper @out): TestBase(@out)
         { "search in my chats", SearchType.Private },
         { "search in my private chats", SearchType.Private },
         { "search in my public chats", SearchType.Public },
+        { "search in public and private chats", SearchType.General },
     };
 
     private readonly ISearchTypeDetector _searchTypeDetector = new SearchTypeDetector(CreateKernel());
