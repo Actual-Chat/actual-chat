@@ -83,6 +83,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IPhones>();
         fusion.AddClient<IEmails>();
         fusion.AddClient<ITimeZones>();
+        fusion.AddClient<ICaptcha>();
     }
 
     public void ConfigureFusionClients(FusionBuilder fusion)
