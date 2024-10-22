@@ -19,12 +19,7 @@ public class CaptchaUI : ICaptchaUIBackend
     }
 
     public void Initialize(string siteKey)
-    {
-        if (siteKey.IsNullOrEmpty())
-            throw StandardError.Configuration("Error initializing CaptchaUI with wrong Site Key");
-
-        SiteKey = siteKey;
-    }
+        => SiteKey = siteKey;
 
     public ValueTask EnsureInitialized()
         => IsConfigured ? ValueTask.CompletedTask : Initialize();
