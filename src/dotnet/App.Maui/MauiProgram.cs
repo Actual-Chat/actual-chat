@@ -74,7 +74,6 @@ public static partial class MauiProgram
         FixStaticContentProvider();
 #endif
 #if IOS
-        FixIosBaseAddress();
         NSHttpCookieStorage.SharedStorage.AcceptPolicy = NSHttpCookieAcceptPolicy.Always;
 #endif
         AppUIOtelSetup.SetupConditionalPropagator();

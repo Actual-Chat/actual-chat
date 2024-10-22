@@ -45,13 +45,4 @@ public static partial class MauiProgram
 #endif
             return false;
         }));
-
-    // TODO: Remove after migrating to .NET 9
-    private static void FixIosBaseAddress()
-    {
-        var handlerType = typeof(BlazorWebViewHandler);
-        var field = handlerType.GetField("AppOriginUri", BindingFlags.Static | BindingFlags.NonPublic)
-            ?? throw StandardError.Internal("No AppOriginUri field.");
-        field.SetValue(null, new Uri($"app://{MauiSettings.LocalHost}/"));
-    }
 }
