@@ -21,6 +21,7 @@ using ActualChat.Rpc;
 using ActualChat.Search;
 using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
 using Microsoft.SemanticKernel;
+using ActualChat.MLSearch.Bot.Services;
 
 // Note: Temporary disabled. Will be re-enabled with OpenAPI PR
 // using Swashbuckle.AspNetCore.SwaggerGen;
