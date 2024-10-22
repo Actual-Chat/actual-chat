@@ -212,7 +212,7 @@ body.hoverable .tile-btn:hover {
 .settings-tab-content {
     @apply flex-y gap-y-4;
     @apply w-full md:w-88;
-    @apply p-2 md:p-0;
+    @apply p-2 md:p-0 md:pb-4;
 }
 .settings-tab-header {
     @apply ordinary-header;

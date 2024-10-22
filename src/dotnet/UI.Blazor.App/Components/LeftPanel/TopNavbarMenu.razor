@@ -1,0 +1,23 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.Events
+@inherits MenuBase
+
+<MenuEntry
+    Icon="icon-settings"
+    FocusOnEditor="true"
+    Text="Settings"
+    Click="@OnSettingsClick">
+</MenuEntry>
+<MenuEntry
+    Icon="icon-file-text"
+    FocusOnEditor="true"
+    Text="Documents"
+    Click="@(_ => NavigateTo(Links.Docs))">
+</MenuEntry>
+
+@code {
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+
+    private void OnSettingsClick()
+        => _ = UIEventHub.Publish(new ShowSettingsEvent());
+}
