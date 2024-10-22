@@ -1,7 +1,8 @@
 name: actual-chat-infra
 include:
-  - ./services/opensearch/docker-compose.yaml
   - ./services/aspire/docker-compose.yaml
+  - ./services/embeddings/docker-compose.yaml
+  - ./services/opensearch/docker-compose.yaml
 services:
   redis:
     image: "redis:7.2.4-alpine3.19"
