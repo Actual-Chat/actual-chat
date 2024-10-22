@@ -50,7 +50,7 @@ public partial class ChatAudioUI
     {
         var oldRecordingChat = default(ActiveChat);
         var oldListeningChats = new HashSet<ActiveChat>();
-        var changes = ActiveChatsUI.ActiveChats.Changes(cancellationToken);
+        var changes = ActiveChatsUI.ActiveChats.Changes(FixedDelayer.NoneUnsafe, cancellationToken);
         await foreach (var cActiveContacts in changes.ConfigureAwait(false)) {
             var activeChats = cActiveContacts.Value;
             var newRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
@@ -108,7 +108,7 @@ public partial class ChatAudioUI
             .ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
             var cRecordingState = await cRecordingStateBase
-                .When(x => !x.ChatId.IsNone, FixedDelayer.NoneUnsafe, cancellationToken)
+                .When(x => !x.ChatId.IsNone, FixedDelayer.MinDelay, cancellationToken)
                 .ConfigureAwait(false);
             await BackgroundTask.Run(
                 () => RecordChat(cRecordingState, cancellationToken),
@@ -129,7 +129,7 @@ public partial class ChatAudioUI
             .ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
             cRecordingState = await cRecordingState
-                .When(x => !x.ChatId.IsNone, FixedDelayer.NoneUnsafe, cancellationToken)
+                .When(x => !x.ChatId.IsNone, FixedDelayer.MinDelay, cancellationToken)
                 .ConfigureAwait(false);
             var chatId = cRecordingState.Value.ChatId;
             if (ChatPlayers.PlaybackState.Value is HistoricalPlaybackState historicalPlaybackState && historicalPlaybackState.ChatId != chatId)
