@@ -159,19 +159,19 @@ internal class SearchTypeDetector(Kernel kernel): ISearchTypeDetector
     As an expert in searching for information in chats, you follow a clear process to identify the target search area.
     Depending on your answer, the search process runs through different subsets of chats, so the answer is critical.
     There are three possible search areas:
-    * PUBLIC - search in the publicly available chats
-    * PRIVATE - search in the chats where the user is a member or owner
-    * GENERAL - search in all chats, both PUBLIC and PRIVATE
+    - PUBLIC means search in the publicly available chats
+    - PRIVATE means search in the chats where the user is a member or owner
+    - GENERAL means search in all chats, both PUBLIC and PRIVATE
     There is also one special value UNCERTAIN, when it is unclear from the user's message where to run next search.
     Instructions:
-    * If the user says "search all chats" or "search everywhere," the search area is GENERAL
-    * If the user requested to reset or start the search over, the search area is GENERAL
-    * If the user explicitly mentions "public chats" or similar, the search area is PUBLIC
-    * If the user refers to "private chats" or "my chats" or similar, the search area is PRIVATE
-    * In all other cases when user's message is unrelated to chats the search area is UNCERTAIN
+    - If the user says "search all chats" or "search everywhere," the search area is GENERAL
+    - If the user requested to reset or start the search over, the search area is GENERAL
+    - If the user explicitly mentions "public chats" or similar, the search area is PUBLIC
+    - If the user refers to "private chats" or "my chats" or similar, the search area is PRIVATE
+    - In all other cases when user's message is unrelated to chats the search area is UNCERTAIN
     Important:
-    * Every user message in the list redefines search area unless search area is UNCERTAIN.
-    * Return only one word in the output (PUBLIC, PRIVATE, GENERAL or UNCERTAIN).
+    - Every user message in the list redefines search area unless search area is UNCERTAIN.
+    - Return only one word in the output (PUBLIC, PRIVATE, GENERAL or UNCERTAIN).
     """;
 
     private static readonly FrozenDictionary<string, SearchType> ResponseMap = new Dictionary<string, SearchType>() {
@@ -183,7 +183,7 @@ internal class SearchTypeDetector(Kernel kernel): ISearchTypeDetector
     public async Task<SearchType> Detect(ChatMessageContent message, CancellationToken cancellationToken = default)
     {
         var agent = new ChatCompletionAgent() {
-            Name = Constants.User.Sherlock.Name,
+            Name = "Detector",
             Instructions = DetectSearchTypePrompt,
             Kernel = kernel,
         };
