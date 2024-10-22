@@ -353,7 +353,7 @@
     <UseShortFileNames>True</UseShortFileNames>
     <CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
     <!-- Performance-related -->
-    <EnableSGenConc>False</EnableSGenConc>
+    <EnableSGenConc>true</EnableSGenConc>
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
 
     <!-- Required by https://github.com/AdamEssenmacher/GoogleApisForiOSComponents?tab=readme-ov-file#firebase-crashlytics -->
@@ -379,8 +379,9 @@
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store 2</CodesignProvision>
     <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
     <ArchiveOnBuild>true</ArchiveOnBuild>
-    <MtouchLink>SdkOnly</MtouchLink>
-    <UseInterpreter>true</UseInterpreter>
+    <MtouchLink>Full</MtouchLink>
+    <PublishAot>true</PublishAot>
+    <!--<UseInterpreter>true</UseInterpreter>-->
     <!--<MTouchInterpreter>-ActualChat,ActualChat.Chat.Contracts,ActualChat.Users.Contracts,ActualChat.Contacts.Contracts,ActualLab.Interception</MTouchInterpreter>-->
     <CreatePackage>false</CreatePackage>
   </PropertyGroup>
