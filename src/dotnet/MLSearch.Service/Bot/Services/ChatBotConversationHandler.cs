@@ -27,6 +27,11 @@ internal class ChatBotConversationHandler(
     IBotToolsContextHandler botToolsContextHandler)
     : IBotConversationHandler
 {
+    private static class BotArgs
+    {
+        public const string SearchType = nameof(SearchType);
+    }
+
     private const string AgentInstructions =
     """
     For the given objective, come up with a simple step by step plan.
@@ -97,12 +102,21 @@ internal class ChatBotConversationHandler(
             userMessages.Push(new ChatMessageContent(AuthorRole.User, entry.Content));
         }
 
+        var searchType = default(SearchType?);
         while (userMessages.TryPop(out var message)) {
             chat.Add(message);
+            var detectedSearchType = await searchTypeDetector.Detect(message, cancellationToken).ConfigureAwait(false);
+            if (detectedSearchType != SearchType.None)
+                searchType = detectedSearchType;
         }
 
+        var arguments = new KernelArguments() {
+            // Search everywhere by default
+            { BotArgs.SearchType, searchType ?? SearchType.General }
+        };
+
         // Invoke and display assistant response
-        await foreach (var message in _agent.InvokeAsync(chat, cancellationToken: cancellationToken)) {
+        await foreach (var message in _agent.InvokeAsync(chat, arguments: arguments, cancellationToken: cancellationToken)) {
             chat.Add(message);
             // TODO: identify final response and post it to the chat
         }
