@@ -31,6 +31,14 @@
     "OpenSearch": {
       "ClusterUri": "http://localhost:9200",
       "ModelGroup": "NLP_model_group"
+    },
+    "Bot": {
+      "IsEnabled": true,
+      "AllowPeerBotChat": true,
+      "OpenAI": {
+        "ChatModel": "gpt-4o",
+        "ApiKey": ""
+      }
     }
   },
   "UsersSettings": {
