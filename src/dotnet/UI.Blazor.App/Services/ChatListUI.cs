@@ -206,7 +206,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
             var isLastItemInBlock = false;
             if (chatInfo.Contact.IsPinned) {
                 var nextChatState = i == chatInfoTile.Count - 1
-                    ? chatInfos.GetOrDefault(i + 1)
+                    ? chatInfos.GetOrDefault(indexTile.Start + i + 1)
                     : chatInfoTile[i + 1];
                 if (nextChatState != null)
                     isLastItemInBlock = !nextChatState.Contact.IsPinned;

@@ -203,8 +203,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             var invIndex = context.Operation.Items.GetOrDefault(long.MinValue);
             if (invIndex != long.MinValue) {
                 _ = Get(ownerId, id, default);
-                if (invIndex < 0 || invIndex > Constants.Contacts.MinLoadLimit)
-                    _ = ListIds(ownerId, placeId, default); // Create, Delete or move into MinLoadLimit
+                _ = ListIds(ownerId, placeId, default);
             }
             return default!;
         }
