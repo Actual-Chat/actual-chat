@@ -28,12 +28,8 @@
                     <div class="c-title">
                         @chat.Title
                     </div>
-                    @if (ScreenSize.IsNarrow()) {
-                        @if (chat.IsPublic) {
-                            <i class="icon-place title-icon"></i>
-                        } else {
-                            <i class="icon-lock title-icon"></i>
-                        }
+                    @if (ScreenSize.IsNarrow() && !chat.Id.IsPeerChat(out _)) {
+                        <StatusBadge ChatContext="@ChatContext" ShowOnlyIcon="true"/>
                     }
                 </div>
                 <div class="c-info">

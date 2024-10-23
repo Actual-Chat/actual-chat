@@ -12,7 +12,9 @@
             } else {
                 <i class="icon-lock text-sm"></i>
             }
-            @m.Status
+            @if (!ShowOnlyIcon) {
+                @m.Status
+            }
             break;
         case { Kind: ChatKind.Peer } when ShowLastSeen:
             <AuthorPresenceText AuthorSid="@m.AuthorSid"/>
@@ -21,16 +23,11 @@
             @m.Status
             break;
         case { Kind: ChatKind.Place} when m.Place != null:
-            @if (!Chat.IsPublic) {
-                <i class="icon-lock text-sm"></i>
-            } else {
-                if (m.Place.IsPublic) {
-                    <i class="icon-globe text-sm"></i>
-                } else {
-                    <i class="icon-place text-sm"></i>
-                }
+            var iconCls = !Chat.IsPublic ? "icon-lock" : m.Place.IsPublic ? "icon-globe" : "icon-place";
+            <i class="@iconCls text-sm"></i>
+            @if (!ShowOnlyIcon) {
+                @m.Status
             }
-            @m.Status
             break;
     }
 </span>
@@ -44,8 +41,8 @@
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter] public bool IsColorful { get; set; } = true;
-    [Parameter] public bool ShowLockIcon { get; set; } = true;
     [Parameter] public bool ShowLastSeen { get; set; }
+    [Parameter] public bool ShowOnlyIcon { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -56,18 +53,18 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var status = "";
-        var badgeClass = "default";
+        var badgeClass = "";
 
         switch (Chat.Kind) {
             case ChatKind.Group:
-                badgeClass = "public";
+                badgeClass = ShowOnlyIcon ? "default" : "public";
                 status = Chat.IsPublic ? "Public\u00A0chat" : "Private\u00A0chat";
                 return new() {
                     Status = status,
                     BadgeClass = badgeClass,
                 };
             case ChatKind.Place:
-                badgeClass = "public";
+                badgeClass = ShowOnlyIcon ? "default" : "public";
                 status = "Place\u00A0chat";
                 var placeId = Chat.Id.PlaceChatId.PlaceId;
                 var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
@@ -89,8 +86,8 @@
                 if (peerAccountId.IsNone)
                     return Model.Loading;
 
-                var ownAuthor = await Authors.GetOwn(Session, peerChatId, cancellationToken).ConfigureAwait(false);
-                var anotherAuthorId = new AuthorId(peerChatId, ownAuthor != null && peerChatId.UserId1 == ownAuthor.UserId ? 2 : 1, AssumeValid.Option);
+                var ownUserId = ownAccount.User.Id;
+                var anotherAuthorId = new AuthorId(peerChatId, peerChatId.UserId1 == ownUserId ? 2 : 1, AssumeValid.Option);
                 var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken).ConfigureAwait(false);
 
                 if (anotherAuthor == null)
