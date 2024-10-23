@@ -65,12 +65,12 @@
                 };
             case ChatKind.Place:
                 badgeClass = ShowOnlyIcon ? "default" : "public";
-                status = "Place\u00A0chat";
                 var placeId = Chat.Id.PlaceChatId.PlaceId;
                 var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
                 if (ReferenceEquals(place, null))
                     return Model.Loading;
 
+                status = Chat.IsPublic ? "Place\u00A0chat" : "Private\u00A0chat";
                 return new Model() {
                     Status = status,
                     BadgeClass = badgeClass,
