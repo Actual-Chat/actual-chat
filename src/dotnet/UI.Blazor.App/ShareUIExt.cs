@@ -31,7 +31,7 @@ public static class ShareUIExt
             if (ownAccount.IsGuestOrNone)
                 return null;
 
-            var otherUserId = peerChatId.UserIds.OtherThanOrDefault(ownAccount.Id);
+            var otherUserId = peerChatId.AnotherUserIdOrDefault(ownAccount.Id);
             return otherUserId.IsNone ? null
                 : await shareUI.GetModel(otherUserId, cancellationToken).ConfigureAwait(false);
         }

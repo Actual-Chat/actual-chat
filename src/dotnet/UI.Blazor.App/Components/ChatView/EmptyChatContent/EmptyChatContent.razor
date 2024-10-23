@@ -41,8 +41,7 @@
         if (!chatId.IsPeerChat(out var peerChatId))
             return Model.NoPeerAccount;
 
-        var ownAccount = ChatContext.OwnAccount;
-        var peerAccountId = peerChatId.UserIds.OtherThanOrDefault(ownAccount.Id);
+        var peerAccountId = peerChatId.AnotherUserIdOrDefault(ChatContext.OwnAccount.Id);
         if (peerAccountId.IsNone)
             return Model.NoPeerAccount;
 
