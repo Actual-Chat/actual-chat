@@ -337,6 +337,30 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         return isRunning;
     }
 
+    protected async test(context: AudioContext, isLongTest = false): Promise<void> {
+        if (context.state !== 'running')
+            throw new Error(`${logScope}.test: AudioContext isn't running.`);
+        if (context[Debug.brokenKey])
+            throw new Error(`${logScope}.test: AudioContext is broken via .break() call.`);
+
+        const lastTime = context.currentTime;
+        const testCycleCount = 5;
+        const testIntervalMs = isLongTest ? LongTestIntervalMs : ShortTestIntervalMs;
+        for (let i = 0; i < testCycleCount; i++) {
+            await delayAsync(testIntervalMs);
+            if (context.state !== 'running')
+                throw new Error(`${logScope}.test: AudioContext isn't running.`);
+            if (context.currentTime != lastTime)
+                break;
+            // play silent audio and check state
+            else if (this.isRunning(context)) {
+                debugLog?.log(`test: AudioContext is running, but currentTime is not changing.`);
+            }
+        }
+        if (context.currentTime == lastTime) // AudioContext isn't running
+            throw new Error(`${logScope}.test: AudioContext is running, but didn't pass currentTime test.`);
+    }
+
     protected async closeSilently(context?: AudioContext): Promise<void> {
         debugLog?.log(`close:`, Log.ref(context));
         if (!context)
@@ -685,37 +709,13 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         }
     }
 
-    private async test(context: AudioContext, isLongTest = false): Promise<void> {
-        if (!this._isActive)
-            return;
-
-        if (context.state !== 'running')
-            throw new Error(`${logScope}.test: AudioContext isn't running.`);
-        if (context[Debug.brokenKey])
-            throw new Error(`${logScope}.test: AudioContext is broken via .break() call.`);
-
-        const lastTime = context.currentTime;
-        const testCycleCount = 5;
-        const testIntervalMs = isLongTest ? LongTestIntervalMs : ShortTestIntervalMs;
-        for (let i = 0; i < testCycleCount; i++) {
-            await delayAsync(testIntervalMs);
-            if (context.state !== 'running')
-                throw new Error(`${logScope}.test: AudioContext isn't running.`);
-            if (context.currentTime != lastTime)
-                break;
-            // play silent audio and check state
-            else if (this.isRunning(context)) {
-                debugLog?.log(`test: AudioContext is running, but currentTime is not changing.`);
-            }
-        }
-        if (context.currentTime == lastTime) // AudioContext isn't running
-            throw new Error(`${logScope}.test: AudioContext is running, but didn't pass currentTime test.`);
-    }
-
     private async fix(context: AudioContext): Promise<void> {
         debugLog?.log(`fix:`, Log.ref(context));
 
         try {
+            if (!this._isActive)
+                return;
+
             if (!await this.trySuspend(context)) {
                 // noinspection ExceptionCaughtLocallyJS
                 throw new Error(`${logScope}.fix: couldn't suspend AudioContext`);
@@ -820,6 +820,21 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
                     }
                     void this.fallbackDestination?.play();
                 });
+        }
+        else if (context.state === 'running') {
+            this.test(context)
+                .then(() => {
+                        if (!this.isRunning(context)) {
+                            void context.close();
+                            void this.whenReady();
+                        }
+                    },
+                    reason => {
+                        warnLog?.log(reason, 'useRef.test() failed with an error');
+                        void context.close();
+                        void this.whenReady();
+                });
+            this.isRunning(context)
         }
 
         return Disposables.fromAction(() => {
