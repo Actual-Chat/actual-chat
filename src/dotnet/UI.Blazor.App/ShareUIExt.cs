@@ -60,12 +60,13 @@ public static class ShareUIExt
         if (invite == null)
             return null;
 
+        var shareModalSelectorPrefs = ShareWithPlaceMembersOnly.GetFor(chat, place);
         return new ShareModalModel(
             ShareKind.ChatInvite,
             "Share private chat join link",
             targetTitle,
             new (text, Links.Invite(InviteLinkFormat.PrivateChat, invite.Id)),
-            !chat.IsPublic ? new PrivatePlaceMembersShareSelector(chat.Id) : null);
+            shareModalSelectorPrefs);
     }
 
     public static async ValueTask<ShareModalModel?> GetModel(

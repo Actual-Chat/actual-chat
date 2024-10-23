@@ -1,5 +1,6 @@
 @using ActualChat.Invite
 @using ActualChat.UI.Blazor.Services
+@using Cysharp.Text
 @using ActualChat.Chat
 @namespace ActualChat.UI.Blazor.Components
 
@@ -83,16 +84,27 @@
             case ChatInviteOption chatDetails: {
                 // The code here is ~ a copy of ShareUIExt.GetModel(ChatId...) - we can't reference it here, so...
                 var chats = UIHub.GetRequiredService<IChats>();
-                var chat = await chats.Get(Session, chatDetails.ChatId, default);
+                var chatId = chatDetails.ChatId;
+                var chat = await chats.Get(Session, chatId, default);
                 if (chat == null || !chat.CanInvite())
                     return;
 
+                Place? place = null;
+                if (!chatId.PlaceChatId.IsNone) {
+                    var places = UIHub.GetRequiredService<IPlaces>();
+                    place = await places.Get(Session, chatId.PlaceChatId.PlaceId, default).ConfigureAwait(false);
+                    if (place is null)
+                        return; // We should be able to get chat's place. Return if it's not like that.
+                }
+
+                var targetTitle = place is null ? chat.Title : ZString.Concat(place.Title, "/", chat.Title);
                 var title = "Share private chat join link";
-                var text = $"\"{chat.Title}\" on Actual Chat";
+                var text = $"\"{targetTitle}\" on Actual Chat";
+                var shareModalSelectorPrefs = ShareWithPlaceMembersOnly.GetFor(chat, place);
                 var shareModel = new ShareModalModel(
-                    ShareKind.ChatInvite, title, chat.Title,
+                    ShareKind.ChatInvite, title, targetTitle,
                     new(text, link),
-                    new PrivatePlaceMembersShareSelector(chat.Id));
+                    shareModalSelectorPrefs);
                 _ = ShareUI.Share(shareModel);
                 return;
             }

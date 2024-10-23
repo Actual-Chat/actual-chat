@@ -89,29 +89,17 @@
     private UrlMapper UrlMapper => Hub.UrlMapper();
     private Session Session => Hub.Session();
     private UICommander UICommander => Hub.UICommander();
-    private IPlaces Places => Hub.Places;
     private UserId OwnAccountId => Hub.AccountUI.OwnAccount.Value.Id;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public ShareModalModel ModalModel { get; set; } = null!;
 
-    protected override void OnInitialized()
-        => _comment = ModalModel.Request.Text;
-
-    protected override async Task OnInitializedAsync() {
-        if (ModalModel.SelectorPrefs is PrivatePlaceMembersShareSelector selector) {
-            var placeId = selector.ChatId.PlaceId;
-            if (!placeId.IsNone) {
-                _selectorKind = SelectorKind.Unknown;
-                var place = await Places.Get(Session, placeId, default).ConfigureAwait(false);
-                if (place?.IsPublic == false) {
-                    _memberListSource = new PlaceMemberListSource(Hub, placeId, new [] { OwnAccountId });
-                    _hideShareExternallyButton = true;
-                    _selectorKind = SelectorKind.Members;
-                } else {
-                    _selectorKind = SelectorKind.Contact;
-                }
-            }
+    protected override void OnInitialized() {
+        _comment = ModalModel.Request.Text;
+        if (ModalModel.SelectorPrefs is ShareWithPlaceMembersOnly selector) {
+            _memberListSource = new PlaceMemberListSource(Hub, selector.PlaceId, new [] { OwnAccountId });
+            _hideShareExternallyButton = true;
+            _selectorKind = SelectorKind.Members;
         }
     }
 
@@ -150,5 +138,5 @@
     private void OnCommentChanged(string text)
         => _comment = text;
 
-    private enum SelectorKind { Unknown, Contact, Members }
+    private enum SelectorKind { Contact, Members }
 }
