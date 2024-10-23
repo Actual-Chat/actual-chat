@@ -278,3 +278,18 @@ body.hoverable .tile-btn:hover {
 .theme-toggle .settings-tab-item .c-comment {
     @apply absolute left-36;
 }
+
+
+.settings-tab:has(.c-docs) .settings-tab-content,
+.settings-tab:has(.c-docs) .settings-tab-header {
+    @apply w-full;
+}
+.settings-tab:has(.c-docs) .settings-tab-header {
+    @apply md:px-6;
+}
+.settings-tab:has(.c-docs) .tile-topic {
+    @apply px-6;
+}
+.settings-tab .docs-details .tile.c-docs {
+    @apply bg-transparent;
+}

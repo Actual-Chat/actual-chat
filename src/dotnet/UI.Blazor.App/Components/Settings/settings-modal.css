@@ -60,3 +60,31 @@
     @apply pl-12 pr-16;
     @apply text-caption-6;
 }
+
+.c-docs p,
+.c-docs li {
+    @apply text-justify;
+    @apply text-text-1;
+}
+.docs-details > summary {
+    @apply md:pl-6;
+}
+.docs-details > summary > .c-title {
+    @apply flex-1 flex-x items-center gap-x-2;
+    @apply w-full md:w-80 h-8;
+    @apply text-01;
+}
+body.hoverable .docs-details > summary:hover > .c-title {
+    @apply cursor-pointer;
+    @apply text-03;
+}
+.docs-details[open] > summary > .c-title {
+    @apply text-primary;
+}
+.docs-details > summary > .c-title > .c-icon {
+    @apply rotate-180;
+    @apply transition-transform duration-200 ease-in-out;
+}
+.docs-details[open] > summary > .c-title > .c-icon {
+    @apply rotate-0;
+}
