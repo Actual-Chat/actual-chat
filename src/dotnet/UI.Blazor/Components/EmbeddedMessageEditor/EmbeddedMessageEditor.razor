@@ -4,6 +4,10 @@
     var cls = "embedded-message-editor";
     if (IsTransparent)
         cls += " transparent-editor";
+    var inputCls = "dialog-unstyled";
+    if (Post.HasDelegate) {
+        inputCls += " with-post";
+    }
 }
 
 <div class="@Class @cls">
@@ -18,7 +22,7 @@
         }
         <TextInput
             @ref="_inputRef"
-            Class="dialog-unstyled"
+            Class="@inputCls"
             Text="@Text"
             TextChanged="OnInput"
             KeyUp="OnKeyUp">
