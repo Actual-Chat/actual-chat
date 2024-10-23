@@ -51,6 +51,10 @@
             <EmailSettings/>
         </SettingsTab>
 
+        <SettingsTab @key="8" TabIndex="8" Title="Documents" Id="documents" IconClass="icon-file-text">
+            <DocumentsPage/>
+        </SettingsTab>
+
         @if (m.ShowDeveloperTools) {
             <SettingsTab @key="99" TabIndex="99" Title="Developer tools" Id="dev-tools" IconClass="icon-eye" HasSeparatorBefore="true">
                 <DeveloperTools/>
