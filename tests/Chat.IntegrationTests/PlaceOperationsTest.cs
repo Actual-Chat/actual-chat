@@ -362,8 +362,11 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         });
     }
 
-    [Fact]
-    public async Task ItShouldBeNotPossibleToActivateInviteLinkToChatOnNonAccessiblePrivatePlace()
+    [Theory]
+    [InlineData(false, false, false)] // NotPossibleToActivateInviteLinkToPrivateChatOnPrivatePlaceIfYouAreNotMemberOfThePlace
+    [InlineData(true, false, true)] // PossibleToActivateInviteLinkToPublicChatOnPrivatePlaceEvenIfYouAreNotMemberOfThePlace
+    [InlineData(false, true, true)] // PossibleToActivateInviteLinkToPrivateChatOnPrivatePlaceIfYouAreMemberOfThePlace
+    public async Task ActivateInviteLinkToPrivatePlaceChat(bool isPublicChat, bool addToPlaceMembers, bool shouldSucceed)
     {
         using var appHost = await NewAppHost("private-place");
         await using var tester = appHost.NewBlazorTester(Out);
@@ -372,27 +375,41 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         var commander = tester.Commander;
 
-        var (place, chat) = await CreatePlaceWithDefaultChat(commander, session, false, false);
+        var (place, chat) = await CreatePlaceWithDefaultChat(commander, session, false, isPublicChat);
 
         await using var tester2 = appHost.NewBlazorTester(Out);
-        var anotherSession = tester2.Session;
+        var session2 = tester2.Session;
         var commander2 = tester2.Commander;
         await tester2.SignInAsAlice();
         var contacts = tester2.AppServices.GetRequiredService<IContacts>();
         {
-            var placeIds = await contacts.ListPlaceIds(anotherSession, default);
+            var placeFromUser2Perspective = await tester2.Places.Get(session2, place.Id, default);
+            placeFromUser2Perspective.Should().BeNull();
+            var placeIds = await contacts.ListPlaceIds(session2, default);
             placeIds.Should().BeEmpty();
         }
 
-        var contactIds = await contacts.ListIds(anotherSession, place.Id, default);
+        var contactIds = await contacts.ListIds(session2, place.Id, default);
         contactIds.Count.Should().Be(0);
+
+        if (addToPlaceMembers) {
+            var user2 = await tester2.Accounts.GetOwn(session2, default);
+            await commander.Call(new Places_Invite(session, place.Id, [user2.Id]));
+            var placeFromUser2Perspective = await tester2.Places.Get(session2, place.Id, default);
+            placeFromUser2Perspective.Should().NotBeNull();
+        }
 
         var invite = ActualChat.Invite.Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(chat.Id));
         invite = await commander.Call(new Invites_Generate(session, invite));
 
-        await Assert.ThrowsAsync<SecurityException>(async () => {
-            await commander2.Call(new Invites_Use(anotherSession, invite.Id));
-        });
+        if (shouldSucceed) {
+            var invite2 = await commander2.Call(new Invites_Use(session2, invite.Id));
+            invite2.Should().NotBeNull();
+        }
+        else
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => {
+                await commander2.Call(new Invites_Use(session2, invite.Id));
+            });
     }
 
     [Fact]

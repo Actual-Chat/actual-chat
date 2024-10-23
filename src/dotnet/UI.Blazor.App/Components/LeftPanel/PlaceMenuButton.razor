@@ -3,22 +3,27 @@
 @inherits ComputedStateComponent<PlaceMenuButton.Model>
 @{
     var m = State.Value;
-    if (m.Place == null)
-        return;
+    var canEditProperties = m.CanEditSettings;
+    var editPropertiesHandler = canEditProperties ? _editSettingsHandler : EventCallback.Empty;
+    var clickableCls = canEditProperties ? "cursor-pointer" : "";
 }
 
 <div class="c-left">
-    <div class="c-top" onclick="@(() => OnPlaceSettingsClick(PlaceId))">
+    <div class="c-top @clickableCls" onclick="@editPropertiesHandler">
         <span class="c-title">@m.Place.Title</span>
-        <i class="icon-chevron-right flex-none"></i>
+        @if (canEditProperties) {
+            <i class="icon-chevron-right flex-none"></i>
+        }
     </div>
     <div class="c-bottom">
-        <span>@m.MemberCount @("Member".Pluralize(m.MemberCount))</span>
-        <DotSeparator/>
+        @if (m.MemberCount.HasValue) {
+            <span>@m.MemberCount @("Member".Pluralize(m.MemberCount.Value))</span>
+            <DotSeparator/>
+        }
         <span>@(m.Place.IsPublic ? "Public" : "Private")</span>
     </div>
 </div>
-@if (m.IsMember) {
+@if (m.ShowPlaceMenu) {
     <div class="c-right">
         <ButtonRound Class="place-plus-btn btn-sm btn-transparent unhovered"
                      data-menu="@(MenuRef.New<LeftPanelPlaceMenu>(m.Place.Id).ToString())"
@@ -27,7 +32,7 @@
             <i class="icon-more-vertical text-2xl"></i>
         </ButtonRound>
     </div>
-} else if (m.CanJoin) {
+} else if (m.ShowJoinButton) {
     <div class="c-right">
         <ButtonRound Class="btn-sm join-btn" ContentClass="gap-x-2" Click="OnJoinPlace">
             <i class="icon-person-add text-xl"></i>
@@ -37,6 +42,8 @@
 }
 
 @code {
+    private EventCallback _editSettingsHandler;
+
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
     private ChatUI ChatUI => Hub.ChatUI;
@@ -44,45 +51,42 @@
     private IPlaces Places => Hub.Places;
     private ModalUI ModalUI => Hub.ModalUI;
 
-    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
+    [Parameter, EditorRequired] public Place Place { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _editSettingsHandler = EventCallback.Factory.Create(this, OnPlaceSettingsClick);
+        base.OnInitialized();
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
+            t => new ComputedState<Model>.Options() {
+                InitialValue = new Model(Place, Place.Rules.CanSeeMembers() ? 0 : null),
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var placeId = PlaceId;
-        var place = await Hub.Places.Get(Hub.Session(), placeId, default).Require().ConfigureAwait(false);
-        var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
-        var places = await Contacts.ListPlaceIds(Session, default).ConfigureAwait(false);
-        var isMember = places.Contains(placeId);
-        var canJoin = place.Rules.CanJoin() && !isMember;
-
-        return new() {
-            Place = place,
-            MemberCount = allAuthorIds.Count,
-            IsMember = isMember,
-            CanJoin = canJoin,
-        };
+        var place = Place;
+        int? memberCount = null;
+        if (place.Rules.CanSeeMembers()) {
+            var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
+            memberCount = allAuthorIds.Count;
+        }
+        return new(place, memberCount);
     }
 
     private void OnJoinPlace()
-        => _ = ChatUI.JoinPlace(PlaceId);
+        => _ = ChatUI.JoinPlace(Place.Id);
 
-    private void OnPlaceSettingsClick(PlaceId placeId)
-        => _ = ModalUI.Show(new PlaceSettingsModal.Model(placeId));
+    private void OnPlaceSettingsClick()
+        => _ = ModalUI.Show(new PlaceSettingsModal.Model(Place.Id));
 
     // Nested types
 
-    public sealed record Model {
-        public static readonly Model Loading = new();
-
-        public Place? Place { get; init; }
-        public int MemberCount { get; init; }
-        public bool IsMember { get; init; }
-        public bool CanJoin { get; init; }
+    public sealed record Model(Place Place, int? MemberCount) {
+        public bool ShowPlaceMenu => IsMember;
+        public bool ShowJoinButton => !IsMember && Place.Rules.CanJoin();
+        public bool CanEditSettings => Place.Rules.IsOwner();
+        private bool IsMember => Place.IsMember();
     }
 }

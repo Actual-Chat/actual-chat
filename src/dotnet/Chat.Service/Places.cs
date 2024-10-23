@@ -42,8 +42,9 @@ public class Places(IServiceProvider services) : IPlaces
         if (placeId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(placeId));
 
+        // NOTE: Should we eliminate public GetRules method and always get rules from Place instance?
         var placeRootChatRules = await Chats.GetRules(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
-        return placeRootChatRules.ToPlaceRules(placeId)!;
+        return ToPlaceRules(placeRootChatRules, placeId);
     }
 
     public virtual async Task<ChatId> GetWelcomeChatId(
@@ -184,6 +185,14 @@ public class Places(IServiceProvider services) : IPlaces
         place.Rules.Require(PlacePermissions.Leave);
         var leaveCommand = new Authors_Leave(session, placeId.ToRootChatId());
         await Commander.Call(leaveCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static PlaceRules ToPlaceRules(AuthorRules authorRules, PlaceId placeId)
+    {
+        var placePermissions = (PlacePermissions)(int)authorRules.Permissions;
+        if ((placePermissions & PlacePermissions.Owner) == 0) // Only Owners can invite so far.
+            placePermissions &= ~PlacePermissions.Invite;
+        return new (placeId, authorRules.Author, authorRules.Account, placePermissions);
     }
 
     private static void ThrowIfNone(PlaceId placeId)

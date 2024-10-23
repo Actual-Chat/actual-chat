@@ -63,6 +63,16 @@
         Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
     }
 
+    protected override async Task OnInitializedAsync() {
+        if (Context.Model is PlaceId placeId) {
+            var shareModal = await Hub.ShareUI.GetModel(placeId, DisposeToken);
+            if (shareModal is not null) {
+                _shareRequest = shareModal.Request;
+                _placeLink = _shareRequest.Value.GetShareLink(UrlMapper);
+            }
+        }
+    }
+
     public void Dispose()
         => DisposeTokenSource.CancelAndDisposeSilently();
 

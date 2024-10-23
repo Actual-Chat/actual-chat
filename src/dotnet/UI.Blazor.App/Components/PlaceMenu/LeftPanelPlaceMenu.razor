@@ -35,7 +35,6 @@
     private bool _canLeave;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
 
     private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
@@ -60,7 +59,7 @@
     }
 
     private void OnCreateChatClick()
-        => ModalUI.Show(new NewChatModal.Model(_placeId));
+        => _ = ModalUI.Show(new NewChatModal.Model(_placeId));
 
     private void OnPlaceSettingsClick()
         => _ = ModalUI.Show(new PlaceSettingsModal.Model(_placeId));
@@ -69,5 +68,5 @@
         => ChatUI.LeavePlace(_placeId);
 
     private void OnImportChatsClick()
-        => ModalUI.Show(new CopyChatFromListToPlaceModal.Model(_placeId));
+        => _ = ModalUI.Show(new CopyChatFromListToPlaceModal.Model(_placeId));
 }

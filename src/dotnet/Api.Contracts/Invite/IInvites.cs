@@ -12,6 +12,8 @@ public interface IInvites : IComputeService
     Task<ApiArray<Invite>> ListPlaceInvites(Session session, PlaceId placeId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Invite?> GetOrGenerateChatInvite(Session session, ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<Invite?> GetOrGeneratePlaceInvite(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Invite> OnGenerate(Invites_Generate command, CancellationToken cancellationToken);

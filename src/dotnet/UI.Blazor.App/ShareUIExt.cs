@@ -35,23 +35,74 @@ public static class ShareUIExt
                 : await shareUI.GetModel(otherUserId, cancellationToken).ConfigureAwait(false);
         }
 
-        var title = "Share chat";
+        Place? place = null;
+        if (!chatId.PlaceChatId.IsNone) {
+            var places = hub.GetRequiredService<IPlaces>();
+            place = await places.Get(session, chatId.PlaceChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+            if (place is null)
+                return null; // We should be able to get chat place. Return null if it's not like that.
+        }
+
         var text = $"\"{chat.Title}\" on Actual Chat";
-        if (chat.IsPublic)
-            return new ShareModalModel(
-                ShareKind.Chat, title, chat.Title,
-                new(text, Links.Chat(chat.Id)),
-                new PrivatePlaceMembersShareSelector(chat.Id));
+        if (place is null || place.IsPublic) {
+            if (chat.IsPublic)
+                return new ShareModalModel(
+                    ShareKind.Chat,
+                    "Share chat",
+                    chat.Title,
+                    new (text, Links.Chat(chat.Id)),
+                    new PrivatePlaceMembersShareSelector(chat.Id));
+        }
 
         var invites = hub.GetRequiredService<IInvites>();
-        var invite = await invites.GetOrGenerateChatInvite(session, chat.Id, cancellationToken).ConfigureAwait(false);
+        var invite = await invites.GetOrGenerateChatInvite(session, chat.Id, cancellationToken)
+            .ConfigureAwait(false);
         if (invite == null)
             return null;
 
-        title = "Share private chat join link";
         return new ShareModalModel(
-            ShareKind.ChatInvite, title, chat.Title,
-            new(text, Links.Invite(InviteLinkFormat.PrivateChat, invite.Id)),
+            ShareKind.ChatInvite,
+            "Share private chat join link",
+            chat.Title,
+            new (text, Links.Invite(InviteLinkFormat.PrivateChat, invite.Id)),
             new PrivatePlaceMembersShareSelector(chat.Id));
+    }
+
+    public static async ValueTask<ShareModalModel?> GetModel(
+        this ShareUI shareUI, PlaceId placeId, CancellationToken cancellationToken = default)
+    {
+        var hub = shareUI.Hub;
+        var session = hub.Session();
+        var places = hub.GetRequiredService<IPlaces>();
+        var place = await places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
+        if (place == null)
+            return null;
+
+        var text = $"\"{place.Title}\" on Actual Chat";
+        if (place.IsPublic) {
+            var welcomeChatId = await places.GetWelcomeChatId(session, placeId, cancellationToken).ConfigureAwait(false);
+            // NOTE(DF): Direct navigation to place does not work well so far. Let's share place via welcome chat link.
+            if (welcomeChatId.IsNone)
+                return null;
+
+            return new ShareModalModel(
+                ShareKind.Place,
+                "Share place",
+                place.Title,
+                new (text, Links.Chat(welcomeChatId)),
+                null);
+        }
+
+        var invites = hub.GetRequiredService<IInvites>();
+        var invite = await invites.GetOrGeneratePlaceInvite(session, place.Id, cancellationToken).ConfigureAwait(false);
+        if (invite == null)
+            return null;
+
+        return new ShareModalModel(
+            ShareKind.PlaceInvite,
+            "Share private place join link",
+            place.Title,
+            new(text, Links.Invite(InviteLinkFormat.PrivatePlace, invite.Id)),
+            null);
     }
 }

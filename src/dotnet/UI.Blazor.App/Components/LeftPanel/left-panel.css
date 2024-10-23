@@ -112,7 +112,6 @@
 .left-panel-content-header.place .c-info > .c-left > .c-top {
     @apply flex-x items-center gap-x-2;
     @apply text-headline-7 text-01 leading-6;
-    @apply cursor-pointer;
 }
 .left-panel-content-header.place .c-info > .c-left > .c-top .c-title {
     @apply flex-initial;
