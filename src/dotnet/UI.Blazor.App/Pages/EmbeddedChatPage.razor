@@ -77,7 +77,7 @@
         var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
         var pChatId = new ChatId(chatSid, ParseOrNone.Option);
         var isInaccessiblePlace = !pChatId.PlaceChatId.PlaceId.IsNone;
-        var enableIncompleteUI = await ChatUI.Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await ChatUI.Hub.Features().EnableIncompleteUI(cancellationToken).ConfigureAwait(false);
         try {
             var chat = SpecialChat.NoChatSelected;
             if (!chatId.IsNone) {

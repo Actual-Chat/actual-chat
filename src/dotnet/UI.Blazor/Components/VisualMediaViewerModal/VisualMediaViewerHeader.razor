@@ -70,7 +70,7 @@
 
     protected override async Task OnInitializedAsync() {
         Saver = Hub.GetService<IMediaSaver>();
-        _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
+        _enableIncompleteUI = await Features.EnableIncompleteUI(CancellationToken.None);
     }
 
     protected override async Task OnParametersSetAsync() {

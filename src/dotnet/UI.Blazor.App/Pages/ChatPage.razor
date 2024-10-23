@@ -130,7 +130,7 @@
         var lastChatId = lastContext?.Chat.Id ?? ChatId.None;
 
         var canSendJoinPlaceRequest = false;
-        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Features.EnableIncompleteUI(cancellationToken).ConfigureAwait(false);
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
         if (_isVeryFirstLoad) {

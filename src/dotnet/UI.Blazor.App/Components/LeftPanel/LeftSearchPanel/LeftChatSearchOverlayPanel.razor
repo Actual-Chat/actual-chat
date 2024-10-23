@@ -68,7 +68,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var isOpen = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false)
                      || await SearchUI.IsShowRecentOn.Use(cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Features.EnableIncompleteUI(cancellationToken).ConfigureAwait(false);
         return new Model(isOpen, enableIncompleteUI);
     }
 

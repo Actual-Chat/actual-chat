@@ -150,7 +150,7 @@
             return new() { Place = place };
 
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        var enableIncompleteUI = await Hub.Features().EnableIncompleteUI(cancellationToken);
 
         return new() {
             Place = place,

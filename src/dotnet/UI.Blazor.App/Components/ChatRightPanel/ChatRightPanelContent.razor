@@ -64,7 +64,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = Chat.Id;
 
-        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Features.EnableIncompleteUI(cancellationToken).ConfigureAwait(false);
         var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
         var showMemberTab = rules.CanSeeMembers();
         var showSearchPanel = await PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
