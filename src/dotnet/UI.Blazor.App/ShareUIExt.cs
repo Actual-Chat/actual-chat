@@ -1,5 +1,6 @@
 using ActualChat.Invite;
 using ActualChat.UI.Blazor.Services;
+using Cysharp.Text;
 
 namespace ActualChat.UI.Blazor.App;
 
@@ -40,19 +41,18 @@ public static class ShareUIExt
             var places = hub.GetRequiredService<IPlaces>();
             place = await places.Get(session, chatId.PlaceChatId.PlaceId, cancellationToken).ConfigureAwait(false);
             if (place is null)
-                return null; // We should be able to get chat place. Return null if it's not like that.
+                return null; // We should be able to get chat's place. Return null if it's not like that.
         }
 
-        var text = $"\"{chat.Title}\" on Actual Chat";
-        if (place is null || place.IsPublic) {
-            if (chat.IsPublic)
-                return new ShareModalModel(
-                    ShareKind.Chat,
-                    "Share chat",
-                    chat.Title,
-                    new (text, Links.Chat(chat.Id)),
-                    new PrivatePlaceMembersShareSelector(chat.Id));
-        }
+        var targetTitle = place is null ? chat.Title : ZString.Concat(place.Title, "/", chat.Title);
+        var text = $"\"{targetTitle}\" on Actual Chat";
+        if ((place is null || place.IsPublic) && chat.IsPublic)
+            return new ShareModalModel(
+                ShareKind.Chat,
+                "Share chat",
+                targetTitle,
+                new (text, Links.Chat(chat.Id)),
+                null);
 
         var invites = hub.GetRequiredService<IInvites>();
         var invite = await invites.GetOrGenerateChatInvite(session, chat.Id, cancellationToken)
@@ -63,9 +63,9 @@ public static class ShareUIExt
         return new ShareModalModel(
             ShareKind.ChatInvite,
             "Share private chat join link",
-            chat.Title,
+            targetTitle,
             new (text, Links.Invite(InviteLinkFormat.PrivateChat, invite.Id)),
-            new PrivatePlaceMembersShareSelector(chat.Id));
+            !chat.IsPublic ? new PrivatePlaceMembersShareSelector(chat.Id) : null);
     }
 
     public static async ValueTask<ShareModalModel?> GetModel(
