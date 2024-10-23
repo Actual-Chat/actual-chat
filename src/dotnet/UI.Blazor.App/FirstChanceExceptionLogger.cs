@@ -25,9 +25,9 @@ public static class FirstChanceExceptionLogger
 
         // NOTE(DF): Perhaps it's redundant and inner exception has been already logged with FCE earlier.
         // But I saw TargetInvocationException in Crashes reports in 'Google console/Android Vitals'
-        //  and want to be sure that it's been logged to find details of crash.
-        if (error is TargetInvocationException { InnerException: not null } tie)
-            LogInternal(tie.InnerException);
+        //  and wanted to be sure that it's been logged to find details of a crash.
+        if (error is TargetInvocationException { InnerException: { } innerException })
+            LogInternal(innerException);
     }
 
     private static void LogInternal(Exception error, bool withStackTrace = true)
