@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<PlaybackToggle.Model>
 @{
     var rendered = _rendered;
@@ -32,6 +33,7 @@
 </div>
 
 @code {
+    private static readonly string JSInitMethod = $"{BlazorUIAppModule.ImportName}.PlaybackToggle.init";
     private Model _rendered = Model.Loading;
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
@@ -41,12 +43,21 @@
     private ChatPlayers ChatPlayers => Hub.ChatPlayers;
     private IAuthors Authors => Hub.Authors;
     private IAudioOutputController AudioOutputController => Hub.AudioOutputController;
+    private IJSRuntime JS => Hub.JSRuntime();
 
     private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
     private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        await JS.InvokeVoidAsync(JSInitMethod);
+    }
+
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
