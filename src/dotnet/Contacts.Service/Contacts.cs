@@ -72,8 +72,6 @@ public class Contacts(IServiceProvider services) : IContacts
     {
         if (!placeId.IsNone) {
             var place = await Places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
-            // If user can't access place return an empty contact list for backward compatibility.
-            // TODO(DF): To think if we should throw a security exception on attempt to get contact list for inaccessible place.
             if (place?.Rules.CanRead() != true)
                 return ApiArray.Empty<ContactId>();
         }
