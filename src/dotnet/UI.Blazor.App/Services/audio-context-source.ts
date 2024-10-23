@@ -811,10 +811,15 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
         if (!context || context.state === 'closed')
             void this.whenReady();
         else if (context.state === 'suspended') {
-            void context.resume().then(async () => {
-                infoLog?.log('useRef: resume context');
-                await this.fallbackDestination?.play();
-            });
+            const whenDelayCompleted = delayAsync(MaxResumeTimeMs);
+            Promise.race([context.resume(), whenDelayCompleted])
+                .then(async () => {
+                    if (context.state !== 'running') {
+                        void context.close();
+                        await this.whenReady();
+                    }
+                    void this.fallbackDestination?.play();
+                });
         }
 
         return Disposables.fromAction(() => {

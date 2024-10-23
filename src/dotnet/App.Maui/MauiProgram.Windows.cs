@@ -1,5 +1,6 @@
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.Services;
 using Microsoft.Maui.LifecycleEvents;
 
 namespace ActualChat.App.Maui;
@@ -19,7 +20,11 @@ public static partial class MauiProgram
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
     {
         events.AddWindows(builder => {
-            builder.OnWindowCreated(WindowConfigurator.Configure);
+            builder
+                .OnWindowCreated(WindowConfigurator.Configure)
+                .OnVisibilityChanged((_, args) => {
+                    MauiBackgroundStateTracker.SetBackgroundState(!args.Visible);
+                });
         });
         WindowsLivenessProbe.Activate();
     }

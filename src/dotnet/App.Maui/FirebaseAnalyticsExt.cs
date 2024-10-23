@@ -1,7 +1,9 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.AspNetCore.Components.Routing;
+#if IOS || ANDROID
 using Plugin.Firebase.Analytics;
+#endif
 
 namespace ActualChat.App.Maui;
 
@@ -15,7 +17,7 @@ public static class FirebaseAnalyticsExt
     }
 
     // Nested types
-
+#if IOS || ANDROID
     private class Collector
     {
         private readonly History _history;
@@ -52,4 +54,5 @@ public static class FirebaseAnalyticsExt
             _location = location;
         }
     }
+#endif
 }
