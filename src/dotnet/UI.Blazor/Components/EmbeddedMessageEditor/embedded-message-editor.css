@@ -43,11 +43,14 @@
 }
 .embedded-message-editor.transparent-editor input {
     @apply h-12;
-    @apply pl-4 pr-12;
+    @apply px-4;
     @apply rounded-full;
     @apply bg-input;
     @apply text-02 font-normal;
     @apply border border-transparent;
+}
+.embedded-message-editor.transparent-editor.with-post input {
+    @apply pr-12;
 }
 .embedded-message-editor.transparent-editor input:focus {
     @apply border-primary;

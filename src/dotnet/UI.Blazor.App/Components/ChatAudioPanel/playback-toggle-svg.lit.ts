@@ -31,22 +31,6 @@ class PlaybackToggleSvg extends LitElement {
                 --text-color: var(--audio-panel-button-text);
             }
         }
-        .spin-and-on {
-            animation: spin-and-on ease-in-out;
-            animation-duration: 0.25s;
-        }
-
-        @keyframes spin-and-on {
-            0% {
-                scale: 1;
-            }
-            50% {
-                scale: 0;
-            }
-            100% {
-                scale: 1;
-            }
-        }
     `];
 
     protected render(): unknown {
@@ -61,16 +45,32 @@ class PlaybackToggleSvg extends LitElement {
                             attributeName="transform"
                             type="rotate"
                             attributeType="XML"
-                            dur="0.25s"
-                            repeatCount="2"
+                            dur="0.5s"
+                            repeatCount="1"
                             values="
                                 0 12 12;
-                                360 12 12"
+                                90 12 12;
+                                180 12 12;
+                                270 12 12;
+                                360 12 12;
+                                420 12 12;
+                                480 12 12;
+                                540 12 12;
+                                600 12 12;
+                                645 12 12;
+                                660 12 12;
+                                675 12 12;
+                                690 12 12;
+                                700 12 12;
+                                705 12 12;
+                                710 12 12;
+                                715 12 12;
+                                720 12 12"
                         />
                         <animate
                             href="#playback-toggle-3"
                             attributeName="fill"
-                            dur="0.25s"
+                            dur="0.45s"
                             repeatCount="1"
                             values="
                                 #898989FF;
