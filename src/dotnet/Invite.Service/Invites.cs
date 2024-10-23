@@ -5,6 +5,7 @@ namespace ActualChat.Invite;
 
 public class Invites(IServiceProvider services) : IInvites
 {
+    private static readonly TimeSpan MinInviteLifespan = TimeSpan.FromHours(1);
     private IChats? _chats;
     private IPlaces? _places;
     private IAccounts? _accounts;
@@ -66,24 +67,37 @@ public class Invites(IServiceProvider services) : IInvites
             return null;
 
         var invites = await ListChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
-        var minInviteLifespan = TimeSpan.FromHours(1);
-        var minExpiresAt = Clocks.SystemClock.Now - minInviteLifespan;
-        var invite = invites.Where(x => x.ExpiresOn > minExpiresAt && x.Remaining >= 1).MaxBy(c => c.ExpiresOn);
+        var invite = ChooseInvite(invites, MinInviteLifespan);
         if (invite == null) {
             invite = Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(chatId));
             invite = await Commander
                 .Call(new Invites_Generate(session, invite), true, cancellationToken)
                 .ConfigureAwait(false);
         }
-        AutoInvalidate(invite);
+        AutoInvalidate(invite, MinInviteLifespan);
         return invite;
+    }
 
-        void AutoInvalidate(Invite invite1) {
-            var delay = invite1.ExpiresOn - Clocks.SystemClock.Now - minInviteLifespan + TimeSpan.FromSeconds(1);
-            // We don't want to reference Computed<T> for too long
-            delay = delay.Clamp(TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(10));
-            Computed.GetCurrent().Invalidate(delay);
+    // [ComputeMethod]
+    public virtual async Task<Invite?> GetOrGeneratePlaceInvite(
+        Session session,
+        PlaceId placeId,
+        CancellationToken cancellationToken)
+    {
+        var place = await Places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
+        if (place == null || !place.Rules.CanInvite())
+            return null;
+
+        var invites = await ListPlaceInvites(session, placeId, cancellationToken).ConfigureAwait(false);
+        var invite = ChooseInvite(invites, MinInviteLifespan);
+        if (invite == null) {
+            invite = Invite.New(Constants.Invites.Defaults.PlaceRemaining, new PlaceInviteOption(placeId));
+            invite = await Commander
+                .Call(new Invites_Generate(session, invite), true, cancellationToken)
+                .ConfigureAwait(false);
         }
+        AutoInvalidate(invite, MinInviteLifespan);
+        return invite;
     }
 
     // [CommandHandler]
@@ -141,16 +155,26 @@ public class Invites(IServiceProvider services) : IInvites
         account.Require(AccountFull.MustBeAdmin);
     }
 
-    private async Task AssertCanListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken)
+    private Task AssertCanListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken)
+        => RequireCanInvite(session, chatId, cancellationToken);
+
+    private Task AssertCanListPlaceInvites(Session session, PlaceId placeId, CancellationToken cancellationToken)
+        => RequireCanInvite(session, placeId, cancellationToken);
+
+    private async Task RequireCanInvite(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
-        rules.Require(ChatPermissions.Invite);
+        var chatRules = await Chats
+            .GetRules(session, chatId, cancellationToken)
+            .ConfigureAwait(false);
+        chatRules.Require(ChatPermissions.Invite);
     }
 
-    private async Task AssertCanListPlaceInvites(Session session, PlaceId placeId, CancellationToken cancellationToken)
+    private async Task RequireCanInvite(Session session, PlaceId placeId, CancellationToken cancellationToken)
     {
-        var rules = await Places.GetRules(session, placeId, cancellationToken).ConfigureAwait(false);
-        rules.Require(PlacePermissions.Invite);
+        var placeRules = await Places
+            .GetRules(session, placeId, cancellationToken)
+            .ConfigureAwait(false);
+        placeRules.Require(PlacePermissions.Invite);
     }
 
     private async Task<AccountFull> AssertCanGenerate(Session session, Invite invite, CancellationToken cancellationToken)
@@ -165,16 +189,10 @@ public class Invites(IServiceProvider services) : IInvites
                 throw StandardError.Unauthorized("Only admins can generate user invites.");
             break;
         case ChatInviteOption chatInvite:
-            var rulesChat = await Chats
-                .GetRules(session, chatInvite.ChatId, cancellationToken)
-                .ConfigureAwait(false);
-            rulesChat.Require(ChatPermissions.Invite);
+            await RequireCanInvite(session, chatInvite.ChatId, cancellationToken).ConfigureAwait(false);
             break;
         case PlaceInviteOption placeInvite:
-            var rulesPlace = await Places
-                .GetRules(session, placeInvite.PlaceId, cancellationToken)
-                .ConfigureAwait(false);
-            rulesPlace.Require(PlacePermissions.Invite);
+            await RequireCanInvite(session, placeInvite.PlaceId, cancellationToken).ConfigureAwait(false);
             break;
         default:
             throw StandardError.Format<Invite>();
@@ -195,21 +213,29 @@ public class Invites(IServiceProvider services) : IInvites
                     throw StandardError.Unauthorized("Only admins can revoke user invites.");
                 break;
             case ChatInviteOption chatInvite:
-                var chatRules = await Chats
-                    .GetRules(session, chatInvite.ChatId, cancellationToken)
-                    .ConfigureAwait(false);
-                chatRules.Require(ChatPermissions.Invite);
+                await RequireCanInvite(session, chatInvite.ChatId, cancellationToken).ConfigureAwait(false);
                 break;
             case PlaceInviteOption placeInvite:
-                var placeRules = await Places
-                    .GetRules(session, placeInvite.PlaceId, cancellationToken)
-                    .ConfigureAwait(false);
-                placeRules.Require(PlacePermissions.Invite);
+                await RequireCanInvite(session, placeInvite.PlaceId, cancellationToken).ConfigureAwait(false);
                 break;
             default:
                 throw StandardError.Format<Invite>();
         }
 
         return account;
+    }
+
+    private Invite? ChooseInvite(ApiArray<Invite> invites, TimeSpan minInviteLifespan)
+    {
+        var minExpiresAt = Clocks.SystemClock.Now - minInviteLifespan;
+        var invite = invites.Where(x => x.ExpiresOn > minExpiresAt && x.Remaining >= 1).MaxBy(c => c.ExpiresOn);
+        return invite;
+    }
+
+    private void AutoInvalidate(Invite invite1, TimeSpan minInviteLifespan) {
+        var delay = invite1.ExpiresOn - Clocks.SystemClock.Now - minInviteLifespan + TimeSpan.FromSeconds(1);
+        // We don't want to reference Computed<T> for too long
+        delay = delay.Clamp(TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(10));
+        Computed.GetCurrent().Invalidate(delay);
     }
 }

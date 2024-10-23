@@ -137,18 +137,24 @@ public class InvitesBackend(IServiceProvider services)
         case ChatInviteOption chatInviteOption: {
             var chatId = chatInviteOption.ChatId;
             if (chatId.IsPlaceChat && !chatId.IsPlaceRootChat) {
-                var placeRootChatId = chatId.PlaceId.ToRootChatId();
+                var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+                var placeId = chatId.PlaceId;
+                var placeRootChatId = placeId.ToRootChatId();
                 var principalId = new PrincipalId(account.Id, AssumeValid.Option);
                 var placeRules = await ChatsBackend.GetRules(placeRootChatId, principalId, cancellationToken).ConfigureAwait(false);
-                if (!placeRules.CanRead())
-                    throw StandardError.NotEnoughPermissions("access chat's place");
+                if (chat is { IsPublic: true })
+                    await OnUseForPlace(placeId).ConfigureAwait(false); // Activate read permission to the place.
+                else if (placeRules.IsMember())
+                    await OnUseForChat(chatId).ConfigureAwait(false);  // Activate read permission to private place chat.
+                else
+                    throw StandardError.Constraint("Only place members can use this code.");
             }
-            await OnUseForChat(chatId).ConfigureAwait(false);
+            else
+                await OnUseForChat(chatId).ConfigureAwait(false);
             break;
         }
         case PlaceInviteOption placeInviteOption: {
-            var placeId = placeInviteOption.PlaceId;
-            await OnUseForChat(placeId.ToRootChatId()).ConfigureAwait(false);
+            await OnUseForPlace(placeInviteOption.PlaceId).ConfigureAwait(false);
             break;
         }
         default:
@@ -159,6 +165,9 @@ public class InvitesBackend(IServiceProvider services)
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation.Items.Set(invite);
         return invite;
+
+        Task OnUseForPlace(PlaceId placeId)
+            => OnUseForChat(placeId.ToRootChatId());
 
         async Task OnUseForChat(ChatId chatId)
         {

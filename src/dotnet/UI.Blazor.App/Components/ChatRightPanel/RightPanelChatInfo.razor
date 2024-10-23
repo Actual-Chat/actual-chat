@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Invite
 @using ActualChat.Kvas
 @inherits ComputedStateComponent<RightPanelChatInfo.Model>
 @{
@@ -27,13 +26,8 @@
 @code {
     private Session Session => ChatContext.Hub.Session();
     private Chat Chat => ChatContext.Chat;
-    private IChats Chats => ChatContext.Hub.Chats;
-    private IInvites Invites => ChatContext.Hub.Invites;
-    private IAccounts Accounts => ChatContext.Hub.Accounts;
     private AccountSettings AccountSettings => ChatContext.Hub.AccountSettings();
-    private ModalUI ModalUI => ChatContext.Hub.ModalUI;
     private UICommander UICommander => ChatContext.Hub.UICommander();
-    private IAuthors Authors => ChatContext.Hub.Authors;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -49,10 +43,12 @@
         var chat = Chat;
         var chatId = chat.Id;
 
+        if (chat.HasSingleAuthor || !chat.IsMember())
+            return new() { HideNotificationsToggle = true };
+
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         return new() {
             NotificationMode = userChatSettings.NotificationMode,
-            HideNotificationsToggle = chat.HasSingleAuthor,
         };
     }
 

@@ -1,5 +1,4 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Invite
 @inherits ComputedStateComponent<ChatWelcomeBlock.Model?>
 @{
     var m = State.ValueOrDefault;
@@ -30,9 +29,10 @@
                 </div>
                 break;
             default:
-                <div class="c-content">
-                    Welcome! Share the link to this chat to invite more people here:
-                </div>
+                var welcomeText = m.ShareModel is not null
+                    ? "Welcome! Share the link to this chat to invite more people here:"
+                    : "Welcome!";
+                <div class="c-content">@welcomeText</div>
                 break;
         }
 
@@ -81,12 +81,8 @@
     // Shortcuts
     private Session Session => ChatContext.Hub.Session();
     private Chat Chat => ChatContext.Chat;
-    private IInvites Invites => ChatContext.Hub.Invites;
-    private IAuthors Authors => ChatContext.Hub.Authors;
-    private ChatUI ChatUI => ChatContext.Hub.ChatUI;
     private ShareUI ShareUI => ChatContext.Hub.ShareUI;
     private UrlMapper UrlMapper => ChatContext.Hub.UrlMapper();
-    private History History => ChatContext.Hub.History;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 

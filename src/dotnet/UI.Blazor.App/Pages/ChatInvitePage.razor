@@ -25,7 +25,7 @@
 
     private Session Session => Hub.Session();
     private MomentClockSet Clocks => Hub.Clocks();
-    private UICommander UICommander => Hub.UICommander();
+    private ICommander Commander => Hub.Commander();
     private History History => Hub.History;
     private AccountUI AccountUI => Hub.AccountUI;
     private IPlaces Places => Hub.Places;
@@ -42,11 +42,16 @@
         }
 
         var useCommand = new Invites_Use(Session, InviteId);
-        _useResult = await UICommander.Run(useCommand);
-        if (_useResult is not { } useResult || useResult.HasError)
+        Invite invite;
+        try {
+            invite = await Commander.Call(useCommand);
+            _useResult = Result.Value(invite);
+        }
+        catch (Exception e) {
+            _useResult = Result.Error<Invite>(e); // We show the error on the page, not with error toasts.
             return;
+        }
 
-        var invite = useResult.Value;
         var placeInvite = invite.Details.Place;
         if (placeInvite != null) {
             var placeId = placeInvite.PlaceId;
