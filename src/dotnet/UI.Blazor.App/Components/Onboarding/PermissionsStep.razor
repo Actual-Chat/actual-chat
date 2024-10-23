@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.UI.Blazor.App
 @inherits Step;
 @{
     var m = _model;
@@ -99,7 +98,6 @@
     private PermissionStepModel? _model;
     private ElementReference _notificationPermissionHandlerRef;
 
-    [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     [Inject] private NotificationUI NotificationUI { get; init; } = null!;
 
@@ -170,5 +168,4 @@
             _notificationPermissionHandlerRef = default;
         }
     }
-
 }
