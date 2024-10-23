@@ -73,7 +73,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         return new(
             await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false),
-            await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false));
+            await Features.EnableIncompleteUI(cancellationToken).ConfigureAwait(false));
     }
 
     private void OnExpandClick() {

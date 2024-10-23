@@ -156,7 +156,7 @@
         var ownAuthor = place.Rules.Author;
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
         var ownerIds = await Places.ListOwnerIds(Session, placeId, cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Features.EnableIncompleteUI(cancellationToken).ConfigureAwait(false);
         var isPlaceMember = ownAuthor is { HasLeft: false };
         return new() {
             Place = place,
