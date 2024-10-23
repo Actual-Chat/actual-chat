@@ -34,8 +34,8 @@
         if (peerAccountId.IsNone)
             return Model.Loading;
 
-        var ownAuthor = await Authors.GetOwn(Session, peerChatId, cancellationToken).ConfigureAwait(false);
-        var anotherAuthorId = new AuthorId(peerChatId, ownAuthor != null && peerChatId.UserId1 == ownAuthor.UserId ? 2 : 1, AssumeValid.Option);
+        var ownUserId = ownAccount.User.Id;
+        var anotherAuthorId = new AuthorId(peerChatId, peerChatId.UserId1 == ownUserId ? 2 : 1, AssumeValid.Option);
         var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken).ConfigureAwait(false);
 
         if (anotherAuthor == null)

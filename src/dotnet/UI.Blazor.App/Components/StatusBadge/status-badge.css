@@ -6,6 +6,7 @@
     @apply text-caption-2;
 }
 .status-badge.default {
+    @apply px-0;
     @apply text-status;
     @apply bg-transparent;
 }
