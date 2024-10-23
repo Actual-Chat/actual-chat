@@ -45,7 +45,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         var chatId = contact.ChatId;
         if (chatId.IsPeerChat(out var peerChatId)) {
-            var userId = peerChatId.UserIds.OtherThanOrDefault(ownerId);
+            var userId = peerChatId.AnotherUserIdOrDefault(ownerId);
             if (userId.IsGuestOrNone)
                 throw new ArgumentOutOfRangeException(nameof(contactId));
 

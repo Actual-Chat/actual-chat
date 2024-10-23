@@ -53,6 +53,6 @@ default:
             return default;
 
         var account = AccountUI.OwnAccount.Value;
-        return peerChatId.UserIds.OtherThanOrDefault(account.Id);
+        return peerChatId.AnotherUserIdOrDefault(account.Id);
     }
 }

@@ -1860,7 +1860,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (account == null)
             return AuthorRules.None(chatId);
 
-        var otherUserId = chatId.UserIds.OtherThanOrDefault(account.Id);
+        var otherUserId = chatId.AnotherUserIdOrDefault(account.Id);
         if (otherUserId.IsGuestOrNone)
             return AuthorRules.None(chatId);
 

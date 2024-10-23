@@ -84,8 +84,8 @@
         if (!chatId.IsPeerChat(out var peerChatId))
             return Model.None;
 
-        var ownAuthor = await Authors.GetOwn(Session, peerChatId, cancellationToken).ConfigureAwait(false);
-        var anotherAuthorId = new AuthorId(peerChatId, ownAuthor != null && peerChatId.UserId1 == ownAuthor.UserId ? 2 : 1, AssumeValid.Option);
+        var chat = chatState.Chat;
+        var anotherAuthorId = peerChatId.AnotherAuthorId(chat.Rules.Account.Id);
         var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken).ConfigureAwait(false);
 
         if (anotherAuthor == null)

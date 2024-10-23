@@ -82,12 +82,12 @@
                 if (!chatId.IsPeerChat(out var peerChatId))
                     return Model.Loading;
 
-                var peerAccountId = peerChatId.UserIds.OtherThanOrDefault(ownAccount.Id);
+                var peerAccountId = peerChatId.AnotherUserIdOrDefault(ownAccount.Id);
                 if (peerAccountId.IsNone)
                     return Model.Loading;
 
-                var ownUserId = ownAccount.User.Id;
-                var anotherAuthorId = new AuthorId(peerChatId, peerChatId.UserId1 == ownUserId ? 2 : 1, AssumeValid.Option);
+                var ownUserId = ownAccount.Id;
+                var anotherAuthorId = peerChatId.AnotherAuthorId(ownUserId);
                 var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken).ConfigureAwait(false);
 
                 if (anotherAuthor == null)

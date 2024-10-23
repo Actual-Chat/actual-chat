@@ -121,6 +121,14 @@ public readonly partial struct PeerChatId : ISymbolIdentifier<PeerChatId>
         return !userId.IsGuestOrNone;
     }
 
+    // Misc
+
+    public UserId AnotherUserIdOrDefault(UserId userId)
+        => UserIds.OtherThanOrDefault(userId);
+
+    public AuthorId AnotherAuthorId(UserId userId)
+        => new (this, UserId1 == userId ? 2 : 1, AssumeValid.Option);
+
     // Conversion
 
     public ChatId ToChatId() => new (Id);

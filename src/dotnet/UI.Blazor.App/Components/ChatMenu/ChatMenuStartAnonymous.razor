@@ -21,7 +21,7 @@
         => ChatState.Id.IsPeerChat(out _peerChatId);
 
     private void OnStartChatClick() {
-        var otherUserId = _peerChatId.UserIds.OtherThanOrDefault(Hub.AccountUI.OwnAccount.Value.Id);
+        var otherUserId = _peerChatId.AnotherUserIdOrDefault(Hub.AccountUI.OwnAccount.Value.Id);
         _ = Hub.AuthorUI.StartAnonymousPeerChat(otherUserId);
     }
 }
