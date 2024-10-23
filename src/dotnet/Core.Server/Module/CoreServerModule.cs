@@ -24,7 +24,16 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
     }
 
     protected override CoreServerSettings GetSettings()
-        => Cfg.Settings<CoreServerSettings>(nameof(CoreSettings));
+    {
+        var settings = Cfg.Settings<CoreServerSettings>(nameof(CoreSettings));
+        if (!settings.GoogleProjectId.IsNullOrEmpty())
+            return settings;
+
+        var environmentProjectId = Cfg["GOOGLE_CLOUD_PROJECT"];
+        if (!environmentProjectId.IsNullOrEmpty())
+            settings.GoogleProjectId = environmentProjectId;
+        return settings;
+    }
 
     protected override void InjectServices(IServiceCollection services)
     {
