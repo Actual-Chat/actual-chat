@@ -61,30 +61,41 @@
     @apply text-caption-6;
 }
 
-.c-docs p,
-.c-docs li {
+/*Settings Documents*/
+.docs-tab.settings-tab {
+    @apply overflow-y-hidden;
+}
+.docs-panel.tab-panel {
+    @apply h-full;
+    @apply pb-4;
+}
+.docs-tab.settings-tab .tab {
+    @apply overflow-y-auto;
+    @apply custom-scrollbar;
+}
+.docs-tab .tab-panel .tab p,
+.docs-tab .tab-panel .tab li {
     @apply text-justify;
     @apply text-text-1;
 }
-.docs-details > summary {
-    @apply md:pl-6;
+.docs-tab .settings-tab-header {
+    @apply md:w-full md:max-w-160;
+    @apply md:px-6;
 }
-.docs-details > summary > .c-title {
-    @apply flex-1 flex-x items-center gap-x-2;
-    @apply w-full md:w-80 h-8;
-    @apply text-01;
+.docs-tab .settings-tab-content {
+    @apply md:w-full md:max-w-160 h-full;
+    @apply md:px-2;
 }
-body.hoverable .docs-details > summary:hover > .c-title {
-    @apply cursor-pointer;
-    @apply text-03;
+body.narrow .docs-tab .settings-tab-content {
+    @apply p-0;
 }
-.docs-details[open] > summary > .c-title {
-    @apply text-primary;
+.docs-tab .tab-panel-tabs .btn-group {
+    @apply md:px-2;
 }
-.docs-details > summary > .c-title > .c-icon {
-    @apply rotate-180;
-    @apply transition-transform duration-200 ease-in-out;
+.docs-tab .docs-content {
+    @apply md:py-2;
 }
-.docs-details[open] > summary > .c-title > .c-icon {
-    @apply rotate-0;
+body.narrow .docs-tab .docs-content {
+    @apply p-4;
+    @apply bg-transparent;
 }

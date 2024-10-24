@@ -16,7 +16,7 @@ body.narrow .place-info {
     @apply w-full;
 }
 .place-info > div {
-    @apply bg-01;
+    @apply bg-02;
 }
 .place-info > .c-top {
     @apply relative;
