@@ -103,6 +103,7 @@
     private IAuthors Authors => Hub.Authors;
     private IContacts Contacts => Hub.Contacts;
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
+    private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
@@ -211,6 +212,12 @@
                 };
             }
             var chatEntry = await UICommander.Run(cmd, CancellationToken.None);
+            if (cmd.LocalId is null)
+                AnalyticEvents.RaiseMessagePosted(
+                    cmd.RepliedEntryLid.HasValue,
+                    !cmd.Text.IsNullOrEmpty(),
+                    attachmentListSnapshot.Attachments.Count);
+
             var readEntryLid = chatEntry.Value.LocalId;
 
             if (ReadPositionState != null && ReadPositionState.Value.EntryLid < readEntryLid)
