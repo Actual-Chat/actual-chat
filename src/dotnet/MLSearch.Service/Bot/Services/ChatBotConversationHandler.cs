@@ -1,19 +1,15 @@
-using System.ComponentModel;
 using ActualChat.Chat;
-using ActualChat.MLSearch.Bot.Tools.Context;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.Agents.History;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
-using Microsoft.SemanticKernel.Data;
 
 
 namespace ActualChat.MLSearch.Bot.Services;
 
 #pragma warning disable SKEXP0110 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 #pragma warning disable SKEXP0001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-
 
 internal static class SearchBotArguments
 {
@@ -31,7 +27,8 @@ internal static class SearchBotArguments
 **/
 internal class ChatBotConversationHandler(
     Kernel kernel,
-    ISearchTypeDetector searchTypeDetector)
+    ISearchTypeDetector searchTypeDetector,
+    ISearchBotPluginSet searchBotPluginSet)
     : IBotConversationHandler
 {
     private const string AgentInstructions =
@@ -59,11 +56,9 @@ internal class ChatBotConversationHandler(
     private const int reducerMessageCount = 10;
     private const int reducerThresholdCount = 10;
 
-    // services.AddSingleton(sp => KernelPluginFactory.CreateFromType<SearchToolPlugin>(serviceProvider: sp));
-
-    private static ChatCompletionAgent CreateAgent(Kernel kernel)
+    private static ChatCompletionAgent CreateAgent(Kernel kernel, ISearchBotPluginSet searchBotPluginSet)
     {
-        kernel.Plugins.AddFromType<SearchToolPlugin>(nameof(SearchToolPlugin));
+        kernel.Plugins.AddRange(searchBotPluginSet.Plugins);
 
         return new(CreateTemplateConfig(), new KernelPromptTemplateFactory()) {
             Name = nameof(Constants.User.Sherlock),
@@ -73,9 +68,9 @@ internal class ChatBotConversationHandler(
                 FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
             }),
             HistoryReducer = new ChatHistorySummarizationReducer(
-                    kernel.GetRequiredService<IChatCompletionService>(),
-                    reducerMessageCount,
-                    reducerThresholdCount),
+                kernel.GetRequiredService<IChatCompletionService>(),
+                reducerMessageCount,
+                reducerThresholdCount),
         };
     }
 
@@ -88,7 +83,7 @@ internal class ChatBotConversationHandler(
         };
     }
 
-    private readonly ChatCompletionAgent _agent = CreateAgent(kernel);
+    private readonly ChatCompletionAgent _agent = CreateAgent(kernel, searchBotPluginSet);
 
     private readonly Dictionary<ChatId, ChatHistory> _history = [];
 
@@ -165,45 +160,6 @@ internal class ChatBotConversationHandler(
 
     }
 }
-internal sealed class SearchToolPlugin
-{
-    // [KernelFunction]
-    // [Description("Retrieves search type")]
-    // public SearchType GetSearchType(KernelArguments kernelArguments)
-    //     => kernelArguments.TryGetValue(SearchBotArguments.SearchType, out var value) && value is SearchType searchType
-    //         ? searchType
-    //         : throw new InvalidOperationException("Search type argument is not specified.");
-
-    [KernelFunction]
-    [Description("Perform a search for content related to the specified query")]
-    public Task<string[]> Find(
-        [Description("Type of the search to run")] SearchType searchType,
-        [Description("What to search for")] string query
-    ) {
-        var results = new string[] {
-            $"Dumb {query} content",
-            $"Expected {searchType} cotent"
-        };
-        return Task.FromResult(results);
-//        return Task.FromResult(new KernelSearchResults<string>(results.AsAsyncEnumerable()));
-    }
-}
-
-// internal sealed class SearchToolPlugin
-// {
-//     [KernelFunction]
-//     [Description("Runs search for documents.")]
-//     public Task<IReadOnlyList<(string Id, string Content)>> Find(
-//         [Description(nameof(SearchType))] SearchType searchType,
-//         [Description("What to search for")] string query
-//     ) {
-//         return Task.FromResult<IReadOnlyList<(string, string)>>([
-//             ("1111", $"Dumb {query} content"),
-//             ("2222", $"Expected {searchType} cotent")
-//         ]);
-//     }
-// }
-
 
 #pragma warning restore SKEXP0001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 #pragma warning restore SKEXP0110 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.

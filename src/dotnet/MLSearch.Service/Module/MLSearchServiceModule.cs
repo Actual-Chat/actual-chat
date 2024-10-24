@@ -232,6 +232,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 services.AddSingleton<IFilters, Filters>();
                 services.AddSingleton<IBotConversationHandler, ChatBotConversationHandler>();
                 services.AddSingleton<ISearchTypeDetector, SearchTypeDetector>();
+                services.AddSingleton<ISearchBotPluginSet, SearchBotPluginSet>();
                 services.AddSingleton<IChatBotWorker>(
                     static c => c.CreateInstance<ChatBotWorker>());
                 services.AddWorkerPool<IChatBotWorker, MLSearch_TriggerContinueConversationWithBot, ChatId, ChatId>(
