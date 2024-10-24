@@ -2,15 +2,17 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class ModalUI(IServiceProvider services) : IHasServices, IHasAcceptor<ModalHost>
+public sealed class ModalUI(UIHub uiHub) : IHasServices, IHasAcceptor<ModalHost>
 {
     private readonly Acceptor<ModalHost> _hostAcceptor = new(true);
 
-    private TypeMapper<IModalView> ViewResolver { get; } = services.GetRequiredService<TypeMapper<IModalView>>();
+    private TypeMapper<IModalView> ViewResolver { get; } = uiHub.GetRequiredService<TypeMapper<IModalView>>();
 
     Acceptor<ModalHost> IHasAcceptor<ModalHost>.Acceptor => _hostAcceptor;
+    private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
 
-    public IServiceProvider Services { get; } = services;
+    public UIHub Hub { get; } = uiHub;
+    IServiceProvider IHasServices.Services => Hub;
     public Task WhenReady => _hostAcceptor.WhenAccepted();
     public ModalHost Host => _hostAcceptor.Value;
 
@@ -47,8 +49,17 @@ public sealed class ModalUI(IServiceProvider services) : IHasServices, IHasAccep
             builder.CloseComponent();
         });
         var modalRef = Host.Show(options, model, content);
+        // NOTE: Short name goes in beginning to make easier to observe which modal window is used.
+        // Long names may be clipped in the Firebase console.
+        var modalName = componentType.Name;
+        if (!componentType.Namespace.IsNullOrEmpty())
+            modalName = modalName + "," + componentType.Namespace;
+        AnalyticEvents.RaiseModalStateChanged(modalName, true);
         var registration = cancellationToken.Register(() => modalRef.Close(true), true);
-        modalRef.WhenClosed.SilentAwait(false).OnCompleted(registration.Dispose);
+        modalRef.WhenClosed.SilentAwait(false).OnCompleted(() => {
+            registration.Dispose();
+            AnalyticEvents.RaiseModalStateChanged(modalName, false);
+        });
         return modalRef;
     }
 

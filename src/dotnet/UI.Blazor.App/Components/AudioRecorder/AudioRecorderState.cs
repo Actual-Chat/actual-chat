@@ -7,5 +7,6 @@ public readonly record struct AudioRecorderState(
     bool IsConnected = false,
     bool IsVoiceActive = false)
 {
+    public Moment RecordingStartTime { get; init; }
     public static readonly AudioRecorderState Idle = default;
 }
