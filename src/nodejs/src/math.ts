@@ -300,3 +300,10 @@ export function translate(number: number, [inMin, inMax]: Array<number>, [outMin
 
     return result;
 }
+
+export function average(array: Array<number> | Float32Array): number {
+    let sum = 0;
+    for (let i = 0; i < array.length; i++)
+        sum += array[i];
+    return sum / array.length;
+}

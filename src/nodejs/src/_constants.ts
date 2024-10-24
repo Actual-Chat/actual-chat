@@ -12,6 +12,8 @@ export const AUDIO_REC = {
     SAMPLES_PER_RECORDING_IN_PROGRESS_CALL: REC_SAMPLES_PER_MS * 200,
     // In seconds:
     SAMPLE_DURATION: 0.001 / REC_SAMPLES_PER_MS,
+    MIN_RECORDING_GAIN: 0.0005, // Min gain to consider recording as "active"
+    MIN_MICROPHONE_GAIN: 0.000001, // Min gain to consider microphone sends real samples
 }
 
 const PLAY_SAMPLES_PER_MS = 48; // 48KHz

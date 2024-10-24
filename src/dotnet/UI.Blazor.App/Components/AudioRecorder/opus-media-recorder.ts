@@ -527,9 +527,15 @@ export class OpusMediaRecorder implements RecorderStateServer {
         return ResolvedPromise.Void;
     }
 
-    public recordingInProgress(noWait?: RpcNoWait): Promise<void> {
-        if (!this.isRecording)
+    public recordingInProgress(gain: number, noWait?: RpcNoWait): Promise<void> {
+        if (!this.isRecording) {
+            if (gain != 0)
+                this.recordingFailedDebounced.reset();
+            if (gain < AR.MIN_MICROPHONE_GAIN) // Min gain to consider microphone sends real signal at the beginning of the recording
+                return ResolvedPromise.Void;
+
             void this.onRecordingStateChanged(true);
+        }
 
         this.recordingFailedDebounced();
         return ResolvedPromise.Void;
@@ -562,9 +568,9 @@ export class OpusMediaRecorder implements RecorderStateServer {
         if (onStateChanged)
             void onStateChanged(this.isRecording, this.isConnected, this.isVoiceActive);
 
-
         const lastState = this.lastState;
         const state = { isRecording: this.isRecording, isConnected: this.isConnected, isVoiceActive: this.isVoiceActive };
+        debugLog?.log(`stateChanged(): ${JSON.stringify(state)}`);
         if (!state.isRecording == lastState.isRecording && state.isConnected == lastState.isConnected && state.isVoiceActive == lastState.isVoiceActive)
             return;
 

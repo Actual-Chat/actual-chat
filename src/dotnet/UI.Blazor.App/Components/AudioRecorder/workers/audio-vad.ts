@@ -52,11 +52,11 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
         this.sampleCount += monoPcm.length;
         let currentEvent = this.lastActivityEvent;
         const gain = approximateGain(monoPcm);
-        // debugLog?.log('appendChunk:', currentEvent, gain);
-        if (gain < 0.0015 && currentEvent.kind === 'end')
+        if (gain < AR.MIN_RECORDING_GAIN && currentEvent.kind === 'end')
             return gain; // do not try to check VAD at low gain input
 
         const prob = await this.appendChunkInternal(monoPcm);
+        //debugLog?.log('appendChunk:', prob, gain);
         if (prob === null)
             return gain; // no voice activity probability yet
 

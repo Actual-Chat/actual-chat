@@ -21,7 +21,7 @@ import { VoiceActivityChange } from './audio-vad-contract';
 import { RecorderStateServer } from '../opus-media-recorder-contracts';
 import { AudioDiagnosticsState } from '../audio-recorder';
 import { Log } from 'logging';
-import { approximateGain, clamp } from 'math';
+import { approximateGain, average, clamp } from 'math';
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
@@ -104,7 +104,7 @@ const serverImpl: OpusEncoderWorker = {
             lastStartArguments = { chatId, repliedChatEntryId };
         else if (!lastStartArguments)
             throw new Error('Unable to start recording: chatId is required.');
-        debugLog?.log(`start`);
+        debugLog?.log(`start: chatId=${chatId}`);
 
         state = 'encoding';
         if (isVoiceDetected)
@@ -142,7 +142,7 @@ const serverImpl: OpusEncoderWorker = {
         if (buffer.byteLength === 0 || state !== 'encoding')
             return;
 
-        // debugLog?.log(`onEncoderWorkletSamples(${buffer.byteLength}):`, vadState);
+        debugLog?.log(`onEncoderWorkletSamples(${buffer.byteLength}):`, approximateGain(new Float32Array(buffer)));
         queue.push(buffer);
         while (queue.length > AE.MAX_BUFFERED_FRAMES) {
             const samplesBuffer = queue.shift();
@@ -230,15 +230,16 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
                 const samples = new Float32Array(samplesBuffer);
                 gains[i] = approximateGain(samples);
             }
-            const speechGain = gains[gains.length - 1];
+            const speechGain = average(gains.slice(-5));
             let startIndex = queue.length - 2;
             while (startIndex > 0) {
                 const gain = gains[startIndex];
-                if (gain < speechGain/5)
+                if (gain < speechGain/20)
                     break;
                 startIndex--;
             }
-            let framesToShift = clamp(startIndex - 1, 0, queue.length - 1);
+            let framesToShift = clamp(startIndex - 1, 0, queue.length - 5); // Keep at least 4 frames
+            debugLog?.log(`processQueue(in): gains: `, gains, framesToShift);
             while (framesToShift-- > 0)            {
                 const samplesBuffer = queue.shift();
                 void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
