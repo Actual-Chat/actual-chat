@@ -76,15 +76,26 @@ public static class ApplicationBuilderExt
                 var isJavaScriptOrWasm =
                     OrdinalIgnoreCaseEquals(fileExtension, ".js")
                     || OrdinalIgnoreCaseEquals(fileExtension, ".wasm");
+                var isVideo =
+                    OrdinalIgnoreCaseEquals(fileExtension, ".mp4")
+                    || OrdinalIgnoreCaseEquals(fileExtension, ".webm");
+                var isFont =
+                    OrdinalIgnoreCaseEquals(fileExtension, ".woff")
+                    || OrdinalIgnoreCaseEquals(fileExtension, ".woff2")
+                    || OrdinalIgnoreCaseEquals(fileExtension, ".ttf")
+                    || OrdinalIgnoreCaseEquals(fileExtension, ".otf");
+                var isBin =
+                    OrdinalIgnoreCaseEquals(fileExtension, ".bin");
                 var mustNotCache = mustDisable || (isJavaScriptOrWasm && !hasVersion);
                 if (mustNotCache) {
                     ctx.Context.Response.Headers.Append(HeaderNames.CacheControl, "no-cache");
                     return;
                 }
 
-                var cacheControlHeader = hasVersion
-                    ? "public, max-age=518400, immutable, stale-while-revalidate=86400" // 6 days + up to 1 for revalidation
-                    : "public, max-age=3600, stale-while-revalidate=86400"; // 1h + up to 1 day for revalidation
+                var cacheControlHeader = hasVersion || isBin || isFont
+                    ? "public, max-age=518400, immutable, stale-while-revalidate=86400, s-maxage=2592000" // immutable, 6 days + up to 1 for revalidation
+                    : isVideo ? "public, max-age=518400, stale-while-revalidate=86400, s-maxage=2592000" // 6 days + up to 1 for revalidation
+                        : "public, max-age=3600, max-stale=86400, stale-while-revalidate=86400, s-maxage=86400"; // 1d + up to 1 day for revalidation
                 ctx.Context.Response.Headers.Append("Cache-Control", cacheControlHeader);
 
                 var isCompressed =
