@@ -225,7 +225,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                     apiKey: chatbotSettings.OpenAI!.ApiKey,
                     modelId: chatbotSettings.OpenAI!.ChatModel);
 
-                services.AddSingleton(sp => KernelPluginFactory.CreateFromType<SearchToolPlugin>(serviceProvider: sp));
                 // Add bot
                 services.Configure<ChatbotSettings>(e => {
                     e.IsEnabled = true;
