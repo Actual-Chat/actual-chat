@@ -14,16 +14,19 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
         public int CallCount { get; private set; } = 0;
 
         [KernelFunction]
-        [Description("Perform a search for content related to the specified query")]
-        public Task<string[]> Find(
-            [Description("Type of the search to run")] SearchType searchType,
-            [Description("What to search for")] string query
+        [Description("Performs search for a content.")]
+        public Task<SearchResult[]> Find(
+            [Description("What to search for.")] string query,
+            [Description("Type of the search to run.")] SearchType searchType,
+            [Description("ID of ongoing search conversation.")] string conversationId,
+            [Description("ID of the user who runs the search.")] string userId,
+            [Description("Limit to the number of returned results.")] int? limit = 1
         )
         {
             CallCount += 1;
-            var results = new string[] {
-                $"Dumb {query} content",
-                $"Expected {searchType} cotent"
+            var results = new [] {
+                new SearchResult { Text = $"Dumb {query} content", Link = "link1" },
+                new SearchResult { Text = $"Expected {searchType} cotent", Link = "link2" },
             };
             return Task.FromResult(results);
         }
@@ -33,6 +36,20 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
     public async Task ChatBotConversationHandlerCallsTools()
     {
         // Setup
+        var chatId = new ChatId(Generate.Option);
+        var authorId = new AuthorId(chatId, 111, AssumeValid.Option);
+        var userId = new UserId("TestUser", AssumeValid.Option);
+        var authors = new Mock<IAuthorsBackend>();
+        authors.Setup(x => x
+            .Get(
+                It.IsAny<ChatId>(),
+                It.IsAny<AuthorId>(),
+                It.IsAny<AuthorsBackend_GetAuthorOption>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult<AuthorFull?>(new AuthorFull(authorId) {
+                UserId = userId,
+            }));
+
         var searchTypeDetector = new Mock<ISearchTypeDetector>();
         searchTypeDetector.Setup(x => x.Detect(It.IsAny<ChatMessageContent>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(SearchType.General));
@@ -40,11 +57,12 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
         var mockSearchPlugin = new TestSearchToolPlugin();
         var searchBotPluginSet = new Mock<ISearchBotPluginSet>();
         searchBotPluginSet.SetupGet(x => x.Plugins).Returns([
-            KernelPluginFactory.CreateFromObject(mockSearchPlugin, nameof(SearchToolPlugin)),
+            KernelPluginFactory.CreateFromObject(mockSearchPlugin, nameof(SearchPlugin)),
         ]);
 
         var conversationHandler = new ChatBotConversationHandler(
             CreateKernel(),
+            authors.Object,
             searchTypeDetector.Object,
             searchBotPluginSet.Object);
 
@@ -54,7 +72,7 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
             "Search for transport infrastructure in my chats"
         ];
         var cancellationSource = new CancellationTokenSource();
-        await conversationHandler.ExecuteAsync(ConvertToEntries(userMessages), [], cancellationSource.Token);
+        await conversationHandler.ExecuteAsync(ConvertToEntries(authorId, userMessages), [], cancellationSource.Token);
 
         // Assert
         Assert.Equal(1, mockSearchPlugin.CallCount);
@@ -73,16 +91,16 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
             .Build();
     }
 
-    private IReadOnlyList<ChatEntry> ConvertToEntries(IEnumerable<string> messages)
+    private IReadOnlyList<ChatEntry> ConvertToEntries(AuthorId authorId, IEnumerable<string> messages)
     {
-        var chatId = new ChatId(Generate.Option);
         var localId = 1L;
         var version = DateTime.Now.Ticks;
         var entries = new List<ChatEntry>();
         foreach (var msg in messages) {
-            var entryId = new ChatEntryId(chatId, ChatEntryKind.Text, localId++, AssumeValid.Option);
+            var entryId = new ChatEntryId(authorId.ChatId, ChatEntryKind.Text, localId++, AssumeValid.Option);
             entries.Add(new ChatEntry(entryId, version++) {
                 Content = msg,
+                AuthorId = authorId,
             });
         }
         return entries;

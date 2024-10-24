@@ -13,8 +13,10 @@ namespace ActualChat.MLSearch.Bot.Services;
 
 internal static class SearchBotArguments
 {
-    public const string TopN = nameof(TopN);
+    public const string Limit = nameof(Limit);
     public const string SearchType = nameof(SearchType);
+    public const string ConversationId = nameof(ConversationId);
+    public const string UserId = nameof(UserId);
 }
 
 /**
@@ -27,6 +29,7 @@ internal static class SearchBotArguments
 **/
 internal class ChatBotConversationHandler(
     Kernel kernel,
+    IAuthorsBackend authors,
     ISearchTypeDetector searchTypeDetector,
     ISearchBotPluginSet searchBotPluginSet)
     : IBotConversationHandler
@@ -36,21 +39,23 @@ internal class ChatBotConversationHandler(
     Your name is {{{nameof(Constants.User.Sherlock)}}} and you are helpful content search assistant.
 
     As a search professional you have access to a variety of tools but your ultimate goal is to call
-    {{{nameof(SearchToolPlugin)}}}-{{{nameof(SearchToolPlugin.Find)}}} tool (lets call it FIND) with proper arguments.
+    {{{nameof(SearchPlugin)}}}-{{{nameof(SearchPlugin.Find)}}} tool (lets call it FIND) with proper arguments.
     You are supposed to use other tools and your expertise to extract the FIND tool dependencies from the user input.
     For the reference: User input is a history of your conversation with user.
 
-    After getting the FIND tool results as a list of matched documents, please summarize and provide top {{${{{nameof(SearchBotArguments.TopN)}}}}} document IDs
-    matching user needs the best.
-
-    Use {{${{{nameof(SearchBotArguments.SearchType)}}}}} as a search type.
-
-    Respond in JSON format with the following JSON schema:
+    After getting the FIND tool results as a list of Text and Link pairs, please summarize Texts and
+    respond with JSON in according to the following schema:
 
         {
             "summary": "your summary regarding the last search",
-            "matches": "a comma separated list of matched document IDs"
+            "matches": "a comma separated list of Links to matched documents"
         }
+
+    Use the values below when needed:
+    - The search type is {{${{{nameof(SearchBotArguments.SearchType)}}}}}.
+    - The limit on number of results returned is {{${{{nameof(SearchBotArguments.Limit)}}}}}.
+    - An ID of the current search conversation is {{${{{nameof(SearchBotArguments.ConversationId)}}}}}.
+    - An ID of the user who runs the search is {{${{{nameof(SearchBotArguments.UserId)}}}}}.
     """;
 
     private const int reducerMessageCount = 10;
@@ -78,7 +83,7 @@ internal class ChatBotConversationHandler(
     {
         return new PromptTemplateConfig(AgentInstructions) {
             InputVariables = [
-                new() { Name = SearchBotArguments.TopN, IsRequired = true }
+                new() { Name = SearchBotArguments.Limit, IsRequired = true }
             ]
         };
     }
@@ -112,6 +117,9 @@ internal class ChatBotConversationHandler(
             userMessages.Push(new ChatMessageContent(AuthorRole.User, entry.Content));
         }
 
+        if (userMessages.Count==0)
+            return;
+
         var searchType = default(SearchType?);
         while (userMessages.TryPop(out var message)) {
             chat.Add(message);
@@ -120,6 +128,13 @@ internal class ChatBotConversationHandler(
                 searchType = detectedSearchType;
         }
 
+        var lastAuthorId = updatedEntries[updatedEntries.Count-1].AuthorId;
+
+        var author = await authors
+            .Get(chatId, lastAuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+            .ConfigureAwait(false);
+        var userId = author!.UserId;
+
         var executionSettings = new OpenAIPromptExecutionSettings
         {
             FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
@@ -127,8 +142,10 @@ internal class ChatBotConversationHandler(
 
         var arguments = new KernelArguments(executionSettings) {
             // Search everywhere by default
-            { SearchBotArguments.TopN, 5 },
-            { SearchBotArguments.SearchType, searchType ?? SearchType.General }
+            { SearchBotArguments.ConversationId, chatId },
+            { SearchBotArguments.UserId, userId },
+            { SearchBotArguments.SearchType, searchType ?? SearchType.General },
+            { SearchBotArguments.Limit, 5 },
         };
 
         // Invoke and display assistant response
@@ -136,28 +153,6 @@ internal class ChatBotConversationHandler(
             chat.Add(message);
             // TODO: identify final response and post it to the chat
         }
-
-        // var lastUpdatedDocument = updatedDocuments.LastOrDefault();
-        // if (lastUpdatedDocument == null)
-        //     return;
-
-        // var chatId = lastUpdatedDocument.ChatId;
-        // var authorId = lastUpdatedDocument.AuthorId;
-        // var botId = new AuthorId(chatId, Constants.User.Sherlock.AuthorLocalId, AssumeValid.Option);
-        // if (authorId == botId)
-        //     return;
-
-        // var author = await authors
-        //     .Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
-        //     .ConfigureAwait(false);
-        // var userId = author!.UserId;
-
-        // if (lastUpdatedDocument.Kind != ChatEntryKind.Text)
-        //     // Can't react on anything besides text yet.
-        //     return;
-
-        // TODO: implement chat loop
-
     }
 }
 

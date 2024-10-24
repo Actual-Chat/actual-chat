@@ -10,6 +10,6 @@ internal interface ISearchBotPluginSet
 internal class SearchBotPluginSet(IServiceProvider serviceProvider): ISearchBotPluginSet
 {
     public IReadOnlyCollection<KernelPlugin> Plugins { get; } = [
-        KernelPluginFactory.CreateFromType<SearchToolPlugin>(nameof(SearchToolPlugin), serviceProvider),
+        KernelPluginFactory.CreateFromType<SearchPlugin>(nameof(SearchPlugin), serviceProvider),
     ];
 }
