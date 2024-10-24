@@ -115,9 +115,9 @@ module.exports = (env, args) => {
             },
         },
         // to enable ts debug uncomment the line below
-        // devtool: 'source-map',
+        devtool: 'source-map',
         // following configuration works perfectly for Web development, but MAUI doesn't start due to CSP error 'unsafe-eval'
-        devtool: isDevelopment ? 'eval-cheap-module-source-map' : 'source-map',
+        // devtool: isDevelopment ? 'eval-cheap-module-source-map' : 'source-map',
         // another type of inlined source maps
         //devtool: isDevelopment ? 'eval' : false,
         plugins: [
