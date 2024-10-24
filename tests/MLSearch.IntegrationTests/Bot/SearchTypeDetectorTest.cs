@@ -1,6 +1,5 @@
 using ActualChat.MLSearch.Bot.Services;
 using ActualChat.MLSearch.Module;
-using ActualLab.IO;
 using Microsoft.Extensions.Configuration;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -20,23 +19,6 @@ public class SearchTypeDetectorTest(ITestOutputHelper @out): TestBase(@out)
                 apiKey: openAISettings!.ApiKey,
                 modelId: openAISettings!.ChatModel)
             .Build();
-
-        static IConfigurationRoot GetConfiguration()
-        {
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(GetTestsBaseDirectory())
-                .AddJsonFile("testsettings.json", false, false);
-            if (EnvExt.IsRunningInContainer())
-                builder.AddJsonFile("testsettings.docker.json", false, false);
-            builder.AddJsonFile("testsettings.local.json", true, false);
-            builder.AddEnvironmentVariables();
-
-            var configuration = builder.Build();
-            return configuration;
-
-            static FilePath GetTestsBaseDirectory()
-                => FilePath.New(typeof(DefaultStartup).Assembly.Location ?? Environment.CurrentDirectory).DirectoryPath;
-        }
     }
 
     public static TheoryData<string, SearchType> ExpectedPairs => new() {

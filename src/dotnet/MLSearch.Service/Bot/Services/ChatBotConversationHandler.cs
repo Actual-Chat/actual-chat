@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using ActualChat.Chat;
 using ActualChat.MLSearch.Bot.Tools.Context;
 using Microsoft.SemanticKernel;
@@ -5,12 +6,20 @@ using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.Agents.History;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using Microsoft.SemanticKernel.Data;
 
 
 namespace ActualChat.MLSearch.Bot.Services;
 
 #pragma warning disable SKEXP0110 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 #pragma warning disable SKEXP0001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+
+
+internal static class SearchBotArguments
+{
+    public const string TopN = nameof(TopN);
+    public const string SearchType = nameof(SearchType);
+}
 
 /**
     A handler for incoming messages from a user.
@@ -22,56 +31,62 @@ namespace ActualChat.MLSearch.Bot.Services;
 **/
 internal class ChatBotConversationHandler(
     Kernel kernel,
-    ISearchTypeDetector searchTypeDetector,
-    IAuthorsBackend authors,
-    IBotToolsContextHandler botToolsContextHandler)
+    ISearchTypeDetector searchTypeDetector)
     : IBotConversationHandler
 {
-    private static class BotArgs
-    {
-        public const string SearchType = nameof(SearchType);
-    }
-
     private const string AgentInstructions =
-    """
-    For the given objective, come up with a simple step by step plan.
-    Use tools provided if neccessary.
-    You have the following list of tools:
-    {tools}
+    $$$"""
+    Your name is {{{nameof(Constants.User.Sherlock)}}} and you are helpful content search assistant.
 
-    In order to use a tool, you can use <tool></tool> and <tool_input></tool_input> tags.
-    You will then get back a response in the form <observation></observation>
+    As a search professional you have access to a variety of tools but your ultimate goal is to call
+    {{{nameof(SearchToolPlugin)}}}-{{{nameof(SearchToolPlugin.Find)}}} tool (lets call it FIND) with proper arguments.
+    You are supposed to use other tools and your expertise to extract the FIND tool dependencies from the user input.
+    For the reference: User input is a history of your conversation with user.
 
-    This plan should involve individual tasks, that if executed correctly
-    will yield the correct answer.
-    Do not add any superfluous steps.
-    When you are done, respond with a final answer between <final_answer></final_answer>
-    Make sure that each step has all the information needed - do not skip steps.
+    After getting the FIND tool results as a list of matched documents, please summarize and provide top {{${{{nameof(SearchBotArguments.TopN)}}}}} document IDs
+    matching user needs the best.
 
-    Previous conversation was:
-    {chat_history}
+    Use {{${{{nameof(SearchBotArguments.SearchType)}}}}} as a search type.
 
-    Objective: {input}
+    Respond in JSON format with the following JSON schema:
 
-    Thoughts: {agent_scratchpad}
+        {
+            "summary": "your summary regarding the last search",
+            "matches": "a comma separated list of matched document IDs"
+        }
     """;
 
     private const int reducerMessageCount = 10;
     private const int reducerThresholdCount = 10;
 
+    // services.AddSingleton(sp => KernelPluginFactory.CreateFromType<SearchToolPlugin>(serviceProvider: sp));
+
     private static ChatCompletionAgent CreateAgent(Kernel kernel)
-        => new() {
-            Name = Constants.User.Sherlock.Name,
+    {
+        kernel.Plugins.AddFromType<SearchToolPlugin>(nameof(SearchToolPlugin));
+
+        return new(CreateTemplateConfig(), new KernelPromptTemplateFactory()) {
+            Name = nameof(Constants.User.Sherlock),
             Instructions = AgentInstructions,
             Kernel = kernel,
             Arguments = new KernelArguments(new OpenAIPromptExecutionSettings() {
                 FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
             }),
             HistoryReducer = new ChatHistorySummarizationReducer(
-                kernel.GetRequiredService<IChatCompletionService>(),
-                reducerMessageCount,
-                reducerThresholdCount),
+                    kernel.GetRequiredService<IChatCompletionService>(),
+                    reducerMessageCount,
+                    reducerThresholdCount),
         };
+    }
+
+    private static PromptTemplateConfig CreateTemplateConfig()
+    {
+        return new PromptTemplateConfig(AgentInstructions) {
+            InputVariables = [
+                new() { Name = SearchBotArguments.TopN, IsRequired = true }
+            ]
+        };
+    }
 
     private readonly ChatCompletionAgent _agent = CreateAgent(kernel);
 
@@ -110,9 +125,15 @@ internal class ChatBotConversationHandler(
                 searchType = detectedSearchType;
         }
 
-        var arguments = new KernelArguments() {
+        var executionSettings = new OpenAIPromptExecutionSettings
+        {
+            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+        };
+
+        var arguments = new KernelArguments(executionSettings) {
             // Search everywhere by default
-            { BotArgs.SearchType, searchType ?? SearchType.General }
+            { SearchBotArguments.TopN, 5 },
+            { SearchBotArguments.SearchType, searchType ?? SearchType.General }
         };
 
         // Invoke and display assistant response
@@ -144,11 +165,45 @@ internal class ChatBotConversationHandler(
 
     }
 }
-
 internal sealed class SearchToolPlugin
 {
+    // [KernelFunction]
+    // [Description("Retrieves search type")]
+    // public SearchType GetSearchType(KernelArguments kernelArguments)
+    //     => kernelArguments.TryGetValue(SearchBotArguments.SearchType, out var value) && value is SearchType searchType
+    //         ? searchType
+    //         : throw new InvalidOperationException("Search type argument is not specified.");
 
+    [KernelFunction]
+    [Description("Perform a search for content related to the specified query")]
+    public Task<string[]> Find(
+        [Description("Type of the search to run")] SearchType searchType,
+        [Description("What to search for")] string query
+    ) {
+        var results = new string[] {
+            $"Dumb {query} content",
+            $"Expected {searchType} cotent"
+        };
+        return Task.FromResult(results);
+//        return Task.FromResult(new KernelSearchResults<string>(results.AsAsyncEnumerable()));
+    }
 }
+
+// internal sealed class SearchToolPlugin
+// {
+//     [KernelFunction]
+//     [Description("Runs search for documents.")]
+//     public Task<IReadOnlyList<(string Id, string Content)>> Find(
+//         [Description(nameof(SearchType))] SearchType searchType,
+//         [Description("What to search for")] string query
+//     ) {
+//         return Task.FromResult<IReadOnlyList<(string, string)>>([
+//             ("1111", $"Dumb {query} content"),
+//             ("2222", $"Expected {searchType} cotent")
+//         ]);
+//     }
+// }
+
 
 #pragma warning restore SKEXP0001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 #pragma warning restore SKEXP0110 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
