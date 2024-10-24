@@ -95,7 +95,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new History(c.UIHub()));
         services.AddScoped(c => new HistoryStepper(c));
         services.AddScoped(_ => new HistoryItemIdFormatter());
-        services.AddScoped(c => new ModalUI(c));
+        services.AddScoped(c => new ModalUI(c.UIHub()));
         services.AddScoped(c => new BannerUI(c.UIHub()));
         services.AddScoped(c => new FocusUI(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new KeepAwakeUI(c));

@@ -46,6 +46,7 @@ public class UIHub(IServiceProvider services) : Hub(services)
     private Dispatcher? _dispatcher;
     private AppBlazorCircuitContext? _circuitContext;
     private IJSRuntime? _jsRuntime;
+    private AnalyticEvents? _analyticEvents;
 
     public IFusionTime FusionTime => _fusionTime ??= Services.GetRequiredService<IFusionTime>();
     public LiveTime LiveTime => _liveTime ??= Services.GetRequiredService<LiveTime>();
@@ -84,6 +85,7 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public History History => _history ??= Services.GetRequiredService<History>();
     public Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
     public AppBlazorCircuitContext CircuitContext => _circuitContext ??= Services.GetRequiredService<AppBlazorCircuitContext>();
+    public AnalyticEvents AnalyticEvents => _analyticEvents ??= Services.GetRequiredService<AnalyticEvents>();
 
     // These properties are exposed as methods to "close" the static ones on IServiceProvider
     public UICommander UICommander() => _uiCommander ??= Services.UICommander();

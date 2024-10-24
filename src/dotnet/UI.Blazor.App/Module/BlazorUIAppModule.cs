@@ -33,6 +33,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
         // Scoped / Blazor Circuit services
         services.AddScoped(c => new ChatUIHub(c));
+        services.AddAlias<UIHub, ChatUIHub>(ServiceLifetime.Scoped);
+        services.AddScoped(_ => new AnalyticEvents());
         services.AddScoped(c => new NavbarUI(c));
         services.AddScoped(c => new PanelsUI(c.UIHub()));
         services.AddScoped(c => new AuthorUI(c.ChatUIHub()));
@@ -167,7 +169,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // Streaming
         services.AddScoped<ITrackPlayerFactory>(c => new AudioTrackPlayerFactory(c));
         services.AddScoped<AudioInitializer>(c => new AudioInitializer(c.UIHub()));
-        services.AddScoped<AudioRecorder>(c => new AudioRecorder(c));
+        services.AddScoped<AudioRecorder>(c => new AudioRecorder(c.ChatUIHub()));
         if (HostInfo.HostKind != HostKind.MauiApp) {
             services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
