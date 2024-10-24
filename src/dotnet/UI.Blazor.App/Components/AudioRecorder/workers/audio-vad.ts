@@ -3,7 +3,6 @@ import { clamp, lerp, RunningUnitMedian, RunningEMA, approximateGain } from 'mat
 import { ResolvedPromise } from 'promises';
 // @ts-ignore - it works, but fails validation
 import * as ort from 'onnxruntime-web/wasm';
-import ortWasmSimd from 'onnxruntime-web/dist/ort-wasm-simd.wasm';
 import { WebRtcVad } from '@actual-chat/webrtc-vad';
 import { VoiceActivityChange, VoiceActivityDetector, NO_VOICE_ACTIVITY } from './audio-vad-contract';
 import { Log } from 'logging';
@@ -232,7 +231,7 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
         // Multithreading requires Cross Origin Isolation, so we don't use it here. See:
         // - https://web.dev/articles/cross-origin-isolation-guide
         // ort.env.wasm.numThreads = 4;
-        const ortWasmSimdPath = Versioning.mapPath(ortWasmSimd);
+        const ortWasmSimdPath = Versioning.mapPath('/dist/wasm/ort-wasm-simd.wasm');
         ort.env.wasm.numThreads = 1;
         ort.env.wasm.simd = true;
         ort.env.wasm.wasmPaths = {
