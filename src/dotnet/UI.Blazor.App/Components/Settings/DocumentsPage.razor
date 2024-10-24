@@ -1,47 +1,16 @@
 @using ActualChat.UI.Blazor.Components
 
-<details class="docs-details">
-    <summary>
-        <div class="c-title">
-            <i class="icon-chevron-up c-icon"></i>
-            <span>
-                Privacy Policy
-            </span>
-        </div>
-    </summary>
-    <Tile Class="c-docs docs-privacy-policy">
+<TabPanel
+    Class="docs-panel"
+    BottomHill="true">
+
+    <Tab @key="@("docs-privacy-tab")" Id="docs-privacy-policy" Title="Privacy Policy" Order="0">
         <DocsPrivacyContent/>
-    </Tile>
-</details>
-
-<details class="docs-details">
-    <summary>
-        <div class="c-title">
-            <i class="icon-chevron-up c-icon"></i>
-            <span>
-                Terms & Conditions
-            </span>
-        </div>
-    </summary>
-    <Tile Class="c-docs docs-terms-conditions">
+    </Tab>
+    <Tab @key="@("docs-terms-tab")" Id="docs-terms-conditions" Title="Terms & Conditions" Order="1">
         <DocsTermsContent/>
-    </Tile>
-</details>
-
-<details class="docs-details">
-    <summary>
-        <div class="c-title">
-            <i class="icon-chevron-up c-icon"></i>
-            <span>
-                Cookies
-            </span>
-        </div>
-    </summary>
-    <Tile Class="c-docs docs-cookies">
+    </Tab>
+    <Tab @key="@("docs-cookies-tab")" Id="docs-cookies" Title="Cookies" Order="2">
         <DocsCookiesContent/>
-    </Tile>
-</details>
-
-@code {
-
-}
+    </Tab>
+</TabPanel>
