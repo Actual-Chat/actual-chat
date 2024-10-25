@@ -32,7 +32,7 @@ const LongTestIntervalMs = 1000;
 const SilencePlaybackDuration = 0.280;
 const WakeUpDetectionIntervalMs = 5000;
 const SuspendDebounceTimeMs: number = 2000;
-const CloseUnusedContextDebounce: number = 5000;
+const CloseUnusedContextDebounce: number = 60000;
 
 const Debug = {
     brokenKey: 'debugging_isBroken',
@@ -164,8 +164,8 @@ abstract class AudioContextSourceBase implements AudioContextSource {
 
     // Protected methods
 
-    protected async create(isAlreadyInteractiveToResume = false): Promise<AudioContext> {
-        debugLog?.log(`create`, isAlreadyInteractiveToResume);
+    protected async create(): Promise<AudioContext> {
+        debugLog?.log(`create`);
         this.suspendContextDebounced.reset();
         this.closeContextDebounced.reset();
         this.resumeCount = 0;
@@ -180,14 +180,8 @@ abstract class AudioContextSourceBase implements AudioContextSource {
             debugLog?.log(`create: loading modules`);
             const whenWorkletsLoaded =  this.loadContextWorklets(context);
 
-            if (isAlreadyInteractiveToResume) {
-                debugLog?.log(`create: isAlreadyInteractiveToResume == true`);
-                await this.resume(context, true);
-                Interactive.isInteractive = true;
-            }
-            else {
+            if (!Interactive.isAlwaysInteractive)
                 void this.interactiveResume(context);
-            }
 
             await whenWorkletsLoaded;
             if (this.fallbackDestination) {
@@ -786,7 +780,7 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
             const whileBackgroundIdle = this.whileBackgroundIdle;
             if (whileBackgroundIdle)
                 await whileBackgroundIdle;
-            this._context = await this.create(true);
+            this._context = await this.create();
         }
         return this._context;
     }
