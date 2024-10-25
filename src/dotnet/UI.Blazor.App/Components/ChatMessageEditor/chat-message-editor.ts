@@ -61,18 +61,6 @@ export class ChatMessageEditor {
             .pipe(takeUntil(this.disposed$))
             .subscribe(this.updateLayout);
 
-        fromEvent(this.input, 'paste')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: ClipboardEvent) => this.onInputPaste(event));
-
-        fromEvent(this.postPanelDiv, 'click')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: MouseEvent) => this.onPostPanelClick(event));
-
-        fromEvent(this.attachButton, 'click')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: MouseEvent) => this.onAttachButtonClick(event));
-
         this.backupRequired$.pipe(debounceTime(1000), tap(() => this.saveDraft())).subscribe();
 
         this.attachmentListObserver = new MutationObserver(this.updateAttachmentListState);
@@ -167,6 +155,17 @@ export class ChatMessageEditor {
     public onNestedControlsReady(markupEditor: MarkupEditor, attachmentList: AttachmentList)
     {
         this.markupEditor = markupEditor;
+
+        fromEvent(this.postPanelDiv, 'click')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: MouseEvent) => this.onPostPanelClick(event));
+        fromEvent(this.input, 'paste')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: ClipboardEvent) => this.onInputPaste(event));
+        fromEvent(this.attachButton, 'click')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: MouseEvent) => this.onAttachButtonClick(event));
+
         this.markupEditor.changed = () => {
             this.backupRequired$.next();
             this.updateHasContent();
