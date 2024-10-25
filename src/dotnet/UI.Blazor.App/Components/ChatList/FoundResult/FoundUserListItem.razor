@@ -13,8 +13,8 @@
 @if (m == Model.Loading) {
     <ChatListItemSkeleton />
 } else {
-    <NavbarItem Class="found-result contact" IsSelected="@m.IsSelected">
-        <div class="c-content" Url="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
+    <NavbarItem Class="found-result contact" IsSelected="@m.IsSelected" Url="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
+        <div class="c-content">
             <div class="c-container">
                 <ChatIcon Chat="@chatState.Chat"/>
                 <div class="c-description">
