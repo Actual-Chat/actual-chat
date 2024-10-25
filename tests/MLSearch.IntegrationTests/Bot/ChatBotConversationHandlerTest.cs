@@ -39,6 +39,9 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
         var chatId = new ChatId(Generate.Option);
         var authorId = new AuthorId(chatId, 111, AssumeValid.Option);
         var userId = new UserId("TestUser", AssumeValid.Option);
+
+        var commander = MockCommander();
+
         var authors = new Mock<IAuthorsBackend>();
         authors.Setup(x => x
             .Get(
@@ -62,6 +65,7 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
 
         var conversationHandler = new ChatBotConversationHandler(
             CreateKernel(),
+            commander.Object,
             authors.Object,
             searchTypeDetector.Object,
             searchBotPluginSet.Object);
@@ -104,5 +108,31 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
             });
         }
         return entries;
+    }
+
+    private static Mock<ICommander> MockCommander(Func<CommandContext, CancellationToken, Task>? action = null)
+    {
+        var scopeFactory = new Mock<IServiceScopeFactory>();
+        scopeFactory
+            .Setup(x => x.CreateScope())
+            .Returns(Mock.Of<IServiceScope>());
+        var services = new Mock<IServiceProvider>();
+        services
+            .Setup(x => x.GetService(typeof(IServiceScopeFactory)))
+            .Returns(scopeFactory.Object);
+        var commander = new Mock<ICommander>();
+        commander
+            .SetupGet(x => x.Services)
+            .Returns(services.Object);
+        commander
+            .Setup(x => x.Run(
+                It.IsAny<CommandContext>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<CommandContext, CancellationToken>(
+                (context, ct) => {
+                    context.TryComplete(ct);
+                    return action?.Invoke(context, ct) ?? Task.CompletedTask;
+                });
+        return commander;
     }
 }

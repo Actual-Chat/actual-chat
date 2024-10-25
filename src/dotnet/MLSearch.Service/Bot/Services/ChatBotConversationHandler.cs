@@ -29,6 +29,7 @@ internal static class SearchBotArguments
 **/
 internal class ChatBotConversationHandler(
     Kernel kernel,
+    ICommander commander,
     IAuthorsBackend authors,
     ISearchTypeDetector searchTypeDetector,
     ISearchBotPluginSet searchBotPluginSet)
@@ -149,9 +150,24 @@ internal class ChatBotConversationHandler(
         };
 
         // Invoke and display assistant response
-        await foreach (var message in _agent.InvokeAsync(chat, arguments: arguments, cancellationToken: cancellationToken)) {
-            chat.Add(message);
-            // TODO: identify final response and post it to the chat
+        await foreach (var response in _agent.InvokeAsync(chat, arguments: arguments, cancellationToken: cancellationToken)) {
+            chat.Add(response);
+            await PostResponse(response).ConfigureAwait(false);
+        }
+
+        return;
+
+        async Task PostResponse(ChatMessageContent message)
+        {
+            var textEntryId = new TextEntryId(chatId, 0, AssumeValid.Option);
+            var upsertCommand = new ChatsBackend_ChangeEntry(
+                textEntryId,
+                null,
+                Change.Create(new ChatEntryDiff {
+                    AuthorId = botId,
+                    Content = message.Content,
+                }));
+            await commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
     }
 }
