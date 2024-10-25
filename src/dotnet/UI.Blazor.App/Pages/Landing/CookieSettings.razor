@@ -1,3 +1,13 @@
+@inherits ComputedStateComponent<CookieSettings.Model>
+
+@{
+    var m = State.LastNonErrorValue;
+    if (m == Model.Loading)
+        return;
+
+    if (m.AreCookiesAccepted)
+        return;
+}
 <div class="cookie-settings">
     <div class="c-top">
         <div class="c-icon">
@@ -7,14 +17,64 @@
 
     </div>
     <div class="c-content">
-        We use cookies to provide you with the best possible experience. We use cookies to provide you with the best
-        possible experience. We use cookies to provide you with the best possible experience
+        <p>
+            Our website uses essential cookies to ensure accessibility, security, and to manage your website access.
+            You can control these through your browser settings, though disabling them may affect the website’s functionality.
+        </p>
+        <p>
+            With your consent, Actual Chat may also use cookies to personalize your experience, in line with our
+            <a href="/docs/privacy">Privacy Policy</a> and <a href="/docs/terms">Terms of Use</a>.
+            Additionally, we may use cookies to collect telemetry data, such as user actions leading up to errors and crashes.
+            The data we capture via cookies may be processed by trusted third-party providers,
+            such as <a href="https://marketingplatform.google.com/about/analytics/" target="_blank">Google Analytics</a>,
+            <a href="https://firebase.google.com/docs/analytics" target="_blank">Firebase Analytics</a>,
+            and <a href="https://sentry.io/" target="_blank">Sentry</a>.
+        </p>
     </div>
     <div class="c-bottom">
-        <a class="c-link" href="https://actual.chat/docs/privacy" target="_blank">Read Cookie Policy</a>
+        <a class="c-link" href="/docs/cookies">Read Cookie Policy</a>
         <div class="c-buttons">
-            <Button Class="cookie-btn">Accept all</Button>
-            <Button Class="cookie-btn">Accept necessary</Button>
+            <Button Class="cookie-btn" Click="@OnNecessaryOnlyClick">Necessary cookies only</Button>
+            <Button Class="cookie-btn" Click="@OnAllCookiesClick">Accept all cookies</Button>
         </div>
     </div>
 </div>
+
+
+@code {
+    [Inject] UIHub Hub { get; init; } = null!;
+    [Inject] OnboardingUI OnboardingUI { get; init; } = null!;
+    [Inject] IDataCollectionSettingsUI DataCollectionSettingsUI { get; init; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new() {
+            InitialValue = Model.Loading,
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var settings = await OnboardingUI.LocalSettings.Use(cancellationToken).ConfigureAwait(false);
+        return new (settings.AreCookiesAccepted);
+    }
+
+    private  Task OnNecessaryOnlyClick()
+        => AcceptCookies();
+
+    private async Task OnAllCookiesClick() {
+        await AcceptCookies();
+        await DataCollectionSettingsUI.UpdateState(true, CancellationToken.None);
+    }
+
+    private async Task AcceptCookies() {
+        var settings = await OnboardingUI.LocalSettings.Use(CancellationToken.None).ConfigureAwait(false);
+        OnboardingUI.UpdateLocalSettings(settings with { AreCookiesAccepted = true });
+    }
+
+    // Nested types
+
+
+    public record Model(bool AreCookiesAccepted = false) {
+        public static Model Loading { get; } = new();
+    }
+}
