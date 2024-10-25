@@ -13,17 +13,3 @@
     @apply rounded-full;
     @apply bg-[var(--text-03)];
 }
-
-.separator.with-line {
-    @apply relative z-10;
-    @apply my-0.5;
-}
-.separator.with-line > .c-title {
-    @apply text-xxs text-02;
-    @apply bg-04;
-}
-.separator.with-line > .c-line {
-    @apply absolute z-minus;
-    @apply h-px w-full;
-    @apply bg-04;
-}

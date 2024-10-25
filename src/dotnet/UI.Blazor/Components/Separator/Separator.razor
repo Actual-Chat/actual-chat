@@ -1,16 +1,10 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="@Class @(WithLine ? "with-line" : "") separator">
+<div class="separator">
     <span class="@TitleClass c-title">@Title</span>
-    @if (WithLine) {
-        <span class="@LineClass c-line"></span>
-    }
 </div>
 
 @code {
-    [Parameter] public bool WithLine { get; set; }
     [Parameter] public string? Title { get; set; }
-    [Parameter] public string Class { get; set; } = "bg-02 text-03";
     [Parameter] public string TitleClass { get; set; } = "bg-02 text-03";
-    [Parameter] public string LineClass { get; set; } = "";
 }

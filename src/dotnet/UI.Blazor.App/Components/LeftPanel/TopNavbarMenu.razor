@@ -19,26 +19,21 @@
     Click="@OnSettingsClick">
 </MenuEntry>
 <MenuEntry
+    Icon="icon-refresh"
+    Text="Reload"
+    Click="@OnReloadClick">
+</MenuEntry>
+<MenuEntry
     Icon="icon-log-out"
     Text="Log out"
     Click="@SignOut">
 </MenuEntry>
 @if (m.IsAdmin) {
-    <Separator Title="For Admins" WithLine="true" />
+    <MenuEntrySeparator/>
     <MenuEntry
         Icon="icon-alert-triangle"
         Text="Test Pages"
         Click="@OnTestPagesClick">
-    </MenuEntry>
-    <MenuEntry
-        Icon="icon-adminx-1"
-        Text="Administration"
-        Click="@OnAdminPagesClick">
-    </MenuEntry>
-    <MenuEntry
-        Icon="icon-refresh"
-        Text="Reload UI"
-        Click="@OnReloadUIClick">
     </MenuEntry>
 }
 
@@ -106,13 +101,7 @@
         _ = TuneUI.Play(Tune.SelectNavbarItem).SilentAwait();
     }
 
-    private async Task OnAdminPagesClick() {
-        await WhenClosed;
-        NavbarUI.SelectGroup(NavbarGroupIds.Administration, true);
-        _ = TuneUI.Play(Tune.SelectNavbarItem).SilentAwait();
-    }
-
-    private async Task OnReloadUIClick() {
+    private async Task OnReloadClick() {
         await WhenClosed;
         Services.GetRequiredService<ReloadUI>().Reload();
     }
