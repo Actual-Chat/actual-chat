@@ -9,7 +9,6 @@
         isChats = true;
         placeId = pinnedChatId.PlaceId;
     }
-    var isAdministration = NavbarUI.SelectedGroupId == NavbarGroupIds.Administration;
     var isTestPages = NavbarUI.SelectedGroupId == NavbarGroupIds.TestPages;
     var cls = isChats ? "navbar-chats" : "navbar-pages";
 }
@@ -18,9 +17,6 @@
     <div class="navbar-group @cls">
         @if (isChats) {
             <ChatListNavbarWidget PlaceId="@placeId" />
-        }
-        else if (isAdministration && m.IsAdmin) {
-            @* All pages have been moved to test pages *@
         }
         else if (isTestPages && m.IsAdmin) {
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/virtual-list">Virtual List</NavbarItem>
