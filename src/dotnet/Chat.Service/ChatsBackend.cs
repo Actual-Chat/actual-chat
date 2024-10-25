@@ -420,17 +420,20 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .DistinctBy(m => m.Id)
                 .ToDictionary(m => m.Id);
         }
-        return dbAttachments.Select(x => WithMedia(x.ToModel())).ToApiArray();
+        return dbAttachments.Select(x => WithMedia(x.ToModel())).SkipNullItems().ToApiArray();
 
-        TextEntryAttachment WithMedia(TextEntryAttachment attachment)
+        TextEntryAttachment? WithMedia(TextEntryAttachment attachment)
         {
             if (attachment.MediaId.IsNone)
                 return attachment;
 
-            var media = mediaMap.GetValueOrDefault(attachment.MediaId) ?? attachment.Media ?? new Media.Media();
-            var thumbnailMedia = attachment.ThumbnailMedia;
+            var media = mediaMap.GetValueOrDefault(attachment.MediaId);
+            if (media is null)
+                return null;
+
+            Media.Media? thumbnailMedia = null;
             if (!attachment.ThumbnailMediaId.IsNone)
-                thumbnailMedia = mediaMap.GetValueOrDefault(attachment.ThumbnailMediaId) ?? thumbnailMedia;
+                thumbnailMedia = mediaMap.GetValueOrDefault(attachment.ThumbnailMediaId);
             return attachment with {
                 Media = media,
                 ThumbnailMedia = thumbnailMedia,
