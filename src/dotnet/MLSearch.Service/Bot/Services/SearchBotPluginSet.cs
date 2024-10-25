@@ -11,5 +11,6 @@ internal class SearchBotPluginSet(IServiceProvider serviceProvider): ISearchBotP
 {
     public IReadOnlyCollection<KernelPlugin> Plugins { get; } = [
         KernelPluginFactory.CreateFromType<SearchPlugin>(nameof(SearchPlugin), serviceProvider),
+        KernelPluginFactory.CreateFromType<ForwardPlugin>(nameof(ForwardPlugin), serviceProvider),
     ];
 }
