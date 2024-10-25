@@ -19,11 +19,11 @@
     @apply my-0.5;
 }
 .separator.with-line > .c-title {
-    @apply text-xxs text-toast-text;
-    @apply bg-toast-body;
+    @apply text-xxs text-02;
+    @apply bg-04;
 }
 .separator.with-line > .c-line {
     @apply absolute z-minus;
     @apply h-px w-full;
-    @apply bg-toast-body;
+    @apply bg-04;
 }
