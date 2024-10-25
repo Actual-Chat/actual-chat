@@ -42,36 +42,6 @@
     <NavbarChatButtons/>
 </div>
 
-@if (ownAccount.IsAdmin) {
-    <NavbarGroupSelectionButton
-        Title="Administration"
-        Id="@NavbarGroupIds.Administration"
-        Tooltip="Administration">
-        <i class="icon-adminx-1 text-2xl font-medium"></i>
-    </NavbarGroupSelectionButton>
-}
-@if (ownAccount.IsAdmin) {
-    <NavbarGroupSelectionButton
-        Title="Test Pages"
-        Id="@NavbarGroupIds.TestPages"
-        Tooltip="Test Pages">
-        <i class="icon-alert-triangle text-2xl font-medium"></i>
-    </NavbarGroupSelectionButton>
-
-    <NavbarButton
-        Class="mt-auto"
-        Tooltip="Reload UI"
-        Click="@OnReloadUIClick">
-        <ChildContent>
-            <i class="icon-refresh text-2xl font-medium"></i>
-        </ChildContent>
-        <Ending>
-            <LeftLine/>
-            <div class="right-line"></div>
-        </Ending>
-    </NavbarButton>
-}
-
 @code {
     [Inject] protected UIHub Hub { get; init; } = null!;
     protected AccountUI AccountUI => Hub.AccountUI;

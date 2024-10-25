@@ -13,3 +13,20 @@
     @apply rounded-full;
     @apply bg-[var(--text-03)];
 }
+
+.badge-separator {
+    @apply relative;
+    @apply flex items-center justify-center;
+    @apply my-0.5;
+}
+.badge-separator > .c-title {
+    @apply px-2 py-0;
+    @apply rounded-full;
+    @apply text-xxs font-medium text-toast-text;
+    @apply bg-toast-body;
+}
+.badge-separator > .c-line {
+    @apply absolute z-minus;
+    @apply h-px w-full;
+    @apply bg-toast-body;
+}

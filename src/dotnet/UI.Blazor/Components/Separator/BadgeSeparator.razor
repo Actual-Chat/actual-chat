@@ -1,0 +1,11 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="@Class badge-separator">
+    <span class="c-title">@Title</span>
+    <span class="c-line"></span>
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string Class { get; set; } = "bg-02 text-03";
+}
