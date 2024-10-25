@@ -14,18 +14,15 @@
     @apply bg-[var(--text-03)];
 }
 
-.badge-separator {
-    @apply relative;
-    @apply flex items-center justify-center;
+.separator.with-line {
+    @apply relative z-10;
     @apply my-0.5;
 }
-.badge-separator > .c-title {
-    @apply px-2 py-0;
-    @apply rounded-full;
-    @apply text-xxs font-medium text-toast-text;
+.separator.with-line > .c-title {
+    @apply text-xxs text-toast-text;
     @apply bg-toast-body;
 }
-.badge-separator > .c-line {
+.separator.with-line > .c-line {
     @apply absolute z-minus;
     @apply h-px w-full;
     @apply bg-toast-body;
