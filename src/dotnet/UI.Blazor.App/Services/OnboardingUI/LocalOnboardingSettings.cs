@@ -8,6 +8,7 @@ public sealed partial record LocalOnboardingSettings
     public const string KvasKey = nameof(LocalOnboardingSettings);
 
     [DataMember, MemoryPackOrder(0)] public bool IsPermissionsStepCompleted { get; init; }
+    [DataMember, MemoryPackOrder(1)] public bool AreCookiesAccepted { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool HasUncompletedSteps
