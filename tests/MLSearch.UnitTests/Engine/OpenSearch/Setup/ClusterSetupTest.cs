@@ -308,6 +308,8 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     private Mock<IMeshLocks> MockMeshLocks() {
+        var meshLocksBackend = new Mock<IMeshLocksBackend>();
+        meshLocksBackend.Setup(x => x.Clock).Returns(MomentClockSet.Default.SystemClock);
         var meshLocks = new Mock<IMeshLocks>();
         meshLocks
             .SetupGet(x => x.LockOptions)
@@ -320,7 +322,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
                 It.IsAny<CancellationToken>()
             ))
             .Returns<string, string, MeshLockOptions, CancellationToken>((key, value, options, ct)
-                => Task.FromResult(new MeshLockHolder(Mock.Of<IMeshLocksBackend>(), "id", key, value, options, ct)))
+                => Task.FromResult(new MeshLockHolder(meshLocksBackend.Object, "id", key, value, options, ct)))
             .Verifiable();
 
         return meshLocks;
