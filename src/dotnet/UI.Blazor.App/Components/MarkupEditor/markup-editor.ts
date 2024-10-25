@@ -353,10 +353,12 @@ export class MarkupEditor {
         const data = e.clipboardData;
         const plainText = data.getData('text');
         const text = cleanupPastedText(plainText, data.types.includes('text/html'));
+        const url = data.getData('text/uri-list');
+        const concatenatedText = text?.length && url?.length ? `${text}\n${url}` : (text || url);
 
         // debugLog?.log(`onPaste: text:`, text)
         this.transaction('onPaste', () => {
-            this.insertTextAtCursor(text);
+            this.insertTextAtCursor(concatenatedText);
         });
         return ok();
     }
