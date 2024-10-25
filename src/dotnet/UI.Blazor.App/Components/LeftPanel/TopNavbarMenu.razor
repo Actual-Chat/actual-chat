@@ -9,20 +9,17 @@
 @if (!_notesChatId.IsNone) {
     <MenuEntry
         Icon="icon-file-text"
-        FocusOnEditor="true"
         Text="Notes"
         Click="@OnNotesClick">
     </MenuEntry>
 }
 <MenuEntry
     Icon="icon-settings"
-    FocusOnEditor="true"
     Text="Settings"
     Click="@OnSettingsClick">
 </MenuEntry>
 <MenuEntry
     Icon="icon-log-out"
-    FocusOnEditor="true"
     Text="Log out"
     Click="@SignOut">
 </MenuEntry>
@@ -30,19 +27,16 @@
     <Separator Title="For Admins" WithLine="true" />
     <MenuEntry
         Icon="icon-alert-triangle"
-        FocusOnEditor="true"
         Text="Test Pages"
         Click="@OnTestPagesClick">
     </MenuEntry>
     <MenuEntry
         Icon="icon-adminx-1"
-        FocusOnEditor="true"
         Text="Administration"
         Click="@OnAdminPagesClick">
     </MenuEntry>
     <MenuEntry
         Icon="icon-refresh"
-        FocusOnEditor="true"
         Text="Reload UI"
         Click="@OnReloadUIClick">
     </MenuEntry>
