@@ -27,7 +27,7 @@
     Click="@SignOut">
 </MenuEntry>
 @if (m.IsAdmin) {
-    <BadgeSeparator Title="For Admins" Class="top-navbar-menu-separator"/>
+    <Separator Title="For Admins" WithLine="true" />
     <MenuEntry
         Icon="icon-alert-triangle"
         FocusOnEditor="true"
@@ -51,17 +51,16 @@
 @code {
     private ChatId _notesChatId = ChatId.None;
 
-    [Inject] protected UIHub Hub { get; init; } = null!;
-    [Inject] private TuneUI TuneUI { get; init; } = null!;
+    [Inject] protected ChatUIHub Hub { get; init; } = null!;
 
     private UIEventHub UIEventHub => Hub.UIEventHub();
     private NavbarUI NavbarUI => Hub.NavbarUI;
     private AccountUI AccountUI => Hub.AccountUI;
     private Session Session => Hub.Session();
-    private ChatUIHub ChatUIHub => Hub.ChatUIHub();
-    private IContacts Contacts => ChatUIHub.Contacts;
-    private IChats Chats => ChatUIHub.Chats;
-    private History History => ChatUIHub.History;
+    private IContacts Contacts => Hub.Contacts;
+    private IChats Chats => Hub.Chats;
+    private History History => Hub.History;
+    private TuneUI TuneUI => Hub.TuneUI;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
@@ -72,10 +71,10 @@
     protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken) {
         var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         if (_notesChatId.IsNone) {
-            var contactIds = await Contacts.ListIds(Session, PlaceId.None, default).ConfigureAwait(false);
+            var contactIds = await Contacts.ListIds(Session, PlaceId.None, cancellationToken).ConfigureAwait(false);
             var contactList = await contactIds
-                .Select(x => Contacts.Get(Session, x, default))
-                .Collect(default)
+                .Select(x => Contacts.Get(Session, x, cancellationToken))
+                .Collect(cancellationToken)
                 .ConfigureAwait(false);
 
             foreach (var contact in contactList) {
@@ -84,12 +83,12 @@
                 var chatId = contact.ChatId;
                 if (chatId.IsPeerChat(out _))
                     continue;
-                var chat = await Chats.Get(Session, contact.ChatId, default).ConfigureAwait(false);
-                if (chat is { HasSingleAuthor: true } && chat.SystemTag == Constants.Chat.SystemTags.Notes)
+                var chat = await Chats.Get(Session, contact.ChatId, cancellationToken).ConfigureAwait(false);
+                if (chat != null && chat.SystemTag == Constants.Chat.SystemTags.Notes)
                     _notesChatId = chat.Id;
             }
         }
-        return await AccountUI.OwnAccount.Use(cancellationToken).AsTask();
+        return ownAccount;
     }
 
     private async Task OnNotesClick() {
