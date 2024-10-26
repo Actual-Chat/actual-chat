@@ -19,14 +19,6 @@ internal static class SearchBotArguments
     public const string UserId = nameof(UserId);
 }
 
-/**
-    A handler for incoming messages from a user.
-    This class responsibility is to take those requests and forward it to a bot.
-    It should generate JWT tokens together with the forwarded requests to allow
-    the bot use internal tools. It is also possible that this bot would reply
-    in asynchronous mode. That means that it will use the JWT token provided to
-    send messages to a user through the internal API.
-**/
 internal class ChatBotConversationHandler(
     Kernel kernel,
     ICommander commander,
@@ -46,10 +38,20 @@ internal class ChatBotConversationHandler(
     - The FORWARD tool which full name is {{{nameof(ForwardPlugin)}}}-{{{nameof(ForwardPlugin.ForwardResults)}}}
         allows you forwarding relevant results to the user.
 
-    Your first objective is to call FIND tool with proper arguments and you are supposed extracting those
-    from the conversation history. Once you have the FIND tool results as a list of Text and Link pairs
+    In the very beginning you should decide whether it is a search request or user just tries to communicate.
+
+    When user greets you or asks for something not related to searching information in chats you should
+    briefly respond to that message with an information what is your primary goal asking about a
+    relevant input.
+
+    In the case user asks for search, your first objective is to call FIND tool with proper arguments
+    and you are supposed extracting those from the conversation history.
+    Once you have the FIND tool results as a list of Text and Link pairs
     you second goal is to forward those results to the user. Please summarize found Texts and pass
     that summary along with a list of Links to the FORWARD tool.
+    Your final message should be a concise report you completed the search and ready for the next questions.
+    IMPORTANT!: You always have access to either public or private chats of the current user, so don't
+    hesitate calling FIND tool every time user asks for search.
 
     Use the values below when needed:
     - The search type is {{${{{nameof(SearchBotArguments.SearchType)}}}}}.
