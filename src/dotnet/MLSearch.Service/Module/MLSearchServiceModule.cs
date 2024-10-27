@@ -226,11 +226,12 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                     modelId: chatbotSettings.OpenAI!.ChatModel);
 
                 // Add bot
-                services.Configure<ChatbotSettings>(e => {
-                    e.IsEnabled = true;
+                services.Configure<ChatbotServicesSettings>(e => {
+                    e.ConversationTtl = chatbotSettings.ConversationTtl;
                 });
                 services.AddSingleton<IFilters, Filters>();
                 services.AddSingleton<IBotConversationHandler, ChatBotConversationHandler>();
+                services.AddSingleton<IChatHistoryCache, ChatHistoryCache>();
                 services.AddSingleton<ISearchTypeDetector, SearchTypeDetector>();
                 services.AddSingleton<ISearchBotPluginSet, SearchBotPluginSet>();
                 services.AddSingleton<IChatBotWorker>(

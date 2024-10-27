@@ -29,6 +29,7 @@ public sealed class OpenAISettings
 public sealed class ChatbotSettings {
     public bool IsEnabled { get; set; }
     public bool AllowPeerBotChat { get; set; }
+    public TimeSpan ConversationTtl { get; set; } = TimeSpan.FromHours(1);
     public OpenAISettings? OpenAI { get; set; }
 }
 

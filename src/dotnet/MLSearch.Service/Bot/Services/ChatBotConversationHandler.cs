@@ -23,6 +23,7 @@ internal class ChatBotConversationHandler(
     Kernel kernel,
     ICommander commander,
     IAuthorsBackend authors,
+    IChatHistoryCache chatHistoryCache,
     ISearchTypeDetector searchTypeDetector,
     ISearchBotPluginSet searchBotPluginSet)
     : IBotConversationHandler
@@ -92,8 +93,6 @@ internal class ChatBotConversationHandler(
 
     private readonly ChatCompletionAgent _agent = CreateAgent(kernel, searchBotPluginSet);
 
-    private readonly Dictionary<ChatId, ChatHistory> _history = [];
-
     public async Task ExecuteAsync(
         IReadOnlyList<ChatEntry>? updatedEntries,
         IReadOnlyCollection<ChatEntryId>? deletedEntries,
@@ -104,9 +103,7 @@ internal class ChatBotConversationHandler(
 
         var chatId = updatedEntries[0].ChatId;
 
-        if (!_history.TryGetValue(chatId, out var chat)) {
-            chat = [];
-        }
+        var chat = await chatHistoryCache.GetOrSetDefault(chatId, [], cancellationToken).ConfigureAwait(false);
 
         var botId = new AuthorId(chatId, Constants.User.Sherlock.AuthorLocalId, AssumeValid.Option);
         var userMessages = new Stack<ChatMessageContent>();
@@ -156,7 +153,7 @@ internal class ChatBotConversationHandler(
             await PostResponse(response).ConfigureAwait(false);
         }
 
-        _history[chatId] = chat;
+        await chatHistoryCache.Set(chatId, chat, cancellationToken).ConfigureAwait(false);
 
         return;
 
@@ -177,4 +174,3 @@ internal class ChatBotConversationHandler(
 
 #pragma warning restore SKEXP0001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 #pragma warning restore SKEXP0110 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-

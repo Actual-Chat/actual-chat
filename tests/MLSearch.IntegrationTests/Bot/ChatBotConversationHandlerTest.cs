@@ -4,6 +4,7 @@ using ActualChat.MLSearch.Bot.Services;
 using ActualChat.MLSearch.Module;
 using Microsoft.Extensions.Configuration;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace ActualChat.MLSearch.IntegrationTests.Bot;
 
@@ -53,6 +54,10 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
                 UserId = userId,
             }));
 
+        var chatHistoryCache = new Mock<IChatHistoryCache>();
+        chatHistoryCache.Setup(x => x.GetOrSetDefault(It.IsAny<ChatId>(),It.IsAny<ChatHistory>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult<ChatHistory>([]));
+
         var searchTypeDetector = new Mock<ISearchTypeDetector>();
         searchTypeDetector.Setup(x => x.Detect(It.IsAny<ChatMessageContent>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(SearchType.General));
@@ -67,6 +72,7 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
             CreateKernel(),
             commander.Object,
             authors.Object,
+            chatHistoryCache.Object,
             searchTypeDetector.Object,
             searchBotPluginSet.Object);
 
