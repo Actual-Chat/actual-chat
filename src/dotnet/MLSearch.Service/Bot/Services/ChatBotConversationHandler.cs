@@ -156,6 +156,8 @@ internal class ChatBotConversationHandler(
             await PostResponse(response).ConfigureAwait(false);
         }
 
+        _history[chatId] = chat;
+
         return;
 
         async Task PostResponse(ChatMessageContent message)
