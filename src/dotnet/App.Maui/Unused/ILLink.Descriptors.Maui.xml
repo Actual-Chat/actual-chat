@@ -28,7 +28,6 @@
   <assembly fullname="Sentry.Serilog " />
   <assembly fullname="Serilog" />
   <assembly fullname="Serilog.Extensions.Logging" />
-  <assembly fullname="Serilog.Sinks.Xamarin" />
   <assembly fullname="SQLitePCLRaw.core" />
   <assembly fullname="SQLitePCLRaw.lib.e_sqlite3.android" />
   <assembly fullname="SQLitePCLRaw.provider.e_sqlite3" />
