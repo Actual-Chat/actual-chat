@@ -58,11 +58,11 @@
         return new (settings.AreCookiesAccepted);
     }
 
-    private  Task OnNecessaryOnlyClick()
+    private Task OnNecessaryOnlyClick()
         => AcceptCookies();
 
     private async Task OnAllCookiesClick() {
-        await AcceptCookies();
+        await AcceptCookies().ConfigureAwait(false);
         await DataCollectionSettingsUI.UpdateState(true, CancellationToken.None);
     }
 
@@ -72,7 +72,6 @@
     }
 
     // Nested types
-
 
     public record Model(bool AreCookiesAccepted = false) {
         public static Model Loading { get; } = new();
