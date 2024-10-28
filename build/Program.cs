@@ -112,7 +112,7 @@ internal static class Program
             using var dotnetWatch = ProcessWatch.Start(
                 "dotnet",
                 dotnet,
-                "watch -v run",
+                "watch run",
                 "src/dotnet/App.Server",
                 new () {
 

@@ -389,12 +389,12 @@
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-<!--    <PublishReadyToRun>false</PublishReadyToRun>-->
+    <PublishReadyToRun>true</PublishReadyToRun>
 <!--    <PublishSingleFile>true</PublishSingleFile>-->
 <!--    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>-->
-<!--    <SelfContained>false</SelfContained>-->
-<!--    <PublishAot>true</PublishAot>-->
-<!--    <PublishTrimmed>true</PublishTrimmed>-->
+    <SelfContained>true</SelfContained>
+    <PublishAot>false</PublishAot>
+    <PublishTrimmed>false</PublishTrimmed>
     <TrimMode Condition="!$(UseAppPack)">partial</TrimMode>
     <TrimMode Condition="$(UseAppPack)">partial</TrimMode>
     <OptimizationPreference>Size</OptimizationPreference>
@@ -402,7 +402,10 @@
     <IlcDisableReflection>false</IlcDisableReflection>
     <NativeDebugSymbols>false</NativeDebugSymbols>
     <StripSymbols>false</StripSymbols>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
   </PropertyGroup>
+
+  <ItemGroup><IlcArg Include="--maxgenericcycle:1" /></ItemGroup>
 
   <!-- Resources -->
 
