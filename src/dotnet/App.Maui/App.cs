@@ -24,7 +24,6 @@ public class App : Application
             "--disable-features=AutoupgradeMixedContent");
 #endif
         Services = services;
-        MainPage = new MainPage();
     }
 
     protected override Window CreateWindow(IActivationState? activationState)

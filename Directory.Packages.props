@@ -5,13 +5,13 @@
   </PropertyGroup>
   <PropertyGroup>
     <ActualLabFusionVersion>9.5.59</ActualLabFusionVersion>
-    <AspNetCoreVersion>9.0.0-rc.1.24452.1</AspNetCoreVersion>
+    <AspNetCoreVersion>9.0.0-rc.2.24474.3</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>8.0.4</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>8.0.4</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreCheckConstraintsVersion>8.0.1</EntityFrameworkCoreCheckConstraintsVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
-    <MicrosoftExtensionsVersion>[9.0.0-rc.1.24431.7,)</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsVersion>[9.0.0-rc.2.24473.5,)</MicrosoftExtensionsVersion>
     <NpgsqlVersion>8.0.1</NpgsqlVersion>
     <RedisVersion>2.8.12</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
@@ -22,7 +22,7 @@
     <!-- NOTE(AY): v1.20.X is broken, please don't upgrade to it! -->
     <MemoryPackVersion>1.21.3</MemoryPackVersion>
     <MessagePackVersion>2.4.59</MessagePackVersion>
-    <XamarinAndroidLifecycle>2.8.5</XamarinAndroidLifecycle>
+    <XamarinAndroidLifecycle>2.8.6</XamarinAndroidLifecycle>
   </PropertyGroup>
 
   <!--
@@ -49,26 +49,28 @@
     <!-- Android -->
     <PackageVersion Include="Mono.Profiler.Android" Version="7.0.0" />
     <PackageVersion Include="Mono.AotProfiler.Android" Version="9.0.0-preview1" />
-    <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.13.1.4" />
-    <PackageVersion Include="Xamarin.AndroidX.Collection" Version="1.4.3" />
-    <PackageVersion Include="Xamarin.AndroidX.Collection.Ktx" Version="1.4.3" />
-    <PackageVersion Include="Xamarin.AndroidX.Fragment.Ktx" Version="1.8.3" />
+    <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.13.1.5" />
+    <PackageVersion Include="Xamarin.AndroidX.Collection" Version="1.4.4" />
+    <PackageVersion Include="Xamarin.AndroidX.Collection.Ktx" Version="1.4.4" />
+    <PackageVersion Include="Xamarin.AndroidX.Fragment.Ktx" Version="1.8.4" />
+    <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Runtime.Ktx" Version="$(XamarinAndroidLifecycle)" />
+    <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Runtime.Ktx.Android" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.LiveData" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Process" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Runtime" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.Firebase.Analytics" Version="122.0.2" />
-    <PackageVersion Include="Xamarin.Firebase.Crashlytics" Version="119.0.3.1" />
-    <PackageVersion Include="Xamarin.Firebase.Messaging" Version="124.0.0.1" />
-    <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="121.2.0.1" />
+    <PackageVersion Include="Xamarin.Firebase.Crashlytics" Version="119.2.0" />
+    <PackageVersion Include="Xamarin.Firebase.Messaging" Version="124.0.2" />
+    <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="121.2.0.2" />
     <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="118.1.0.1" />
-    <PackageVersion Include="Xamarin.Google.Dagger" Version="2.52.0" />
+    <PackageVersion Include="Xamarin.Google.Dagger" Version="2.52.0.1" />
     <PackageVersion Include="Xamarin.Twilio.AudioSwitch" Version="1.1.4" />
     <!-- iOS -->
     <PackageVersion Include="Xamarin.Build.Download" Version="0.11.4" />
-    <PackageVersion Include="AdamE.Firebase.iOS.Analytics" Version="10.24.0.2" />
-    <PackageVersion Include="AdamE.Firebase.iOS.Crashlytics" Version="10.24.0.2" />
-    <PackageVersion Include="AdamE.Firebase.iOS.CloudMessaging" Version="10.24.0.2" />
+    <PackageVersion Include="AdamE.Firebase.iOS.Analytics" Version="10.29.0.1" />
+    <PackageVersion Include="AdamE.Firebase.iOS.Crashlytics" Version="10.29.0.1" />
+    <PackageVersion Include="AdamE.Firebase.iOS.CloudMessaging" Version="10.29.0.1" />
   </ItemGroup>
 
   <!-- Strictly non-MAUI packages -->
