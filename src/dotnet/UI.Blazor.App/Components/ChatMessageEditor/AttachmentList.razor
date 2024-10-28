@@ -131,7 +131,7 @@
                 return fileName;
             })
             .ToArray();
-        _ = await JSRef.InvokeAsync<int>("addBlobs", new object[] { urls, fileNames });
+        await JSRef.InvokeAsync<int>("addBlobs", [urls, fileNames]).ConfigureAwait(false);
     }
 
     public ResetIntent PopSnapshot() {

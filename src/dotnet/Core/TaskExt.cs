@@ -41,6 +41,48 @@ public static class TaskExt
         }
     }
 
+    public static async ValueTask WithErrorHandler(this ValueTask task, Action<Exception> errorHandler)
+    {
+        try {
+            await task.ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            errorHandler(e);
+            throw;
+        }
+    }
+
+    public static async ValueTask<T> WithErrorHandler<T>(this ValueTask<T> task, Action<Exception> errorHandler)
+    {
+        try {
+            return await task.ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            errorHandler(e);
+            throw;
+        }
+    }
+
+    public static async Task Catch(this Task task, ILogger errorLog, string message)
+    {
+        try {
+            await task.ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            errorLog.LogError(e, message);
+        }
+    }
+
+    public static async ValueTask Catch(this ValueTask task, ILogger errorLog, string message)
+    {
+        try {
+            await task.ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            errorLog.LogError(e, message);
+        }
+    }
+
     // WithErrorLog
 
     public static Task WithErrorLog(this Task task, ILogger errorLog, string message)
@@ -48,6 +90,14 @@ public static class TaskExt
         => task.WithErrorHandler(e => errorLog.LogError(e, message));
 
     public static Task<T> WithErrorLog<T>(this Task<T> task, ILogger errorLog, string message)
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+        => task.WithErrorHandler(e => errorLog.LogError(e, message));
+
+    public static ValueTask WithErrorLog(this ValueTask task, ILogger errorLog, string message)
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+        => task.WithErrorHandler(e => errorLog.LogError(e, message));
+
+    public static ValueTask<T> WithErrorLog<T>(this ValueTask<T> task, ILogger errorLog, string message)
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
         => task.WithErrorHandler(e => errorLog.LogError(e, message));
 
