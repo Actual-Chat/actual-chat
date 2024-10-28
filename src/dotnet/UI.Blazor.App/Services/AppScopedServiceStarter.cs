@@ -6,24 +6,20 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class AppScopedServiceStarter
 {
-    private HostInfo? _hostInfo;
-    private History? _history;
-    private AutoNavigationUI? _autoNavigationUI;
-    private LoadingUI? _loadingUI;
     private ILogger? _log;
 
-    private IServiceProvider Services { get; }
+    private ChatUIHub Hub { get; }
     private Tracer Tracer { get; }
-    private HostInfo HostInfo => _hostInfo ??= Services.HostInfo();
-    private History History => _history ??= Services.GetRequiredService<History>();
-    private AutoNavigationUI AutoNavigationUI => _autoNavigationUI ??= Services.GetRequiredService<AutoNavigationUI>();
-    private LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    private HostInfo HostInfo => Hub.HostInfo();
+    private History History => Hub.History;
+    private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
+    private LoadingUI LoadingUI => Hub.LoadingUI;
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
 
-    public AppScopedServiceStarter(IServiceProvider services)
+    public AppScopedServiceStarter(ChatUIHub hub)
     {
-        Services = services;
-        Tracer = Services.Tracer(GetType());
+        Hub = hub;
+        Tracer = Hub.Tracer(GetType());
     }
 
     public async Task PrepareFirstRender(string sessionHash)
@@ -34,9 +30,9 @@ public class AppScopedServiceStarter
             var baseUri = HostInfo.BaseUrl;
 
             // Creating core services - this should be done as early as possible
-            var recaptchaUI = Services.GetRequiredService<CaptchaUI>();
-            var browserInfo = Services.GetRequiredService<BrowserInfo>();
-            var browserInit = Services.GetRequiredService<BrowserInit>();
+            var recaptchaUI = Hub.GetRequiredService<CaptchaUI>();
+            var browserInfo = Hub.BrowserInfo;
+            var browserInit = Hub.GetRequiredService<BrowserInit>();
             _ = browserInit.Initialize(
                 HostInfo.HostKind,
                 HostInfo.AppKind,
@@ -47,10 +43,10 @@ public class AppScopedServiceStarter
             _ = recaptchaUI.EnsureInitialized();
 
             // Start AccountUI & UIEventHub
-            Services.GetRequiredService<AccountUI>();
-            Services.GetRequiredService<UIEventHub>();
+            _ = Hub.AccountUI; // Touch
+            _ = Hub.UIEventHub(); // Touch
 
-            // Awaiting for completion of initialization tasks.
+            // Awaiting completion of initialization tasks.
             // NOTE(AY): it's fine to use .ConfigureAwait(false) below this point,
             //           coz tasks were started on Dispatcher thread already.
 
@@ -59,8 +55,8 @@ public class AppScopedServiceStarter
             // ReSharper disable once ExplicitCallerInfoArgument
             Tracer.Point("BrowserInfo is ready");
 
-            Services.GetRequiredService<ThemeUI>().Start();
-            var dateTimeConverter = Services.GetRequiredService<DateTimeConverter>();
+            Hub.GetRequiredService<ThemeUI>().Start();
+            var dateTimeConverter = Hub.DateTimeConverter;
             if (dateTimeConverter is ServerSideDateTimeConverter serverSideDateTimeConverter)
                 serverSideDateTimeConverter.Initialize(browserInfo.UtcOffset);
 
@@ -72,8 +68,8 @@ public class AppScopedServiceStarter
             // Finishing with auto-navigation & History init
             var url = await AutoNavigationUI.GetAutoNavigationUrl().ConfigureAwait(false);
             // Instantiate PanelsUI to register correspondent history states for left and right panels.
-            // It's needed to make first history step always has BackStepCount == 0.
-            _ = Services.GetRequiredService<PanelsUI>();
+            // It's necessary to make a first history step always has BackStepCount == 0.
+            _ = Hub.PanelsUI; // Touch
             if (url.IsChat() && browserInfo.ScreenSize.Value.IsNarrow()) {
                 // We have to open chat root first - to make sure "Back" leads to it
                 await History.Initialize(Links.Chats).ConfigureAwait(false);
@@ -98,31 +94,31 @@ public class AppScopedServiceStarter
         // Starts in Blazor dispatcher
         try {
             await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(true);
-            _ = Services.GetRequiredService<OnboardingUI>().TryShow();
+            _ = Hub.OnboardingUI.TryShow();
             var hostKind = HostInfo.HostKind;
             var baseDelay = TimeSpan.FromSeconds(hostKind.IsServer() ? 0.25 : 1);
 
             // Starting less important UI services
             await Task.Delay(baseDelay, cancellationToken).ConfigureAwait(false);
-            Services.GetRequiredService<ReconnectUI>().Start();
+            Hub.GetRequiredService<ReconnectUI>().Start();
             if (hostKind.IsApp())
-                Services.GetRequiredService<SessionTokens>().Start();
-            Services.GetRequiredService<AppPresenceReporter>().Start();
-            Services.GetRequiredService<AppIconBadgeUpdater>().Start();
-            Services.GetRequiredService<AppActivity>().Start();
-            Services.GetRequiredService<TuneUI>(); // Auto-starts on construction
+                Hub.GetRequiredService<SessionTokens>().Start();
+            Hub.GetRequiredService<AppPresenceReporter>().Start();
+            Hub.GetRequiredService<AppIconBadgeUpdater>().Start();
+            Hub.GetRequiredService<AppActivity>().Start();
+            _ = Hub.TuneUI; // Touch. Auto-starts on construction
             if (!HostInfo.IsProductionInstance)
-                Services.GetRequiredService<DebugUI>();
+                Hub.GetRequiredService<DebugUI>();
 
             await Task.Delay(baseDelay * 2, cancellationToken).ConfigureAwait(false);
-            Services.GetRequiredService<AudioInitializer>().Start();
+            Hub.AudioInitializer.Start();
             if (hostKind.IsApp())
                 await StartHostedServices().ConfigureAwait(false);
 
             await ConfigureDataCollection(cancellationToken).ConfigureAwait(false);
 
             await Task.Delay(TimeSpan.FromSeconds(15), cancellationToken).ConfigureAwait(false);
-            Services.GetRequiredService<ContactSync>().Start();
+            Hub.GetRequiredService<ContactSync>().Start();
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, $"{nameof(AfterFirstRender)} failed");
@@ -134,11 +130,11 @@ public class AppScopedServiceStarter
 
     private async Task ConfigureDataCollection(CancellationToken cancellationToken)
     {
-        var dataCollectionSettingsUI = Services.GetRequiredService<IDataCollectionSettingsUI>();
+        var dataCollectionSettingsUI = Hub.GetRequiredService<IDataCollectionSettingsUI>();
         if (await dataCollectionSettingsUI.IsConfigured(cancellationToken).ConfigureAwait(false))
             return;
 
-        var accountSettings = Services.AccountSettings();
+        var accountSettings = Hub.AccountSettings();
         var settings = await accountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
         var isDataCollectionEnabled = settings.IsDataCollectionEnabled;
         if (!isDataCollectionEnabled.HasValue)
@@ -152,7 +148,7 @@ public class AppScopedServiceStarter
         using var _ = Tracer.Region();
         var tasks = new List<Task>();
         var tracePrefix = nameof(StartHostedServices) + ": starting ";
-        foreach (var hostedService in Services.HostedServices()) {
+        foreach (var hostedService in Hub.HostedServices()) {
             Tracer.Point(tracePrefix + hostedService.GetType().Name);
             tasks.Add(hostedService.StartAsync(default));
         }
