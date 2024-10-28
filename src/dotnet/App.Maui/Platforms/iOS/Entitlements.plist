@@ -11,9 +11,9 @@
 		<string>applinks:actual.chat</string>
 		<string>applinks:dev.actual.chat</string>
 	</array>
-	<key>com.apple.developer.web-browser-engine.networking</key>
-	<true/>
-	<key>com.apple.developer.web-browser-engine.webcontent</key>
-	<true/>
+<!--	<key>com.apple.developer.web-browser-engine.networking</key>-->
+<!--	<true/>-->
+<!--	<key>com.apple.developer.web-browser-engine.webcontent</key>-->
+<!--	<true/>-->
 </dict>
 </plist>
