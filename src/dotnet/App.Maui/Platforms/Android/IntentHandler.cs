@@ -64,6 +64,7 @@ public static class IntentHandler
             Log.LogDebug("Clear start intent");
         }
 
+        AppLinksWorkaround.HandleIntent(intent);
         IncomingShareHandler.HandleIntent(intent);
         NotificationHandler.HandleIntent(intent);
     }
