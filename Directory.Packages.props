@@ -42,7 +42,6 @@
     <PackageVersion Include="Plugin.Firebase.CloudMessaging" Version="3.0.0" />
     <PackageVersion Include="Plugin.Firebase.Analytics" Version="3.0.0" />
     <PackageVersion Include="Plugin.Firebase.Crashlytics" Version="3.0.0" />
-    <PackageVersion Include="Serilog.Sinks.Xamarin" Version="1.0.0" />
     <PackageVersion Include="sqlite-net-pcl" Version="1.9.172" />
     <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.8" />
     <!-- Android -->

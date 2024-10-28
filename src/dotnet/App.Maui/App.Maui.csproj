@@ -153,14 +153,12 @@
     <PackageReference Include="Xamarin.GooglePlayServices.CroNet" />
     <PackageReference Include="Xamarin.Google.Dagger" />
     <PackageReference Include="Xamarin.Twilio.AudioSwitch" />
-    <PackageReference Include="Serilog.Sinks.Xamarin" />
     <PackageReference Include="System.Net.WebSockets" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <PackageReference Include="Plugin.Firebase.Analytics" />
     <PackageReference Include="Plugin.Firebase.CloudMessaging" />
     <PackageReference Include="Plugin.Firebase.Crashlytics" />
-    <PackageReference Include="Serilog.Sinks.Xamarin" />
     <PackageReference Include="Xamarin.Build.Download" />
     <PackageReference Include="AdamE.Firebase.iOS.Analytics" />
     <PackageReference Include="AdamE.Firebase.iOS.Crashlytics" />
