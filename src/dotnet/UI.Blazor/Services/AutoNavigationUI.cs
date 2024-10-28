@@ -13,7 +13,7 @@ public enum AutoNavigationReason
     SignOut = 100,
 }
 
-public abstract class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
+public class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
 {
     private volatile List<(LocalUrl Url, AutoNavigationReason Reason)>? _autoNavigationCandidates = new();
 
@@ -111,5 +111,23 @@ public abstract class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub
 
     // Protected methods
 
-    protected abstract ValueTask<LocalUrl> GetDefaultAutoNavigationUrl();
+    protected virtual async ValueTask<LocalUrl> GetDefaultAutoNavigationUrl()
+    {
+        var currentUrl = History.LocalUrl;
+        if (!currentUrl.IsHome() && !currentUrl.IsChatRoot())
+            return currentUrl;
+
+        // You're at "/" or "/chat" URL
+        try {
+            var accountUI = Hub.AccountUI;
+            await accountUI.WhenLoaded.WaitAsync(TimeSpan.FromMilliseconds(2000)).ConfigureAwait(false);
+            var ownAccount = accountUI.OwnAccount.Value;
+            return ownAccount.IsGuestOrNone
+                ? currentUrl
+                : Links.Chats; // You're signed in - so we redirect you to /chats/
+        }
+        catch (TimeoutException) {
+            return currentUrl;
+        }
+    }
 }
