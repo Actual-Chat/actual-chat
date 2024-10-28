@@ -68,8 +68,9 @@ export class AudioContextRef implements AsyncDisposable {
             if (!this.isUsed)
                 return;
 
-            this.inUse?.dispose();
+            const inUse = this.inUse;
             this.inUse = null;
+            inUse?.dispose();
         };
         waitAsync(this._whenReady, this.whenDisposeRequested)
             .then(context => {
