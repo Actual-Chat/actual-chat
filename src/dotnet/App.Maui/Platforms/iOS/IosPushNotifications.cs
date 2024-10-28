@@ -96,6 +96,6 @@ public class IosPushNotifications : IDeviceTokenRetriever, INotificationsPermiss
     {
         if (!e.Notification.Data.TryGetValue(Constants.Notification.MessageDataKeys.Link, out var url))
             url = null;
-        AppNavigationQueue.EnqueueOrNavigateToNotificationUrl(url);
+        AppNavigationQueue.EnqueueOrNavigateToUrl(url, AutoNavigationReason.Notification);
     }
 }
