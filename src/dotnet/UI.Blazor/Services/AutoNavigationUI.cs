@@ -27,7 +27,7 @@ public abstract class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub
                 throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");
 
             var defaultUrl = await GetDefaultAutoNavigationUrl().ConfigureAwait(false);
-            Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: {{DefaultUrl}}", defaultUrl);
+            Log.LogInformation($"{nameof(GetAutoNavigationUrl)}. Default url: {{DefaultUrl}}", defaultUrl);
 
             if (HostInfo.HostKind.IsApp()) {
                 var appNavigationTasks = AppNavigationQueue.DequeueAll(Services);
@@ -52,6 +52,34 @@ public abstract class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub
             Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: {{AutoNavigationUrl}}", url);
             return url;
         });
+
+    public Task DispatchNavigateTo(string url, AutoNavigationReason reason)
+    {
+        Log.LogInformation("DispatchNavigateTo, Url: '{Url}', Reason: '{Reason}'", url, reason);
+
+        // This method can be invoked from any synchronization context
+        Uri.TryCreate(url, UriKind.RelativeOrAbsolute, out var uri);
+        if (uri == null)
+            return Task.CompletedTask;
+
+        LocalUrl localUrl;
+        if (uri.IsAbsoluteUri) {
+            var tempLocalUrl = LocalUrl.FromAbsolute(url, UrlMapper);
+            if (tempLocalUrl is null)
+                return Task.CompletedTask;
+
+            localUrl = tempLocalUrl.Value;
+        }
+        else
+            localUrl = new LocalUrl(url, ParseOrNone.Option);
+
+        if (reason == AutoNavigationReason.Notification && !localUrl.IsChat()) {
+            Log.LogWarning("NavigateTo LocalUrl: '{LocalUrl}' for notification reason is forbidden", localUrl);
+            return Task.CompletedTask;
+        }
+
+        return DispatchNavigateTo(localUrl, reason);
+    }
 
     public Task DispatchNavigateTo(LocalUrl url, AutoNavigationReason reason)
     {

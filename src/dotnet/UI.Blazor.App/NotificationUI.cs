@@ -84,27 +84,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
     public Task NavigateToNotificationUrl(string url)
     {
         Log.LogInformation("NavigateToNotificationUrl, Url: {Url}", url);
-
-        // This method can be invoked from any synchronization context
-        Uri.TryCreate(url, UriKind.RelativeOrAbsolute, out var uri);
-        if (uri == null)
-            return Task.CompletedTask;
-
-        LocalUrl localUrl;
-        if (uri.IsAbsoluteUri) {
-            var tempLocalUrl = LocalUrl.FromAbsolute(url, UrlMapper);
-            if (tempLocalUrl is null)
-                return Task.CompletedTask;
-
-            localUrl = tempLocalUrl.Value;
-        }
-        else
-            localUrl = new LocalUrl(url, ParseOrNone.Option);
-
-        if (!localUrl.IsChat())
-            return Task.CompletedTask;
-
-        return AutoNavigationUI.DispatchNavigateTo(localUrl, AutoNavigationReason.Notification);
+        return AutoNavigationUI.DispatchNavigateTo(url, AutoNavigationReason.Notification);
     }
 
     public void SetIsGranted(bool? isGranted)

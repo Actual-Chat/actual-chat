@@ -10,6 +10,6 @@ public static class NotificationHandler
         if (!OrdinalEquals(NotificationHelper.NotificationViewAction, intent.Action))
             return;
 
-        AppNavigationQueue.EnqueueOrNavigateToNotificationUrl(intent.Data?.ToString());
+        AppNavigationQueue.EnqueueOrNavigateToUrl(intent.Data?.ToString(), AutoNavigationReason.Notification);
     }
 }
