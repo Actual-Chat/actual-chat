@@ -18,19 +18,19 @@ public static class AppNavigationQueue
         }
     }
 
-    public static void EnqueueOrNavigateToNotificationUrl(string? url)
+    public static void EnqueueOrNavigateToUrl(string? url, AutoNavigationReason reason)
     {
         if (url.IsNullOrEmpty()) {
-            Log.LogWarning("EnqueueOrNavigateToNotificationUrl: empty url -> ignore");
+            Log.LogWarning("EnqueueOrNavigateToUrl: empty url -> ignore");
             return;
         }
 
         Func<IServiceProvider, Task> taskFactory = c => {
-            var notificationUI = c.GetRequiredService<INotificationUI>();
-            return notificationUI.NavigateToNotificationUrl(url);
+            var autoNavigationUI = c.GetRequiredService<AutoNavigationUI>();
+            return autoNavigationUI.DispatchNavigateTo(url, reason);
         };
 
-        Log.LogInformation("EnqueueOrNavigateToNotificationUrl, Url: {Url}", url);
+        Log.LogInformation("EnqueueOrNavigateToUrl, Url: {Url}", url);
         lock (Queue) {
             if (ScopedServices is { } c) {
                 // Navigate right now
