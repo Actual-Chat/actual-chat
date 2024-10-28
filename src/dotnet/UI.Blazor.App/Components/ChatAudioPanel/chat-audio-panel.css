@@ -508,33 +508,27 @@ body.narrow .narrow-panel .rec-icon i {
 /*Record OFF*/
 .record-off .rec-icon.off {
     @apply opacity-100;
-    @apply scale-100;
 }
 .record-off .rec-icon.on {
     @apply opacity-0;
-    @apply scale-0;
 }
 
 /*Record ON*/
 .record-on .rec-icon.off {
     @apply opacity-0;
-    @apply scale-0;
 }
 .record-on .rec-icon.on {
     @apply opacity-100;
-    @apply scale-100;
 }
 
 /*Record OFF to ON*/
 .record-off-to-on .rec-icon.off {
     opacity: 0;
-    transform: scale(0);
     transition-duration: 0.15s;
-    transition-property: opacity, transform;
+    transition-property: opacity;
     transition-timing-function: ease-in-out;
     @starting-style {
         opacity: 1;
-        transform: scale(1);
     }
 }
 
@@ -544,14 +538,12 @@ body.narrow .narrow-panel .rec-icon i {
 }
 .record-on-to-off .rec-icon.off {
     @apply opacity-100;
-    @apply scale-100;
-    transition-property: transform, opacity;
-    transition-duration: 0.2s;
-    transition-delay: 0.2s;
+    transition-property: opacity;
+    transition-duration: 0.15s;
+    transition-delay: 0.15s;
     transition-timing-function: ease-in-out;
     @starging-style {
         opacity: 0;
-        transform: scale(0.1);
     }
 }
 .record-on-to-off.applying-changes .rec-icon.off {

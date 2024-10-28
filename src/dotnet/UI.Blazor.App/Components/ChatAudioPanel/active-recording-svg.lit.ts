@@ -58,13 +58,13 @@ class ActiveRecordingSvg extends LitElement {
             }
         }
         rect#record-rect-2.in-rest {
-            animation: wave 1.3s linear infinite;
+            animation: wave 1.3s steps(10, start) infinite;
         }
         rect#record-rect-3.in-rest {
-            animation: wave 1.3s linear infinite -1.1s;
+            animation: wave 1.3s steps(10, start) infinite -1.1s;
         }
         rect#record-rect-4.in-rest {
-            animation: wave 1.3s linear infinite -0.9s;
+            animation: wave 1.3s steps(10, start) infinite -0.9s;
         }
 
         @keyframes wave {
@@ -163,66 +163,95 @@ class ActiveRecordingSvg extends LitElement {
 
     protected render(): unknown {
         const { size, audioPowerState, isVoiceActive, isRecording, isVisible } = this;
-        if (isRecording === false)
-            return html``;
-
-        const display = getComputedStyle(this.shadowRoot?.host, null)?.display ?? 'none';
-        if (display === 'none')
-            return html``;
-
         const width = 10;
-        const shouldAnimate = isVoiceActive && isVisible;
-        const height1 = shouldAnimate ? audioPowerState.height1 : MIN_HEIGHT;
-        const height2 = shouldAnimate ? audioPowerState.height2 : MIN_HEIGHT;
-        const height3 = shouldAnimate ? audioPowerState.height3 : MIN_HEIGHT;
-        const offset1 = 50 - height1 / 2;
-        const offset2 = 50 - height2 / 2;
-        const offset3 = 50 - height3 / 2;
+        if (!this._isRecording) {
+            const offset = 50 - MIN_HEIGHT / 2;
+            return html`
+                <svg xmlns='http://www.w3.org/2000/svg' width='${size * 4}' height='${size * 4}'
+                     preserveAspectRatio='none'
+                     viewBox='0 0 24 24' fill='none' stroke='var(--white)'
+                     stroke-width='${width}%' stroke-linecap='round' stroke-linejoin='bevel'>
+                    <rect id='record-rect-2' class='in-rest'
+                          x='${width * 2.5}%'
+                          y='${offset}%'
+                          width='${width}%'
+                          height='${MIN_HEIGHT}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                    <rect id='record-rect-3' class='in-rest'
+                          x='${width * 4.5}%'
+                          y='${offset}%'
+                          width='${width}%'
+                          height='${MIN_HEIGHT}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                    <rect id='record-rect-4' class='in-rest'
+                          x='${width * 6.5}%'
+                          y='${offset}%'
+                          width='${width}%'
+                          height='${MIN_HEIGHT}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                </svg>
+            `;
+        } else {
+            const display = getComputedStyle(this.shadowRoot?.host, null)?.display ?? 'none';
+            if (display === 'none')
+                return html``;
 
-        const edgeDotCls = shouldAnimate  ? "active" : "non-active";
-        const centerDotCls = isVoiceActive || !isVisible ? "" : "in-rest";
+            const shouldAnimate = isVoiceActive && isVisible;
+            const height1 = shouldAnimate ? audioPowerState.height1 : MIN_HEIGHT;
+            const height2 = shouldAnimate ? audioPowerState.height2 : MIN_HEIGHT;
+            const height3 = shouldAnimate ? audioPowerState.height3 : MIN_HEIGHT;
+            const offset1 = 50 - height1 / 2;
+            const offset2 = 50 - height2 / 2;
+            const offset3 = 50 - height3 / 2;
 
-        return html`
-            <svg xmlns='http://www.w3.org/2000/svg' width='${size * 4}' height='${size * 4}'
-                 preserveAspectRatio='none'
-                 viewBox='0 0 24 24' fill='none' stroke='var(--white)'
-                 stroke-width='${width}%' stroke-linecap='round' stroke-linejoin='bevel'>
-                <rect id='record-rect-1' class='${edgeDotCls}'
-                      x='${width / 2}%'
-                      y='${offset3}%'
-                      width='${width}%'
-                      height='${height3}%'
-                      fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
-                </rect>
-                <rect id='record-rect-2' class='${centerDotCls}'
-                      x='${width * 2.5}%'
-                      y='${offset2}%'
-                      width='${width}%'
-                      height='${height2}%'
-                      fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
-                </rect>
-                <rect id='record-rect-3' class='${centerDotCls}'
-                      x='${width * 4.5}%'
-                      y='${offset1}%'
-                      width='${width}%'
-                      height='${height1}%'
-                      fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
-                </rect>
-                <rect id='record-rect-4' class='${centerDotCls}'
-                      x='${width * 6.5}%'
-                      y='${offset2}%'
-                      width='${width}%'
-                      height='${height2}%'
-                      fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
-                </rect>
-                <rect id='record-rect-5' class='${edgeDotCls}'
-                      x='${width * 8.5}%'
-                      y='${offset3}%'
-                      width='${width}%'
-                      height='${height3}%'
-                      fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
-                </rect>
-            </svg>
-        `;
+            const edgeDotCls = shouldAnimate ? "active" : "non-active";
+            const centerDotCls = isVoiceActive || !isVisible ? "" : "in-rest";
+
+            return html`
+                <svg xmlns='http://www.w3.org/2000/svg' width='${size * 4}' height='${size * 4}'
+                     preserveAspectRatio='none'
+                     viewBox='0 0 24 24' fill='none' stroke='var(--white)'
+                     stroke-width='${width}%' stroke-linecap='round' stroke-linejoin='bevel'>
+                    <rect id='record-rect-1' class='${edgeDotCls}'
+                          x='${width / 2}%'
+                          y='${offset3}%'
+                          width='${width}%'
+                          height='${height3}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                    <rect id='record-rect-2' class='${centerDotCls}'
+                          x='${width * 2.5}%'
+                          y='${offset2}%'
+                          width='${width}%'
+                          height='${height2}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                    <rect id='record-rect-3' class='${centerDotCls}'
+                          x='${width * 4.5}%'
+                          y='${offset1}%'
+                          width='${width}%'
+                          height='${height1}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                    <rect id='record-rect-4' class='${centerDotCls}'
+                          x='${width * 6.5}%'
+                          y='${offset2}%'
+                          width='${width}%'
+                          height='${height2}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                    <rect id='record-rect-5' class='${edgeDotCls}'
+                          x='${width * 8.5}%'
+                          y='${offset3}%'
+                          width='${width}%'
+                          height='${height3}%'
+                          fill='var(--white)' stroke-width='0' rx='5%' ry='5%'>
+                    </rect>
+                </svg>
+            `;
+        }
     }
 }
