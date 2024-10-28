@@ -91,7 +91,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     if (_jsRef == null)
                         throw StandardError.StateTransition(GetType(), "Start command should be called first.");
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Pause command to JS", _id);
-                    _ = _jsRef.InvokeVoidAsync("pause", CancellationToken.None);
+                    _ = _jsRef.InvokeVoidAsync("pause", CancellationToken.None)
+                        .Catch(Log, "Failed to invoke js player.pause()")
+                        .SuppressCancellationAwait();
                     break;
                 case ResumeCommand:
                     if (_jsRef == null && _whenPlayerCreated != null)
@@ -99,7 +101,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     if (_jsRef == null)
                         throw StandardError.StateTransition(GetType(), "Start command should be called first.");
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Resume command to JS", _id);
-                    _ = _jsRef.InvokeVoidAsync("resume", CancellationToken.None);
+                    _ = _jsRef.InvokeVoidAsync("resume", CancellationToken.None)
+                        .Catch(Log, "Failed to invoke js player.resume()")
+                        .SuppressCancellationAwait();
                     break;
                 case AbortCommand:
                     if (_jsRef == null && _whenPlayerCreated != null)
@@ -107,7 +111,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     if (_jsRef == null)
                         throw StandardError.StateTransition(GetType(), "Start command should be called first.");
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Abort command to JS", _id);
-                    _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None, true);
+                    _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None, true)
+                        .Catch(Log, "Failed to invoke js player.end(true)")
+                        .SuppressCancellationAwait();
                     break;
                 case EndCommand:
                     if (_jsRef == null && _whenPlayerCreated != null)
@@ -115,7 +121,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     if (_jsRef == null)
                         throw StandardError.StateTransition(GetType(), "Start command should be called first.");
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending End command to JS", _id);
-                    _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None, false);
+                    _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None, false)
+                        .Catch(Log, "Failed to invoke js player.end(false)")
+                        .SuppressCancellationAwait();
                     break;
                 default:
                     throw StandardError.NotSupported(command.GetType(), "Unsupported command type.");
@@ -129,7 +137,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     throw StandardError.StateTransition(GetType(), "Can't process media frame before initialization.");
 
                 var chunk = frame.Data;
-                _ = _jsRef.InvokeVoidAsync("frame", cancellationToken, chunk);
+                _ = _jsRef.InvokeVoidAsync("frame", cancellationToken, chunk)
+                    .Catch(Log, "Failed to invoke js player.frame()")
+                    .SuppressCancellationAwait(false);
                 try {
                     await _whenBufferLowSource.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
                 }
