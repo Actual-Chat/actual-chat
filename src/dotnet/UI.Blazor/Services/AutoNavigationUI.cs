@@ -58,23 +58,13 @@ public class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
         Log.LogInformation("DispatchNavigateTo, Url: '{Url}', Reason: '{Reason}'", url, reason);
 
         // This method can be invoked from any synchronization context
-        Uri.TryCreate(url, UriKind.RelativeOrAbsolute, out var uri);
-        if (uri == null)
+        if (!TryGetLocalUrl(url, out var localUrl)) {
+            Log.LogError("Could not get LocalUrl from url: '{Url}'", url);
             return Task.CompletedTask;
-
-        LocalUrl localUrl;
-        if (uri.IsAbsoluteUri) {
-            var tempLocalUrl = LocalUrl.FromAbsolute(url, UrlMapper);
-            if (tempLocalUrl is null)
-                return Task.CompletedTask;
-
-            localUrl = tempLocalUrl.Value;
         }
-        else
-            localUrl = new LocalUrl(url, ParseOrNone.Option);
 
         if (reason == AutoNavigationReason.Notification && !localUrl.IsChat()) {
-            Log.LogWarning("NavigateTo LocalUrl: '{LocalUrl}' for notification reason is forbidden", localUrl);
+            Log.LogWarning("NavigateTo LocalUrl: '{LocalUrl}' for notification reason is restricted", localUrl);
             return Task.CompletedTask;
         }
 
@@ -129,5 +119,28 @@ public class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
         catch (TimeoutException) {
             return currentUrl;
         }
+    }
+
+    private bool TryGetLocalUrl(string url, out LocalUrl localUrl)
+    {
+        Uri.TryCreate(url, UriKind.RelativeOrAbsolute, out var uri);
+        if (uri == null) {
+            localUrl = Links.Home;
+            return false;
+        }
+
+        if (uri.IsAbsoluteUri) {
+            var tempLocalUrl = LocalUrl.FromAbsolute(url, UrlMapper);
+            if (tempLocalUrl is null) {
+                localUrl = Links.Home;
+                return false;
+            }
+
+            localUrl = tempLocalUrl.Value;
+        }
+        else
+            localUrl = new LocalUrl(url, ParseOrNone.Option);
+
+        return true;
     }
 }
