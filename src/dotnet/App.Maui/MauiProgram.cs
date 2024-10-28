@@ -215,8 +215,7 @@ public static partial class MauiProgram
             .ConfigureFonts(fonts => {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             })
-            .ConfigureLifecycleEvents(ConfigurePlatformLifecycleEvents)
-            .UseAppLinks();
+            .ConfigureLifecycleEvents(ConfigurePlatformLifecycleEvents);
 
         var services = builder.Services;
 
