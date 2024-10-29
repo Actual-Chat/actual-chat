@@ -1,6 +1,7 @@
 using ActualChat.MLSearch.Db;
 using ActualLab.Redis;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel.ChatCompletion;
 using StackExchange.Redis;
 
@@ -16,7 +17,7 @@ internal interface IChatHistoryCache
 internal class ChatHistoryCache(
     RedisDb<MLSearchDbContext> redisDb,
     IDataProtectionProvider protectionProvider,
-    ChatbotServicesSettings settings
+    IOptions<ChatbotServicesSettings> settings
 ) : IChatHistoryCache
 {
     private const string RedisKeyPrefix = $".{nameof(ChatHistoryCache)}.";
@@ -27,7 +28,7 @@ internal class ChatHistoryCache(
         var key = GetKey(chatId);
         var value = DataProtector.Protect(JsonSerializer.Serialize(defaultHistory));
         var database = await redisDb.Database.Get(cancellationToken).ConfigureAwait(false);
-        var wasUpdated = await database.StringSetAsync(key, value, settings.ConversationTtl, false, When.NotExists)
+        var wasUpdated = await database.StringSetAsync(key, value, settings.Value.ConversationTtl, false, When.NotExists)
             .ConfigureAwait(false);
         if (wasUpdated)
             return defaultHistory;
@@ -43,7 +44,7 @@ internal class ChatHistoryCache(
         var key = GetKey(chatId);
         var value = DataProtector.Protect(JsonSerializer.Serialize(history));
         var database = await redisDb.Database.Get(cancellationToken).ConfigureAwait(false);
-        _ = await database.StringSetAsync(key, value, settings.ConversationTtl, false, When.Always)
+        _ = await database.StringSetAsync(key, value, settings.Value.ConversationTtl, false, When.Always)
             .ConfigureAwait(false);
     }
 
