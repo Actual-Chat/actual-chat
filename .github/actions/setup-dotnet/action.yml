@@ -20,7 +20,7 @@ runs:
       shell: bash
       run: |
         echo :: Installing dependencies
-        apt update && apt install -y --no-install-recommends libatomic1
+        sudo apt update && sudo apt install -y --no-install-recommends libatomic1
 
     - name: Install dotnet 8.0 SDK
       uses: actions/setup-dotnet@v4
