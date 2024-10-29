@@ -516,7 +516,6 @@ internal static class Program
                     "--no-restore",
                     "--blame-hang",
                     $"--blame-hang-timeout {timeoutSec}s",
-                    "--logger \"console;verbosity=detailed\"",
                     "--logger \"trx;LogFileName=Results.trx\"",
                     Utils.GithubLogger(),
                     $"-c {configuration}")
