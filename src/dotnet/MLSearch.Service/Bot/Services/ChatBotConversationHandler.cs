@@ -25,7 +25,7 @@ internal class ChatBotConversationHandler(
     IAuthorsBackend authors,
     IChatHistoryCache chatHistoryCache,
     ISearchTypeDetector searchTypeDetector,
-    ISearchBotPluginSet searchBotPluginSet)
+    SearchBotPluginSet searchBotPluginSet)
     : IBotConversationHandler
 {
     private const string AgentInstructions =
@@ -34,9 +34,9 @@ internal class ChatBotConversationHandler(
 
     As a search professional you have access to a variety of tools in your toolbox.
     But among others the tools below are critical to you mission.
-    - The FIND tool which full name is {{{nameof(SearchPlugin)}}}-{{{nameof(SearchPlugin.Find)}}}
+    - The FIND tool which full name is {{{PluginNames.SearchPlugin}}}-{{{nameof(ISearchPlugin.Find)}}}
         allows you to retrieve relevant content.
-    - The FORWARD tool which full name is {{{nameof(ForwardPlugin)}}}-{{{nameof(ForwardPlugin.ForwardResults)}}}
+    - The FORWARD tool which full name is {{{PluginNames.ForwardPlugin}}}-{{{nameof(IForwardPlugin.ForwardResults)}}}
         allows you forwarding relevant results to the user.
 
     In the very beginning you should decide whether it is a search request or user just tries to communicate.
@@ -64,7 +64,7 @@ internal class ChatBotConversationHandler(
     private const int reducerMessageCount = 10;
     private const int reducerThresholdCount = 10;
 
-    private static ChatCompletionAgent CreateAgent(Kernel kernel, ISearchBotPluginSet searchBotPluginSet)
+    private static ChatCompletionAgent CreateAgent(Kernel kernel, SearchBotPluginSet searchBotPluginSet)
     {
         kernel.Plugins.AddRange(searchBotPluginSet.Plugins);
 
@@ -83,13 +83,14 @@ internal class ChatBotConversationHandler(
     }
 
     private static PromptTemplateConfig CreateTemplateConfig()
-    {
-        return new PromptTemplateConfig(AgentInstructions) {
+        => new PromptTemplateConfig(AgentInstructions) {
             InputVariables = [
-                new() { Name = SearchBotArguments.Limit, IsRequired = true }
+                new() { Name = SearchBotArguments.ConversationId, IsRequired = true },
+                new() { Name = SearchBotArguments.UserId, IsRequired = true },
+                new() { Name = SearchBotArguments.SearchType, IsRequired = true },
+                new() { Name = SearchBotArguments.Limit, IsRequired = true },
             ]
         };
-    }
 
     private readonly ChatCompletionAgent _agent = CreateAgent(kernel, searchBotPluginSet);
 

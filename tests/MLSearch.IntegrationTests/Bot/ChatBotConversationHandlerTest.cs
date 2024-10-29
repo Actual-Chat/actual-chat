@@ -10,29 +10,6 @@ namespace ActualChat.MLSearch.IntegrationTests.Bot;
 
 public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@out)
 {
-    internal sealed class TestSearchToolPlugin
-    {
-        public int CallCount { get; private set; } = 0;
-
-        [KernelFunction]
-        [Description("Performs search for a content.")]
-        public Task<SearchResult[]> Find(
-            [Description("What to search for.")] string query,
-            [Description("Type of the search to run.")] SearchType searchType,
-            [Description("ID of ongoing search conversation.")] string conversationId,
-            [Description("ID of the user who runs the search.")] string userId,
-            [Description("Limit to the number of returned results.")] int? limit = 1
-        )
-        {
-            CallCount += 1;
-            var results = new [] {
-                new SearchResult { Text = $"Dumb {query} content", Link = "link1" },
-                new SearchResult { Text = $"Expected {searchType} cotent", Link = "link2" },
-            };
-            return Task.FromResult(results);
-        }
-    }
-
     [Fact]
     public async Task ChatBotConversationHandlerCallsTools()
     {
@@ -62,11 +39,25 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
         searchTypeDetector.Setup(x => x.Detect(It.IsAny<ChatMessageContent>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(SearchType.General));
 
-        var mockSearchPlugin = new TestSearchToolPlugin();
-        var searchBotPluginSet = new Mock<ISearchBotPluginSet>();
-        searchBotPluginSet.SetupGet(x => x.Plugins).Returns([
-            KernelPluginFactory.CreateFromObject(mockSearchPlugin, nameof(SearchPlugin)),
-        ]);
+        var mockSearchPlugin = new Mock<ISearchPlugin>();
+        mockSearchPlugin
+            .Setup(x => x.Find(
+                It.IsAny<string>(),
+                It.IsAny<SearchType>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<int>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, SearchType, string, string, int, CancellationToken>(
+                (query, searchType, conversationId, userId, limit, cancellationToken)
+                    => Task.FromResult<SearchResult[]>([
+                        new SearchResult { Text = $"Dumb {query} content", Link = "link1" },
+                        new SearchResult { Text = $"Expected {searchType} cotent", Link = "link2" },
+                    ])
+            );
+        var forwardPlugin = Mock.Of<IForwardPlugin>();
+
+        var searchBotPluginSet = new SearchBotPluginSet(mockSearchPlugin.Object, forwardPlugin);
 
         var conversationHandler = new ChatBotConversationHandler(
             CreateKernel(),
@@ -74,7 +65,7 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
             authors.Object,
             chatHistoryCache.Object,
             searchTypeDetector.Object,
-            searchBotPluginSet.Object);
+            searchBotPluginSet);
 
         // Act
         string[] userMessages = [
@@ -85,7 +76,16 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
         await conversationHandler.ExecuteAsync(ConvertToEntries(authorId, userMessages), [], cancellationSource.Token);
 
         // Assert
-        Assert.Equal(1, mockSearchPlugin.CallCount);
+        mockSearchPlugin.Verify(
+            x => x.Find(
+                It.Is<string>(x => x == "transport infrastructure"),
+                It.Is<SearchType>(x => x == SearchType.General),
+                It.Is<string>(x => x == chatId),
+                It.Is<string>(x => x == userId),
+                It.Is<int>(x => x == 5),
+                It.Is<CancellationToken>(x => x == cancellationSource.Token)),
+            Times.Once
+        );
     }
 
     private static Kernel CreateKernel()

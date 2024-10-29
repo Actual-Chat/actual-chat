@@ -1,7 +1,5 @@
-using System.ComponentModel;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
-using Microsoft.SemanticKernel;
 
 namespace ActualChat.MLSearch.Bot.Services;
 
@@ -11,24 +9,34 @@ internal sealed class SearchResult
     public required string Link { get; init; }
 }
 
+internal interface ISearchPlugin
+{
+    Task<SearchResult[]> Find(
+        string queryText,
+        SearchType searchType,
+        string conversationId,
+        string userId,
+        int limit = 1,
+        CancellationToken cancellationToken = default
+    );
+}
+
 internal sealed class SearchPlugin(
     IFilters filters,
     ISearchEngine<ChatSlice> searchEngine
-)
+) : ISearchPlugin
 {
     public const int MaxLimit = 5;
 
-    [KernelFunction]
-    [Description("Perform a search for content related to the specified query")]
     public async Task<SearchResult[]> Find(
-        [Description("What to search for.")] string queryText,
-        [Description("Type of the search to run.")] SearchType searchType,
-        [Description("ID of ongoing search conversation.")] string conversationId,
-        [Description("ID of the user who runs the search.")] string userId,
-        [Description("Limit to the number of returned results.")] int? limit = 1
+        string queryText,
+        SearchType searchType,
+        string conversationId,
+        string userId,
+        int limit = 1,
+        CancellationToken cancellationToken = default
     )
     {
-        var cancellationToken = CancellationToken.None;
         var chatId = ChatId.TryParse(conversationId, out var parsedChatId)
             ? parsedChatId
             : throw new InvalidOperationException("Malformed conversation id detected.");
@@ -42,7 +50,7 @@ internal sealed class SearchPlugin(
                 await filters.Keyword(queryText, cancellationToken).ConfigureAwait(false),
                 await filters.Chat(ConfigureFilter, cancellationToken).ConfigureAwait(false),
             ],
-            Limit = Math.Clamp(limit ?? 1, 1, MaxLimit),
+            Limit = Math.Clamp(limit, 1, MaxLimit),
         };
 
         var searchResult = await searchEngine.Find(query, cancellationToken).ConfigureAwait(false);

@@ -1,23 +1,20 @@
-using System.ComponentModel;
 using ActualChat.Chat;
-using Microsoft.SemanticKernel;
 
 namespace ActualChat.MLSearch.Bot.Services;
+
+internal interface IForwardPlugin
+{
+    Task ForwardResults(string summary, IReadOnlyList<string> links, string conversationId, CancellationToken cancellationToken = default);
+}
 
 internal sealed class ForwardPlugin(
     ICommander commander,
     UrlMapper urlMapper
-)
+): IForwardPlugin
 {
-    [KernelFunction]
-    [Description("Forward last search results to the user with a summary.")]
     public async Task ForwardResults(
-        [Description("Search results summary.")] string summary,
-        [Description("List of links to the relevant results.")] IReadOnlyList<string> links,
-        [Description("ID of ongoing search conversation.")] string conversationId
-    )
+        string summary, IReadOnlyList<string> links, string conversationId, CancellationToken cancellationToken = default)
     {
-        var cancellationToken = CancellationToken.None;
         var chatId = ChatId.TryParse(conversationId, out var parsedChatId)
             ? parsedChatId
             : throw new InvalidOperationException("Malformed conversation id detected.");
