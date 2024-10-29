@@ -16,6 +16,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Install dependencies
+      shell: bash
+      run: |
+        echo :: Installing dependencies
+        apt update && apt install -y --no-install-recommends libatomic1
+
     - name: Install dotnet 8.0 SDK
       uses: actions/setup-dotnet@v4
       with:

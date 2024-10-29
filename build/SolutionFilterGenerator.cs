@@ -13,7 +13,10 @@ public static class SolutionFilterGenerator
     {
         var files = Directory.EnumerateFiles("src/dotnet", "*.csproj", SearchOption.AllDirectories)
             .Concat(Directory.EnumerateFiles("tests", "*.csproj", SearchOption.AllDirectories))
-            .Where(x => !x.Contains("Maui", StringComparison.OrdinalIgnoreCase))
+            .Where(x => !x.Contains("App.Maui", StringComparison.OrdinalIgnoreCase) 
+                && !x.Contains("App.Wasm", StringComparison.OrdinalIgnoreCase)
+                && !x.Contains("App.Server", StringComparison.OrdinalIgnoreCase)
+                && !x.Contains("AppPack", StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Replace('/', '\\'))
             .ToList();
         files.Sort();
