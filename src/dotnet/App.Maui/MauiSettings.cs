@@ -43,7 +43,6 @@ public static class MauiSettings
         else
             LocalHost = "0.0.0.0";
 #else
-#else
         AppKind = AppKind.Unknown;
 #endif
     }
