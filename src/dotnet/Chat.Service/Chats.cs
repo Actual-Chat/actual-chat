@@ -18,6 +18,8 @@ public class Chats(IServiceProvider services) : IChats
     private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
     private IChatsBackend Backend { get; } = services.GetRequiredService<IChatsBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
+    private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
+        = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
 
     private ICommander Commander { get; } = services.Commander();
     private ILogger Log { get; } = services.LogFor<Chats>();
@@ -151,10 +153,51 @@ public class Chats(IServiceProvider services) : IChats
     // [ComputeMethod]
     public virtual async Task<ReadPositionsStat> GetReadPositionsStat(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
-        chat.Rules.Permissions.Require(ChatPermissions.Read);
+        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return new ReadPositionsStat(chatId, long.MaxValue, []);
         // Stat is the same for all chat members, but we had to check read permissions first.
         return await GetReadPositionsStatInternal(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<bool> IsEntryReadByMentionedUser(Session session, TextEntryId textEntryId, MentionId mentionId, CancellationToken cancellationToken)
+    {
+        var chatId = textEntryId.ChatId;
+        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return false;
+
+        var chatEntry = await this.GetEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
+        if (chatEntry is null)
+            return false;
+
+        var mentionIds = await GetMentionIds().ConfigureAwait(false);
+        if (!mentionIds.Contains(mentionId)) // Validate given mention id is used in the chat entry.
+            return false;
+
+        if (!mentionId.IsUser(out var userId) && mentionId.IsAuthor(out var authorId)) {
+            var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+            if (author is not null)
+                userId = author.UserId;
+        }
+        if (userId.IsNone)
+            return false;
+
+        if (userId == chat.Rules.Account.Id)
+            return true; // Mention refers to the chat entry author.
+
+        var readPosition = await ChatPositionsBackend.Get(userId, chatId, ChatPositionKind.Read, cancellationToken).ConfigureAwait(false);
+        var hasRead = readPosition.EntryLid >= chatEntry.LocalId;
+        // TODO: Do not track dependency after resulting to true.
+        return hasRead;
+
+        async Task<HashSet<MentionId>> GetMentionIds()
+        {
+            var chatMarkupHub = ChatMarkupHubFactory[chatEntry.ChatId];
+            var markup = await chatMarkupHub.GetMarkup(chatEntry, MarkupConsumer.Notification, cancellationToken).ConfigureAwait(false);
+            return MentionExtractor.Instance.GetMentionIds(markup);
+        }
     }
 
     // [CommandHandler]
@@ -722,11 +765,11 @@ public class Chats(IServiceProvider services) : IChats
 
     // Private methods
 
-    public virtual async Task<PrincipalId> GetOwnPrincipalId(
+    private async Task<PrincipalId> GetOwnPrincipalId(
         Session session, ChatId chatId,
         CancellationToken cancellationToken)
     {
-        // NOTE(DF): PrincipalId seems to be a legacy stuff. Now we have userId even for guest users.
+        // NOTE(DF): PrincipalId seems to be legacy stuff. Now we have userId even for guest users.
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author != null)
             return new PrincipalId(author.Id, AssumeValid.Option);

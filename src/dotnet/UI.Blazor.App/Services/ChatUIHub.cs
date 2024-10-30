@@ -3,6 +3,7 @@ using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.MediaPlayback;
 using ActualChat.MLSearch;
+using ActualChat.Notification;
 using ActualChat.Streaming;
 using ActualChat.Users;
 
@@ -29,6 +30,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     private ChatEditorUI? _chatEditorUI;
     private ChatListUI? _chatListUI;
     private ChatAudioUI? _chatAudioUI;
+    private INotifications? _notifications;
     private NotificationUI? _notificationUI;
     private LanguageUI? _languageUI;
     private EditMembersUI? _editMembersUI;
@@ -58,6 +60,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     public IContacts Contacts => _contacts ??= Services.GetRequiredService<IContacts>();
     public IUserPresences UserPresences => _userPresences ??= Services.GetRequiredService<IUserPresences>();
     public IChatUsages ChatUsages => _chatUsages ??= Services.GetRequiredService<IChatUsages>();
+    public INotifications Notifications => _notifications ??= Services.GetRequiredService<INotifications>();
     public ChatActivity ChatActivity => _chatActivity ??= Services.GetRequiredService<ChatActivity>();
     public ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
     public ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();

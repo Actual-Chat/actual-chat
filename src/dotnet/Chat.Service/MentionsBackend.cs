@@ -86,7 +86,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
     private async Task<HashSet<MentionId>> GetMentionIds(ChatEntry entry, CancellationToken cancellationToken)
     {
         var markup = MarkupParser.Parse(entry.Content);
-        var mentionIds = new MentionExtractor().GetMentionIds(markup);
+        var mentionIds = MentionExtractor.Instance.GetMentionIds(markup);
 
         var mentionIdFromReply = await GetMentionIdFromReply(entry, cancellationToken).ConfigureAwait(false);
         if (!mentionIdFromReply.IsNone)

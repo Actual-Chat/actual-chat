@@ -9,6 +9,9 @@ public interface INotifications : IComputeService
     [ComputeMethod(MinCacheDuration = 10)]
     Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
         Session session, Moment minSentAt, CancellationToken cancellationToken);
+    [ComputeMethod(MinCacheDuration = 10)]
+    Task<bool> HasNotifiedMentionedMembers(
+        Session session, TextEntryId textEntryId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task OnHandle(Notifications_Handle command, CancellationToken cancellationToken);
@@ -18,6 +21,8 @@ public interface INotifications : IComputeService
     Task OnDeregisterDevice(Notifications_DeregisterDevice command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnNotifyMembers(Notifications_NotifyMembers command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnNotifyMentionedMembers(Notifications_NotifyMentionedMembers command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -48,4 +53,11 @@ public sealed partial record Notifications_DeregisterDevice(
 public sealed partial record Notifications_NotifyMembers(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId
+) : ISessionCommand<Unit>, IApiCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Notifications_NotifyMentionedMembers(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] TextEntryId TextEntryId
 ) : ISessionCommand<Unit>, IApiCommand;

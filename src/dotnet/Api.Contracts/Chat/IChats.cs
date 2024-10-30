@@ -49,6 +49,9 @@ public interface IChats : IComputeService
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
     Task<ReadPositionsStat> GetReadPositionsStat(Session session, ChatId chatId, CancellationToken cancellationToken);
 
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
+    Task<bool> IsEntryReadByMentionedUser(Session session, TextEntryId textEntryId, MentionId mentionId, CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]

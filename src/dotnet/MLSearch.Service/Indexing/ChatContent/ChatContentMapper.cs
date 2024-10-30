@@ -41,7 +41,7 @@ internal class ChatContentMapper(
         replyToEntries.AddRange(uniqueReplyToEntries);
 
         // -- Mentions
-        var mentionExtractor = new MentionExtractor();
+        var mentionExtractor = MentionExtractor.Instance;
         principalSet.Clear();
         principalSet.AddRange(sourceEntries.Entries
             .Where(e => e.HasMarkup)
