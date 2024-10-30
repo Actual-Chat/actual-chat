@@ -362,9 +362,9 @@
   <!-- iOS: Debug configuration -->
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net9.0-ios|AnyCPU'">
     <CreatePackage>false</CreatePackage>
-    <CodesignProvision>VS: chat.actual.dev.app Development</CodesignProvision>
+    <CodesignProvision>chat.actual.dev.app</CodesignProvision>
     <CodesignKey>iPhone Developer</CodesignKey>
-    <ProvisioningType>automatic</ProvisioningType>
+    <ProvisioningType>manual</ProvisioningType>
     <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
