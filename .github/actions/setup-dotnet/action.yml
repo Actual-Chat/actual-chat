@@ -49,13 +49,6 @@ runs:
         echo :: Installing workloads from rollback-file version ${{ inputs.maui-rollback-version }}
         dotnet workload restore --from-rollback-file https://github.com/dotnet/maui/releases/download/${{ inputs.maui-rollback-version }}/${{ inputs.maui-rollback-version }}.json
 
-    - name: Install workloads
-      shell: bash
-      if: ${{ inputs.restore-workloads == 'true' && inputs.maui-rollback-version == '' }}
-      run: |
-        echo :: Installing workloads
-        dotnet workload restore
-
     - name: Restore nuget packages
       shell: bash
       if: ${{ inputs.restore == 'true' }}
