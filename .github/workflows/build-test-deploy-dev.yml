@@ -775,6 +775,9 @@ jobs:
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
 
+      - name: Install workloads
+        run: dotnet workload install maui android maui-android
+
       - name: Replace git+ssh://git@ to https://
         run: (Get-Content src/nodejs/package-lock.json) -replace 'git\+ssh:\/\/git@', 'https://' | Set-Content src/nodejs/package-lock.json
 
@@ -924,6 +927,9 @@ jobs:
 
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
+
+      - name: Install workloads
+        run: dotnet workload install maui maui-tizen
 
       - name: Build app package
         id: build-app-pkg
