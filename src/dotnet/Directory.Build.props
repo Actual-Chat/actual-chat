@@ -144,6 +144,7 @@
     <TrimmableAssembly Include="TimeZoneNames" />
     <TrimmableAssembly Include="TimeZoneConverter" />
     <TrimmableAssembly Include="ZString" />
+    <TrimmableAssembly Include="Pidgin" />
   </ItemGroup>
 
   <!-- We disable SetEmbeddedFilesFromSourceControlManagerUntrackedFiles, that's why we embed this file in pdb manually -->

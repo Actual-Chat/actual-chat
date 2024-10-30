@@ -379,6 +379,7 @@
     <UseInterpreter>true</UseInterpreter>
     <!--<MTouchInterpreter>-ActualChat,ActualChat.Chat.Contracts,ActualChat.Users.Contracts,ActualChat.Contacts.Contracts,ActualLab.Interception</MTouchInterpreter>-->
     <CreatePackage>false</CreatePackage>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
   </PropertyGroup>
 
   <!-- Windows build properties -->
