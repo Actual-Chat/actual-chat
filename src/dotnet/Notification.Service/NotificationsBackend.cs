@@ -26,6 +26,8 @@ public class NotificationsBackend(IServiceProvider services)
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private IDbEntityResolver<string, DbNotification> DbNotificationResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbNotification>>();
+    private IDbEntityResolver<string, DbManualNotification> DbManualNotificationResolver { get; }
+        = services.GetRequiredService<IDbEntityResolver<string, DbManualNotification>>();
 
     private IUserPresences UserPresences { get; } = services.GetRequiredService<IUserPresences>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
@@ -43,6 +45,13 @@ public class NotificationsBackend(IServiceProvider services)
     {
         var dbNotification = await DbNotificationResolver.Get(notificationId, cancellationToken).ConfigureAwait(false);
         return dbNotification?.ToModel();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ManualNotification?> Get(ManualNotificationId notificationId, CancellationToken cancellationToken)
+    {
+        var dbManualNotification = await DbManualNotificationResolver.Get(notificationId, cancellationToken).ConfigureAwait(false);
+        return dbManualNotification?.ToModel();
     }
 
     // [ComputeMethod]
@@ -190,6 +199,59 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
+    public virtual async Task<bool> OnUpsertManualNotification(
+        NotificationsBackend_UpsertManualNotification command,
+        CancellationToken cancellationToken)
+    {
+        var notification = command.Notification;
+        var sid = notification.Id.Value;
+
+        if (Invalidation.IsActive) {
+            // Created or Updated
+            _ = Get(notification.Id, default);
+            return default;
+        }
+
+        try {
+            var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+            await using var __ = dbContext.ConfigureAwait(false);
+
+            var dbNotification = await dbContext.ManualNotifications.ForUpdate()
+                .FirstOrDefaultAsync(e => e.Id == sid, cancellationToken)
+                .ConfigureAwait(false);
+
+            var now = Clocks.SystemClock.Now;
+            if (dbNotification == null) {
+                // Create
+                notification = notification with {
+                    Version = VersionGenerator.NextVersion(),
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                };
+                dbNotification = new DbManualNotification();
+                dbNotification.UpdateFrom(notification);
+                dbContext.ManualNotifications.Add(dbNotification);
+            }
+            else {
+                // Update
+                notification = notification with {
+                    Version = VersionGenerator.NextVersion(notification.Version),
+                    UpdatedAt = now
+                };
+                dbNotification.UpdateFrom(notification);
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateConcurrencyException e) when(e.Entries.All(en => en.State == EntityState.Added)) {
+            // Notification has already been created for another message, let's skip
+            return false;
+        }
+
+        return true;
+    }
+
+    // [CommandHandler]
     public virtual async Task OnRegisterDevice(NotificationsBackend_RegisterDevice command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
@@ -314,19 +376,21 @@ public class NotificationsBackend(IServiceProvider services)
 
         var (userId, chatId, lastEntryLocalId) = command;
         var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
+        await NotifyMembersInternal(userId, chatId, lastEntryLocalId, userIds, cancellationToken);
+    }
 
-        var author = await AuthorsBackend
-            .GetByUserId(chatId, userId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
-            .Require()
-            .ConfigureAwait(false);
+    // [CommandHandler]
+    public virtual async Task OnNotifyMentionedMembers(NotificationsBackend_NotifyMentionedMembers command, CancellationToken cancellationToken)
+    {
+        var (userId, textEntryId, mentionedUserIds) = command;
+        var chatId = textEntryId.ChatId;
 
-        var now = Clocks.CoarseSystemClock.Now;
-        var similarityKey = now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
-        var content = $"{author.Avatar.Name} asks for attention";
-        var lastEntryId = (ChatEntryId)new TextEntryId(chatId, lastEntryLocalId, AssumeValid.Option);
-        await EnqueueMessageRelatedNotifications(
-                chatId, lastEntryId, author, content, NotificationKind.GetAttention, similarityKey, userIds, cancellationToken)
-            .ConfigureAwait(false);
+        var subscribedUserIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
+        var userIds = subscribedUserIds.Intersect(mentionedUserIds).ToImmutableArray();
+        if (userIds.Length == 0)
+            return;
+
+        await NotifyMembersInternal(userId, chatId, textEntryId.LocalId, userIds, cancellationToken).ConfigureAwait(false);
     }
 
     // Event handlers
@@ -530,7 +594,7 @@ public class NotificationsBackend(IServiceProvider services)
     {
         var chatMarkupHub = ChatMarkupHubFactory[entry.ChatId];
         var markup = await chatMarkupHub.GetMarkup(entry, consumer, cancellationToken).ConfigureAwait(false);
-        var mentionIds = new MentionExtractor().GetMentionIds(markup);
+        var mentionIds = MentionExtractor.Instance.GetMentionIds(markup);
         return (markup.ToReadableText(consumer), mentionIds);
     }
 
@@ -556,5 +620,22 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
         var devices = dbDevices.Select(d => d.ToModel()).ToList();
         return devices;
+    }
+
+    private async Task NotifyMembersInternal(UserId userId, ChatId chatId, long textEntryLid, IReadOnlyList<UserId> userIds,
+        CancellationToken cancellationToken)
+    {
+        var author = await AuthorsBackend
+            .GetByUserId(chatId, userId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
+
+        var now = Clocks.CoarseSystemClock.Now;
+        var similarityKey = now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
+        var content = $"{author.Avatar.Name} asks for attention";
+        var lastEntryId = (ChatEntryId)new TextEntryId(chatId, textEntryLid, AssumeValid.Option);
+        await EnqueueMessageRelatedNotifications(
+                chatId, lastEntryId, author, content, NotificationKind.GetAttention, similarityKey, userIds, cancellationToken)
+            .ConfigureAwait(false);
     }
 }

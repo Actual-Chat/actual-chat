@@ -24,7 +24,7 @@
     var forwardedBorderClass = isForward && !showAuthor ? "forwarded-border" : "";
     var marginClass = isBlockStart ? "mt-2" : "";
     var unreadBlockClass = isUnreadByOthersBlockStart ? "unread-block" : "";
-    var ownMessageClass = m.OwnAuthorId == message.Entry.AuthorId ? "own-message" : "";
+    var ownMessageClass = m.IsOwnMessage ? "own-message" : "";
     var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";
     var repliedClass = m.IsReplyTarget ? "replied-message" : "";
     var selectedClass = m.IsSelected ? "replied-message" : "";
@@ -196,6 +196,14 @@
             @if (entry.HasReactions) {
                 <MessageReactions Entry="@entry"/>
             }
+            @if (m.MentionedAuthorIds is not null && m.MentionedAuthorIds.Value.Length > 0) {
+                <div class="notify-mentioned-members-line"> @* Takes full line *@
+                    <NotifyMentionedMembers
+                        ChatContext="@ChatContext"
+                        AuthorIds="m.MentionedAuthorIds.Value"
+                        ChatEntry="@Entry" />
+                </div>
+            }
         </div>
     </div>
 </div>
@@ -256,13 +264,14 @@
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         var initialValue = Model.None;
-        var ownAuthorId = OwnAuthorId;
         var repliedEntry = Entry.RepliedEntryLid.HasValue ? ChatEntry.Loading : null;
-        if (!ownAuthorId.IsNone || repliedEntry != null)
+        var isOwnMessage = Entry.AuthorId == OwnAuthorId;
+        if (isOwnMessage || repliedEntry != null) {
             initialValue = new() {
-                OwnAuthorId = ownAuthorId,
+                IsOwnMessage = isOwnMessage,
                 RepliedEntry = repliedEntry,
             };
+        }
         return new() {
             InitialValue = initialValue,
             Category = ComputedStateComponent.GetStateCategory(GetType()),
@@ -276,11 +285,20 @@
         var chatMessage = Message;
         var ownAuthor = OwnAuthor;
         var ownAuthorId = OwnAuthor?.Id ?? AuthorId.None;
+        var isOwnMessage = entry.AuthorId == OwnAuthorId;
 
         var markup = await _markupTask.ConfigureAwait(false);
         var repliedEntry = await GetRepliedEntry(cancellationToken).ConfigureAwait(false);
         var hasAnyMentions = HasAnyMentions(markup);
         var isOwnAuthorMentioned = IsMentioned(markup, repliedEntry, ownAuthorId, hasAnyMentions);
+        ImmutableArray<AuthorId>? mentionedAuthorIds = null;
+        if (isOwnMessage && hasAnyMentions) {
+            var mentionIds = MentionExtractor.Instance.GetMentionIds(markup);
+            mentionedAuthorIds = mentionIds
+                .Where(c => c.Kind == PrincipalKind.Author && c.AuthorId != ownAuthorId)
+                .Select(c => c.AuthorId)
+                .ToImmutableArray();
+        }
         var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(cancellationToken).ConfigureAwait(false);
         var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, Id: var repliedEntryId } && repliedEntryId == entry.Id;
         var isHighlighted = entry.Id == await ChatUI.HighlightedEntryId.Use(cancellationToken).ConfigureAwait(false);
@@ -291,7 +309,7 @@
             if (forwardedChat != null)
                 forwardedChatEntryId = entry.ForwardedChatEntryId;
             else {
-                // May be chat was copied to place and removed afterward. Try to find out copied chat.
+                // Maybe chat was copied to place and removed afterward. Try to find out copied chat.
                 var replacementChatId = await Chats.GetForwardChatReplacement(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken).ConfigureAwait(false);
                 if (!replacementChatId.IsNone) {
                     forwardedChat = await Chats.Get(Session, replacementChatId, cancellationToken).ConfigureAwait(false);
@@ -304,8 +322,8 @@
         var selectedChatEntries = await SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
         var (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(entry, prevEntry, ownAuthorId, cancellationToken);
         var result = new Model {
-            OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,
+            IsOwnMessage = isOwnMessage,
             IsHighlighted = isHighlighted,
             IsReplyTarget = isReplyTarget,
             IsSelected = selectedChatEntries.Contains(entry.Id),
@@ -316,6 +334,7 @@
             ForwardedPeerAuthor = forwardedPeerAuthor,
             IsUnreadByOthers = isUnreadByOthers,
             IsUnreadByOthersBlockStart = isUnreadBlockStart,
+            MentionedAuthorIds = mentionedAuthorIds,
         };
         return result.Equals(_rendered) ? _rendered! : result;
 
@@ -481,7 +500,7 @@
     public sealed record Model {
         public static readonly Model None = new();
 
-        public AuthorId OwnAuthorId { get; init; }
+        public bool IsOwnMessage { get; init; }
         public bool IsHighlighted { get; init; }
         public bool IsReplyTarget { get; init; }
         public bool IsOwnAuthorMentioned { get; init; }
@@ -493,5 +512,6 @@
         public Author? ForwardedPeerAuthor { get; init; }
         public bool IsUnreadByOthers { get; init; }
         public bool IsUnreadByOthersBlockStart { get; init; }
+        public ImmutableArray<AuthorId>? MentionedAuthorIds { get; init; }
     }
 }
