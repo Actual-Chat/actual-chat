@@ -1,6 +1,7 @@
 /* NOTE(AY): Andrey, fix all markup here */
 .settings-panel {
-    @apply flex-1 flex-x overflow-hidden;
+    @apply flex-1 flex-x;
+    @apply overflow-hidden;
 }
 .settings-panel > .c-tabs {
     @apply flex-1 md:flex-none flex-y;
@@ -40,13 +41,14 @@
 
 /* Tab items */
 .settings-panel > .c-tabs .c-tab-items {
-    @apply flex-1 flex-y overflow-x-hidden overflow-y-auto;
+    @apply flex-1 flex-y;
     @apply px-2 mb-1;
-    @apply custom-scrollbar;
+    @apply custom-scrollbar overflow-x-hidden overflow-y-auto;
 }
 .settings-panel > .c-tabs .c-tab-item {
     @apply flex-none flex-x;
-    @apply rounded-lg cursor-pointer;
+    @apply rounded-lg;
+    @apply cursor-pointer;
 }
 .settings-panel > .c-tabs .c-tab-item.on {
     @apply md:bg-selected;
@@ -66,8 +68,8 @@ body.hoverable .settings-panel > .c-tabs .c-tab-item:hover i {
 }
 .settings-panel > .c-tabs .c-tab-item .btn {
     @apply flex-1 flex-x;
-    @apply border-none;
     @apply md:max-w-full; /* To override this style defined for .btn */
+    @apply border-none;
     @apply text-02;
 }
 .settings-panel > .c-tabs .c-tab-item .btn .btn-content {
@@ -93,10 +95,10 @@ body.hoverable .settings-panel > .c-tabs .c-tab-item:hover i {
 
 /* Tab content */
 .settings-tab {
-    @apply flex-1 flex-x overflow-y-auto;
+    @apply flex-1 flex-x;
     @apply pb-4;
     @apply bg-02 md:bg-01;
-    @apply custom-scrollbar;
+    @apply custom-scrollbar overflow-y-auto;
 }
 .tab-inner {
     @apply flex-1 flex-y items-center;
@@ -109,40 +111,34 @@ body.hoverable .settings-panel > .c-tabs .c-tab-item:hover i {
     @apply flex-y gap-y-2;
     @apply p-2;
     @apply rounded-lg;
-    @apply bg-tile shadow-modal-header-btn;
+    @apply bg-tile;
+    @apply shadow-modal-header-btn;
 }
 body.hoverable .tile:hover {
     @apply shadow-lg;
 }
 .tile-topic {
     @apply pt-2 -mb-2;
-    @apply bg-transparent font-medium text-02;
+    @apply bg-transparent;
+    @apply font-medium text-02;
 }
 .tile-item {
     @apply flex-x items-center justify-center gap-x-2;
     @apply h-10 w-full;
     @apply rounded-lg;
-    @apply hover:bg-hover;
     @apply pr-2;
 }
-.tile-item.unhovered:hover {
-    @apply bg-transparent;
-    @apply cursor-default;
+body.hoverable .tile-item.clickable:hover {
+    @apply bg-hover;
 }
-.tile-item.unhovered:hover * {
-    @apply cursor-default;
-}
-.tile-item.unselected {
-    @apply hover:bg-transparent;
-}
-.tile-item.unselected:not(.tile-item.first-tile-item) {
-    @apply pr-0;
-}
-.tile-item.clickable,
-.tile-item.clickable span {
+body.hoverable .tile-item.clickable,
+body.hoverable .tile-item.clickable span {
     @apply cursor-pointer;
 }
-body.hoverable .tile-item.item-danger:hover {
+body.hoverable .tile-item.clickable.transparent:hover {
+    @apply bg-transparent;
+}
+body.hoverable .tile-item.clickable.item-danger:hover {
     @apply bg-menuitem-hover-warning;
 }
 .tile-item.item-danger .tile-item-icon,
@@ -156,9 +152,6 @@ body.hoverable .tile-item.item-danger:hover {
     @apply flex-none flex justify-center;
     @apply min-w-10 max-w-10;
     @apply text-03;
-}
-.tile-item.unselected:not(.tile-item.first-tile-item) .tile-item-icon {
-    @apply -ml-2;
 }
 .first-tile-item .tile-item-icon {
     @apply justify-start;
@@ -190,8 +183,8 @@ body.hoverable .tile-btn:hover {
 }
 .add-avatar-btn.btn {
     @apply justify-start;
-    @apply w-auto;
-    @apply h-12 px-4;
+    @apply w-auto h-12;
+    @apply px-4;
     @apply rounded-lg;
     @apply bg-[var(--hover-after-primary)];
     @apply text-primary;
@@ -246,13 +239,6 @@ body.hoverable .tile-btn:hover {
     @apply hidden;
 }
 
-.tile-item.tile-item-share {
-    @apply bg-transparent;
-    @apply cursor-pointer;
-}
-.tile-item.tile-item-share:hover {
-    @apply bg-hover;
-}
 .tile-item.tile-item-share i {
     @apply text-primary;
 }
@@ -261,9 +247,9 @@ body.hoverable .tile-btn:hover {
 }
 
 .tile-item-my-account-link {
+    @apply h-auto;
     @apply p-2;
     @apply border border-separator rounded-xl;
-    @apply h-auto;
 }
 .tile-item-my-account-link .tile-item-icon {
     @apply max-w-none;
@@ -278,7 +264,6 @@ body.hoverable .tile-btn:hover {
 .theme-toggle .settings-tab-item .c-comment {
     @apply absolute left-36;
 }
-
 
 .settings-tab:has(.c-docs) .settings-tab-content,
 .settings-tab:has(.c-docs) .settings-tab-header {

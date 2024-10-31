@@ -2,8 +2,8 @@
 @{
     var ssbIsSelected = BlazorModeHelper.IsBlazorServer;
     var wasmIsSelected = !ssbIsSelected;
-    var ssbClass = ssbIsSelected ? "selected" : "";
-    var wasmClass = wasmIsSelected ? "selected" : "";
+    var ssbClass = ssbIsSelected ? "selected transparent" : "transparent";
+    var wasmClass = wasmIsSelected ? "selected transparent" : "transparent";
     // Use NoStateHasChanged since ChangeMode will cause page reload anyway, no need to re-render component.
     var ssbClickHandler = !ssbIsSelected ? NoStateHasChanged.EventCallback(() => ChangeMode(true)) : default;
     var wasmClickHandler = !wasmIsSelected ? NoStateHasChanged.EventCallback(() => ChangeMode(false)): default;

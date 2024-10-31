@@ -78,6 +78,10 @@
     @apply text-justify;
     @apply text-text-1;
 }
+.docs-tab .tab-panel .tab a {
+    @apply text-primary;
+    @apply underline decoration-from-font underline-offset-2;
+}
 .docs-tab .settings-tab-header {
     @apply md:w-full md:max-w-160;
     @apply md:px-6;
