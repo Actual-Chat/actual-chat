@@ -8,6 +8,7 @@ public class Notifications(IServiceProvider services) : INotifications
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private INotificationsBackend Backend { get; } = services.GetRequiredService<INotificationsBackend>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
+    private IPlaces Places { get; } = services.GetRequiredService<IPlaces>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private ILogger Log { get; } = services.LogFor<Notifications>();
@@ -116,6 +117,16 @@ public class Notifications(IServiceProvider services) : INotifications
         var author = chat.Rules.Author.Require();
         chat.Rules.Require(ChatPermissions.Write);
         var account = chat.Rules.Account;
+
+        var isPublicAccessible = chat.IsPublic;
+        if (isPublicAccessible && chatId.IsPlaceChat) {
+            var place = await Places.Get(session, chatId.PlaceId, cancellationToken).ConfigureAwait(false);
+            if (place is { IsPublic: false })
+                isPublicAccessible = false;
+        }
+        if (isPublicAccessible)
+            throw StandardError.Constraint("Notify members is not allowed in public accessible chats.");
+
 
         if (!chatId.IsPeerChat(out _)) {
             var authorIds = await Authors.ListAuthorIds(session, chatId, cancellationToken).ConfigureAwait(false);
