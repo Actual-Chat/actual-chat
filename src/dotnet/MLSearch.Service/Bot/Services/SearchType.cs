@@ -1,7 +1,7 @@
 namespace ActualChat.MLSearch.Bot.Services;
 
 [Flags]
-public enum SearchType
+internal enum SearchType
 {
     None = 0,
     Public = 1,

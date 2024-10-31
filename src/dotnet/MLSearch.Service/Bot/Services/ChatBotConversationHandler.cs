@@ -24,7 +24,7 @@ internal class ChatBotConversationHandler(
     ICommander commander,
     IAuthorsBackend authors,
     IChatHistoryCache chatHistoryCache,
-    ISearchTypeDetector searchTypeDetector,
+    IUserIntentDetector userIntentDetector,
     SearchBotPluginSet searchBotPluginSet)
     : IBotConversationHandler
 {
@@ -45,12 +45,15 @@ internal class ChatBotConversationHandler(
     briefly respond to that message with an information what is your primary goal asking about a
     relevant input.
 
+    If user requests for reset search or start over please mention you understand their intent.
+
     In the case user asks for search, your first objective is to call FIND tool with proper arguments
     and you are supposed extracting those from the conversation history.
     Once you have the FIND tool results as a list of Text and Link pairs
     you second goal is to forward those results to the user. Please summarize found Texts and pass
     that summary along with a list of Links to the FORWARD tool.
     Your final message should be a concise report you completed the search and ready for the next questions.
+    Please briefly appologise if search results are empty and ask user to change search parameters.
     IMPORTANT!: You always have access to either public or private chats of the current user, so don't
     hesitate calling FIND tool every time user asks for search.
 
@@ -122,10 +125,15 @@ internal class ChatBotConversationHandler(
 
         var searchType = default(SearchType?);
         while (userMessages.TryPop(out var message)) {
+            var userIntent = await userIntentDetector.Detect(message, cancellationToken).ConfigureAwait(false);
+            if (userIntent.IsReset()) {
+                searchType = default;
+                chat.Clear();
+            }
+            if (userIntent.IsSearchType(out var requestedSearchType))
+                searchType = requestedSearchType;
+
             chat.Add(message);
-            var detectedSearchType = await searchTypeDetector.Detect(message, cancellationToken).ConfigureAwait(false);
-            if (detectedSearchType != SearchType.None)
-                searchType = detectedSearchType;
         }
 
         var lastAuthorId = updatedEntries[updatedEntries.Count-1].AuthorId;

@@ -35,9 +35,9 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
         chatHistoryCache.Setup(x => x.GetOrSetDefault(It.IsAny<ChatId>(),It.IsAny<ChatHistory>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult<ChatHistory>([]));
 
-        var searchTypeDetector = new Mock<ISearchTypeDetector>();
-        searchTypeDetector.Setup(x => x.Detect(It.IsAny<ChatMessageContent>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.FromResult(SearchType.General));
+        var userIntentDetector = new Mock<IUserIntentDetector>();
+        userIntentDetector.Setup(x => x.Detect(It.IsAny<ChatMessageContent>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(UserIntent.GeneralSearch));
 
         var mockSearchPlugin = new Mock<ISearchPlugin>();
         mockSearchPlugin
@@ -64,7 +64,7 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
             commander.Object,
             authors.Object,
             chatHistoryCache.Object,
-            searchTypeDetector.Object,
+            userIntentDetector.Object,
             searchBotPluginSet);
 
         // Act

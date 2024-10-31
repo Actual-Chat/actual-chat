@@ -232,7 +232,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 services.AddSingleton<IFilters, Filters>();
                 services.AddSingleton<IBotConversationHandler, ChatBotConversationHandler>();
                 services.AddSingleton<IChatHistoryCache, ChatHistoryCache>();
-                services.AddSingleton<ISearchTypeDetector, SearchTypeDetector>();
+                services.AddSingleton<IUserIntentDetector, UserIntentDetector>();
 
                 services.AddSingleton<SearchBotPluginSet>();
                 services.AddSingleton<IForwardPlugin, ForwardPlugin>();
