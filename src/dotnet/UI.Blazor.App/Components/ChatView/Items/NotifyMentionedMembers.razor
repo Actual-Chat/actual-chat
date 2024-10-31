@@ -12,6 +12,9 @@
     </div>
     return;
 }
+@if (!m.HasNotified && m.EverybodyHasRead) {
+    return;
+}
 <div class="notify-mentioned-members @cls" @onclick="@clickHandler">
     @if (!m.HasNotified) {
         <i class="icon-notify-phone"></i>
@@ -49,6 +52,7 @@
 
     private ChatUIHub Hub => ChatContext.Hub;
     private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
     private INotifications Notifications => Hub.Notifications;
     private UICommander UICommander => Hub.UICommander();
     private ModalUI ModalUI => Hub.ModalUI;
@@ -62,12 +66,23 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatEntry = ChatEntry;
+        var textEntryId = chatEntry.Id.ToTextEntryId();
         var hasNotified = await Notifications.HasNotifiedMentionedMembers(
             Session,
-            ChatEntry.Id.ToTextEntryId(),
+            textEntryId,
             cancellationToken
             ).ConfigureAwait(false);
-        return new Model(hasNotified);
+        if (hasNotified)
+            return new Model(true, false); // We can skip checking hasRead status, because we will show badge anyway.
+        var everybodyHasRead = true;
+        foreach (var authorId in AuthorIds) {
+            var mentionId = new MentionId(authorId, AssumeValid.Option);
+            var hasRead = await Chats.IsEntryReadByMentionedUser(Session, textEntryId, mentionId, cancellationToken).ConfigureAwait(false);
+            if (!hasRead)
+                everybodyHasRead = false;
+        }
+        return new Model(false, everybodyHasRead);
     }
 
     private void OnNotifyAuthorsClick()
@@ -82,7 +97,7 @@
         => _ = UICommander.Call(new Notifications_NotifyMentionedMembers(Session, ChatEntry.Id.ToTextEntryId()));
 
     // Nested types
-    public record Model(bool HasNotified) {
-        public static readonly Model Loading = new (false);
+    public record Model(bool HasNotified, bool EverybodyHasRead) {
+        public static readonly Model Loading = new (false, false);
     }
 }
