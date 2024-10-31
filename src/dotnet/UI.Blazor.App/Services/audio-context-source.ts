@@ -267,7 +267,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         }
     }
 
-    private async resume(context: AudioContext, isInteractive: boolean): Promise<void> {
+    protected async resume(context: AudioContext, isInteractive: boolean): Promise<void> {
         debugLog?.log(`resume:`, Log.ref(context), isInteractive);
 
         const resumeTask = context.resume().then(() => true);
@@ -426,6 +426,10 @@ abstract class AudioContextSourceBase implements AudioContextSource {
             return; // Skip, as device was sleeping for a short period of time
 
         this.deviceWokeUpAt = Date.now();
+
+        if (this.hasRefsInUse)
+            return; // Context is already being used
+
         this.isInteractiveWasReset = false;
         // Close current AudioContext as it might be corrupted and can produce clicking sound
         await this.closeContext();
@@ -517,11 +521,18 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         Interactive.isInteractive = true;
         debugLog?.log(`initContextInteractively()`);
 
-        if (this._context && this._context.state === 'running') {
+        const context = this._context;
+        if (context && context.state === 'running') {
             debugLog?.log(`initContextInteractively: already running`);
             return; // Already ready
-        } else if (this._context && this._context.state === 'suspended') {
-            await this._context.resume();
+        } else if (context && context.state === 'suspended') {
+            try {
+                await this.resume(context, true);
+            }
+            catch(e) {
+                warnLog?.log(`initContextInteractively: failed to resume`, e);
+                await context.close();
+            }
             return;
         }
 
