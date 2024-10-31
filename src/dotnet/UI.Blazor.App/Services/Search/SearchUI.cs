@@ -29,6 +29,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private NavbarUI NavbarUI => Hub.NavbarUI;
     private PanelsUI PanelsUI => Hub.PanelsUI;
+    private HighlightUI HighlightUI => Hub.HighlightUI;
     private UIEventHub UIEventHub => Hub.UIEventHub();
     private UICommander UICommander => Hub.UICommander();
 
@@ -40,7 +41,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         _isSearchModeOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchModeOn)));
         _isShowRecentOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsShowRecentOn)));
         _isResultsNavigationOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsResultsNavigationOn)));
-        _selectedItem = stateFactory.NewComputed<FoundItem?>((FoundItem?)null, _ => Task.FromResult(_cached.Selected), StateCategories.Get(GetType(), nameof(SelectedItem)));
+        _selectedItem = stateFactory.NewComputed((FoundItem?)null, _ => Task.FromResult(_cached.Selected), StateCategories.Get(GetType(), nameof(SelectedItem)));
         ExtendedLimits = stateFactory
             .NewMutable(ImmutableHashSet<SearchScope>.Empty, StateCategories.Get(GetType(), nameof(ExtendedLimits)));
         NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;

@@ -45,6 +45,24 @@ public class HighlightsConverterTest
         searchMatch.Should().BeEquivalentTo(new SearchMatch(expectedText, 0.5, expectedRanges));
     }
 
+    [Theory]
+    [InlineData($"one {Pre}tWo{Post} three", "two")]
+    [InlineData($"{Pre}tWo{Post}", "two")]
+    [InlineData($" {Pre}tWo{Post}", "two")]
+    [InlineData($"{Pre}tWo{Post} ", "two")]
+    [InlineData($"one {Pre}tWo two Two{Post} three", "two")]
+    [InlineData($"one {Pre}tWo two Three{Post} Four", "two", "three")]
+    [InlineData($"one {Pre}tWo two Three{Post} Four {Pre}thRee twO{Post}", "two", "three")]
+    [InlineData($"one {Pre}tWo {Pre}two Three{Post} Four {Pre}thRee twO{Post}", "two", "three", "⫷⩧two")]
+    public void ShouldGetHighlightedWords(string highlight, params string[] expectedWords)
+    {
+        // arrange, act
+        var words = HighlightsConverter.GetHighlightedWords(highlight).Distinct().ToList();
+
+        // assert
+        words.Should().BeEquivalentTo(expectedWords);
+    }
+
     private Range<int> ParseRange(string sRange)
     {
         var parts = sRange.Split(',');

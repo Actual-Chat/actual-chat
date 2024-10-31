@@ -21,6 +21,9 @@
 .plain-text-markup {
     word-break: break-word;
 }
+.plain-text-markup.highlight {
+    @apply text-primary;
+}
 
 .playable-text-markup {
     @apply whitespace-break-spaces;
@@ -31,6 +34,9 @@
 body.hoverable .playable-text-markup > span:hover {
 }
 
+.playable-text-markup .highlight {
+    @apply text-primary;
+}
 .playable-text-markup .playing-start {
     border-radius: 6px 0 0 6px;
 }
@@ -72,6 +78,9 @@ body.hoverable .playable-text-markup > span:hover {
     @apply bg-02;
     @apply whitespace-pre-wrap;
     @apply text-sm;
+}
+.preformatted-text-markup > span.highlight {
+    @apply text-primary;
 }
 
 .code-block-markup {

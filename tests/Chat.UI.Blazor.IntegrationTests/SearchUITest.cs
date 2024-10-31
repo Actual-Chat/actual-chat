@@ -52,7 +52,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         AssertFoundItems(0, bob.BuildFoundContacts(false, expectedFriends).ToList());
         AssertFoundItems(3, bob.BuildFoundContacts(false, expectedJoinedGroups).ToList());
         AssertFoundItems(6, bob.BuildFoundContacts(false, expectedJoinedPlaces).ToList());
-        AssertFoundItems(8, expectedEntries.BuildFoundEntries().ToArray());
+        AssertFoundItems(8, expectedEntries.BuildFoundEntries(["one"], UniquePart).ToArray());
         AssertFoundItems(11,
             bob.BuildFoundContacts(true, expectedStrangers).ToList(),
             bob.BuildFoundContacts(true, expectedOtherGroups).ToList(),
@@ -76,7 +76,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         foundItems = await GetSearchResults(expectedTotalCount);
         AssertFoundItems(0, bob.BuildFoundContacts(false, expectedFriends).ToList());
         AssertFoundItems(1, bob.BuildFoundContacts(false, expectedJoinedGroups).ToList());
-        AssertFoundItems(3, expectedEntries.BuildFoundEntries().ToArray());
+        AssertFoundItems(3, expectedEntries.BuildFoundEntries(["one"], UniquePart).ToArray());
         AssertFoundItems(6,
             bob.BuildFoundContacts(true, expectedStrangers).ToList(),
             bob.BuildFoundContacts(true, expectedOtherGroups).ToList());

@@ -33,6 +33,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     private LanguageUI? _languageUI;
     private EditMembersUI? _editMembersUI;
     private SearchUI? _searchUI;
+    private HighlightUI? _highlightUI;
     private ChatPlayers? _chatPlayers;
     private AudioSettings? _audioSettings;
     private AudioRecorder? _audioRecorder;
@@ -70,6 +71,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     public LanguageUI LanguageUI => _languageUI ??= Services.GetRequiredService<LanguageUI>();
     public EditMembersUI EditMembersUI => _editMembersUI ??= Services.GetRequiredService<EditMembersUI>();
     public SearchUI SearchUI => _searchUI ??= Services.GetRequiredService<SearchUI>();
+    public HighlightUI HighlightUI => _highlightUI ??= Services.GetRequiredService<HighlightUI>();
     public ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
     public AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
     public AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();

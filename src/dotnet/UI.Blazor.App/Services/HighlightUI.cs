@@ -1,0 +1,32 @@
+using System.Collections.ObjectModel;
+using ActualChat.Search;
+
+namespace ActualChat.UI.Blazor.App.Services;
+
+public class HighlightUI(ChatUIHub uiHub) : ScopedServiceBase<ChatUIHub>(uiHub), IComputeService
+{
+    private IReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>> _hits = ReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>>.Empty;
+
+    public void SetHighlightedWords(IReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>> highlightedWords)
+    {
+        var oldHits = _hits;
+        _hits = highlightedWords;
+        using (Invalidation.Begin())
+            foreach (var entryId in oldHits.Keys.Union(highlightedWords.Keys))
+                _ = GetHighlightedWords(entryId, default);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<SearchMatch> GetMatch(ChatEntryId entryId, string text, CancellationToken cancellationToken)
+    {
+        var words = await GetHighlightedWords(entryId, cancellationToken).ConfigureAwait(false);
+        if (words.Count == 0)
+            return SearchMatch.Empty;
+
+        return new SearchPhrase(words.ToArray(), false).GetMatch(text);
+    }
+
+    [ComputeMethod] // Synced
+    public virtual Task<IReadOnlySet<string>> GetHighlightedWords(ChatEntryId chatEntryId, CancellationToken cancellationToken)
+        => Task.FromResult(_hits.GetValueOrDefault(chatEntryId, ApiSet<string>.Empty));
+}

@@ -18,11 +18,14 @@
         var word = Markup.Words[i];
         var status = m.Map != null ? m.Map[i] : WordPlayback.None;
         var cls = GetPlayingClass(status);
+        var highlightedCls = m.HighlightedWords.Count > 0 && m.HighlightedWords.Contains(word.Value.TrimNonWord(), StringComparer.OrdinalIgnoreCase)
+            ? "highlight"
+            : "";
         @if (!playOnClickIsEnabled) {
-            <span class="@cls">@word.Value</span>
+            <span class="@cls @highlightedCls">@word.Value</span>
         } else {
             <span
-                class="@cls"
+                class="@cls @highlightedCls"
                 @onclick="@(_ => OnClick(word.TextRange.Start))">@word.Value</span>
         }
     }
@@ -38,6 +41,7 @@
     private ChatPlayers ChatPlayers => Hub.ChatPlayers;
     private PlayableTextPaletteProvider PaletteProvider => Hub.PlayableTextPaletteProvider;
     private SelectionUI SelectionUI => Hub.SelectionUI;
+    private HighlightUI HighlightUI => Hub.HighlightUI;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -52,12 +56,15 @@
         var audioEntryId = Entry.AudioEntryLid;
         var markup = Markup;
         var rendered = _rendered;
+        var entryId = Entry.Id;
 
         var hasSelection = await SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var model = await InnerComputeState(cancellationToken).ConfigureAwait(false);
+        var highlightedWords = await HighlightUI.GetHighlightedWords(entryId, cancellationToken).ConfigureAwait(false);
         if (rendered is not { Map: not null })
             return model with { // Never rendered
                 HasSelection = hasSelection,
+                HighlightedWords = highlightedWords,
             };
 
         var colorLease = ActualizeColorLease(model, rendered);
@@ -248,5 +255,6 @@
         public IPlayableTextColorLease? ColorLease { get; init; }
         public bool HasActivePlaying => Map?.Any(c => c.HasFlag(WordPlayback.Playing)) ?? false;
         public bool HasSelection { get; init; }
+        public IReadOnlySet<string> HighlightedWords { get; init; } = ApiSet<string>.Empty;
     }
 }

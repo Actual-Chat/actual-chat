@@ -47,6 +47,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<ChatListUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatAudioUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
+        fusion.AddService<HighlightUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatPlayers>(ServiceLifetime.Scoped);
         fusion.AddService<AppActivity, ChatAppActivity>(ServiceLifetime.Scoped);
         services.AddScoped(c => new SelectionUI(c.ChatUIHub()));

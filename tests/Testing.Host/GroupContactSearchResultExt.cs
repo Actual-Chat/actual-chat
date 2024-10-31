@@ -5,7 +5,7 @@ using ActualLab.Mathematics;
 
 namespace ActualChat.Testing.Host;
 
-public static class GroupContactSearchResultUtil
+public static class GroupContactSearchResultExt
 {
     public static IEnumerable<FoundItem> BuildFoundContacts(
         this Account owner,

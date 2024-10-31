@@ -33,13 +33,13 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // act, assert
         var searchResults = await Find("let");
-        searchResults.Should().BeEquivalentTo([entry1.BuildSearchResult()], o => o.ExcludingSearchMatch());
+        searchResults.Should().BeEquivalentTo([entry1.BuildSearchResult(["let's"], UniquePart)], o => o.ExcludingSearchMatch());
         searchResults = await Find("something saying");
-        searchResults.Should().BeEquivalentTo([entry2.BuildSearchResult()], o => o.ExcludingSearchMatch());
+        searchResults.Should().BeEquivalentTo([entry2.BuildSearchResult(["something", "saying", UniquePart])], o => o.ExcludingSearchMatch());
         searchResults = await Find("river ba");
-        searchResults.Should().BeEquivalentTo([entry3.BuildSearchResult()], o => o.ExcludingSearchMatch());
+        searchResults.Should().BeEquivalentTo([entry3.BuildSearchResult(["river", "bank", UniquePart])], o => o.ExcludingSearchMatch());
         searchResults = await Find("wak");
-        searchResults.Should().BeEquivalentTo([entry4.BuildSearchResult()], o => o.ExcludingSearchMatch());
+        searchResults.Should().BeEquivalentTo([entry4.BuildSearchResult(["wake", UniquePart])], o => o.ExcludingSearchMatch());
     }
 
     [Fact]
@@ -57,6 +57,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
             .BeEquivalentTo([
                 entry.Id.BuildSearchResult(
                     "…Lorem Ipsum test has been the industry's standard dummy text ever since the 1500s, when an unknown printer…",
+                    ["test"],
                     UniquePart,
                     (13, 17)),
             ]);
@@ -77,6 +78,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         searchResults.Should()
             .BeEquivalentTo([
                 entry.BuildSearchResult(
+                    ["actual.chat"],
                     UniquePart,
                     (8, 19)),
             ]);
@@ -95,7 +97,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Tester.SignIn(bob);
 
         // act
-        var expected = entries.Accessible1().BuildSearchResults().ToArray();
+        var expected = entries.Accessible1().BuildSearchResults(["one"], UniquePart).ToArray();
         var searchResults = await Find("one", expected: expected.Length);
 
         // assert
@@ -122,11 +124,11 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         foreach (var chat in groups.Values) {
             var expected = entryLookup[chat.Id]
                 .OrderByDescending(x => x.GetIndexedEntryDate())
-                .BuildSearchResults()
+                .BuildSearchResults(["let's"], UniquePart)
                 .ToList();
             var searchResults = await Find("let", chatId: chat.Id, expected: expected.Count);
             searchResults.Should()
-                .BeEquivalentTo(expected, o => o.ExcludingSearchMatch().WithStrictOrdering(), chat.Title);
+                .BeEquivalentTo(expected, o => o.ExcludingSearchMatch().WithStrictOrderingFor(x => x), chat.Title);
         }
     }
 
@@ -161,11 +163,11 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         foreach (var place in places.Values) {
             var expected = entryLookup[place.Id]
                 .OrderByDescending(x => x.GetIndexedEntryDate())
-                .BuildSearchResults()
+                .BuildSearchResults(["let's"], UniquePart)
                 .ToList();
             var searchResults = await Find("let", place.Id, expected: expected.Count);
             searchResults.Should()
-                .BeEquivalentTo(expected, o => o.ExcludingSearchMatch().WithStrictOrdering(), place.Title);
+                .BeEquivalentTo(expected, o => o.ExcludingSearchMatch().WithStrictOrderingFor(x => x), place.Title);
         }
     }
 
@@ -183,14 +185,16 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         var searchResults = await Find("let", expected: 1);
 
         // assert
-        searchResults.Should().BeEquivalentTo([entry1.BuildSearchResult()], o => o.ExcludingSearchMatch());
+        searchResults.Should().BeEquivalentTo([entry1.BuildSearchResult(["let's"], UniquePart)], o => o.ExcludingSearchMatch());
 
         // act
         entry2 = await UpdateEntry(entry2.Id, "let");
         searchResults = await Find("let", expected: 2);
         searchResults.Should()
-            .BeEquivalentTo([entry2.BuildSearchResult(), entry1.BuildSearchResult()],
-                o => o.ExcludingSearchMatch().WithStrictOrdering());
+            .BeEquivalentTo([
+                    entry2.BuildSearchResult(["let"], UniquePart), entry1.BuildSearchResult(["let's"], UniquePart),
+                ],
+                o => o.ExcludingSearchMatch().WithStrictOrderingFor(x => x));
     }
 
     [Fact]
@@ -203,7 +207,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         var entry = await CreateEntry(chatId, "Let's go outside");
 
         // act
-        await Find("let", expected: 1);
+        await Find("let's", expected: 1);
         await Tester.RemoveTextEntry(entry.Id);
         var searchResults = await Find("let", expected: 0);
 
