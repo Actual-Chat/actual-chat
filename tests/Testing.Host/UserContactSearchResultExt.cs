@@ -5,7 +5,7 @@ using ActualLab.Mathematics;
 
 namespace ActualChat.Testing.Host;
 
-public static class UserContactSearchResultUtil
+public static class UserContactSearchResultExt
 {
     public static IEnumerable<FoundItem> BuildFoundContacts(this Account owner, bool areGlobalSearchResults, params AccountFull[] others)
         => others.Select(x => owner.BuildFoundContact(x, areGlobalSearchResults));

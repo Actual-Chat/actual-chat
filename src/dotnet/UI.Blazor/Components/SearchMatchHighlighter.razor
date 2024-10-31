@@ -13,5 +13,6 @@
 
 @code {
     [Parameter] public string HighlightedClass { get; set; } = "font-semibold";
+    [Parameter] public string PlainTextClass { get; set; } = "";
     [Parameter, EditorRequired] public SearchMatch Match { get; set; } = SearchMatch.Empty;
 }

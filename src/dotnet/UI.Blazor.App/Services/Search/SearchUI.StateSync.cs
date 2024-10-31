@@ -50,6 +50,9 @@ public partial class SearchUI
         _isSearchModeOn.Value = !criteria.Text.IsNullOrEmpty();
         _isResultsNavigationOn.Value = false;
         _cached = new Cached(foundItems);
+        var messageSearchMatches = _cached.FoundItems.Where(x => x.Scope is SearchScope.Messages)
+            .ToDictionary(x => (ChatEntryId)x.EntryId, IReadOnlySet<string> (x) => x.HighlightedWords);
+        HighlightUI.SetHighlightedWords(messageSearchMatches);
         _selectedItem.Invalidate();
         using (Invalidation.Begin())
             _ = GetSearchResults();
