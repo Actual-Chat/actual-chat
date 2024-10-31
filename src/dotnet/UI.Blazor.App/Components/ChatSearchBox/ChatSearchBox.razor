@@ -27,7 +27,6 @@
         <TextInput
             @ref="_inputRef"
             Text="@InitialText"
-            Class="w-full"
             Placeholder="@Placeholder"
             MaxLength="@MaxLength"
             TabIndex="@TabIndex"
@@ -83,9 +82,6 @@
             _needsFocus = false;
         }
     }
-
-    public ValueTask Focus()
-        => _inputRef.Focus();
 
     public async Task Cancel()
     {

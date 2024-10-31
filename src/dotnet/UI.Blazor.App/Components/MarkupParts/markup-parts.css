@@ -4,8 +4,8 @@
 
 .mention-markup {
     @apply inline-block align-middle;
+    @apply max-w-48;
     @apply my-[1px] px-1.5 pb-0.5;
-    max-width: 12rem;
     @apply rounded-full bg-mention-other;
     @apply text-mention-other-text font-medium;
     @apply select-none cursor-pointer;
