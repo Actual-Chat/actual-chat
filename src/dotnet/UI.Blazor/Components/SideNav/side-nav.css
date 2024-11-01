@@ -36,10 +36,12 @@ body.device-ios .side-nav {
 .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .side-nav.side-nav-left {
     @apply md:w-1/2 lg:w-110;
     @apply md:transition-width md:duration-200;
+    transition-timing-function: steps(10, start);
 }
 .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="closed"]) > .side-nav.side-nav-left {
     @apply md:w-110;
     @apply md:transition-width md:duration-200;
+    transition-timing-function: steps(10, start);
 }
 body.wide .side-nav.side-nav-left[data-side-nav="closed"] {
     @apply hidden;
@@ -60,10 +62,12 @@ body.narrow .side-nav.side-nav-left[data-side-nav="closed"]:has(.wide-left-skele
 .side-nav.side-nav-right[data-side-nav="open"] {
     @apply md:w-1/2 lg:w-90;
     @apply md:transition-width md:duration-200;
+    transition-timing-function: steps(10, start);
 }
 .side-nav.side-nav-right[data-side-nav="closed"] {
     @apply md:w-0;
     @apply md:transition-width md:duration-200;
+    transition-timing-function: steps(10, start);
 }
 body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
     transform: translate3d(100%, 0, 0);
