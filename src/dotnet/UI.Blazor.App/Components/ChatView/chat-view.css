@@ -154,7 +154,10 @@ body.hoverable .chat-message:hover .message-reactions-add {
     @apply visible;
 }
 .chat-message-transcript {
-    @apply text-02 whitespace-normal;
+    @apply text-base text-02 whitespace-normal;
+}
+.chat-message-transcript span {
+    @apply text-base;
 }
 
 .chat-message-transcript .retained {
