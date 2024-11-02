@@ -10,7 +10,7 @@ namespace ActualChat.MLSearch.IntegrationTests.Bot;
 
 public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@out)
 {
-    [Fact]
+    [Fact(Skip = "Requires OpenAI connection. Run explicitly.")]
     public async Task ChatBotConversationHandlerCallsTools()
     {
         // Setup

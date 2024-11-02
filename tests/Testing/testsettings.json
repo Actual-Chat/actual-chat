@@ -37,7 +37,7 @@
       "AllowPeerBotChat": true,
       "OpenAI": {
         "ChatModel": "gpt-4o",
-        "ApiKey": ""
+        "ApiKey": "not-an-api-key"
       }
     }
   },

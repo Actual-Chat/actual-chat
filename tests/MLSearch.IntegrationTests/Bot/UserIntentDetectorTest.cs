@@ -35,7 +35,7 @@ public class UserIntentDetectorTest(ITestOutputHelper @out): TestBase(@out)
 
     private readonly IUserIntentDetector _userIntentDetector = new UserIntentDetector(CreateKernel());
 
-    [Theory]
+    [Theory(Skip = "Requires OpenAI connection. Run explicitly.")]
     [MemberData(nameof(ExpectedPairs))]
     public async Task SearchTypeDetectorProvidesExpectedOutput(string userInput, UserIntent expectedSearchType)
     {
