@@ -378,7 +378,7 @@ public partial class ChatsBackend
         var newChatId = context.NewChatId;
         var newChatSid = newChatId.Value;
         var migratedAuthors = context.MigratedAuthors;
-        var mentionExtractor = new MentionExtractor();
+        var mentionExtractor = MentionExtractor.Instance;
 
         var mentionUpdatesInsideContent = 0;
         var mentionUpdatesInSystemEntries = 0;

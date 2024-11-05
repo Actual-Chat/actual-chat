@@ -335,7 +335,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Size(query.Limit)
                             .Query(qq => qq.Bool(ConfigureQuery))
                             .IgnoreUnavailable()
-                            .Highlight(h => h.Fields(f => f.Field(x => x.FullName)))
+                            .Highlight(h => h.Fields(f => f.Field(x => x.FullName)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
                             .Log(OpenSearchClient, DebugLog, "People search request"),
                     cancellationToken)
                 .Assert(Log)
@@ -394,7 +394,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Size(query.Limit)
                             .Query(qq => qq.Bool(ConfigureQuery))
                             .IgnoreUnavailable()
-                            .Highlight(h => h.Fields(f => f.Field(x => x.Title)))
+                            .Highlight(h => h.Fields(f => f.Field(x => x.Title)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
                             .Log(OpenSearchClient, DebugLog, "Group search request"),
                     cancellationToken)
                 .Assert(Log)
@@ -440,7 +440,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Size(query.Limit)
                             .Query(qq => qq.Bool(ConfigureQuery))
                             .IgnoreUnavailable()
-                            .Highlight(h => h.Fields(f => f.Field(x => x.Title)))
+                            .Highlight(h => h.Fields(f => f.Field(x => x.Title)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
                             .Log(OpenSearchClient, DebugLog, "Place search request"),
                     cancellationToken)
                 .Assert(Log)
@@ -485,7 +485,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Query(q => q.Bool(ConfigureQuery))
                             .Sort(s => s.Descending(x => x.At))
                             .IgnoreUnavailable()
-                            .Highlight(h => h.Fields(f => f.Field(x => x.Content)))
+                            .Highlight(h => h.Fields(f => f.Field(x => x.Content)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
                             .Log(OpenSearchClient, DebugLog, "Entry search request"),
                     cancellationToken)
                 .Assert(Log)
@@ -499,7 +499,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         };
 
         EntrySearchResult ToSearchResult(IHit<IndexedEntry> hit)
-            => new (hit.Source!.Id, hit.GetSearchMatch());
+            => new (hit.Source!.Id, hit.GetSearchMatch()) {
+                HighlightedWords = hit.GetHighlightedWords().ToApiSet(StringComparer.OrdinalIgnoreCase),
+            };
 
         BoolQueryDescriptor<IndexedEntry> ConfigureQuery(BoolQueryDescriptor<IndexedEntry> descriptor)
             => descriptor.Must(q

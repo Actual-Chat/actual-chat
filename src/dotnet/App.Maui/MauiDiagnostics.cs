@@ -111,7 +111,7 @@ public static class MauiDiagnostics
 #elif ANDROID
         logging = logging.WriteTo.AndroidTaggedLog(LogTag, outputTemplate: AndroidOutputTemplate);
 #elif IOS
-        logging = logging.WriteTo.NSLog();
+        logging = logging.WriteTo.AppleLog();
 #endif
         return logging;
     }

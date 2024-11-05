@@ -2,6 +2,8 @@ namespace ActualChat.Chat;
 
 public record MentionExtractor : MarkupVisitorWithState<HashSet<MentionId>>
 {
+    public static MentionExtractor Instance { get; } = new();
+
     public HashSet<MentionId> GetMentionIds(Markup markup)
     {
         var mentions = new HashSet<MentionId>();

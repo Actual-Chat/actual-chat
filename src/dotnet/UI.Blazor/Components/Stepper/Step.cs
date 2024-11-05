@@ -2,11 +2,14 @@ namespace ActualChat.UI.Blazor.Components;
 
 public sealed record StepState
 {
-    public static StepState None { get; } = new StepState();
+    public static StepState None { get; } = new ();
 }
 
 public abstract class Step : Step<StepState>
 {
+    protected Step()
+        => MustRenderAfterEvent = true;
+
     protected override Task<StepState> ComputeState(CancellationToken cancellationToken)
         => Task.FromResult(StepState.None);
 }

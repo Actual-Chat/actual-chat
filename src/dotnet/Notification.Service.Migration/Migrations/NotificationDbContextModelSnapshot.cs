@@ -67,6 +67,57 @@ namespace ActualChat.Notification.Migrations
                     b.ToTable("devices");
                 });
 
+            modelBuilder.Entity("ActualChat.Notification.Db.DbManualNotification", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("SimilarityKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("similarity_key")
+                        .UseCollation("C");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("user_id")
+                        .UseCollation("C");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_manual_notifications");
+
+                    b.HasIndex("UserId", "Id")
+                        .HasDatabaseName("ix_manual_notifications_user_id_id");
+
+                    b.HasIndex("UserId", "Version")
+                        .HasDatabaseName("ix_manual_notifications_user_id_version");
+
+                    b.HasIndex("UserId", "Kind", "SimilarityKey")
+                        .HasDatabaseName("ix_manual_notifications_user_id_kind_similarity_key");
+
+                    b.ToTable("manual_notifications");
+                });
+
             modelBuilder.Entity("ActualChat.Notification.Db.DbNotification", b =>
                 {
                     b.Property<string>("Id")

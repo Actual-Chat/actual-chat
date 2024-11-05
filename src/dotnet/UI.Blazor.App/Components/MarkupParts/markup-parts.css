@@ -3,15 +3,18 @@
 }
 
 .mention-markup {
-    @apply inline-block align-middle;
+    @apply inline-flex align-middle;
+    @apply max-w-48;
     @apply my-[1px] px-1.5 pb-0.5;
-    max-width: 12rem;
     @apply rounded-full bg-mention-other;
     @apply text-mention-other-text font-medium;
-    @apply select-none cursor-pointer;
+    @apply select-none;
 }
 .mention-markup.mention-markup-own {
     @apply bg-mention-own text-mention-own-text;
+}
+.mention-markup > i {
+    font-size: 1.25rem;
 }
 
 .url-markup {
@@ -20,6 +23,9 @@
 
 .plain-text-markup {
     word-break: break-word;
+}
+.plain-text-markup.highlight {
+    @apply text-primary;
 }
 
 .playable-text-markup {
@@ -31,6 +37,9 @@
 body.hoverable .playable-text-markup > span:hover {
 }
 
+.playable-text-markup .highlight {
+    @apply text-primary;
+}
 .playable-text-markup .playing-start {
     border-radius: 6px 0 0 6px;
 }
@@ -72,6 +81,9 @@ body.hoverable .playable-text-markup > span:hover {
     @apply bg-02;
     @apply whitespace-pre-wrap;
     @apply text-sm;
+}
+.preformatted-text-markup > span.highlight {
+    @apply text-primary;
 }
 
 .code-block-markup {

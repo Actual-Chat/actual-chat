@@ -1,3 +1,39 @@
-@inherits MarkupViewBase<TextMarkup>
+@using ActualChat.Search
+@inherits ComputedMarkupViewBase<TextMarkup, PlainTextMarkupView.Model>
+@{
+    var m = State.Value;
+}
 
-<span class="plain-text-markup">@Markup.Text</span>
+@if (m.MustHighlight) {
+    <SearchMatchHighlighter
+        Match="m.SearchMatch"
+        PlainTextClass="plain-text-markup"
+        HighlightedClass="plain-text-markup highlight" />
+} else {
+     <span class="plain-text-markup">@m.MarkupText</span>
+}
+
+@code {
+    [Inject] ChatUIHub Hub { get; init; } = null!;
+    private HighlightUI HighlightUI => Hub.HighlightUI;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<Model>.Options() {
+                InitialValue = new(Markup.Text, SearchMatch.Empty),
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var entryId = Entry.Id;
+        var markupText = Markup.Text;
+        var searchMatch = await HighlightUI.GetMatch(entryId, markupText, cancellationToken).ConfigureAwait(false);
+        return new(markupText, searchMatch);
+    }
+
+    // Nested types
+
+    public sealed record Model(string MarkupText, SearchMatch SearchMatch) {
+        public bool MustHighlight => !SearchMatch.IsEmpty;
+    }
+}

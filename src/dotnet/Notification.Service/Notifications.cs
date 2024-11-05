@@ -8,8 +8,12 @@ public class Notifications(IServiceProvider services) : INotifications
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private INotificationsBackend Backend { get; } = services.GetRequiredService<INotificationsBackend>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
+    private IPlaces Places { get; } = services.GetRequiredService<IPlaces>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
+    private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private ILogger Log { get; } = services.LogFor<Notifications>();
+    private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
+        = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
 
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ICommander Commander { get; } = services.Commander();
@@ -31,6 +35,30 @@ public class Notifications(IServiceProvider services) : INotifications
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         return await Backend.ListRecentNotificationIds(account.Id, minSentAt, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<bool> HasNotifiedMentionedMembers(
+        Session session,
+        TextEntryId textEntryId,
+        CancellationToken cancellationToken)
+    {
+        var chatId = textEntryId.ChatId;
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return false;
+
+        var chatEntry = await Chats.GetEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
+        if (chatEntry is null)
+            return false;
+
+        var author = chat.Rules.Author.Require();
+        if (chatEntry.AuthorId != author.Id)
+            return false;
+
+        var notificationId = GetManualNotificationIdForNotifyMentionedMembers(author.UserId, textEntryId);
+        var notification = await Backend.Get(notificationId, cancellationToken).ConfigureAwait(false);
+        return notification is not null;
     }
 
     // [CommandHandler]
@@ -90,6 +118,16 @@ public class Notifications(IServiceProvider services) : INotifications
         chat.Rules.Require(ChatPermissions.Write);
         var account = chat.Rules.Account;
 
+        var isPublicAccessible = chat.IsPublic;
+        if (isPublicAccessible && chatId.IsPlaceChat) {
+            var place = await Places.Get(session, chatId.PlaceId, cancellationToken).ConfigureAwait(false);
+            if (place is { IsPublic: false })
+                isPublicAccessible = false;
+        }
+        if (isPublicAccessible)
+            throw StandardError.Constraint("Notify members is not allowed in public accessible chats.");
+
+
         if (!chatId.IsPeerChat(out _)) {
             var authorIds = await Authors.ListAuthorIds(session, chatId, cancellationToken).ConfigureAwait(false);
             // Always disabled for middle and large groups.
@@ -115,8 +153,60 @@ public class Notifications(IServiceProvider services) : INotifications
             => new(chatId, Constants.User.Walle.AuthorLocalId, AssumeValid.Option);
     }
 
+    // [CommandHandler]
+    public virtual async Task OnNotifyMentionedMembers(Notifications_NotifyMentionedMembers command, CancellationToken cancellationToken)
+    {
+        var (session, textEntryId) = command;
+        var chatId = textEntryId.ChatId;
+        var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.IsMember().Require();
+        var chatEntry = await Chats.GetEntry(session, textEntryId, cancellationToken).Require().ConfigureAwait(false);
+        var ownAuthor = chat.Rules.Author.Require();
+        if (chatEntry.AuthorId != ownAuthor.Id)
+            throw StandardError.Unauthorized("Only the author is allowed to notify mentioned principals.");
+
+        var mentionIds = await GetMentionIds().ConfigureAwait(false);
+        var ownUserId = ownAuthor.UserId;
+        var mentionedUserIds = await GetMentionedUserIds(ownUserId).ConfigureAwait(false);
+        if (mentionedUserIds.Length == 0)
+            throw StandardError.Constraint("Nobody to notify.");
+
+        var notifyCommand = new NotificationsBackend_NotifyMentionedMembers(ownUserId, textEntryId, mentionedUserIds);
+        await Commander.Run(notifyCommand, cancellationToken).ConfigureAwait(false);
+
+        var notificationId = GetManualNotificationIdForNotifyMentionedMembers(ownUserId, textEntryId);
+        var notification = new ManualNotification(notificationId);
+        var upsertManualNotificationCommand = new NotificationsBackend_UpsertManualNotification(notification);
+        await Commander.Run(upsertManualNotificationCommand, cancellationToken).ConfigureAwait(false);
+        return;
+
+        async Task<HashSet<MentionId>> GetMentionIds()
+        {
+            var chatMarkupHub = ChatMarkupHubFactory[chatEntry.ChatId];
+            var markup = await chatMarkupHub.GetMarkup(chatEntry, MarkupConsumer.Notification, cancellationToken).ConfigureAwait(false);
+            return MentionExtractor.Instance.GetMentionIds(markup);
+        }
+
+        async Task<ImmutableArray<UserId>> GetMentionedUserIds(UserId excludeUserId)
+        {
+            var mentionedAuthorIds = mentionIds
+                .Where(c => c.Kind == PrincipalKind.Author)
+                .Select(c => c.AuthorId)
+                .ToImmutableArray();
+            var mentionedAuthors = await mentionedAuthorIds
+                .Select(id => AuthorsBackend.Get(chatId, id, AuthorsBackend_GetAuthorOption.Full, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+            var immutableArray = mentionedAuthors.SkipNullItems().Select(a => a.UserId).Where(c => c != excludeUserId).ToImmutableArray();
+            return immutableArray;
+        }
+    }
+
     // Private methods
 
     private static Exception Unauthorized()
         => StandardError.Unauthorized("You can access only your own notifications.");
+
+    private static ManualNotificationId GetManualNotificationIdForNotifyMentionedMembers(UserId accountId, TextEntryId textEntryId)
+        => new (accountId, ManualNotificationKind.NotifyMentionedMembers, textEntryId.ToString());
 }

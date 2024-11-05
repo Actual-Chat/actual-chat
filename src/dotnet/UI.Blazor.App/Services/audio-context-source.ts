@@ -99,7 +99,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
     }
 
     protected constructor(public readonly purpose: AudioContextPurpose) {
-        this.onDeviceAwakeHandler = OnDeviceAwake.events.add(() => this.onDeviceAwake());
+        this.onDeviceAwakeHandler = OnDeviceAwake.events.add(durationMs => this.onDeviceAwake(durationMs));
         if (purpose === 'playback') {
             if (AudioContextDestinationFallback.isRequired)
                 this.fallbackDestination = new AudioContextDestinationFallback();
@@ -164,7 +164,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
 
     // Protected methods
 
-    protected async create(): Promise<AudioContext> {
+    protected async create(shouldResume: boolean = false): Promise<AudioContext> {
         debugLog?.log(`create`);
         this.suspendContextDebounced.reset();
         this.closeContextDebounced.reset();
@@ -176,11 +176,13 @@ abstract class AudioContextSourceBase implements AudioContextSource {
             latencyHint: 'balanced',
             sampleRate: this.purpose === 'playback' ? AP.SAMPLE_RATE : AR.SAMPLE_RATE,
         });
+        if (shouldResume)
+            await this.resume(context, true);
         try {
             debugLog?.log(`create: loading modules`);
             const whenWorkletsLoaded =  this.loadContextWorklets(context);
 
-            if (!Interactive.isAlwaysInteractive)
+            if (!Interactive.isAlwaysInteractive && !shouldResume)
                 void this.interactiveResume(context);
 
             await whenWorkletsLoaded;
@@ -236,6 +238,17 @@ abstract class AudioContextSourceBase implements AudioContextSource {
                 warnLog?.log('interactiveResume: context has already been changed, will try to use the new one');
                 contextToResume = currentContext;
             }
+            if (contextToResume.state === 'closed') {
+                warnLog?.log('interactiveResume: context is closed, will try to create a new one');
+                this.create(true)
+                    .then(
+                        () => resumeTask.resolve(true),
+                        reason => {
+                            warnLog?.log(reason, 'create(true) failed with an error');
+                            resumeTask.reject(reason);
+                        });
+                return;
+            }
             this.resume(contextToResume, true)
                 .then(
                     () => resumeTask.resolve(true),
@@ -254,7 +267,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         }
     }
 
-    private async resume(context: AudioContext, isInteractive: boolean): Promise<void> {
+    protected async resume(context: AudioContext, isInteractive: boolean): Promise<void> {
         debugLog?.log(`resume:`, Log.ref(context), isInteractive);
 
         const resumeTask = context.resume().then(() => true);
@@ -407,9 +420,16 @@ abstract class AudioContextSourceBase implements AudioContextSource {
 
     // Event handlers
 
-    protected async onDeviceAwake(): Promise<void> {
-        debugLog?.log(`onDeviceAwake`);
+    protected async onDeviceAwake(durationMs: number): Promise<void> {
+        debugLog?.log(`onDeviceAwake`, durationMs);
+        if (durationMs < CloseUnusedContextDebounce)
+            return; // Skip, as device was sleeping for a short period of time
+
         this.deviceWokeUpAt = Date.now();
+
+        if (this.hasRefsInUse)
+            return; // Context is already being used
+
         this.isInteractiveWasReset = false;
         // Close current AudioContext as it might be corrupted and can produce clicking sound
         await this.closeContext();
@@ -501,11 +521,18 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         Interactive.isInteractive = true;
         debugLog?.log(`initContextInteractively()`);
 
-        if (this._context && this._context.state === 'running') {
+        const context = this._context;
+        if (context && context.state === 'running') {
             debugLog?.log(`initContextInteractively: already running`);
             return; // Already ready
-        } else if (this._context && this._context.state === 'suspended') {
-            await this._context.resume();
+        } else if (context && context.state === 'suspended') {
+            try {
+                await this.resume(context, true);
+            }
+            catch(e) {
+                warnLog?.log(`initContextInteractively: failed to resume`, e);
+                await context.close();
+            }
             return;
         }
 
@@ -540,7 +567,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         this.closeContextDebounced.reset();
         if (!this._isActive) {
             this._maintain = this.maintain();
-            return;
+            return Disposables.empty();
         }
         const context = this._context;
         if (context && context.state !== 'running') {
@@ -839,8 +866,6 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
                 return;
 
             this.suspendContextDebounced();
-            if (backgroundState === 'BackgroundIdle')
-                this.closeContextDebounced();
         });
     }
 }

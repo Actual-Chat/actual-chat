@@ -27,6 +27,7 @@
     private AccountUI AccountUI => Hub.AccountUI;
     private IAuthors Authors => Hub.Authors;
     private IChats Chats => Hub.Chats;
+    private IPlaces Places => Hub.Places;
     private ModalUI ModalUI => Hub.ModalUI;
     private ToastUI ToastUI => Hub.ToastUI;
     private UICommander UICommander => Hub.UICommander();
@@ -47,6 +48,15 @@
         if (chatId.Kind is ChatKind.Peer)
             return Model.EnabledUnread; // Always allowed for peer chats.
 
+        var isPublicAccessible = chat.IsPublic;
+        if (isPublicAccessible && chatId.IsPlaceChat) {
+            var place = await Places.Get(Session, chatId.PlaceId, cancellationToken).ConfigureAwait(false);
+            if (place is { IsPublic: false })
+                isPublicAccessible = false;
+        }
+        if (isPublicAccessible)
+            return Model.Unavailable;
+
         var authorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (authorIds.Count < 2)
             return Model.Unavailable;
@@ -57,6 +67,9 @@
         var ownAuthor = chat.Rules.Author;
         if (ownAuthor is null)
             return Model.DisabledNoMessage; // Disabled if no own author -> no own message.
+
+        if (!chat.Rules.CanWrite())
+            return Model.DisabledNoWritePermission; // Disabled if user can't write in the chat.
 
         var chatIdRange = await Chats
             .GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken)
@@ -73,18 +86,18 @@
                 chatIdRange,
                 x => {
                     if (x.AuthorId.LocalId < 0)
-                        return false; // Ignore Bot's and System messages. Continue search.
+                        return false; // Ignore Bot's and System messages. Continue the search.
 
                     var isOwnEntry = x.AuthorId == ownAuthor.Id;
                     if (isOwnEntry)
-                        return true; // Found own message.
+                        return true; // Found an own message.
 
                     var hasRead = readPositionsStat.HasReadByAnotherAuthor(x, x.AuthorId);
                     if (!hasRead)
                         return false; // Continue search
 
                     var isOldMessage = x.BeginsAt < oldMessageBeginsAtThreshold;
-                    return isOldMessage; // Stop search when message is too old.
+                    return isOldMessage; // Stop search when a message is too old.
                 },
                 100, // Max. 100 entries to scan upwards
                 cancellationToken)
@@ -108,7 +121,7 @@
         // Here we try to predict HasRead moment. It's possible if component exists since moment when message has been unread.
         if (_lastKnownOwnUnreadEntryInfo is not null) {
             if (_lastKnownOwnUnreadEntryInfo.Value.Item2 == Moment.MaxValue) {
-                // Remember current moment as HasRead moment.
+                // Remember the current moment as HasRead moment.
                 // It should be +- accurate if RpcHub has been connected.
                 _lastKnownOwnUnreadEntryInfo = (_lastKnownOwnUnreadEntryInfo.Value.Item1, Clock.Now);
             }
@@ -121,14 +134,14 @@
             return Model.Enabled;
         }
 
-        // How long time ago has it been read?
+        // How long time ago it was read?
         // We can't answer this question definitely because we don't have info when messages have been read.
         // So check creation time instead.
         var isRecentMessage = foundEntry.BeginsAt > oldMessageBeginsAtThreshold;
         if (!isRecentMessage)
             return Model.DisabledNoMessage;
 
-        // If the message is recent then it has been read recently.
+        // If the message is recent, then it has been read recently.
         var delay = foundEntry.BeginsAt + isRecentDuration - Clock.Now;
         if (delay.Ticks <= 0)
             return Model.DisabledNoMessage; // Recency has expired.
@@ -172,6 +185,11 @@
         public static readonly Model DisabledNoMessage = new() {
             IsActive = false,
             DisableReason = "Notify All is disabled. You need to send a message first."
+        };
+
+        public static readonly Model DisabledNoWritePermission = new() {
+            IsActive = false,
+            DisableReason = "Notify All is disabled. You should be able to write messages."
         };
 
         public bool IsUnavailable { get; private init; }

@@ -43,7 +43,6 @@
     <PackageVersion Include="Plugin.Firebase.CloudMessaging" Version="3.0.0" />
     <PackageVersion Include="Plugin.Firebase.Analytics" Version="3.0.0" />
     <PackageVersion Include="Plugin.Firebase.Crashlytics" Version="3.0.0" />
-    <PackageVersion Include="Serilog.Sinks.Xamarin" Version="1.0.0" />
     <PackageVersion Include="sqlite-net-pcl" Version="1.9.172" />
     <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.10" />
     <!-- Android -->
@@ -217,6 +216,12 @@
     <PackageVersion Include="OpenSearch.Net" Version="1.7.0" />
     <PackageVersion Include="OpenSearch.Net.VirtualizedCluster" Version="1.7.0" />
     <PackageVersion Include="OpenSearch.Client" Version="1.7.0" />
+    <!-- Semantic kernel -->
+    <PackageVersion Include="Microsoft.SemanticKernel" Version="1.24.0" />
+    <PackageVersion Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.24.0" />
+    <PackageVersion Include="Microsoft.SemanticKernel.Agents.Abstractions" Version="1.24.0-alpha" />
+    <PackageVersion Include="Microsoft.SemanticKernel.Agents.Core" Version="1.24.0-alpha" />
+
     <!-- OpenTelemetry & Metrics-->
     <PackageVersion Include="OpenTelemetry" Version="$(OpenTelemetryVersion)" />
     <PackageVersion Include="OpenTelemetry.Api" Version="$(OpenTelemetryVersion)" />

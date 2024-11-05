@@ -154,7 +154,10 @@ body.hoverable .chat-message:hover .message-reactions-add {
     @apply visible;
 }
 .chat-message-transcript {
-    @apply text-02 whitespace-normal;
+    @apply text-base text-02 whitespace-normal;
+}
+.chat-message-transcript span {
+    @apply text-base;
 }
 
 .chat-message-transcript .retained {
@@ -358,4 +361,19 @@ body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
 .message-link-preview {
     @apply relative;
     @apply py-1;
+}
+
+.notify-mentioned-members {
+    @apply inline-flex align-middle;
+    @apply my-[1px] px-1.5 pt-0.5;
+    @apply rounded-full bg-reaction;
+    @apply text-mention-other-text;
+    @apply select-none;
+}
+.notify-mentioned-members.has-notified {
+    @apply bg-transparent;
+}
+.notify-mentioned-members .mention-markup {
+    @apply px-0;
+    @apply bg-transparent;
 }

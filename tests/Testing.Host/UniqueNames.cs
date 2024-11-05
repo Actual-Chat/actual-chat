@@ -6,6 +6,7 @@ public static class UniqueNames
 {
     private const int RandomPartLength = 5;
     private static readonly RandomStringGenerator Rsg = new (RandomPartLength, Alphabet.AlphaLower);
+    private static readonly RandomStringGenerator Rnsg = new (10, Alphabet.Numeric);
 
     public static string OpenSearch(string prefix)
         => Name(prefix, "-");
@@ -28,4 +29,10 @@ public static class UniqueNames
             prefix = prefix.EnsureSuffix(delimiter);
         return prefix + Rsg.Next(randomSuffixLength);
     }
+
+    public static Phone Phone(string countryCode = "1")
+        => new (countryCode, Rnsg.Next(11 - countryCode.Length));
+
+    public static string Email(string prefix, string domain = "actual.chat")
+        => $"{prefix}{Rsg.Next()}@{domain}";
 }

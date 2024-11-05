@@ -102,9 +102,7 @@
         => ModalUI.Show(new LandingVideoModal.Model());
 
     private Task OnPremiumFeaturesClick()
-        => ModalUI.Show(new PremiumFeaturesModal.Model(() => {
-            _ = JSRef.InvokeVoidAsync("showLinksPage");
-        }));
+        => ModalUI.Show(new PremiumFeaturesModal.Model(() => JSRef.InvokeVoidAsync("showLinksPage")));
 
     public async Task OnDownloadButtonClick()
         => await JSRef.InvokeVoidAsync("scrollToPageLinks");

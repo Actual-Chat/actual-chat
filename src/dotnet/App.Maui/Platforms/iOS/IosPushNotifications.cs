@@ -2,11 +2,8 @@ using ActualChat.UI.Blazor.App;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
-using Foundation;
-using Microsoft.AspNetCore.Components;
 using Plugin.Firebase.CloudMessaging;
 using Plugin.Firebase.CloudMessaging.EventArgs;
-using Serilog;
 using UIKit;
 using UserNotifications;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
@@ -21,8 +18,6 @@ public class IosPushNotifications : IDeviceTokenRetriever, INotificationsPermiss
 
     private UIHub Hub { get; }
     private IFirebaseCloudMessaging Messaging { get; }
-    private UrlMapper UrlMapper => Hub.UrlMapper();
-    private NavigationManager Nav => Hub.Nav;
     private NotificationUI NotificationUI => _notificationUI ??= Hub.GetRequiredService<NotificationUI>();
     private SystemSettingsUI SystemSettingsUI => _systemSettingsUI ??= Hub.GetRequiredService<SystemSettingsUI>();
     private static UNUserNotificationCenter NotificationCenter => UNUserNotificationCenter.Current;
@@ -96,6 +91,6 @@ public class IosPushNotifications : IDeviceTokenRetriever, INotificationsPermiss
     {
         if (!e.Notification.Data.TryGetValue(Constants.Notification.MessageDataKeys.Link, out var url))
             url = null;
-        AppNavigationQueue.EnqueueOrNavigateToNotificationUrl(url);
+        AppNavigationQueue.EnqueueOrNavigateToUrl(url, AutoNavigationReason.Notification);
     }
 }

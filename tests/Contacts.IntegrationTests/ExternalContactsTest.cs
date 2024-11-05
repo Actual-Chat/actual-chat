@@ -1,9 +1,7 @@
 using System.Security.Claims;
-using ActualChat.Performance;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using FluentAssertions.Equivalency;
-using Microsoft.AspNetCore.Authentication.Google;
 
 namespace ActualChat.Contacts.IntegrationTests;
 
@@ -17,19 +15,8 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     private IContacts _contacts = null!;
     private ExternalContactHasher _hasher = null!;
 
-    private static string BobEmail => "bob@actual.chat";
-    private static Phone BobPhone => new ("1-2345678901");
-    private static User Bob { get; } = new User("", $"Bob-{nameof(ExternalContactsTest)}")
-        .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "111"))
-        .WithPhone(BobPhone)
-        .WithClaim(ClaimTypes.Email, BobEmail);
-
-    private static string JackEmail => "jack@actual.chat";
-    private static Phone JackPhone => new ("1-3456789012");
-    private static User Jack { get; } = new User("", $"JackAdmin-{nameof(ExternalContactsTest)}")
-        .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "222"))
-        .WithPhone(JackPhone)
-        .WithClaim(ClaimTypes.Email, JackEmail);
+    private string JackEmail { get; } = UniqueNames.Email("jack");
+    private Phone JackPhone { get; } = UniqueNames.Phone();
 
     protected override async Task InitializeAsync()
     {
@@ -66,12 +53,12 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     {
         // arrange
         var deviceId = NewDeviceId();
-        var bob = await _tester.SignIn(Bob);
+        var bob = await _tester.SignInAsUniqueBob();
         var externalContact = NewExternalContact(bob, deviceId)
-            .WithPhone(new Phone("1-234567890"))
-            .WithPhone(new Phone("2-345678901"))
-            .WithEmail("John.White@gmail.com")
-            .WithEmail("John.White@icloud.com")
+            .WithPhone(UniqueNames.Phone())
+            .WithPhone(UniqueNames.Phone())
+            .WithEmail(UniqueNames.Email("John.White", "gmail.com"))
+            .WithEmail(UniqueNames.Email("John.White", "icloud.com"))
             .WithHash(_hasher);
 
         // act
@@ -79,7 +66,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var externalContacts = await List(deviceId);
 
         // assert
-        externalContacts.Should().BeEquivalentTo(new[] { externalContact }, Including);
+        externalContacts.Should().BeEquivalentTo([externalContact], Including);
     }
 
     [Fact]
@@ -87,27 +74,27 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     {
         // arrange
         var deviceId = NewDeviceId();
-        var bob = await _tester.SignIn(Bob);
+        var bob = await _tester.SignInAsUniqueBob();
         var externalContact = NewExternalContact(bob, deviceId)
-            .WithPhone(new Phone("1-234567890"))
-            .WithPhone(new Phone("2-345678901"))
-            .WithEmail("John.White@gmail.com")
-            .WithEmail("John.White@icloud.com")
+            .WithPhone(UniqueNames.Phone())
+            .WithPhone(UniqueNames.Phone())
+            .WithEmail(UniqueNames.Email("John.White", "gmail.com"))
+            .WithEmail(UniqueNames.Email("John.White", "icloud.com"))
             .WithHash(_hasher);
 
         // act
         await Add(externalContact);
 
         externalContact = externalContact.WithoutPhone(new ("1-234567890"))
-            .WithPhone(new ("1-4567890123"))
-            .WithoutEmail("John.White@icloud.com")
+            .WithPhone(UniqueNames.Phone())
+            .WithoutEmail(UniqueNames.Email("John.White", "icloud.com"))
             .WithEmail("John.White@somedomain.com");
         await Update(externalContact);
 
         var externalContacts = await List(deviceId);
 
         // assert
-        externalContacts.Should().BeEquivalentTo(new[] { externalContact }, Including);
+        externalContacts.Should().BeEquivalentTo([externalContact], Including);
     }
 
     [Fact]
@@ -115,16 +102,16 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     {
         // arrange
         var deviceId = NewDeviceId();
-        var bob = await _tester.SignIn(Bob);
+        var bob = await _tester.SignInAsUniqueBob();
         var externalContact1 = NewExternalContact(bob, deviceId)
-            .WithPhone(new Phone("1-234567890"))
-            .WithPhone(new Phone("2-345678901"))
-            .WithEmail("John.White@gmail.com")
-            .WithEmail("John.White@icloud.com")
+            .WithPhone(UniqueNames.Phone())
+            .WithPhone(UniqueNames.Phone())
+            .WithEmail(UniqueNames.Email("John.White", "gmail.com"))
+            .WithEmail(UniqueNames.Email("John.White", "icloud.com"))
             .WithHash(_hasher);
         var externalContact2 = NewExternalContact(bob, deviceId)
-            .WithPhone(new Phone("3-34567890"))
-            .WithPhone(new Phone("4-345678901"))
+            .WithPhone(UniqueNames.Phone())
+            .WithPhone(UniqueNames.Phone())
             .WithEmail("Jack.Snack@gmail.com")
             .WithEmail("jack.snack@icloud.com")
             .WithHash(_hasher);
@@ -135,33 +122,33 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var externalContacts = await List(deviceId);
 
         // assert
-        externalContacts.Should().BeEquivalentTo(new[] { externalContact2 }, Including);
+        externalContacts.Should().BeEquivalentTo([externalContact2], Including);
     }
 
     [Fact]
     public async Task ShouldConnectByPhone_BothAccountsExistBeforeSync()
     {
         // arrange
-        var jack = await _tester.SignIn(Jack);
+        var jack = await SignInAsUniqueJack();
 
         var bobDeviceId = NewDeviceId();
-        var bob = await _tester.SignIn(Bob);
+        var bob = await _tester.SignInAsUniqueBob();
         var externalContact = new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, bobDeviceId), NewDeviceContactId()))
-            .WithPhone(jack.Phone)
-            .WithPhone(new ("1-11111111111"))
+            .WithPhone(JackPhone)
+            .WithPhone(UniqueNames.Phone())
             .WithHash(_hasher);
 
         // act
         await Add(externalContact);
         var bobContacts = await ListContactIds(1);
 
-        jack = await _tester.SignIn(Jack);
+        jack = await _tester.SignIn(jack);
         var jackContacts = await ListContactIds(0);
 
         // assert
         bobContacts
             .Should()
-            .BeEquivalentTo(new[] { BuildContactId(bob, jack) });
+            .BeEquivalentTo([BuildContactId(bob, jack)]);
         jackContacts.Should().BeEmpty("external contacts have synced for Bob only");
     }
 
@@ -170,11 +157,11 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     {
         // arrange
         var bobDeviceId = NewDeviceId();
-        var bob = await _tester.SignIn(Bob);
+        var bob = await _tester.SignInAsUniqueBob();
         var bobContacts0 = await ListContactIds(0);
         var externalContact = new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, bobDeviceId), NewDeviceContactId()))
             .WithPhone(JackPhone)
-            .WithPhone(new ("1-11111111111"))
+            .WithPhone(UniqueNames.Phone())
             .WithHash(_hasher);
 
         // act
@@ -185,16 +172,16 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         bobContacts.Count.Should().Be(bobContacts0.Count);
 
         // act
-        var jack = await _tester.SignIn(Jack);
+        var jack = await SignInAsUniqueJack();
         var jackContacts = await ListContactIds(0);
 
-        bob = await _tester.SignIn(Bob);
+        bob = await _tester.SignIn(bob);
         bobContacts = await ListContactIds(1);
 
         // assert
         bobContacts
             .Should()
-            .BeEquivalentTo(new[] { BuildContactId(bob, jack) });
+            .BeEquivalentTo([BuildContactId(bob, jack)]);
         jackContacts.Should().BeEmpty("external contacts have synced for Bob only");
     }
 
@@ -202,10 +189,10 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     public async Task ShouldConnectByEmail_FriendAccountCreatedAfterSync()
     {
         // arrange
-        var botDeviceId = NewDeviceId();
-        var bob = await _tester.SignIn(Bob);
+        var bobDeviceId = NewDeviceId();
+        var bob = await _tester.SignInAsUniqueBob();
         var externalContact =
-            new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, botDeviceId), NewDeviceContactId()))
+            new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, bobDeviceId), NewDeviceContactId()))
                 .WithEmail(JackEmail)
                 .WithHash(_hasher);
 
@@ -217,14 +204,14 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         bobContacts.Should().BeEmpty();
 
         // act
-        var jack = await _tester.SignIn(Jack);
+        var jack = await SignInAsUniqueJack();
         var jackContacts = await ListContactIds(0);
 
-        bob = await _tester.SignIn(Bob);
+        bob = await _tester.SignIn(bob);
         bobContacts = await ListContactIds(1);
 
         // assert
-        bobContacts.Should().BeEquivalentTo(new[] { BuildContactId(bob, jack) });
+        bobContacts.Should().BeEquivalentTo([BuildContactId(bob, jack)]);
         jackContacts.Should().BeEmpty("external contacts have synced for Bob only");
     }
 
@@ -232,10 +219,10 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     public async Task ShouldConnectByEmail()
     {
         // arrange
-        var jack = await _tester.SignIn(Jack);
+        var jack = await SignInAsUniqueJack();
 
         var bobDeviceId = NewDeviceId();
-        var bob = await _tester.SignIn(Bob);
+        var bob = await _tester.SignInAsUniqueBob();
         var externalContact = NewExternalContact(bob, bobDeviceId)
             .WithEmail(JackEmail)
             .WithHash(_hasher);
@@ -245,17 +232,17 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var contacts = await ListContactIds(1);
 
         // assert
-        contacts.Should().BeEquivalentTo(new[] { BuildContactId(bob, jack) });
+        contacts.Should().BeEquivalentTo([BuildContactId(bob, jack)]);
     }
 
     [Fact]
     public async Task ShouldCreateSingleContact()
     {
         // arrange
-        await _tester.SignIn(Jack);
+        var jack = await SignInAsUniqueJack();
 
         var bobDeviceId = NewDeviceId();
-        var bob = await _tester.SignIn(Bob);
+        var bob = await _tester.SignInAsUniqueBob();
         var externalContact = NewExternalContact(bob, bobDeviceId)
             .WithPhone(JackPhone)
             .WithEmail(JackEmail)
@@ -265,11 +252,11 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         await Add(externalContact);
         var bobContacts = await ListContactIds(1);
 
-        var jack = await _tester.SignIn(Jack);
+        jack = await _tester.SignIn(jack);
         var jackContacts = await ListContactIds(0);
 
         // assert
-        bobContacts.Should().BeEquivalentTo(new[] { BuildContactId(bob, jack) });
+        bobContacts.Should().BeEquivalentTo([BuildContactId(bob, jack)]);
         jackContacts.Should().BeEmpty();
     }
 
@@ -277,12 +264,12 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     public async Task ShouldNotConnectWhenNoMatchingPhonesOrEmails()
     {
         // arrange
-        await _tester.SignIn(Jack);
+        await SignInAsUniqueJack();
 
         var bobDeviceId = NewDeviceId();
-        var bob = await _tester.SignIn(Bob);
+        var bob = await _tester.SignInAsUniqueBob();
         var externalContact = NewExternalContact(bob, bobDeviceId)
-            .WithPhone(new ("1-1111111111"))
+            .WithPhone(UniqueNames.Phone())
             .WithEmail("jack.2@some.com")
             .WithHash(_hasher);
 
@@ -309,11 +296,11 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
     private Task<ApiArray<Result<ExternalContactFull?>>> Update(ExternalContactFull externalContactFull)
         => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
-            ApiArray.New(new ExternalContactChange(externalContactFull.Id, null, Change.Update(externalContactFull)))));
+            [new ExternalContactChange(externalContactFull.Id, null, Change.Update(externalContactFull))]));
 
     private Task<ApiArray<Result<ExternalContactFull?>>> Remove(ExternalContactFull externalContactFull)
         => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
-            ApiArray.New(new ExternalContactChange(externalContactFull.Id, null, Change.Remove<ExternalContactFull>()))));
+            [new ExternalContactChange(externalContactFull.Id, null, Change.Remove<ExternalContactFull>())]));
 
     private async Task<List<ContactId>> ListContactIds(int expectedCount)
         => await ComputedTest.When(async ct => {
@@ -342,4 +329,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
     private static EquivalencyAssertionOptions<ExternalContactFull> Including(EquivalencyAssertionOptions<ExternalContactFull> o)
         => o.Including(x => x.Id).Including(x => x.Hash);
+
+    private Task<AccountFull> SignInAsUniqueJack()
+        => _tester.SignInAsNew("Jack", x => x.WithPhone(JackPhone).WithClaim(ClaimTypes.Email, JackEmail));
 }

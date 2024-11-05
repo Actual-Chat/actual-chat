@@ -46,7 +46,7 @@ public class App : Application
             return;
         }
 
-        AppNavigationQueue.EnqueueOrNavigateToNotificationUrl(uri.ToString());
+        AppNavigationQueue.EnqueueOrNavigateToUrl(uri.ToString(), AutoNavigationReason.AppLink);
     }
 
     public new void Quit()

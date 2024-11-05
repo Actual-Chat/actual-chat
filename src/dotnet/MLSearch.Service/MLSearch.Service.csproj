@@ -16,5 +16,8 @@
     <PackageReference Include="OpenTelemetry.Api" />
     <PackageReference Include="OpenTelemetry.Api.ProviderBuilderExtensions" />
     <PackageReference Include="Anthropic.SDK" />
+    <PackageReference Include="Microsoft.SemanticKernel" />
+    <PackageReference Include="Microsoft.SemanticKernel.Agents.Abstractions" />
+    <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" />
   </ItemGroup>
 </Project>

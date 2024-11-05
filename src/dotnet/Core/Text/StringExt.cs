@@ -208,4 +208,11 @@ public static partial class StringExt
         var bytes = Convert.FromBase64String(s);
         return Encoding.UTF8.GetString(bytes);
     }
+
+    public static string TrimNonWord(this string s)
+    {
+        var iStart = s.FirstIndexOf(char.IsLetterOrDigit);
+        var iEnd = s.LastIndexOf(char.IsLetterOrDigit);
+        return iStart < 0 || iEnd < 0 ? "" : s[iStart..(iEnd + 1)];
+    }
 }

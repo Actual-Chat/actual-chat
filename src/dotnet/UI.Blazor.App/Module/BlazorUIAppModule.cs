@@ -47,6 +47,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<ChatListUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatAudioUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
+        fusion.AddService<HighlightUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatPlayers>(ServiceLifetime.Scoped);
         fusion.AddService<AppActivity, ChatAppActivity>(ServiceLifetime.Scoped);
         services.AddScoped(c => new SelectionUI(c.ChatUIHub()));
@@ -120,10 +121,9 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
                 return Task.CompletedTask;
             }));
 
-        services.AddScoped<AppScopedServiceStarter>(c => new AppScopedServiceStarter(c));
+        services.AddScoped<AppScopedServiceStarter>(c => new AppScopedServiceStarter(c.ChatUIHub()));
         services.AddSingleton<AppNonScopedServiceStarter>(c => new AppNonScopedServiceStarter(c));
         services.AddScoped<AppIconBadgeUpdater>(c => new AppIconBadgeUpdater(c.ChatUIHub()));
-        services.AddScoped<AutoNavigationUI>(c => new AppAutoNavigationUI(c.UIHub()));
 
         if (HostInfo.HostKind.IsServerOrWasmApp())
             services.AddScoped<IDataCollectionSettingsUI>(c => new WebDataCollectionSettingsUI(c));

@@ -37,7 +37,6 @@
     @apply text-white;
 }
 .left-chat-search-input .c-ai-btn.search-btn {
-    @apply bg-04;
     @apply text-03;
 }
 .left-chat-search-input.open .c-ai-btn {
@@ -71,10 +70,4 @@
     @starting-style {
         opacity: 0;
     }
-}
-body.hoverable .left-chat-search-input .c-ai-btn.btn-round:hover {
-    @apply bg-primary;
-}
-body.hoverable .left-chat-search-input .c-ai-btn.search-btn.btn-round:hover {
-    @apply bg-04;
 }

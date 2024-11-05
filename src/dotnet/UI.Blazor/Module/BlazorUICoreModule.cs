@@ -109,6 +109,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(_ => new ToastUI());
         fusion.AddService<LiveTime>(ServiceLifetime.Scoped);
         fusion.AddService<TotpUI>(ServiceLifetime.Scoped);
+        services.AddScoped(c => new AutoNavigationUI(c.UIHub()));
 
         // Actual Chat-specific UI services
         services.AddScoped(c => new ThemeUI(c.UIHub()));

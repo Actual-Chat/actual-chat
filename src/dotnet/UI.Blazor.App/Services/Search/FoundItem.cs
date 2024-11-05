@@ -21,6 +21,8 @@ public sealed record FoundItem(
         => SearchResult is ContactSearchResult ? SearchResult.SearchMatch : SearchMatch.Empty;
     public SearchMatch MessageSearchMatch
         => SearchResult is EntrySearchResult ? SearchResult.SearchMatch : SearchMatch.Empty;
+    public ApiSet<string> HighlightedWords
+        => SearchResult is EntrySearchResult entrySearchResult ? entrySearchResult.HighlightedWords : [];
     public LocalUrl Link => Scope switch {
         SearchScope.Groups => Links.Chat(ChatId),
         SearchScope.People => Links.Chat(ChatId),

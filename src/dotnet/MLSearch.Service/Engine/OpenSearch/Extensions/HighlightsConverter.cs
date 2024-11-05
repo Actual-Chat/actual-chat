@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using ActualChat.Search;
 using Cysharp.Text;
 using OpenSearch.Client;
@@ -5,14 +6,19 @@ using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 
-public static class HighlightsConverter
+public static partial class HighlightsConverter
 {
-    public const string PreTag = "<em>";
-    public const string PostTag = "</em>";
+    public const string PreTag = @"⫷⩧";
+    public const string PostTag = @"⩧⫸";
     public const string SkippedPartReplacement = "…";
     private static readonly string FullNameField = "fullName";
     private static readonly string TitleField = "title";
     private static readonly string ContentField = "content";
+
+    [GeneratedRegex(@"[\s^\u200B]+", RegexOptions.Compiled)]
+    private static partial Regex SpaceRegexFactory();
+
+    private static readonly Regex WordRegex = SpaceRegexFactory();
 
     public static SearchMatch GetSearchMatch(this IHit<IndexedUserContact> hit)
     {
@@ -48,6 +54,32 @@ public static class HighlightsConverter
             return SearchMatch.New(hit.Source.Content);
 
         return ToSearchMatch(hit.Source.Content, highlight, hit.Score ?? 1.0);
+    }
+
+    public static IEnumerable<string> GetHighlightedWords(this IHit<IndexedEntry> hit)
+    {
+        var highlights = hit.Highlight[ContentField].Where(x => !x.IsNullOrEmpty()).ToList();
+        return highlights.Count == 0 ? [] : highlights.SelectMany(GetHighlightedWords);
+    }
+
+    public static IEnumerable<string> GetHighlightedWords(string highlight)
+    {
+        var position = 0;
+        while (position <= highlight.Length) {
+            var iStart = highlight.OrdinalIndexOf(PreTag, position);
+            if (iStart < 0)
+                yield break;
+
+            iStart += PreTag.Length;
+            var iEnd = highlight.OrdinalIndexOf(PostTag, iStart);
+            if (iEnd < 0)
+                yield break;
+
+            foreach (var word in WordRegex.Split(highlight[iStart..iEnd]))
+                yield return word.ToLowerInvariant();
+
+            position = iEnd + PostTag.Length;
+        }
     }
 
     public static SearchMatch ToSearchMatch(string plain, string highlight, double score)

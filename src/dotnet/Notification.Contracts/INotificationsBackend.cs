@@ -8,6 +8,8 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Notification?> Get(NotificationId notificationId, CancellationToken cancellationToken);
     [ComputeMethod]
+    Task<ManualNotification?> Get(ManualNotificationId notificationId, CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<IReadOnlyList<Device>> ListDevices(UserId userId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<IReadOnlyList<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken);
@@ -22,6 +24,10 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task<bool> OnUpsert(NotificationsBackend_Upsert command, CancellationToken cancellationToken);
     [CommandHandler]
+    Task<bool> OnUpsertManualNotification(
+        NotificationsBackend_UpsertManualNotification command,
+        CancellationToken cancellationToken);
+    [CommandHandler]
     Task OnRegisterDevice(NotificationsBackend_RegisterDevice command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveDevices(NotificationsBackend_RemoveDevices command, CancellationToken cancellationToken);
@@ -29,6 +35,8 @@ public interface INotificationsBackend : IComputeService, IBackendService
     Task OnRemoveAccount(NotificationsBackend_RemoveAccount command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnNotifyMembers(NotificationsBackend_NotifyMembers command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnNotifyMentionedMembers(NotificationsBackend_NotifyMentionedMembers command, CancellationToken cancellationToken);
 
     // Events
 
@@ -55,6 +63,16 @@ public sealed partial record NotificationsBackend_Notify(
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Upsert(
     [property: DataMember, MemoryPackOrder(0)] Notification Notification
+) : ICommand<bool>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public UserId ShardKey => Notification.UserId;
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_UpsertManualNotification(
+    [property: DataMember, MemoryPackOrder(0)] ManualNotification Notification
 ) : ICommand<bool>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore]
@@ -100,6 +118,18 @@ public sealed partial record NotificationsBackend_NotifyMembers(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2)] long LastEntryId
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public UserId ShardKey => UserId;
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_NotifyMentionedMembers(
+    [property: DataMember, MemoryPackOrder(0)] UserId UserId,
+    [property: DataMember, MemoryPackOrder(1)] TextEntryId TextEntryId,
+    [property: DataMember, MemoryPackOrder(2)] ImmutableArray<UserId> UserIds
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore]
