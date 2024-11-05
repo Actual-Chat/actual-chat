@@ -30,9 +30,18 @@
                  data-bubble="@(BubbleRef.New<TextMessagePanelBubble>())"
                  data-bubble-priority="150"
                  data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
-                <ButtonRound Class="post-panel-btn attach-btn btn-transparent btn-xs">
-                    <i class="icon-plus text-2xl"></i>
-                </ButtonRound>
+                <div class="c-left-buttons">
+                    <ButtonRound Class="post-panel-btn attach-btn btn-transparent btn-xs">
+                        <i class="icon-plus text-2xl"></i>
+                    </ButtonRound>
+                    <ButtonRound
+                        Class="post-panel-btn btn-xs btn-transparent mention-btn"
+                        Tooltip="Mention"
+                        TooltipPosition="FloatingPosition.Top"
+                        Click="@OnMentionBtnClick">
+                        <i class="icon-at text-2xl"></i>
+                    </ButtonRound>
+                </div>
                 <label for="message-input" class="message-input-label">
                     <MarkupEditor
                         @key="MarkupEditorKey"
@@ -47,7 +56,7 @@
                         Cancel="@(() => OnCancel())"
                         OpenPrevious="OnOpenPrevious"/>
                 </label>
-                <div class="c-buttons">
+                <div class="c-right-buttons">
                     @if (_enableIncompleteUI) {
                         <ButtonRound
                             Class="post-panel-btn btn-transparent btn-xs"
@@ -241,6 +250,11 @@
 
     private ValueTask UpdateChatId()
         => JSRef.InvokeVoidAsync("setChatId", Chat.Id);
+
+    private async Task OnMentionBtnClick() {
+        await MarkupEditorRef.WhenReady;
+        await MarkupEditorRef.JSRef.InvokeVoidAsync("mentionBtnHandler");
+    }
 
     // Event handlers
 
