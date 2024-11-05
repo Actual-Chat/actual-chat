@@ -77,11 +77,11 @@ public class TuneUI : ITuneUIBackend, IDisposable
         _blazorRef = null!;
     }
 
-    public ValueTask Play(Tune tune)
-    {
-        _ = VibrateNoJs(tune).Catch(Log, LogLevel.Debug, "Failed to vibrate tune {Tune}", tune);
-        return JS.InvokeVoidAsync(JSPlayMethod, tune).Catch(Log, LogLevel.Debug, "Failed to play tune {Tune}", tune);
-    }
+    public Task Play(Tune tune)
+        => ForegroundTask.Run(() => {
+            _ = VibrateNoJs(tune);
+            return JS.InvokeVoidAsync(JSPlayMethod, tune).AsTask();
+        });
 
     public ValueTask PlayAndWait(Tune tune)
         => TaskExt.WhenAll(VibrateNoJs(tune), JS.InvokeVoidAsync(JSPlayAndWaitMethod, tune));
