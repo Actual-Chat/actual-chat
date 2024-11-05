@@ -528,14 +528,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
     }
 
     public recordingInProgress(gain: number, noWait?: RpcNoWait): Promise<void> {
-        if (!this.isRecording) {
-            if (gain != 0)
-                this.recordingFailedDebounced.reset();
-            if (gain < AR.MIN_MICROPHONE_GAIN) // Min gain to consider microphone sends real signal at the beginning of the recording
-                return ResolvedPromise.Void;
-
+        if (!this.isRecording)
             void this.onRecordingStateChanged(true);
-        }
 
         this.recordingFailedDebounced();
         return ResolvedPromise.Void;
