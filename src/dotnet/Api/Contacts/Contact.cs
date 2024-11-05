@@ -19,6 +19,7 @@ public sealed partial record Contact(
     [DataMember, MemoryPackOrder(2)] public UserId UserId { get; init; }
     [DataMember, MemoryPackOrder(3)] public Moment TouchedAt { get; init; }
     [DataMember, MemoryPackOrder(4)] public bool IsPinned { get; init; }
+    [DataMember, MemoryPackOrder(7)] public string PeerContactName { get; init; } = "";
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

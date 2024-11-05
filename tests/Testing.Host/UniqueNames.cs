@@ -34,5 +34,5 @@ public static class UniqueNames
         => new (countryCode, Rnsg.Next(11 - countryCode.Length));
 
     public static string Email(string prefix, string domain = "actual.chat")
-        => $"{prefix}{Rsg.Next()}@{domain}";
+        => $"{prefix}.{Rsg.Next()}@{domain}";
 }
