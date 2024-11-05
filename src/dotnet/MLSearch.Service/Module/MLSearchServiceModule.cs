@@ -215,7 +215,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.Configure<ChatBotConversationTriggerOptions>(e => {
             e.AllowPeerBotChat = Settings.Bot?.AllowPeerBotChat ?? false;
         });
-        if (Settings.Bot is var chatbotSettings && chatbotSettings is not null) {
+        if (Settings.Bot is { } chatbotSettings) {
             var isBotEnabled = Settings is { IsEnabled: true, Bot.IsEnabled: true };
             if (isBotEnabled) {
                 rpcHost.AddBackend<IChatBotConversationTrigger, ChatBotConversationTrigger>();
