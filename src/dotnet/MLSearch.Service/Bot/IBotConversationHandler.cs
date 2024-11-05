@@ -1,6 +1,11 @@
 using ActualChat.Chat;
-using ActualChat.MLSearch.Indexing;
 
 namespace ActualChat.MLSearch.Bot;
 
-internal interface IBotConversationHandler: ISink<ChatEntry, ChatEntryId>;
+internal interface IBotConversationHandler
+{
+    Task ExecuteAsync(
+        IReadOnlyList<ChatEntry>? updatedDocuments,
+        IReadOnlyCollection<ChatEntryId>? deletedDocuments,
+        CancellationToken cancellationToken = default);
+}
