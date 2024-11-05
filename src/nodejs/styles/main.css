@@ -327,11 +327,10 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply opacity-100;
     @apply md:transition-width;
     @apply md:duration-200;
-    transition-timing-function: steps(10, start);
 }
 @media (min-width: 820px) and (max-width: 1280px) {
     .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .list-view-layout {
-        animation: hide-layout 200ms steps(10, start) forwards;
+        animation: hide-layout 200ms forwards;
     }
 }
 .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="closed"]) > .list-view-layout {
@@ -339,11 +338,10 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply opacity-100;
     @apply md:transition-width;
     @apply md:duration-200;
-    transition-timing-function: steps(10, start);
 }
 @media (min-width: 820px) and (max-width: 1280px) {
     .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="closed"]) > .list-view-layout {
-        animation: show-layout 400ms steps(10, start) forwards;
+        animation: show-layout 400ms forwards;
     }
 }
 @keyframes hide-layout {
