@@ -3,7 +3,7 @@ using CoreHaptics;
 
 namespace ActualChat.App.Maui;
 
-public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposable
+public class IosTuneUI(IServiceProvider services) : TuneUI(services)
 {
     private const float Intensity = 0.5f;
     private const float Sharpness = 0.5f;
