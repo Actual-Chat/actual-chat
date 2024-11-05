@@ -229,7 +229,7 @@
             UICommander.ShowError(e);
             attachmentListSnapshot.Rollback();
             await MarkupEditorRef.SetText(text);
-            await clearMarkupTask.SuppressExceptions();
+            await clearMarkupTask.SilentAwait();
         }
     }
 

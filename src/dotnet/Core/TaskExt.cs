@@ -86,26 +86,6 @@ public static class TaskExt
         }
     }
 
-    public static async Task SuppressExceptions(this Task task)
-    {
-        try {
-            await task.ConfigureAwait(false);
-        }
-        catch {
-            // ignored
-        }
-    }
-
-    public static async ValueTask SuppressExceptions(this ValueTask task)
-    {
-        try {
-            await task.ConfigureAwait(false);
-        }
-        catch {
-            // ignored
-        }
-    }
-
     // WithErrorLog
 
     public static Task WithErrorLog(this Task task, ILogger errorLog, string message)
