@@ -12,7 +12,7 @@
         JS.InvokeVoidAsync(JSUpdateBodyStyleMethod, hasModals);
 
     if (_refs.CheckIfHasActiveModelsToRenderChanged(renderedRefs, out var isOpen))
-        TuneUI.Play(isOpen  ? Tune.OpenModal : Tune.CloseModal);
+        _ = TuneUI.Play(isOpen  ? Tune.OpenModal : Tune.CloseModal);
 }
 
 <CascadingValue Value="@this" IsFixed="@true">
