@@ -8,13 +8,15 @@ public interface IExternalContactsBackend : IComputeService, IBackendService
     [ComputeMethod, Obsolete("2024.04: Replaced with List")]
     Task<ApiArray<ExternalContactFull>> ListFull(UserId ownerId, Symbol deviceId, CancellationToken cancellationToken);
     [ComputeMethod]
+    Task<ExternalContactFull?> Get(ExternalContactId externalContactId, CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<ApiArray<ExternalContact>> List(UserDeviceId userDeviceId, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ApiArray<Result<ExternalContactFull?>>> OnBulkChange(ExternalContactsBackend_BulkChange command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveAccount(ExternalContactsBackend_RemoveAccount command, CancellationToken cancellationToken);
     // Not compute method!
-    Task<ApiSet<UserId>> ListReferencingUserIds(UserId userId, CancellationToken cancellationToken);
+    Task<ApiSet<ExternalContactId>> ListReferencingContactIds(UserId userId, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

@@ -19,6 +19,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? UserId { get; set; }
     public string? ChatId { get; set; }
     public string? PlaceId { get; set; }
+    public string PeerContactName { get; set; } = "";
     public bool IsPinned { get; set; }
 
     public DateTime TouchedAt {
@@ -34,6 +35,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
             UserId = new UserId(UserId ?? ""),
             TouchedAt = TouchedAt.ToMoment(),
             IsPinned = IsPinned,
+            PeerContactName = PeerContactName,
         };
 
     public void UpdateFrom(Contact model)
@@ -45,8 +47,9 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Version = model.Version;
         TouchedAt = model.TouchedAt.ToDateTimeClamped();
         IsPinned = model.IsPinned;
+        PeerContactName = model.PeerContactName;
         if (!Id.IsNullOrEmpty())
-            return; // Only above properties can be changed for already existing contacts
+            return; // Only the above properties can be changed for already existing contacts
 
         Id = id;
         OwnerId = model.OwnerId.Value.NullIfEmpty() ?? throw StandardError.Constraint("OwnerId cannot be empty.");

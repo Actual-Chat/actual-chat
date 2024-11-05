@@ -39,9 +39,13 @@ public class Chats(IServiceProvider services) : IChats
                 return null; // No peer account
 
             chat ??= new Chat(chatId);
+            var avatar = contact.Account.Avatar;
+            var avatarName = avatar.Name;
+            if (chat.Kind == ChatKind.Peer)
+                avatarName = ContactExt.GetPeerContactName(contact, avatarName);
             chat = chat with {
-                Title = contact.Account.Avatar.Name,
-                Picture = contact.Account.Avatar.Media,
+                Title = avatarName,
+                Picture = avatar.Media,
             };
         }
         else {

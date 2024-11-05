@@ -19,12 +19,6 @@ public sealed class AuthorUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub)
         await ModalUI.Show(new AuthorModal.Model(authorId), CancellationToken.None).ConfigureAwait(false);
     }
 
-    public async Task<bool> CanStartPeerChat(AuthorId authorId, CancellationToken cancellationToken = default)
-    {
-        var peerChatId = await GetPeerChatId(authorId, cancellationToken).ConfigureAwait(false);
-        return !peerChatId.IsNone;
-    }
-
     public async Task StartPeerChat(AuthorId authorId, CancellationToken cancellationToken = default)
     {
         var peerChatId = await GetPeerChatId(authorId, cancellationToken).ConfigureAwait(true);

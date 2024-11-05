@@ -22,6 +22,9 @@ public static class ExternalContactExt
             ? externalContact with { Hash = hasher.Compute(externalContact) }
             : externalContact;
 
+    public static ExternalContactFull WithDisplayName(this ExternalContactFull externalContact, string displayName)
+        => externalContact with { DisplayName = displayName };
+
     // Private methods
 
     private static string Hash(string value)

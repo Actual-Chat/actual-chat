@@ -413,14 +413,14 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return;
 
         try {
-            var referencingUserIds = await ExternalContactsBackend.ListReferencingUserIds(account.Id, cancellationToken)
+            var referencingExtContactIds = await ExternalContactsBackend.ListReferencingContactIds(account.Id, cancellationToken)
                 .ConfigureAwait(false);
-            await referencingUserIds
-                .Where(userId => userId != account.Id)
-                .Select(CreateContact)
+            await referencingExtContactIds.Select(c => new { UserId =  c.UserDeviceId.OwnerId, ExtContactId = c })
+                .Where(d => d.UserId != account.Id)
+                .GroupBy(d => d.UserId)
+                .Select(d => CreateContact(d.Key, d.Select(c => c.ExtContactId).ToList()))
                 .Collect(cancellationToken)
                 .ConfigureAwait(false);
-
             var completeCmd = new AccountsBackend_Update(account with { IsGreetingCompleted = true }, account.Version);
             await Commander.Call(completeCmd, true, cancellationToken).ConfigureAwait(false);
         }
@@ -429,10 +429,20 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
         return;
 
-        Task<Contact?> CreateContact(UserId ownerId) {
-            var contact = new Contact(ContactId.Peer(ownerId, account.Id));
+        async Task<Contact?> CreateContact(UserId ownerId, IEnumerable<ExternalContactId> extContactIds) {
+            string peerContactName = "";
+            foreach (var externalContactId in extContactIds) {
+                var externalContact = await ExternalContactsBackend.Get(externalContactId, cancellationToken).ConfigureAwait(false);
+                if (externalContact is not null && !externalContact.DisplayName.IsNullOrEmpty()) {
+                    peerContactName = externalContact.DisplayName;
+                    break;
+                }
+            }
+            var contact = new Contact(ContactId.Peer(ownerId, account.Id)) {
+                PeerContactName = peerContactName,
+            };
             var cmd = new ContactsBackend_Change(contact.Id, null, Change.Create(contact));
-            return Commander.Call(cmd, true, cancellationToken);
+            return await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         }
     }
 

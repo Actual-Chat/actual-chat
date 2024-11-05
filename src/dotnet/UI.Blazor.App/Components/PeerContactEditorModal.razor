@@ -1,0 +1,84 @@
+@using ActualChat.Contacts
+@implements IModalView<PeerContactEditorModal.Model>
+@namespace ActualChat.UI.Blazor.App.Components
+
+<Form @ref="_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
+    <DialogFrame
+        Class="peer-contact-editor-modal"
+        Title="Edit peer contact"
+        HasCloseButton="true"
+        ButtonsClass="full-width">
+        <Body>
+            <FormBlock>
+                <DataAnnotationsValidator/>
+
+                <FormSection For="() => _form.DisplayName" InputId="@_form.DisplayNameFieldId" Label="Display Name" IsLabelInsideInput="true">
+                    <TextBox @bind-Value="@_form.DisplayName" Id="@_form.DisplayNameFieldId" />
+                </FormSection>
+            </FormBlock>
+        </Body>
+        <Buttons>
+            <FormButtons>
+                @{
+                    var submitClass = $"btn-modal btn-primary {_formRef.IsValid.ToEnabledClass()}";
+                }
+                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
+                <Button Type="@ButtonType.Submit" IsDisabled="@(_contact is null)" Class="@submitClass">Save</Button>
+            </FormButtons>
+        </Buttons>
+    </DialogFrame>
+</Form>
+
+@code {
+    private Form _formRef = null!;
+    private FormModel _form = null!;
+    private Contact? _contact;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    private Session Session => Hub.Session();
+    private IContacts Contacts => Hub.Contacts;
+    private UICommander UICommander => Hub.UICommander();
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
+        _contact = await Contacts.Get(Session, ModalModel.PeerContactId, default).ConfigureAwait(false);
+        _form.DisplayName = _contact?.PeerContactName ?? "";
+        _form.CopyToBase();
+    }
+
+    private async Task OnSave() {
+        var contact = _contact! with {
+            PeerContactName = _form.DisplayName
+        };
+        var command = new Contacts_Change(Session, contact.Id, contact.Version, Change.Update(contact));
+        var (_, error) = await UICommander.Run(command);
+        if (error != null)
+            return;
+
+        CloseModal();
+    }
+
+    private void OnCancel()
+        => CloseModal();
+
+    private void CloseModal()
+        => Modal.Close();
+
+    // Nested types
+
+    public sealed class FormModel : FormModel<FormModel> {
+        public string DisplayName { get; set; } = "";
+        public string DisplayNameFieldId { get; set; } = "";
+
+        public FormModel(ComponentIdGenerator? componentIdGenerator)
+            : base("peer-contact-editor", componentIdGenerator) {
+        }
+    }
+
+    public sealed record Model(ContactId PeerContactId);
+}

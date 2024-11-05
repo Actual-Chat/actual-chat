@@ -9,25 +9,14 @@
         : Click;
 }
 
-@if (onClick.HasDelegate) {
-    <AvatarName
-        Avatar="@author.Avatar"
-        Class="@Class"
-        IsAnonymous="@author.IsAnonymous"
-        ShowAsYou="@showAsYou"
-        Click="@onClick"/>
-}
-else {
-    <AvatarName
-        Avatar="@author.Avatar"
-        IsAnonymous="@author.IsAnonymous"
-        ShowAsYou="@showAsYou"
-        Class="@Class"/>
-}
+<AvatarName
+    Avatar="@author.Avatar"
+    Class="@Class"
+    IsAnonymous="@author.IsAnonymous"
+    ShowAsYou="@showAsYou"
+    Click="@onClick"/>
 
 @code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool ShowDetailsOnClick { get; set; } = true;
     [Parameter] public bool ShowAsYou { get; set; }
