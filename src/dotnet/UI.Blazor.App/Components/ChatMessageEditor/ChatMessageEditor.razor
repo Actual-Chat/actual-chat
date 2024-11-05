@@ -192,9 +192,8 @@
             return;
 
         _ = TuneUI.Play(Tune.SendMessage);
+        var clearMarkupTask = MarkupEditorRef.Clear();
         try {
-            _ = MarkupEditorRef.Clear();
-
             var relatedChatEntry = ChatEditorUI.RelatedChatEntry.Value;
             var relatedChatEntryId = relatedChatEntry?.Id ?? default;
             await ChatEditorUI.HideRelatedEntry(false);
@@ -224,11 +223,13 @@
                 ReadPositionState.Value = new (Chat.Id, readEntryLid);
             await AttachmentListRef.Clear();
             SearchUI.Clear();
+            await clearMarkupTask;
         }
         catch (Exception e) {
             UICommander.ShowError(e);
             attachmentListSnapshot.Rollback();
             await MarkupEditorRef.SetText(text);
+            await clearMarkupTask.SuppressExceptions();
         }
     }
 
