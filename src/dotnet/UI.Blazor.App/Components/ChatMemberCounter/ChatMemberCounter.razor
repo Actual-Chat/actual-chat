@@ -57,7 +57,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = Chat.Id;
-        var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken);
+        var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
 
         var authorPresences = await allAuthorIds
             .Select(authorId => Authors.GetPresence(Session, chatId, authorId, cancellationToken))
