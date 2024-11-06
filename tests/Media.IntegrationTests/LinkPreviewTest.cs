@@ -34,7 +34,9 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         Http.SetupImage(img1Url)
             .SetupHtml(url1, h => h.Title("Title 1").Description("Description 1").Image(img1Url))
             .SetupImage(img2Url)
-            .SetupHtml(url2, h => h.Title("Title 2").Description("Description 2").Image(img2Url));
+            .SetupHtml(url2, h => h.Title("Title 2").Description("Description 2").Image(img2Url))
+            .SetupEmptyRobots(url1)
+            .SetupEmptyRobots(url2);
 
         // act
         await Tester.SignInAsAlice();
@@ -66,6 +68,58 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         entry = await Tester.UpdateTextEntry(entry.Id, "Text without links");
         var nullEntryLinkPreview = await GetEntryLinkPreview(entry.Id, Symbol.Empty);
         nullEntryLinkPreview.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ShouldSkipEmails()
+    {
+        // arrange
+        var url1 = $"https://domain.some/{RandomStringGenerator.Next()}";
+        var id1 = LinkPreview.ComposeId(url1);
+        var img1Url = $"https://domain2.some/images/{RandomStringGenerator.Next()}.jpg";
+        Http.SetupImage(img1Url)
+            .SetupHtml(url1, h => h.Title("Title 1").Description("Description 1").Image(img1Url))
+            .SetupEmptyRobots(url1);
+
+        // act
+        await Tester.SignInAsAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var entry = await Tester.CreateTextEntry(chatId, $"a b c alice@actual.chat  {url1} 123");
+
+        // assert
+        var entryLinkPreview = await GetEntryLinkPreview(entry.Id, id1).Require();
+        entryLinkPreview.Url.Should().Be(url1);
+        entryLinkPreview.Title.Should().Be("Title 1");
+        entryLinkPreview.Description.Should().Be("Description 1");
+        entryLinkPreview.PreviewMedia.Should().NotBeNull();
+        var linkPreview = await ComputedTest.When(ct => Previews.Get(id1, ct).Require());
+        linkPreview.Should().BeEquivalentTo(entryLinkPreview);
+    }
+
+    [Fact]
+    public async Task ShouldSkipInvalidSchemes()
+    {
+        // arrange
+        var url1 = $"https://domain.some/{RandomStringGenerator.Next()}";
+        var id1 = LinkPreview.ComposeId(url1);
+        var img1Url = $"https://domain2.some/images/{RandomStringGenerator.Next()}.jpg";
+        Http.SetupImage(img1Url)
+            .SetupHtml(url1, h => h.Title("Title 1").Description("Description 1").Image(img1Url))
+            .SetupEmptyRobots(url1);
+
+        // act
+        await Tester.SignInAsAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var entry = await Tester.CreateTextEntry(chatId, $"a b c mailto://alice@actual.chat ftp://domaine.some/123 app://domain.some/123  {url1} 123");
+
+        // assert
+        var entryLinkPreview = await GetEntryLinkPreview(entry.Id, id1).Require();
+        entryLinkPreview.Url.Should().Be(url1);
+        entryLinkPreview.Title.Should().Be("Title 1");
+        entryLinkPreview.Description.Should().Be("Description 1");
+        entryLinkPreview.PreviewMedia.Should().NotBeNull();
+        var linkPreview = await ComputedTest.When(ct => Previews.Get(id1, ct).Require());
+        linkPreview.Should().BeEquivalentTo(entryLinkPreview);
     }
 
     private async Task<LinkPreview?> GetEntryLinkPreview(ChatEntryId entryId, Symbol expectedId)
