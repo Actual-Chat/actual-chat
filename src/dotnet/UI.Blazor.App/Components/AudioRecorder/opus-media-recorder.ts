@@ -112,7 +112,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
          * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/modules/mediastream/media_constraints_impl.cc#L98-L116}
          * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/platform/mediastream/media_constraints.cc#L358-L372}
          */
-        const isAndroid = navigator.userAgent.match(/Android/i).length > 0;
+        const isAndroid = !!navigator.userAgent.match(/Android/i);
         let stream: MediaStream = null;
         try {
             infoLog?.log('-> getMicrophoneStream');
