@@ -155,8 +155,11 @@
         return new (hasSentCodeRecently);
     }
 
-    protected override Task<bool> Validate()
-        => _validator.Validate();
+    protected override async Task<bool> Validate() {
+        var isValid = _validationState != ValidationState.Invalid
+            && await _validator.Validate().ConfigureAwait(false);
+        return isValid;
+    }
 
     protected override async Task<bool> Save() {
         var phone = await Phones.Parse(_stepModel.Phone, CancellationToken.None);
