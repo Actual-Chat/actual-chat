@@ -54,6 +54,7 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        await OnboardingUI.WhenLocalSettingsLoaded;
         var settings = await OnboardingUI.LocalSettings.Use(cancellationToken).ConfigureAwait(false);
         return new (settings.AreCookiesAccepted);
     }
