@@ -76,7 +76,10 @@
 
     public override bool CanSkip => _isVerified is null or false;
 
-    public override string NextTitle => "Verify";
+    public override string NextTitle
+        => _validationState == ValidationState.Invalid
+            ? "Unavailable"
+            : "Verify";
 
     public override bool IsCompleted {
         get {
@@ -107,8 +110,11 @@
         await CaptchaUI.EnsureInitialized();
     }
 
-    protected override Task<bool> Validate()
-        => _validator.Validate(CancellationToken.None);
+    protected override async Task<bool> Validate() {
+        var isValid = _validationState != ValidationState.Invalid
+            && await _validator.Validate().ConfigureAwait(false);
+        return isValid;
+    }
 
     protected override ValueTask OnSkip() {
         _skipped = true;
@@ -155,6 +161,9 @@
         return true;
 
         async Task<bool> ShowTotpVerificationModal() {
+            if (_validationState == ValidationState.Invalid)
+                return false;
+
             var verificationModel = new PhoneVerificationModal.Model(phone);
             var modalRef = await ModalUI.Show(verificationModel);
             await modalRef.WhenClosed;
