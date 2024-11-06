@@ -19,6 +19,7 @@ body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-pane
 body.narrow .text-mode .chat-audio-panel,
 body.narrow .narrow-panel .chat-audio-panel {
     @apply bottom-2;
+    @apply py-1;
     left: calc(50% - 1rem);
 }
 body.narrow .to-thick:not(.text-mode) .chat-audio-panel {

@@ -45,6 +45,7 @@ body.narrow .narrow-panel .post-panel {
 body.narrow .text-mode .post-panel .c-right-buttons,
 body.narrow .narrow-panel .post-panel .c-right-buttons {
     @apply absolute bottom-2 right-0;
+    @apply py-1;
 }
 
 body.narrow .text-mode .post-panel .c-right-buttons .c-incut,
@@ -131,6 +132,7 @@ body.narrow .c-left-buttons {
 body.narrow .text-mode .c-left-buttons,
 body.narrow .narrow-panel .c-left-buttons {
     @apply absolute left-0 bottom-2;
+    @apply py-1;
 }
 body.wide .post-panel .c-left-buttons {
     @apply m-1 p-1;
