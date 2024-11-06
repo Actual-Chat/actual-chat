@@ -1293,10 +1293,7 @@ export class VirtualList {
         });
         this._whenRequestDataCompleted = newWhenRequestDataCompleted;
 
-        await fastReadRaf();
-        this.updateCurrentPivots();
-
-        debugLog?.log(`requestData: query:`, this._query, [...this._pivots], this._viewport, this._viewport?.size);
+        debugLog?.log(`requestData: query:`, this._query, this._viewport, this._viewport?.size);
         this._lastQueryTime = Date.now();
         // debug helper
         // await delayAsync(150);

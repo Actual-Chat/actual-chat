@@ -265,13 +265,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 await isChatViewVisible.When(x => x, cancellationToken);
             _shownReadEntryLid.Value = _readPosition.Value.EntryLid;
         }
-        // Create a dependency to make sure GetData is called when the chat becomes invisible again
-        await isChatViewVisible.Use(cancellationToken);
 
         // Update delay: we want to collect as many dependencies as possible here,
         // but don't want to delay rapid updates.
         // We don't need delays when data is being requested by the client code - e.g. when query isn't None
-        if (query.IsNone && renderedData.Index > 2) {
+        if (query.IsNone && renderedData.Index > 0) {
             var lastComputedAt = renderedData.IsNone ? startedAt : renderedData.ComputedAt;
             var isFastUpdate = startedAt - lastComputedAt <= FastUpdateRecency;
             var delay = startedAt + (isFastUpdate ? FastUpdateDelay : SlowUpdateDelay) - CpuTimestamp.Now;
@@ -303,7 +301,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 cancellationToken);
         }
         var chatIdRange = cChatIdRange.Value;
-        var idRangeToLoad = GetIdRangeToLoad(query, renderedData, nav, chatIdRange);
+        var idRangeToLoad = GetIdRangeToLoad(query, renderedData, nav, chatIdRange, _itemVisibility.Value);
         var hasVeryFirstItem = idRangeToLoad.Start <= chatIdRange.Start;
         var hasVeryLastItem = idRangeToLoad.End >= chatIdRange.End;
         var hasAllItems = hasVeryFirstItem && hasVeryLastItem;
@@ -460,7 +458,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         VirtualListDataQuery query,
         VirtualListData<ChatMessage> oldData,
         Navigation? scrollAnchor,
-        Range<long> chatIdRange)
+        Range<long> chatIdRange,
+        ChatViewItemVisibility itemVisibility)
     {
         var firstLayer = IdTileStack.Layers[0];
         var minTileSize = IdTileStack.MinTileSize;
@@ -472,17 +471,17 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             (false, false) => new Range<long>(
                 firstLayer.GetTile(chatIdRange.End - LoadLimit).Start,
                 chatIdRangeEndPlus),
-            // No query, but there is old data + we're close to the end
+
+            // No query, but there is old data + we know visible items
             // KEEP THIS case, otherwise virtual list will grow indefinitely!
-            (false, true) when Math.Abs(lastItem!.Entry.LocalId - chatIdRange.End) <= minTileSize
-                => new Range<long>(
-                    firstLayer.GetTile(
-                        oldData.GetNthItem( (int)LoadLimit, true)?.Entry.LocalId // Chopping head
-                        ?? firstItem!.Entry.LocalId
-                    ).Start,
-                    chatIdRangeEndPlus),
+            (false, true) when !itemVisibility.IsEmpty
+                => new Range<long>(itemVisibility.MinEntryLid, itemVisibility.MaxEntryLid)
+                    .Expand(SecondTileSize)
+                    .ExpandToTiles(firstLayer),
+
             // No query, but there is old data -> retaining it
             (false, true) => new Range<long>(firstItem!.Entry.LocalId, lastItem!.Entry.LocalId),
+
             // Query is there, so data is irrelevant
             _ => query.KeyRange.ToLongRange(true).Move(query.MoveRange),
         };
