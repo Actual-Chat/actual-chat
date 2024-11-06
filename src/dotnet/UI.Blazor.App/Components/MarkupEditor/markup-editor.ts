@@ -226,15 +226,13 @@ export class MarkupEditor {
     }
 
     public mentionBtnHandler() {
-        if (!this.hasFocus())
-            this.focus();
-
         const mentionList = document.querySelector('.mention-list');
         if (mentionList == null)
             return;
 
         let isMentionListOpen = !mentionList.classList.contains('non-visible');
-        const [range, precedingChar] = this.getPrecedingChar();
+        const [selection, range, precedingChar, caretPosition] = this.getPrecedingChar();
+        let newCaretPosition = caretPosition;
         if (!isMentionListOpen) {
             if (precedingChar.trim() != '') {
                 this.insertHtml(" @");
@@ -242,28 +240,40 @@ export class MarkupEditor {
                 this.insertHtml("@");
             }
         } else {
-            if (precedingChar != "@")
-                return;
-
-            const oldText = range.endContainer.textContent;
-            const newText = oldText.substring(0, oldText.length - 1);
-            this.setHtml(newText, true);
+            if (precedingChar == "@") {
+                newCaretPosition = caretPosition - 1;
+                const oldText = range.endContainer.textContent;
+                const newText = oldText.substring(0, caretPosition - 1) + oldText.substring(caretPosition);
+                this.setHtml(newText);
+            }
+            let newRange = document.createRange();
+            if (this.contentDiv.childNodes.length > 0) {
+                newRange.setStart(this.contentDiv.childNodes[0], newCaretPosition);
+            }
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+            this.contentDiv.focus();
         }
     }
 
-    private getPrecedingChar() : [Range, string] {
+    private getPrecedingChar() : [Selection, Range, string, number] {
         let precedingChar = "";
         let range: Range;
+        let clonedRange: Range;
+        let caretPosition = 0;
         const selection = window.getSelection();
         if (selection.rangeCount > 0) {
             range = selection.getRangeAt(0);
-            console.log('range: ', range);
-            const cloneRange = range.cloneRange();
-            cloneRange.collapse(true);
-            cloneRange.setStart(this.editorDiv, 0);
-            precedingChar = cloneRange.toString().slice(-1);
+            clonedRange = range.cloneRange();
+            clonedRange.selectNodeContents(this.contentDiv);
+            clonedRange.setEnd(range.endContainer, range.endOffset);
+            caretPosition = clonedRange.toString().length;
+            if (caretPosition > 0) {
+                precedingChar = clonedRange.toString().charAt(caretPosition - 1);
+            }
         }
-        return [range, precedingChar];
+        return [selection, clonedRange, precedingChar, caretPosition];
     }
 
     public moveCursorToTheEnd() {
