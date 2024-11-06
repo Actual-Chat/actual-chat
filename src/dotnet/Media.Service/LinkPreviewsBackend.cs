@@ -10,6 +10,7 @@ namespace ActualChat.Media;
 public class LinkPreviewsBackend(MediaSettings settings, IChatsBackend chatsBackend, IMediaBackend mediaBackend, IMarkupParser markupParser, Crawler crawler, IMeshLocks<MediaDbContext> meshLocks, IServiceProvider services)
     : DbServiceBase<MediaDbContext>(services), ILinkPreviewsBackend
 {
+    private static readonly HashSet<string> SupportedSchemes = new (StringComparer.OrdinalIgnoreCase) { "http", "https" };
     private IMeshLocks CrawlLocks { get; } = meshLocks.WithKeyPrefix(nameof(CrawlLocks));
     private Moment SystemNow => Clocks.SystemClock.Now;
 
@@ -219,7 +220,10 @@ public class LinkPreviewsBackend(MediaSettings settings, IChatsBackend chatsBack
     private IEnumerable<string> ExtractUrls(ChatEntry entry)
     {
         var markup = markupParser.Parse(entry.Content);
-        return new LinkExtractor().GetLinks(markup).Where(x => Uri.TryCreate(x, UriKind.Absolute, out _));
+        return new LinkExtractor().GetLinks(markup).Where(IsSupportedUrl);
+
+        bool IsSupportedUrl(string x)
+            => Uri.TryCreate(x, UriKind.Absolute, out var uri) && SupportedSchemes.Contains(uri.Scheme);
     }
 
     // redis helpers
