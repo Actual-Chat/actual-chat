@@ -226,18 +226,18 @@ body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {
     @apply absolute right-2.5 bottom-1.5;
     @apply mx-0;
 }
-body.hoverable .navbar-item:hover .message-counter-badge {
-    @apply hidden;
-}
 .navbar-item .navbar-item-ending .message-counter-badge {
     @apply static;
 }
 
 /* Hoverable slot */
-.chat-list .navbar-item .navbar-item-ending .slot.hoverable {
+.chat-list .navbar-item .navbar-item-ending .slot {
+    @apply flex;
+}
+body.hoverable .chat-list:not(.chat-list-active) .navbar-item .navbar-item-ending .slot {
     @apply hidden /* flex */;
 }
-body.hoverable .chat-list .navbar-item:hover .navbar-item-ending .slot.hoverable {
+body.hoverable .chat-list:not(.chat-list-active) .navbar-item:hover .navbar-item-ending .slot {
     @apply flex;
 }
 .chat-list .navbar-item .navbar-item-ending .listen-wrapper {

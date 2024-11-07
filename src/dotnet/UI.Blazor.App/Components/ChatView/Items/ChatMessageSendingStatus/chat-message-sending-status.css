@@ -32,10 +32,6 @@
 body.hoverable .navbar-item:hover .chat-message-sending-status {
     @apply hidden;
 }
-.navbar-item:has(.ending-btn.on) .chat-message-sending-status,
-.navbar-item:has(.message-counter-badge) .chat-message-sending-status {
-    @apply hidden;
-}
 
 /*Sending status in attachments and with code markup*/
 .message-attachments .chat-message-sending-status,

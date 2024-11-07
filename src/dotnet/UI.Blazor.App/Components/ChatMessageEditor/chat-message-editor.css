@@ -125,9 +125,7 @@ body.narrow .post-panel-btn.attach-btn {
 }
 .post-panel .c-left-buttons {
     @apply flex-x items-center self-end;
-}
-body.narrow .c-left-buttons {
-    @apply mx-1;
+    @apply m-1;
 }
 body.narrow .text-mode .c-left-buttons,
 body.narrow .narrow-panel .c-left-buttons {
@@ -135,9 +133,8 @@ body.narrow .narrow-panel .c-left-buttons {
     @apply py-1;
 }
 body.wide .post-panel .c-left-buttons {
-    @apply m-1 p-1;
+    @apply my-2 py-1;
     @apply rounded-full;
-    @apply bg-01;
 }
 
 /* Notify Call Panel */

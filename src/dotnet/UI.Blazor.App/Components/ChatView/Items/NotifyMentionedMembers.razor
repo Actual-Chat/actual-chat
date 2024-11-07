@@ -17,31 +17,31 @@
 }
 <div class="notify-mentioned-members @cls" @onclick="@clickHandler">
     @if (!m.HasNotified) {
-        <i class="icon-notify-phone"></i>
-        <span>&nbsp;Get attention of&nbsp;</span>
+        <i class="icon-notify-phone self-center"></i>
+        <span>&nbsp;Notify mentioned</span>
     } else {
-        <span><span class="text-primary font-semibold">You</span> notified&nbsp;</span>
-    }
-    @for (var i = 0; i < AuthorIds.Length; i++) {
-        var isFirst = i == 0;
-        var isLast = i == AuthorIds.Length - 1;
-        var authorId = AuthorIds[i];
-        if (!isFirst) {
-            if (!isLast) {
-                <span>,&nbsp;</span>
-            } else {
-                <span>&nbsp;and&nbsp;</span>
+        <span class="text-primary font-semibold">You</span><span class="default-text">&nbsp;notified&nbsp;</span>
+        @for (var i = 0; i < AuthorIds.Length; i++) {
+            var isFirst = i == 0;
+            var isLast = i == AuthorIds.Length - 1;
+            var authorId = AuthorIds[i];
+            if (!isFirst) {
+                if (!isLast) {
+                    <span class="default-text">,&nbsp;</span>
+                } else {
+                    <span class="default-text">&nbsp;and&nbsp;</span>
+                }
             }
-        }
 
-        var mentionIndexCls = "mention-" + i;
-        <AuthorBadgeTemplate AuthorSid="@authorId">
-            <div class="mention-markup mention-markup-valid @mentionIndexCls">
-                <div class="truncate">
-                    @context.Author.Avatar.Name
+            var mentionIndexCls = "mention-" + i;
+            <AuthorBadgeTemplate AuthorSid="@authorId">
+                <div class="mention-markup mention-markup-valid @mentionIndexCls">
+                    <div class="truncate">
+                        @context.Author.Avatar.Name
+                    </div>
                 </div>
-            </div>
-        </AuthorBadgeTemplate>
+            </AuthorBadgeTemplate>
+        }
     }
 </div>
 
