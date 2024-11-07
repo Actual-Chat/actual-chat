@@ -38,7 +38,7 @@
                         Class="post-panel-btn btn-xs btn-transparent mention-btn"
                         Tooltip="Mention"
                         TooltipPosition="FloatingPosition.Top"
-                        Click="@OnMentionBtnClick">
+                        Click="@OnMentionButtonClick">
                         <i class="icon-at text-2xl"></i>
                     </ButtonRound>
                 </div>
@@ -229,7 +229,7 @@
             var readEntryLid = chatEntry.Value.LocalId;
 
             if (ReadPositionState != null && ReadPositionState.Value.EntryLid < readEntryLid)
-                ReadPositionState.Value = new (Chat.Id, readEntryLid);
+                ReadPositionState.Value = new ReadPosition(Chat.Id, readEntryLid);
             await AttachmentListRef.Clear();
             SearchUI.Clear();
             await clearMarkupTask;
@@ -251,9 +251,9 @@
     private ValueTask UpdateChatId()
         => JSRef.InvokeVoidAsync("setChatId", Chat.Id);
 
-    private async Task OnMentionBtnClick() {
+    private async Task OnMentionButtonClick() {
         await MarkupEditorRef.WhenReady;
-        await MarkupEditorRef.JSRef.InvokeVoidAsync("mentionBtnHandler");
+        await MarkupEditorRef.JSRef.InvokeVoidAsync("beginMention");
     }
 
     // Event handlers

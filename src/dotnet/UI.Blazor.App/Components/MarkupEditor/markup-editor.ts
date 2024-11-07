@@ -225,31 +225,30 @@ export class MarkupEditor {
         this.moveCursorToTheEnd();
     }
 
-    public mentionBtnHandler() {
+    public beginMention() {
         const mentionList = document.querySelector('.mention-list');
         if (mentionList == null)
             return;
 
         let isMentionListOpen = !mentionList.classList.contains('non-visible');
-        const [selection, range, precedingChar, caretPosition] = this.getPrecedingChar();
+        const { selection, range, caretPosition, prevChar } = this.getPrevCharInfo();
         let newCaretPosition = caretPosition;
         if (!isMentionListOpen) {
-            if (precedingChar.trim() != '') {
+            if (prevChar.trim() != '')
                 this.insertHtml(" @");
-            } else {
+            else
                 this.insertHtml("@");
-            }
-        } else {
-            if (precedingChar == "@") {
+        }
+        else {
+            if (prevChar == "@") {
                 newCaretPosition = caretPosition - 1;
                 const oldText = range.endContainer.textContent;
                 const newText = oldText.substring(0, caretPosition - 1) + oldText.substring(caretPosition);
                 this.setHtml(newText);
             }
             let newRange = document.createRange();
-            if (this.contentDiv.childNodes.length > 0) {
+            if (this.contentDiv.childNodes.length > 0)
                 newRange.setStart(this.contentDiv.childNodes[0], newCaretPosition);
-            }
             newRange.collapse(true);
             selection.removeAllRanges();
             selection.addRange(newRange);
@@ -257,8 +256,8 @@ export class MarkupEditor {
         }
     }
 
-    private getPrecedingChar() : [Selection, Range, string, number] {
-        let precedingChar = "";
+    private getPrevCharInfo(): { selection: Selection; caretPosition: number; range: Range; prevChar: string } {
+        let prevChar = "";
         let range: Range;
         let clonedRange: Range;
         let caretPosition = 0;
@@ -269,11 +268,15 @@ export class MarkupEditor {
             clonedRange.selectNodeContents(this.contentDiv);
             clonedRange.setEnd(range.endContainer, range.endOffset);
             caretPosition = clonedRange.toString().length;
-            if (caretPosition > 0) {
-                precedingChar = clonedRange.toString().charAt(caretPosition - 1);
-            }
+            if (caretPosition > 0)
+                prevChar = clonedRange.toString().charAt(caretPosition - 1);
         }
-        return [selection, clonedRange, precedingChar, caretPosition];
+        return {
+            selection: selection,
+            range: clonedRange,
+            caretPosition: caretPosition,
+            prevChar: prevChar,
+        };
     }
 
     public moveCursorToTheEnd() {
