@@ -7,10 +7,8 @@ using MemoryPack;
 
 namespace ActualChat.Users.Flows;
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class MasterFlow : Flow
+public partial class MasterFlow : Flow, IMasterFlow
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public int FlowSetVersion { get; private set; }
@@ -30,6 +28,7 @@ public partial class MasterFlow : Flow
         return WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt);
     }
 
+    // ReSharper disable UnusedMember.Local
     private async Task MigrateToVersion1(CancellationToken cancellationToken)
     {
         const int pageSize = 1000;

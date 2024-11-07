@@ -1,3 +1,6 @@
+using ActualChat.Flows;
+using ActualChat.Flows.Infrastructure;
+using ActualChat.Queues;
 using ActualChat.Testing.Host.Assertion;
 
 namespace ActualChat.Testing.Host;
@@ -14,6 +17,9 @@ public abstract class SharedAppHostTestBase<TAppHostFixture>(
     protected TAppHostFixture Fixture { get; } = fixture;
     protected TestAppHost AppHost { get; } = fixture.AppHost;
     protected ICommander Commander { get; } = fixture.AppHost.Services.Commander();
+    protected IQueues Queues { get; } = fixture.AppHost.Services.Queues();
+    protected IFlows Flows { get; } = fixture.AppHost.Services.GetRequiredService<IFlows>();
+    protected FlowRegistry FlowRegistry { get; } = fixture.AppHost.Services.GetRequiredService<FlowRegistry>();
     protected MomentClockSet Clocks { get; } = fixture.AppHost.Services.Clocks();
 
     protected override Task InitializeAsync()

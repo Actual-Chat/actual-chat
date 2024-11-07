@@ -7,7 +7,6 @@ public enum IndexingKind
 {
     ChatContent = 0,
     ChatInfo = 1,
-    ChatEntries = 2,
 }
 
 /// <summary>
