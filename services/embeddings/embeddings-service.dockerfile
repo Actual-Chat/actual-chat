@@ -5,6 +5,16 @@ FROM pytorch/torchserve AS builder
 
 ARG MODEL_NAME
 
+USER root
+
+# Install jq
+RUN \
+    apt-get update && \
+    apt-get -y install jq
+
+USER model-server
+
+# Install transformers
 RUN pip install transformers
 
 WORKDIR /usr/app
