@@ -24,14 +24,24 @@ public abstract class IndexingFlowBase<TCursor> : Flow
     protected virtual TimeSpan TimerRescheduleThreshold { get; } = TimeSpan.FromSeconds(1);
 
     protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
-        => Resume(nameof(OnIndex));
+    {
+        if (!await OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false))
+            return WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt);
 
-    protected abstract Task<BatchIndexingResult<TCursor>> ProcessBatch(TCursor? cursor, CancellationToken cancellationToken);
+        return Resume(nameof(OnIndex));
+    }
+
+    protected virtual Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
+        => ActualLab.Async.TaskExt.TrueTask;
+
+    protected abstract Task<BatchIndexingResult<TCursor>> Process(TCursor? cursor, CancellationToken cancellationToken);
 
     protected virtual async Task<FlowTransition> OnIndex(CancellationToken cancellationToken)
     {
-        var (mustEnd, isTailReached, updatedCursor) = await ProcessBatch(Cursor, cancellationToken).ConfigureAwait(false);
+        var (mustEnd, isTailReached, updatedCursor) = await Process(Cursor, cancellationToken).ConfigureAwait(false);
         Cursor = updatedCursor;
+        if (isTailReached && !await OnTailReached(cancellationToken).ConfigureAwait(false))
+            mustEnd = true;
         if (mustEnd)
             return WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt); // i.e. chat is removed
 
@@ -39,6 +49,9 @@ public abstract class IndexingFlowBase<TCursor> : Flow
             ? GetTransition(WatchdogInterval, NextWatchdogTimerAt, x => NextWatchdogTimerAt = x)
             : GetTransition(Interval, NextTimerAt, x => NextTimerAt = x);
     }
+
+    protected virtual Task<bool> OnTailReached(CancellationToken cancellationToken)
+        => ActualLab.Async.TaskExt.TrueTask;
 
     private bool NeedsTimer(Moment? currentResumeAt, TimeSpan interval, out Moment nextTimerAt)
     {

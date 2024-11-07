@@ -126,7 +126,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
                 .OrderByDescending(x => x.GetIndexedEntryDate())
                 .BuildSearchResults(["let's"], UniquePart)
                 .ToList();
-            var searchResults = await Find("let", chatId: chat.Id, expected: expected.Count);
+             var searchResults = await Find("let", chatId: chat.Id, expected: expected.Count);
             searchResults.Should()
                 .BeEquivalentTo(expected, o => o.ExcludingSearchMatch().WithStrictOrderingFor(x => x), chat.Title);
         }
