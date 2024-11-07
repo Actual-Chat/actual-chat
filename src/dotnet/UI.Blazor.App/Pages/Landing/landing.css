@@ -1435,6 +1435,7 @@ body.narrow .premium-features-modal .c-block-note {
     @apply rounded-lg;
     @apply overflow-hidden;
     @apply bg-toast-body;
+    @apply opacity-95;
 }
 body.narrow .cookie-settings {
     transform: none;

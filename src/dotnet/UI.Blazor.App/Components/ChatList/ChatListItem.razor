@@ -15,12 +15,16 @@
         ? FirstItemAttributes
         : NoneAttributes;
     _renderedModel = m;
+    var showUnread = m.UnreadCount.Value > 0;
+    var showEnding = ((isListeningOrRecording || showUnread) && !isWide) || isActiveChatList;
+    var navbarItemCls = showEnding ? "visible-ending" : "";
 }
 
 <NavbarItem
     Url="@($"/chat/{chat.Id}")"
     ReplaceOnPrefix="/chat/"
     IsSelected="@(m.IsSelected && listKind != ChatListKind.Active)"
+    Class="@navbarItemCls"
     data-menu="@(MenuRef.New<ChatMenu>(chat.Id, listKind.Format()).ToString())"
     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"
     @attributes="@attributes">
@@ -31,7 +35,7 @@
                     <span class="c-chat-title">
                         <span>@chat.Title</span>
                         <span class="c-incut"></span>
-                        @if (lastTextEntry != null && !isListeningOrRecording) {
+                        @if (lastTextEntry != null && !showEnding) {
                             <LastEntryTime LastEntry="@lastTextEntry"/>
                         }
                 </span>
@@ -55,13 +59,13 @@
                             </span>
                         }
                         <div class="c-incut"></div>
-                        @if (hasButtons && !isListeningOrRecording) {
+                        @if (!showEnding) {
                             <UnreadCount
                                 Value="@m.UnreadCount"
                                 NotificationMode="@m.NotificationMode"
                                 HasMentions="m.HasUnreadMentions"/>
                         }
-                        @if (m.IsUnreadByOthers) {
+                        @if (m.IsUnreadByOthers && !showEnding) {
                             <ChatMessageSendingStatus
                                 Status="@ChatMessageSendingStatus.MessageStatus.Unread"
                                 IsDotOnly="@true"/>
@@ -74,9 +78,8 @@
     <Ending>
         @{
             var hasMenu = !isActiveChatList && isWide;
-            var isHoverable = isWide && !isActiveChatList && !isListeningOrRecording;
         }
-        <div class="@(isHoverable ? "hoverable" : "") slot">
+        <div class="slot">
             <UnreadCount
                 Value="@m.UnreadCount"
                 NotificationMode="@m.NotificationMode"
