@@ -1,9 +1,12 @@
 using ActualChat.Chat;
 using ActualChat.Contacts;
+using ActualChat.Flows;
+using ActualChat.Flows.Infrastructure;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
+using ActualChat.MLSearch.Flows;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Module;
 using ActualChat.Queues;
@@ -27,6 +30,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     private GroupChatContactIndexer GroupChatContactIndexer { get; } = services.GetRequiredService<GroupChatContactIndexer>();
     private PlaceContactIndexer PlaceContactIndexer { get; } = services.GetRequiredService<PlaceContactIndexer>();
     private OpenSearchConfigurator OpenSearchConfigurator { get; } = services.GetRequiredService<OpenSearchConfigurator>();
+    private IFlows Flows { get; } = services.GetRequiredService<IFlows>();
+    private FlowRegistry FlowRegistry { get; } = services.GetRequiredService<FlowRegistry>();
     private IQueues Queues { get; } = services.Queues();
     private ILogger? DebugLog => Constants.DebugMode.OpenSearchRequest ? Log : null;
 
@@ -260,6 +265,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         }
         else
             await Queues.Enqueue(new SearchBackend_StartChatContactIndexing(), cancellationToken).ConfigureAwait(false);
+
+        await Flows.GetOrStart<EntryIndexingFlow>(eventCommand.Chat.Id, cancellationToken).ConfigureAwait(false);
     }
 
     // [EventHandler]
@@ -280,6 +287,10 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         else
             await Queues.Enqueue(new SearchBackend_StartPlaceContactIndexing(), cancellationToken).ConfigureAwait(false);
     }
+
+    // [EventHandler]
+    public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
+        => Queues.Enqueue(new FlowResumeEvent(FlowRegistry.NewId<EntryIndexingFlow>(eventCommand.Entry.ChatId), Tag: "TextEntry changed"), cancellationToken: cancellationToken);
 
     // Private methods
 

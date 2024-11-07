@@ -336,13 +336,14 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         await Tester.CreatePeerContacts(bob, friendFromPlace1, friendFromPlace2, friendFromBothPlaces);
 
         // act
-        var updates = ApiArray.New(
+        ApiArray<IndexedUserContact> updates = [
             friendFromPlace1.ToIndexedUserContact(place1.Id),
             strangerFromPlace1.ToIndexedUserContact(place1.Id),
             friendFromPlace2.ToIndexedUserContact(place2.Id),
             strangerFromPlace2.ToIndexedUserContact(place2.Id),
             friendFromBothPlaces.ToIndexedUserContact(place1.Id, place2.Id),
-            strangerFromBothPlaces.ToIndexedUserContact(place1.Id, place2.Id));
+            strangerFromBothPlaces.ToIndexedUserContact(place1.Id, place2.Id)
+        ];
         await Index(updates, []);
         await Tester.SignIn(bob);
         var searchResults = await Find("member", true, place2.Id);

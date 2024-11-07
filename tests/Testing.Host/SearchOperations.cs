@@ -35,14 +35,15 @@ public static class SearchOperations
         string criteria,
         PlaceId? placeId = null,
         ChatId chatId = default,
-        int? limit = null)
+        int? limit = null,
+        CancellationToken cancellationToken = default)
     {
         var response = await tester.Search.FindEntries(tester.Session, new EntrySearchQuery {
             Criteria = criteria,
             Limit = limit ?? 50,
             PlaceId = placeId,
             ChatId = chatId,
-        }, CancellationToken.None);
+        }, cancellationToken);
         return response.Hits;
     }
 

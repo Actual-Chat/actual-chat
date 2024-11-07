@@ -27,7 +27,6 @@ public interface ISearchBackend : IComputeService, IBackendService
     Task OnPlaceContactBulkIndex(SearchBackend_PlaceContactBulkIndex command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnStartPlaceContactIndexing(SearchBackend_StartPlaceContactIndexing command, CancellationToken cancellationToken);
-
     [CommandHandler]
     Task OnRefresh(SearchBackend_Refresh command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -45,6 +44,8 @@ public interface ISearchBackend : IComputeService, IBackendService
     Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnPlaceChangedEvent(PlaceChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

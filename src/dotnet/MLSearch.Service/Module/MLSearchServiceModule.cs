@@ -22,6 +22,7 @@ using ActualChat.Search;
 using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
 using Microsoft.SemanticKernel;
 using ActualChat.MLSearch.Bot.Services;
+using ActualChat.MLSearch.Flows;
 
 // Note: Temporary disabled. Will be re-enabled with OpenAPI PR
 // using Swashbuckle.AspNetCore.SwaggerGen;
@@ -101,6 +102,9 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             .AddWorkerPoolDependencies();
         services.AddSingleton<OpenSearchConfigurator>()
             .AddHostedService(c => c.GetRequiredService<OpenSearchConfigurator>());
+
+        // Flows
+        services.AddFlows().Add<EntryIndexingFlow>().Add<EntryIndexingMasterFlow>();
     }
 
     private static void InjectIndexingServices(RpcHostBuilder rpcHost, bool isBackendClient)
@@ -118,8 +122,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         );
         services.AddSingleton<ICursorStates<ChatContentCursor>>(
             static c => c.CreateInstance<CursorStates<ChatContentCursor>>(OpenSearchNames.ChatContentCursor));
-        services.AddSingleton<ICursorStates<ChatEntryCursor>>(
-            static c => c.CreateInstance<CursorStates<ChatEntryCursor>>(c.GetRequiredService<OpenSearchNames>().EntryCursorIndexName));
 
         // Contact indexing: UserContactIndexer, GroupChatContactIndexer, PlaceContactIndexer
 
@@ -143,6 +145,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IChatInfoIndexer, ChatInfoIndexer>();
         services.AddSingleton<IChatContentIndexerFactory, ChatContentIndexerFactory>();
         services.AddSingleton<IChatContentArrangerSelector, ChatContentArrangerSelector>();
+        services.AddSingleton<IndexedDocuments>();
 
         // Indexing sinks
         services.AddSingleton<ISink<ChatSlice, string>>(
@@ -150,10 +153,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // Note: This is correct. ChatInfo  must be indexed into the same index as ChatSlice and ChatEntry for Join field to work
         services.AddSingleton<ISink<ChatInfo, string>>(
             static c => c.CreateInstance<SemanticIndexSink<ChatInfo>>(OpenSearchNames.ChatContent));
-        services.AddSingleton<ISink<IndexedEntry, TextEntryId>>(
-            static c => c.CreateInstance<IndexSink<IndexedEntry, TextEntryId>>(c.GetRequiredService<OpenSearchNames>().EntryIndexName));
-        services.AddSingleton<ISink<IndexedChat, ChatId>>(
-            static c => c.CreateInstance<IndexSink<IndexedChat, ChatId>>(c.GetRequiredService<OpenSearchNames>().EntryIndexName));
 
         // Workers
         services.AddSingleton<IChatContentIndexWorker>(
@@ -163,10 +162,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             )
         );
         services.AddWorkerPool<IChatContentIndexWorker, MLSearch_TriggerChatIndexing, (ChatId, IndexingKind), ChatId>(
-            DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
-        );
-        services.AddSingleton<ChatEntryIndexWorker>();
-        services.AddWorkerPool<ChatEntryIndexWorker, MLSearch_TriggerChatIndexing, (ChatId, IndexingKind), ChatId>(
             DuplicateJobPolicy.Drop, shardConcurrencyLevel: 10
         );
 

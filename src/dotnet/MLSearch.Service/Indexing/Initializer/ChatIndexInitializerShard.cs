@@ -171,13 +171,10 @@ internal sealed class ChatIndexInitializerShard(
 
         return;
 
-        static async Task ScheduleChatIndexing(ChatId chatId, IQueues queues, CancellationToken cancellationToken)
+        static Task ScheduleChatIndexing(ChatId chatId, IQueues queues, CancellationToken cancellationToken)
         {
             var job = new MLSearch_TriggerChatIndexing(chatId, IndexingKind.ChatContent);
-            await queues.Enqueue(job, cancellationToken).ConfigureAwait(false);
-
-            var entriesJob = new MLSearch_TriggerChatIndexing(chatId, IndexingKind.ChatEntries);
-            await queues.Enqueue(entriesJob, cancellationToken).ConfigureAwait(false);
+            return queues.Enqueue(job, cancellationToken);
         }
     }
 

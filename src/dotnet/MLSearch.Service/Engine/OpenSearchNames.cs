@@ -29,7 +29,6 @@ internal sealed class OpenSearchNames
     public string GroupIndexName => $"{Prefix}chats-{GroupIndexVersion}";
     public string PlaceIndexName => $"{Prefix}places-{PlaceIndexVersion}";
     public string EntryIndexName => $"{Prefix}entries-{EntryIndexVersion}";
-    public string EntryCursorIndexName => $"{Prefix}entry-cursor-{EntryIndexVersion}";
 
     internal string GetFullName(string id, EmbeddingModelProps modelProps)
         => string.Join('-',
