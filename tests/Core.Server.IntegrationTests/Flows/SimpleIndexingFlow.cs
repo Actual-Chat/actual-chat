@@ -6,7 +6,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class SimpleIndexingFlow : IndexingFlowBase<long>
 {
-    protected override async Task<BatchIndexingResult<long>> ProcessBatch(long cursor, CancellationToken cancellationToken)
+    protected override async Task<BatchIndexingResult<long>> Process(long cursor, CancellationToken cancellationToken)
     {
         var context = Host.Services.GetRequiredService<IndexingFlowTestContext>();
         await Task.Delay(1, cancellationToken);

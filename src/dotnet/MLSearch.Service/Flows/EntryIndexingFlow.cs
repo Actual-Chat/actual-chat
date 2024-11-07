@@ -1,6 +1,5 @@
 using ActualChat.Chat;
 using ActualChat.Flows;
-using ActualChat.Flows.Infrastructure;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.Queues;
@@ -10,58 +9,48 @@ using MemoryPack;
 namespace ActualChat.MLSearch.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class EntryIndexingFlow : IndexingFlowBase<EntryIndexCursor>
+public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, ChatEntryId>
 {
-    private const int BatchSize = 100;
-    private const int Quota = 1_000;
-
     private Task WhenReady => Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
 
-    protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
-    {
-        await WhenReady.ConfigureAwait(false);
-        var chatId = new ChatId(Id.Arguments);
-        if (!await EnsureChatInfo(chatId, cancellationToken))
-            return WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt);
+    protected override Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
+        => EnsureChatInfo(new ChatId(Id.Arguments), cancellationToken);
 
-        return await base.OnReset(cancellationToken);
+    protected override async Task<IReadOnlyList<ChatEntry>> GetBatch(
+        IndexingFlowCursor<ChatEntryId>? cursor,
+        CancellationToken cancellationToken)
+    {
+        var updateLoader = Host.Services.GetRequiredService<IChatContentUpdateLoader>();
+        cursor ??= new (ChatEntryId.None, 0);
+        return await updateLoader.LoadChatUpdatesAsync(new ChatId(Id.Arguments),
+                cursor.LastUpdatedVersion,
+                cursor.LastUpdatedId.LocalId,
+                cancellationToken)
+            .Take(BatchSize)
+            .ToListAsync(cancellationToken);
     }
 
-    protected override async Task<BatchIndexingResult<EntryIndexCursor>> ProcessBatch(EntryIndexCursor? cursor, CancellationToken cancellationToken)
+    protected override async Task ProcessBatch(IReadOnlyList<ChatEntry> batch, CancellationToken cancellationToken)
     {
         await WhenReady.ConfigureAwait(false);
-        var updateLoader = Host.Services.GetRequiredService<IChatContentUpdateLoader>();
         var indexedDocuments = Host.Services.GetRequiredService<IndexedDocuments>();
-        var queues = Host.Services.Queues();
-        var chatId = new ChatId(Id.Arguments);
 
-        cursor ??= new (0, 0);
-        var batches = updateLoader.LoadChatUpdatesAsync(chatId,
-                cursor.LastVersion,
-                cursor.LastLid,
-                cancellationToken)
-            .Take(Quota)
-            .Chunk(BatchSize, cancellationToken)
-            .ConfigureAwait(false);
-        var handledCount = 0;
-        await foreach (var batch in batches) {
-            var updated = batch.Where(x => x is { IsRemoved: false, IsSystemEntry: false }).Select(x => x.ToIndexedEntry()).ToList();
-            var removed = batch.Where(x => x is { IsRemoved: true, IsSystemEntry: false }).Select(x => x.Id.AsTextEntryId()).ToList();
-            await indexedDocuments.Update(updated, removed, cancellationToken).ConfigureAwait(false);
-            var lastIndexed = batch[^1];
-            cursor = new EntryIndexCursor(lastIndexed.LocalId, lastIndexed.Version);
-            handledCount += batch.Count;
-        }
-        var isTailReached = handledCount < Quota;
-        if (isTailReached)
-            await queues.Enqueue(new SearchBackend_Refresh(RefreshEntries: true), cancellationToken).ConfigureAwait(false);
-        return new (false, isTailReached, cursor);
+        var updated = batch.Where(x => x is { IsRemoved: false, IsSystemEntry: false }).Select(x => x.ToIndexedEntry()).ToList();
+        var removed = batch.Where(x => x is { IsRemoved: true, IsSystemEntry: false }).Select(x => x.Id.AsTextEntryId()).ToList();
+        await indexedDocuments.Update(updated, removed, cancellationToken).ConfigureAwait(false);
+    }
+
+    protected override async Task<bool> OnTailReached(CancellationToken cancellationToken)
+    {
+        await Host.Services.Queues().Enqueue(new SearchBackend_Refresh(RefreshEntries: true), cancellationToken).ConfigureAwait(false);
+        return true;
     }
 
     // Private methods
 
     private async Task<bool> EnsureChatInfo(ChatId chatId, CancellationToken cancellationToken)
     {
+        await WhenReady.ConfigureAwait(false);
         var chatsBackend = Host.Services.GetRequiredService<IChatsBackend>();
         var placesBackend = Host.Services.GetRequiredService<IPlacesBackend>();
         var indexedDocuments = Host.Services.GetRequiredService<IndexedDocuments>();
