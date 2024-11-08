@@ -112,6 +112,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
          * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/modules/mediastream/media_constraints_impl.cc#L98-L116}
          * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/platform/mediastream/media_constraints.cc#L358-L372}
          */
+        const isAndroid = navigator.userAgent.match(/Android/i).length > 0;
         let stream: MediaStream = null;
         try {
             infoLog?.log('-> getMicrophoneStream');
@@ -122,32 +123,9 @@ export class OpusMediaRecorder implements RecorderStateServer {
                         sampleRate: AR.SAMPLE_RATE,
                         sampleSize: 32,
                         echoCancellation: true,
-                        autoGainControl: true,
+                        autoGainControl: !(BrowserInfo.appKind === 'Android' || isAndroid), // Android auto gain delays recording and produces zeroes instead of signal
                         noiseSuppression: true,
                         latency: 20,
-                        advanced: [
-                            // The constraint sets going earlier have higher priority!
-                            // 1. Echo cancellation
-                            { googExperimentalEchoCancellation: { exact: true } },
-                            { googEchoCancellation2: { exact: true } },
-                            { googEchoCancellation: { exact: true } },
-                            { echoCancellation: { exact: true } },
-                            // { echoCancellationType: { exact: "browser" } },
-                            // 2. Auto gain control
-                            { googExperimentalAutoGainControl: { exact: true } },
-                            { googAutoGainControl: { exact: true } },
-                            { autoGainControl: { exact: true } },
-                            // 3. Noise suppression
-                            { googExperimentalNoiseSuppression: { exact: true } },
-                            { googNoiseSuppression2: { exact: true } },
-                            { googNoiseSuppression: { exact: true } },
-                            { noiseSuppression: { exact: true } },
-                            // 4. Misc.
-                            { googTypingNoiseDetection: { exact: true } },
-                            { googHighpassFilter: { exact: true } },
-                            { googAudioMirroring: { exact: false } },
-                            { latency: { exact: 20 } },
-                        ],
                     },
                     video: false,
                 };
