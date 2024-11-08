@@ -559,7 +559,11 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
             return;
         }
 
-        await this.initContextInteractively();
+        const context = this._context;
+        if (!context)
+            return;
+
+        await this.interactiveResume(context);
     }
 
     public useRef(ref: AudioContextRef): Disposable {
