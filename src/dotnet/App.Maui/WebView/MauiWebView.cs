@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Components.WebView.Maui;
 
 namespace ActualChat.App.Maui;
 
-public sealed partial class MauiWebView
+public sealed partial class MauiWebView: IDisposable
 {
     private static readonly Tracer Tracer = Tracer.Default[nameof(MauiWebView)];
     private static readonly object StaticLock = new();
@@ -119,6 +119,8 @@ public sealed partial class MauiWebView
 
     public partial void HardNavigateTo(string url);
     public partial Task EvaluateJavaScript(string javaScript);
+
+    public partial void Dispose();
 
     // Private methods
 

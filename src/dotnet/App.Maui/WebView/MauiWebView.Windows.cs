@@ -37,6 +37,9 @@ public partial class MauiWebView
         return request.Task;
     }
 
+    public partial void Dispose()
+        => WindowsWebView.Close();
+
     private partial void OnInitializing(object? sender, BlazorWebViewInitializingEventArgs eventArgs) { }
     private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs)
     {
