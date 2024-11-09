@@ -50,4 +50,27 @@ public sealed class OpenSearchSettings
     public string User { get; set; } = "";
     public string Password { get; set; } = "";
     public string ClientCertificatePath { get; set; } = "";
+
+    public EmbeddingsServiceSettings? EmbeddingsService { get; set; }
+}
+
+public enum EmbeddingsServiceType
+{
+    BuiltIn,
+    Custom
+}
+
+public sealed class EmbeddingsServiceSettings
+{
+    public EmbeddingsServiceType EmbeddingsServiceType { get; set; }
+
+    public CustomEmbeddingServiceSettings? Custom { get; set;}
+}
+
+public sealed class CustomEmbeddingServiceSettings
+{
+    [Required]
+    public string Uri { get; set; } = "";
+
+    public string? ModelName { get; set; }
 }
