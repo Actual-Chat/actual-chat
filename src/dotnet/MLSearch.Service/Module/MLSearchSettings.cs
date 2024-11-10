@@ -1,5 +1,6 @@
 
 using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Options;
 
 namespace ActualChat.MLSearch.Module;
 
@@ -51,7 +52,8 @@ public sealed class OpenSearchSettings
     public string Password { get; set; } = "";
     public string ClientCertificatePath { get; set; } = "";
 
-    public EmbeddingsServiceSettings? EmbeddingsService { get; set; }
+    [ValidateObjectMembers]
+    public EmbeddingServiceSettings EmbeddingService { get; set; } = new();
 }
 
 public enum EmbeddingsServiceType
@@ -60,10 +62,11 @@ public enum EmbeddingsServiceType
     Custom
 }
 
-public sealed class EmbeddingsServiceSettings
+public sealed class EmbeddingServiceSettings
 {
-    public EmbeddingsServiceType EmbeddingsServiceType { get; set; }
+    public EmbeddingsServiceType EmbeddingServiceType { get; set; }
 
+    [ValidateObjectMembers]
     public CustomEmbeddingServiceSettings? Custom { get; set;}
 }
 
@@ -72,6 +75,8 @@ public sealed class CustomEmbeddingServiceSettings
     [Required, Uri]
     public string Uri { get; set; } = "";
 
+    [Required, Uri]
+    public string ManagementUri { get; set; } = "";
     public string? ModelName { get; set; }
 }
 
