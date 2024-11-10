@@ -25,8 +25,6 @@ internal static class OpenSearchConfigurationServiceCollectionExt
         services.AddOptionsWithValidateOnStart<OpenSearchSettings>()
             .Bind(cfg.GetSection($"{nameof(MLSearchSettings)}:{MLSearchSettings.OpenSearch}"))
             .ValidateDataAnnotations()
-            .Validate(options => Uri.IsWellFormedUriString(options.ClusterUri, UriKind.Absolute),
-                $"Value for {nameof(OpenSearchSettings.ClusterUri)} must be valid URI.")
             .PostConfigure(options => {
                 if (options.DefaultNumberOfReplicas is null && hostInfo.IsDevelopmentInstance)
                     options.DefaultNumberOfReplicas = 0;

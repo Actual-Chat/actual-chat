@@ -37,7 +37,7 @@ public sealed class ChatbotSettings {
 
 public sealed class OpenSearchSettings
 {
-    [Required]
+    [Required, Uri]
     public string ClusterUri { get; set; } = "";
 
     [Required]
@@ -69,8 +69,14 @@ public sealed class EmbeddingsServiceSettings
 
 public sealed class CustomEmbeddingServiceSettings
 {
-    [Required]
+    [Required, Uri]
     public string Uri { get; set; } = "";
 
     public string? ModelName { get; set; }
+}
+
+public sealed class UriAttribute(): ValidationAttribute("Value for {0} must be a valid URI.")
+{
+    public override bool IsValid(object? value) => value is string valueAsString
+        && !string.IsNullOrWhiteSpace(valueAsString) && Uri.IsWellFormedUriString(valueAsString, UriKind.Absolute);
 }
