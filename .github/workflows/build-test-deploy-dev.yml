@@ -727,13 +727,11 @@ jobs:
       ActualChat_AndroidSigningStorePass: ${{ secrets.ANDROIDSIGNINGSTOREPASS }}
       IS_DEV_MAUI: ${{ needs.calc-pkg-params.outputs.IS_DEV_MAUI }}
       APP_ID: ${{ needs.calc-pkg-params.outputs.APP_ID }}
-      AAB_ARTIFACT_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.aab
-      APK_ARTIFACT_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.apk
       AAB_FILE_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}-Signed.aab
       APK_FILE_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}-Signed.apk
     outputs:
-      AAB_ARTIFACT_NAME: ${{ env.AAB_ARTIFACT_NAME }}
-      APK_ARTIFACT_NAME: ${{ env.APK_ARTIFACT_NAME }}
+      AAB_ARTIFACT_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.aab
+      APK_ARTIFACT_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.apk
       AAB_FILE_NAME: ${{ env.AAB_FILE_NAME }}
       APK_FILE_NAME: ${{ env.APK_FILE_NAME }}
       MAJOR_MINOR_VERSION: ${{ steps.nbgv.outputs.MajorMinorVersion }}
@@ -778,7 +776,7 @@ jobs:
       - name: Upload package to artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{env.AAB_ARTIFACT_NAME}}
+          name: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.aab
           path: artifacts/publish/App.Maui/release_net8.0-android/${{env.AAB_FILE_NAME}}
           if-no-files-found: error
           compression-level: 0
@@ -787,7 +785,7 @@ jobs:
       - name: Upload apk to artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{env.APK_ARTIFACT_NAME}}
+          name: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.apk
           path: artifacts/publish/App.Maui/release_net8.0-android/${{env.APK_FILE_NAME}}
           if-no-files-found: error
           compression-level: 0
