@@ -730,10 +730,13 @@ jobs:
       ActualChat_AndroidSigningStorePass: ${{secrets.ANDROIDSIGNINGSTOREPASS}}
       IS_DEV_MAUI: ${{ needs.calc-pkg-params.outputs.IS_DEV_MAUI }}
       APP_ID: ${{ needs.calc-pkg-params.outputs.APP_ID }}
-      PACKAGE_FILE_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}-Signed.aab
+      AAB_FILE_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}-Signed.aab
+      APK_FILE_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}-Signed.apk
     outputs:
-      ARTIFACT_NAME: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.aab
-      PACKAGE_FILE_NAME: ${{env.PACKAGE_FILE_NAME}}
+      AAB_ARTIFACT_NAME: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.aab
+      APK_ARTIFACT_NAME: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.apk
+      AAB_FILE_NAME: ${{env.AAB_FILE_NAME}}
+      APK_FILE_NAME: ${{env.APK_FILE_NAME}}
       MAJOR_MINOR_VERSION: ${{steps.nbgv.outputs.MajorMinorVersion}}
     steps:
       - name: Checkout
@@ -776,8 +779,17 @@ jobs:
       - name: Upload package to artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.aab
-          path: artifacts/publish/App.Maui/release_net8.0-android/${{env.PACKAGE_FILE_NAME}}
+          name: ${{AAB_ARTIFACT_NAME}}
+          path: artifacts/publish/App.Maui/release_net8.0-android/${{env.AAB_FILE_NAME}}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 10
+      
+      - name: Upload apk to artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{APK_ARTIFACT_NAME}}
+          path: artifacts/publish/App.Maui/release_net8.0-android/${{env.APK_FILE_NAME}}
           if-no-files-found: error
           compression-level: 0
           retention-days: 10
@@ -793,8 +805,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       APP_ID: ${{needs.calc-pkg-params.outputs.APP_ID}}
-      ARTIFACT_NAME: ${{needs.build-android-pkg.outputs.ARTIFACT_NAME}}
-      PACKAGE_FILE_NAME: ${{needs.build-android-pkg.outputs.PACKAGE_FILE_NAME}}
+      ARTIFACT_NAME: ${{needs.build-android-pkg.outputs.APK_ARTIFACT_NAME}}
+      PACKAGE_FILE_NAME: ${{needs.build-android-pkg.outputs.APK_FILE_NAME}}
       MAJOR_MINOR_VERSION: ${{needs.build-android-pkg.outputs.MAJOR_MINOR_VERSION}}
     steps:
       - name: Authenticate to Google Cloud
@@ -839,8 +851,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ needs.calc-pkg-params.outputs.ENVIRONMENT }}
     env:
-      ARTIFACT_NAME: ${{needs.build-android-pkg.outputs.ARTIFACT_NAME}}
-      PACKAGE_FILE_NAME: ${{needs.build-android-pkg.outputs.PACKAGE_FILE_NAME}}
+      ARTIFACT_NAME: ${{needs.build-android-pkg.outputs.AAB_ARTIFACT_NAME}}
+      PACKAGE_FILE_NAME: ${{needs.build-android-pkg.outputs.AAB_FILE_NAME}}
       IS_DEV_MAUI: ${{ needs.calc-pkg-params.outputs.IS_DEV_MAUI }}
       APP_ID: ${{ needs.calc-pkg-params.outputs.APP_ID }}
     steps:
