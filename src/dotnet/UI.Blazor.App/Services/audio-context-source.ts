@@ -287,6 +287,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         if (!this.isRunning(context))
             throw new Error(`${logScope}.resume: completed resume, but AudioContext.state != 'running'.`);
 
+        Interactive.isInteractive = true;
         debugLog?.log(`resume: resumed, AudioContext:`, Log.ref(context));
     }
 
@@ -845,21 +846,6 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
                     }
                     void this.fallbackDestination?.play();
                 });
-        }
-        else if (context.state === 'running') {
-            this.test(context)
-                .then(() => {
-                        if (!this.isRunning(context)) {
-                            void context.close();
-                            void this.whenReady();
-                        }
-                    },
-                    reason => {
-                        warnLog?.log(reason, 'useRef.test() failed with an error');
-                        void context.close();
-                        void this.whenReady();
-                });
-            this.isRunning(context)
         }
 
         return Disposables.fromAction(() => {

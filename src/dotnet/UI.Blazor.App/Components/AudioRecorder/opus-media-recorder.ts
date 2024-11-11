@@ -18,6 +18,7 @@ import { AudioInitializer } from '../../Services/audio-initializer';
 import { AudioDiagnosticsState } from './audio-recorder';
 import { RecorderState, RecorderStateChanged, RecorderStateServer } from './opus-media-recorder-contracts';
 import { Log } from 'logging';
+import { Interactive } from 'interactive';
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -467,6 +468,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
         // As we are having issues with starting recording - let's recreate AudioContext
         await recordingAudioContextSource.reset();
         await audioContextSource.reset();
+        Interactive.isInteractive = false;
 
         return diagnosticsState;
     }
