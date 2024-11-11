@@ -1,6 +1,6 @@
 namespace ActualChat.MediaPlayback;
 
-public record TrackInfo(Symbol TrackId)
+public record TrackInfo(Symbol TrackId, bool IsStreaming)
 {
     public Moment RecordedAt { get; init; }
     public Moment ClientSideRecordedAt { get; init; }

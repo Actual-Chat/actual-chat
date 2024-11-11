@@ -174,6 +174,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         var origins = new List<string> {
             "http://0.0.0.0",
             "https://0.0.0.0",
+            "https://0.0.0.1",
             "app://0.0.0.0",
             "http://localhost",
             "https://localhost",

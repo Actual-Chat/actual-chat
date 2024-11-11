@@ -174,6 +174,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         if (HostInfo.HostKind != HostKind.MauiApp) {
             services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
+            services.AddScoped<IMediaMetadataUI>(_ => new WebMediaMetadataUI());
         }
 
         // IModalViews
