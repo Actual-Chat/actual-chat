@@ -19,7 +19,8 @@ internal static class OpenSearchConfigurationServiceCollectionExt
     public static IServiceCollection ConfigureOpenSearch(
         this IServiceCollection services,
         IConfiguration cfg,
-        HostInfo hostInfo)
+        HostInfo hostInfo,
+        MLSearchSettings settings)
     {
         services.AddOptionsWithValidateOnStart<OpenSearchSettings>()
             .Bind(cfg.GetSection($"{nameof(MLSearchSettings)}:{MLSearchSettings.OpenSearch}"))
@@ -32,7 +33,7 @@ internal static class OpenSearchConfigurationServiceCollectionExt
             });
 
         services.AddSingleton(c => new OpenSearchNames {
-            Env = hostInfo.IsProductionInstance ? "" : "dev",
+            Env = settings.OpenSearchNamesEnvPrefix.NullIfEmpty() ?? (hostInfo.IsProductionInstance ? "" : "dev"),
         });
         services.AddSingleton(_ => new OpenSearchNamingPolicy(JsonNamingPolicy.CamelCase));
 
@@ -40,7 +41,7 @@ internal static class OpenSearchConfigurationServiceCollectionExt
             var openSearchSettings = s.GetRequiredService<IOptions<OpenSearchSettings>>().Value;
             var connectionSettings = new ConnectionSettings(
                     new SingleNodeConnectionPool(new Uri(openSearchSettings.ClusterUri)),
-                    sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings, typeInfoModifiers: [
+                    sourceSerializer: (builtin, connectionSettings) => new OpenSearchJsonSerializer(builtin, connectionSettings, typeInfoModifiers: [
                         ChatsTypeInfoModifier.Modify,
                     ]))
                 .DefaultFieldNameInferrer(JsonNamingPolicy.CamelCase.ConvertName)

@@ -18,6 +18,7 @@ public sealed class MLSearchSettings
     public TimeSpan RefreshInterval { get; set; } = TimeSpan.FromSeconds(30);
     public TimeSpan ContactIndexingDelay { get; set; } = TimeSpan.FromSeconds(10);
     public TimeSpan ContactIndexingSignalInterval { get; set; } = TimeSpan.FromSeconds(1);
+    public string OpenSearchNamesEnvPrefix { get; set; } = "";
 }
 
 public sealed class OpenAISettings
