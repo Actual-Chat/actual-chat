@@ -98,7 +98,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         // OpenSearch
         services
-            .ConfigureOpenSearch(Cfg, HostInfo)
+            .ConfigureOpenSearch(Cfg, HostInfo, Settings)
             .AddWorkerPoolDependencies();
         services.AddSingleton<OpenSearchConfigurator>()
             .AddHostedService(c => c.GetRequiredService<OpenSearchConfigurator>());
