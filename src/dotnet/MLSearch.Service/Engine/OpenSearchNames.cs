@@ -13,14 +13,14 @@ internal sealed class OpenSearchNames
     public const string GroupIndexVersion = "v5";
     public const string PlaceIndexVersion = "v3";
 
-    private const string TestPrefix = "test";
+    public const string TestPrefix = "test";
     public const string ChatContent = "chat-content";
     public const string ChatContentCursor = "chat-content-cursor";
     public const string ChatCursor = "v2-chat-cursor";
     public string UniquePart { get; init; } = ""; // for testing purpose only
     public string Env { get; init; } = "";
     public static string MLIndexPattern => $"{MLPrefix}-*";
-    public static string MLTestIndexPattern => $"{MLPrefix}-{TestPrefix}-*";
+    public static string MLTestIndexPattern => $"{TestPrefix}-{MLPrefix}-*";
     public static string MLTemplateName => $"{MLPrefix}-{TemplateNameSuffix}";
     private string MLFullPrefix => ToPrefix(Env, MLPrefix, UniquePart);
     private string Prefix => ToPrefix(Env, "sm", UniquePart); // sm == "Search Module"
