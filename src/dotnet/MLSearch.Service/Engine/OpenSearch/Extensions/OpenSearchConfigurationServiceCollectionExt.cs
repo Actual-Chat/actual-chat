@@ -27,12 +27,13 @@ internal static class OpenSearchConfigurationServiceCollectionExt
             .Validate(options => Uri.IsWellFormedUriString(options.ClusterUri, UriKind.Absolute),
                 $"Value for {nameof(OpenSearchSettings.ClusterUri)} must be valid URI.")
             .PostConfigure(options => {
-                if (options.DefaultNumberOfReplicas is null && hostInfo.IsDevelopmentInstance) {
+                if (options.DefaultNumberOfReplicas is null && hostInfo.IsDevelopmentInstance)
                     options.DefaultNumberOfReplicas = 0;
-                }
             });
 
-        services.AddSingleton<OpenSearchNames>();
+        services.AddSingleton(c => new OpenSearchNames {
+            Env = hostInfo.IsProductionInstance ? "" : "dev",
+        });
         services.AddSingleton(_ => new OpenSearchNamingPolicy(JsonNamingPolicy.CamelCase));
 
         services.AddSingleton<IOpenSearchClient>(s => {

@@ -8,6 +8,7 @@ public sealed record HostInfo
 {
     private readonly LazySlim<HostInfo, BaseUrlKind> _baseUrlKindLazy;
     private readonly LazySlim<HostInfo, bool> _isProductionInstanceLazy;
+    private readonly LazySlim<HostInfo, bool> _isStagingInstanceLazy;
     private readonly LazySlim<HostInfo, bool> _isDevelopmentInstanceLazy;
 
     public string BaseUrl { get; init; } = "";
@@ -22,6 +23,7 @@ public sealed record HostInfo
     // Computed & cached
     public BaseUrlKind BaseUrlKind => _baseUrlKindLazy.Value;
     public bool IsProductionInstance => _isProductionInstanceLazy.Value;
+    public bool IsStagingInstance => _isStagingInstanceLazy.Value;
     public bool IsDevelopmentInstance => _isDevelopmentInstanceLazy.Value;
 
     public HostInfo()
@@ -35,6 +37,8 @@ public sealed record HostInfo
         });
         _isProductionInstanceLazy = LazySlim.New(this,
             static self => OrdinalEquals(self.Environment.Value, Environments.Production));
+        _isStagingInstanceLazy ??= LazySlim.New(this,
+            static self => OrdinalEquals(self.Environment.Value, Environments.Staging));
         _isDevelopmentInstanceLazy ??= LazySlim.New(this,
             static self => OrdinalEquals(self.Environment.Value, Environments.Development));
     }
