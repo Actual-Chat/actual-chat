@@ -33,7 +33,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
             transitions[0].HardResumeAt.Should().NotBeNull();
             var resumeIn = transitions[0].HardResumeAt!.Value - Clocks.SystemClock.Now;
             resumeIn.Should().BeCloseTo(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(1));
-            Context.Remaining(id).Should().BeEquivalentTo(batches[1..]);
+            Context.ListRemaining(id).Should().BeEquivalentTo(batches[1..]);
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -54,7 +54,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         await TestExt.When(() => {
-            Context.Remaining(id).Should().BeEquivalentTo(batches[1..]);
+            Context.ListRemaining(id).Should().BeEquivalentTo(batches[1..]);
         }, TimeSpan.FromSeconds(10));
 
         // act
@@ -62,7 +62,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         await TestExt.When(() => {
-            Context.Remaining(id).Should().BeEquivalentTo(batches[2..]);
+            Context.ListRemaining(id).Should().BeEquivalentTo(batches[2..]);
         }, TimeSpan.FromSeconds(10));
 
         // act
@@ -70,7 +70,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         await TestExt.When(() => {
-            Context.Remaining(id).Should().BeEmpty();
+            Context.ListRemaining(id).Should().BeEmpty();
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -95,7 +95,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
             transitions[0].HardResumeAt.Should().NotBeNull();
             var resumeIn = transitions[0].HardResumeAt!.Value - Clocks.SystemClock.Now;
             resumeIn.Should().BeCloseTo(TimeSpan.FromHours(24), TimeSpan.FromMinutes(1));
-            Context.Remaining(id).Should().BeEquivalentTo(batches[1..]);
+            Context.ListRemaining(id).Should().BeEquivalentTo(batches[1..]);
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -119,7 +119,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
             transitions.Should().HaveCount(1);
             transitions[0].HardResumeAt.Should().Be(Flow.InfiniteHardResumeAt);
             transitions[0].Step.Should().Be("OnReset");
-            Context.Remaining(id).Should().BeEquivalentTo(batches[1..]);
+            Context.ListRemaining(id).Should().BeEquivalentTo(batches[1..]);
         }, TimeSpan.FromSeconds(10));
 
         // act
@@ -131,7 +131,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
             transitions.Should().HaveCount(1);
             transitions[0].HardResumeAt.Should().Be(Flow.InfiniteHardResumeAt);
             transitions[0].Step.Should().Be("OnReset");
-            Context.Remaining(id).Should().BeEquivalentTo(batches[1..]);
+            Context.ListRemaining(id).Should().BeEquivalentTo(batches[1..]);
         }, TimeSpan.FromSeconds(10));
     }
 }

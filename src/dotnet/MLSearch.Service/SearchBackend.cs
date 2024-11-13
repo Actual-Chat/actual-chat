@@ -290,7 +290,10 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
     // [EventHandler]
     public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
-        => Queues.Enqueue(new FlowResumeEvent(FlowRegistry.NewId<EntryIndexingFlow>(eventCommand.Entry.ChatId), Tag: "TextEntry changed"), cancellationToken: cancellationToken);
+        => Queues.Enqueue(new FlowResumeEvent(FlowRegistry.NewId<EntryIndexingFlow>(eventCommand.Entry.ChatId),
+                false,
+                "TextEntry changed"),
+            cancellationToken);
 
     // Private methods
 

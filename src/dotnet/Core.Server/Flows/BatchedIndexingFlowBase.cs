@@ -19,15 +19,17 @@ public abstract class BatchedIndexingFlowBase<TItem, TId> : IndexingFlowBase<Ind
         CancellationToken cancellationToken)
     {
         var batches = ListBatches(cancellationToken).ConfigureAwait(false);
+        var anyHandled = false;
         await foreach (var batch in batches) {
             await ProcessBatch(batch, cancellationToken).ConfigureAwait(false);
             var last = batch[^1];
             cursor = new (last.Id, last.Version);
+            anyHandled = true;
             if (batch.Count < BatchSize)
                 return new (false, true, cursor);
         }
 
-        return new (false, false, cursor);
+        return new (false, !anyHandled, cursor);
     }
 
     protected abstract Task<IReadOnlyList<TItem>> GetBatch(IndexingFlowCursor<TId>? cursor, CancellationToken cancellationToken);
