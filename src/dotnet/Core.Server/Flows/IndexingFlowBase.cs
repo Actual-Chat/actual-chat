@@ -8,16 +8,11 @@ namespace ActualChat.Flows;
 public abstract class IndexingFlowBase<TCursor> : Flow
 {
     [DataMember(Order = 100), MemoryPackOrder(100)]
-    public TCursor? Cursor { get; private set; }
-
-    [DataMember(Order = 101), MemoryPackOrder(101)]
-    public Moment? NextTimerAt { get; private set; }
+    public TCursor? Cursor { get; protected set; }
 
     [DataMember(Order = 102), MemoryPackOrder(102)]
-    public Moment? NextWatchdogTimerAt { get; private set; }
+    public Moment? NextWatchdogTimerAt { get; protected set; }
 
-    [IgnoreDataMember, MemoryPackIgnore]
-    protected virtual TimeSpan Interval { get; } = TimeSpan.FromSeconds(10);
     [IgnoreDataMember, MemoryPackIgnore]
     protected virtual TimeSpan WatchdogInterval { get; } = TimeSpan.FromHours(24);
     [IgnoreDataMember, MemoryPackIgnore]
@@ -40,42 +35,51 @@ public abstract class IndexingFlowBase<TCursor> : Flow
     {
         var (mustEnd, isTailReached, updatedCursor) = await Process(Cursor, cancellationToken).ConfigureAwait(false);
         Cursor = updatedCursor;
-        if (isTailReached && !await OnTailReached(cancellationToken).ConfigureAwait(false))
+        Log.LogInformation(
+            "`{Id}`.OnIndex: processed portion: MustEnd={MustEnd}, IsTailReached={IsTailReached}, {@UpdatedCursor}",
+            Id,
+            mustEnd,
+            isTailReached,
+            updatedCursor);
+        if (isTailReached && !await OnTailReached(cancellationToken).ConfigureAwait(false)) {
+            Log.LogInformation("`{Id}`.OnIndex: forced to suspend flow after tail handling", Id);
             mustEnd = true;
+        }
         if (mustEnd)
             return WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt); // i.e. chat is removed
 
         return isTailReached
-            ? GetTransition(WatchdogInterval, NextWatchdogTimerAt, x => NextWatchdogTimerAt = x)
-            : GetTransition(Interval, NextTimerAt, x => NextTimerAt = x);
+            ? WaitForWatchdog()
+            : QueueResume(nameof(OnIndex), "Continue processing when possible");
     }
 
     protected virtual Task<bool> OnTailReached(CancellationToken cancellationToken)
-        => ActualLab.Async.TaskExt.TrueTask;
-
-    private bool NeedsTimer(Moment? currentResumeAt, TimeSpan interval, out Moment nextTimerAt)
     {
-        var now = Clocks.SystemClock.Now;
-        if (currentResumeAt == null) {
-            nextTimerAt = now + interval;
-            return true;
-        }
-
-        if (currentResumeAt <= now + TimerRescheduleThreshold) {
-            nextTimerAt = now + interval;
-            return true;
-        }
-
-        nextTimerAt = Moment.MinValue;
-        return false;
+        Log.LogInformation("`{Id}`.OnTailReached: {Cursor}", Id, Cursor);
+        return ActualLab.Async.TaskExt.TrueTask;
     }
 
-    private FlowTransition GetTransition(TimeSpan interval, Moment? resumeAt, Action<Moment> updateResumeAt)
+    private FlowTransition WaitForWatchdog()
     {
-        if (!NeedsTimer(resumeAt, interval, out var nextTimerAt))
-            return WaitForEvent(nameof(OnIndex), InfiniteHardResumeAt);
+        if (GetNextWatchdogAt() is { } nextWatchdogAt) {
+            NextWatchdogTimerAt = nextWatchdogAt;
+            Log.LogInformation("`{Id}`.GetTransition: Waiting for watchdog timer at {NextTimerAt}", Id, nextWatchdogAt);
+            return WaitForTimer(nameof(OnIndex), nextWatchdogAt, "Waiting for watchdog timer");
+        }
 
-        updateResumeAt(nextTimerAt);
-        return WaitForTimer(nameof(OnIndex), nextTimerAt);
+        Log.LogInformation("`{Id}`.GetTransition: Suspending flow", Id);
+        return WaitForEvent(nameof(OnIndex), InfiniteHardResumeAt, "Watchdog is already set");
+    }
+
+    private Moment? GetNextWatchdogAt()
+    {
+        var now = Clocks.SystemClock.Now;
+        if (NextWatchdogTimerAt == null)
+            return now + WatchdogInterval;
+
+        if (NextWatchdogTimerAt <= now + TimerRescheduleThreshold)
+            return now + WatchdogInterval;
+
+        return null;
     }
 }
