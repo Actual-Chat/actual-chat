@@ -17,7 +17,7 @@ public sealed class IndexingFlowTestContext
     public BatchIndexingResult<long> Next(Symbol id)
         => _batches[id].Dequeue();
 
-    public IReadOnlyCollection<BatchIndexingResult<long>> Remaining(Symbol id)
+    public IReadOnlyCollection<BatchIndexingResult<long>> ListRemaining(Symbol id)
         => _batches[id];
 
     public void OnTransition(Symbol id, FlowTransition transition)
