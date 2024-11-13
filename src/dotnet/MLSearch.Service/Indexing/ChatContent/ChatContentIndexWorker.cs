@@ -50,7 +50,7 @@ internal sealed class ChatContentIndexWorker(
             await chatInfoIndexer.IndexAsync(chatId, cancellationToken).ConfigureAwait(false);
         }
 
-        if (job.IndexingKind != IndexingKind.ChatContent)
+        if (job.IndexingKind == IndexingKind.ChatInfo)
             return;
 
         var cursor = await LoadCursorAsync(chatId, cancellationToken).ConfigureAwait(false);

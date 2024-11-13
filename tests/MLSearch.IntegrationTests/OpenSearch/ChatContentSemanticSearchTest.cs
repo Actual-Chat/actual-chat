@@ -145,7 +145,6 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         Assert.NotNull(AppHost.Services.GetService<IChatContentUpdateLoader>());
         Assert.NotNull(AppHost.Services.GetService<ICursorStates<ChatContentCursor>>());
 
-        Assert.NotNull(AppHost.Services.GetService<IChatIndexTrigger>());
         Assert.NotNull(AppHost.Services.GetService<IChatContentDocumentLoader>());
         Assert.NotNull(AppHost.Services.GetService<IChatContentMapper>());
 

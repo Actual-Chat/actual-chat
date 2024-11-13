@@ -19,7 +19,6 @@ using ActualChat.Module;
 using Microsoft.AspNetCore.Builder;
 using ActualChat.Rpc;
 using ActualChat.Search;
-using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
 using Microsoft.SemanticKernel;
 using ActualChat.MLSearch.Bot.Services;
 using ActualChat.MLSearch.Flows;
@@ -58,8 +57,11 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         rpcHost.AddApi<IMLSearch, MLSearchImpl>();
         rpcHost.AddBackend<ISearchBackend, SearchBackend>();
         rpcHost.AddBackend<IContactIndexStatesBackend, ContactIndexStateBackend>();
-        rpcHost.AddBackend<IChatIndexTrigger, ChatIndexTrigger>();
         rpcHost.AddBackend<IMLSearchBackend, MLSearchBackend>();
+        if (!Settings.IsInitialIndexingDisabled) {
+            rpcHost.AddBackend<IChatIndexInitializerTrigger, ChatIndexInitializerTrigger>();
+            rpcHost.AddBackend<IChatIndexTrigger, ChatIndexTrigger>();
+        }
         InjectIndexingServices(rpcHost, isBackendClient);
         InjectBotServices(rpcHost, isBackendClient);
 
@@ -68,7 +70,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         }
         else {
             _log.LogInformation("Initial chat indexing is enabled");
-            rpcHost.AddBackend<IChatIndexInitializerTrigger, ChatIndexInitializerTrigger>();
             if (!isBackendClient) {
                 services.AddSingleton<ICursorStates<ChatIndexInitializerShard.Cursor>>(
                     static c => c.CreateInstance<CursorStates<ChatIndexInitializerShard.Cursor>>(OpenSearchNames.ChatCursor));
@@ -210,7 +211,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.Configure<ChatBotConversationTriggerOptions>(e => {
             e.AllowPeerBotChat = Settings.Bot?.AllowPeerBotChat ?? false;
         });
-        if (Settings.Bot is var chatbotSettings && chatbotSettings is not null) {
+        if (Settings.Bot is { } chatbotSettings) {
             var isBotEnabled = Settings is { IsEnabled: true, Bot.IsEnabled: true };
             if (isBotEnabled) {
                 rpcHost.AddBackend<IChatBotConversationTrigger, ChatBotConversationTrigger>();
