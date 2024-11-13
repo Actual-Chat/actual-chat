@@ -4,17 +4,23 @@ using MemoryPack;
 
 namespace ActualChat.MLSearch.Flows;
 
-public sealed class EntryIndexingMasterFlow
-    : IndexingMasterFlowBase<EntryIndexingFlow, Chat.Chat, ChatId>
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial class EntryIndexingMasterFlow
+    : IndexingMasterFlowBase<EntryIndexingFlow, Chat.Chat, ChatId>, IMasterFlow
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public long MaxVersion { get; private set; }
 
-    protected override Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
+    protected override int CurrentFlowSetVersion => 1;
+
+    protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
     {
-        // only created before now + 10sec. New chats are handled from events
-        MaxVersion = (Clocks.CoarseCpuClock.Now + TimeSpan.FromSeconds(10)).EpochOffset.Ticks;
-        return base.OnBeforeFirstIndexAfterReset(cancellationToken);
+        var mustContinue = await base.OnBeforeFirstIndexAfterReset(cancellationToken);
+        if (mustContinue)
+            // only created before now + 10sec. New chats are handled from events
+            MaxVersion = (Clocks.CoarseCpuClock.Now + TimeSpan.FromSeconds(10)).EpochOffset.Ticks;
+
+        return mustContinue;
     }
 
     protected override async Task<IReadOnlyList<Chat.Chat>> GetBatch(IndexingFlowCursor<ChatId>? cursor, CancellationToken cancellationToken)

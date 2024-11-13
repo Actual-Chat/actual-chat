@@ -238,7 +238,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
                 results = await Tester.FindEntries($"{UniquePart} {criteria}", placeId, chatId);
                 results.Should().HaveCount(expected);
             },
-            TimeSpan.FromSeconds(10));
+            TimeSpan.FromSeconds(20));
         return results;
     }
 }

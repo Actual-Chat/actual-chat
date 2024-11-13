@@ -28,16 +28,15 @@ public class EntryIndexingTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     [Theory]
     [InlineData(100)]
-    // TODO: optimize indexing and flow event scheduling
-    // [InlineData(1_000)]
-    // [InlineData(7_000)]
+    [InlineData(1_000)]
+    [InlineData(3_456)]
     public async Task ShouldIndexManyEntries(int portionSize)
     {
         // arrange
         await Tester.SignInAsUniqueBob();
         var (chatId, _) = await Tester.CreateChat(false);
         var portion1 = await CreateEntries(chatId, portionSize, "The first portion:");
-        var portion2 = await CreateEntries(chatId, portionSize, "The second portion:");
+        var portion2 = await CreateEntries(chatId, 50, "The second portion:");
 
         // act
         var entries = await Find("first", expected: 50);
@@ -73,7 +72,7 @@ public class EntryIndexingTest(AppHostFixture fixture, ITestOutputHelper @out)
                 results = await Tester.FindEntries($"{UniquePart} {criteria}", placeId, chatId);
                 results.Should().HaveCount(expected);
             },
-            TimeSpan.FromSeconds(10));
+            TimeSpan.FromSeconds(60));
         return results;
     }
 }

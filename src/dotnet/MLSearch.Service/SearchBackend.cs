@@ -1,7 +1,6 @@
 using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Flows;
-using ActualChat.Flows.Infrastructure;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
@@ -31,7 +30,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     private PlaceContactIndexer PlaceContactIndexer { get; } = services.GetRequiredService<PlaceContactIndexer>();
     private OpenSearchConfigurator OpenSearchConfigurator { get; } = services.GetRequiredService<OpenSearchConfigurator>();
     private IFlows Flows { get; } = services.GetRequiredService<IFlows>();
-    private FlowRegistry FlowRegistry { get; } = services.GetRequiredService<FlowRegistry>();
     private IQueues Queues { get; } = services.Queues();
     private ILogger? DebugLog => Constants.DebugMode.OpenSearchRequest ? Log : null;
 
@@ -254,19 +252,25 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             return;
 
         var (chat, _, changeKind) = eventCommand;
-        if (chat.Id.Kind == ChatKind.Peer || chat.Id.IsPlaceRootChat)
-            return;
-
-        // NOTE: we don't have any other chance to process removed items
-        if (changeKind == ChangeKind.Remove) {
-            var place = await PlacesBackend.Get(chat.Id.PlaceId, cancellationToken).ConfigureAwait(false);
-            var deletedContacts = ApiArray.New([chat.ToIndexedChatContact(place)]);
-            await Queues.Enqueue(new SearchBackend_ChatContactBulkIndex([], deletedContacts), cancellationToken).ConfigureAwait(false);
-        }
-        else
-            await Queues.Enqueue(new SearchBackend_StartChatContactIndexing(), cancellationToken).ConfigureAwait(false);
-
+        await UpdateIndexedChatContacts().ConfigureAwait(false);
+        // TODO: Stop indexing removed chats
         await Flows.GetOrStart<EntryIndexingFlow>(eventCommand.Chat.Id, cancellationToken).ConfigureAwait(false);
+        return;
+
+        async Task UpdateIndexedChatContacts()
+        {
+            if (chat.Id.Kind == ChatKind.Peer || chat.Id.IsPlaceRootChat)
+                return;
+
+            // NOTE: we don't have any other chance to process removed items
+            if (changeKind == ChangeKind.Remove) {
+                var place = await PlacesBackend.Get(chat.Id.PlaceId, cancellationToken).ConfigureAwait(false);
+                var deletedContacts = ApiArray.New([chat.ToIndexedChatContact(place)]);
+                await Queues.Enqueue(new SearchBackend_ChatContactBulkIndex([], deletedContacts), cancellationToken).ConfigureAwait(false);
+            }
+            else
+                await Queues.Enqueue(new SearchBackend_StartChatContactIndexing(), cancellationToken).ConfigureAwait(false);
+        }
     }
 
     // [EventHandler]
@@ -289,11 +293,23 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     }
 
     // [EventHandler]
-    public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
-        => Queues.Enqueue(new FlowResumeEvent(FlowRegistry.NewId<EntryIndexingFlow>(eventCommand.Entry.ChatId),
+    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        var chatId = eventCommand.Entry.ChatId;
+        var flow = await Flows.Get<EntryIndexingFlow>(chatId, cancellationToken).ConfigureAwait(false);
+        if (flow is null) {
+            Log.LogInformation("EntryIndexingFlow #{Id} not found, unable to resume", chatId);
+            return;
+        }
+
+        var minHardResumeAt = Clocks.SystemClock.Now + TimeSpan.FromMinutes(1);
+        Log.LogDebug("Sending flow resume request: #{Id} with MinHardResumeAt={MinHardResumeAt}", flow.Id, minHardResumeAt);
+        await Queues.Enqueue(new FlowResumeEvent(flow.Id,
                 false,
-                "TextEntry changed"),
-            cancellationToken);
+                "TextEntry changed",
+                minHardResumeAt),
+            cancellationToken).ConfigureAwait(false);
+    }
 
     // Private methods
 
