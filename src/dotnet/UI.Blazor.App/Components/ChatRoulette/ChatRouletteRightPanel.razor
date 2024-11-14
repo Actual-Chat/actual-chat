@@ -1,0 +1,31 @@
+@using ActualChat.UI.Blazor.Components.SideNav
+@inherits ComputedStateComponent<bool>
+
+<SideNav
+    Side="SideNavSide.Right"
+    Class="cr-right-panel"
+    IsOpen="@State.Value"
+    VisibilityChanged="@(NoStateHasChanged.EventCallback<bool>(isOpen => PanelsUI.Right.SetIsVisible(isOpen)))">
+    <ChatRouletteRightPanelHeader
+        OnCloseButtonClick="@(() => OnHideRightPanelClick())"/>
+    <ChatRouletteRightPanelContent/>
+</SideNav>
+
+@code {
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private PanelsUI PanelsUI => Hub.PanelsUI;
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<bool>.Options() {
+                InitialValue = PanelsUI.Right.IsVisible.Value,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
+        => PanelsUI.Right.IsVisible.Use(cancellationToken).AsTask();
+
+    private void OnHideRightPanelClick()
+        => PanelsUI.Right.SetIsVisible(false);
+}

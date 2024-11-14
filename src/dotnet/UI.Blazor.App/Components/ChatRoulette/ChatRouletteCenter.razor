@@ -1,0 +1,44 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Events
+@inherits ComputedStateComponent<List<AvatarFull>>
+@{
+    var avatars = State.Value;
+}
+
+<div class="cr-center">
+    <div class="cr-main-title">Here are some people ready to chat:</div>
+    @foreach (var avatar in avatars) {
+        <ChatRouletteItem Avatar="@avatar"/>
+    }
+
+    <Button Class="cr-btn">
+        Stop Roulette
+    </Button>
+</div>
+
+@code {
+    [Inject] ChatUIHub Hub { get; init; } = null!;
+    private AccountUI AccountUI => Hub.AccountUI;
+    private IAvatars Avatars => Hub.Avatars;
+    private Session Session => Hub.Session();
+    private UIEventHub UIEventHub => Hub.UIEventHub();
+
+    protected override ComputedState<List<AvatarFull>>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<List<AvatarFull>>.Options() {
+                InitialValue = [],
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<List<AvatarFull>> ComputeState(CancellationToken cancellationToken) {
+        var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken).ConfigureAwait(false);
+        var avatars = await avatarIds
+            .Select(id => Avatars.GetOwn(Session, id, cancellationToken))
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
+            .ConfigureAwait(false);
+        return avatars.SkipNullItems().ToList();
+    }
+
+    private void OnSettingsClick()
+        => _ = UIEventHub.Publish(new ShowSettingsEvent());
+}

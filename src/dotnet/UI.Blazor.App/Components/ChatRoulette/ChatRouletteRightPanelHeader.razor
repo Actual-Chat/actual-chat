@@ -1,0 +1,24 @@
+<div class="c-header">
+	@if (ScreenSize.IsNarrow()) {
+    <HeaderButton
+        Class="cr-back-btn"
+        PreventDefault="true"
+        StopPropagation="true"
+        Click="@OnCloseButtonClick">
+        <i class="icon-arrow-left"></i>
+    </HeaderButton>
+	}
+    <span class="c-title">
+        Search filters
+    </span>
+    @if (!ScreenSize.IsNarrow()) {
+        <HeaderButton Click="@OnCloseButtonClick" Class="blackout">
+            <i class="icon-close text-2xl"></i>
+        </HeaderButton>
+    }
+</div>
+
+@code {
+	[CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter] public EventCallback OnCloseButtonClick { get; set; }
+}

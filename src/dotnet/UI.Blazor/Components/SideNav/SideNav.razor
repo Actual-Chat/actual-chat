@@ -3,7 +3,7 @@
 @using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
 
-<div @ref="ElementRef" class="@_class" data-side-nav="@_attribute">
+<div @ref="ElementRef" class="@_class @Class" data-side-nav="@_attribute">
     @ChildContent
 </div>
 
@@ -16,6 +16,7 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter] public SideNavSide Side { get; set; } = SideNavSide.Left;
+    [Parameter] public string Class { get; set; }
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
     [Parameter] public EventCallback<bool> VisibilityChanged { get; set; }

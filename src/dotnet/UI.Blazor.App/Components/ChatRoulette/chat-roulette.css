@@ -1,0 +1,282 @@
+.cr-header {
+    @apply flex-x items-center gap-x-4;
+    @apply h-14;
+    @apply px-4;
+}
+body.wide .cr-header .cr-back-btn {
+    @apply hidden;
+}
+.filter-btn.btn-h {
+    @apply md:text-[var(--indigo-70)];
+}
+body.narrow .cr-header .desktop,
+body.narrow .cr-center .desktop,
+body.narrow .cr-footer .desktop {
+    @apply hidden;
+}
+body.wide .cr-header .mobile,
+body.wide .cr-center .mobile,
+body.wide .cr-footer .mobile {
+    @apply hidden;
+}
+
+body.narrow .filter-btn.btn-h i.desktop {
+    @apply hidden;
+}
+body.wide .filter-btn.btn-h i.mobile {
+    @apply hidden;
+}
+.cr-header .c-icon {
+    @apply flex-none flex items-center justify-center;
+    @apply w-10 h-10;
+    @apply rounded-full;
+    @apply bg-[var(--indigo-70)];
+    @apply text-[var(--sienna-70)];
+}
+.cr-header .c-title {
+    @apply flex-1 flex items-center;
+    @apply text-headline-1;
+}
+.cr-center {
+    @apply flex-1 flex-y justify-center self-center gap-y-4;
+    @apply w-full md:max-w-88;
+    @apply p-4;
+}
+body.narrow .cr-center {
+    @apply pb-16;
+}
+.cr-center .cr-main-title {
+    @apply flex items-center justify-center;
+    @apply p-4;
+    @apply text-text-1;
+}
+.cr-item {
+    @apply flex-y items-center gap-y-2;
+    @apply p-2;
+    @apply rounded-2xl border border-[var(--indigo-90)];
+    @apply bg-01;
+}
+.cr-item .c-top {
+    @apply flex-x items-center gap-x-4;
+    @apply w-full;
+}
+.cr-item .c-top .c-description {
+    @apply flex-1 flex-y;
+}
+.cr-item .c-top .c-description .c-name {
+    @apply text-text-1 font-medium;
+}
+.cr-item .c-top .c-description .c-bio {
+    @apply text-xs text-03;
+}
+.cr-item .c-top .c-ending {
+    @apply flex-none flex-x items-center gap-x-0.5;
+}
+.cr-item .c-top .c-start-chat {
+    @apply flex-none flex items-center justify-center;
+    @apply w-8 h-8;
+    @apply mr-1;
+    @apply rounded-full;
+    @apply overflow-hidden;
+    @apply bg-[var(--indigo-99)];
+    @apply text-[var(--indigo-60)];
+}
+.cr-item .c-center {
+    @apply flex-x items-center gap-x-4;
+}
+.cr-badge {
+    @apply flex-none flex-x items-center gap-x-1;
+    @apply h-5;
+    @apply px-2;
+    @apply rounded-full;
+    @apply overflow-hidden;
+    @apply bg-03;
+    @apply text-xs;
+}
+.cr-badge i {
+    @apply text-03;
+}
+.cr-badge.selected {
+    @apply bg-[var(--indigo-99)];
+    @apply text-[var(--indigo-60)];
+}
+.cr-badge.profile-badge {
+    @apply h-6;
+    @apply px-3;
+    @apply bg-01;
+    @apply text-01 text-headline-1;
+    @apply cursor-pointer;
+}
+.cr-badge.profile-badge.special {
+    @apply text-[var(--indigo-70)];
+}
+.cr-badge.profile-badge.selected {
+    @apply bg-[var(--indigo-70)];
+    @apply always-white;
+    @apply cursor-default;
+}
+.cr-item .c-bottom {
+    @apply flex-x items-center gap-x-2;
+}
+
+.btn.cr-btn {
+    @apply w-full;
+    @apply text-[var(--indigo-60)];
+    @apply bg-[var(--indigo-99)];
+}
+
+.cr-footer {
+    @apply relative;
+    @apply flex-x items-center gap-x-4;
+    @apply h-14;
+    @apply px-4;
+    @apply bg-post-panel md:bg-transparent;
+}
+.cr-footer .rounded-sub-footer {
+    @apply md:hidden;
+}
+.cr-footer .c-center {
+    @apply absolute left-1/2 top-1/2 z-button;
+    @apply flex-x items-center gap-x-4;
+    @apply bg-transparent;
+    transform: translate(-50%, -50%);
+}
+body.wide .cr-footer .c-center {
+    @apply self-center;
+    @apply w-full max-w-88;
+    @apply px-4;
+}
+.cr-footer .c-center .c-profile-container {
+    @apply flex-1 flex-x items-center gap-x-2;
+    @apply h-12;
+    @apply px-2;
+    @apply rounded-full;
+    @apply bg-input;
+    @apply cursor-pointer;
+}
+.cr-footer .refresh-wrapper {
+    @apply relative;
+    @apply flex items-center justify-center;
+    @apply w-13 h-13;
+    @apply rounded-full;
+    box-shadow:
+        -1px 0 0 0 var(--recorder-off-middle),
+        0 -1px 0 0 var(--recorder-off-top),
+        1px 0 0 0 var(--recorder-off-middle),
+        0 1px 0 0 var(--recorder-off-bottom);
+
+}
+body.narrow .cr-footer .refresh-wrapper {
+    @apply bottom-7;
+    @apply w-22 h-22;
+}
+.cr-footer .cr-refresh-btn.btn-round {
+    @apply absolute left-1/2 top-1/2;
+    @apply w-12 h-12;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(180deg, #2970FF 0.32%, #C60077 133.76%);
+}
+body.narrow .cr-refresh-btn.btn-round {
+    @apply w-20 h-20;
+}
+.cr-footer .cr-refresh-btn.btn-round .c-content {
+    @apply flex-y items-center justify-center;
+    @apply always-white;
+}
+.cr-footer .cr-refresh-btn.btn-round .c-content .c-icon {
+    @apply text-3.5xl;
+}
+body.wide .cr-footer .cr-refresh-btn.btn-round .c-content .c-icon {
+    @apply text-2xl;
+}
+.cr-footer .cr-refresh-btn.btn-round .c-content .c-text {
+    @apply -mt-1;
+    @apply text-xs;
+}
+body.wide .cr-footer .cr-refresh-btn.btn-round .c-content .c-text {
+    @apply hidden;
+}
+.cr-footer .c-filter {
+    @apply always-white;
+}
+.cr-footer .c-incut {
+    @apply flex-1;
+}
+.cr-footer .c-profile {
+    @apply flex-x items-center gap-x-4;
+    @apply cursor-pointer;
+}
+.cr-footer .c-profile span {
+    @apply always-white;
+}
+.cr-footer span.c-profile-incut {
+    @apply flex-none;
+    @apply h-8 w-8;
+    @apply rounded-full;
+    @apply bg-pink-400;
+}
+
+.cr-right-panel {
+    @apply bg-[var(--indigo-99)];
+}
+.cr-right-panel .c-header {
+    @apply flex-x items-center gap-x-4;
+    @apply h-14;
+    @apply px-4;
+}
+.cr-right-panel .c-header .c-title {
+    @apply flex-1;
+    @apply text-headline-7;
+}
+.cr-right-panel-content {
+    @apply flex-1 flex-y;
+    @apply p-4;
+}
+.cr-right-panel-content > .c-center {
+    @apply flex-1 flex-y gap-y-6;
+}
+.cr-right-panel-content .c-center .c-container {
+    @apply flex-y gap-y-2;
+}
+.cr-right-panel-content .c-center .c-container .c-title {
+    @apply text-caption-1;
+}
+.cr-right-panel-content .c-center .c-container .c-content {
+    @apply flex-wrap flex-x items-center gap-x-3 gap-y-2;
+}
+.country-container {
+    @apply flex-none flex items-end justify-start;
+    @apply h-10;
+    @apply p-1;
+    @apply rounded-t-lg;
+    @apply bg-01;
+}
+
+.cr-buttons {
+    @apply -flex-y md:flex-x gap-2;
+}
+.cr-buttons > .btn {
+    @apply flex-1;
+    @apply w-full md:w-auto;
+}
+.cr-cancel.btn {
+    @apply bg-01;
+    @apply text-[var(--indigo-70)];
+}
+.cr-apply.btn {
+    @apply bg-[var(--indigo-70)];
+    @apply always-white;
+}
+
+.cr-choose-avatar-modal {
+    @apply h-full;
+}
+.cr-choose-avatar-modal .dialog-body {
+    @apply p-4;
+}
+.cr-profile-modal {
+    @apply flex-y gap-y-4;
+}
+.cr-choose-avatar-modal .cr-cancel.btn {
+    @apply bg-cancel;
+}

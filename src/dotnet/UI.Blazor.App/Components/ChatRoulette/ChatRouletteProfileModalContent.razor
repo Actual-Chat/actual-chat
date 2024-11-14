@@ -1,0 +1,42 @@
+@namespace ActualChat.UI.Blazor.Components
+@inherits ComputedStateComponent<List<AvatarFull>>
+@{
+    var avatars = State.Value;
+}
+
+<div class="cr-profile-modal">
+    @foreach (var avatar in avatars) {
+        <ChatRouletteItem Avatar="@avatar" IsChooseAvatarView="true"/>
+    }
+    <Button Class="cr-btn">
+        <Icon>
+            <i class="icon-plus text-2xl"></i>
+        </Icon>
+        <Title>
+            Create new
+        </Title>
+    </Button>
+</div>
+
+@code {
+    [Inject] UIHub Hub { get; init; } = null!;
+
+    private IAvatars Avatars => Hub.Avatars;
+    private Session Session => Hub.Session();
+
+    protected override ComputedState<List<AvatarFull>>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<List<AvatarFull>>.Options() {
+                InitialValue = [],
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<List<AvatarFull>> ComputeState(CancellationToken cancellationToken) {
+        var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken).ConfigureAwait(false);
+        var avatars = await avatarIds
+            .Select(id => Avatars.GetOwn(Session, id, cancellationToken))
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
+            .ConfigureAwait(false);
+        return avatars.SkipNullItems().ToList();
+    }
+}

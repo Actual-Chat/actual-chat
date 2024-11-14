@@ -34,6 +34,8 @@
 .left-chat-search-overlay-panel .tab-panel .btn-group {
     @apply gap-x-4;
     @apply py-0 px-2;
+    @apply overflow-x-auto;
+    scrollbar-width: none;
 }
 .left-chat-search-overlay-panel .c-search-tab.c-container, /* TODO: Remove when migrated to new search UI */
 .left-chat-search-overlay-panel .tab > .c-container {
@@ -49,6 +51,9 @@
     @apply text-xs text-primary;
 }
 
+.left-chat-search-overlay-panel .ai-btn {
+    @apply px-2;
+}
 .left-chat-search-overlay-panel .ai-btn .btn {
     @apply min-w-full;
 }

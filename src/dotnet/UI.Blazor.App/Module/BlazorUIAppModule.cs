@@ -109,6 +109,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<IncomingShareModal.Model, IncomingShareModal>()
             .Add<DownloadAppModal.Model, DownloadAppModal>()
             .Add<CopyChatToPlaceErrorModal.Model, CopyChatToPlaceErrorModal>()
+            .Add<ChatRouletteProfileModal.Model, ChatRouletteProfileModal>()
         );
         // IBannerViews
         services.AddTypeMap<IBannerView>(map => map

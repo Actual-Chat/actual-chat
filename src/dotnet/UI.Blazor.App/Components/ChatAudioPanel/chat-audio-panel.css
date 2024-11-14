@@ -427,6 +427,7 @@ body.hoverable .transcription-options-modal .language-btn-group > .c-title > .c-
 }
 .transcription-options-modal .language-btn-group > .c-languages > button.active {
     @apply text-primary;
+    @apply cursor-default;
 }
 body.hoverable .transcription-options-modal .language-btn-group > .c-languages > button:not(.active):hover {
     @apply bg-round;
