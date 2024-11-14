@@ -1,8 +1,8 @@
 @page "/chat/{ChatSid}"
 @page "/chat"
+@layout ListViewLayout
 @using ActualChat.Hosting
 @inherits ComputedStateComponent<ChatPage.Model>
-@layout ListViewLayout
 @{
     var m = Rendered = State.Value;
     if (_isVeryFirstLoad && !PanelsUI.Middle.IsVisible.Value)
@@ -74,6 +74,7 @@
     protected static TimeSpan LoadTimeoutToReloadDelay = TimeSpan.FromSeconds(2);
     private static bool _isVeryFirstLoad = true;
     private ILogger? _log;
+    private MutableState<ResolveUserLinkStep> _resolveUserLinkStep = null!;
 
     protected Model? Rendered;
     protected ChatView ChatViewRef = null!;
@@ -86,6 +87,7 @@
     protected IPlaces Places => Hub.Places;
     protected IAccounts Accounts => Hub.Accounts;
     protected IAvatars Avatars => Hub.Avatars;
+    protected IUserLinks UserLinks => Hub.UserLinks;
     protected ChatUI ChatUI => Hub.ChatUI;
     protected ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     protected AccountUI AccountUI => Hub.AccountUI;
@@ -97,15 +99,16 @@
     [Parameter] public string? ChatSid { get; set; }
 
     protected override void OnInitialized() {
+        _resolveUserLinkStep = StateFactory.NewMutable(ResolveUserLinkStep.None);
         ChatAudioUI.Enable();
-        // We need to call SelectChat() before ComputeState starts working,
-        // coz ComputeState relies on ChatUI.SelectedChatId, which is set there.
-        _ = SelectChat(ChatSid);
     }
 
-    protected override Task OnParametersSetAsync() {
+    protected override async Task OnParametersSetAsync() {
+        var isUserLink = await TryHandleUserLink(ChatSid);
+        if (isUserLink)
+            return;
+
         _ = SelectChat(ChatSid);
-        return base.OnParametersSetAsync();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -122,6 +125,15 @@
 
         var hostInfo = HostInfo;
         var chatSid = ChatSid;
+
+        var userLinkStep = await _resolveUserLinkStep.Use(cancellationToken).ConfigureAwait(false);
+        if (userLinkStep != ResolveUserLinkStep.None) {
+            if (userLinkStep == ResolveUserLinkStep.Unknown) {
+                var account2 = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+                return Model.Unavailable(Hub, account2, false, false);
+            }
+            return Model.Loading(Hub);
+        }
 
         await ChatUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
@@ -267,6 +279,39 @@
         ChatUI.SelectChatOnNavigation(chatId);
     }
 
+    private async Task<bool> TryHandleUserLink(string? sid) {
+        if (!TryGetUserLink(sid, out var sUserLink)) {
+            _resolveUserLinkStep.Value = ResolveUserLinkStep.None;
+            return false;
+        }
+
+        _resolveUserLinkStep.Value = ResolveUserLinkStep.Loading;
+
+        if (!UserLinkId.TryParse(sUserLink, out var userLinkId)) {
+            _resolveUserLinkStep.Value = ResolveUserLinkStep.Unknown;
+            return true;
+        }
+
+        var chatSid = await Hub.UserLinks.ResolveUserLink(UserLinkKind.Chat, userLinkId, default);
+        if (chatSid.IsNullOrEmpty()) {
+            _resolveUserLinkStep.Value = ResolveUserLinkStep.Unknown;
+            return true;
+        }
+
+        _resolveUserLinkStep.Value = ResolveUserLinkStep.Resolved;
+        await Hub.History.NavigateTo(Links.Chat(new ChatId(chatSid)), true);
+        return true;
+    }
+
+    private static bool TryGetUserLink(string? sid, out string sUserLink) {
+        sUserLink = "";
+        if (sid.IsNullOrEmpty() || !sid.StartsWith("@"))
+            return false;
+
+        sUserLink = sid.Substring(1);
+        return true;
+    }
+
     // Nested types
 
     public sealed record Model(
@@ -299,4 +344,6 @@
         public bool ShouldJoinPlaceFirst { get; init; }
         public Place? Place { get; init; }
     }
+
+    public enum ResolveUserLinkStep { None, Loading, Unknown, Resolved }
 }

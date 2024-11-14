@@ -46,13 +46,15 @@ public static class ShareUIExt
 
         var targetTitle = place is null ? chat.Title : ZString.Concat(place.Title, "/", chat.Title);
         var text = $"\"{targetTitle}\" on Actual Chat";
-        if ((place is null || place.IsPublic) && chat.IsPublic)
+        if ((place is null || place.IsPublic) && chat.IsPublic) {
+            var localUrl = chat.UserLinkId.IsNone ? Links.Chat(chat.Id) : Links.Chat(chat.UserLinkId);
             return new ShareModalModel(
                 ShareKind.Chat,
                 "Share chat",
                 targetTitle,
-                new (text, Links.Chat(chat.Id)),
+                new (text, localUrl),
                 null);
+        }
 
         var invites = hub.GetRequiredService<IInvites>();
         var invite = await invites.GetOrGenerateChatInvite(session, chat.Id, cancellationToken)

@@ -12,6 +12,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
 {
     private IChats? _chats;
+    private IUserLinks? _userLinks;
     private IChatPositions? _chatPositions;
     private IPlaces? _places;
     private IMentions? _mentions;
@@ -50,6 +51,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     private IMLSearch? _mlSearch;
 
     public IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
+    public IUserLinks UserLinks => _userLinks ??= Services.GetRequiredService<IUserLinks>();
     public IChatPositions ChatPositions => _chatPositions ??= Services.GetRequiredService<IChatPositions>();
     public IPlaces Places => _places ??= Services.GetRequiredService<IPlaces>();
     public IMentions Mentions => _mentions ??= Services.GetRequiredService<IMentions>();
