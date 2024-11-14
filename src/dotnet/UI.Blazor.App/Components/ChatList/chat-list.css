@@ -282,9 +282,11 @@ body.hoverable .chat-list:not(.chat-list-active) .navbar-item:hover .navbar-item
 body.hoverable .navbar-item:not(.high-item):hover .last-entry-time {
     @apply hidden;
 }
-
 body.hoverable .navbar-item:not(.high-item):hover > .c-container > .c-description .last-entry-time,
 body.hoverable .navbar-item:hover > .c-container > .c-description .message-counter-badge {
+    @apply hidden;
+}
+.chat-list .navbar-item:hover .navbar-item-content > .c-container > .c-description > .c-last-message {
     @apply hidden;
 }
 

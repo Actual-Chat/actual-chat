@@ -1,0 +1,53 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="cr-item">
+    <div class="c-top">
+        <AvatarCircle
+            Avatar="@Avatar"
+            Size="@SquareSize.Size10"/>
+        <div class="c-description">
+            <span class="c-name">@Avatar.Name</span>
+            <span class="c-bio">@Avatar.Bio</span>
+        </div>
+        <div class="c-ending">
+            @if (!IsChooseAvatarView) {
+                <div class="c-start-chat">
+                    <i class="icon-message-ellipse text-xl"></i>
+                </div>
+            } else {
+                <ButtonRound Class="btn-xxs btn-transparent blackout">
+                    <i class="icon-edit"></i>
+                </ButtonRound>
+                <ButtonRound Class="btn-xxs choose-avatar-btn">
+                    <i class="icon-checkmark-simple"></i>
+                </ButtonRound>
+            }
+        </div>
+    </div>
+    <div class="c-center">
+        <div class="cr-badge c-location">
+            <i class="icon-map-point"></i>
+            <span>United States</span>
+        </div>
+        <div class="cr-badge c-languages">
+            <i class="icon-globe"></i>
+            <span>English, Spanish</span>
+        </div>
+    </div>
+    <div class="c-bottom">
+        <div class="cr-badge">
+            <span>Flexible</span>
+        </div>
+        <div class="cr-badge">
+            <span>Jokes</span>
+        </div>
+        <div class="cr-badge selected">
+            <span>Cinema & TV Shows</span>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Avatar Avatar { get; set; } = null!;
+    [Parameter] public bool IsChooseAvatarView { get; set; }
+}

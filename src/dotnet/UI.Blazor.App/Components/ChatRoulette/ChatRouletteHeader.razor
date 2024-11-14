@@ -1,0 +1,29 @@
+<div class="cr-header" @onclick="@OnHeaderClick">
+    <HeaderButton
+        Class="cr-back-btn"
+        PreventDefault="true"
+        StopPropagation="true"
+        Click="@OnBackButtonClick">
+        <i class="icon-arrow-left"></i>
+    </HeaderButton>
+    <div class="c-icon">
+        <i class="icon-hand text-2xl"></i>
+    </div>
+    <div class="c-title">
+        Chat Roulette
+    </div>
+    <div class="c-ending">
+        @if (!IsRightPanelButtonVisible) {
+            <HeaderButton Class="filter-btn blackout">
+                <i class="icon-options-2 desktop"></i>
+                <i class="icon-more-vertical mobile"></i>
+            </HeaderButton>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsRightPanelButtonVisible { get; set; }
+    [Parameter] public EventCallback OnHeaderClick { get; set; }
+    [Parameter] public EventCallback OnBackButtonClick { get; set; }
+}

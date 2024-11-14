@@ -3,10 +3,9 @@
 @{
     var entry = Message.Entry;
     var m = State.Value;
-    var quickReactionTooltip = $"React with '{Emoji.ThumbsUp.Name}'";
 }
 <div class="flex-x gap-x-1">
-    <ButtonRound Click="OnReactionClick" Tooltip="@quickReactionTooltip" Class="btn-xs btn-transparent">
+    <ButtonRound Click="OnReactionClick" Class="btn-xs btn-transparent">
         <EmojiIcon Id="@Emoji.ThumbsUp.Id" Class="w-5 h-5"/>
     </ButtonRound>
     @if (m.CanReply && !IsSystem) {
