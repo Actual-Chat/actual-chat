@@ -58,16 +58,23 @@
             }
         </div>
     </div>
-    <div class="main-image">
-        <video controls hidden muted autoplay="autoplay" playsinline loop class="landing-video">
-            <source src="/dist/images/landing/landing-tutorial.webm" type="video/webm"/>
-            <source src="/dist/images/landing/landing-tutorial.mp4" type="video/mp4"/>
-        </video>
-        <img draggable="false"
-             src="/dist/images/landing/landing-tutorial-plug.png"
-             alt="Loading Actual Chat intro video..."
-             class="landing-video-plug flex">
-    </div>
+    @if (ScreenSize.IsWide()) {
+        <div class="main-image">
+            <video controls hidden muted preload="none" playsinline loop class="landing-video">
+                <source src="/dist/images/landing/landing-tutorial.webm" type="video/webm"/>
+                <source src="/dist/images/landing/landing-tutorial.mp4" type="video/mp4"/>
+            </video>
+            <img draggable="false"
+                 src="/dist/images/landing/landing-tutorial-plug.png"
+                 alt="Loading Actual Chat intro video..."
+                 class="landing-video-plug flex">
+            <div class="hover-plug">
+                <div class="play-btn">
+                    <i class="icon-play-fill play-btn-icon text-2xl"></i>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 @code {

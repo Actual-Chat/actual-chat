@@ -14,6 +14,7 @@ export class Landing {
     private readonly scrollContainer: HTMLElement;
     private lastPosition: number = 0;
     private isVideoPlayStarted = false;
+    private observer: IntersectionObserver;
 
     static create(landing: HTMLElement): Landing {
         return new Landing(landing);
@@ -49,25 +50,23 @@ export class Landing {
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => this.onScroll());
 
-        const plug = this.landing.querySelector<HTMLImageElement>('.landing-video-plug');
-        const video = this.landing.querySelector<HTMLVideoElement>('.landing-video');
-        if (video) {
-            video.muted = true;
-            video.oncanplay = _ => {
-                video.play().then(() => {
-                    plug.classList.remove('flex');
-                    plug.hidden = true;
-                    video.hidden = false;
-                });
-            };
+        const hoverPlug = this.landing.querySelector('.hover-plug');
+        if (hoverPlug) {
+            fromEvent(hoverPlug, 'click')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(() => this.onHoverPlugClick());
         }
+
         const cardVideos = [...this.landing.querySelectorAll<HTMLVideoElement>('.landing-card-video')];
-        for (const cardVideo of cardVideos) {
-            cardVideo.muted = true;
-            cardVideo.oncanplay = _ => {
-                void cardVideo.play();
-            };
-        }
+        const options = {
+            root: null,
+            rootMargin: "0px",
+            threshold: 1.0,
+        };
+        this.observer = new IntersectionObserver(this.cardVideoHandler, options);
+        cardVideos.forEach(item => {
+            this.observer.observe(item);
+        });
 
         this.downloadLinksPage = this.landing.querySelector('.page-links');
         this.scrollContainer = getScrollContainer(this.downloadLinksPage);
@@ -83,6 +82,7 @@ export class Landing {
         this.disposed$.next();
         this.disposed$.complete();
         document.querySelector("[name='color-scheme']").remove();
+        this.observer.disconnect();
     }
 
     // Event handlers
@@ -191,7 +191,7 @@ export class Landing {
         }
     }
 
-    private scrollToPageLinks() {
+    private scrollToPageLinks(): void {
         this.downloadLinksToggle();
         let landingTop = this.landing.getBoundingClientRect().top;
         this.lastPosition = landingTop;
@@ -203,7 +203,7 @@ export class Landing {
         this.scrollContainer.scrollTo(options);
     }
 
-    private scrollFromPageLinks() : void {
+    private scrollFromPageLinks(): void {
         this.downloadLinksToggle();
         let top = -(this.lastPosition);
         const options = {
@@ -213,7 +213,7 @@ export class Landing {
         this.scrollContainer.scrollTo(options);
     }
 
-    private scrollToWhyUs() : void {
+    private scrollToWhyUs(): void {
         let rect = this.landing.querySelector('.page-4').getBoundingClientRect();
         let top = rect.top;
         let landingTop = this.landing.getBoundingClientRect().top;
@@ -224,7 +224,7 @@ export class Landing {
         this.scrollContainer.scrollTo(options);
     }
 
-    private downloadLinksToggle() {
+    private downloadLinksToggle(): void {
         let page = this.downloadLinksPage;
         if (page.classList.contains('hidden')) {
             page.classList.remove('hidden');
@@ -243,11 +243,45 @@ export class Landing {
             return;
     }
 
-    private disableAutoDarkMode() {
+    private disableAutoDarkMode(): void {
         const meta = document.createElement('meta');
         meta.name = "color-scheme";
         meta.content = "only light";
         document.getElementsByTagName('head')[0].appendChild(meta);
+    }
+
+    private onHoverPlugClick = () => {
+        const video = this.landing.querySelector<HTMLVideoElement>('.landing-video');
+        const plug = this.landing.querySelector<HTMLImageElement>('.landing-video-plug');
+        const hoverPlug = this.landing.querySelector('.hover-plug');
+
+        video.load();
+        video.oncanplay = _ => {
+            video.play().then(() => {
+                plug.classList.remove('flex');
+                plug.hidden = true;
+                hoverPlug.remove();
+                video.hidden = false;
+            });
+        };
+    }
+
+    private cardVideoHandler = (entries, observer) => {
+        entries.forEach(entry => {
+            const cardVideo = entry.target as HTMLVideoElement;
+            if (!cardVideo || cardVideo.classList.contains('loaded'))
+                return;
+            if (entry.isIntersecting) {
+                if (cardVideo) {
+                    cardVideo.load();
+                    cardVideo.muted = true;
+                    cardVideo.oncanplay = _ => {
+                        void cardVideo.play();
+                        cardVideo.classList.add('loaded');
+                    }
+                }
+            }
+        })
     }
 }
 
