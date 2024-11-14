@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
@@ -26,6 +28,7 @@ internal sealed class ClusterSetupActions(
     Tracer baseTracer
 ) : IClusterSetupActions
 {
+    private static readonly Encoding _utf8Encoding = new UTF8Encoding(false);
     private const string TimestampFieldName = "timestamp";
     private readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
 
@@ -124,7 +127,13 @@ internal sealed class ClusterSetupActions(
                 "Failed to retrieve model all_config value."
             );
         }
-        return new EmbeddingModelProps(modelId, modelEmbeddingDimension, modelAllConfig);
+
+#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
+        var uniqueModelKey = Convert.ToHexString(SHA1.HashData(_utf8Encoding.GetBytes(modelAllConfig)))
+            .ToLower(CultureInfo.InvariantCulture);
+#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
+
+        return new EmbeddingModelProps(modelId, modelEmbeddingDimension, uniqueModelKey);
     }
 
     public async Task EnsureTemplateAsync(string templateName, string pattern, int? numberOfReplicas, CancellationToken cancellationToken)

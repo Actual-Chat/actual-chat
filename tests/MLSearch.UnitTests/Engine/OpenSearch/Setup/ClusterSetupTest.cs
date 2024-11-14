@@ -16,7 +16,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
         ModelGroup = "setup-test-group",
     };
     private readonly ClusterSetupResult _setupResult = new(new EmbeddingModelProps(
-        "some-unique-model-id", 1024, "{ some: 'json config'}"
+        "some-unique-model-id", 1024, "unique-model-key"
     ));
 
     [Fact]

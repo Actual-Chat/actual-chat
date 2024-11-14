@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.Performance;
@@ -10,6 +13,7 @@ namespace ActualChat.MLSearch.UnitTests.Engine.OpenSearch.Setup;
 
 public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
 {
+    private static readonly Encoding _utf8Encoding = new UTF8Encoding(false);
     private const string ModelGroupName = "Test_Models";
     private const string ModelGroupId = "sQslDo8BjOZ4dQx_Hke0";
     private const string ModelId = "sgslDo8BjOZ4dQx_I0eB";
@@ -59,7 +63,12 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
 
         var modelProps = await actions.RetrieveEmbeddingModelPropsAsync(ModelGroupName, CancellationToken.None);
 
-        var expected = new EmbeddingModelProps(ModelId, EmbeddingDimension, ModelAllConfig);
+#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
+        var uniqueModelKey = Convert.ToHexString(SHA1.HashData(_utf8Encoding.GetBytes(ModelAllConfig)))
+            .ToLower(CultureInfo.InvariantCulture);
+#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
+
+        var expected = new EmbeddingModelProps(ModelId, EmbeddingDimension, uniqueModelKey);
         Assert.Equal(expected.Id, modelProps.Id);
         Assert.Equal(expected.EmbeddingDimension, modelProps.EmbeddingDimension);
         Assert.Equal(expected.UniqueKey, modelProps.UniqueKey);
