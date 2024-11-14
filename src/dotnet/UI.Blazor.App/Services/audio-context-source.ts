@@ -205,6 +205,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         debugLog?.log(`interactiveResume:`, Log.ref(context));
         if (context && this.isRunning(context)) {
             debugLog?.log(`interactiveResume: succeeded (AudioContext is already in running state)`);
+            Interactive.isInteractive = true;
             await this.fallbackDestination?.play();
             return;
         }
@@ -278,6 +279,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         void this.fallbackDestination?.play();
         if (this.isRunning(context)) {
             debugLog?.log(`resume: already resumed, AudioContext:`, Log.ref(context));
+            Interactive.isInteractive = true;
             return;
         }
 
