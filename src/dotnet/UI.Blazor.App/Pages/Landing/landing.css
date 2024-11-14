@@ -60,8 +60,46 @@ body.narrow .landing .page > .c-content .main-text {
     @apply lg:text-3.5xl lg:leading-9;
 }
 .landing .page > .c-content .main-image {
+    @apply relative;
     @apply flex justify-start items-center;
+    @apply rounded-2xl;
+    @apply overflow-hidden;
 }
+
+.landing .page > .c-content .main-image .hover-plug {
+    @apply absolute inset-0 z-button;
+    @apply hidden;
+    @apply items-center justify-center;
+    @apply always-white;
+    @apply cursor-pointer;
+    transition-behavior: allow-discrete;
+    transition-property: display, backdrop-filter, filter, -webkit-filter;
+    transition-duration: 150ms;
+    filter: opacity(0);
+    backdrop-filter: blur(0px) brightness(1);
+}
+.landing .page > .c-content .main-image:hover .hover-plug {
+    @apply flex;
+    backdrop-filter: blur(2px) brightness(0.5);
+    filter: opacity(1);
+    @starting-style {
+        backdrop-filter: blur(0px) brightness(1);
+        filter: opacity(0);
+    }
+}
+.landing .page > .c-content .main-image:hover .hover-plug .play-btn {
+    @apply flex-none flex items-center justify-center;
+    @apply w-20 h-20;
+    @apply rounded-full;
+    @apply overflow-hidden;
+    @apply bg-[var(--black-50)];
+    @apply always-white;
+}
+.landing .page > .c-content .main-image .hover-plug:active .play-btn-icon {
+    @apply scale-125;
+    @apply transition-transform duration-150;
+}
+
 .landing-auth-btn.btn.btn-round {
     @apply min-w-8 max-w-8 min-h-8 max-h-8;
     @apply text-lg md:text-base;
