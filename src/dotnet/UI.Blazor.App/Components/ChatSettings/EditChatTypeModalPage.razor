@@ -76,6 +76,22 @@
                 </TileItem>
             </FormBlock>
         }
+        <FormBlock Class="with-input-radio first last">
+            <TileItem Class="field-chat-user-link-id unhovered">
+                <Icon>
+                    <i class="icon-link-2"></i>
+                </Icon>
+                <Content>
+                    <FormSection For="() => _form.UserLinkId" InputId="@_form.UserLinkIdFormId"
+                                 Label="Public link" IsLabelInsideInput="true" HideValidationMessage="true">
+                        <div class="flex-x">
+                        <span class="url-prefix">chat/@@</span>
+                        <TextBox @bind-Value="@_form.UserLinkId" Id="@_form.UserLinkIdFormId"/>
+                        </div>
+                    </FormSection>
+                </Content>
+            </TileItem>
+        </FormBlock>
     } else if (m.Chat.CanInvite()) {
         <FormBlock Title="Manage links" Class="first last">
             @if (m.Invites.Count > 0) {
@@ -163,6 +179,7 @@
     [Inject] private DiffEngine DiffEngine { get; init; } = null!;
 
     private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -180,9 +197,10 @@
 
     protected override async Task OnInitializedAsync() {
         _isAdmin = Hub.AccountUI.OwnAccount.Value.IsAdmin;
-        var chat = await Hub.Chats.Get(Session, ChatId, default).Require();
+        var chat = await Chats.Get(Session, ChatId, default).Require();
         _form = new FormModel(ComponentIdGenerator) {
             IsPublic = chat.IsPublic,
+            UserLinkId = chat.UserLinkId.Value,
             IsTemplate = chat.IsTemplate,
             AllowGuestAuthors = chat.AllowGuestAuthors,
             AllowAnonymousAuthors = chat.AllowAnonymousAuthors,
@@ -190,7 +208,7 @@
         _placeId = chat.Id.PlaceChatId.PlaceId;
         if (!_placeId.IsNone) {
             _isPlaceWelcomeChat = OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag);
-            _place = await Hub.Places.Get(Hub.Session(), _placeId, default).Require().ConfigureAwait(false);
+            _place = await Hub.Places.Get(Session, _placeId, default).Require().ConfigureAwait(false);
             if (!_place.Rules.CanApplyPublicChatType())
                 _form.IsPublic = false;
         }
@@ -207,7 +225,7 @@
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
 
-        var chat = await Hub.Chats.Get(Session, chatId, cancellationToken);
+        var chat = await Chats.Get(Session, chatId, cancellationToken);
         if (chat == null || !chat.Rules.CanEditProperties())
             return new ComputedModel { Chat = chat };
 
@@ -222,7 +240,7 @@
         } else
             activeInvites = [];
         var link = Links.Chat(chatId).ToDisplayUrl(Hub.UrlMapper());
-        var allowEditIsTemplate = await Hub.Features().Get<Features_EnableTemplateChatUI, bool>(cancellationToken);
+        var allowEditIsTemplate = await Hub.Features().Get<Features_EnableTemplateChatUI>(cancellationToken);
         var isPublic = chat.IsPublic;
         return new() {
             Chat = chat,
@@ -249,10 +267,11 @@
     }
 
     private async Task Save() {
-        var chat = await Hub.Chats.Get(Session, ChatId, default).Require();
+        var chat = await Chats.Get(Session, ChatId, default).Require();
         var isPlaceChat = chat.Id.IsPlaceChat;
         var newChat = chat with {
             IsPublic = _form!.IsPublic,
+            UserLinkId = UserLinkId.ParseOrNone(_form.UserLinkId),
             AllowGuestAuthors = !isPlaceChat && _form.AllowGuestAuthors,
             AllowAnonymousAuthors = !isPlaceChat && _form.AllowAnonymousAuthors,
         };
@@ -273,6 +292,7 @@
 
     public sealed class FormModel {
         public string PublicUrl { get; set; } = "";
+        public string UserLinkId { get; set; } = "";
         public bool IsPublic { get; set; }
         public bool IsTemplate { get; set; }
         public bool AllowGuestAuthors { get; set; }
@@ -280,6 +300,7 @@
 
         public string FormId { get; }
         public string PublicUrlFormId { get; }
+        public string UserLinkIdFormId { get; }
         public string IsPublicFormId { get; }
         public string IsPublicTrueFormId { get; }
         public string IsPublicFalseFormId { get; }
@@ -290,6 +311,7 @@
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
             PublicUrlFormId = $"{FormId}-public-url";
+            UserLinkIdFormId = $"{FormId}-user-link-id";
             IsPublicFormId = $"{FormId}-is-public";
             IsPublicTrueFormId = IsPublicFormId + "-true";
             IsPublicFalseFormId = IsPublicFormId + "-false";

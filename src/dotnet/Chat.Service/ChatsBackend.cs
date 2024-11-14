@@ -665,6 +665,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             dbContext.Add(dbChat);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+            await UpdateUserLink(oldChat, chat).ConfigureAwait(false);
+
             if (chatId.IsPeerChat(out var peerChatId)) {
                 // Peer chat
                 ownerId.RequireNone();
@@ -746,6 +748,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
             chat = ApplyDiff(dbChat.ToModel(), update);
             dbChat.UpdateFrom(chat);
+
+            await UpdateUserLink(oldChat, chat).ConfigureAwait(false);
         }
         else if (change.IsRemove()) {
             dbChat.Require();
@@ -847,6 +851,30 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid chat kind.");
             }
             return newChat;
+        }
+
+        async Task UpdateUserLink(Chat? oldChat1, Chat chat1)
+        {
+            var oldUserLinkId = oldChat1?.UserLinkId ?? UserLinkId.None;
+            var userLinkId = chat1.IsPublic ? chat1.UserLinkId : UserLinkId.None;
+            if (!userLinkId.IsNone && chat1.Id.Kind != ChatKind.Group)
+                throw StandardError.NotSupported("User links are supported only for groups so far.");
+
+            if (oldUserLinkId == userLinkId)
+                return;
+
+            if (!oldUserLinkId.IsNone) {
+                var removeCommand = new UserLinksBackend_Change(oldUserLinkId, null, Change.Remove<UserLink>());
+                await Commander.Call(removeCommand, false, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (!userLinkId.IsNone) {
+                var createCommand = new UserLinksBackend_Change(userLinkId, null, Change.Create(new UserLink(userLinkId) {
+                    Kind = UserLinkKind.Chat,
+                    TargetId = chat1.Id,
+                }));
+                await Commander.Call(createCommand, false, cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 

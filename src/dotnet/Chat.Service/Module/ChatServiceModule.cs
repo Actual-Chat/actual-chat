@@ -52,6 +52,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<ILinkPreviews, LinkPreviews>();
 #pragma warning restore CS0618 // Type or member is obsolete
 
+        // UserLinks
+        rpcHost.AddApiOrLocal<IUserLinks, UserLinks>();
+        rpcHost.AddBackend<IUserLinksBackend, UserLinksBackend>();
+
         // IBackendChatMarkupHub
         services.AddSingleton(c =>
             new CachingKeyedFactory<IBackendChatMarkupHub, ChatId, BackendChatMarkupHub>(c, 4096, true).ToGeneric());
@@ -100,6 +104,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
             // DbReadPositionsStat
             db.AddEntityResolver<string, DbReadPositionsStat>();
+
+            // DbUserLink
+            db.AddEntityResolver<string, DbUserLink>();
         });
     }
 }

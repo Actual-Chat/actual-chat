@@ -39,6 +39,7 @@ public sealed partial record Chat(
     [DataMember, MemoryPackOrder(14)] public Symbol SystemTag { get; init; }
     [DataMember, MemoryPackOrder(15)] public bool IsArchived { get; init; }
     [DataMember, MemoryPackOrder(16)] public string Description { get; init; } = "";
+    [DataMember, MemoryPackOrder(17)] public UserLinkId UserLinkId { get; init; } = UserLinkId.None;
 
     // Populated only on front-end
     [DataMember, MemoryPackOrder(11)] public AuthorRules Rules { get; init; } = null!;
@@ -80,4 +81,5 @@ public sealed partial record ChatDiff : RecordDiff
     [DataMember, MemoryPackOrder(11)] public PlaceId? PlaceId { get; init; }
     [DataMember, MemoryPackOrder(12)] public bool? IsArchived { get; init; }
     [DataMember, MemoryPackOrder(13)] public string? Description { get; init; }
+    [DataMember, MemoryPackOrder(14)] public UserLinkId? UserLinkId { get; init; }
 }

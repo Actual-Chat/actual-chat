@@ -24,6 +24,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [Obsolete("2023.03: Use MediaId instead.")]
     public string Picture { get; set; } = "";
     public string MediaId { get; set; } = "";
+    public string UserLinkId { get; set; } = "";
 
     // Template info for embedded chats
     public bool IsTemplate { get; set; }
@@ -63,6 +64,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
                 ? Symbol.Empty
                 : new Symbol(SystemTag),
             MediaId = new MediaId(MediaId),
+            UserLinkId = new UserLinkId(UserLinkId),
         };
 
     public void UpdateFrom(Chat model)
@@ -89,5 +91,6 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Kind = model.Kind;
         MediaId = model.MediaId;
         IsPlaceRootChat = model.Id.IsPlaceRootChat;
+        UserLinkId = model.UserLinkId.Value;
     }
 }
