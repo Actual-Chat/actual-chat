@@ -69,8 +69,17 @@ internal sealed class ClusterSetupActions(
                 POST /_plugins/_ml/models/_search
                 {
                     "query": {
-                        "match": {
-                            "model_group_id": "{{modelGroupId}}"
+                        "bool": {
+                            "must": [{
+                                "exists": {
+                                    "field": "model_state"
+                                }
+                            }],
+                            "should": [{
+                                "match": {
+                                    "model_group_id": "{{modelGroupId}}"
+                                }
+                            }]
                         }
                     },
                     "sort": [{
