@@ -6,8 +6,10 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class SimpleBatchedIndexingFlow : BatchedIndexingFlowBase<SimpleItem, ChatId>
 {
-    protected override int BatchSize => 3;
-    protected override int Quota => 6;
+    public const int BatchSizeOverride = 3;
+    public const int QuotaOverride = 6;
+    protected override int BatchSize => BatchSizeOverride;
+    protected override int Quota => QuotaOverride;
 
     [IgnoreDataMember, MemoryPackIgnore]
     private BatchedIndexingFlowTestContext<SimpleItem> Context => Host.Services.GetRequiredService<BatchedIndexingFlowTestContext<SimpleItem>>();

@@ -166,7 +166,8 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
 
     protected FlowTransition QueueResume(Symbol nextStep, string? tag = null)
     {
-        var queueEvent = new OperationEvent(default(Moment), new FlowResumeEvent(Id, false, tag));
+        // NOTE: InfiniteHardResumeAt to avoid FlowWorklet to schedule extra FlowResumeEvent
+        var queueEvent = new OperationEvent(InfiniteHardResumeAt, new FlowResumeEvent(Id, false, tag));
         return new FlowTransition(this, nextStep, tag, queueEvent);
     }
 
