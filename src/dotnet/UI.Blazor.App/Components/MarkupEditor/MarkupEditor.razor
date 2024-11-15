@@ -97,6 +97,7 @@
 
     public async ValueTask SetHtml(string html, bool mustFocus = false) {
         await WhenReady;
+        MentionListManager?.Hide();
         await JSRef.InvokeVoidAsync("setHtml", html, mustFocus);
     }
 

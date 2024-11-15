@@ -363,17 +363,49 @@ body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
     @apply py-1;
 }
 
+.notify-mentioned-members-line {
+    @apply flex;
+    @apply mb-0.5;
+}
 .notify-mentioned-members {
-    @apply inline-flex align-middle;
-    @apply my-[1px] px-1.5 pt-0.5;
-    @apply rounded-full bg-reaction;
-    @apply text-mention-other-text;
+    @apply flex-x flex-wrap items-center;
+    @apply min-h-5;
+    @apply px-1.5;
+    @apply rounded-full bg-focus-after-primary;
+    @apply text-mention-other-text text-caption-6;
     @apply select-none;
 }
+body.hoverable .notify-mentioned-members:hover {
+    @apply bg-hover;
+}
+
 .notify-mentioned-members.has-notified {
     @apply bg-transparent;
 }
-.notify-mentioned-members .mention-markup {
-    @apply px-0;
+body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply bg-transparent;
+}
+.notify-mentioned-members .mention-markup {
+    @apply p-0 m-0;
+    @apply bg-transparent;
+}
+.notify-mentioned-members .mentioned-members-count {
+    @apply flex items-center justify-center;
+    @apply text-center;
+    @apply flex-none;
+    @apply w-4 h-4;
+    @apply rounded-full;
+    @apply bg-primary;
+    @apply text-caption-6;
+    @apply always-white;
+}
+.notify-mentioned-members .mentioned-members-count > span {
+    @apply flex-none w-5 h-5;
+    @apply rounded-full;
+    @apply bg-primary;
+    @apply text-caption-6;
+    @apply always-white;
+}
+.notify-mentioned-members .default-text {
+    @apply text-01;
 }

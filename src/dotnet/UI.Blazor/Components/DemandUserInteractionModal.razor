@@ -1,3 +1,4 @@
+@using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<string>
 @implements IModalView<DemandUserInteractionModal.Model>
@@ -12,7 +13,7 @@
     }
     else {
         <div class="flex-1">Continue @operations?</div>
-        <div class="flex-none flex-x justify-center gap-x-4">
+        <div class="demand-interaction flex-none flex-x justify-center gap-x-4">
             <Button Class="btn-modal" Click="OnCancelClick">Cancel</Button>
             <Button Class="btn-modal btn-primary" Click="OnContinueClick">Continue</Button>
         </div>
@@ -20,16 +21,27 @@
 </ModalChrome>
 
 @code {
+    private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.DemandUserInteraction.init";
     private CancellationTokenSource? _autoCloseCts;
 
-    [Inject] private InteractiveUI InteractiveUI { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private InteractiveUI InteractiveUI => Hub.InteractiveUI;
+    private IJSRuntime JS => Hub.JSRuntime();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
+
     public override ValueTask DisposeAsync() {
         _autoCloseCts.CancelAndDisposeSilently();
         return base.DisposeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        await JS.InvokeVoidAsync(JSInitMethod);
     }
 
     protected override ComputedState<string>.Options GetStateOptions()

@@ -164,6 +164,12 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
         return new(this, nextStep, tag, resumeAt, timerEvent);
     }
 
+    protected FlowTransition QueueResume(Symbol nextStep, string? tag = null)
+    {
+        var queueEvent = new OperationEvent(default(Moment), new FlowResumeEvent(Id, false, tag));
+        return new FlowTransition(this, nextStep, tag, queueEvent);
+    }
+
     protected FlowTransition StoreAndResume(Symbol nextStep, string? tag = null)
         => new(this, nextStep, tag) { MustStore = true };
 

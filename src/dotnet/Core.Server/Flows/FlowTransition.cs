@@ -29,6 +29,15 @@ public readonly record struct FlowTransition : ICanBeNone<FlowTransition>
     }
 
     // ReSharper disable once ConvertToPrimaryConstructor
+    public FlowTransition(Flow flow, Symbol step, string? tag, OperationEvent @event)
+    {
+        Flow = flow;
+        Step = step;
+        Tag = tag;
+        Events = Events.Add(@event);
+    }
+
+    // ReSharper disable once ConvertToPrimaryConstructor
     public FlowTransition(Flow flow, Symbol step, string? tag, Moment hardResumeAt)
     {
         Flow = flow;

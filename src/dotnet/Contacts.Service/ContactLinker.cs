@@ -9,11 +9,13 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
 {
     private const int BatchSize = 100;
     private Tracer? _tracer;
+    private IExternalContactsBackend? _externalContactsBackend;
 
     private DbHub<ContactsDbContext> DbHub { get; } = services.DbHub<ContactsDbContext>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private ICommander Commander { get; } = services.Commander();
+    private IExternalContactsBackend ExternalContactsBackend => _externalContactsBackend ??= Services.GetRequiredService<IExternalContactsBackend>();
     private Tracer Tracer => _tracer ??= Services.Tracer(GetType());
 
     protected override async Task<bool> OnActivate(CancellationToken cancellationToken)
@@ -42,8 +44,9 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
         {
             try {
                 var userId = await FindUserId(link, cancellationToken).ConfigureAwait(false);
-                var ownerId = new ExternalContactId(link.DbExternalContactId).UserDeviceId.OwnerId;
-                await EnsureContactExists(ownerId, userId, cancellationToken).ConfigureAwait(false);
+                var externalContactId = new ExternalContactId(link.DbExternalContactId);
+                var ownerId = externalContactId.UserDeviceId.OwnerId;
+                await EnsureContactExists(ownerId, userId, externalContactId, cancellationToken).ConfigureAwait(false);
                 link.IsChecked = true;
             }
             catch (Exception e) {
@@ -69,7 +72,11 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
         return Task.FromResult(UserId.None);
     }
 
-    private async Task EnsureContactExists(UserId ownerId, UserId userId, CancellationToken cancellationToken)
+    private async Task EnsureContactExists(
+        UserId ownerId,
+        UserId userId,
+        ExternalContactId externalContactId,
+        CancellationToken cancellationToken)
     {
         if (userId.IsNone || ownerId == userId)
             return;
@@ -78,12 +85,27 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
         var contactId = new ContactId(ownerId, peerChatId);
         // check existing contact since command always performs db request
         var contact = await ContactsBackend.Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
-        if (contact.IsStored())
+        if (contact.IsStored() && !contact.PeerContactName.IsNullOrEmpty())
             return;
 
-        contact = new Contact(contactId);
-        // This command doesn't throw an exception in case contact already exists
-        var createCmd = new ContactsBackend_Change(contactId, null, Change.Create(contact));
-        await Commander.Call(createCmd, cancellationToken).ConfigureAwait(false);
+        var externalContact = await ExternalContactsBackend.Get(externalContactId, cancellationToken).ConfigureAwait(false); // Should exist.
+        if (externalContact == null)
+            Log.LogWarning("ExternalContact is not found by id");
+
+        var peerContactName = externalContact?.DisplayName ?? "";
+
+        if (contact.IsStored()) {
+            if (!peerContactName.IsNullOrEmpty()) {
+                contact = contact with { PeerContactName = peerContactName };
+                var updateCmd = new ContactsBackend_Change(contactId, null, Change.Update(contact));
+                await Commander.Call(updateCmd, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        else {
+            contact = new Contact(contactId) { PeerContactName = peerContactName };
+            // This command doesn't throw an exception in case contact already exists
+            var createCmd = new ContactsBackend_Change(contactId, null, Change.Create(contact));
+            await Commander.Call(createCmd, cancellationToken).ConfigureAwait(false);
+        }
     }
 }

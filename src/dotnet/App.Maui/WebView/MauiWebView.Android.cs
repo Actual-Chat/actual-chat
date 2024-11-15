@@ -26,6 +26,9 @@ public partial class MauiWebView
     public partial void HardNavigateTo(string url)
         => AndroidWebView.LoadUrl(url);
 
+    public partial void Dispose()
+        => AndroidWebView.Dispose();
+
     public partial Task EvaluateJavaScript(string javaScript)
     {
         var request = new EvaluateJavaScriptAsyncRequest(javaScript);

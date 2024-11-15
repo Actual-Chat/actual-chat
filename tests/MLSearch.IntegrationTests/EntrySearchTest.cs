@@ -126,7 +126,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
                 .OrderByDescending(x => x.GetIndexedEntryDate())
                 .BuildSearchResults(["let's"], UniquePart)
                 .ToList();
-            var searchResults = await Find("let", chatId: chat.Id, expected: expected.Count);
+             var searchResults = await Find("let", chatId: chat.Id, expected: expected.Count);
             searchResults.Should()
                 .BeEquivalentTo(expected, o => o.ExcludingSearchMatch().WithStrictOrderingFor(x => x), chat.Title);
         }
@@ -238,7 +238,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
                 results = await Tester.FindEntries($"{UniquePart} {criteria}", placeId, chatId);
                 results.Should().HaveCount(expected);
             },
-            TimeSpan.FromSeconds(10));
+            TimeSpan.FromSeconds(20));
         return results;
     }
 }

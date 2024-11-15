@@ -91,13 +91,12 @@ public class AppNonScopedServiceStarter
     private async Task StartHostedServices()
     {
         using var _ = Tracer.Region();
-        var tasks = new List<Task>();
         var tracePrefix = nameof(StartHostedServices) + ": starting ";
         foreach (var hostedService in Services.HostedServices()) {
             Tracer.Point(tracePrefix + hostedService.GetType().Name);
-            tasks.Add(hostedService.StartAsync(default));
+            await hostedService.StartAsync(default);
+            await Task.Yield();
         }
-        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     private static void WarmupByteSerializer()

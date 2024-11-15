@@ -6,14 +6,19 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Contacts;
 
-public class ExternalContactsBackend(
-    IAccountsBackend accountsBackend,
-    ContactLinker contactLinker,
-    HostId hostId,
-    ExternalContactHasher hasher,
-    IServiceProvider services) : DbServiceBase<ContactsDbContext>(services),
+public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<ContactsDbContext>(services),
     IExternalContactsBackend
 {
+    private IAccountsBackend? _accountsBackend;
+    private ContactLinker? _contactLinker;
+
+    private HostId HostId { get; } = services.GetRequiredService<HostId>();
+    private ExternalContactHasher Hasher { get; } = services.GetRequiredService<ExternalContactHasher>();
+    private IDbEntityResolver<string, DbExternalContact> DbExternalContactResolver { get; }
+        = services.GetRequiredService<IDbEntityResolver<string, DbExternalContact>>();
+    private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
+    private ContactLinker ContactLinker => _contactLinker ??= Services.GetRequiredService<ContactLinker>();
+
     // [ComputeMethod]
     [Obsolete("2024.04: Replaced with List - contact info list")]
     public virtual async Task<ApiArray<ExternalContactFull>> ListFull(UserId ownerId, Symbol deviceId, CancellationToken cancellationToken)
@@ -34,6 +39,13 @@ public class ExternalContactsBackend(
         return dbExternalContacts.OrderBy(x => x.DisplayName, StringComparer.Ordinal)
             .Select(x => x.ToModel())
             .ToApiArray();
+    }
+
+    [ComputeMethod]
+    public virtual async Task<ExternalContactFull?> Get(ExternalContactId externalContactId, CancellationToken cancellationToken)
+    {
+        var dbExternalContact = await DbExternalContactResolver.Get(externalContactId, cancellationToken).ConfigureAwait(false);
+        return dbExternalContact?.ToModel();
     }
 
     // [ComputeMethod]
@@ -59,11 +71,11 @@ public class ExternalContactsBackend(
     }
 
     // Not compute method!
-    public async Task<ApiSet<UserId>> ListReferencingUserIds(UserId userId, CancellationToken cancellationToken)
+    public async Task<ApiSet<ExternalContactId>> ListReferencingContactIds(UserId userId, CancellationToken cancellationToken)
     {
-        var account = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         if (account is null)
-            return ApiSet<UserId>.Empty;
+            return ApiSet<ExternalContactId>.Empty;
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -75,7 +87,7 @@ public class ExternalContactsBackend(
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return externalContactIds.Select(sid => new ExternalContactId(sid).UserDeviceId.OwnerId).ToApiSet();
+        return externalContactIds.Select(sid => new ExternalContactId(sid)).ToApiSet();
 
         IEnumerable<string> GetLinks()
         {
@@ -104,9 +116,9 @@ public class ExternalContactsBackend(
             }
             // NOTE(DF): force sync after changes are committed
             var context = CommandContext.GetCurrent();
-            var isLocal = context.Operation.HostId == hostId.Id;
+            var isLocal = context.Operation.HostId == HostId.Id;
             if (isLocal && command.Changes.Any(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Create))
-                contactLinker.Activate();
+                ContactLinker.Activate();
             return default!;
         }
 
@@ -149,7 +161,7 @@ public class ExternalContactsBackend(
             if (existing != null)
                 return existing; // Already exists, so we don't recreate one
 
-            externalContact = externalContact.WithHash(hasher, false) with {
+            externalContact = externalContact.WithHash(Hasher, false) with {
                 Id = id,
                 Version = VersionGenerator.NextVersion(),
                 CreatedAt = now,
@@ -160,7 +172,7 @@ public class ExternalContactsBackend(
         }
         else if (change.IsUpdate(out externalContact)) {
             dbExternalContact.RequireVersion(expectedVersion);
-            externalContact = externalContact.WithHash(hasher, false) with {
+            externalContact = externalContact.WithHash(Hasher, false) with {
                 Version = VersionGenerator.NextVersion(dbExternalContact.Version),
                 ModifiedAt = now,
             };

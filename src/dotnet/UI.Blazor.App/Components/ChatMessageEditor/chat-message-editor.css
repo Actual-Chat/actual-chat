@@ -38,17 +38,18 @@ body.narrow .text-mode .post-panel,
 body.narrow .narrow-panel .post-panel {
     @apply py-1 pb-10;
 }
-.post-panel .c-buttons {
+.post-panel .c-right-buttons {
     @apply flex-x items-end self-end;
     @apply mr-2 md:my-2;
 }
-body.narrow .text-mode .post-panel .c-buttons,
-body.narrow .narrow-panel .post-panel .c-buttons {
+body.narrow .text-mode .post-panel .c-right-buttons,
+body.narrow .narrow-panel .post-panel .c-right-buttons {
     @apply absolute bottom-2 right-0;
+    @apply py-1;
 }
 
-body.narrow .text-mode .post-panel .c-buttons .c-incut,
-body.narrow .narrow-panel .post-panel .c-buttons .c-incut {
+body.narrow .text-mode .post-panel .c-right-buttons .c-incut,
+body.narrow .narrow-panel .post-panel .c-right-buttons .c-incut {
     @apply flex-1;
 }
 
@@ -79,7 +80,7 @@ body.narrow .narrow-panel .post-panel .message-input-label {
 }
 
 .post-panel .message-input .editor-content {
-    @apply mr-0 md:mr-4;
+    @apply mr-0 md:mr-2;
     @apply custom-scrollbar-hide;
     /* AY: It's an inline element that grows to flexbox container, so setting its width defines the weight,
        but flexbox ensures it never grows above what's allowed;
@@ -119,15 +120,21 @@ body.narrow .btn.post-panel-btn.post-message {
 body.hoverable .post-panel-btn:hover {
     @apply text-02;
 }
-.post-panel-btn.attach-btn {
-    @apply ml-2;
-}
 body.narrow .post-panel-btn.attach-btn {
     @apply self-end;
 }
-body.narrow .text-mode .post-panel-btn.attach-btn,
-body.narrow .narrow-panel .post-panel-btn.attach-btn {
+.post-panel .c-left-buttons {
+    @apply flex-x items-center self-end;
+    @apply m-1;
+}
+body.narrow .text-mode .c-left-buttons,
+body.narrow .narrow-panel .c-left-buttons {
     @apply absolute left-0 bottom-2;
+    @apply py-1;
+}
+body.wide .post-panel .c-left-buttons {
+    @apply my-2 py-1;
+    @apply rounded-full;
 }
 
 /* Notify Call Panel */

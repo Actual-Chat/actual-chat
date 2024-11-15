@@ -77,18 +77,14 @@ public class TuneUI : ITuneUIBackend, IDisposable
         _blazorRef = null!;
     }
 
-    public ValueTask Play(Tune tune)
-    {
-        if (!UseJsVibration)
-            _ = Vibrate(tune);
-        return JS.InvokeVoidAsync(JSPlayMethod, tune);
-    }
+    public Task Play(Tune tune)
+        => ForegroundTask.Run(() => {
+            _ = VibrateNoJs(tune);
+            return JS.InvokeVoidAsync(JSPlayMethod, tune).AsTask();
+        });
 
     public ValueTask PlayAndWait(Tune tune)
-    {
-        var vibrateTask = UseJsVibration ? Task.CompletedTask : Vibrate(tune).AsTask();
-        return Task.WhenAll(JS.InvokeVoidAsync(JSPlayAndWaitMethod, tune).AsTask(), vibrateTask).ToValueTask();
-    }
+        => TaskExt.WhenAll(VibrateNoJs(tune), JS.InvokeVoidAsync(JSPlayAndWaitMethod, tune));
 
     [JSInvokable]
     public ValueTask OnVibrate(Tune tune)
@@ -96,6 +92,9 @@ public class TuneUI : ITuneUIBackend, IDisposable
 
     protected virtual ValueTask Vibrate(Tune tune)
         => ValueTask.CompletedTask;
+
+    private ValueTask VibrateNoJs(Tune tune)
+        => !UseJsVibration ? Vibrate(tune) : ValueTask.CompletedTask;
 }
 
 internal interface ITuneUIBackend

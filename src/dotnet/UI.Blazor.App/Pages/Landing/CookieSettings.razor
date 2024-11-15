@@ -2,7 +2,7 @@
 
 @{
     var m = State.LastNonErrorValue;
-    if (m == Model.Loading)
+    if (ReferenceEquals(m, Model.Loading))
         return;
 
     if (m.AreCookiesAccepted)
@@ -54,6 +54,7 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        await OnboardingUI.WhenLocalSettingsLoaded;
         var settings = await OnboardingUI.LocalSettings.Use(cancellationToken).ConfigureAwait(false);
         return new (settings.AreCookiesAccepted);
     }

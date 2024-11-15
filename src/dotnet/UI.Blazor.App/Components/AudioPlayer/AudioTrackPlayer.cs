@@ -16,6 +16,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 
     private readonly string _id;
     private Dispatcher? _dispatcher;
+    private IMediaMetadataUI? _mediaMetadataUI;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
     private IJSObjectReference? _jsRef;
     private Task? _whenPlayerCreated;
@@ -24,6 +25,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private IServiceProvider Services { get; }
     private IJSRuntime JS { get; }
     private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
+    private IMediaMetadataUI MediaMetadataUI => _mediaMetadataUI ??= Services.GetRequiredService<IMediaMetadataUI>();
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioTrackPlayer))]
     public AudioTrackPlayer(
@@ -79,6 +81,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     var audioSource = (AudioSource)Source;
                     var preSkip = audioSource.Format.PreSkip;
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Creating audio player in JS", _id);
+                    MediaMetadataUI.SetPlayback(MediaMetadata.FromTrack(trackInfo), trackInfo.IsStreaming);
                     var whenPlayerCreated = JS.InvokeAsync<IJSObjectReference>(JSCreateMethod,
                         CancellationToken.None,
                         _blazorRef, _id, preSkip, author.Avatar.Name, chat.Title);

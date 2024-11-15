@@ -38,9 +38,6 @@ internal class ChatIndexTrigger(
     {
         var indexContentCmd = new MLSearch_TriggerChatIndexing(eventCommand.Entry.ChatId, IndexingKind.ChatContent);
         await queues.Enqueue(indexContentCmd, cancellationToken).ConfigureAwait(false);
-
-        var indexEntriesCmd = new MLSearch_TriggerChatIndexing(eventCommand.Entry.ChatId, IndexingKind.ChatEntries);
-        await queues.Enqueue(indexEntriesCmd, cancellationToken).ConfigureAwait(false);
     }
 
     // ReSharper disable once UnusedMember.Global

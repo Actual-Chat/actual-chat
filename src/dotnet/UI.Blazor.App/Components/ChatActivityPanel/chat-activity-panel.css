@@ -4,9 +4,8 @@
 }
 body.wide .chat-activity-panel {
     @apply h-10;
-    @apply rounded-lg;
     @apply px-1;
-    @apply rounded-full;
+    @apply rounded-2xl;
     @apply bg-03;
 }
 .chat-activity-panel .silence-text {

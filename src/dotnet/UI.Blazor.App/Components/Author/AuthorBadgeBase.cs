@@ -1,12 +1,15 @@
+using ActualChat.Contacts;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
 public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.Model>
 {
-    [Inject] protected Session Session { get; init; } = null!;
-    [Inject] protected IAuthors Authors { get; init; } = null!;
-    [Inject] protected AuthorUI AuthorUI { get; init; } = null!;
+    [Inject] protected ChatUIHub Hub { get; init; } = null!;
+    protected Session Session => Hub.Session();
+    protected IAuthors Authors => Hub.Authors;
+    protected AuthorUI AuthorUI => Hub.AuthorUI;
+    protected IContacts Contacts => Hub.Contacts;
 
     protected AuthorId AuthorId { get; private set; }
     protected ChatId ChatId => AuthorId.ChatId;
@@ -14,7 +17,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     [Parameter, EditorRequired] public string AuthorSid { get; set; } = "";
 
     protected override void OnInitialized()
-        // Set AuthorId here in order to have actual AuthorId value in GetStateOptions.
+        // Set AuthorId here to have actual AuthorId value in GetStateOptions.
         => AuthorId = new AuthorId(AuthorSid);
 
     protected override void OnParametersSet()
@@ -61,6 +64,20 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
 
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var isOwn = ownAuthor != null && author.Id == ownAuthor.Id;
+
+        var peerChatId = await AuthorUI.GetPeerChatId(authorId, cancellationToken).ConfigureAwait(false);
+        if (!peerChatId.IsNone) {
+            var contact = await Contacts.GetForChat(Session, peerChatId.ToChatId(), cancellationToken).ConfigureAwait(false);
+            var peerAvatarName = author.Avatar.Name;
+            var avatarName = ContactExt.GetPeerContactName(contact, peerAvatarName);
+            if (!OrdinalEquals(avatarName, peerAvatarName)) {
+                var avatar = author.Avatar;
+                avatar = avatar with {
+                    Name = avatarName
+                };
+                author = author with { Avatar = avatar };
+            }
+        }
         return new Model(author, isOwn);
     }
 

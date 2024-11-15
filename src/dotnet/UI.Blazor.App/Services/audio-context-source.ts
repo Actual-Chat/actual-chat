@@ -205,6 +205,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         debugLog?.log(`interactiveResume:`, Log.ref(context));
         if (context && this.isRunning(context)) {
             debugLog?.log(`interactiveResume: succeeded (AudioContext is already in running state)`);
+            Interactive.isInteractive = true;
             await this.fallbackDestination?.play();
             return;
         }
@@ -278,6 +279,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         void this.fallbackDestination?.play();
         if (this.isRunning(context)) {
             debugLog?.log(`resume: already resumed, AudioContext:`, Log.ref(context));
+            Interactive.isInteractive = true;
             return;
         }
 
@@ -287,6 +289,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         if (!this.isRunning(context))
             throw new Error(`${logScope}.resume: completed resume, but AudioContext.state != 'running'.`);
 
+        Interactive.isInteractive = true;
         debugLog?.log(`resume: resumed, AudioContext:`, Log.ref(context));
     }
 
@@ -559,7 +562,11 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
             return;
         }
 
-        await this.initContextInteractively();
+        const context = this._context;
+        if (!context)
+            return;
+
+        await this.interactiveResume(context);
     }
 
     public useRef(ref: AudioContextRef): Disposable {
@@ -841,21 +848,6 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
                     }
                     void this.fallbackDestination?.play();
                 });
-        }
-        else if (context.state === 'running') {
-            this.test(context)
-                .then(() => {
-                        if (!this.isRunning(context)) {
-                            void context.close();
-                            void this.whenReady();
-                        }
-                    },
-                    reason => {
-                        warnLog?.log(reason, 'useRef.test() failed with an error');
-                        void context.close();
-                        void this.whenReady();
-                });
-            this.isRunning(context)
         }
 
         return Disposables.fromAction(() => {

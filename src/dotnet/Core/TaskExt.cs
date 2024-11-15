@@ -73,13 +73,16 @@ public static class TaskExt
         }
     }
 
-    public static async ValueTask Catch(this ValueTask task, ILogger errorLog, string message)
+    public static ValueTask Catch(this ValueTask task, ILogger errorLog, string message, params object[] args)
+        => task.Catch(errorLog, LogLevel.Error, message, args);
+
+    public static async ValueTask Catch(this ValueTask task, ILogger errorLog, LogLevel level, string message, params object[] args)
     {
         try {
             await task.ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            errorLog.LogError(e, message);
+            errorLog.Log(level, e, message, args);
         }
     }
 
@@ -141,7 +144,7 @@ public static class TaskExt
         throw new AggregateException(exception1, exception2);
     }
 
-    public static async ValueTask WhenAll(IReadOnlyCollection<ValueTask> source)
+    public static async ValueTask WhenAll(this IReadOnlyCollection<ValueTask> source)
     {
         List<Exception>? exceptions = null;
 

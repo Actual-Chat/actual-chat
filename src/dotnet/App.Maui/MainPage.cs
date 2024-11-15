@@ -1,4 +1,3 @@
-using ActualChat.UI.Blazor.Services;
 using Microsoft.Maui.Controls.PlatformConfiguration;
 using Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;
 
@@ -19,7 +18,11 @@ public class MainPage : ContentPage
     }
 
     public void RecreateWebView()
-        => Content = new MauiWebView().BlazorWebView;
+    {
+        var oldWebView = MauiWebView.Current;
+        Content = new MauiWebView().BlazorWebView;
+        oldWebView?.Dispose();
+    }
 
     // NOTE(AY): Currently unused
     public void Reload()

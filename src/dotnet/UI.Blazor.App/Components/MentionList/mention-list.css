@@ -1,8 +1,29 @@
 .mention-list-manager {
     @apply absolute inset-x-0 top-0 z-10;
+    animation: show-manager 200ms linear forwards;
+}
+.mention-list-manager:has(.non-visible) {
+    @apply z-minus;
+    animation: hide-manager 200ms linear forwards;
 }
 .mention-list-manager > div {
     @apply absolute inset-x-0 bottom-0;
+}
+@keyframes show-manager {
+    0%, 99% {
+        z-index: -1;
+    }
+    100% {
+        z-index: 10;
+    }
+}
+@keyframes hide-manager {
+    0%, 1% {
+        z-index: 10;
+    }
+    100% {
+        z-index: -1;
+    }
 }
 
 .mention-list {
@@ -11,6 +32,16 @@
     @apply overflow-x-hidden overflow-y-auto;
     @apply border-t-2 border-separator;
     @apply bg-01 text-03;
+    filter: opacity(1);
+    transform: translateY(0);
+    transition-duration: 200ms;
+    transition-property: filter, -webkit-filter, transform, display;
+    transition-timing-function: ease-in;
+    transition-behavior: allow-discrete;
+    @starting-style {
+        filter: opacity(0);
+        transform: translateY(100%);
+    }
 }
 body.narrow .mention-list {
     @apply border-post-panel;
@@ -21,6 +52,8 @@ body.narrow .narrow-panel .mention-list {
 }
 .mention-list.non-visible {
     @apply hidden;
+    filter: opacity(0);
+    transform: translateY(100%);
 }
 /* Firefox workaround: it somehow displays the border otherwise */
 .mention-list.non-visible {

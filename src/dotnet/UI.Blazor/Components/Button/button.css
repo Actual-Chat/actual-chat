@@ -424,6 +424,9 @@ body.hoverable .btn.btn-round.btn-cancel:hover {
 .btn.btn-round.btn-xs {
     @apply h-8 w-8;
 }
+.btn.btn-round.btn-xxs {
+    @apply h-6 w-6;
+}
 body.hoverable .btn-h.blackout:hover,
 .btn.blackout:focus,
 .btn.blackout:active {

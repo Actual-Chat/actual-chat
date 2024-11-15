@@ -225,6 +225,60 @@ export class MarkupEditor {
         this.moveCursorToTheEnd();
     }
 
+    public beginMention() {
+        const mentionList = document.querySelector('.mention-list');
+        if (mentionList == null)
+            return;
+
+        let isMentionListOpen = !mentionList.classList.contains('non-visible');
+        const { selection, range, caretPosition, prevChar } = this.getPrevCharInfo();
+        let newCaretPosition = caretPosition;
+        if (!isMentionListOpen) {
+            if (prevChar.trim() != '')
+                this.insertHtml(" @");
+            else
+                this.insertHtml("@");
+        }
+        else {
+            if (prevChar == "@") {
+                newCaretPosition = caretPosition - 1;
+                const oldText = range.endContainer.textContent;
+                const newText = oldText.substring(0, caretPosition - 1) + oldText.substring(caretPosition);
+                this.setHtml(newText);
+            }
+            let newRange = document.createRange();
+            if (this.contentDiv.childNodes.length > 0)
+                newRange.setStart(this.contentDiv.childNodes[0], newCaretPosition);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+            this.contentDiv.focus();
+        }
+    }
+
+    private getPrevCharInfo(): { selection: Selection; caretPosition: number; range: Range; prevChar: string } {
+        let prevChar = "";
+        let range: Range;
+        let clonedRange: Range;
+        let caretPosition = 0;
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+            range = selection.getRangeAt(0);
+            clonedRange = range.cloneRange();
+            clonedRange.selectNodeContents(this.contentDiv);
+            clonedRange.setEnd(range.endContainer, range.endOffset);
+            caretPosition = clonedRange.toString().length;
+            if (caretPosition > 0)
+                prevChar = clonedRange.toString().charAt(caretPosition - 1);
+        }
+        return {
+            selection: selection,
+            range: clonedRange,
+            caretPosition: caretPosition,
+            prevChar: prevChar,
+        };
+    }
+
     public moveCursorToTheEnd() {
         const range = document.createRange();
         range.selectNodeContents(this.contentDiv);

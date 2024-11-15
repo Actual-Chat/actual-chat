@@ -102,6 +102,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<EmailVerificationModal.Model, EmailVerificationModal>()
             .Add<SettingsModal.Model, SettingsModal>()
             .Add<AuthorModal.Model, AuthorModal>()
+            .Add<PeerContactEditorModal.Model, PeerContactEditorModal>()
             .Add<LeaveChatConfirmationModal.Model, LeaveChatConfirmationModal>()
             .Add<ForwardMessageModal.Model, ForwardMessageModal>()
             .Add<ShareModalModel, ShareModal>()
@@ -173,6 +174,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         if (HostInfo.HostKind != HostKind.MauiApp) {
             services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
+            services.AddScoped<IMediaMetadataUI>(_ => new WebMediaMetadataUI());
         }
 
         // IModalViews

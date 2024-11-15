@@ -9,10 +9,10 @@ on:
       buildAppFor:
         type: choice
         required: false
-        default: ''
+        default: ""
         description: Build app package for environment
         options:
-          - ''
+          - ""
           - auto
           - dev
           - prod
@@ -202,16 +202,16 @@ jobs:
 
       - name: Report unit test results
         uses: phoenix-actions/test-reporting@v15
-        if: success() || failure()    # run this step even if previous step failed
+        if: success() || failure() # run this step even if previous step failed
         with:
-          name: Unit tests results     # Name of the check run which will be created
-          path: './tests/**/*.trx'   # Path to test results
-          reporter: dotnet-trx        # Format of test results
+          name: Unit tests results # Name of the check run which will be created
+          path: "./tests/**/*.trx" # Path to test results
+          reporter: dotnet-trx # Format of test results
           fail-on-error: false
-          list-tests: 'all'
-          output-to: 'checks'
-          list-suites: 'all'
-          only-summary: 'false'
+          list-tests: "all"
+          output-to: "checks"
+          list-suites: "all"
+          only-summary: "false"
 
   integration-tests:
     name: Run Integration tests
@@ -366,17 +366,16 @@ jobs:
 
       - name: Report integration test results
         uses: phoenix-actions/test-reporting@v15
-        if: success() || failure()    # run this step even if previous step failed
+        if: success() || failure() # run this step even if previous step failed
         with:
-          name: Integration tests results     # Name of the check run which will be created
-          path: './tests/**/*.trx'   # Path to test results
-          reporter: dotnet-trx        # Format of test results
+          name: Integration tests results # Name of the check run which will be created
+          path: "./tests/**/*.trx" # Path to test results
+          reporter: dotnet-trx # Format of test results
           fail-on-error: false
-          list-tests: 'all'
-          output-to: 'checks'
-          list-suites: 'all'
-          only-summary: 'true'
-
+          list-tests: "all"
+          output-to: "checks"
+          list-suites: "all"
+          only-summary: "true"
 
   nuget-pack:
     name: Create nuget packages for ${{ github.ref_name }}
@@ -557,7 +556,6 @@ jobs:
           dst: |
             us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-opensearch-configurator:${{needs.build.outputs.semver2}}
 
-
   build-ios-pkg:
     name: Build ios app package for ${{ github.ref_name }}
     needs:
@@ -655,7 +653,7 @@ jobs:
       - name: PList - set aps-environment and app identifier
         uses: dppeak/update-ios-plist-action@v1.1.0
         with:
-          info-plist-path: 'src/dotnet/App.Maui/Platforms/iOS/Entitlements.plist'
+          info-plist-path: "src/dotnet/App.Maui/Platforms/iOS/Entitlements.plist"
           key-value-json: '[{"application-identifier": "${{secrets.APPLE_TEAM_ID}}.${{env.APP_ID}}"}, {"aps-environment": "production"}]'
           print-file: true
 
@@ -679,7 +677,6 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 10
-
 
   deploy-ios-to-appstore:
     name: Deploy ios app package to apple app store for ${{ github.ref_name }}
@@ -730,15 +727,18 @@ jobs:
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
-      ActualChat_AndroidSigningKeyPass: ${{secrets.ANDROIDSIGNINGKEYPASS}}
-      ActualChat_AndroidSigningStorePass: ${{secrets.ANDROIDSIGNINGSTOREPASS}}
+      ActualChat_AndroidSigningKeyPass: ${{ secrets.ANDROIDSIGNINGKEYPASS }}
+      ActualChat_AndroidSigningStorePass: ${{ secrets.ANDROIDSIGNINGSTOREPASS }}
       IS_DEV_MAUI: ${{ needs.calc-pkg-params.outputs.IS_DEV_MAUI }}
       APP_ID: ${{ needs.calc-pkg-params.outputs.APP_ID }}
-      PACKAGE_FILE_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}-Signed.aab
+      AAB_FILE_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}-Signed.aab
+      APK_FILE_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}-Signed.apk
     outputs:
-      ARTIFACT_NAME: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.aab
-      PACKAGE_FILE_NAME: ${{env.PACKAGE_FILE_NAME}}
-      MAJOR_MINOR_VERSION: ${{steps.nbgv.outputs.MajorMinorVersion}}
+      AAB_ARTIFACT_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.aab
+      APK_ARTIFACT_NAME: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.apk
+      AAB_FILE_NAME: ${{ env.AAB_FILE_NAME }}
+      APK_FILE_NAME: ${{ env.APK_FILE_NAME }}
+      MAJOR_MINOR_VERSION: ${{ steps.nbgv.outputs.MajorMinorVersion }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -783,8 +783,17 @@ jobs:
       - name: Upload package to artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.aab
-          path: artifacts/publish/App.Maui/release_net9.0-android/${{env.PACKAGE_FILE_NAME}}
+          name: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.aab
+          path: artifacts/publish/App.Maui/release_net9.0-android/${{env.AAB_FILE_NAME}}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 10
+
+      - name: Upload apk to artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.apk
+          path: artifacts/publish/App.Maui/release_net9.0-android/${{env.APK_FILE_NAME}}
           if-no-files-found: error
           compression-level: 0
           retention-days: 10
@@ -800,8 +809,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       APP_ID: ${{needs.calc-pkg-params.outputs.APP_ID}}
-      ARTIFACT_NAME: ${{needs.build-android-pkg.outputs.ARTIFACT_NAME}}
-      PACKAGE_FILE_NAME: ${{needs.build-android-pkg.outputs.PACKAGE_FILE_NAME}}
+      ARTIFACT_NAME: ${{needs.build-android-pkg.outputs.APK_ARTIFACT_NAME}}
+      PACKAGE_FILE_NAME: ${{needs.build-android-pkg.outputs.APK_FILE_NAME}}
       MAJOR_MINOR_VERSION: ${{needs.build-android-pkg.outputs.MAJOR_MINOR_VERSION}}
     steps:
       - name: Authenticate to Google Cloud
@@ -811,7 +820,7 @@ jobs:
           token_format: access_token
           workload_identity_provider: projects/1074465586741/locations/global/workloadIdentityPools/actual-identity-pool/providers/github-actual-chat
           service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
-          create_credentials_file: 'true'
+          create_credentials_file: "true"
 
       - name: Download package file from artifacts
         uses: actions/download-artifact@v4
@@ -846,8 +855,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ needs.calc-pkg-params.outputs.ENVIRONMENT }}
     env:
-      ARTIFACT_NAME: ${{needs.build-android-pkg.outputs.ARTIFACT_NAME}}
-      PACKAGE_FILE_NAME: ${{needs.build-android-pkg.outputs.PACKAGE_FILE_NAME}}
+      ARTIFACT_NAME: ${{needs.build-android-pkg.outputs.AAB_ARTIFACT_NAME}}
+      PACKAGE_FILE_NAME: ${{needs.build-android-pkg.outputs.AAB_FILE_NAME}}
       IS_DEV_MAUI: ${{ needs.calc-pkg-params.outputs.IS_DEV_MAUI }}
       APP_ID: ${{ needs.calc-pkg-params.outputs.APP_ID }}
     steps:
@@ -858,7 +867,7 @@ jobs:
           token_format: access_token
           workload_identity_provider: projects/1074465586741/locations/global/workloadIdentityPools/actual-identity-pool/providers/github-actual-chat
           service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
-          create_credentials_file: 'true'
+          create_credentials_file: "true"
 
       - name: Download package file from artifacts
         uses: actions/download-artifact@v4

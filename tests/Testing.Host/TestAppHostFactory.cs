@@ -78,7 +78,8 @@ public static class TestAppHostFactory
                 services.AddSingleton<IBlobStorages, TempFolderBlobStorages>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
                 services.AddSingleton<OpenSearchNames>(_ => new OpenSearchNames {
-                    UniquePart = UniqueNames.OpenSearch("test"),
+                    UniquePart = UniqueNames.Prefix(),
+                    Env = OpenSearchNames.TestPrefix,
                 });
             },
             ConfigureApp = (ctx, app) => options.ConfigureApp?.Invoke(ctx, app),

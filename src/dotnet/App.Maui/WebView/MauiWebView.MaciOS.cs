@@ -40,6 +40,9 @@ public partial class MauiWebView
     public partial Task EvaluateJavaScript(string javaScript)
         => WKWebView.EvaluateJavaScriptAsync(javaScript);
 
+    public partial void Dispose()
+        => WKWebView.Dispose();
+
     // Private methods
 
     private partial void OnInitializing(object? sender, BlazorWebViewInitializingEventArgs eventArgs)

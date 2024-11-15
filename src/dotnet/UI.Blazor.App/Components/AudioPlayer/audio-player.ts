@@ -200,7 +200,7 @@ export class AudioPlayer implements Resettable {
             return;
 
         // debugLog?.log(`#${this.internalId}.frame, ${bytes.length} byte(s)`);
-        await this.playing.whenInUse;
+        await this.playing?.whenInUse;
 
         void decoderWorker.frame(
             this.internalId,
@@ -216,7 +216,7 @@ export class AudioPlayer implements Resettable {
             return;
 
         debugLog?.log(`#${this.internalId}.end, mustAbort:`, mustAbort);
-        await this.playing.whenInUse;
+        await this.playing?.whenInUse;
 
         // This ensures 'end' hit the feeder processor which in turn sends feeder status back and resolves this.whenEnded
         await decoderWorker.end(this.internalId, mustAbort);

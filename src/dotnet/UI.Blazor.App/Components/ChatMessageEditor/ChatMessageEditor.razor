@@ -30,9 +30,18 @@
                  data-bubble="@(BubbleRef.New<TextMessagePanelBubble>())"
                  data-bubble-priority="150"
                  data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
-                <ButtonRound Class="post-panel-btn attach-btn btn-transparent btn-xs">
-                    <i class="icon-plus text-2xl"></i>
-                </ButtonRound>
+                <div class="c-left-buttons">
+                    <ButtonRound Class="post-panel-btn attach-btn btn-transparent btn-xxs">
+                        <i class="icon-plus text-2xl"></i>
+                    </ButtonRound>
+                    <ButtonRound
+                        Class="post-panel-btn btn-xxs btn-transparent mention-btn"
+                        Tooltip="Mention"
+                        TooltipPosition="FloatingPosition.Top"
+                        Click="@OnMentionButtonClick">
+                        <i class="icon-at text-2xl"></i>
+                    </ButtonRound>
+                </div>
                 <label for="message-input" class="message-input-label">
                     <MarkupEditor
                         @key="MarkupEditorKey"
@@ -47,7 +56,7 @@
                         Cancel="@(() => OnCancel())"
                         OpenPrevious="OnOpenPrevious"/>
                 </label>
-                <div class="c-buttons">
+                <div class="c-right-buttons">
                     @if (_enableIncompleteUI) {
                         <ButtonRound
                             Class="post-panel-btn btn-transparent btn-xs"
@@ -192,9 +201,8 @@
             return;
 
         _ = TuneUI.Play(Tune.SendMessage);
+        var clearMarkupTask = MarkupEditorRef.Clear();
         try {
-            _ = MarkupEditorRef.Clear();
-
             var relatedChatEntry = ChatEditorUI.RelatedChatEntry.Value;
             var relatedChatEntryId = relatedChatEntry?.Id ?? default;
             await ChatEditorUI.HideRelatedEntry(false);
@@ -221,14 +229,16 @@
             var readEntryLid = chatEntry.Value.LocalId;
 
             if (ReadPositionState != null && ReadPositionState.Value.EntryLid < readEntryLid)
-                ReadPositionState.Value = new (Chat.Id, readEntryLid);
+                ReadPositionState.Value = new ReadPosition(Chat.Id, readEntryLid);
             await AttachmentListRef.Clear();
             SearchUI.Clear();
+            await clearMarkupTask;
         }
         catch (Exception e) {
             UICommander.ShowError(e);
             attachmentListSnapshot.Rollback();
             await MarkupEditorRef.SetText(text);
+            await clearMarkupTask.SilentAwait();
         }
     }
 
@@ -240,6 +250,11 @@
 
     private ValueTask UpdateChatId()
         => JSRef.InvokeVoidAsync("setChatId", Chat.Id);
+
+    private async Task OnMentionButtonClick() {
+        await MarkupEditorRef.WhenReady;
+        await MarkupEditorRef.JSRef.InvokeVoidAsync("beginMention");
+    }
 
     // Event handlers
 

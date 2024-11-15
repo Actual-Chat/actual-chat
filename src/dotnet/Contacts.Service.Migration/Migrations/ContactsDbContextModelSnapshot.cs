@@ -44,6 +44,11 @@ namespace ActualChat.Contacts.Migrations
                         .HasColumnName("owner_id")
                         .UseCollation("C");
 
+                    b.Property<string>("PeerContactName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("peer_contact_name");
+
                     b.Property<string>("PlaceId")
                         .HasColumnType("text")
                         .HasColumnName("place_id")

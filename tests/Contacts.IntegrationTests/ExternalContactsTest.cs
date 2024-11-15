@@ -15,9 +15,6 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     private IContacts _contacts = null!;
     private ExternalContactHasher _hasher = null!;
 
-    private string JackEmail { get; } = UniqueNames.Email("jack");
-    private Phone JackPhone { get; } = UniqueNames.Phone();
-
     protected override async Task InitializeAsync()
     {
         await base.InitializeAsync();
@@ -129,12 +126,13 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     public async Task ShouldConnectByPhone_BothAccountsExistBeforeSync()
     {
         // arrange
-        var jack = await SignInAsUniqueJack();
+        var jackIdentities = NewJackIdentities();
+        var jack = await SignInAsUniqueJack(jackIdentities);
 
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignInAsUniqueBob();
         var externalContact = new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, bobDeviceId), NewDeviceContactId()))
-            .WithPhone(JackPhone)
+            .WithPhone(jackIdentities.Phone)
             .WithPhone(UniqueNames.Phone())
             .WithHash(_hasher);
 
@@ -156,11 +154,12 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     public async Task ShouldConnectByPhone_FriendAccountCreatedAfterSync()
     {
         // arrange
+        var jackIdentities = NewJackIdentities();
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignInAsUniqueBob();
         var bobContacts0 = await ListContactIds(0);
         var externalContact = new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, bobDeviceId), NewDeviceContactId()))
-            .WithPhone(JackPhone)
+            .WithPhone(jackIdentities.Phone)
             .WithPhone(UniqueNames.Phone())
             .WithHash(_hasher);
 
@@ -172,7 +171,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         bobContacts.Count.Should().Be(bobContacts0.Count);
 
         // act
-        var jack = await SignInAsUniqueJack();
+        var jack = await SignInAsUniqueJack(jackIdentities);
         var jackContacts = await ListContactIds(0);
 
         bob = await _tester.SignIn(bob);
@@ -189,11 +188,12 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     public async Task ShouldConnectByEmail_FriendAccountCreatedAfterSync()
     {
         // arrange
+        var jackIdentities = NewJackIdentities();
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignInAsUniqueBob();
         var externalContact =
             new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, bobDeviceId), NewDeviceContactId()))
-                .WithEmail(JackEmail)
+                .WithEmail(jackIdentities.Email)
                 .WithHash(_hasher);
 
         // act
@@ -204,7 +204,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         bobContacts.Should().BeEmpty();
 
         // act
-        var jack = await SignInAsUniqueJack();
+        var jack = await SignInAsUniqueJack(jackIdentities);
         var jackContacts = await ListContactIds(0);
 
         bob = await _tester.SignIn(bob);
@@ -219,12 +219,13 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     public async Task ShouldConnectByEmail()
     {
         // arrange
-        var jack = await SignInAsUniqueJack();
+        var jackIdentities = NewJackIdentities();
+        var jack = await SignInAsUniqueJack(jackIdentities);
 
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignInAsUniqueBob();
         var externalContact = NewExternalContact(bob, bobDeviceId)
-            .WithEmail(JackEmail)
+            .WithEmail(jackIdentities.Email)
             .WithHash(_hasher);
 
         // act
@@ -239,13 +240,14 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     public async Task ShouldCreateSingleContact()
     {
         // arrange
-        var jack = await SignInAsUniqueJack();
+        var jackIdentities = NewJackIdentities();
+        var jack = await SignInAsUniqueJack(jackIdentities);
 
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignInAsUniqueBob();
         var externalContact = NewExternalContact(bob, bobDeviceId)
-            .WithPhone(JackPhone)
-            .WithEmail(JackEmail)
+            .WithPhone(jackIdentities.Phone)
+            .WithEmail(jackIdentities.Email)
             .WithHash(_hasher);
 
         // act
@@ -264,7 +266,8 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     public async Task ShouldNotConnectWhenNoMatchingPhonesOrEmails()
     {
         // arrange
-        await SignInAsUniqueJack();
+        var jackIdentities = NewJackIdentities();
+        await SignInAsUniqueJack(jackIdentities);
 
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignInAsUniqueBob();
@@ -277,6 +280,47 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         await Add(externalContact);
         var contacts = await ListContactIds(0);
         contacts.Should().BeEmpty("no matching phones or emails");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LinkerShouldCreateContactsWithDisplayNameFromExternalContact(bool jackIsCreatedFirst)
+    {
+        // arrange
+        var jackIdentities = NewJackIdentities();
+        var tester2 = AppHost.NewWebClientTester(Out);
+        AccountFull jack = null!;
+        if (jackIsCreatedFirst)
+            jack = await SignInAsUniqueJack(tester2, jackIdentities);
+
+        var bobDeviceId = NewDeviceId();
+        var bob = await _tester.SignInAsUniqueBob();
+        var sessionBob = _tester.Session;
+        const string contactDisplayName = "Jack Awesome";
+        var externalContact = NewExternalContact(bob, bobDeviceId)
+            .WithPhone(jackIdentities.Phone)
+            .WithEmail(jackIdentities.Email)
+            .WithDisplayName(contactDisplayName)
+            .WithHash(_hasher);
+
+        // act
+        await Add(externalContact);
+        if (!jackIsCreatedFirst)
+            jack = await SignInAsUniqueJack(tester2, jackIdentities);
+
+        var bobContacts = await ListContactIds(sessionBob, 1);
+
+        // assert
+        var contactId = BuildContactId(bob, jack);
+        bobContacts.Should().BeEquivalentTo(new[] { contactId });
+
+        await ComputedTest.When(async ct => {
+            var contact1 = await _contacts.Get(sessionBob, contactId, ct);
+            contact1.Should().NotBeNull();
+            contact1!.PeerContactName.Should().Be(contactDisplayName);
+            return contact1;
+        }, TimeSpan.FromSeconds(10));
     }
 
     // Private methods
@@ -302,16 +346,19 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
             [new ExternalContactChange(externalContactFull.Id, null, Change.Remove<ExternalContactFull>())]));
 
-    private async Task<List<ContactId>> ListContactIds(int expectedCount)
+    private Task<List<ContactId>> ListContactIds(int expectedCount)
+        => ListContactIds(_tester.Session, expectedCount);
+
+    private async Task<List<ContactId>> ListContactIds(Session session,int expectedCount)
         => await ComputedTest.When(async ct => {
-            var contactIds = await ListContactIds(ct);
+            var contactIds = await ListContactIds(session, ct);
             contactIds.Should().HaveCountGreaterOrEqualTo(expectedCount);
             return contactIds;
         }, TimeSpan.FromSeconds(10));
 
-    private async Task<List<ContactId>> ListContactIds(CancellationToken cancellationToken = default)
+    private async Task<List<ContactId>> ListContactIds(Session session, CancellationToken cancellationToken = default)
     {
-        var ids = await _contacts.ListIds(_tester.Session, PlaceId.None, cancellationToken);
+        var ids = await _contacts.ListIds(session, PlaceId.None, cancellationToken);
         return ids.Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
     }
 
@@ -330,6 +377,17 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     private static EquivalencyAssertionOptions<ExternalContactFull> Including(EquivalencyAssertionOptions<ExternalContactFull> o)
         => o.Including(x => x.Id).Including(x => x.Hash);
 
-    private Task<AccountFull> SignInAsUniqueJack()
-        => _tester.SignInAsNew("Jack", x => x.WithPhone(JackPhone).WithClaim(ClaimTypes.Email, JackEmail));
+    private Task<AccountFull> SignInAsUniqueJack(Identities identities)
+        => SignInAsUniqueJack(_tester, identities);
+
+    private Task<AccountFull> SignInAsUniqueJack(WebClientTester tester, Identities identities)
+        => tester.SignInAsNew("Jack", x => x.WithPhone(identities.Phone).WithClaim(ClaimTypes.Email, identities.Email));
+
+    private Identities NewJackIdentities()
+        => NewIdentities("jack");
+
+    private Identities NewIdentities(string owner)
+        => new (UniqueNames.Phone(), UniqueNames.Email(owner));
+
+    private record Identities(Phone Phone, string Email);
 }

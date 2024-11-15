@@ -46,7 +46,7 @@
             ? totpExpiresAt - Clocks.SystemClock.Now + TimeSpan.FromMilliseconds(10)
             : default; // No ticks
 
-    protected override Task OnParametersSetAsync() {
+    protected override Task OnInitializedAsync() {
         var now = Clocks.ServerClock.Now;
         var totpExpiresAt = TotpUI.TotpExpiresAt.Value;
         if (totpExpiresAt > now) {
