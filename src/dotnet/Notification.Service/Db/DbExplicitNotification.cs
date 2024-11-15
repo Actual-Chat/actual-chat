@@ -5,7 +5,7 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Notification.Db;
 
-[Table("ManualNotifications")]
+[Table("ExplicitNotifications")]
 [Index(nameof(UserId), nameof(Version))]
 [Index(nameof(UserId), nameof(Id))]
 [Index(nameof(UserId), nameof(Kind), nameof(SimilarityKey))]
