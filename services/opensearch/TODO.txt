@@ -16,10 +16,10 @@
    the modelUrl field in a response.
 
 5. Having model hash and dimension, initializer could register that model and include hash and dimension info as part
-   of the 'dimension' field.
+   of the 'description' field of remote model connector.
 
 6. Once model is in the 'DEPLOYED' state OpenSearch.ClusterSetup class comes into play.
-   It may obtain hash and dimension information from the registered model dimension field instead of extracting that data
-   from the model config as it does now. The problem is there is no model config anymore when we swith to an external model,
+   It may obtain hash and dimension information from the registered model connector's description field instead of extracting that data
+   from the model config as it does now. The problem is there is no model config anymore when we switch to an external model,
    but we still want to update index names on every change of embeddings model. Model change leads to different embeddings and
    we have to perform reindexing.
