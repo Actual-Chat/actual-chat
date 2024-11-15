@@ -35,13 +35,12 @@ public class RedisMeshLocks : MeshLocksBase
         return -1
         """;
     private static readonly string TryRenewScript =
-        // Ideally we want to use GT option with PEXPIRE, but it's available only since Redis 7.0
         """
         local key, value, expiresIn = KEYS[1], ARGV[1], ARGV[2]
         if redis.call('GET', key) ~= value then
             return -1
         end
-        redis.call('PEXPIRE', key, expiresIn)
+        redis.call('PEXPIRE', key, expiresIn, 'GT')
         if redis.call('GET', key) ~= value then
             return -1
         end
@@ -91,12 +90,12 @@ public class RedisMeshLocks : MeshLocksBase
         return count;
         """;
 
-    public static readonly string DefaultKeyPrefix = "MeshLocks";
+    protected static readonly string DefaultKeyPrefix = "MeshLocks";
 
     private readonly Func<ChannelMessage, string> _changeMessageMapper;
     private readonly string _fullKeyPrefix;
 
-    public RedisDb RedisDb { get; }
+    private RedisDb RedisDb { get; }
 
     public RedisMeshLocks(RedisDb redisDb, MomentClock? clock = null, ILogger? log = null)
         : this(redisDb, DefaultKeyPrefix, clock, log) { }
@@ -172,7 +171,7 @@ public class RedisMeshLocks : MeshLocksBase
     {
         var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
         var r = await database
-            .ExecuteAsync("KEYS", new object[] { (RedisKey)(prefix + "*") }, CommandFlags.DemandMaster)
+            .ExecuteAsync("KEYS", [(RedisKey)(prefix + "*")], CommandFlags.DemandMaster)
             .ConfigureAwait(false);
 
         var keys = new List<string>(r.Length);

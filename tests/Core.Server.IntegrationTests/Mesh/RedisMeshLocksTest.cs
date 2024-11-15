@@ -20,9 +20,9 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         (await locks.ListKeys("")).Should().BeEmpty();
 
         await using (var h = await locks.Lock(key, "", lockOptions)) {
+            var now = CpuTimestamp.Now;
             (await locks.TryLock(key, "")).Should().BeNull();
             (await locks.ListKeys("")).Should().Equal([key]);
-            var now = CpuTimestamp.Now;
             while (now.Elapsed <= lockOptions.ExpirationPeriod + TimeSpan.FromSeconds(1)) {
                 await Task.Delay(TimeSpan.FromSeconds(0.5));
                 info = await locks.GetInfo(key);
