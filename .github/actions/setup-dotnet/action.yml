@@ -19,7 +19,7 @@ runs:
     - name: Install dotnet 9.0 SDK
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-quality: 'preview'
+        dotnet-quality: 'ga'
         dotnet-version: '9.0' # NOTE: keep it in sync with global.json file
 
     - name: Use cached dependencies
