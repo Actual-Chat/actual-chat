@@ -28,8 +28,6 @@ public abstract class BatchedIndexingFlowBase<TItem, TId> : IndexingFlowBase<Ind
             cursor = new (last.Id, last.Version);
             batchCount++;
             totalCount += batch.Count;
-            if (batch.Count < BatchSize)
-                break;
         }
 
         Log.LogInformation("`{Id}`.Process: Completed {TotalCount} items in {BatchCount} batches. New cursor: {Cursor}",
@@ -37,7 +35,7 @@ public abstract class BatchedIndexingFlowBase<TItem, TId> : IndexingFlowBase<Ind
             totalCount,
             batchCount,
             cursor);
-        return new (false, totalCount < BatchSize, cursor);
+        return new (false, totalCount < Quota, cursor);
     }
 
     protected abstract Task<IReadOnlyList<TItem>> GetBatch(IndexingFlowCursor<TId>? cursor, CancellationToken cancellationToken);
@@ -50,6 +48,11 @@ public abstract class BatchedIndexingFlowBase<TItem, TId> : IndexingFlowBase<Ind
         var totalCount = 0;
         do {
             var batch = await GetBatch(Cursor, cancellationToken).ConfigureAwait(false);
+            if (batch.Count > BatchSize)
+                Log.LogWarning("`{Id}`.ListBatches: GetBatch returned batch with size({Size}) > BatchSize({BatchSize})",
+                    Id,
+                    batch.Count,
+                    BatchSize);
             totalCount += batch.Count;
             if (batch.Count == 0)
                 yield break;
