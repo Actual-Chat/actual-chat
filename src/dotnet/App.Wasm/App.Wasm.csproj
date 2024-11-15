@@ -31,7 +31,7 @@ Use:
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode Condition="!$(UseAppPack)">partial</TrimMode>
+    <TrimMode>partial</TrimMode>
     <TrimMode Condition="$(UseAppPack)">full</TrimMode>
     <RunAOTCompilation>false</RunAOTCompilation>
     <!-- Broken for now:

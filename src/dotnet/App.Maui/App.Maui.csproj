@@ -240,8 +240,8 @@
     <AndroidDexTool>d8</AndroidDexTool>
     <AndroidLinkTool>r8</AndroidLinkTool>
     <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode Condition="!$(UseAppPack)">partial</TrimMode>
-    <TrimMode Condition="$(UseAppPack)">full</TrimMode>
+    <TrimMode>partial</TrimMode>
+    <!-- <TrimMode Condition="$(UseAppPack)">full</TrimMode> -->
     <RunAOTCompilation>true</RunAOTCompilation>
     <!-- Disabled for now, see https://github.com/dotnet/runtime/issues/101135 -->
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
@@ -395,7 +395,7 @@
     <PublishAot>false</PublishAot>
     <PublishTrimmed>false</PublishTrimmed>
     <TrimMode Condition="!$(UseAppPack)">partial</TrimMode>
-    <TrimMode Condition="$(UseAppPack)">partial</TrimMode>
+    <!-- <TrimMode Condition="$(UseAppPack)">full</TrimMode> -->
     <OptimizationPreference>Size</OptimizationPreference>
     <IlcGenerateStackTraceData>true</IlcGenerateStackTraceData>
     <IlcDisableReflection>false</IlcDisableReflection>
@@ -403,8 +403,9 @@
     <StripSymbols>false</StripSymbols>
     <TrimmerSingleWarn>false</TrimmerSingleWarn>
   </PropertyGroup>
-
-  <ItemGroup><IlcArg Include="--maxgenericcycle:1" /></ItemGroup>
+  <ItemGroup>
+    <IlcArg Include="--maxgenericcycle:1" />
+  </ItemGroup>
 
   <!-- Resources -->
 
