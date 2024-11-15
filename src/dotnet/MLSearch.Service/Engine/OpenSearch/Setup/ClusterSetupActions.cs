@@ -22,13 +22,12 @@ internal interface IClusterSetupActions
     Task EnsureChatsCursorIndexAsync(string indexName, CancellationToken cancellationToken);
 }
 
-internal sealed class ClusterSetupActions(
+internal abstract class ClusterSetupActions(
     IOpenSearchClient openSearch,
     OpenSearchNamingPolicy namingPolicy,
     Tracer baseTracer
 ) : IClusterSetupActions
 {
-    private static readonly Encoding _utf8Encoding = new UTF8Encoding(false);
     private const string TimestampFieldName = "timestamp";
     private readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
 
@@ -117,33 +116,12 @@ internal sealed class ClusterSetupActions(
                 $"Invalid model state. Expecting deployed model, but was {modelState}."
             );
         }
-        var modelConfig = modelSource.Get<IDictionary<string, object>>("model_config")
-            ?? throw new InvalidOperationException(
-                "model_config is null"
-            );
-        var modelEmbeddingDimension = Convert.ToInt32(
-            modelConfig.Get<long>("embedding_dimension", int.MinValue)
-        );
-        if (modelEmbeddingDimension == int.MinValue) {
-            throw new InvalidOperationException(
-                "Failed to retrieve model embedding dimension value."
-            );
-        }
-        // Get configs of the deployed model.
-        var modelAllConfig = modelConfig.Get<string>("all_config");
-        if (modelAllConfig.IsNullOrEmpty()) {
-            throw new InvalidOperationException(
-                "Failed to retrieve model all_config value."
-            );
-        }
 
-#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
-        var uniqueModelKey = Convert.ToHexString(SHA1.HashData(_utf8Encoding.GetBytes(modelAllConfig)))
-            .ToLower(CultureInfo.InvariantCulture);
-#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
-
-        return new EmbeddingModelProps(modelId, modelEmbeddingDimension, uniqueModelKey);
+        return await CreateEmbeddingModelPropertiesAsync(modelId, modelSource, cancellationToken).ConfigureAwait(false);
     }
+
+    protected abstract ValueTask<EmbeddingModelProps> CreateEmbeddingModelPropertiesAsync(
+        string modelId, IDictionary<string, object> modelSource, CancellationToken cancellationToken);
 
     public async Task EnsureTemplateAsync(string templateName, string pattern, int? numberOfReplicas, CancellationToken cancellationToken)
     {
@@ -405,5 +383,88 @@ internal sealed class ClusterSetupActions(
             .ConfigureAwait(false);
         isSearchIndexExistsResult.AssertSuccess(allowNotFound: true);
         return isSearchIndexExistsResult.Exists;
+    }
+}
+
+internal sealed class BuiltInModelClusterSetupActions(
+    IOpenSearchClient openSearch,
+    OpenSearchNamingPolicy namingPolicy,
+    Tracer baseTracer
+) : ClusterSetupActions(openSearch, namingPolicy, baseTracer)
+{
+    private static readonly Encoding _utf8Encoding = new UTF8Encoding(false);
+
+    protected override ValueTask<EmbeddingModelProps> CreateEmbeddingModelPropertiesAsync(
+        string modelId, IDictionary<string, object> modelSource, CancellationToken _)
+    {
+        var modelConfig = modelSource.Get<IDictionary<string, object>>("model_config")
+            ?? throw new InvalidOperationException(
+                "model_config is null"
+            );
+        var modelEmbeddingDimension = Convert.ToInt32(
+            modelConfig.Get<long>("embedding_dimension", int.MinValue)
+        );
+        if (modelEmbeddingDimension == int.MinValue) {
+            throw new InvalidOperationException(
+                "Failed to retrieve model embedding dimension value."
+            );
+        }
+        // Get configs of the deployed model.
+        var modelAllConfig = modelConfig.Get<string>("all_config");
+        if (modelAllConfig.IsNullOrEmpty()) {
+            throw new InvalidOperationException(
+                "Failed to retrieve model all_config value."
+            );
+        }
+
+#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
+        var uniqueModelKey = Convert.ToHexString(SHA1.HashData(_utf8Encoding.GetBytes(modelAllConfig)))
+            .ToLower(CultureInfo.InvariantCulture);
+#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
+
+        return ValueTask.FromResult(new EmbeddingModelProps(modelId, modelEmbeddingDimension, uniqueModelKey));
+    }
+}
+
+internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
+{
+    private readonly IOpenSearchClient _openSearch;
+
+    public CustomRemoteModelClusterSetupActions(
+        IOpenSearchClient openSearch,
+        OpenSearchNamingPolicy namingPolicy,
+        Tracer baseTracer
+    ) : base(openSearch, namingPolicy, baseTracer) => _openSearch = openSearch;
+
+    protected override async ValueTask<EmbeddingModelProps> CreateEmbeddingModelPropertiesAsync(
+        string modelId, IDictionary<string, object> modelSource, CancellationToken cancellationToken)
+    {
+        var connectorId = modelSource.Get<string>("connector_id")
+            ?? throw new InvalidOperationException(
+                "connector_id is null"
+            );
+
+        var connectorResponse = (await _openSearch
+                .RunAsync($"GET /_plugins/_ml/connectors/{connectorId}", cancellationToken)
+                .ConfigureAwait(false)
+            ).AssertSuccess();
+
+        var description = connectorResponse.Get<string>("description");
+        if (description.IsNullOrEmpty()) {
+            throw new InvalidOperationException(
+                "Failed to retrieve connector description."
+            );
+        }
+
+        var parts = description.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 2) {
+            throw new InvalidOperationException(
+                "Unexpected connector description format. That should be in the form '{EmbeddingDimension} {ModelContentHash}'."
+            );
+        }
+        var embeddingDimension = int.Parse(parts[0], NumberStyles.Number, CultureInfo.InvariantCulture);
+        var modelContentHash = parts[2];
+
+        return new EmbeddingModelProps(modelId, embeddingDimension, modelContentHash);
     }
 }

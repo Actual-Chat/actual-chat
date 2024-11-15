@@ -615,7 +615,7 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
         var client = new OpenSearchClient(
             new ConnectionSettings(_connectionPool, connection)
         );
-        return new ClusterSetupActions(client, _openSearchNamingPolicy, Tracer.None);
+        return new BuiltInModelClusterSetupActions(client, _openSearchNamingPolicy, Tracer.None);
     }
     private ClusterSetupActions CreateActions(List<(int, string)> responses)
         => CreateActions(new TestableInMemoryOpenSearchConnection(_ => { }, responses));

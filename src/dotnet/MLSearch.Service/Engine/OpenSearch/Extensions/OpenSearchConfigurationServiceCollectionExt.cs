@@ -65,7 +65,7 @@ internal static class OpenSearchConfigurationServiceCollectionExt
             .AddSingleton<IClusterSetup>(static c => c.CreateInstance<ClusterSetup>(
                 c.GetRequiredService<IMeshLocks<MLSearchDbContext>>().WithKeyPrefix(nameof(ClusterSetup))
             ))
-            .AddSingleton<IClusterSetupActions, ClusterSetupActions>();
+            .AddSingleton<IClusterSetupActions, BuiltInModelClusterSetupActions>();
 
         services
             .AddSingleton<IOptionsFactory<PlainIndexSettings>, PlainIndexSettingsFactory>()
