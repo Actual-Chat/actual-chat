@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using MemoryPack;
-using ActualChat;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Identifiers.Internal;
 
@@ -9,17 +8,17 @@ namespace ActualChat.Notification;
 #pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<ManualNotificationId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<ManualNotificationId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<ManualNotificationId>))]
+[JsonConverter(typeof(SymbolIdentifierJsonConverter<ExplicitNotificationId>))]
+[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<ExplicitNotificationId>))]
+[TypeConverter(typeof(SymbolIdentifierTypeConverter<ExplicitNotificationId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
-public readonly partial struct ManualNotificationId : ISymbolIdentifier<ManualNotificationId>
+public readonly partial struct ExplicitNotificationId : ISymbolIdentifier<ExplicitNotificationId>
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= StaticLog.For<ManualNotificationId>();
+    private static ILogger Log => _log ??= StaticLog.For<ExplicitNotificationId>();
 
-    public static ManualNotificationId None => default;
+    public static ExplicitNotificationId None => default;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public Symbol Id { get; }
@@ -28,7 +27,7 @@ public readonly partial struct ManualNotificationId : ISymbolIdentifier<ManualNo
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public UserId UserId { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ManualNotificationKind Kind { get; }
+    public ExplicitNotificationKind Kind { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Symbol SimilarityKey { get; }
 
@@ -39,18 +38,18 @@ public readonly partial struct ManualNotificationId : ISymbolIdentifier<ManualNo
     public bool IsNone => Id.IsEmpty;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public ManualNotificationId(Symbol id)
+    public ExplicitNotificationId(Symbol id)
         => this = Parse(id);
-    public ManualNotificationId(UserId userId, ManualNotificationKind kind, Symbol similarityKey)
+    public ExplicitNotificationId(UserId userId, ExplicitNotificationKind kind, Symbol similarityKey)
         => this = Parse(Format(userId, kind, similarityKey));
-    public ManualNotificationId(UserId userId, ManualNotificationKind kind, Symbol similarityKey, ParseOrNone _)
+    public ExplicitNotificationId(UserId userId, ExplicitNotificationKind kind, Symbol similarityKey, ParseOrNone _)
         => this = ParseOrNone(Format(userId, kind, similarityKey));
-    public ManualNotificationId(string id)
+    public ExplicitNotificationId(string id)
         => this = Parse(id);
-    public ManualNotificationId(string id, ParseOrNone _)
+    public ExplicitNotificationId(string id, ParseOrNone _)
         => this = ParseOrNone(id);
 
-    public ManualNotificationId(Symbol id, UserId userId, ManualNotificationKind kind, Symbol similarityKey, AssumeValid _)
+    public ExplicitNotificationId(Symbol id, UserId userId, ExplicitNotificationKind kind, Symbol similarityKey, AssumeValid _)
     {
         if (id.IsEmpty) {
             this = None;
@@ -62,7 +61,7 @@ public readonly partial struct ManualNotificationId : ISymbolIdentifier<ManualNo
         SimilarityKey = similarityKey;
     }
 
-    public ManualNotificationId(UserId userId, ManualNotificationKind kind, Symbol similarityKey, AssumeValid _)
+    public ExplicitNotificationId(UserId userId, ExplicitNotificationKind kind, Symbol similarityKey, AssumeValid _)
     {
         if (userId.IsNone) {
             this = None;
@@ -77,28 +76,28 @@ public readonly partial struct ManualNotificationId : ISymbolIdentifier<ManualNo
     // Conversion
 
     public override string ToString() => Value;
-    public static implicit operator Symbol(ManualNotificationId source) => source.Id;
-    public static implicit operator string(ManualNotificationId source) => source.Id.Value;
+    public static implicit operator Symbol(ExplicitNotificationId source) => source.Id;
+    public static implicit operator string(ExplicitNotificationId source) => source.Id.Value;
 
     // Equality
 
-    public bool Equals(ManualNotificationId other) => Id.Equals(other.Id);
-    public override bool Equals(object? obj) => obj is ManualNotificationId other && Equals(other);
+    public bool Equals(ExplicitNotificationId other) => Id.Equals(other.Id);
+    public override bool Equals(object? obj) => obj is ExplicitNotificationId other && Equals(other);
     public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(ManualNotificationId left, ManualNotificationId right) => left.Equals(right);
-    public static bool operator !=(ManualNotificationId left, ManualNotificationId right) => !left.Equals(right);
+    public static bool operator ==(ExplicitNotificationId left, ExplicitNotificationId right) => left.Equals(right);
+    public static bool operator !=(ExplicitNotificationId left, ExplicitNotificationId right) => !left.Equals(right);
 
     // Parsing
 
-    private static string Format(UserId userId, ManualNotificationKind kind, Symbol similarityKey)
+    private static string Format(UserId userId, ExplicitNotificationKind kind, Symbol similarityKey)
         => userId.IsNone ? "" : $"{userId} {kind.Format()}:{similarityKey.Value}";
 
-    public static ManualNotificationId Parse(string? s)
-        => TryParse(s, out var result) ? result : throw StandardError.Format<ManualNotificationId>(s);
-    public static ManualNotificationId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<ManualNotificationId>(s).LogWarning(Log, None);
+    public static ExplicitNotificationId Parse(string? s)
+        => TryParse(s, out var result) ? result : throw StandardError.Format<ExplicitNotificationId>(s);
+    public static ExplicitNotificationId ParseOrNone(string? s)
+        => TryParse(s, out var result) ? result : StandardError.Format<ExplicitNotificationId>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out ManualNotificationId result)
+    public static bool TryParse(string? s, out ExplicitNotificationId result)
     {
         result = default;
         if (s.IsNullOrEmpty())
@@ -122,7 +121,7 @@ public readonly partial struct ManualNotificationId : ISymbolIdentifier<ManualNo
             return false;
 
         var similarityKey = (Symbol)s[(kindLength + 1)..];
-        result = new ManualNotificationId(s, userId, (ManualNotificationKind)kind, similarityKey, AssumeValid.Option);
+        result = new ExplicitNotificationId(s, userId, (ExplicitNotificationKind)kind, similarityKey, AssumeValid.Option);
         return true;
     }
 }

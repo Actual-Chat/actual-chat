@@ -1,6 +1,6 @@
 namespace ActualChat.Notification;
 
-public enum ManualNotificationKind
+public enum ExplicitNotificationKind
 {
     None = 0,
     NotifyMentionedMembers,
