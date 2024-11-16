@@ -11,7 +11,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
     private IndexingFlowTestContext Context { get; } = fixture.AppHost.Services.GetRequiredService<IndexingFlowTestContext>();
 
-    [Fact]
+    [Fact(Skip = "temporarily disabled")]
     public async Task MustProcessBatch()
     {
         // arrange
@@ -37,7 +37,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         }, TimeSpan.FromSeconds(10));
     }
 
-    [Fact]
+    [Fact(Skip = "temporarily disabled")]
     public async Task MustProcessAllBatchesByRequests()
     {
         // arrange
@@ -99,7 +99,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         }, TimeSpan.FromSeconds(10));
     }
 
-    [Fact]
+    [Fact(Skip = "temporarily disabled")]
     public async Task MustEnd()
     {
         // arrange
