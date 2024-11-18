@@ -6,6 +6,7 @@ const { errorLog } = Log.get('CopyTrigger');
 export class CopyTrigger {
     private readonly triggerElementRef: HTMLElement;
     private readonly copyText: string;
+    private readonly copyTextFormatString: string;
     private readonly tooltip: string;
     private readonly copyTextSourceRef: HTMLInputElement | null;
     private disposed$: Subject<void> = new Subject<void>();
@@ -14,12 +15,14 @@ export class CopyTrigger {
         triggerElementRef: HTMLElement,
         copyText: string,
         tooltip: string,
-        copyTextSourceRef: HTMLInputElement | null
+        copyTextSourceRef: HTMLInputElement | null,
+        copyTextFormatString : string
     ) {
         this.triggerElementRef = triggerElementRef;
         this.copyText = copyText;
         this.tooltip = tooltip;
         this.copyTextSourceRef = copyTextSourceRef;
+        this.copyTextFormatString = copyTextFormatString;
         fromEvent(this.triggerElementRef, 'click').pipe(
             takeUntil(this.disposed$),
             switchMap(() => this.copy()),
@@ -29,8 +32,8 @@ export class CopyTrigger {
         ).subscribe();
     }
 
-    public static create(triggerElementRef: HTMLElement, copyText: string, tooltip: string, copyTextSourceInputRef: HTMLInputElement | null) {
-        return new CopyTrigger(triggerElementRef, copyText, tooltip, copyTextSourceInputRef);
+    public static create(triggerElementRef: HTMLElement, copyText: string, tooltip: string, copyTextSourceInputRef: HTMLInputElement | null, copyTextFormatString : string) {
+        return new CopyTrigger(triggerElementRef, copyText, tooltip, copyTextSourceInputRef, copyTextFormatString);
     }
 
     public dispose() {
@@ -42,7 +45,13 @@ export class CopyTrigger {
     }
 
     private async copy() {
-        const text = this.copyTextSourceRef?.value ?? this.copyText;
+        let text = this.copyText;
+        if (this.copyTextSourceRef != null) {
+            const sourceText = this.copyTextSourceRef.value;
+            if (this.copyTextFormatString.length > 0) {
+                text = this.copyTextFormatString.replace('{0}', sourceText);
+            }
+        }
         return navigator.clipboard.writeText(text).catch(e => errorLog?.log(`copy: failed to write to clipboard`, e));
     }
 

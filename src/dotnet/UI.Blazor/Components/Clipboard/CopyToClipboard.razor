@@ -10,13 +10,8 @@
             value="@(Caption.NullIfEmpty() ?? Text)"/>
     }
 
-    <CopyTrigger Tooltip="@Tooltip" CopyText="@Text">
-        <ButtonRound
-            ContentClass="flex-x gap-x-1"
-            Class="@ButtonClass">
-            <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
-            <i class="copied-hint icon-checkmark-simple text-xl" aria-hidden="true"></i>
-        </ButtonRound>
+    <CopyTrigger Tooltip="@Tooltip" CopyText="@Text" CopyTextSourceRef="@CopyTextSourceRef" CopyTextFormatString="@CopyTextFormatString">
+        <CopyButton Class="@ButtonClass" />
     </CopyTrigger>
 </div>
 
@@ -30,5 +25,6 @@
     [Parameter] public bool ShowInput { get; set; }
     [Parameter] public string Caption { get; set; } = "";
     [Parameter, EditorRequired] public string Text { get; set; } = "";
+    [Parameter] public ElementReference? CopyTextSourceRef { get; set; }
+    [Parameter] public string CopyTextFormatString { get; set; } = "";
 }
-
