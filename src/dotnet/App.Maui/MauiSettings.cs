@@ -5,11 +5,7 @@ namespace ActualChat.App.Maui;
 
 public static class MauiSettings
 {
-#if IOS
-    public static readonly string LocalHost;
-#else
     public static readonly string LocalHost = "0.0.0.1";
-#endif
 #if IS_DEV_MAUI
     public const bool IsDevApp = true;
 #else
@@ -37,11 +33,6 @@ public static class MauiSettings
         AppKind = AppKind.MacOS;
 #elif IOS
         AppKind = AppKind.Ios;
-        if (OperatingSystem.IsIOSVersionAtLeast(major: 18, minor: int.MinValue, build: int.MinValue) ||
-            OperatingSystem.IsMacCatalystVersionAtLeast(major: 18, minor: int.MinValue, build: int.MinValue))
-            LocalHost = "localhost";
-        else
-            LocalHost = "0.0.0.0";
 #else
         AppKind = AppKind.Unknown;
 #endif
