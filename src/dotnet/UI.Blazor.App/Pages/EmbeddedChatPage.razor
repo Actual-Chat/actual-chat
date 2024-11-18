@@ -68,16 +68,13 @@
         // computed.Invalidated += c => {
         //     Log.LogDebug("Invalidated: {Computed}", c.DebugDump());
         // };
-        var chatSid = ChatSid;
 
         await ChatUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
         var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
-        var pChatId = new ChatId(chatSid, ParseOrNone.Option);
-        var isInaccessiblePlace = !pChatId.PlaceChatId.PlaceId.IsNone;
-        var enableIncompleteUI = await ChatUI.Hub.Features().EnableIncompleteUI(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Features.EnableIncompleteUI(cancellationToken).ConfigureAwait(false);
         try {
             var chat = SpecialChat.NoChatSelected;
             if (!chatId.IsNone) {
@@ -87,7 +84,7 @@
             if (chat is not { IsTemplate: true }) {
                 var footerModel = await GetFooterModel(chat, account, cancellationToken).ConfigureAwait(false);
                 var chatContext = new ChatContext(Hub, chat, account);
-                return new(chatContext, footerModel, isInaccessiblePlace, enableIncompleteUI);
+                return new(chatContext, footerModel, false, enableIncompleteUI);
             }
 
             // Create new chat based on a template and redirect to the new clone
@@ -102,22 +99,16 @@
 
                 _ = InvokeAsync(async () => {
                     // Set new ChatSid
-                    ChatSid = newChat.Id;
-                    await SelectChat(chatSid);
+                    await SelectChat(newChat.Id);
                 });
 
-                // Subscribe to chat changes
-                chat = await Chats.Get(Session, newChat.Id, cancellationToken).ConfigureAwait(false);
-                chat.Require();
-                var footerModel = await GetFooterModel(chat, account, cancellationToken).ConfigureAwait(false);
-                var chatContext = new ChatContext(Hub, chat, account);
-                return new(chatContext, footerModel, isInaccessiblePlace, enableIncompleteUI);
+                return Model.Loading(Hub);
             }
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
             this.NotifyStateHasChanged();
-            return Model.Unavailable(Hub, account, isInaccessiblePlace, enableIncompleteUI);
+            return Model.Unavailable(Hub, account, false, enableIncompleteUI);
         }
     }
 }

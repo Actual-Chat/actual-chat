@@ -80,7 +80,7 @@
     protected ChatView ChatViewRef = null!;
 
     [Inject] protected ChatUIHub Hub { get; init; } = null!;
-    private Features Features => Hub.Features();
+    protected Features Features => Hub.Features();
     protected Session Session => Hub.Session();
     protected HostInfo HostInfo => Hub.HostInfo();
     protected IChats Chats => Hub.Chats;
