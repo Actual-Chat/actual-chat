@@ -22,6 +22,7 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string Description { get; set; } = "";
     public string MediaId { get; set; } = "";
     public string BackgroundMediaId { get; set; } = "";
+    public string UserLinkId { get; set; } = "";
 
     // Permissions & Rules
     public bool IsPublic { get; set; }
@@ -38,7 +39,8 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
             CreatedAt = CreatedAt,
             IsPublic = IsPublic,
             MediaId = new MediaId(MediaId),
-            BackgroundMediaId = new MediaId(BackgroundMediaId)
+            BackgroundMediaId = new MediaId(BackgroundMediaId),
+            UserLinkId = new UserLinkId(UserLinkId),
         };
 
     public void UpdateFrom(Place model)
@@ -55,5 +57,6 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsPublic = model.IsPublic;
         MediaId = model.MediaId;
         BackgroundMediaId = model.BackgroundMediaId;
+        UserLinkId = model.UserLinkId.Value;
     }
 }

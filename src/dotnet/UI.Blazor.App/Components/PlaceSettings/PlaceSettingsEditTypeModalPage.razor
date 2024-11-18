@@ -19,10 +19,11 @@
     var canEditProperties = m.Place.Rules.CanEditProperties();
 }
 
-<Form Class="h-full" @ref="@_formRef" Model="@_form">
+<Form Class="h-full" @ref="@_formRef" EditContext="@_editContext">
     @{
         _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
     }
+    <DataAnnotationsValidator />
     <FormBlock Class="with-input-radio first">
         <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
             <TileItem Click="@(() => OnPublicChatClick(true))">
@@ -57,23 +58,40 @@
     </FormBlock>
 
     @if (_form.IsPublic) {
-        @if (m.Link is { } publicUrl) {
-            _form.PublicUrl = publicUrl.ShortLocalUrl;
-            <FormBlock Class="with-input-radio first last">
-                <TileItem Class="field-chat-public-url unhovered">
-                    <Icon>
-                        <i class="icon-link-2"></i>
-                    </Icon>
-                    <Content>
-                        <FormSection For="() => _form.PublicUrl" InputId="@_form.PublicUrlFormId"
-                                     Label="Public link" IsLabelInsideInput="true" HideValidationMessage="true">
-                            <TextBox @bind-Value="@_form.PublicUrl" Id="@_form.PublicUrlFormId" readonly/>
-                        </FormSection>
-                        <CopyToClipboard ButtonClass="btn-transparent" Text="@publicUrl.AbsoluteUrl"/>
-                    </Content>
-                </TileItem>
-            </FormBlock>
-        }
+        <FormBlock Class="with-input-radio first last">
+            <TileItem Class="field-chat-user-link-id unhovered">
+                <Icon>
+                    <i class="icon-link-2"></i>
+                </Icon>
+                <Content>
+                    <FormSection For="() => _form.ActualUserLinkId"
+                                 InputId="@_form.UserLinkIdFormId"
+                                 Label="User link"
+                                 IsLabelInsideInput="true">
+                        <ValidationMessage>
+                            <UserLinkValidationMessage
+                                For="@(() => _form.ActualUserLinkId)"
+                                CurrentUserLinkId="@_form.CurrentUserLinkId"
+                                GetUserLinkIdFunc="@(() => _form.ActualUserLinkId)" />
+                        </ValidationMessage>
+                        <ChildContent>
+                            <TextBox
+                                Id="@_form.UserLinkIdFormId"
+                                Prefix="chat/@@"
+                                @bind-Value="@_form.UserLinkId"
+                                InputRefCreated="@_setUserLinkCopySource"/>
+                        </ChildContent>
+                    </FormSection>
+                    @if (!_userLinkTextBoxRef.Id.IsNullOrEmpty()) {
+                        <CopyToClipboard
+                            ButtonClass="btn-transparent"
+                            Text=""
+                            CopyTextSourceRef="@_userLinkTextBoxRef"
+                            CopyTextFormatString="@_userLinkPrefix" />
+                    }
+                </Content>
+            </TileItem>
+        </FormBlock>
     } else if (m.Place.Rules.CanInvite()) {
         <FormBlock Title="Manage links" Class="first last">
             @if (m.Invites.Count > 0) {
@@ -96,8 +114,12 @@
     private const int MaxInviteCount = 5;
     private Form?_formRef;
     private FormModel? _form;
+    private EditContext? _editContext;
     private Symbol _newInviteId = Symbol.Empty;
     private DialogButtonInfo _submitButtonInfo = null!;
+    private ElementReference _userLinkTextBoxRef;
+    private string _userLinkPrefix = "";
+    private Action<ElementReference> _setUserLinkCopySource = null!;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
@@ -119,15 +141,31 @@
         Context.Title = "Edit place settings";
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
         Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
+        _setUserLinkCopySource = c => {
+            _userLinkTextBoxRef = c;
+            StateHasChanged();
+        };
+        const string fakeChatId = "testchat";
+        _userLinkPrefix = UrlMapper.ToAbsolute(Links.Chat(new UserLinkId(fakeChatId)));
+        _userLinkPrefix = string.Concat(_userLinkPrefix.AsSpan(0, _userLinkPrefix.Length - fakeChatId.Length), "{0}");
     }
 
     protected override async Task OnInitializedAsync() {
         var place = await Places.Get(Session, PlaceId, default).Require();
         _form = new FormModel(ComponentIdGenerator) {
             IsPublic = place.IsPublic,
+            UserLinkId = place.UserLinkId.Value,
+            CurrentUserLinkId = place.UserLinkId.Value,
+        };
+        _editContext = new EditContext(_form);
+        _editContext.OnFieldChanged += (_, e) => {
+            if (OrdinalEquals(e.FieldIdentifier.FieldName, nameof(_form.UserLinkId))
+                || OrdinalEquals(e.FieldIdentifier.FieldName, nameof(_form.IsPublic)))
+            {
+                _editContext.NotifyFieldChanged(_editContext.Field(nameof(_form.ActualUserLinkId)));
+            }
         };
         Context.Class = "edit-chat-type";
-        await base.OnInitializedAsync();
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
@@ -150,14 +188,9 @@
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
             .ToList();
-        var welcomeChatId = await Places.GetWelcomeChatId(Session, placeId, cancellationToken).ConfigureAwait(false);
-        var link = !welcomeChatId.IsNone
-            ? Links.Chat(welcomeChatId).ToDisplayUrl(UrlMapper)
-            : (DisplayUrl?)null;
         var isPublic = place.IsPublic;
         return new() {
             Place = place,
-            Link = link,
             Invites = activeInvites,
             IsPublic = isPublic,
         };
@@ -170,23 +203,26 @@
     }
 
     private async Task OnSubmit() {
-        if (_formRef == null)
+        if (_formRef is not { IsValid: true })
             return;
-        if (!_formRef.IsValid)
-            return;
+
         await Save();
-        Context.Close();
     }
 
     private async Task Save() {
         var place = await Places.Get(Session, PlaceId, default).Require();
         var newPlace = place with {
             IsPublic = _form!.IsPublic,
+            UserLinkId = _form!.IsPublic ? UserLinkId.ParseOrNone(_form.UserLinkId) : UserLinkId.None,
         };
         var command = new Places_Change(Session, place.Id, place.Version, new() {
             Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
         });
-        await UICommander.Run(command);
+        var uiActionResult = await UICommander.Run(command);
+        if (uiActionResult.HasError)
+            return;
+
+        Context.Close();
     }
 
     private void OnPublicChatClick(bool isPublic) {
@@ -199,18 +235,22 @@
     // Nested types
 
     public sealed class FormModel {
-        public string PublicUrl { get; set; } = "";
+        public string UserLinkId { get; set; } = "";
         public bool IsPublic { get; set; }
 
+        public string CurrentUserLinkId { get; set; } = "";
+        [UserLinkId]
+        public string ActualUserLinkId => IsPublic ? UserLinkId : ActualChat.UserLinkId.None.Value;
+
         public string FormId { get; }
-        public string PublicUrlFormId { get; }
+        public string UserLinkIdFormId { get; }
         public string IsPublicFormId { get; }
         public string IsPublicTrueFormId { get; }
         public string IsPublicFalseFormId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
-            PublicUrlFormId = $"{FormId}-public-url";
+            UserLinkIdFormId = $"{FormId}-user-link-id";
             IsPublicFormId = $"{FormId}-is-public";
             IsPublicTrueFormId = IsPublicFormId + "-true";
             IsPublicFalseFormId = IsPublicFormId + "-false";
@@ -221,7 +261,6 @@
         public static readonly ComputedModel Loading = new();
 
         public Place? Place { get; init; }
-        public DisplayUrl? Link { get; init; }
         public List<Invite> Invites { get; init; } = [];
         public bool IsPublic { get; init; }
     }

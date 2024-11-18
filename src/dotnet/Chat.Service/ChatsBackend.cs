@@ -860,21 +860,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (!userLinkId.IsNone && chat1.Id.Kind != ChatKind.Group)
                 throw StandardError.NotSupported("User links are supported only for groups so far.");
 
-            if (oldUserLinkId == userLinkId)
-                return;
-
-            if (!oldUserLinkId.IsNone) {
-                var removeCommand = new UserLinksBackend_Change(oldUserLinkId, null, Change.Remove<UserLink>());
-                await Commander.Call(removeCommand, false, cancellationToken).ConfigureAwait(false);
-            }
-
-            if (!userLinkId.IsNone) {
-                var createCommand = new UserLinksBackend_Change(userLinkId, null, Change.Create(new UserLink(userLinkId) {
-                    Kind = UserLinkKind.Chat,
-                    TargetId = chat1.Id,
-                }));
-                await Commander.Call(createCommand, false, cancellationToken).ConfigureAwait(false);
-            }
+            await UserLinksBackendExt.UpdateUserLink(Commander, oldUserLinkId, userLinkId, UserLinkKind.Chat, chat1.Id, cancellationToken).ConfigureAwait(false);
         }
     }
 
