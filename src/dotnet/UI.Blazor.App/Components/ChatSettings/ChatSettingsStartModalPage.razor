@@ -25,9 +25,8 @@
     @{
         _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
     }
+    <DataAnnotationsValidator/>
     <FormBlock Class="chat-settings-header">
-        <DataAnnotationsValidator/>
-
         <div class="c-top">
             <ChatIcon
                 Chat="@m.Chat"
@@ -67,8 +66,6 @@
     </FormBlock>
 
     <FormBlock>
-        <DataAnnotationsValidator/>
-
         <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true" Label="Chat title">
             <TextBox
                 @bind-Value="@_form.Title"
