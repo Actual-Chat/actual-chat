@@ -83,7 +83,7 @@ public class MauiThemeHandler
 
     protected virtual bool Apply(string topBarColor, string bottomBarColor, Theme? theme)
     {
-        var mainPage = App.Current.MainPage;
+        var mainPage = App.Current.Windows.FirstOrDefault()?.Page;
         if (mainPage == null)
             return false;
 

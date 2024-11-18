@@ -102,10 +102,10 @@ jobs:
         volumes:
           - opensearch-data:/usr/share/opensearch/data
     steps:
-      - name: Install postgresql-client
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          sudo apt-get install -y postgresql-client libatomic1
 
       - name: "Set some postgres settings"
         run: |

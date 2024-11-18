@@ -173,6 +173,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // TODO: setup security headers: better CSP, Referrer-Policy / X-Content-Type-Options / X-Frame-Options etc
         var origins = new List<string> {
             "http://0.0.0.0",
+            "http://0.0.0.1",
             "https://0.0.0.0",
             "https://0.0.0.1",
             "app://0.0.0.0",

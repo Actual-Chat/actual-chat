@@ -5,38 +5,35 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Notification.Db;
 
-[Table("ManualNotifications")]
+[Table("ExplicitNotifications")]
 [Index(nameof(UserId), nameof(Version))]
 [Index(nameof(UserId), nameof(Id))]
 [Index(nameof(UserId), nameof(Kind), nameof(SimilarityKey))]
-public class DbManualNotification : IHasId<string>, IHasVersion<long>, IRequirementTarget
+public class DbExplicitNotification : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private DateTime _createdAt;
-    private DateTime _updatedAt;
-
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
     public string UserId { get; set; } = null!;
-    public ManualNotificationKind Kind { get; set; }
+    public ExplicitNotificationKind Kind { get; set; }
     public string SimilarityKey { get; set; } = null!;
 
     public DateTime CreatedAt {
-        get => _createdAt.DefaultKind(DateTimeKind.Utc);
-        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public DateTime UpdatedAt {
-        get => _updatedAt.DefaultKind(DateTimeKind.Utc);
-        set => _updatedAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    public ManualNotification ToModel()
-        => new (new ManualNotificationId(Id), Version) {
+    public ExplicitNotification ToModel()
+        => new (new ExplicitNotificationId(Id), Version) {
             CreatedAt = CreatedAt,
             UpdatedAt = UpdatedAt,
         };
 
-    public void UpdateFrom(ManualNotification model)
+    public void UpdateFrom(ExplicitNotification model)
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id);
@@ -51,5 +48,3 @@ public class DbManualNotification : IHasId<string>, IHasVersion<long>, IRequirem
         UpdatedAt = model.UpdatedAt;
     }
 }
-
-

@@ -4,6 +4,7 @@ using ActualChat.Db;
 using ActualChat.Notification.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Notification.Migrations
 {
     [DbContext(typeof(NotificationDbContext))]
-    partial class NotificationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241115054733_UpgradeToExplicitNotifications1")]
+    partial class UpgradeToExplicitNotifications1
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -104,18 +107,18 @@ namespace ActualChat.Notification.Migrations
                         .HasColumnName("version");
 
                     b.HasKey("Id")
-                        .HasName("pk_explicit_notifications");
+                        .HasName("pk_manual_notifications");
 
                     b.HasIndex("UserId", "Id")
-                        .HasDatabaseName("ix_explicit_notifications_user_id_id");
+                        .HasDatabaseName("ix_manual_notifications_user_id_id");
 
                     b.HasIndex("UserId", "Version")
-                        .HasDatabaseName("ix_explicit_notifications_user_id_version");
+                        .HasDatabaseName("ix_manual_notifications_user_id_version");
 
                     b.HasIndex("UserId", "Kind", "SimilarityKey")
-                        .HasDatabaseName("ix_explicit_notifications_user_id_kind_similarity_key");
+                        .HasDatabaseName("ix_manual_notifications_user_id_kind_similarity_key");
 
-                    b.ToTable("explicit_notifications");
+                    b.ToTable("manual_notifications");
                 });
 
             modelBuilder.Entity("ActualChat.Notification.Db.DbNotification", b =>

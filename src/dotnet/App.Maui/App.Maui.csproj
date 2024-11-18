@@ -6,8 +6,8 @@
   <!-- <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk.Razor" /> -->
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net8.0-windows10.0.22000.0</TargetFrameworks>
+    <TargetFrameworks>net9.0-android;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.22621.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <AssemblyName>$(BaseName)</AssemblyName>
     <RootNamespace>$(BaseName).$(MSBuildProjectName)</RootNamespace>
@@ -15,11 +15,11 @@
 
     <!-- MAUI properties -->
     <UseMaui>true</UseMaui>
-    <MauiVersion>8.0.92</MauiVersion>
+    <MauiVersion>9.0.10</MauiVersion>
     <SingleProject>true</SingleProject>
     <IsPublishable>true</IsPublishable>
-    <UseMauiNuGets>false</UseMauiNuGets>
     <SkipValidateMauiImplicitPackageReferences>true</SkipValidateMauiImplicitPackageReferences>
+    <EnableDefaultXamlItems>false</EnableDefaultXamlItems>
 
     <!-- Other build properties -->
     <EnableDefaultCssItems>false</EnableDefaultCssItems>
@@ -99,6 +99,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
@@ -107,7 +108,6 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="RestEase" />
     <PackageReference Include="SauceControl.Blake2Fast" />
-    <PackageReference Include="Sentry.OpenTelemetry" />
     <PackageReference Include="System.Linq.Async" />
     <PackageReference Include="System.Reactive" />
     <PackageReference Include="Ulid" />
@@ -145,6 +145,9 @@
     <PackageReference Include="Xamarin.AndroidX.Collection" />
     <PackageReference Include="Xamarin.AndroidX.Collection.Ktx" />
     <PackageReference Include="Xamarin.AndroidX.Fragment.Ktx" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.Process" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.Runtime" />
     <PackageReference Include="Plugin.Firebase.Analytics" />
     <PackageReference Include="Xamarin.Firebase.Analytics" />
     <PackageReference Include="Xamarin.Firebase.Crashlytics" />
@@ -169,25 +172,18 @@
     <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
 
-  <!--
-  <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
-  -->
-  <!--
-  <PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
-    <GenerateAppxPackageOnBuild>true</GenerateAppxPackageOnBuild>
-    <AppxPackageSigningEnabled>true</AppxPackageSigningEnabled>
-    <PackageCertificateThumbprint>0BFF799D82CC03E61A65584D31D800924149453A</PackageCertificateThumbprint>
-  </PropertyGroup>
-  -->
-
   <!-- Common Windows, iOS and Android build properties -->
   <PropertyGroup>
     <UseInterpreter Condition="'$(Configuration)' == 'Debug'">true</UseInterpreter>
     <UseInterpreter Condition="'$(Configuration)' == 'Release'">false</UseInterpreter>
   </PropertyGroup>
+
   <!-- Trimming -->
   <ItemGroup>
-    <TrimmerRootAssembly Include="ActualChat" RootMode="All" /> <!-- EntryPoint seems to be a weaker option here -->
+    <!--
+    <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" />
+    -->
+    <TrimmerRootAssembly Include="ActualChat" RootMode="EntryPoint" />
     <TrimmerRootAssembly Include="ActualChat.UI.Blazor.AppPack" RootMode="All" />
   </ItemGroup>
 
@@ -244,8 +240,8 @@
     <AndroidDexTool>d8</AndroidDexTool>
     <AndroidLinkTool>r8</AndroidLinkTool>
     <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode Condition="!$(UseAppPack)">partial</TrimMode>
-    <TrimMode Condition="$(UseAppPack)">partial</TrimMode> <!-- Will be "full" w/ .NET 9 -->
+    <TrimMode>partial</TrimMode>
+    <!-- <TrimMode Condition="$(UseAppPack)">full</TrimMode> -->
     <RunAOTCompilation>true</RunAOTCompilation>
     <!-- Disabled for now, see https://github.com/dotnet/runtime/issues/101135 -->
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
@@ -362,16 +358,16 @@
   </PropertyGroup>
 
   <!-- iOS: Debug configuration -->
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net8.0-ios|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net9.0-ios|AnyCPU'">
     <CreatePackage>false</CreatePackage>
-    <CodesignProvision>VS: chat.actual.dev.app Development</CodesignProvision>
+    <CodesignProvision>chat.actual.dev.app</CodesignProvision>
     <CodesignKey>iPhone Developer</CodesignKey>
-    <ProvisioningType>automatic</ProvisioningType>
+    <ProvisioningType>manual</ProvisioningType>
     <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
   <!-- iOS: Release configuration -->
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net8.0-ios|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-ios|AnyCPU'">
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">App Store Dev</CodesignProvision>
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store 2</CodesignProvision>
@@ -381,6 +377,29 @@
     <UseInterpreter>true</UseInterpreter>
     <!--<MTouchInterpreter>-ActualChat,ActualChat.Chat.Contracts,ActualChat.Users.Contracts,ActualChat.Contacts.Contracts,ActualLab.Interception</MTouchInterpreter>-->
     <CreatePackage>false</CreatePackage>
+  </PropertyGroup>
+
+  <!-- Windows build properties -->
+
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
+    <WindowsSdkPackageVersion>10.0.22621.38</WindowsSdkPackageVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishReadyToRun>true</PublishReadyToRun>
+<!--    <PublishSingleFile>true</PublishSingleFile>-->
+<!--    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>-->
+    <SelfContained>true</SelfContained>
+    <PublishAot>false</PublishAot>
+    <PublishTrimmed>false</PublishTrimmed>
+    <TrimMode Condition="!$(UseAppPack)">partial</TrimMode>
+    <TrimMode Condition="$(UseAppPack)">full</TrimMode>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <IlcGenerateStackTraceData>true</IlcGenerateStackTraceData>
+    <IlcDisableReflection>false</IlcDisableReflection>
+    <NativeDebugSymbols>false</NativeDebugSymbols>
+    <StripSymbols>false</StripSymbols>
   </PropertyGroup>
 
   <!-- Resources -->
@@ -426,7 +445,7 @@
   </ItemGroup>
 
   <!-- NOT iOS and NOT Mac Catalyst -->
-  <ItemGroup Condition="$(TargetFramework.StartsWith('net8.0-ios')) != true AND $(TargetFramework.StartsWith('net8.0-maccatalyst')) != true">
+  <ItemGroup Condition="$(TargetFramework.StartsWith('net9.0-ios')) != true AND $(TargetFramework.StartsWith('net9.0-maccatalyst')) != true">
     <Compile Remove="**\**\*.MaciOS.cs" />
     <None Include="**\**\*.MaciOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\MaciOS\**\*.cs" />

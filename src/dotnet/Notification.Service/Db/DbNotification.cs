@@ -13,8 +13,6 @@ namespace ActualChat.Notification.Db;
 [Index(nameof(UserId), nameof(Kind), nameof(SimilarityKey))]
 public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private DateTime _createdAt;
-    private DateTime _sentAt;
     private DateTime? _handledAt;
 
     [Key] public string Id { get; set; } = null!;
@@ -31,13 +29,13 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
     [NotMapped] public bool IsActive => _handledAt == null;
 
     public DateTime CreatedAt {
-        get => _createdAt.DefaultKind(DateTimeKind.Utc);
-        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public DateTime SentAt {
-        get => _sentAt.DefaultKind(DateTimeKind.Utc);
-        set => _sentAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public DateTime? HandledAt {

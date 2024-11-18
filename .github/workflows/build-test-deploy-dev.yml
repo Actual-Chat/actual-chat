@@ -176,6 +176,10 @@ jobs:
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
     steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libatomic1
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -282,10 +286,10 @@ jobs:
         volumes:
           - opensearch-data:/usr/share/opensearch/data
     steps:
-      - name: Install postgresql-client
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          sudo apt-get install -y postgresql-client libatomic1
 
       - name: "Set some postgres settings"
         run: |
@@ -557,7 +561,7 @@ jobs:
     needs:
       - calc-pkg-params
     if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' }}
-    runs-on: macos-latest
+    runs-on: macos-15
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
@@ -617,7 +621,7 @@ jobs:
         uses: ./.github/actions/setup-dotnet
 
       - name: Install workloads
-        run: dotnet workload install maui ios maui-ios --version 8.0.402
+        run: dotnet workload install maui ios maui-ios
 
       - name: Replace git+ssh://git@ to https://
         run: sed -i -E 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
@@ -656,7 +660,7 @@ jobs:
       - name: Build app package
         run: |-
           ./run-build.cmd publish-ios --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}"
-          pushd artifacts/publish/App.Maui/release_net8.0-ios_ios-arm64
+          pushd artifacts/publish/App.Maui/release_net9.0-ios_ios-arm64
           unzip ActualChat.ipa
           rm -r Payload/ActualChat.app/_CodeSignature
           rm -r Payload/ActualChat.app/Frameworks/*/_CodeSignature
@@ -669,7 +673,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.ipa
-          path: artifacts/publish/App.Maui/release_net8.0-ios_ios-arm64/${{env.PACKAGE_FILE_NAME}}
+          path: artifacts/publish/App.Maui/release_net9.0-ios_ios-arm64/${{env.PACKAGE_FILE_NAME}}
           if-no-files-found: error
           compression-level: 0
           retention-days: 10
@@ -678,7 +682,7 @@ jobs:
     name: Deploy ios app package to apple app store for ${{ github.ref_name }}
     # release branch can build for both dev and prod envs while other branches can build only for dev env
     if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' }}
-    runs-on: macos-latest
+    runs-on: macos-15
     needs:
       - build-ios-pkg
       - unit-tests
@@ -746,6 +750,9 @@ jobs:
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
 
+      - name: Install workloads
+        run: dotnet workload install maui android maui-android
+
       - name: Replace git+ssh://git@ to https://
         run: (Get-Content src/nodejs/package-lock.json) -replace 'git\+ssh:\/\/git@', 'https://' | Set-Content src/nodejs/package-lock.json
 
@@ -777,7 +784,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.aab
-          path: artifacts/publish/App.Maui/release_net8.0-android/${{env.AAB_FILE_NAME}}
+          path: artifacts/publish/App.Maui/release_net9.0-android/${{env.AAB_FILE_NAME}}
           if-no-files-found: error
           compression-level: 0
           retention-days: 10
@@ -786,7 +793,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.apk
-          path: artifacts/publish/App.Maui/release_net8.0-android/${{env.APK_FILE_NAME}}
+          path: artifacts/publish/App.Maui/release_net9.0-android/${{env.APK_FILE_NAME}}
           if-no-files-found: error
           compression-level: 0
           retention-days: 10
@@ -905,21 +912,24 @@ jobs:
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
 
+      - name: Install workloads
+        run: dotnet workload install maui maui-tizen
+
       - name: Build app package
         id: build-app-pkg
         run: |-
           ./run-build.cmd publish-win --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}"
 
       - run: |-
-          ls artifacts\bin\App.Maui\release_net8.0-windows10.0.22000.0\AppPackages\
+          ls artifacts\bin\App.Maui\release_net9.0-windows10.0.22621.0_win-x64\AppPackages\
           echo v=${{steps.build-app-pkg.outputs.AppVersion}}
-          ls artifacts\bin\App.Maui\release_net8.0-windows10.0.22000.0\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\
+          ls artifacts\bin\App.Maui\release_net9.0-windows10.0.22621.0_win-x64\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\
 
       - name: Upload package to artifacts
         uses: actions/upload-artifact@v4
         with:
           name: chat.actual.app.${{steps.build-app-pkg.outputs.AppVersion}}.msix
-          path: artifacts\bin\App.Maui\release_net8.0-windows10.0.22000.0\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_x64.msix
+          path: artifacts\bin\App.Maui\release_net9.0-windows10.0.22621.0_win-x64\AppPackages\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_Test\App.Maui_${{steps.build-app-pkg.outputs.AppVersion}}_x64.msix
           if-no-files-found: error
           compression-level: 0
           retention-days: 2

@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:8.0.5-bookworm-slim as runtime
+FROM mcr.microsoft.com/dotnet/aspnet:9.0.0-bookworm-slim as runtime
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
@@ -12,7 +12,7 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
 RUN apt update && apt install -y ffmpeg && apt clean
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0.300-bookworm-slim as dotnet-restore
+FROM mcr.microsoft.com/dotnet/sdk:9.0.100-bookworm-slim as dotnet-restore
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \

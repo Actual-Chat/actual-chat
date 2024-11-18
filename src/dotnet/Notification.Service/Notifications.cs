@@ -56,8 +56,8 @@ public class Notifications(IServiceProvider services) : INotifications
         if (chatEntry.AuthorId != author.Id)
             return false;
 
-        var notificationId = GetManualNotificationIdForNotifyMentionedMembers(author.UserId, textEntryId);
-        var notification = await Backend.Get(notificationId, cancellationToken).ConfigureAwait(false);
+        var notificationId = GetExplicitNotificationIdForNotifyMentionedMembers(author.UserId, textEntryId);
+        var notification = await Backend.GetExplicit(notificationId, cancellationToken).ConfigureAwait(false);
         return notification is not null;
     }
 
@@ -174,10 +174,10 @@ public class Notifications(IServiceProvider services) : INotifications
         var notifyCommand = new NotificationsBackend_NotifyMentionedMembers(ownUserId, textEntryId, mentionedUserIds);
         await Commander.Run(notifyCommand, cancellationToken).ConfigureAwait(false);
 
-        var notificationId = GetManualNotificationIdForNotifyMentionedMembers(ownUserId, textEntryId);
-        var notification = new ManualNotification(notificationId);
-        var upsertManualNotificationCommand = new NotificationsBackend_UpsertManualNotification(notification);
-        await Commander.Run(upsertManualNotificationCommand, cancellationToken).ConfigureAwait(false);
+        var notificationId = GetExplicitNotificationIdForNotifyMentionedMembers(ownUserId, textEntryId);
+        var notification = new ExplicitNotification(notificationId);
+        var upsertNotificationCommand = new NotificationsBackend_UpsertExplicitNotification(notification);
+        await Commander.Run(upsertNotificationCommand, cancellationToken).ConfigureAwait(false);
         return;
 
         async Task<HashSet<MentionId>> GetMentionIds()
@@ -207,6 +207,6 @@ public class Notifications(IServiceProvider services) : INotifications
     private static Exception Unauthorized()
         => StandardError.Unauthorized("You can access only your own notifications.");
 
-    private static ManualNotificationId GetManualNotificationIdForNotifyMentionedMembers(UserId accountId, TextEntryId textEntryId)
-        => new (accountId, ManualNotificationKind.NotifyMentionedMembers, textEntryId.ToString());
+    private static ExplicitNotificationId GetExplicitNotificationIdForNotifyMentionedMembers(UserId accountId, TextEntryId textEntryId)
+        => new (accountId, ExplicitNotificationKind.NotifyMentionedMembers, textEntryId.ToString());
 }

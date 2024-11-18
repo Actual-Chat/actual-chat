@@ -8,7 +8,7 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Notification?> Get(NotificationId notificationId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ManualNotification?> Get(ManualNotificationId notificationId, CancellationToken cancellationToken);
+    Task<ExplicitNotification?> GetExplicit(ExplicitNotificationId notificationId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<IReadOnlyList<Device>> ListDevices(UserId userId, CancellationToken cancellationToken);
     [ComputeMethod]
@@ -24,8 +24,8 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task<bool> OnUpsert(NotificationsBackend_Upsert command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<bool> OnUpsertManualNotification(
-        NotificationsBackend_UpsertManualNotification command,
+    Task<bool> OnUpsertExplicitNotification(
+        NotificationsBackend_UpsertExplicitNotification command,
         CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRegisterDevice(NotificationsBackend_RegisterDevice command, CancellationToken cancellationToken);
@@ -71,8 +71,8 @@ public sealed partial record NotificationsBackend_Upsert(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record NotificationsBackend_UpsertManualNotification(
-    [property: DataMember, MemoryPackOrder(0)] ManualNotification Notification
+public sealed partial record NotificationsBackend_UpsertExplicitNotification(
+    [property: DataMember, MemoryPackOrder(0)] ExplicitNotification Notification
 ) : ICommand<bool>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore]

@@ -112,7 +112,7 @@ internal static class Program
             using var dotnetWatch = ProcessWatch.Start(
                 "dotnet",
                 dotnet,
-                "watch -v run",
+                "watch run",
                 "src/dotnet/App.Server",
                 new () {
 
@@ -316,8 +316,8 @@ internal static class Program
                     "-noLogo",
                     "-maxCpuCount",
                     "-nodeReuse:false",
-                    "-f net8.0-windows10.0.22000.0",
-                    @"/p:TargetFrameworks=\""net8.0-windows10.0.22000.0;net8.0\""", // otherwise needs maui-ios etc
+                    "-f net9.0-windows10.0.22621.0",
+                    @"/p:TargetFrameworks=\""net9.0-windows10.0.22621.0;net9.0\""", // otherwise needs maui-ios etc
                     "-p:RuntimeIdentifierOverride=win10-x64",
                     $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}")
@@ -332,8 +332,8 @@ internal static class Program
                     "-noLogo",
                     "-maxCpuCount",
                     "-nodeReuse:false",
-                    "-f net8.0-windows10.0.22000.0",
-                    @"/p:TargetFrameworks=\""net8.0-windows10.0.22000.0;net8.0\""", // otherwise needs maui-ios etc
+                    "-f net9.0-windows10.0.22621.0",
+                    @"/p:TargetFrameworks=\""net9.0-windows10.0.22621.0;net9.0\""", // otherwise needs maui-ios etc
                     "-p:RuntimeIdentifierOverride=win10-x64",
                     $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}")
@@ -357,8 +357,8 @@ internal static class Program
                     "-noLogo",
                     "-maxCpuCount",
                     "-nodeReuse:false",
-                    "-f net8.0-android",
-                    @"/p:TargetFrameworks=\""net8.0-android;net8.0\""", // otherwise needs maui-ios etc
+                    "-f net9.0-android",
+                    @"/p:TargetFrameworks=\""net9.0-android;net9.0\""", // otherwise needs maui-ios etc
                     $"/p:AndroidSigningKeyPass={signingKeyPass} /p:AndroidSigningStorePass={signingStorePass}",
                     hasAndroidSdkDirectory ? $"/p:AndroidSdkDirectory={androidSdkDirectory}" : "",
                     $"-c {configuration}",
@@ -375,8 +375,8 @@ internal static class Program
                     "-noLogo",
                     "-maxCpuCount",
                     "-nodeReuse:false",
-                    "-f net8.0-android",
-                    @"/p:TargetFrameworks=\""net8.0-android;net8.0\""", // otherwise needs maui-ios etc
+                    "-f net9.0-android",
+                    @"/p:TargetFrameworks=\""net9.0-android;net9.0\""", // otherwise needs maui-ios etc
                     $"/p:AndroidSigningKeyPass={signingKeyPass} /p:AndroidSigningStorePass={signingStorePass}",
                     $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}")
@@ -396,8 +396,8 @@ internal static class Program
                     "-noLogo",
                     "-maxCpuCount",
                     "-nodeReuse:false",
-                    "-f net8.0-ios",
-                    @"/p:TargetFrameworks=\""net8.0-ios;net8.0\""", // otherwise needs maui-android etc
+                    "-f net9.0-ios",
+                    @"/p:TargetFrameworks=\""net9.0-ios;net9.0\""", // otherwise needs maui-android etc
                     $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}")
                 .WithWorkingDirectory("src/dotnet/App.Maui")
@@ -412,8 +412,8 @@ internal static class Program
                     "-noLogo",
                     "-maxCpuCount",
                     "-nodeReuse:false",
-                    "-f net8.0-ios",
-                    @"/p:TargetFrameworks=\""net8.0-ios;net8.0\""", // otherwise needs maui-android etc
+                    "-f net9.0-ios",
+                    @"/p:TargetFrameworks=\""net9.0-ios;net9.0\""", // otherwise needs maui-android etc
                     "-p:RuntimeIdentifier=ios-arm64",
                     "-p:ArchiveOnBuild=true",
                     $"-c {configuration}",
@@ -516,7 +516,6 @@ internal static class Program
                     "--no-restore",
                     "--blame-hang",
                     $"--blame-hang-timeout {timeoutSec}s",
-                    "--logger \"console;verbosity=detailed\"",
                     "--logger \"trx;LogFileName=Results.trx\"",
                     Utils.GithubLogger(),
                     $"-c {configuration}")

@@ -9,9 +9,6 @@ namespace ActualChat.Notification.Db;
 [Index(nameof(UserId))]
 public class DbDevice : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private DateTime _createdAt;
-    private DateTime _accessedAt;
-
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
@@ -20,13 +17,13 @@ public class DbDevice : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public DeviceType Type { get; set; }
 
     public DateTime CreatedAt {
-        get => _createdAt.DefaultKind(DateTimeKind.Utc);
-        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public DateTime? AccessedAt {
-        get => _accessedAt.DefaultKind(DateTimeKind.Utc);
-        set => _accessedAt = value?.DefaultKind(DateTimeKind.Utc) ?? default;
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value?.DefaultKind(DateTimeKind.Utc) ?? default;
     }
 
     public Device ToModel()

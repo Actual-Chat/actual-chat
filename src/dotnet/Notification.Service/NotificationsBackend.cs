@@ -26,8 +26,8 @@ public class NotificationsBackend(IServiceProvider services)
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private IDbEntityResolver<string, DbNotification> DbNotificationResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbNotification>>();
-    private IDbEntityResolver<string, DbManualNotification> DbManualNotificationResolver { get; }
-        = services.GetRequiredService<IDbEntityResolver<string, DbManualNotification>>();
+    private IDbEntityResolver<string, DbExplicitNotification> DbExplicitNotificationResolver { get; }
+        = services.GetRequiredService<IDbEntityResolver<string, DbExplicitNotification>>();
 
     private IUserPresences UserPresences { get; } = services.GetRequiredService<IUserPresences>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
@@ -48,10 +48,10 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [ComputeMethod]
-    public virtual async Task<ManualNotification?> Get(ManualNotificationId notificationId, CancellationToken cancellationToken)
+    public virtual async Task<ExplicitNotification?> GetExplicit(ExplicitNotificationId notificationId, CancellationToken cancellationToken)
     {
-        var dbManualNotification = await DbManualNotificationResolver.Get(notificationId, cancellationToken).ConfigureAwait(false);
-        return dbManualNotification?.ToModel();
+        var dbNotification = await DbExplicitNotificationResolver.Get(notificationId, cancellationToken).ConfigureAwait(false);
+        return dbNotification?.ToModel();
     }
 
     // [ComputeMethod]
@@ -199,8 +199,8 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task<bool> OnUpsertManualNotification(
-        NotificationsBackend_UpsertManualNotification command,
+    public virtual async Task<bool> OnUpsertExplicitNotification(
+        NotificationsBackend_UpsertExplicitNotification command,
         CancellationToken cancellationToken)
     {
         var notification = command.Notification;
@@ -208,7 +208,7 @@ public class NotificationsBackend(IServiceProvider services)
 
         if (Invalidation.IsActive) {
             // Created or Updated
-            _ = Get(notification.Id, default);
+            _ = GetExplicit(notification.Id, default);
             return default;
         }
 
@@ -216,7 +216,7 @@ public class NotificationsBackend(IServiceProvider services)
             var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
             await using var __ = dbContext.ConfigureAwait(false);
 
-            var dbNotification = await dbContext.ManualNotifications.ForUpdate()
+            var dbNotification = await dbContext.ExplicitNotifications.ForUpdate()
                 .FirstOrDefaultAsync(e => e.Id == sid, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -228,9 +228,9 @@ public class NotificationsBackend(IServiceProvider services)
                     CreatedAt = now,
                     UpdatedAt = now,
                 };
-                dbNotification = new DbManualNotification();
+                dbNotification = new DbExplicitNotification();
                 dbNotification.UpdateFrom(notification);
-                dbContext.ManualNotifications.Add(dbNotification);
+                dbContext.ExplicitNotifications.Add(dbNotification);
             }
             else {
                 // Update
