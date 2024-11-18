@@ -1,5 +1,5 @@
-@page "/chat/{ChatSid}"
 @page "/chat"
+@page "/chat/{*Route}"
 @layout ListViewLayout
 @using ActualChat.Hosting
 @inherits ComputedStateComponent<ChatPage.Model>
@@ -74,7 +74,7 @@
     protected static TimeSpan LoadTimeoutToReloadDelay = TimeSpan.FromSeconds(2);
     private static bool _isVeryFirstLoad = true;
     private ILogger? _log;
-    private MutableState<ResolveUserLinkStep> _resolveUserLinkStep = null!;
+    private MutableState<HandlePageRouteState> _handlePageRouteState = null!;
 
     protected Model? Rendered;
     protected ChatView ChatViewRef = null!;
@@ -96,19 +96,23 @@
     protected UICommander UICommander => Hub.UICommander();
     protected ILogger Log => _log ??= Hub.LogFor(GetType());
 
-    [Parameter] public string? ChatSid { get; set; }
+    [Parameter] public string? Route { get; set; }
 
     protected override void OnInitialized() {
-        _resolveUserLinkStep = StateFactory.NewMutable(ResolveUserLinkStep.None);
+        _handlePageRouteState = StateFactory.NewMutable(HandlePageRouteState.ChatSid);
         ChatAudioUI.Enable();
     }
 
     protected override async Task OnParametersSetAsync() {
-        var isUserLink = await TryHandleUserLink(ChatSid);
-        if (isUserLink)
-            return;
-
-        _ = SelectChat(ChatSid);
+        _handlePageRouteState.Value = HandlePageRouteState.Resolving;
+        var result = await HandlePageRoute(Route, default).ConfigureAwait(false);
+        if (ReferenceEquals(result, PageRoute.UnknownUserLink))
+            _handlePageRouteState.Value = HandlePageRouteState.UnknownUserLink;
+        else if (!ReferenceEquals(result, PageRoute.Redirect)) {
+            ChatId? chatId = !ReferenceEquals(result, PageRoute.InvalidRoute) ? result.ChatId : null;
+            _ = SelectChat(chatId);
+            _handlePageRouteState.Value = HandlePageRouteState.ChatSid;
+        }
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -124,11 +128,11 @@
         // specifically when SelectedChatId changes (vs when ChatSid changes).
 
         var hostInfo = HostInfo;
-        var chatSid = ChatSid;
+        var isEmptyPageRoute = Route.IsNullOrEmpty();
 
-        var userLinkStep = await _resolveUserLinkStep.Use(cancellationToken).ConfigureAwait(false);
-        if (userLinkStep != ResolveUserLinkStep.None) {
-            if (userLinkStep == ResolveUserLinkStep.Unknown) {
+        var userLinkStep = await _handlePageRouteState.Use(cancellationToken).ConfigureAwait(false);
+        if (userLinkStep != HandlePageRouteState.ChatSid) {
+            if (userLinkStep == HandlePageRouteState.UnknownUserLink) {
                 var account2 = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
                 return Model.Unavailable(Hub, account2, false, false);
             }
@@ -149,7 +153,7 @@
             _isVeryFirstLoad = false;
             var mustDelayVeryFirstLoad =
                 hostInfo.HostKind.IsApp()
-                && chatSid.IsNullOrEmpty()
+                && isEmptyPageRoute
                 && BrowserInfo.ScreenSize.Value.IsNarrow();
             if (mustDelayVeryFirstLoad) {
                 // Postpone chat loading when it's invisible
@@ -266,50 +270,99 @@
             || State.HasError
             || State.Value != Rendered;
 
-    protected async ValueTask SelectChat(string? chatSid) {
-        var chatId = new ChatId(chatSid, ParseOrNone.Option);
-        if (ChatSid == null) {
+    protected async ValueTask SelectChat(ChatId? chatId1) {
+        ChatId chatId;
+        if (chatId1.HasValue)
+            chatId = chatId1.Value;
+        else {
             await ChatUI.WhenLoaded;
             chatId = ChatUI.SelectedChatId.Value;
-            // If Selected place is defined and chat id is not specified then apparently place has no chats
-            // and we want to display blank chat screen. Do not show Announcements chat.
+            // If Selected place is defined and chat id is not specified, then apparently place has no chats,
+            // and we want to display a blank chat screen. Do not show Announcements chat.
             if (chatId.IsNone && Hub.ChatUI.SelectedPlaceId.Value.IsNone)
                 chatId = Constants.Chat.AnnouncementsChatId;
         }
         ChatUI.SelectChatOnNavigation(chatId);
     }
 
-    private async Task<bool> TryHandleUserLink(string? sid) {
-        if (!TryGetUserLink(sid, out var sUserLink)) {
-            _resolveUserLinkStep.Value = ResolveUserLinkStep.None;
-            return false;
+    private async Task<PageRoute> HandlePageRoute(string? pageRoute, CancellationToken cancellationToken) {
+        if (pageRoute.IsNullOrEmpty())
+            return PageRoute.Empty;
+
+        if (!pageRoute.StartsWith("@")) {
+            if (ChatId.TryParse(pageRoute, out var chatId))
+                return new PageRoute(chatId);
+
+            return PageRoute.InvalidRoute;
         }
 
-        _resolveUserLinkStep.Value = ResolveUserLinkStep.Loading;
+        var parts = pageRoute.Substring(1).Split("/");
+        if (parts.Length < 1 || parts.Length > 2)
+            return PageRoute.InvalidRoute;
 
-        if (!UserLinkId.TryParse(sUserLink, out var userLinkId)) {
-            _resolveUserLinkStep.Value = ResolveUserLinkStep.Unknown;
-            return true;
+        ChatId targetChatId;
+        if (parts.Length == 1) {
+            // Chat user link
+            var sChatUserLink = parts[0];
+            if (!UserLinkId.TryParse(sChatUserLink, out var chatUserLinkId))
+                return PageRoute.UnknownUserLink;
+
+            var chatSid = await Hub.UserLinks.ResolveUserLink(UserLinkKind.Chat, chatUserLinkId, cancellationToken);
+            if (chatSid.IsNullOrEmpty())
+                return PageRoute.UnknownUserLink;
+
+            if (!ChatId.TryParse(chatSid, out var chatId))
+                return PageRoute.InvalidRoute;
+
+            targetChatId = chatId;
+        } else {
+            // If page route consists of 2 parts. The first one should always be a place user link id.
+            var sPlaceUserLink = parts[0];
+            if (!UserLinkId.TryParse(sPlaceUserLink, out var placeUserLinkId))
+                return PageRoute.UnknownUserLink;
+
+            var placeSid = await Hub.UserLinks.ResolveUserLink(UserLinkKind.Place, placeUserLinkId, cancellationToken);
+            if (placeSid.IsNullOrEmpty() || !PlaceId.TryParse(placeSid, out var placeId))
+                return PageRoute.UnknownUserLink;
+
+            var chatIdPart = parts[1];
+            if (chatIdPart.IsNullOrEmpty())
+                return PageRoute.InvalidRoute;
+
+            string groupChatSid;
+            if (!chatIdPart.StartsWith("@")) {
+                groupChatSid = chatIdPart;
+            } else {
+                var sChatUserLink = chatIdPart.Substring(1);
+                if (!UserLinkId.TryParse(sChatUserLink, out var chatUserLinkId))
+                    return PageRoute.UnknownUserLink;
+
+                groupChatSid = "";
+                var placeContacts = await Hub.Contacts.ListIds(Session, placeId, cancellationToken).ConfigureAwait(false);
+                foreach (var placeContact in placeContacts) {
+                    if (placeContact.ChatId.Kind == ChatKind.Place) {
+                        var placeChat = await Chats.Get(Session, placeContact.ChatId, cancellationToken).ConfigureAwait(false);
+                        if (placeChat is not null && Equals(placeChat.UserLinkId, chatUserLinkId)) {
+                            groupChatSid = placeContact.ChatId.Value;
+                            break;
+                        }
+                    }
+                }
+                if (groupChatSid.IsNullOrEmpty())
+                    return PageRoute.UnknownUserLink;
+            }
+
+            if (!ChatId.TryParse(groupChatSid, out var groupChatId) || groupChatId.Kind != ChatKind.Group)
+                return PageRoute.InvalidRoute;
+
+            if (!PlaceChatId.TryParse(PlaceChatId.Format(placeId, groupChatId.Value), out var placeChatId))
+                return PageRoute.InvalidRoute;
+
+            targetChatId = placeChatId;
         }
 
-        var chatSid = await Hub.UserLinks.ResolveUserLink(UserLinkKind.Chat, userLinkId, default);
-        if (chatSid.IsNullOrEmpty()) {
-            _resolveUserLinkStep.Value = ResolveUserLinkStep.Unknown;
-            return true;
-        }
-
-        _resolveUserLinkStep.Value = ResolveUserLinkStep.Resolved;
-        await Hub.History.NavigateTo(Links.Chat(new ChatId(chatSid)), true);
-        return true;
-    }
-
-    private static bool TryGetUserLink(string? sid, out string sUserLink) {
-        sUserLink = "";
-        if (sid.IsNullOrEmpty() || !sid.StartsWith("@"))
-            return false;
-
-        sUserLink = sid.Substring(1);
-        return true;
+        await Hub.History.NavigateTo(Links.Chat(targetChatId), true);
+        return PageRoute.Redirect;
     }
 
     // Nested types
@@ -345,5 +398,12 @@
         public Place? Place { get; init; }
     }
 
-    public enum ResolveUserLinkStep { None, Loading, Unknown, Resolved }
+    public enum HandlePageRouteState { Resolving, ChatSid, UnknownUserLink }
+
+    public record PageRoute(ChatId ChatId) {
+        public static readonly PageRoute Empty = new (ChatId.None);
+        public static readonly PageRoute InvalidRoute = new (ChatId.None);
+        public static readonly PageRoute UnknownUserLink = new (ChatId.None);
+        public static readonly PageRoute Redirect = new (ChatId.None);
+    }
 }
