@@ -286,7 +286,7 @@ body.hoverable .navbar-item:not(.high-item):hover > .c-container > .c-descriptio
 body.hoverable .navbar-item:hover > .c-container > .c-description .message-counter-badge {
     @apply hidden;
 }
-.chat-list .navbar-item:hover .navbar-item-content > .c-container > .c-description > .c-last-message {
+body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-description > .c-last-message .message-counter-badge {
     @apply hidden;
 }
 
