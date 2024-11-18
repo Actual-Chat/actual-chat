@@ -1,0 +1,213 @@
+using ActualChat.Invite;
+using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
+
+namespace ActualChat.UI.Blazor.App.Components;
+
+public partial class EditChatTypeModalPage
+{
+    private const int MaxInviteCount = 5;
+    private Form? _formRef;
+    private FormModel? _form;
+    private EditContext? _editContext;
+    private Symbol _newInviteId = Symbol.Empty;
+    private DialogButtonInfo _submitButtonInfo = null!;
+    private bool _isAdmin;
+    private PlaceId _placeId;
+    private Place? _place;
+    private bool _isPlaceWelcomeChat;
+    private ElementReference _userLinkTextBoxRef;
+    private string _userLinkPrefix = "";
+    private Action<ElementReference> _setUserLinkCopySource = null!;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private DiffEngine DiffEngine { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
+    private IPlaces Places => Hub.Places;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
+    private UICommander UICommander => Hub.UICommander();
+
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+    private ChatId ChatId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        ChatId = Context.GetModel<ChatId>();
+        Context.Title = "Chat settings";
+        if (ChatId.IsPeerChat(out _))
+            throw StandardError.NotSupported("Peer chat is not supported.");
+
+        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
+        Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
+        _setUserLinkCopySource = c => {
+            _userLinkTextBoxRef = c;
+            StateHasChanged();
+        };
+        const string fakeChatId = "testchat";
+        _userLinkPrefix = UrlMapper.ToAbsolute(Links.Chat(new UserLinkId(fakeChatId)));
+        _userLinkPrefix = string.Concat(_userLinkPrefix.AsSpan(0, _userLinkPrefix.Length - fakeChatId.Length), "{0}");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isAdmin = Hub.AccountUI.OwnAccount.Value.IsAdmin;
+        var chat = await Chats.Get(Session, ChatId, default).Require();
+        _form = new FormModel(ComponentIdGenerator) {
+            IsPublic = chat.IsPublic,
+            UserLinkId = chat.UserLinkId.Value,
+            CurrentUserLinkId = chat.UserLinkId.Value,
+            IsTemplate = chat.IsTemplate,
+            AllowGuestAuthors = chat.AllowGuestAuthors,
+            AllowAnonymousAuthors = chat.AllowAnonymousAuthors,
+        };
+        _editContext = new EditContext(_form);
+        _editContext.OnFieldChanged += (_, e) => {
+            if (OrdinalEquals(e.FieldIdentifier.FieldName, nameof(_form.UserLinkId))
+                || OrdinalEquals(e.FieldIdentifier.FieldName, nameof(_form.IsPublic)))
+            {
+                _editContext.NotifyFieldChanged(_editContext.Field(nameof(_form.ActualUserLinkId)));
+            }
+        };
+        _placeId = chat.Id.PlaceChatId.PlaceId;
+        if (!_placeId.IsNone) {
+            _isPlaceWelcomeChat = OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag);
+            _place = await Places.Get(Session, _placeId, default).Require().ConfigureAwait(false);
+            if (!_place.Rules.CanApplyPublicChatType())
+                _form.IsPublic = false;
+        }
+        Context.Class = "edit-chat-type";
+    }
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options() {
+                InitialValue = ComputedModel.Loading,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken)
+    {
+        var chatId = ChatId;
+
+        var chat = await Chats.Get(Session, chatId, cancellationToken);
+        if (chat == null || !chat.Rules.CanEditProperties())
+            return new ComputedModel { Chat = chat };
+
+        List<Invite.Invite> activeInvites;
+        if (chat.CanInvite()) {
+            var invites = await Hub.Invites.ListChatInvites(Session, chatId, cancellationToken);
+            var threshold = Hub.Clocks().SystemClock.Now - TimeSpan.FromDays(3);
+            activeInvites = invites
+                .Where(c => c.ExpiresOn > threshold)
+                .OrderByDescending(c => c.ExpiresOn)
+                .ToList();
+        }
+        else
+            activeInvites = [];
+        var allowEditIsTemplate = await Hub.Features().Get<Features_EnableTemplateChatUI>(cancellationToken);
+        var isPublic = chat.IsPublic;
+        return new () {
+            Chat = chat,
+            Invites = activeInvites,
+            AllowEditIsTemplate = allowEditIsTemplate,
+            IsPublic = isPublic,
+        };
+    }
+
+    private async Task OnNewInviteClick()
+    {
+        var invite = Invite.Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(ChatId));
+        invite = await UICommander.Run(new Invites_Generate(Session, invite));
+        _newInviteId = invite.Id;
+    }
+
+    private async Task OnSubmit()
+    {
+        if (_formRef == null)
+            return;
+        if (!_formRef.IsValid)
+            return;
+
+        await Save();
+    }
+
+    private async Task Save()
+    {
+        var chat = await Chats.Get(Session, ChatId, default).Require();
+        var isPlaceChat = chat.Id.IsPlaceChat;
+        var newChat = chat with {
+            IsPublic = _form!.IsPublic,
+            UserLinkId = _form!.IsPublic ? UserLinkId.ParseOrNone(_form.UserLinkId) : UserLinkId.None,
+            AllowGuestAuthors = !isPlaceChat && _form.AllowGuestAuthors,
+            AllowAnonymousAuthors = !isPlaceChat && _form.AllowAnonymousAuthors,
+        };
+        var command = new Chats_Change(Session,
+            chat.Id,
+            chat.Version,
+            new () {
+                Update = DiffEngine.Diff<Chat.Chat, ChatDiff>(chat, newChat),
+            });
+        var uiActionResult = await UICommander.Run(command);
+        if (uiActionResult.HasError)
+            return;
+
+        Context.Close();
+    }
+
+    private void OnPublicChatClick(bool isPublic)
+    {
+        if (_form!.IsPublic == isPublic)
+            return;
+
+        _form!.IsPublic = isPublic;
+        StateHasChanged();
+    }
+
+    // Nested types
+
+    public sealed class FormModel
+    {
+        public string UserLinkId { get; set; } = "";
+        public bool IsPublic { get; set; }
+        public bool IsTemplate { get; set; }
+        public bool AllowGuestAuthors { get; set; }
+        public bool AllowAnonymousAuthors { get; set; }
+
+        public string CurrentUserLinkId { get; set; } = "";
+        [UserLinkId]
+        public string ActualUserLinkId => IsPublic ? UserLinkId : ActualChat.UserLinkId.None.Value;
+
+        public string FormId { get; }
+        public string UserLinkIdFormId { get; }
+        public string IsPublicFormId { get; }
+        public string IsPublicTrueFormId { get; }
+        public string IsPublicFalseFormId { get; }
+        public string IsTemplateFormId { get; }
+        public string AllowGuestAuthorsFormId { get; }
+        public string AllowAnonymousAuthorsFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator)
+        {
+            FormId = componentIdGenerator.Next("new-chat-form");
+            UserLinkIdFormId = $"{FormId}-user-link-id";
+            IsPublicFormId = $"{FormId}-is-public";
+            IsPublicTrueFormId = IsPublicFormId + "-true";
+            IsPublicFalseFormId = IsPublicFormId + "-false";
+            IsTemplateFormId = $"{FormId}-is-template";
+            AllowGuestAuthorsFormId = $"{FormId}-allows-guests";
+            AllowAnonymousAuthorsFormId = $"{FormId}-allows-anonymous";
+        }
+    }
+
+    public sealed record ComputedModel
+    {
+        public static readonly ComputedModel Loading = new ();
+
+        public Chat.Chat? Chat { get; init; }
+        public List<Invite.Invite> Invites { get; init; } = [];
+        public bool AllowEditIsTemplate { get; init; }
+        public bool IsPublic { get; init; }
+    }
+}

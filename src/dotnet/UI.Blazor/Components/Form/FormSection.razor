@@ -1,6 +1,4 @@
 @namespace ActualChat.UI.Blazor.Components
-@using Microsoft.AspNetCore.Components.Rendering
-@using ActualChat.UI.Blazor.Services
 @using System.Linq.Expressions
 @typeparam TValue
 @inherits ComponentBase
@@ -38,11 +36,13 @@
             @Right
         </div>
     }
-    @if (!HideValidationMessage) {
-        <div class="form-section-validation">
-            @if (isInvalid) {
-                @messages.FirstOrDefault()
-            }
+    @if (ValidationMessage is not null) {
+        @ValidationMessage
+    }
+    else @if (!HideValidationMessage) {
+        var validationCls = isInvalid ? "invalid" : "";
+        <div class="form-section-validation @validationCls">
+            @(isInvalid ? messages.First() : "")
         </div>
     }
 </section>
@@ -53,9 +53,8 @@
     private EventHandler<ValidationStateChangedEventArgs>? _validationStateChangedHandler;
     private FieldIdentifier _fieldIdentifier;
 
-    public FormSection() {
-        _validationStateChangedHandler = (sender, eventArgs) => StateHasChanged();
-    }
+    public FormSection()
+        => _validationStateChangedHandler = (_, _) => StateHasChanged();
 
     [CascadingParameter] EditContext CurrentEditContext { get; set; } = default!;
 
@@ -70,6 +69,7 @@
     [Parameter] public bool HideValidationMessage { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Right { get; set; }
+    [Parameter] public RenderFragment? ValidationMessage { get; set; }
     [Parameter] public Expression<Func<TValue>>? For { get; set; }
 
     protected override void OnParametersSet() {

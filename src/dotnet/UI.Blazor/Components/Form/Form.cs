@@ -6,6 +6,7 @@ public class Form : EditForm
 {
     private readonly Func<Task> _handleSubmitCached;
     private readonly EventHandler<FieldChangedEventArgs> _editContextFieldChangedCached;
+    private EditContext? _editContext;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool IsHorizontal { get; set; }
@@ -29,9 +30,10 @@ public class Form : EditForm
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
-        if (EditContext is not { } editContext)
+        if (EditContext is not { } editContext || ReferenceEquals(editContext, _editContext))
             return;
 
+        _editContext = editContext;
         IsValid = editContext.Validate();
         editContext.OnFieldChanged += _editContextFieldChangedCached;
         StateHasChanged();

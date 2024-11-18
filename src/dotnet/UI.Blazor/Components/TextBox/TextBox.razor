@@ -7,6 +7,9 @@
 }
 
 <div class="text-box flex-x">
+    @if (!Prefix.IsNullOrEmpty()) {
+        <span class="prefix">@Prefix</span>
+    }
     <input @ref="Ref"
            id="@Id"
            type="text"
@@ -25,6 +28,7 @@
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.TextBox.create";
+    private bool _refCreated;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
@@ -37,12 +41,19 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Placeholder { get; set; } = "";
     [Parameter] public bool ClearButton { get; set; }
+    [Parameter] public string? Prefix  { get; set; }
+    [Parameter] public Action<ElementReference>? InputRefCreated { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
             if (Autofocus)
                 await Focus();
+        }
+
+        if (InputRefCreated is not null && !_refCreated) {
+            _refCreated = true;
+            InputRefCreated(Ref);
         }
     }
 

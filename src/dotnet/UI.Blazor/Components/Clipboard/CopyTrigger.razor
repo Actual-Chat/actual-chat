@@ -23,13 +23,14 @@
     [Parameter] public string Tooltip { get; set; } = "Copy";
     [Parameter] public string CopyText { get; set; } = "";
     [Parameter] public ElementReference? CopyTextSourceRef { get; set; }
+    [Parameter] public string CopyTextFormatString { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender)
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 JSCreateMethod,
-                _ref, CopyText, Tooltip, CopyTextSourceRef);
+                _ref, CopyText, Tooltip, CopyTextSourceRef, CopyTextFormatString);
     }
 
     public async ValueTask DisposeAsync() {
