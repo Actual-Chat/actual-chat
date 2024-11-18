@@ -6,7 +6,7 @@ namespace ActualChat.MLSearch.IntegrationTests;
 
 [Collection(nameof(MLSearchCollection))]
 [Trait("Category", "Slow")]
-public class EntryIndexingTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class EntryIndexingStressTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
@@ -62,8 +62,8 @@ public class EntryIndexingTest(AppHostFixture fixture, ITestOutputHelper @out)
     private Task<ChatEntry[]> CreateEntries(ChatId chatId, int count, string prefix)
         => Enumerable.Range(1, count).Select(i => CreateEntry(chatId, $"{prefix} {i}")).Collect(100);
 
-    private async Task<ChatEntry> CreateEntry(ChatId chatId, string text)
-        => await Tester.CreateTextEntry(chatId, $"{text} {UniquePart}");
+    private Task<ChatEntry> CreateEntry(ChatId chatId, string text)
+        => Tester.CreateTextEntry(chatId, $"{text} {UniquePart}");
 
     private async Task<ApiArray<EntrySearchResult>> Find(string criteria, PlaceId? placeId = null, ChatId chatId = default, int expected = 1)
     {

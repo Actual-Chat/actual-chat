@@ -1,4 +1,5 @@
 using ActualChat.Flows.Infrastructure;
+using ActualChat.Queues;
 
 namespace ActualChat.Flows;
 
@@ -35,5 +36,42 @@ public static class FlowsExt
         var flowRegistry = services.GetRequiredService<FlowRegistry>();
         var flowId = flowRegistry.NewId(flowType, arguments);
         return await flows.GetOrStart(flowId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task<TFlow?> GetAndResume<TFlow>(
+        this IFlows flows,
+        string arguments,
+        TimeSpan? minResumeIn = null,
+        string? tag = null,
+        CancellationToken cancellationToken = default)
+        where TFlow : Flow
+        => (TFlow?)await flows.GetAndResume(typeof(TFlow),
+                arguments,
+                minResumeIn,
+                tag,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    public static async Task<Flow?> GetAndResume(this IFlows flows,
+        Type flowType,
+        string arguments,
+        TimeSpan? minResumeIn = null,
+        string? tag = null,
+        CancellationToken cancellationToken = default)
+    {
+        Flow.RequireCorrectType(flowType);
+        var services = flows.GetServices();
+        var flowRegistry = services.GetRequiredService<FlowRegistry>();
+        var queues = services.Queues();
+        var log = services.LogFor<IFlows>();
+
+        var flowId = flowRegistry.NewId(flowType, arguments);
+        var flow = await flows.Get(flowId, cancellationToken).ConfigureAwait(false);
+        if (flow is null) {
+            log.LogInformation("`{Id}`.GetAndResume: unable to resume because the flow was not found" , flowId);
+            return null;
+        }
+        await queues.Enqueue(new FlowResumeEvent(flowId), cancellationToken).ConfigureAwait(false);
+        return flow;
     }
 }

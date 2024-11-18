@@ -10,6 +10,7 @@ public partial class SimpleBatchedIndexingFlow : BatchedIndexingFlowBase<SimpleI
     public const int QuotaOverride = 6;
     protected override int BatchSize => BatchSizeOverride;
     protected override int Quota => QuotaOverride;
+    protected override int CurrentFlowSetVersion => 1;
 
     [IgnoreDataMember, MemoryPackIgnore]
     private BatchedIndexingFlowTestContext<SimpleItem> Context => Host.Services.GetRequiredService<BatchedIndexingFlowTestContext<SimpleItem>>();
@@ -36,6 +37,6 @@ public partial class SimpleBatchedIndexingFlow : BatchedIndexingFlowBase<SimpleI
         Context.OnProcessed(Id.Arguments, batch);
     }
 
-    protected override Task<bool> OnTailReached(CancellationToken cancellationToken)
-        => Context.OnTailReached(Id.Arguments);
+    protected override Task<bool> OnTailReached(int processCount, CancellationToken cancellationToken)
+        => Context.OnTailReached(Id.Arguments, processCount);
 }

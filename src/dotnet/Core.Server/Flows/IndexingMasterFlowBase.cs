@@ -9,16 +9,6 @@ public abstract class IndexingMasterFlowBase<TIndexingFlow, TItem, TId>
     where TItem : class, IHasId<TId>, IHasVersion<long>
     where TId : ISymbolIdentifier
 {
-    [DataMember(Order = 200), MemoryPackOrder(200)]
-    public long FlowSetVersion { get; protected set; }
-    [IgnoreDataMember, MemoryPackIgnore]
-    protected abstract int CurrentFlowSetVersion { get; }
-
-    protected override Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
-        => FlowSetVersion >= CurrentFlowSetVersion
-            ? ActualLab.Async.TaskExt.FalseTask // Already indexed
-            : base.OnBeforeFirstIndexAfterReset(cancellationToken); // start indexing
-
     protected override async Task ProcessBatch(IReadOnlyList<TItem> batch, CancellationToken cancellationToken)
     {
         foreach (var item in batch)
@@ -28,7 +18,7 @@ public abstract class IndexingMasterFlowBase<TIndexingFlow, TItem, TId>
     protected virtual string BuildArguments(TItem item)
         => item.Id.Value;
 
-    protected override Task<bool> OnTailReached(CancellationToken cancellationToken)
+    protected override Task<bool> OnTailReached(int processCount, CancellationToken cancellationToken)
     {
         // stop indexing until version is bumped
         FlowSetVersion = CurrentFlowSetVersion;

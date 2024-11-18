@@ -35,7 +35,7 @@ public abstract class BatchedIndexingFlowBase<TItem, TId> : IndexingFlowBase<Ind
             totalCount,
             batchCount,
             cursor);
-        return new (false, totalCount < Quota, cursor);
+        return new (false, totalCount < Quota, cursor, totalCount);
     }
 
     protected abstract Task<IReadOnlyList<TItem>> GetBatch(IndexingFlowCursor<TId>? cursor, CancellationToken cancellationToken);

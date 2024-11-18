@@ -12,6 +12,10 @@ public abstract class IndexingFlowBase<TCursor> : Flow
 
     [DataMember(Order = 102), MemoryPackOrder(102)]
     public Moment? NextWatchdogTimerAt { get; protected set; }
+    [DataMember(Order = 103), MemoryPackOrder(103)]
+    public long FlowSetVersion { get; protected set; }
+    [IgnoreDataMember, MemoryPackIgnore]
+    protected abstract int CurrentFlowSetVersion { get; }
 
     [IgnoreDataMember, MemoryPackIgnore]
     protected virtual TimeSpan WatchdogInterval { get; } = TimeSpan.FromHours(24);
@@ -27,13 +31,17 @@ public abstract class IndexingFlowBase<TCursor> : Flow
     }
 
     protected virtual Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
-        => ActualLab.Async.TaskExt.TrueTask;
+    {
+        if (FlowSetVersion < CurrentFlowSetVersion)
+            Cursor = default; // needs reindex from the beginning
+        return ActualLab.Async.TaskExt.TrueTask;
+    }
 
     protected abstract Task<BatchIndexingResult<TCursor>> Process(TCursor? cursor, CancellationToken cancellationToken);
 
     protected virtual async Task<FlowTransition> OnIndex(CancellationToken cancellationToken)
     {
-        var (mustEnd, isTailReached, updatedCursor) = await Process(Cursor, cancellationToken).ConfigureAwait(false);
+        var (mustEnd, isTailReached, updatedCursor, processedCount) = await Process(Cursor, cancellationToken).ConfigureAwait(false);
         Cursor = updatedCursor;
         Log.LogInformation(
             "`{Id}`.OnIndex: processed portion: MustEnd={MustEnd}, IsTailReached={IsTailReached}, {@UpdatedCursor}",
@@ -41,9 +49,12 @@ public abstract class IndexingFlowBase<TCursor> : Flow
             mustEnd,
             isTailReached,
             updatedCursor);
-        if (isTailReached && !await OnTailReached(cancellationToken).ConfigureAwait(false)) {
-            Log.LogInformation("`{Id}`.OnIndex: forced to suspend flow after tail handling", Id);
-            mustEnd = true;
+        if (isTailReached) {
+            FlowSetVersion = CurrentFlowSetVersion;
+            if (!await OnTailReached(processedCount, cancellationToken).ConfigureAwait(false)) {
+                Log.LogInformation("`{Id}`.OnIndex: forced to suspend flow after tail handling", Id);
+                mustEnd = true;
+            }
         }
         if (mustEnd)
             return WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt); // i.e. chat is removed
@@ -53,7 +64,7 @@ public abstract class IndexingFlowBase<TCursor> : Flow
             : QueueResume(nameof(OnIndex), "Continue processing when possible");
     }
 
-    protected virtual Task<bool> OnTailReached(CancellationToken cancellationToken)
+    protected virtual Task<bool> OnTailReached(int processCount, CancellationToken cancellationToken)
     {
         Log.LogInformation("`{Id}`.OnTailReached: {Cursor}", Id, Cursor);
         return ActualLab.Async.TaskExt.TrueTask;

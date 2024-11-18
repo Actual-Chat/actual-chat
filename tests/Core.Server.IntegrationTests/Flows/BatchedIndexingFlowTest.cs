@@ -46,7 +46,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
             [],
         ];
         Context.Add(id, batches);
-        Context.AddTailHandler(id, () => ActualLab.Async.TaskExt.FalseTask);
+        Context.AddTailHandler(id, processedCount => Task.FromResult(processedCount > 0));
 
         // act
         await Flows.GetOrStart<SimpleBatchedIndexingFlow>(id);
@@ -93,7 +93,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
     [InlineData(7, 0)]
     [InlineData(7, 1)]
     [InlineData(7, 2)]
-    public async Task MustProcessAllBatchesByRequests(int fullBatchCount, int lastBatchSize)
+    public async Task MustProcessAllBatches(int fullBatchCount, int lastBatchSize)
     {
         // arrange
         var id = RandomSymbolGenerator.Default.Next();

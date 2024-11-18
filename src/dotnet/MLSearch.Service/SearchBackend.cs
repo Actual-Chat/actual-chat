@@ -5,6 +5,7 @@ using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
+using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Flows;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Module;
@@ -20,6 +21,7 @@ namespace ActualChat.MLSearch;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDbContext>(services), ISearchBackend
 {
+    private static readonly TimeSpan MinResumeIn = TimeSpan.FromMinutes(1);
     private MLSearchSettings Settings { get; } = services.GetRequiredService<MLSearchSettings>();
     private OpenSearchNames OpenSearchNames { get; } = services.GetRequiredService<OpenSearchNames>();
     private IOpenSearchClient OpenSearchClient { get; } = services.GetRequiredService<IOpenSearchClient>();
@@ -27,8 +29,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private UserContactIndexer UserContactIndexer { get; } = services.GetRequiredService<UserContactIndexer>();
     private GroupChatContactIndexer GroupChatContactIndexer { get; } = services.GetRequiredService<GroupChatContactIndexer>();
-    private PlaceContactIndexer PlaceContactIndexer { get; } = services.GetRequiredService<PlaceContactIndexer>();
     private OpenSearchConfigurator OpenSearchConfigurator { get; } = services.GetRequiredService<OpenSearchConfigurator>();
+    private IndexedDocuments IndexedDocuments { get; } = services.GetRequiredService<IndexedDocuments>();
     private IFlows Flows { get; } = services.GetRequiredService<IFlows>();
     private IQueues Queues { get; } = services.Queues();
     private ILogger? DebugLog => Constants.DebugMode.OpenSearchRequest ? Log : null;
@@ -114,24 +116,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     }
 
     // [CommandHandler]
-    public virtual async Task OnPlaceContactBulkIndex(SearchBackend_PlaceContactBulkIndex command, CancellationToken cancellationToken)
-    {
-        if (Invalidation.IsActive)
-            return;
-
-        if (!Settings.IsEnabled) {
-            Log.LogWarning($"{nameof(OnPlaceContactBulkIndex)}: search is disabled");
-            return;
-        }
-
-        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
-            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
-
-        Log.LogDebug("Indexing places: {UpdatedCount} updated and {DeletedCount} deleted", command.Updated.Count, command.Deleted.Count);
-        await IndexPlaceContacts(command.Updated, command.Deleted, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [CommandHandler]
     public virtual async Task OnRefresh(SearchBackend_Refresh command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -188,23 +172,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         }
 
         GroupChatContactIndexer.OnSyncNeeded();
-        return Task.CompletedTask;
-    }
-
-    // [CommandHandler]
-    public virtual Task OnStartPlaceContactIndexing(
-        SearchBackend_StartPlaceContactIndexing command,
-        CancellationToken cancellationToken)
-    {
-        if (Invalidation.IsActive)
-            return Task.CompletedTask; // it only notifies indexing job
-
-        if (!Settings.IsEnabled) {
-            Log.LogWarning($"{nameof(OnStartPlaceContactIndexing)}: search is disabled");
-            return Task.CompletedTask;
-        }
-
-        PlaceContactIndexer.OnSyncNeeded();
         return Task.CompletedTask;
     }
 
@@ -284,31 +251,24 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
         var (place, _, changeKind) = eventCommand;
         // NOTE: we don't have any other chance to process removed items
-        if (changeKind == ChangeKind.Remove) {
-            var deletedContacts = ApiArray.New([place.ToIndexedPlaceContact()]);
-            await Queues.Enqueue(new SearchBackend_PlaceContactBulkIndex([], deletedContacts), cancellationToken).ConfigureAwait(false);
-        }
+        if (changeKind == ChangeKind.Remove)
+            await IndexedDocuments.UpdatePlaceContacts([], [place.Id], cancellationToken).ConfigureAwait(false);
         else
-            await Queues.Enqueue(new SearchBackend_StartPlaceContactIndexing(), cancellationToken).ConfigureAwait(false);
+            await Flows.GetAndResume<PlaceContactIndexingFlow>("",
+                    MinResumeIn,
+                    "Place contact changed",
+                    cancellationToken)
+                .ConfigureAwait(false);
     }
 
     // [EventHandler]
-    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        var chatId = eventCommand.Entry.ChatId;
-        var flow = await Flows.Get<EntryIndexingFlow>(chatId, cancellationToken).ConfigureAwait(false);
-        if (flow is null) {
-            Log.LogInformation("EntryIndexingFlow #{Id} not found, unable to resume", chatId);
-            return;
-        }
+        if (Invalidation.IsActive)
+            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
 
-        var minHardResumeAt = Clocks.SystemClock.Now + TimeSpan.FromMinutes(1);
-        Log.LogDebug("Sending flow resume request: #{Id} with MinHardResumeAt={MinHardResumeAt}", flow.Id, minHardResumeAt);
-        await Queues.Enqueue(new FlowResumeEvent(flow.Id,
-                false,
-                "TextEntry changed",
-                minHardResumeAt),
-            cancellationToken).ConfigureAwait(false);
+        var chatId = eventCommand.Entry.ChatId;
+        return Flows.GetAndResume<EntryIndexingFlow>(chatId, MinResumeIn, "TextEntry changed", cancellationToken);
     }
 
     // Private methods
@@ -332,17 +292,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             .BulkAsync(r
                     => r.IndexMany(updated, (op, _) => op.Index(OpenSearchNames.GroupIndexName))
                         .DeleteMany(deleted, (op, _) => op.Index(OpenSearchNames.GroupIndexName)),
-                cancellationToken)
-            .Assert(Log);
-
-    private Task IndexPlaceContacts(
-        IReadOnlyCollection<IndexedPlaceContact> updated,
-        IReadOnlyCollection<IndexedPlaceContact> deleted,
-        CancellationToken cancellationToken)
-        => OpenSearchClient
-            .BulkAsync(r
-                    => r.IndexMany(updated, (op, _) => op.Index(OpenSearchNames.PlaceIndexName))
-                        .DeleteMany(deleted, (op, _) => op.Index(OpenSearchNames.PlaceIndexName)),
                 cancellationToken)
             .Assert(Log);
 

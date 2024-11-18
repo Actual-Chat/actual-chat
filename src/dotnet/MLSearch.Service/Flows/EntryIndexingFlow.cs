@@ -11,11 +11,12 @@ namespace ActualChat.MLSearch.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, ChatEntryId>
 {
-    // protected override TimeSpan Interval => Host.Services.GetRequiredService<MLSearchSettings>().EntryIndexingInterval;
+    protected override int CurrentFlowSetVersion => 1;
     private Task WhenReady => Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
 
-    protected override Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
-        => EnsureChatInfo(new ChatId(Id.Arguments), cancellationToken);
+    protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
+        => await base.OnBeforeFirstIndexAfterReset(cancellationToken)
+            && await EnsureChatInfo(new ChatId(Id.Arguments), cancellationToken);
 
     protected override async Task<IReadOnlyList<ChatEntry>> GetBatch(
         IndexingFlowCursor<ChatEntryId>? cursor,
@@ -42,10 +43,15 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
         await indexedDocuments.Update(updated, removed, cancellationToken).ConfigureAwait(false);
     }
 
-    protected override async Task<bool> OnTailReached(CancellationToken cancellationToken)
+    protected override async Task<bool> OnTailReached(int processCount, CancellationToken cancellationToken)
     {
-        Log.LogInformation("`{Id}`.OnTailReached: requesting entry index refresh", Id);
-        await Host.Services.Queues().Enqueue(new SearchBackend_Refresh(RefreshEntries: true), cancellationToken).ConfigureAwait(false);
+        var mustContinue = await base.OnTailReached(processCount, cancellationToken).ConfigureAwait(false);
+        if (mustContinue && processCount > 0) {
+            Log.LogInformation("`{Id}`.OnTailReached: requesting entry index refresh", Id);
+            await Host.Services.Queues()
+                .Enqueue(new SearchBackend_Refresh(RefreshEntries: true), cancellationToken)
+                .ConfigureAwait(false);
+        }
         return true;
     }
 
