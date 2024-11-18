@@ -377,7 +377,6 @@
     <UseInterpreter>true</UseInterpreter>
     <!--<MTouchInterpreter>-ActualChat,ActualChat.Chat.Contracts,ActualChat.Users.Contracts,ActualChat.Contacts.Contracts,ActualLab.Interception</MTouchInterpreter>-->
     <CreatePackage>false</CreatePackage>
-    <TrimmerSingleWarn>false</TrimmerSingleWarn>
   </PropertyGroup>
 
   <!-- Windows build properties -->
@@ -395,17 +394,13 @@
     <PublishAot>false</PublishAot>
     <PublishTrimmed>false</PublishTrimmed>
     <TrimMode Condition="!$(UseAppPack)">partial</TrimMode>
-    <!-- <TrimMode Condition="$(UseAppPack)">full</TrimMode> -->
+    <TrimMode Condition="$(UseAppPack)">full</TrimMode>
     <OptimizationPreference>Size</OptimizationPreference>
     <IlcGenerateStackTraceData>true</IlcGenerateStackTraceData>
     <IlcDisableReflection>false</IlcDisableReflection>
     <NativeDebugSymbols>false</NativeDebugSymbols>
     <StripSymbols>false</StripSymbols>
-    <TrimmerSingleWarn>false</TrimmerSingleWarn>
   </PropertyGroup>
-  <ItemGroup>
-    <IlcArg Include="--maxgenericcycle:1" />
-  </ItemGroup>
 
   <!-- Resources -->
 
