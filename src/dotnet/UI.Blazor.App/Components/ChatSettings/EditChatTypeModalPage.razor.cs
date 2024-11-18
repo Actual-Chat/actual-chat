@@ -125,9 +125,7 @@ public partial class EditChatTypeModalPage
 
     private async Task OnSubmit()
     {
-        if (_formRef == null)
-            return;
-        if (!_formRef.IsValid)
+        if (_formRef is not { IsValid: true })
             return;
 
         await Save();
