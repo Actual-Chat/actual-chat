@@ -24,7 +24,7 @@ body.narrow .chat-message-editor > .c-content {
     @apply relative;
     @apply flex-auto flex-x justify-between items-center;
     @apply min-h-12;
-    @apply py-1 md:py-0;
+    @apply py-1 md:py-0 px-2;
     @apply border-bg-01 md:rounded-3xl outline-none;
     @apply bg-post-panel md:bg-input;
     @apply overflow-hidden;
@@ -40,11 +40,11 @@ body.narrow .narrow-panel .post-panel {
 }
 .post-panel .c-right-buttons {
     @apply flex-x items-end self-end;
-    @apply mr-2 md:my-2;
+    @apply md:my-2;
 }
 body.narrow .text-mode .post-panel .c-right-buttons,
 body.narrow .narrow-panel .post-panel .c-right-buttons {
-    @apply absolute bottom-2 right-0;
+    @apply absolute bottom-2 right-2;
     @apply py-1;
 }
 
@@ -76,7 +76,7 @@ body.narrow .post-panel .message-input a {
 }
 body.narrow .text-mode .post-panel .message-input-label,
 body.narrow .narrow-panel .post-panel .message-input-label {
-    @apply ml-4 mr-2 py-2;
+    @apply mx-1 py-2;
 }
 
 .post-panel .message-input .editor-content {
@@ -120,21 +120,28 @@ body.narrow .btn.post-panel-btn.post-message {
 body.hoverable .post-panel-btn:hover {
     @apply text-02;
 }
+.post-panel-btn.attach-btn.btn.btn-round.btn-xs,
+.post-panel-btn.mention-btn.btn.btn-round.btn-xs {
+    @apply w-6;
+}
+
 body.narrow .post-panel-btn.attach-btn {
     @apply self-end;
 }
 .post-panel .c-left-buttons {
     @apply flex-x items-center self-end;
-    @apply m-1;
+}
+body.narrow .post-panel .c-left-buttons {
+    @apply gap-x-1;
+    @apply mr-1 py-0;
 }
 body.narrow .text-mode .c-left-buttons,
 body.narrow .narrow-panel .c-left-buttons {
-    @apply absolute left-0 bottom-2;
-    @apply py-1;
+    @apply absolute left-2 bottom-3;
 }
 body.wide .post-panel .c-left-buttons {
-    @apply my-2 py-1;
     @apply rounded-full;
+    @apply m-1 py-1;
 }
 
 /* Notify Call Panel */
