@@ -15,7 +15,6 @@
         return;
 
     Context.Title = "Chat Type";
-    Context.ModalDataBag.Set(nameof(ChatSettingsStartModalPage.ComputedModel.IsPublic), m.IsPublic);
     var isPlaceChat = !_placeId.IsNone;
     var canChangeChatType = _placeId.IsNone || _place != null && (_place.Rules.CanApplyPublicChatType() && !_isPlaceWelcomeChat);
     var publicChatLabel = !isPlaceChat ? "Public chat" : "Place chat";
@@ -70,25 +69,31 @@
                                  Label="User link"
                                  IsLabelInsideInput="true">
                         <ValidationMessage>
-                            <UserLinkValidationMessage
-                                For="@(() => _form.ActualUserLinkId)"
-                                CurrentUserLinkId="@_form.CurrentUserLinkId"
-                                GetUserLinkIdFunc="@(() => _form.ActualUserLinkId)" />
+                            @if (_placeUserLinkRequiredFirst) {
+                                <PlaceUserLinkRequiredValidationMessage/>
+                            } else {
+                                <UserLinkValidationMessage
+                                    For="@(() => _form.ActualUserLinkId)"
+                                    PlaceId="@_placeId"
+                                    CurrentUserLinkId="@_form.CurrentUserLinkId"
+                                    GetUserLinkIdFunc="@(() => _form.ActualUserLinkId)"/>
+                            }
                         </ValidationMessage>
                         <ChildContent>
                             <TextBox
                                 Id="@_form.UserLinkIdFormId"
-                                Prefix="chat/@@"
+                                Prefix="@_userLinkLocalPrefix"
                                 @bind-Value="@_form.UserLinkId"
-                                InputRefCreated="@_setUserLinkCopySource"/>
+                                InputRefCreated="@_setUserLinkCopySource"
+                                readonly="@(_userLinkLocalPrefix.IsNullOrEmpty())"/>
                         </ChildContent>
                     </FormSection>
-                    @if (!_userLinkTextBoxRef.Id.IsNullOrEmpty()) {
+                    @if (!_copyUserLinkFormatString.IsNullOrEmpty() && !_userLinkTextBoxRef.Id.IsNullOrEmpty()) {
                         <CopyToClipboard
                             ButtonClass="btn-transparent"
                             Text=""
                             CopyTextSourceRef="@_userLinkTextBoxRef"
-                            CopyTextFormatString="@_userLinkPrefix" />
+                            CopyTextFormatString="@_copyUserLinkFormatString"/>
                     }
                 </Content>
             </TileItem>

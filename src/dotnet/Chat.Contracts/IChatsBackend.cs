@@ -54,11 +54,12 @@ public interface IChatsBackend : IComputeService, IBackendService
         PlaceId placeId,
         CancellationToken cancellationToken);
 
-    // Non-compute methods
-
+    [ComputeMethod]
     Task<ApiArray<ChatId>> ListPlaceChatIds(
         PlaceId placeId,
         CancellationToken cancellationToken);
+
+    // Non-compute methods
 
     Task<ApiArray<Chat>> List(
         Moment minCreatedAt,
@@ -96,6 +97,9 @@ public interface IChatsBackend : IComputeService, IBackendService
 
     [ComputeMethod]
     Task<ReadPositionsStatBackend?> GetReadPositionsStat(ChatId chatId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<PlaceChatId> GetPlaceChatIdByUserLink(PlaceId placeId, UserLinkId userLinkId, CancellationToken cancellationToken);
 
     // Commands
 

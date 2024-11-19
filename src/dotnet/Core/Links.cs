@@ -3,11 +3,14 @@ namespace ActualChat;
 public static class Links
 {
     public const string ChatEntryLidQueryParameterName = "n";
+    public const string Separator = "/";
+    public const string UserLinkPrefix = "@";
 
     public static readonly LocalUrl Home = default;
     public static readonly LocalUrl Docs = "/docs";
     public static readonly LocalUrl NotFound = "/404";
     public static readonly LocalUrl Chats = "/chat";
+    public static readonly LocalUrl ChatUserLinkPrefix = Chats + Separator + UserLinkPrefix;
 
     public static LocalUrl Chat(ChatEntryId entryId)
         => entryId.IsNone
@@ -15,7 +18,7 @@ public static class Links
             : $"/chat/{entryId.ChatId.Value}"  + ChatEntryQuery(entryId.LocalId);
 
     public static LocalUrl Chat(UserLinkId userLinkId)
-        => "/chat/@" + userLinkId.Value;
+        => ChatUserLinkPrefix + userLinkId.Value;
 
     public static LocalUrl Chat(ChatId chatId, long? entryId = null)
         => entryId is { } vEntryId and > 0

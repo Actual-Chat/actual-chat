@@ -16,7 +16,6 @@
         return;
 
     Context.ModalDataBag.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
-    Context.ModalDataBag.Set(nameof(ComputedModel.IsPublic), m.IsPublic);
     var isPlaceChat = m.IsPlace;
     var publicChatLabel = !isPlaceChat ? "Public" : "Place";
 }

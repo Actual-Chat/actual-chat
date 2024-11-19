@@ -123,7 +123,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return sChatIds.Select(x => new ChatId(x)).Where(x => !x.IsPlaceRootChat).ToApiArray();
     }
 
-    // Non-compute methods
     public virtual async Task<ApiArray<ChatId>> ListPlaceChatIds(PlaceId placeId, CancellationToken cancellationToken)
     {
         if (placeId.IsNone)
@@ -392,6 +391,23 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return new ReadPositionsStatBackend(chatId, dbReadPositionsStat.StartTrackingEntryLid, dbReadPositionsStat.GetTopReadPositions());
     }
 
+    //[ComputeMethod]
+    public virtual async Task<PlaceChatId> GetPlaceChatIdByUserLink(PlaceId placeId, UserLinkId userLinkId, CancellationToken cancellationToken)
+    {
+        if (placeId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(placeId));
+        if (userLinkId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(userLinkId));
+
+        var placeChatIds = await ListPlaceChatIds(placeId, cancellationToken).ConfigureAwait(false);
+        foreach (var placeChatId in placeChatIds) {
+            var placeChat = await Get(placeChatId, cancellationToken).ConfigureAwait(false);
+            if (placeChat is not null && placeChat.UserLinkId.Equals(userLinkId))
+                return placeChatId.PlaceChatId;
+        }
+        return PlaceChatId.None;
+    }
+
     [ComputeMethod]
     protected virtual async Task<ApiArray<TextEntryAttachment>> GetEntryAttachments(TextEntryId entryId, CancellationToken cancellationToken)
     {
@@ -596,8 +612,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 _ = Get(invChat.Id, default);
                 if (invChat is { TemplateId: not null, TemplatedForUserId: not null })
                     _ = GetTemplatedChatFor(invChat.TemplateId.Value, invChat.TemplatedForUserId.Value, default);
-                if (invChat.Id.IsPlaceChat)
+                if (invChat.Id.IsPlaceChat) {
                     _ = GetPublicChatIdsFor(invChat.Id.PlaceId, default);
+                    if (!invChat.Id.IsPlaceRootChat && change.Kind != ChangeKind.Update)
+                        _ = ListPlaceChatIds(invChat.Id.PlaceId, default);
+                }
             }
             return null!;
         }
@@ -855,12 +874,22 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         async Task UpdateUserLink(Chat? oldChat1, Chat chat1)
         {
+            if (chat1.Id.Kind == ChatKind.Peer)
+                throw StandardError.NotSupported("User links are not allowed for place chats.");
+
             var oldUserLinkId = oldChat1?.UserLinkId ?? UserLinkId.None;
             var userLinkId = chat1.IsPublic ? chat1.UserLinkId : UserLinkId.None;
-            if (!userLinkId.IsNone && chat1.Id.Kind != ChatKind.Group)
-                throw StandardError.NotSupported("User links are supported only for groups so far.");
 
-            await UserLinksBackendExt.UpdateUserLink(Commander, oldUserLinkId, userLinkId, UserLinkKind.Chat, chat1.Id, cancellationToken).ConfigureAwait(false);
+            if (chat1.Id.Kind == ChatKind.Group)
+                await UserLinksBackendExt.UpdateUserLink(Commander, oldUserLinkId, userLinkId, UserLinkKind.Chat, chat1.Id, cancellationToken).ConfigureAwait(false);
+            else if (chat1.Id.Kind == ChatKind.Place) {
+                // Validate user link is not used by another place chat.
+                if (!userLinkId.IsNone && userLinkId != oldUserLinkId) {
+                    var placeChatId = await GetPlaceChatIdByUserLink(chat1.Id.PlaceId, userLinkId, cancellationToken).ConfigureAwait(false);
+                    if (!placeChatId.IsNone && placeChatId != chat1.Id)
+                        throw StandardError.Constraint($"User link id '{userLinkId}' already used for another chat on the same place.");
+                }
+            }
         }
     }
 
