@@ -768,6 +768,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             chat = ApplyDiff(dbChat.ToModel(), update);
             dbChat.UpdateFrom(chat);
 
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
             await UpdateUserLink(oldChat, chat).ConfigureAwait(false);
         }
         else if (change.IsRemove()) {
@@ -834,6 +836,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var removeAuthorsCommand = new AuthorsBackend_Remove(chatId, AuthorId.None, UserId.None);
             await Commander.Call(removeAuthorsCommand, false, cancellationToken).ConfigureAwait(false);
             dbContext.Remove(dbChat);
+
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await RemoveUserLink(dbChat.ToModel()).ConfigureAwait(false);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -874,8 +879,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         async Task UpdateUserLink(Chat? oldChat1, Chat chat1)
         {
-            if (chat1.Id.Kind == ChatKind.Peer)
-                throw StandardError.NotSupported("User links are not allowed for place chats.");
+            if (chat1.Id.Kind == ChatKind.Peer) {
+                if (!chat1.UserLinkId.IsNone)
+                    throw StandardError.NotSupported("User links are not allowed for place chats.");
+                return;
+            }
 
             var oldUserLinkId = oldChat1?.UserLinkId ?? UserLinkId.None;
             var userLinkId = chat1.IsPublic ? chat1.UserLinkId : UserLinkId.None;
@@ -890,6 +898,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                         throw StandardError.Constraint($"User link id '{userLinkId}' already used for another chat on the same place.");
                 }
             }
+        }
+
+        async Task RemoveUserLink(Chat oldChat1)
+        {
+            var oldUserLinkId = oldChat1.UserLinkId;
+            if (oldUserLinkId.IsNone)
+                return;
+
+            if (oldChat1.Id.Kind == ChatKind.Group)
+                await UserLinksBackendExt.UpdateUserLink(Commander, oldUserLinkId, UserLinkId.None, UserLinkKind.Chat, ChatId.None, cancellationToken).ConfigureAwait(false);
         }
     }
 

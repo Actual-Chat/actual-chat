@@ -121,10 +121,11 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         place = dbPlace.Require().ToModel();
 
-        if (!change.IsRemove()) {
+        if (!change.IsRemove())
             await UpdateUserLink(oldPlace, place).ConfigureAwait(false);
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
+        else
+            await RemoveUserLink(oldPlace!).ConfigureAwait(false);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         context.Operation.Items.Set(place);
 
@@ -184,6 +185,15 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
             var oldUserLinkId = oldPlace1?.UserLinkId ?? UserLinkId.None;
             var userLinkId = place1.IsPublic ? place1.UserLinkId : UserLinkId.None;
             await UserLinksBackendExt.UpdateUserLink(Commander, oldUserLinkId, userLinkId, UserLinkKind.Place, place1.Id, cancellationToken).ConfigureAwait(false);
+        }
+
+        async Task RemoveUserLink(Place oldPlace1)
+        {
+            var oldUserLinkId = oldPlace1.UserLinkId;
+            if (oldUserLinkId.IsNone)
+                return;
+
+            await UserLinksBackendExt.UpdateUserLink(Commander, oldUserLinkId, UserLinkId.None, UserLinkKind.Place, PlaceId.None, cancellationToken).ConfigureAwait(false);
         }
 
         static ChatDiff ToChatDiff(Place place)
