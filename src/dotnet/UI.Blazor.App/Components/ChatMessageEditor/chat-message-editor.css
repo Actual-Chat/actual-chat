@@ -120,9 +120,9 @@ body.narrow .btn.post-panel-btn.post-message {
 body.hoverable .post-panel-btn:hover {
     @apply text-02;
 }
-.post-panel-btn.attach-btn.btn.btn-round.btn-xs,
-.post-panel-btn.mention-btn.btn.btn-round.btn-xs {
-    @apply w-6;
+.attach-btn.btn.btn-round,
+.mention-btn.btn.btn-round {
+    @apply my-1;
 }
 
 body.narrow .post-panel-btn.attach-btn {
