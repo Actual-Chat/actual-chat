@@ -17,9 +17,6 @@ public static class Links
             ? "/chat"
             : $"/chat/{entryId.ChatId.Value}"  + ChatEntryQuery(entryId.LocalId);
 
-    public static LocalUrl Chat(UserLinkId userLinkId)
-        => ChatUserLinkPrefix + userLinkId.Value;
-
     public static LocalUrl Chat(ChatId chatId, long? entryId = null)
         => entryId is { } vEntryId and > 0
             ? $"/chat/{chatId.Value}" + ChatEntryQuery(vEntryId)
