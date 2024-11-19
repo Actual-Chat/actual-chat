@@ -17,12 +17,12 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
     public WebKvasBackend(string name, IServiceProvider services)
     {
         Services = services;
-        var uiHub = services.UIHub();
-        JS = uiHub.JSRuntime();
+        JS = services.JSRuntime();
         _getManyName = $"{name}.getMany";
         _setManyName = $"{name}.setMany";
         _clearName = $"{name}.clear";
-        _isDisabled = !uiHub.IsInteractive;
+        var jsRuntimeInfo = Services.GetRequiredService<JSRuntimeInfo>();
+        _isDisabled = !jsRuntimeInfo.IsInteractive;
         WhenReady = _isDisabled ? Task.CompletedTask
             : JS.InvokeVoidAsync("window.App.isBundleReady").AsTask();
     }

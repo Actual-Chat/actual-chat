@@ -69,7 +69,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             app.UseExceptionHandler("/Error");
             app.UseHsts();
         }
-        app.UseStaticFiles();
         app.UseStaticDistFiles(); // Static files from dist and _content folders
 
         // See
@@ -105,7 +104,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         app.UseAuthentication();
         app.UseAntiforgery();
 
-        // app.MapStaticAssets();
+        app.MapStaticAssets();
         app.MapRazorComponents<RootServerPage>()
             .AddInteractiveServerRenderMode()
             .AddInteractiveWebAssemblyRenderMode()
