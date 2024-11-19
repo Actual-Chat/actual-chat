@@ -87,7 +87,7 @@
                             ButtonClass="btn-transparent"
                             Text=""
                             CopyTextSourceRef="@_userLinkTextBoxRef"
-                            CopyTextFormatString="@_userLinkPrefix" />
+                            CopyTextFormatString="@_copyUserLinkFormatString" />
                     }
                 </Content>
             </TileItem>
@@ -118,7 +118,7 @@
     private Symbol _newInviteId = Symbol.Empty;
     private DialogButtonInfo _submitButtonInfo = null!;
     private ElementReference _userLinkTextBoxRef;
-    private string _userLinkPrefix = "";
+    private string _copyUserLinkFormatString = "";
     private Action<ElementReference> _setUserLinkCopySource = null!;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -145,9 +145,7 @@
             _userLinkTextBoxRef = c;
             StateHasChanged();
         };
-        const string fakeChatId = "testchat";
-        _userLinkPrefix = UrlMapper.ToAbsolute(Links.Chat(new UserLinkId(fakeChatId)));
-        _userLinkPrefix = string.Concat(_userLinkPrefix.AsSpan(0, _userLinkPrefix.Length - fakeChatId.Length), "{0}");
+        _copyUserLinkFormatString = UrlMapper.ToAbsolute(Links.ChatUserLinkPrefix) + "{0}";
     }
 
     protected override async Task OnInitializedAsync() {

@@ -47,7 +47,7 @@ public static class ShareUIExt
         var targetTitle = place is null ? chat.Title : ZString.Concat(place.Title, "/", chat.Title);
         var text = $"\"{targetTitle}\" on Actual Chat";
         if ((place is null || place.IsPublic) && chat.IsPublic) {
-            var localUrl = chat.UserLinkId.IsNone ? Links.Chat(chat.Id) : Links.Chat(chat.UserLinkId);
+            var localUrl = LinkForChat(chat, place);
             return new ShareModalModel(
                 ShareKind.Chat,
                 "Share chat",
@@ -69,6 +69,29 @@ public static class ShareUIExt
             targetTitle,
             new (text, Links.Invite(InviteLinkFormat.PrivateChat, invite.Id)),
             shareModalSelectorPrefs);
+    }
+
+    private static LocalUrl LinkForChat(Chat.Chat chat, Place? place)
+    {
+        if (chat.Id.IsPlaceChat) {
+            if (place is null || place.Id != chat.Id.PlaceId)
+                throw new ArgumentOutOfRangeException(nameof(place));
+        }
+        else if (place is not null)
+            throw new ArgumentOutOfRangeException(nameof(place));
+
+        if (place is null)
+            return chat.UserLinkId.IsNone ? Links.Chat(chat.Id) : Links.ChatUserLinkPrefix + chat.UserLinkId;
+
+        if (place.UserLinkId.IsNone)
+            return Links.Chat(chat.Id);
+
+        return Links.ChatUserLinkPrefix
+            + place.UserLinkId
+            + Links.Separator
+            + (chat.UserLinkId.IsNone
+                ? chat.Id.PlaceChatId.LocalChatId
+                : Links.UserLinkPrefix + chat.UserLinkId);
     }
 
     public static async ValueTask<ShareModalModel?> GetModel(
