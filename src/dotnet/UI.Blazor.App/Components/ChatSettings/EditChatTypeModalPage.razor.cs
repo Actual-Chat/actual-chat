@@ -17,8 +17,10 @@ public partial class EditChatTypeModalPage
     private Place? _place;
     private bool _isPlaceWelcomeChat;
     private ElementReference _userLinkTextBoxRef;
-    private string _userLinkPrefix = "";
+    private string _userLinkLocalPrefix = "";
+    private string _copyUserLinkFormatString = "";
     private Action<ElementReference> _setUserLinkCopySource = null!;
+    private bool _placeUserLinkRequiredFirst;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
@@ -36,6 +38,7 @@ public partial class EditChatTypeModalPage
     {
         ChatId = Context.GetModel<ChatId>();
         Context.Title = "Chat settings";
+        Context.Class = "edit-chat-type";
         if (ChatId.IsPeerChat(out _))
             throw StandardError.NotSupported("Peer chat is not supported.");
 
@@ -45,15 +48,27 @@ public partial class EditChatTypeModalPage
             _userLinkTextBoxRef = c;
             StateHasChanged();
         };
-        const string fakeChatId = "testchat";
-        _userLinkPrefix = UrlMapper.ToAbsolute(Links.Chat(new UserLinkId(fakeChatId)));
-        _userLinkPrefix = string.Concat(_userLinkPrefix.AsSpan(0, _userLinkPrefix.Length - fakeChatId.Length), "{0}");
     }
 
     protected override async Task OnInitializedAsync()
     {
         _isAdmin = Hub.AccountUI.OwnAccount.Value.IsAdmin;
         var chat = await Chats.Get(Session, ChatId, default).Require();
+        _placeId = chat.Id.PlaceChatId.PlaceId;
+        if (!_placeId.IsNone) {
+            _isPlaceWelcomeChat = OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag);
+            _place = await Places.Get(Session, _placeId, default).Require().ConfigureAwait(false);
+            if (_place.IsPublic && !_place.UserLinkId.IsNone)
+                _userLinkLocalPrefix = Links.ChatUserLinkPrefix + _place.UserLinkId + Links.Separator + Links.UserLinkPrefix;
+            else
+                _placeUserLinkRequiredFirst = true;
+        }
+        else
+            _userLinkLocalPrefix = Links.ChatUserLinkPrefix;
+
+        if (!_userLinkLocalPrefix.IsNullOrEmpty())
+            _copyUserLinkFormatString = UrlMapper.ToAbsolute(_userLinkLocalPrefix) + "{0}";
+
         _form = new FormModel(ComponentIdGenerator) {
             IsPublic = chat.IsPublic,
             UserLinkId = chat.UserLinkId.Value,
@@ -62,6 +77,11 @@ public partial class EditChatTypeModalPage
             AllowGuestAuthors = chat.AllowGuestAuthors,
             AllowAnonymousAuthors = chat.AllowAnonymousAuthors,
         };
+        if (_place is not null && !_place.Rules.CanApplyPublicChatType())
+            _form.IsPublic = false;
+        if (_userLinkLocalPrefix.IsNullOrEmpty()) // User links are not allowed.
+            _form.UserLinkId = UserLinkId.None.Value;
+
         _editContext = new EditContext(_form);
         _editContext.OnFieldChanged += (_, e) => {
             if (OrdinalEquals(e.FieldIdentifier.FieldName, nameof(_form.UserLinkId))
@@ -70,14 +90,6 @@ public partial class EditChatTypeModalPage
                 _editContext.NotifyFieldChanged(_editContext.Field(nameof(_form.ActualUserLinkId)));
             }
         };
-        _placeId = chat.Id.PlaceChatId.PlaceId;
-        if (!_placeId.IsNone) {
-            _isPlaceWelcomeChat = OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag);
-            _place = await Places.Get(Session, _placeId, default).Require().ConfigureAwait(false);
-            if (!_place.Rules.CanApplyPublicChatType())
-                _form.IsPublic = false;
-        }
-        Context.Class = "edit-chat-type";
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()

@@ -329,35 +329,32 @@
             if (chatIdPart.IsNullOrEmpty())
                 return PageRoute.InvalidRoute;
 
-            string groupChatSid;
+            var placeChatId = ChatId.None;
             if (!chatIdPart.StartsWith("@")) {
-                groupChatSid = chatIdPart;
+                if (!ChatId.TryParse(chatIdPart, out var groupChatId) || groupChatId.Kind != ChatKind.Group)
+                    return PageRoute.InvalidRoute;
+
+                if (!PlaceChatId.TryParse(PlaceChatId.Format(placeId, groupChatId.Value), out var placeChatId1))
+                    return PageRoute.InvalidRoute;
+                placeChatId = placeChatId1;
             } else {
                 var sChatUserLink = chatIdPart.Substring(1);
                 if (!UserLinkId.TryParse(sChatUserLink, out var chatUserLinkId))
                     return PageRoute.UnknownUserLink;
 
-                groupChatSid = "";
                 var placeContacts = await Hub.Contacts.ListIds(Session, placeId, cancellationToken).ConfigureAwait(false);
                 foreach (var placeContact in placeContacts) {
                     if (placeContact.ChatId.Kind == ChatKind.Place) {
                         var placeChat = await Chats.Get(Session, placeContact.ChatId, cancellationToken).ConfigureAwait(false);
                         if (placeChat is not null && Equals(placeChat.UserLinkId, chatUserLinkId)) {
-                            groupChatSid = placeContact.ChatId.Value;
+                            placeChatId = placeContact.ChatId;
                             break;
                         }
                     }
                 }
-                if (groupChatSid.IsNullOrEmpty())
+                if (placeChatId.IsNone)
                     return PageRoute.UnknownUserLink;
             }
-
-            if (!ChatId.TryParse(groupChatSid, out var groupChatId) || groupChatId.Kind != ChatKind.Group)
-                return PageRoute.InvalidRoute;
-
-            if (!PlaceChatId.TryParse(PlaceChatId.Format(placeId, groupChatId.Value), out var placeChatId))
-                return PageRoute.InvalidRoute;
-
             targetChatId = placeChatId;
         }
 

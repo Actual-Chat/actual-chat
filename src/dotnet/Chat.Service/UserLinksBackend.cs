@@ -39,7 +39,7 @@ public class UserLinksBackend(IServiceProvider services) : DbServiceBase<ChatDbC
 
         if (change.IsCreate(out var userLink)) {
             if (dbUserLink != null)
-                throw StandardError.Constraint($"UserLink with id {sid} already exists.");
+                throw StandardError.Constraint($"UserLink with id '{sid}' already exists.");
 
             // Checks
 

@@ -10,7 +10,7 @@
         validationCls = "invalid";
         message = messages.First();
     } else {
-        var hint = ToHint(_userLinkIsAvailableHint);
+        var hint = ToHint(_userLinkIsAvailable);
         if (hint != null) {
             validationCls = hint.Class;
             message = hint.Message;
@@ -24,13 +24,14 @@
     private EditContext? _previousEditContext;
     private Expression<Func<string>>? _previousFieldAccessor;
     private FieldIdentifier _fieldIdentifier;
-    private bool? _userLinkIsAvailableHint;
+    private bool? _userLinkIsAvailable;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     [CascadingParameter] EditContext CurrentEditContext { get; set; } = default!;
 
     [Parameter, EditorRequired] public Expression<Func<string>>? For { get; set; }
+    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; } = PlaceId.None;
     [Parameter] public string CurrentUserLinkId { get; set; } = "";
     [Parameter, EditorRequired] public Func<string> GetUserLinkIdFunc { get; set; } = null!;
 
@@ -75,7 +76,7 @@
 
     private async Task CheckUserLinkAvailability()
     {
-        _userLinkIsAvailableHint = null;
+        _userLinkIsAvailable = null;
 
         var actualUserLinkId = GetUserLinkIdFunc();
         var sUserLinkId = actualUserLinkId;
@@ -85,10 +86,14 @@
         if (OrdinalEquals(sUserLinkId, CurrentUserLinkId))
             return;
 
-        if (!UserLinkId.TryParse(sUserLinkId, out var userLinkId))
+        if (!UserLinkId.TryParse(sUserLinkId, out var userLinkId) || userLinkId.IsNone)
             return;
 
-        _userLinkIsAvailableHint = await Hub.UserLinks.IsUserLinkAvailable(userLinkId).ConfigureAwait(true);
+        if (PlaceId.IsNone)
+            _userLinkIsAvailable = await Hub.UserLinks.IsUserLinkAvailable(userLinkId).ConfigureAwait(true);
+        else
+            _userLinkIsAvailable = await Hub.UserLinks.IsPlaceChatUserLinkAvailable(PlaceId, userLinkId).ConfigureAwait(true);
+
         StateHasChanged();
     }
 
