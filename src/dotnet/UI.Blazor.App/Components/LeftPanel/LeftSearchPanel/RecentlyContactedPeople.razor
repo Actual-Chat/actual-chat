@@ -40,6 +40,7 @@
                 .ConfigureAwait(false);
             return chats.SkipNullItems().ToList();
         } else {
+            // TODO: need to filter by place id on backend side
             var placeUserIds = await Hub.Places.ListUserIds(session, place.Id, cancellationToken).ConfigureAwait(false);
             var chats = await recentIds
                 .Where(id => id.IsPeerChat(out var peerChatId)
