@@ -108,7 +108,8 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddFlows()
             .Add<EntryIndexingFlow>()
             .Add<EntryIndexingMasterFlow>()
-            .Add<PlaceContactIndexingFlow>();
+            .Add<PlaceContactIndexingFlow>()
+            .Add<GroupContactIndexingFlow>();
     }
 
     private static void InjectIndexingServices(RpcHostBuilder rpcHost, bool isBackendClient)
@@ -131,8 +132,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         services.AddSingleton<UserContactIndexer>()
             .AddHostedService(c => c.GetRequiredService<UserContactIndexer>());
-        services.AddSingleton<GroupChatContactIndexer>()
-            .AddHostedService(c => c.GetRequiredService<GroupChatContactIndexer>());
 
         // Chat content indexing
 

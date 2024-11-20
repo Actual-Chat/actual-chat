@@ -16,10 +16,10 @@ public static class GroupContactSearchResultExt
     public static FoundItem BuildFoundContact(this Account owner, Chat.Chat chat, bool isGlobalSearchResult)
         => new (owner.BuildSearchResult(chat), SearchScope.Groups, isGlobalSearchResult);
 
-    public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params Chat.Chat[] chats)
+    public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params IEnumerable<Chat.Chat> chats)
         => chats.Select(x => BuildSearchResult(owner, x));
 
-    public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params (Chat.Chat Chat, Range<int>[]? SearchMatchPartRanges)[] chats)
+    public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params IEnumerable<(Chat.Chat Chat, Range<int>[]? SearchMatchPartRanges)> chats)
         => chats.Select(x => BuildSearchResult(owner, x.Chat, x.SearchMatchPartRanges));
 
     public static ContactSearchResult BuildSearchResult(this Account owner, Chat.Chat chat, Range<int>[]? searchMatchPartRanges = null)

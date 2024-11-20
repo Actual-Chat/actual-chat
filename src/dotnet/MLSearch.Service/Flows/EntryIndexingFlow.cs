@@ -41,7 +41,7 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
 
         var updated = batch.Where(x => x is { IsRemoved: false, IsSystemEntry: false }).Select(x => x.ToIndexedEntry()).ToList();
         var removed = batch.Where(x => x is { IsRemoved: true, IsSystemEntry: false }).Select(x => x.Id.AsTextEntryId()).ToList();
-        await indexedDocuments.Update(updated, removed, cancellationToken).ConfigureAwait(false);
+        await indexedDocuments.UpdateEntries(updated, removed, cancellationToken).ConfigureAwait(false);
     }
 
     protected override async Task<IndexingFlowTransitionKind> HandleTail(int processCount, CancellationToken cancellationToken)
@@ -80,7 +80,7 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
         }
 
         var indexedChat = chat.ToIndexedChat(place);
-        await indexedDocuments.Update([indexedChat], cancellationToken).ConfigureAwait(false);
+        await indexedDocuments.UpdateChats([indexedChat], cancellationToken).ConfigureAwait(false);
         return true;
     }
 }

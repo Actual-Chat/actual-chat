@@ -57,6 +57,17 @@ public static class ChatOperations
         return (chatId, inviteId);
     }
 
+    public static Task<Chat.Chat> UpdateChat(this IWebTester tester, ChatId chatId, string title)
+        => tester.Commander.Call(new Chats_Change(tester.Session,
+            chatId,
+            null,
+            Change.Update(new ChatDiff {
+                Title = title
+            })));
+
+    public static Task<Chat.Chat> DeleteChat(this IWebTester tester, ChatId chatId)
+        => tester.Commander.Call(new Chats_Change(tester.Session, chatId, null, Change.Remove(new ChatDiff())));
+
     public static async Task<AuthorFull> JoinChat(this IWebTester tester, ChatId chatId, Symbol inviteId,
         bool? joinAnonymously = null, Symbol avatarId = default)
     {

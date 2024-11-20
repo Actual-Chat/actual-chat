@@ -22,13 +22,9 @@ public interface ISearchBackend : IComputeService, IBackendService
     [CommandHandler]
     Task OnUserContactBulkIndex(SearchBackend_UserContactBulkIndex command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnChatContactBulkIndex(SearchBackend_ChatContactBulkIndex command, CancellationToken cancellationToken);
-    [CommandHandler]
     Task OnRefresh(SearchBackend_Refresh command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnStartUserContactIndexing(SearchBackend_StartUserContactIndexing command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task OnStartChatContactIndexing(SearchBackend_StartChatContactIndexing command, CancellationToken cancellationToken);
 
     // Events
 
@@ -57,27 +53,7 @@ public sealed partial record SearchBackend_UserContactBulkIndex(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record SearchBackend_ChatContactBulkIndex(
-    [property: DataMember, MemoryPackOrder(0)] ApiArray<IndexedGroupChatContact> Updated,
-    [property: DataMember, MemoryPackOrder(1)] ApiArray<IndexedGroupChatContact> Deleted
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // Review
-{
-    [IgnoreDataMember, MemoryPackIgnore]
-    public Unit ShardKey => Unit.Default;
-}
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-// ReSharper disable once InconsistentNaming
 public sealed partial record SearchBackend_StartUserContactIndexing
-    : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // NOTE(AY): Will execute on a single backend now!
-{
-    [IgnoreDataMember, MemoryPackIgnore]
-    public Unit ShardKey => Unit.Default;
-}
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-// ReSharper disable once InconsistentNaming
-public sealed partial record SearchBackend_StartChatContactIndexing
     : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // NOTE(AY): Will execute on a single backend now!
 {
     [IgnoreDataMember, MemoryPackIgnore]

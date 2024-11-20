@@ -145,7 +145,7 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
             .Settings(s => s.RefreshInterval(Settings.RefreshInterval));
 
     private ICreateIndexRequest ConfigureGroupContactIndex(CreateIndexDescriptor index)
-        => index.Map<IndexedGroupChatContact>(m
+        => index.Map<IndexedGroupContact>(m
             => m.Properties(pp
                 => pp.Keyword(p => p.Name(x => x.Id))
                     .Keyword(p => p.Name(x => x.PlaceId))
