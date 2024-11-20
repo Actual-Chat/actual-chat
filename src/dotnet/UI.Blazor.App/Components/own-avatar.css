@@ -4,6 +4,9 @@
 .modal-frame.own-account-editor-modal .dialog-body {
     @apply overflow-y-auto custom-scrollbar;
 }
+.own-account-editor-modal section.form-section-user-link .copy-to-clipboard {
+    @apply -mr-4;
+}
 .is-default-avatar {
     @apply h-12 my-2;
 }

@@ -289,7 +289,7 @@
         if (pageRoute.IsNullOrEmpty())
             return PageRoute.Empty;
 
-        if (!pageRoute.StartsWith("@")) {
+        if (!pageRoute.StartsWith(Links.UserLinkPrefix)) {
             if (ChatId.TryParse(pageRoute, out var chatId))
                 return new PageRoute(chatId);
 

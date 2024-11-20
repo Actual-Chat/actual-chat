@@ -71,6 +71,7 @@
                         <ValidationMessage>
                             <UserLinkValidationMessage
                                 For="@(() => _form.ActualUserLinkId)"
+                                Kind="@UserLinkValidationMessage.UserLinkKind.PlaceLink"
                                 CurrentUserLinkId="@_form.CurrentUserLinkId"
                                 GetUserLinkIdFunc="@(() => _form.ActualUserLinkId)" />
                         </ValidationMessage>

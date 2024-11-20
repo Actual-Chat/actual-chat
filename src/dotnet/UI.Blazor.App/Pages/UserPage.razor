@@ -1,14 +1,17 @@
-@page "/u/{UserSid}"
+@page "/u"
+@page "/u/{PageRoute}"
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IAccounts Accounts => Hub.Accounts;
+    private History History => Hub.History;
+    private IUserLinks UserLinks => Hub.UserLinks;
 
-    [Parameter] public string? UserSid { get; set; }
+    [Parameter] public string? PageRoute { get; set; }
 
     protected override async Task OnParametersSetAsync() {
-        var userId = new UserId(UserSid, ParseOrNone.Option);
+        var userId = await GetUserIdFromPageRoute(PageRoute, default);
         if (userId.IsGuestOrNone) {
             _ = History.NavigateTo(Links.NotFound);
             return;
@@ -28,5 +31,18 @@
 
         var chatId = new PeerChatId(ownAccount.Id, account.Id);
         _ = History.NavigateTo(Links.Chat(chatId));
+    }
+
+    private async Task<UserId> GetUserIdFromPageRoute(string? pageRoute, CancellationToken cancellationToken) {
+        if (pageRoute.IsNullOrEmpty())
+            return UserId.None;
+
+        if (!pageRoute.StartsWith(Links.UserLinkPrefix))
+            return UserId.ParseOrNone(pageRoute);
+
+        if (!UserLinkId.TryParse(pageRoute.Substring(1), out var userLinkId))
+            return UserId.None;
+
+        return await UserLinks.ResolveAccountUserLink(userLinkId, cancellationToken).ConfigureAwait(false);
     }
 }

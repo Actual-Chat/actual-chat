@@ -26,6 +26,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? UsernameNormalized { get; set; }
     public bool IsGreetingCompleted { get; set; }
     public string TimeZone { get; set; } = "";
+    public string UserLinkId { get; set; } = "";
     public DateTime CreatedAt {
         get => _createdAt.DefaultKind(DateTimeKind.Utc);
         set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
@@ -48,6 +49,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             IsGreetingCompleted = IsGreetingCompleted,
             CreatedAt = CreatedAt,
             TimeZone = TimeZone,
+            UserLinkId = new UserLinkId(UserLinkId),
         };
     }
 
@@ -70,6 +72,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsGreetingCompleted = model.IsGreetingCompleted;
         CreatedAt = model.CreatedAt;
         TimeZone = model.TimeZone;
+        UserLinkId = model.UserLinkId.Value;
         if (!model.Username.IsNullOrEmpty())
             UsernameNormalized = model.Username.ToUpper(CultureInfo.InvariantCulture);
     }
@@ -82,6 +85,9 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
                 .HasFilter("username_normalized is not null")
                 .IsUnique();
             builder.HasIndex(a => new { a.Id, a.TimeZone });
+            builder.HasIndex(a => new { a.UserLinkId })
+                .HasFilter("user_link_id <> ''")
+                .IsUnique();
         }
     }
 }

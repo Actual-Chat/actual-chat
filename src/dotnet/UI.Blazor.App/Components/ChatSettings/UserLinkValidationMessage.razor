@@ -31,7 +31,7 @@
     [CascadingParameter] EditContext CurrentEditContext { get; set; } = default!;
 
     [Parameter, EditorRequired] public Expression<Func<string>>? For { get; set; }
-    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; } = PlaceId.None;
+    [Parameter, EditorRequired] public UserLinkKind Kind { get; set; } = null!;
     [Parameter] public string CurrentUserLinkId { get; set; } = "";
     [Parameter, EditorRequired] public Func<string> GetUserLinkIdFunc { get; set; } = null!;
 
@@ -89,10 +89,12 @@
         if (!UserLinkId.TryParse(sUserLinkId, out var userLinkId) || userLinkId.IsNone)
             return;
 
-        if (PlaceId.IsNone)
+        if (ReferenceEquals(Kind, UserLinkKind.AccountLink))
+            _userLinkIsAvailable = await Hub.UserLinks.IsUserLinkAvailableForAccount(userLinkId).ConfigureAwait(true);
+        else if (Kind.PlaceId.IsNone)
             _userLinkIsAvailable = await Hub.UserLinks.IsUserLinkAvailable(userLinkId).ConfigureAwait(true);
         else
-            _userLinkIsAvailable = await Hub.UserLinks.IsPlaceChatUserLinkAvailable(PlaceId, userLinkId).ConfigureAwait(true);
+            _userLinkIsAvailable = await Hub.UserLinks.IsPlaceChatUserLinkAvailable(Kind.PlaceId, userLinkId).ConfigureAwait(true);
 
         StateHasChanged();
     }
@@ -108,4 +110,10 @@
     }
 
     private record FormSectionHint(string Message, string Class = "");
+
+    public record UserLinkKind(PlaceId PlaceId) {
+        public static readonly UserLinkKind AccountLink = new (PlaceId.None);
+        public static readonly UserLinkKind PlaceLink = new (PlaceId.None);
+        public static UserLinkKind ChatLink(PlaceId placeId) => new (placeId);
+    }
 }

@@ -11,6 +11,7 @@
 }
 
 <Form @ref="@_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
+    <AsyncDataAnnotationsValidator @ref="_validator"/>
     <DialogFrame
         Class="own-account-editor-modal"
         Title="Edit account"
@@ -19,8 +20,6 @@
         ButtonsClass="full-width">
         <Body>
         <FormBlock>
-            <AsyncDataAnnotationsValidator @ref="_validator"/>
-
             <FormSection
                 For="() => _form.Name"
                 IsRequired="true"
@@ -44,6 +43,36 @@
                     Id="@_form.LastNameFieldId"
                     Autofocus="true"
                     ClearButton="true"/>
+            </FormSection>
+
+            <FormSection Class="form-section-user-link"
+                         For="() => _form.UserLinkId"
+                         InputId="@_form.UserLinkIdFormId"
+                         Label="User link"
+                         IsLabelInsideInput="true">
+                <ValidationMessage>
+                    <UserLinkValidationMessage
+                        For="@(() => _form.UserLinkId)"
+                        Kind="@UserLinkValidationMessage.UserLinkKind.AccountLink"
+                        CurrentUserLinkId="@_form.CurrentUserLinkId"
+                        GetUserLinkIdFunc="@(() => _form.UserLinkId)"/>
+                </ValidationMessage>
+                <ChildContent>
+                    <TextBox
+                        Id="@_form.UserLinkIdFormId"
+                        Prefix="@_userLinkLocalPrefix"
+                        @bind-Value="@_form.UserLinkId"
+                        InputRefCreated="@_setUserLinkCopySource" />
+                </ChildContent>
+                <Right>
+                    @if (!_copyUserLinkFormatString.IsNullOrEmpty() && !_userLinkTextBoxRef.Id.IsNullOrEmpty()) {
+                        <CopyToClipboard
+                            ButtonClass="btn-transparent"
+                            Text=""
+                            CopyTextSourceRef="@_userLinkTextBoxRef"
+                            CopyTextFormatString="@_copyUserLinkFormatString"/>
+                    }
+                </Right>
             </FormSection>
 
             <FormSection
@@ -134,21 +163,33 @@
 </Form>
 
 @code {
+    private readonly string _defaultPhoneValue = PhoneCodes.Default.DisplayCode;
     private Form _formRef = null!;
     private FormModel _form = null!;
     private AccountFull _account = AccountFull.Loading;
     private AsyncDataAnnotationsValidator _validator = null!;
-    private readonly string _defaultPhoneValue = PhoneCodes.Default.DisplayCode;
+    private ElementReference _userLinkTextBoxRef;
+    private string _userLinkLocalPrefix = "";
+    private string _copyUserLinkFormatString = "";
+    private Action<ElementReference> _setUserLinkCopySource = null!;
 
-    [Inject] private Session Session { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private IPhones Phones { get; init; } = null!;
     [Inject] private UIHub UIHub { get; init; } = null!;
+    private Session Session => UIHub.Session();
+    private UrlMapper UrlMapper => UIHub.UrlMapper();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
+        _setUserLinkCopySource = c => {
+            _userLinkTextBoxRef = c;
+            StateHasChanged();
+        };
+        _userLinkLocalPrefix = Links.AccountUserLinkPrefix;
+        _copyUserLinkFormatString = UrlMapper.ToAbsolute(_userLinkLocalPrefix) + "{0}";
+
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         _account = await UIHub.Accounts.GetOwn(Session, default);
         _form.Name = _account.Name;
@@ -156,6 +197,7 @@
         _form.Email = _account.Email.NullIfEmpty();
         _form.Phone = !_account.Phone.IsNone ? _account.Phone.ToReadable() : "";
         _form.ParsedPhone = _account.Phone;
+        _form.UserLinkId = _form.CurrentUserLinkId = _account.UserLinkId.Value;
 
         _form.CopyToBase();
     }
@@ -177,6 +219,7 @@
                 Name = _form.Name,
                 LastName = _form.LastName,
                 Phone = phone,
+                UserLinkId = UserLinkId.ParseOrNone(_form.UserLinkId),
             },
             account.Version);
         var (_, error) = await UIHub.UICommander().Run(updateAccountCommand);
@@ -220,6 +263,9 @@
         [PhoneNumber(IsOptional = true)] public string Phone { get; set; } = "";
         public Phone ParsedPhone { get; set; }
         public string PhoneFieldId { get; set; } = "";
+        public string UserLinkId { get; set; } = "";
+        public string CurrentUserLinkId { get; set; } = "";
+        public string UserLinkIdFormId { get; set; } = "";
     }
 
     public sealed record Model {
