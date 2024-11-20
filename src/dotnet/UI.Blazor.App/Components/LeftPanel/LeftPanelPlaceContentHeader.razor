@@ -13,16 +13,8 @@
 
 <div class="left-panel-content-header place">
     <div class="c-content">
-        <ChatSearchBox
-            @ref="_searchBoxRef"
-            InitialText="@m.InitialText"
-            IsCollapsed="@m.InitialText.IsNullOrEmpty()"
-            ShowClose="true"
-            Placeholder="Search"
-            ShowSpinner="true"
-            MaxLength="@Constants.Chat.MaxSearchFilterLength"
-            TextChanged="@OnSearchBoxTextChanged"
-            Cancelled="@OnSearchBoxCancelled"/>
+        <LeftChatSearchInput Place="@Place"/>
+
         <div class="c-icon">
             <Pic
                 Picture="picture"

@@ -260,6 +260,10 @@
         @apply text-[var(--white)];
     }
 
+    .always-black {
+        @apply text-[var(--black)];
+    }
+
     .wrap-anywhere {
         overflow-wrap: anywhere;
     }

@@ -28,6 +28,7 @@
 
     [Parameter] public string Title { get; set; } = "Recently viewed";
     [Parameter] public ChatUsageListKind ListKind { get; set; } = ChatUsageListKind.ViewedGroupChats;
+    [Parameter] public Place? Place { get; set; }
 
     protected override ComputedState<IReadOnlyList<ChatInfo>>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -43,6 +44,11 @@
             .Select(id => ChatUI.Get(id, cancellationToken))
             .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);
+        if (!ReferenceEquals(Place, null)) {
+            chats = chats
+                .Where(info => info?.Chat.Id.PlaceId.Id == Place.Id)
+                .ToArray();
+        }
         return chats.SkipNullItems().ToList();
     }
 }
