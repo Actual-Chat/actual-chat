@@ -49,8 +49,22 @@ public static class ClientStartup
         AppContext.SetSwitch("Microsoft.Extensions.DependencyInjection.DisableDynamicEngine", true);
 
         // CodeKeeper actions
-        CodeKeeper.AddFakeAction(() => {
+        CodeKeeper.AddAction(() => {
             // Extra "keep code" calls should be added here
+
+            // Hardcode the known comparer types to avoid trimming
+            CodeKeeper.CallSilently(() => _ = new ByValueParameterComparer().AreEqual(null, null));
+            CodeKeeper.CallSilently(() => _ = new ByItemParameterComparer().AreEqual(null, null));
+            CodeKeeper.CallSilently(() => _ = new ByItemSetParameterComparer().AreEqual(null, null));
+            CodeKeeper.CallSilently(() => _ = new ByNoneParameterComparer().AreEqual(null, null));
+            CodeKeeper.CallSilently(() => _ = new ByRefParameterComparer().AreEqual(null, null));
+            CodeKeeper.CallSilently(() => _ = new ByUuidParameterComparer().AreEqual(null, null));
+            CodeKeeper.CallSilently(() => _ = new DefaultParameterComparer().AreEqual(null, null));
+            CodeKeeper.CallSilently(() => _ = new ByVersionParameterComparer<long>().AreEqual(null, null));
+            CodeKeeper.CallSilently(() => _ = new ByIdAndVersionParameterComparer<ChatId, long>().AreEqual(null, null));
+            CodeKeeper.CallSilently(() => _ = new ByIdAndVersionParameterComparer<PlaceId, long>().AreEqual(null, null));
+            CodeKeeper.CallSilently(() => _ = new ByUuidAndVersionParameterComparer<long>().AreEqual(null, null));
+
             CodeKeeper.FakeCallSilently(() => _ = new DefaultLayout());
             CodeKeeper.CallSilently(() => _ = new InterfaceImmutableDictionaryFormatter<PlaceId, ChatId>());
             // TODO: Add support for parameter comparers

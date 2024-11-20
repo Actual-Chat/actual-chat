@@ -46,22 +46,6 @@ public static class Program
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
 
-        // Hardcode the known comparer types to avoid trimming
-        CodeKeeper.AddAction(() => {
-            var keeper = CodeKeeper.Get<TypeCodeKeeper>();
-            keeper.KeepType<ByValueParameterComparer>();
-            keeper.KeepType<ByItemParameterComparer>();
-            keeper.KeepType<ByItemSetParameterComparer>();
-            keeper.KeepType<ByNoneParameterComparer>();
-            keeper.KeepType<ByRefParameterComparer>();
-            keeper.KeepType<ByUuidParameterComparer>();
-            keeper.KeepType<DefaultParameterComparer>();
-            keeper.KeepType<ByVersionParameterComparer<long>>();
-            keeper.KeepType<ByIdAndVersionParameterComparer<ChatId, long>>();
-            keeper.KeepType<ByIdAndVersionParameterComparer<PlaceId, long>>();
-            keeper.KeepType<ByUuidAndVersionParameterComparer<long>>();
-        });
-
         await host.RunAsync().ConfigureAwait(false);
     }
 }
