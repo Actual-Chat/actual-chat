@@ -7,9 +7,10 @@
 @{
     var m = State.Value;
     var cls = m.IsOpen ? "open" : "closed";
+    var placeCls = ReferenceEquals(Place, null) ? "" : "place";
 }
 
-<div class="left-chat-search-input @cls">
+<div class="left-chat-search-input @cls @placeCls">
     <div class="c-search">
         <div class="search-input">
             <label>
@@ -23,13 +24,19 @@
                     TextChanged="OnSearchInputTextChanged">
                 </TextInput>
 
-                @if (m.EnableIncompleteUI) {
-                    <ButtonRound Click="@OnAISearchClicked" Class="c-ai-btn">
-                        <i class="icon-ai-search text-xl"></i>
-                    </ButtonRound>
+                @if (ReferenceEquals(Place, null)) {
+                    @if (m.EnableIncompleteUI) {
+                        <ButtonRound Click="@OnAISearchClicked" Class="c-ai-btn">
+                            <i class="icon-ai-search text-xl"></i>
+                        </ButtonRound>
+                    } else {
+                        <ButtonRound Click="@OnSearchButtonClick" Class="c-ai-btn search-btn btn-transparent">
+                            <i class="icon-search text-xl"></i>
+                        </ButtonRound>
+                    }
                 } else {
-                    <ButtonRound Click="@OnSearchButtonClick" Class="c-ai-btn search-btn btn-transparent">
-                        <i class="icon-search text-xl"></i>
+                    <ButtonRound Click="@OnAISearchClicked" Class="c-ai-btn place-search">
+                        <i class="icon-ai-search text-xl"></i>
                     </ButtonRound>
                 }
                 <HeaderButton Click="@(_ => OnClick(false))" Class="c-close-btn">
@@ -47,6 +54,7 @@
     private SearchUI SearchUI => Hub.SearchUI;
     private Features Features => Hub.Features();
 
+    [Parameter] public Place? Place { get; set; }
     [Parameter] public string Placeholder { get; set; } = "Search";
     [Parameter] public int? MaxLength { get; set; }
 
@@ -75,7 +83,7 @@
         if (!openPanel)
             Cancel();
         SearchUI.ShowRecent(openPanel);
-        SearchUI.PlaceId.Value = PlaceId.None;
+        SearchUI.PlaceId.Value = Place?.Id ?? PlaceId.None;
         StateHasChanged();
     }
 
@@ -83,7 +91,7 @@
         => _inputRef?.Focus();
 
     private void OnSearchInputTextChanged(string text) {
-        SearchUI.PlaceId.Value = PlaceId.None;
+        SearchUI.PlaceId.Value = Place?.Id ?? PlaceId.None;
         SearchUI.Text.Value = text;
     }
 

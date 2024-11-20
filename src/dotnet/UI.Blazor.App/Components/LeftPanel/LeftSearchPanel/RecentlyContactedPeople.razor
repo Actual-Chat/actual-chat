@@ -15,6 +15,9 @@
 
 @code {
     [Inject] private ChatUIHub Hub { get; set; } = null!;
+
+    [Parameter] public Place? Place { get; set; }
+
     private IChatUsages ChatUsages => Hub.ChatUsages;
     private IChats Chats => Hub.Chats;
     private Session Session => Hub.Session();
@@ -28,11 +31,24 @@
 
     protected override async Task<IReadOnlyList<Chat>> ComputeState(CancellationToken cancellationToken) {
         var session = Session;
+        var place = Place;
         var recentIds = await ChatUsages.GetRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, cancellationToken).ConfigureAwait(false);
-        var chats = await recentIds
-            .Select(id => Chats.Get(session, id, cancellationToken))
-            .Collect(ApiConstants.Concurrency.High, cancellationToken)
-            .ConfigureAwait(false);
-        return chats.SkipNullItems().ToList();
+        if (ReferenceEquals(place, null)) {
+            var chats = await recentIds
+                .Select(id => Chats.Get(session, id, cancellationToken))
+                .Collect(ApiConstants.Concurrency.High, cancellationToken)
+                .ConfigureAwait(false);
+            return chats.SkipNullItems().ToList();
+        } else {
+            var placeUserIds = await Hub.Places.ListUserIds(session, place.Id, cancellationToken).ConfigureAwait(false);
+            var chats = await recentIds
+                .Where(id => id.IsPeerChat(out var peerChatId)
+                             && !peerChatId.IsNone
+                             && placeUserIds.Contains(peerChatId.AnotherUserIdOrDefault(Hub.AccountUI.OwnAccount.Value.Id)))
+                .Select(id => Chats.Get(session, id, cancellationToken))
+                .Collect(ApiConstants.Concurrency.High, cancellationToken)
+                .ConfigureAwait(false);
+            return chats.SkipNullItems().ToList();
+        }
     }
 }
