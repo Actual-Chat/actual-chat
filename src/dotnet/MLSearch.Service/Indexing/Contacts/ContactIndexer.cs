@@ -17,7 +17,7 @@ public abstract class ContactIndexer(IServiceProvider services)
     private Tracer? _tracer;
 
     protected ContactIndexingSignal NeedsSync { get; } = new (services);
-    protected long MaxVersion => (Clocks.CoarseSystemClock.Now - Settings.ContactIndexingDelay).EpochOffset.Ticks;
+    protected long MaxVersion => (Clocks.CoarseSystemClock.Now - Settings.IndexingDelay).EpochOffset.Ticks;
 
     protected MLSearchSettings Settings => _settings ??= Services.GetRequiredService<MLSearchSettings>();
     protected OpenSearchConfigurator OpenSearchConfigurator

@@ -11,16 +11,18 @@ namespace ActualChat.MLSearch.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, ChatEntryId>
 {
-    // protected override TimeSpan Interval => Host.Services.GetRequiredService<MLSearchSettings>().EntryIndexingInterval;
+    protected override int CurrentFlowSetVersion => 1;
     private Task WhenReady => Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
 
-    protected override Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
-        => EnsureChatInfo(new ChatId(Id.Arguments), cancellationToken);
+    protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
+        => await base.OnBeforeFirstIndexAfterReset(cancellationToken)
+            && await EnsureChatInfo(new ChatId(Id.Arguments), cancellationToken);
 
     protected override async Task<IReadOnlyList<ChatEntry>> GetBatch(
         IndexingFlowCursor<ChatEntryId>? cursor,
         CancellationToken cancellationToken)
     {
+        // TODO: maxVersion = now - IndexingDelay
         var updateLoader = Host.Services.GetRequiredService<IChatContentUpdateLoader>();
         cursor ??= new (ChatEntryId.None, 0);
         return await updateLoader.LoadChatUpdatesAsync(new ChatId(Id.Arguments),
@@ -42,11 +44,16 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
         await indexedDocuments.Update(updated, removed, cancellationToken).ConfigureAwait(false);
     }
 
-    protected override async Task<bool> OnTailReached(CancellationToken cancellationToken)
+    protected override async Task<IndexingFlowTransitionKind> HandleTail(int processCount, CancellationToken cancellationToken)
     {
-        Log.LogInformation("`{Id}`.OnTailReached: requesting entry index refresh", Id);
-        await Host.Services.Queues().Enqueue(new SearchBackend_Refresh(RefreshEntries: true), cancellationToken).ConfigureAwait(false);
-        return true;
+        var transitionKind = await base.HandleTail(processCount, cancellationToken).ConfigureAwait(false);
+        if (processCount > 0) {
+            Log.LogInformation("`{Id}`.OnTailReached: requesting entry index refresh", Id);
+            await Host.Services.Queues()
+                .Enqueue(new SearchBackend_Refresh(RefreshEntries: true), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        return transitionKind;
     }
 
     // Private methods

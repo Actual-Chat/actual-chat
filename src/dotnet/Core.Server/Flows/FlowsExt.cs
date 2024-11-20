@@ -1,4 +1,5 @@
 using ActualChat.Flows.Infrastructure;
+using ActualChat.Queues;
 
 namespace ActualChat.Flows;
 
@@ -35,5 +36,54 @@ public static class FlowsExt
         var flowRegistry = services.GetRequiredService<FlowRegistry>();
         var flowId = flowRegistry.NewId(flowType, arguments);
         return await flows.GetOrStart(flowId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task<TFlow?> GetAndResume<TFlow>(
+        this IFlows flows,
+        string arguments,
+        TimeSpan? minResumeIn = null,
+        string? tag = null,
+        TimeSpan? delay = null,
+        CancellationToken cancellationToken = default)
+        where TFlow : Flow
+        => (TFlow?)await flows.GetAndResume(typeof(TFlow),
+                arguments,
+                minResumeIn,
+                tag,
+                delay,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    public static async Task<Flow?> GetAndResume(
+        this IFlows flows,
+        Type flowType,
+        string arguments,
+        TimeSpan? minResumeIn = null,
+        string? tag = null,
+        TimeSpan? delay = null,
+        CancellationToken cancellationToken = default)
+    {
+        Flow.RequireCorrectType(flowType);
+        var services = flows.GetServices();
+        var flowRegistry = services.GetRequiredService<FlowRegistry>();
+        var queues = services.Queues();
+        var clocks = services.Clocks();
+        var log = services.LogFor<IFlows>();
+
+        var flowId = flowRegistry.NewId(flowType, arguments);
+        var flow = await flows.Get(flowId, cancellationToken).ConfigureAwait(false);
+        if (flow is null) {
+            log.LogInformation("`{Id}`.GetAndResume: unable to resume because the flow was not found", flowId);
+            return null;
+        }
+        var minHardResumeAt = clocks.SystemClock.Now + minResumeIn + (delay ?? TimeSpan.Zero);
+        var flowResumeEvent = new FlowResumeEvent(flowId,
+            false,
+            tag,
+            minHardResumeAt,
+            clocks.SystemClock.Now + delay);
+        await queues.Enqueue(flowResumeEvent, cancellationToken)
+            .ConfigureAwait(false);
+        return flow;
     }
 }

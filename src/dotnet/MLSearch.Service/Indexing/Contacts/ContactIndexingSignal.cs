@@ -25,7 +25,7 @@ public sealed class ContactIndexingSignal : IAsyncDisposable
     public void SetDelayed()
     {
         var fireAt = Clocks.SystemClock.Now.ToLastIntervalStart(Settings.ContactIndexingSignalInterval)
-            + Settings.ContactIndexingDelay
+            + Settings.IndexingDelay
             + Settings.ContactIndexingSignalInterval;
         _timers.AddOrUpdate(fireAt, fireAt);
     }

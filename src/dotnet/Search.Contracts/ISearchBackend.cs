@@ -24,10 +24,6 @@ public interface ISearchBackend : IComputeService, IBackendService
     [CommandHandler]
     Task OnChatContactBulkIndex(SearchBackend_ChatContactBulkIndex command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnPlaceContactBulkIndex(SearchBackend_PlaceContactBulkIndex command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task OnStartPlaceContactIndexing(SearchBackend_StartPlaceContactIndexing command, CancellationToken cancellationToken);
-    [CommandHandler]
     Task OnRefresh(SearchBackend_Refresh command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnStartUserContactIndexing(SearchBackend_StartUserContactIndexing command, CancellationToken cancellationToken);
@@ -72,17 +68,6 @@ public sealed partial record SearchBackend_ChatContactBulkIndex(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record SearchBackend_PlaceContactBulkIndex(
-    [property: DataMember, MemoryPackOrder(0)] ApiArray<IndexedPlaceContact> Updated,
-    [property: DataMember, MemoryPackOrder(1)] ApiArray<IndexedPlaceContact> Deleted
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // Review
-{
-    [IgnoreDataMember, MemoryPackIgnore]
-    public Unit ShardKey => Unit.Default;
-}
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-// ReSharper disable once InconsistentNaming
 public sealed partial record SearchBackend_StartUserContactIndexing
     : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // NOTE(AY): Will execute on a single backend now!
 {
@@ -93,15 +78,6 @@ public sealed partial record SearchBackend_StartUserContactIndexing
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record SearchBackend_StartChatContactIndexing
-    : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // NOTE(AY): Will execute on a single backend now!
-{
-    [IgnoreDataMember, MemoryPackIgnore]
-    public Unit ShardKey => Unit.Default;
-}
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-// ReSharper disable once InconsistentNaming
-public sealed partial record SearchBackend_StartPlaceContactIndexing
     : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // NOTE(AY): Will execute on a single backend now!
 {
     [IgnoreDataMember, MemoryPackIgnore]
