@@ -29,6 +29,17 @@ public static class PlaceOperations
         return place;
     }
 
+    public static Task<Place> UpdatePlace(this IWebTester tester, PlaceId placeId, string newTitle)
+        => tester.Commander.Call(new Places_Change(tester.Session,
+            placeId,
+            null,
+            Change.Update(new PlaceDiff {
+                Title = newTitle,
+            })));
+
+    public static Task<Place> DeletePlace(this IWebTester tester, PlaceId placeId)
+        => tester.Commander.Call(new Places_Change(tester.Session, placeId, null, Change.Remove<PlaceDiff>()));
+
     public static async Task InviteToPlace(this IWebTester tester, PlaceId placeId, params UserId[] userIds)
     {
         var session = tester.Session;

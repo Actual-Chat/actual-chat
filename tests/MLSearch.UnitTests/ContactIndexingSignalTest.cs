@@ -14,7 +14,7 @@ public class ContactIndexingSignalTest : IAsyncLifetime
     public Task InitializeAsync()
     {
         var config = new ConfigurationBuilder().AddInMemoryCollection(
-                ($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.ContactIndexingDelay)}", "00:00:00.02"),
+                ($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IndexingDelay)}", "00:00:00.02"),
                 ($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.ContactIndexingSignalInterval)}", "00:00:00.01")
                 ).Build();
         var services = new ServiceCollection().AddSingleton(config)

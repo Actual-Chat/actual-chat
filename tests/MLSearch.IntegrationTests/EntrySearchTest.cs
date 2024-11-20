@@ -231,14 +231,15 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     private Task<ChatEntry> UpdateEntry(ChatEntryId id, string text)
         => Tester.UpdateTextEntry(id, $"{text} {UniquePart}");
 
-    private async Task<ApiArray<EntrySearchResult>> Find(string criteria, PlaceId? placeId = null, ChatId chatId = default, int expected = 1)
-    {
-        ApiArray<EntrySearchResult> results = [];
-        await TestExt.When(async () => {
-                results = await Tester.FindEntries($"{UniquePart} {criteria}", placeId, chatId);
+    private Task<ApiArray<EntrySearchResult>> Find(
+        string criteria,
+        PlaceId? placeId = null,
+        ChatId chatId = default,
+        int expected = 1)
+        => TestsExt.When(async () => {
+                var results = await Tester.FindEntries($"{UniquePart} {criteria}", placeId, chatId);
                 results.Should().HaveCount(expected);
+                return results;
             },
             TimeSpan.FromSeconds(20));
-        return results;
-    }
 }

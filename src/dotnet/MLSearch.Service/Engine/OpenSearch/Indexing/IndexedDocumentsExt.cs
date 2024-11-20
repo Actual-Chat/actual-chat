@@ -15,5 +15,13 @@ internal static class IndexedDocumentsExt
         this IndexedDocuments indexedDocuments,
         IReadOnlyCollection<IndexedChat> updatedDocuments,
         CancellationToken cancellationToken = default)
+        // NOTE: IndexedChat and IndexedEntry are stored in the same index
         => indexedDocuments.Update<IndexedChat, ChatId>(x => x.EntryIndexName, updatedDocuments, [], cancellationToken);
+
+    public static Task UpdatePlaceContacts(
+        this IndexedDocuments indexedDocuments,
+        IReadOnlyCollection<IndexedPlaceContact> updatedDocuments,
+        IReadOnlyCollection<PlaceId> deleted,
+        CancellationToken cancellationToken = default)
+        => indexedDocuments.Update(x => x.PlaceIndexName, updatedDocuments, deleted, cancellationToken);
 }

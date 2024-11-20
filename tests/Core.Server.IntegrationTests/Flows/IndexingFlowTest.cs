@@ -1,5 +1,4 @@
 using ActualChat.Flows;
-using ActualChat.Queues;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
 
@@ -11,126 +10,75 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
     private IndexingFlowTestContext Context { get; } = fixture.AppHost.Services.GetRequiredService<IndexingFlowTestContext>();
 
-    [Fact(Skip = "temporarily disabled")]
-    public async Task MustProcessBatch()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(10)]
+    [InlineData(77)]
+    public async Task MustProcessAllBatches(int batchCount)
     {
         // arrange
         var id = RandomSymbolGenerator.Default.Next();
-        BatchIndexingResult<long>[] batches = [
-            new (false, false, 10),
-            new (false, false, 20),
-        ];
+        var batchSize = 10;
+        var batches = Enumerable.Range(1, batchCount)
+            .Select(i => new BatchIndexingResult<long>(false, false, i * batchSize, batchSize))
+            .Append(new (false, true, (batchCount + 1) * batchSize, batchSize))
+            .ToList();
         Context.Add(id, batches);
 
         // act
         await Flows.GetOrStart<SimpleIndexingFlow>(id);
+        var start = Clocks.SystemClock.Now;
 
         // assert
-        await TestExt.When(() => {
-            var transitions = Context.ListTransitions(id);
-            transitions.Should().HaveCount(1);
-            transitions[0].Step.Should().Be("OnIndex");
-            transitions[0].HardResumeAt.Should().NotBeNull();
-            var resumeIn = transitions[0].HardResumeAt!.Value - Clocks.SystemClock.Now;
-            resumeIn.Should().BeCloseTo(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(1));
-            Context.ListRemaining(id).Should().BeEquivalentTo(batches[1..]);
-        }, TimeSpan.FromSeconds(10));
-    }
-
-    [Fact(Skip = "temporarily disabled")]
-    public async Task MustProcessAllBatchesByRequests()
-    {
-        // arrange
-        var id = RandomSymbolGenerator.Default.Next();
-        BatchIndexingResult<long>[] batches = [
-            new (false, false, 10),
-            new (false, false, 20),
-            new (false, true, 30),
-        ];
-        Context.Add(id, batches);
-
-        // act
-        var flow = await Flows.GetOrStart<SimpleIndexingFlow>(id);
-
-        // assert
-        await TestExt.When(() => {
-            Context.ListRemaining(id).Should().BeEquivalentTo(batches[1..]);
-        }, TimeSpan.FromSeconds(10));
-
-        // act
-        await Queues.Enqueue(new FlowResumeEvent(flow.Id));
-
-        // assert
-        await TestExt.When(() => {
-            Context.ListRemaining(id).Should().BeEquivalentTo(batches[2..]);
-        }, TimeSpan.FromSeconds(10));
-
-        // act
-        await Queues.Enqueue(new FlowResumeEvent(flow.Id));
-
-        // assert
-        await TestExt.When(() => {
+        await TestExt.When(async () => {
             Context.ListRemaining(id).Should().BeEmpty();
+            var transitions = Context.ListTransitions(id, start);
+            transitions
+                .Should()
+                .HaveCount(batchCount + 1);
+            transitions[..^1].Should().AllBeEquivalentTo(("OnIndex", (TimeSpan?)null));
+            transitions[^1].Step.Should().Be("OnIndex");
+            transitions[^1].HardResumeIn.Should().BeCloseTo(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(3));
+            var flow = await Flows.Get<SimpleIndexingFlow>(id);
+            (flow!.NextRecheckAt - start).Should().BeCloseTo(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(3));
+        }, TimeSpan.FromSeconds(10));
+
+        // act
+        Context.Add(id, [new (false, true, (batchCount + 1) * batchSize, 0)]);
+        await Flows.GetAndResume<SimpleIndexingFlow>(id);
+
+        // assert
+        await TestExt.When(async () => {
+            Context.ListRemaining(id).Should().BeEmpty();
+            var transitions = Context.ListTransitions(id, start);
+            transitions
+                .Should()
+                .HaveCount(batchCount + 2);
+            transitions[^1].Step.Should().Be("OnIndex");
+            transitions[^1].HardResumeIn.Should().BeCloseTo(TimeSpan.FromHours(24), TimeSpan.FromMinutes(1));
+            var flow = await Flows.Get<SimpleIndexingFlow>(id);
+            flow!.NextRecheckAt.Should().BeNull();
         }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
-    public async Task MustScheduleWatchdogTimerWhenTailReached()
-    {
-        // arrange
-        var id = RandomSymbolGenerator.Default.Next();
-        BatchIndexingResult<long>[] batches = [
-            new (false, true, 10),
-            new (false, false, 20),
-        ];
-        Context.Add(id, batches);
-
-        // act
-        await Flows.GetOrStart<SimpleIndexingFlow>(id);
-
-        // assert
-        await TestExt.When(() => {
-            var transitions = Context.ListTransitions(id);
-            transitions.Should().HaveCount(1);
-            transitions[0].HardResumeAt.Should().NotBeNull();
-            var resumeIn = transitions[0].HardResumeAt!.Value - Clocks.SystemClock.Now;
-            resumeIn.Should().BeCloseTo(TimeSpan.FromHours(24), TimeSpan.FromMinutes(1));
-            Context.ListRemaining(id).Should().BeEquivalentTo(batches[1..]);
-        }, TimeSpan.FromSeconds(10));
-    }
-
-    [Fact(Skip = "temporarily disabled")]
     public async Task MustEnd()
     {
         // arrange
         var id = RandomSymbolGenerator.Default.Next();
         BatchIndexingResult<long>[] batches = [
-            new (true, false, 20),
-            new (false, false, 20),
+            new (true, false, 20, 10),
+            new (false, false, 30, 10),
         ];
         Context.Add(id, batches);
 
         // act
-        var flow = await Flows.GetOrStart<SimpleIndexingFlow>(id);
+        await Flows.GetOrStart<SimpleIndexingFlow>(id);
 
         // assert
         await TestExt.When(() => {
-            var transitions = Context.ListTransitions(id);
-            transitions.Should().HaveCount(1);
-            transitions[0].HardResumeAt.Should().Be(Flow.InfiniteHardResumeAt);
-            transitions[0].Step.Should().Be("OnReset");
-            Context.ListRemaining(id).Should().BeEquivalentTo(batches[1..]);
-        }, TimeSpan.FromSeconds(10));
-
-        // act
-        await Queues.Enqueue(new FlowResumeEvent(flow.Id));
-
-        // assert
-        await TestExt.When(() => {
-            var transitions = Context.ListTransitions(id);
-            transitions.Should().HaveCount(1);
-            transitions[0].HardResumeAt.Should().Be(Flow.InfiniteHardResumeAt);
-            transitions[0].Step.Should().Be("OnReset");
+            Context.ListTransitions(id).Should().BeEquivalentTo([("OnReset", TimeSpan.MaxValue)]);
             Context.ListRemaining(id).Should().BeEquivalentTo(batches[1..]);
         }, TimeSpan.FromSeconds(10));
     }

@@ -11,13 +11,13 @@ public static class PlaceContactSearchResultExt
     public static IEnumerable<FoundItem> BuildFoundContacts(
         this Account owner,
         bool areGlobalSearchResults,
-        params Place[] places)
+        params IEnumerable<Place> places)
         => places.Select(x => owner.BuildFoundContact(x, areGlobalSearchResults));
 
     public static FoundItem BuildFoundContact(this Account owner, Place place, bool isGlobalSearchResult)
         => new (owner.BuildSearchResult(place), SearchScope.Places, isGlobalSearchResult);
 
-    public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params Place[] places)
+    public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params IEnumerable<Place> places)
         => places.Select(x => owner.BuildSearchResult(x));
 
     public static ContactSearchResult BuildSearchResult(this Account owner, Place place, string uniquePart = "", Range<int>[]? searchMatchPartRanges = null)
