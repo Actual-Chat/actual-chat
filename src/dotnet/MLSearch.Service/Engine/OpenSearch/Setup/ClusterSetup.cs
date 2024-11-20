@@ -33,9 +33,8 @@ internal sealed class ClusterSetup(
 
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
-        var modelGroup = openSearchSettings.Value.ModelGroup;
         var embeddingModelProps = await actions
-            .RetrieveEmbeddingModelPropsAsync(modelGroup, cancellationToken)
+            .EnsureEmbeddingModelDeployedAsync(openSearchSettings.Value, cancellationToken)
             .ConfigureAwait(false);
 
         var isClusterStateValid = await CheckClusterStateValidAsync(embeddingModelProps, cancellationToken)

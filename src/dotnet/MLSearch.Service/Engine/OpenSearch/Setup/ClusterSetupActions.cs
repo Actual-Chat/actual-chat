@@ -5,12 +5,14 @@ using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.Indexing.Initializer;
+using ActualChat.MLSearch.Module;
 using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
 internal interface IClusterSetupActions
 {
+    Task<EmbeddingModelProps> EnsureEmbeddingModelDeployedAsync(OpenSearchSettings value, CancellationToken cancellationToken);
     Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(string modelGroup, CancellationToken cancellationToken);
     Task<bool> IsTemplateValidAsync(string templateName, string pattern, int? numberOfReplicas, CancellationToken cancellationToken);
     Task<bool> IsPipelineExistsAsync(string pipelineName, CancellationToken cancellationToken);
@@ -30,6 +32,13 @@ internal abstract class ClusterSetupActions(
 {
     private const string TimestampFieldName = "timestamp";
     private readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
+
+    public async Task<EmbeddingModelProps> EnsureEmbeddingModelDeployedAsync(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
+    {
+        var modelGroup = openSearchSettings.ModelGroup;
+        return await RetrieveEmbeddingModelPropsAsync(modelGroup, cancellationToken)
+            .ConfigureAwait(false);
+    }
 
     public async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(string modelGroupName, CancellationToken cancellationToken)
     {
