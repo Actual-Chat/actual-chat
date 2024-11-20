@@ -5,7 +5,6 @@ using ActualChat.Flows;
 using ActualChat.Flows.Infrastructure;
 using ActualChat.Users.Db;
 using ActualChat.Users.Flows;
-using ActualLab.CommandR.Operations;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -88,6 +87,24 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         return new UserId(dbUserIdentity?.DbUserId);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<UserId> GetIdByUserLink(UserLinkId userLinkId, CancellationToken cancellationToken)
+    {
+        if (userLinkId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(userLinkId));
+
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var sUserLinkId = userLinkId.Value;
+        var accountId = await dbContext.Accounts
+            .Where(x => x.UserLinkId == sUserLinkId)
+            .Select(x => x.Id)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return UserId.ParseOrNone(accountId);
+    }
+
     // Not a [ComputeMethod]!
     [SuppressMessage("Globalization", "CA1309:Use ordinal string comparison")]
     public async Task<ApiArray<UserId>> ListChanged(
@@ -139,12 +156,16 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         CancellationToken cancellationToken)
     {
         var (account, expectedVersion) = command;
+        var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
             _ = Get(account.Id, default);
+            var invUserLinkIds = context.Operation.Items.Get<List<UserLinkId>>();
+            if (invUserLinkIds is not null)
+                foreach (var invUserLinkId in invUserLinkIds)
+                    _ = GetIdByUserLink(invUserLinkId, default);
             return;
         }
 
-        var context = CommandContext.GetCurrent();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -170,7 +191,18 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         if (mustStartDigestFlow) {
             Log.LogInformation("Digest flow reset for: {AccountId}", account.Id);
             var e = new FlowResetEvent(FlowRegistry.NewId<DigestFlow>(account.Id), "Account change");
-            CommandContext.GetCurrent().Operation.AddEvent(e);
+            context.Operation.AddEvent(e);
+        }
+
+        var oldUserLink = existing?.UserLinkId ?? UserLinkId.None;
+        var newUserLink = account.UserLinkId;
+        if (oldUserLink != newUserLink) {
+            var userLinkIds = new List<UserLinkId>();
+            if (!oldUserLink.IsNone)
+                userLinkIds.Add(oldUserLink);
+            if (!newUserLink.IsNone)
+                userLinkIds.Add(newUserLink);
+            context.Operation.Items.Set(userLinkIds);
         }
     }
 

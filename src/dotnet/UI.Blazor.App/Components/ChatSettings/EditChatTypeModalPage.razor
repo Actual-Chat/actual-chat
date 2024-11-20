@@ -74,7 +74,7 @@
                             } else {
                                 <UserLinkValidationMessage
                                     For="@(() => _form.ActualUserLinkId)"
-                                    PlaceId="@_placeId"
+                                    Kind="@UserLinkValidationMessage.UserLinkKind.ChatLink(_placeId)"
                                     CurrentUserLinkId="@_form.CurrentUserLinkId"
                                     GetUserLinkIdFunc="@(() => _form.ActualUserLinkId)"/>
                             }

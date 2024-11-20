@@ -35,7 +35,7 @@ public static class ShareUIExt2
         var text = $"{name} on Actual Chat";
         return new ShareModalModel(
             ShareKind.Contact, title, name,
-            new(text, Links.User(ownAccount.Id)),
+            new(text, LinksExt.User(ownAccount)),
             null);
     }
 

@@ -1,4 +1,3 @@
-@using ActualChat.UI.Blazor.App
 @inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.Value;
@@ -24,6 +23,25 @@
             Name
         </Caption>
     </TileItem>
+
+    @if (!account.UserLinkId.IsNone) {
+        <TileItem>
+            <Icon>
+                <i class="icon-link-2 text-xl"></i>
+            </Icon>
+            <Content>
+                @("@" + account.UserLinkId.Value)
+            </Content>
+            <Caption>
+                User link
+            </Caption>
+            <Right>
+                <CopyToClipboard
+                    ButtonClass="btn-xs btn-transparent tile-hidden-btn"
+                    Text="@(UrlMapper.ToAbsolute(Links.AccountUserLinkPrefix + account.UserLinkId.Value))"/>
+            </Right>
+        </TileItem>
+    }
 
     <TileItem>
         <Icon>
@@ -81,6 +99,7 @@
     private IAvatars Avatars => Hub.Avatars;
     private ShareUI ShareUI => Hub.ShareUI;
     private ModalUI ModalUI => Hub.ModalUI;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {

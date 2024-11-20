@@ -1,9 +1,12 @@
+using ActualChat.Users;
+
 namespace ActualChat.Chat;
 
 public class UserLinks(IServiceProvider services) : IUserLinks
 {
     private IUserLinksBackend Backend { get; } = services.GetRequiredService<IUserLinksBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
 
     public virtual async Task<string> ResolveUserLink(UserLinkKind userLinkKind, UserLinkId userLinkId, CancellationToken cancellationToken)
     {
@@ -45,5 +48,22 @@ public class UserLinks(IServiceProvider services) : IUserLinks
 
         var chatId = await GetPlaceChatIdByUserLink(placeId, userLinkId, cancellationToken).ConfigureAwait(false);
         return chatId.IsNone;
+    }
+
+    public virtual Task<UserId> ResolveAccountUserLink(UserLinkId userLinkId, CancellationToken cancellationToken)
+    {
+        if (userLinkId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(userLinkId));
+
+        return AccountsBackend.GetIdByUserLink(userLinkId, cancellationToken);
+    }
+
+    public virtual async Task<bool> IsUserLinkAvailableForAccount(UserLinkId userLinkId, CancellationToken cancellationToken)
+    {
+        if (userLinkId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(userLinkId));
+
+        var userId = await ResolveAccountUserLink(userLinkId, cancellationToken).ConfigureAwait(false);
+        return userId.IsNone;
     }
 }
