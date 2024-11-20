@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Components.Rendering;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -21,7 +20,7 @@ public class BannerUI : ScopedServiceBase<UIHub>
         ViewResolver = hub.GetRequiredService<TypeMapper<IBannerView>>();
     }
 
-    public BannerDef Show<TBannerModel>(TBannerModel bannerModel)
+    public BannerDef Show<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]TBannerModel>(TBannerModel bannerModel)
         where TBannerModel : notnull
     {
         var componentType = ViewResolver.Get(bannerModel.GetType());
@@ -34,7 +33,7 @@ public class BannerUI : ScopedServiceBase<UIHub>
         return banner;
     }
 
-    private BannerDef Create<TBannerModel>(
+    private BannerDef Create<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]TBannerModel>(
         TBannerModel bannerModel,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type componentType)
         where TBannerModel : notnull

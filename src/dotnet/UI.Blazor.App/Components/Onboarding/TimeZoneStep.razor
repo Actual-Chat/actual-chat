@@ -109,6 +109,7 @@
         OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsTimeZoneStepCompleted = false });
     }
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public class Model {
         [Required]
         public string SelectedTimeZoneId { get; set; } = "";

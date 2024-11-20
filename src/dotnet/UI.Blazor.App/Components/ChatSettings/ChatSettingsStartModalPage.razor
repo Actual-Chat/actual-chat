@@ -275,6 +275,7 @@
 
     // Nested types
 
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
     public sealed class FormModel {
         [Required, MinLength(1)]
         public string Title { get; set; } = "";

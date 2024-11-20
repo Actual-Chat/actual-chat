@@ -1,9 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat.UI.Blazor.Components;
 
 public interface IModalView
 { }
 
-public interface IModalView<TModel> : IModalView
+public interface IModalView<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]TModel> : IModalView
     where TModel : class
 {
     TModel ModalModel { get; set; }

@@ -1,3 +1,4 @@
+@using System.Diagnostics.CodeAnalysis
 @using ActualChat.Users.Templates
 @using global::Mjml.Net
 @namespace ActualChat.UI.Blazor.Pages.Emails
@@ -11,6 +12,7 @@
     private string _html = "";
 
     [Parameter, EditorRequired]
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public Type ComponentType { get; set; } = null!;
 
     protected override async Task OnParametersSetAsync() {

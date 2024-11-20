@@ -269,6 +269,7 @@
 
     // Nested types
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed record Model(
         ChatContext ChatContext,
         FooterModel FooterModel,
@@ -286,6 +287,7 @@
         }
     }
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed record FooterModel {
         public static readonly FooterModel None = new();
 

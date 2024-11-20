@@ -1,4 +1,5 @@
 @using System.ComponentModel.DataAnnotations
+@using System.Diagnostics.CodeAnalysis
 @using TimeZone = ActualChat.Users.TimeZone
 @implements IDisposable
 @{
@@ -152,6 +153,7 @@
 
     // Nested types
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed class TimeZoneFormModel {
         public string SelectedTimeZoneId { get; set; } = "";
         public string SelectedTimeZoneName { get; set; } = "";
@@ -167,6 +169,7 @@
         }
     }
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed class EmailFormModel {
         [EmailAddress] public string? Email { get; set; }
 

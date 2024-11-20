@@ -1,7 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public abstract class FormModel
 {
     protected ComponentIdGenerator? ComponentIdGenerator { get; }
@@ -36,7 +38,7 @@ public abstract class FormModel
     }
 }
 
-public abstract class FormModel<TFormModel> : FormModel
+public abstract class FormModel<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]TFormModel> : FormModel
     where TFormModel : FormModel
 {
     public TFormModel Base { get; set; } = null!;

@@ -71,6 +71,7 @@
     <Using Include="System.Collections.Concurrent" />
     <Using Include="System.Collections.Immutable" />
     <Using Include="System.Diagnostics" />
+    <Using Include="System.Diagnostics.CodeAnalysis" />
     <Using Include="System.Globalization" />
     <Using Include="System.FormattableString" Static="True" />
     <Using Include="System.Linq" />

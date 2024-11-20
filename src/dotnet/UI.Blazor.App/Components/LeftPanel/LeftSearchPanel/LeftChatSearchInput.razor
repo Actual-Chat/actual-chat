@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Events
+@attribute [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 @inherits ComputedStateComponent<LeftChatSearchInput.Model>
 <OnUIEvent TEvent="SearchClearedEvent" Handler="OnSearchCleared" />
 
@@ -97,5 +98,6 @@
 
     // Nested types
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed record Model(bool IsOpen, bool EnableIncompleteUI, string InitialText = "");
 }

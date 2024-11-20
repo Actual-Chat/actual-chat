@@ -234,6 +234,7 @@
     private void ChangeDefaultAvatar()
         => _form.IsDefault = !_form.IsDefault;
 
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
     public sealed class FormModel : FormModel<FormModel> {
         [Required, MinLength(1)] public string Name { get; set; } = "";
         public string NameFieldId { get; set; } = "";

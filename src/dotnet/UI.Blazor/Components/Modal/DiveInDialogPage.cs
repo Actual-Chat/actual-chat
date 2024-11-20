@@ -1,8 +1,6 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿namespace ActualChat.UI.Blazor.Components;
 
-namespace ActualChat.UI.Blazor.Components;
-
-public class DiveInDialogPage(Type componentType, object? model)
+public class DiveInDialogPage([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type componentType, object? model)
 {
     public static DiveInDialogPage New<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TComponent>

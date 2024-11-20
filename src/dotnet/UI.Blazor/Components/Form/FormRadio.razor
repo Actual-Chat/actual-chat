@@ -1,5 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
+@attribute [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 @typeparam TValue;
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "Primitive types will be preserved.")]
 
 @* This component is needed to customize InputRadio styles in a custom themes, with hover, etc. *@
 @{

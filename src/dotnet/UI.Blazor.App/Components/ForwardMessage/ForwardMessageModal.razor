@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<ForwardMessageModal.Model>
+@using System.Diagnostics.CodeAnalysis
 @using ActualChat.Search
 @{
     var canSend = SelectedChatIds.Count != 0;
@@ -69,6 +70,7 @@
 
     // Nested types
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed class Model(IReadOnlySet<ChatId> excludedChatIds) {
 
         public IReadOnlySet<ChatId> ExcludedChatIds { get; } = excludedChatIds;

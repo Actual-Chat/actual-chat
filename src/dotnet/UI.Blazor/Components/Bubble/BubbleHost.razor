@@ -6,6 +6,7 @@
 @using ActualChat.Kvas
 @using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
 
 <div class="ac-bubble-host">
     <CascadingValue Value="@this" IsFixed="true">
@@ -132,6 +133,7 @@
 
     // Nested types
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     private sealed record BubbleModel(
         string Id,
         BubbleRef Ref,

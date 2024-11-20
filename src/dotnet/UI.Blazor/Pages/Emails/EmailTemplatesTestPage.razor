@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @namespace ActualChat.UI.Blazor.Pages.Emails
+@attribute [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2091", Justification = "String type should be preserved.")]
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Email templates</MainHeader>

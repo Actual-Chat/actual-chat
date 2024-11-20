@@ -153,7 +153,6 @@
     <PackageReference Include="Xamarin.Firebase.Crashlytics" />
     <PackageReference Include="Xamarin.Firebase.Messaging" />
     <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
-    <PackageReference Include="Xamarin.GooglePlayServices.CroNet" />
     <PackageReference Include="Xamarin.Google.Dagger" />
     <PackageReference Include="Xamarin.Twilio.AudioSwitch" />
     <PackageReference Include="System.Net.WebSockets" />

@@ -133,6 +133,7 @@
 
     // Nested types
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed record ComputedModel {
         public int MemberCount { get; init; }
         public ApiArray<AuthorId> AuthorIds { get; init; }

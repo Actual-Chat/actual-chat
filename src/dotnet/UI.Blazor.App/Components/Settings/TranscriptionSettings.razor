@@ -1,5 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<TranscriptionSettings.Model>
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2091:GenericArgumentDoNotHaveAnnotation", Justification = "Primitive types will be preserved.")]
+
 @{
     var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
@@ -126,6 +128,7 @@
         }
     }
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed record Model(UserLanguageSettings Languages, bool ShouldDisplayTranscriberEngineSettings) {
         public static readonly Model Loading = new(new(), false);
     }

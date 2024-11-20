@@ -1,11 +1,13 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor;
 // ReSharper disable once RedundantUsingDirective
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Diagnostics;
+using ActualLab.Fusion.Blazor;
 // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using ActualLab.Internal;
+using ActualLab.Trimming;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 // ReSharper disable once RedundantUsingDirective
 using Microsoft.Extensions.Configuration;
@@ -43,6 +45,22 @@ public static class Program
         StaticLog.Factory = host.Services.LoggerFactory();
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
+
+        // Hardcode the known comparer types to avoid trimming
+        CodeKeeper.AddAction(() => {
+            var keeper = CodeKeeper.Get<TypeCodeKeeper>();
+            keeper.KeepType<ByValueParameterComparer>();
+            keeper.KeepType<ByItemParameterComparer>();
+            keeper.KeepType<ByItemSetParameterComparer>();
+            keeper.KeepType<ByNoneParameterComparer>();
+            keeper.KeepType<ByRefParameterComparer>();
+            keeper.KeepType<ByUuidParameterComparer>();
+            keeper.KeepType<DefaultParameterComparer>();
+            keeper.KeepType<ByVersionParameterComparer<long>>();
+            keeper.KeepType<ByIdAndVersionParameterComparer<ChatId, long>>();
+            keeper.KeepType<ByIdAndVersionParameterComparer<PlaceId, long>>();
+            keeper.KeepType<ByUuidAndVersionParameterComparer<long>>();
+        });
 
         await host.RunAsync().ConfigureAwait(false);
     }

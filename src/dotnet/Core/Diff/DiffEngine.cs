@@ -60,7 +60,9 @@ public class DiffEngine(
     // Protected methods
 
 #pragma warning disable IL2067, IL2070, IL2072
-    protected virtual IDiffHandler CreateHandler(Type sourceType, Type diffType)
+    protected virtual IDiffHandler CreateHandler(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type sourceType,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type diffType)
     {
         var tHandler = DiffHandlerResolver.TryGet(diffType);
         if (tHandler == null && sourceType == diffType)
