@@ -2,6 +2,7 @@ using ActualChat.MLSearch.Module;
 
 namespace ActualChat.MLSearch.Indexing;
 
+// TODO: remove when migrated to flows
 public sealed class ContactIndexingSignal : IAsyncDisposable
 {
     private MomentClockSet Clocks { get; }

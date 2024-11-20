@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Flows;
 using ActualChat.MLSearch.Db;
@@ -24,10 +23,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     private MLSearchSettings Settings { get; } = services.GetRequiredService<MLSearchSettings>();
     private OpenSearchNames OpenSearchNames { get; } = services.GetRequiredService<OpenSearchNames>();
     private IOpenSearchClient OpenSearchClient { get; } = services.GetRequiredService<IOpenSearchClient>();
-    private IPlacesBackend PlacesBackend { get; } = services.GetRequiredService<IPlacesBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private UserContactIndexer UserContactIndexer { get; } = services.GetRequiredService<UserContactIndexer>();
-    private GroupChatContactIndexer GroupChatContactIndexer { get; } = services.GetRequiredService<GroupChatContactIndexer>();
     private OpenSearchConfigurator OpenSearchConfigurator { get; } = services.GetRequiredService<OpenSearchConfigurator>();
     private IndexedDocuments IndexedDocuments { get; } = services.GetRequiredService<IndexedDocuments>();
     private IFlows Flows { get; } = services.GetRequiredService<IFlows>();
@@ -97,24 +94,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     }
 
     // [CommandHandler]
-    public virtual async Task OnChatContactBulkIndex(SearchBackend_ChatContactBulkIndex command, CancellationToken cancellationToken)
-    {
-        if (Invalidation.IsActive)
-            return;
-
-        if (!Settings.IsEnabled) {
-            Log.LogWarning($"{nameof(OnChatContactBulkIndex)}: search is disabled");
-            return;
-        }
-
-        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
-            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
-
-        Log.LogDebug("Indexing group chats: {UpdatedCount} updated and {DeletedCount} deleted", command.Updated.Count, command.Deleted.Count);
-        await IndexChatContacts(command.Updated, command.Deleted, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [CommandHandler]
     public virtual async Task OnRefresh(SearchBackend_Refresh command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -154,23 +133,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         }
 
         UserContactIndexer.OnSyncNeeded();
-        return Task.CompletedTask;
-    }
-
-    // [CommandHandler]
-    public virtual Task OnStartChatContactIndexing(
-        SearchBackend_StartChatContactIndexing command,
-        CancellationToken cancellationToken)
-    {
-        if (Invalidation.IsActive)
-            return Task.CompletedTask; // it only notifies indexing job
-
-        if (!Settings.IsEnabled) {
-            Log.LogWarning($"{nameof(OnStartChatContactIndexing)}: search is disabled");
-            return Task.CompletedTask;
-        }
-
-        GroupChatContactIndexer.OnSyncNeeded();
         return Task.CompletedTask;
     }
 
@@ -229,13 +191,15 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                 return;
 
             // NOTE: we don't have any other chance to process removed items
-            if (changeKind == ChangeKind.Remove) {
-                var place = await PlacesBackend.Get(chat.Id.PlaceId, cancellationToken).ConfigureAwait(false);
-                var deletedContacts = ApiArray.New([chat.ToIndexedChatContact(place)]);
-                await Queues.Enqueue(new SearchBackend_ChatContactBulkIndex([], deletedContacts), cancellationToken).ConfigureAwait(false);
-            }
+            if (changeKind == ChangeKind.Remove)
+                await IndexedDocuments.UpdateGroupContacts([], [chat.Id], cancellationToken);
             else
-                await Queues.Enqueue(new SearchBackend_StartChatContactIndexing(), cancellationToken).ConfigureAwait(false);
+                await Flows.GetAndResume<GroupContactIndexingFlow>("",
+                        Settings.IndexingRecheckInterval,
+                        "Chat changed",
+                        Settings.IndexingRecheckInterval,
+                        cancellationToken)
+                    .ConfigureAwait(false);
         }
     }
 
@@ -255,7 +219,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         else
             await Flows.GetAndResume<PlaceContactIndexingFlow>("",
                     Settings.IndexingRecheckInterval,
-                    "Place contact changed",
+                    "Place changed",
                     Settings.IndexingRecheckInterval,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -285,17 +249,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             .BulkAsync(r => r
                     .IndexMany(updated, (op, _) => op.Index(OpenSearchNames.UserIndexName))
                     .DeleteMany(deleted, (op, _) => op.Index(OpenSearchNames.UserIndexName)),
-                cancellationToken)
-            .Assert(Log);
-
-    private Task IndexChatContacts(
-        IReadOnlyCollection<IndexedGroupChatContact> updated,
-        IReadOnlyCollection<IndexedGroupChatContact> deleted,
-        CancellationToken cancellationToken)
-        => OpenSearchClient
-            .BulkAsync(r
-                    => r.IndexMany(updated, (op, _) => op.Index(OpenSearchNames.GroupIndexName))
-                        .DeleteMany(deleted, (op, _) => op.Index(OpenSearchNames.GroupIndexName)),
                 cancellationToken)
             .Assert(Log);
 
@@ -371,7 +324,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
         var ownGroupIds = ownGroupContactIds.Select(x => x.ChatId).ToList();
         var searchResponse =
-            await OpenSearchClient.SearchAsync<IndexedGroupChatContact>(s
+            await OpenSearchClient.SearchAsync<IndexedGroupContact>(s
                         => s.Index(OpenSearchNames.GroupIndexName)
                             .From(query.Skip)
                             .Size(query.Limit)
@@ -389,7 +342,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             Offset = query.Skip,
         };
 
-        BoolQueryDescriptor<IndexedGroupChatContact> ConfigureQuery(BoolQueryDescriptor<IndexedGroupChatContact> descriptor)
+        BoolQueryDescriptor<IndexedGroupContact> ConfigureQuery(BoolQueryDescriptor<IndexedGroupContact> descriptor)
             => descriptor
                 .Must(q => q.MatchBoolPrefix(p => p.Query(query.Criteria).Field(x => x.Title).Operator(Operator.And)),
                     query.MustFilterByPlace
@@ -403,7 +356,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                         ? null
                         : q => q.Terms(t => t.Field(x => x.Id).Terms(ownGroupIds)));
 
-        ContactSearchResult ToSearchResult(IHit<IndexedGroupChatContact> hit)
+        ContactSearchResult ToSearchResult(IHit<IndexedGroupContact> hit)
             => new (new ContactId(userId, ChatId.Parse(hit.Source!.Id)), hit.GetSearchMatch());
     }
 

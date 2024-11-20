@@ -1,17 +1,18 @@
 using ActualChat.MLSearch.Documents;
+using ActualChat.Search;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 
 internal static class IndexedDocumentsExt
 {
-    public static Task Update(
+    public static Task UpdateEntries(
         this IndexedDocuments indexedDocuments,
         IReadOnlyCollection<IndexedEntry> updated,
         IReadOnlyCollection<TextEntryId> deleted,
         CancellationToken cancellationToken = default)
         => indexedDocuments.Update(x => x.EntryIndexName, updated, deleted, cancellationToken);
 
-    public static Task Update(
+    public static Task UpdateChats(
         this IndexedDocuments indexedDocuments,
         IReadOnlyCollection<IndexedChat> updatedDocuments,
         CancellationToken cancellationToken = default)
@@ -24,4 +25,11 @@ internal static class IndexedDocumentsExt
         IReadOnlyCollection<PlaceId> deleted,
         CancellationToken cancellationToken = default)
         => indexedDocuments.Update(x => x.PlaceIndexName, updatedDocuments, deleted, cancellationToken);
+
+    public static Task UpdateGroupContacts(
+        this IndexedDocuments indexedDocuments,
+        IReadOnlyCollection<IndexedGroupContact> updatedDocuments,
+        IReadOnlyCollection<ChatId> deleted,
+        CancellationToken cancellationToken = default)
+        => indexedDocuments.Update(x => x.GroupIndexName, updatedDocuments, deleted, cancellationToken);
 }

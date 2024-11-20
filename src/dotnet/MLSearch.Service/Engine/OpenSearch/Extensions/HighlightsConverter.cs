@@ -30,7 +30,7 @@ public static partial class HighlightsConverter
         return ToSearchMatch(hit.Source.FullName, highlight, hit.Score ?? 1.0);
     }
 
-    public static SearchMatch GetSearchMatch(this IHit<IndexedGroupChatContact> hit)
+    public static SearchMatch GetSearchMatch(this IHit<IndexedGroupContact> hit)
     {
         var highlight = hit.Highlight[TitleField].FirstOrDefault(x => !x.IsNullOrEmpty());
         if (highlight.IsNullOrEmpty())
