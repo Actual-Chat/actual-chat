@@ -15,8 +15,7 @@ namespace ActualChat.Users.Migrations
                 table: "accounts",
                 type: "text",
                 nullable: false,
-                defaultValue: "",
-                collation: "C");
+                defaultValue: "");
 
             migrationBuilder.CreateIndex(
                 name: "ix_accounts_user_link_id",
