@@ -30,106 +30,10 @@ internal abstract class ClusterSetupActions(
 ) : IClusterSetupActions
 {
     private const string TimestampFieldName = "timestamp";
-    private readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
+    protected readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
 
-    public async Task<EmbeddingModelProps> EnsureEmbeddingModelDeployedAsync(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
-    {
-        var modelGroup = openSearchSettings.ModelGroup;
-        return await RetrieveEmbeddingModelPropsAsync(modelGroup, cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    private async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(string modelGroupName, CancellationToken cancellationToken)
-    {
-        using var _1 = _tracer.Region();
-        // Read model group latest state
-        var modelGroupResponse = await openSearch.RunAsync(
-                $$"""
-                POST /_plugins/_ml/model_groups/_search
-                {
-                    "query": {
-                        "match": {
-                            "name": "{{modelGroupName}}"
-                        }
-                    },
-                    "sort": [{
-                        "_seq_no": { "order": "desc" }
-                    }],
-                    "size": 1
-                }
-                """,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-        var modelGroup = modelGroupResponse
-            .AssertSuccess()
-            .FirstHit();
-        var modelGroupId = modelGroup.Get<string>("_id");
-        if (modelGroupId.IsNullOrEmpty()) {
-            throw new InvalidOperationException(
-                "Failed to retrieve model group id."
-            );
-        }
-        // Read model group latest model id
-        var modelResponse = await openSearch.RunAsync(
-                $$"""
-                POST /_plugins/_ml/models/_search
-                {
-                    "query": {
-                        "bool": {
-                            "must": [{
-                                "exists": {
-                                    "field": "model_state"
-                                }
-                            }],
-                            "should": [{
-                                "match": {
-                                    "model_group_id": "{{modelGroupId}}"
-                                }
-                            }]
-                        }
-                    },
-                    "sort": [{
-                        "_seq_no": { "order": "desc" }
-                    }],
-                    "size": 1
-                }
-                """,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-        var model = modelResponse
-            .AssertSuccess()
-            .FirstHit();
-        var modelId = model.Get<string>("_id");
-        if (modelId.IsNullOrEmpty()) {
-            throw new InvalidOperationException(
-                "Failed to retrieve model id."
-            );
-        }
-        var modelSource = model.Get<IDictionary<string, object>>("_source")
-            ?? throw new InvalidOperationException(
-                "_source is null"
-            );
-
-        // Ensure model is deployed.
-        if (!modelSource.TryGetValue("model_state", out var modelStateObj)) {
-            throw new InvalidOperationException("model_state field is not found");
-        }
-        var modelState = (string) modelStateObj;
-        if (!OrdinalEquals(modelState, "DEPLOYED")) {
-            modelState = modelState.IsNullOrEmpty() ? "<Empty>" : modelState;
-            // Throw standard external error as it is transient
-            throw StandardError.External(
-                $"Invalid model state. Expecting deployed model, but was {modelState}."
-            );
-        }
-
-        return await CreateEmbeddingModelPropertiesAsync(modelId, modelSource, cancellationToken).ConfigureAwait(false);
-    }
-
-    protected abstract ValueTask<EmbeddingModelProps> CreateEmbeddingModelPropertiesAsync(
-        string modelId, IDictionary<string, object> modelSource, CancellationToken cancellationToken);
+    public abstract Task<EmbeddingModelProps> EnsureEmbeddingModelDeployedAsync(
+        OpenSearchSettings openSearchSettings, CancellationToken cancellationToken);
 
     public async Task EnsureTemplateAsync(string templateName, string pattern, int? numberOfReplicas, CancellationToken cancellationToken)
     {
@@ -394,15 +298,115 @@ internal abstract class ClusterSetupActions(
     }
 }
 
-internal sealed class BuiltInModelClusterSetupActions(
-    IOpenSearchClient openSearch,
-    OpenSearchNamingPolicy namingPolicy,
-    Tracer baseTracer
-) : ClusterSetupActions(openSearch, namingPolicy, baseTracer)
+internal sealed class BuiltInModelClusterSetupActions : ClusterSetupActions
 {
     private static readonly Encoding _utf8Encoding = new UTF8Encoding(false);
 
-    protected override ValueTask<EmbeddingModelProps> CreateEmbeddingModelPropertiesAsync(
+    private readonly IOpenSearchClient _openSearch;
+
+    public BuiltInModelClusterSetupActions(
+        IOpenSearchClient openSearch,
+        OpenSearchNamingPolicy namingPolicy,
+        Tracer baseTracer
+    ) : base(openSearch, namingPolicy, baseTracer) => _openSearch = openSearch;
+
+    public override async Task<EmbeddingModelProps> EnsureEmbeddingModelDeployedAsync(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
+    {
+        var modelGroup = openSearchSettings.ModelGroup;
+        return await RetrieveEmbeddingModelPropsAsync(modelGroup, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(string modelGroupName, CancellationToken cancellationToken)
+    {
+        using var _1 = _tracer.Region();
+        // Read model group latest state
+        var modelGroupResponse = await _openSearch.RunAsync(
+                $$"""
+                POST /_plugins/_ml/model_groups/_search
+                {
+                    "query": {
+                        "match": {
+                            "name": "{{modelGroupName}}"
+                        }
+                    },
+                    "sort": [{
+                        "_seq_no": { "order": "desc" }
+                    }],
+                    "size": 1
+                }
+                """,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+        var modelGroup = modelGroupResponse
+            .AssertSuccess()
+            .FirstHit();
+        var modelGroupId = modelGroup.Get<string>("_id");
+        if (modelGroupId.IsNullOrEmpty()) {
+            throw new InvalidOperationException(
+                "Failed to retrieve model group id."
+            );
+        }
+        // Read model group latest model id
+        var modelResponse = await _openSearch.RunAsync(
+                $$"""
+                POST /_plugins/_ml/models/_search
+                {
+                    "query": {
+                        "bool": {
+                            "must": [{
+                                "exists": {
+                                    "field": "model_state"
+                                }
+                            }],
+                            "should": [{
+                                "match": {
+                                    "model_group_id": "{{modelGroupId}}"
+                                }
+                            }]
+                        }
+                    },
+                    "sort": [{
+                        "_seq_no": { "order": "desc" }
+                    }],
+                    "size": 1
+                }
+                """,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+        var model = modelResponse
+            .AssertSuccess()
+            .FirstHit();
+        var modelId = model.Get<string>("_id");
+        if (modelId.IsNullOrEmpty()) {
+            throw new InvalidOperationException(
+                "Failed to retrieve model id."
+            );
+        }
+        var modelSource = model.Get<IDictionary<string, object>>("_source")
+            ?? throw new InvalidOperationException(
+                "_source is null"
+            );
+
+        // Ensure model is deployed.
+        if (!modelSource.TryGetValue("model_state", out var modelStateObj)) {
+            throw new InvalidOperationException("model_state field is not found");
+        }
+        var modelState = (string) modelStateObj;
+        if (!OrdinalEquals(modelState, "DEPLOYED")) {
+            modelState = modelState.IsNullOrEmpty() ? "<Empty>" : modelState;
+            // Throw standard external error as it is transient
+            throw StandardError.External(
+                $"Invalid model state. Expecting deployed model, but was {modelState}."
+            );
+        }
+
+        return await CreateEmbeddingModelPropertiesAsync(modelId, modelSource, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static ValueTask<EmbeddingModelProps> CreateEmbeddingModelPropertiesAsync(
         string modelId, IDictionary<string, object> modelSource, CancellationToken _)
     {
         var modelConfig = modelSource.Get<IDictionary<string, object>>("model_config")
@@ -444,7 +448,12 @@ internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
         Tracer baseTracer
     ) : base(openSearch, namingPolicy, baseTracer) => _openSearch = openSearch;
 
-    protected override async ValueTask<EmbeddingModelProps> CreateEmbeddingModelPropertiesAsync(
+    public override Task<EmbeddingModelProps> EnsureEmbeddingModelDeployedAsync(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
+
+    private async ValueTask<EmbeddingModelProps> CreateEmbeddingModelPropertiesAsync(
         string modelId, IDictionary<string, object> modelSource, CancellationToken cancellationToken)
     {
         var connectorId = modelSource.Get<string>("connector_id")
