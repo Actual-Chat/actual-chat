@@ -248,7 +248,7 @@
     <PackageVersion Include="Crayon" Version="2.0.69" />
     <!-- Build / test time only -->
     <PackageVersion Include="bunit" Version="1.27.17" />
-    <PackageVersion Include="FluentAssertions" Version="6.12.0" />
+    <PackageVersion Include="FluentAssertions" Version="6.12.2" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.4.1" />
     <PackageVersion Include="ILRepack.Lib.MSBuild.Task" Version="2.0.34.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
@@ -267,7 +267,7 @@
     <!-- Analyzers -->
     <PackageVersion Include="Moq.Analyzers" Version="0.2.0" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.12.19" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.179" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.180" />
     <PackageVersion Include="Roslynator.Analyzers" Version="4.12.9" />
     <PackageVersion Include="xunit.analyzers" Version="1.17.0" />
     <!-- Generators -->
