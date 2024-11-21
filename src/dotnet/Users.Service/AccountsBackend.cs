@@ -67,9 +67,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             avatarId = userAvatarSettings.AvatarIds.GetOrDefault(0);
 
         var avatar = avatarId.IsEmpty
-            ? GetDefaultAvatar(account)
+            ? GetFallbackAvatar(account)
             : await AvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false) // No avatars at all
-                ?? GetDefaultAvatar(account);
+                ?? GetFallbackAvatar(account);
         account = account with { Avatar = avatar };
         return account;
     }
@@ -313,9 +313,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         return account;
     }
 
-    private static AvatarFull GetDefaultAvatar(AccountFull account)
+    private static AvatarFull GetFallbackAvatar(AccountFull account)
         => new(account.Id) {
-            Name = account.FullName,
+            Name = account.Name,
             AvatarKey = DefaultUserPicture.GetAvatarKey(account.Id),
             Bio = "",
         };

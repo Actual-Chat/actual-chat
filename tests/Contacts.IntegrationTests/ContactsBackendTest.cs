@@ -66,7 +66,7 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
                 var foundPeerChats = await ListChatsForContactSearch(SearchScope.People, ct);
                 var expected = accounts[..5]
                     .Select(x => new Chat.Chat(new PeerChatId(bob.Id, x.Id).ToChatId()) {
-                        Title = x.FullName,
+                        Title = x.Name,
                     });
                 foundPeerChats.Should().BeEquivalentTo(expected, o => o.IdTitle());
             },

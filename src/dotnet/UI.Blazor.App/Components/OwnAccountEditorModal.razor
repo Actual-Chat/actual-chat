@@ -24,23 +24,11 @@
                 For="() => _form.Name"
                 IsRequired="true"
                 InputId="@_form.NameFieldId"
-                Label="First name"
+                Label="Name"
                 IsLabelInsideInput="true">
                 <TextBox
                     @bind-Value="@_form.Name"
                     Id="@_form.NameFieldId"
-                    Autofocus="true"
-                    ClearButton="true"/>
-            </FormSection>
-
-            <FormSection
-                For="() => _form.LastName"
-                InputId="@_form.LastNameFieldId"
-                Label="Last name"
-                IsLabelInsideInput="true">
-                <TextBox
-                    @bind-Value="@_form.LastName"
-                    Id="@_form.LastNameFieldId"
                     Autofocus="true"
                     ClearButton="true"/>
             </FormSection>
@@ -193,7 +181,6 @@
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         _account = await UIHub.Accounts.GetOwn(Session, default);
         _form.Name = _account.Name;
-        _form.LastName = _account.LastName;
         _form.Email = _account.Email.NullIfEmpty();
         _form.Phone = !_account.Phone.IsNone ? _account.Phone.ToReadable() : "";
         _form.ParsedPhone = _account.Phone;
@@ -217,7 +204,6 @@
             Session,
             account with {
                 Name = _form.Name,
-                LastName = _form.LastName,
                 Phone = phone,
                 UserLinkId = UserLinkId.ParseOrNone(_form.UserLinkId),
             },
@@ -256,8 +242,6 @@
         [Required]
         public string Name { get; set; } = "";
         public string NameFieldId { get; set; } = "";
-        public string LastName { get; set; } = "";
-        public string LastNameFieldId { get; set; } = "";
         [EmailAddress] public string? Email { get; set; }
         public string EmailFieldId { get; set; } = "";
         [PhoneNumber(IsOptional = true)] public string Phone { get; set; } = "";

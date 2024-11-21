@@ -17,7 +17,7 @@ public static class UserContactSearchResultExt
         => others.Select(x => owner.BuildSearchResult(x));
 
     public static ContactSearchResult BuildSearchResult(this Account owner, AccountFull other, Range<int>[]? searchMatchPartRanges = null)
-        => owner.Id.BuildSearchResult(other.Id, other.FullName, searchMatchPartRanges);
+        => owner.Id.BuildSearchResult(other.Id, other.Name, searchMatchPartRanges);
 
     public static ContactSearchResult BuildSearchResult(
         this UserId ownerId,

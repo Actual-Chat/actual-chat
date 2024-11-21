@@ -21,7 +21,6 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string Phone { get; set; } = "";
     public bool SyncContacts { get; set; }
     public string Name { get; set; } = "";
-    public string LastName { get; set; } = "";
     public string Username { get; set; } = "";
     public string? UsernameNormalized { get; set; }
     public bool IsGreetingCompleted { get; set; }
@@ -44,7 +43,6 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Phone = new Phone(Phone),
             SyncContacts = SyncContacts,
             Name = Name,
-            LastName = LastName,
             Username = Username,
             IsGreetingCompleted = IsGreetingCompleted,
             CreatedAt = CreatedAt,
@@ -59,6 +57,11 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         this.RequireSameOrEmptyId(id);
         model.RequireSomeVersion();
 
+        var name = model.Name;
+ #pragma warning disable CS0618 // Type or member is obsolete
+        if (!model.LastName.IsNullOrEmpty())
+            name = $"{name} {model.LastName}";
+#pragma warning restore CS0618 // Type or member is obsolete
         Id = id;
         Version = model.Version;
         Status = model.Status;
@@ -66,8 +69,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         SyncContacts = model.SyncContacts;
         Email = model.Email;
         IsEmailVerified = model.IsEmailVerified;
-        Name = model.Name;
-        LastName = model.LastName;
+        Name = name;
         Username = model.Username;
         IsGreetingCompleted = model.IsGreetingCompleted;
         CreatedAt = model.CreatedAt;

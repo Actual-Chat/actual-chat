@@ -45,17 +45,10 @@
         <FormSection
             For="() => _model.Name"
             InputId="name"
-            Label="First name"
+            Label="Name"
             IsLabelInsideInput="true"
             IsRequired="true">
-            <InputText id="name" @bind-Value="_model.Name" autocomplete="given-name"/>
-        </FormSection>
-        <FormSection
-            For="() => _model.LastName"
-            InputId="lastName"
-            Label="Last name (optional)"
-            IsLabelInsideInput="true">
-            <InputText id="lastName" @bind-Value="_model.LastName" autocomplete="family-name"/>
+            <InputText id="name" @bind-Value="_model.Name" autocomplete="name"/>
         </FormSection>
     </Form>
 </div>
@@ -65,11 +58,13 @@
     private readonly Model _model = new();
     private Form? _formRef;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IAvatars Avatars { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject]  private OnboardingUI OnboardingUI { get; init; } = null!;
+
+    private Session Session => Hub.Session();
+    private IAccounts Accounts => Hub.Accounts;
+    private IAvatars Avatars => Hub.Avatars;
+    private UICommander UICommander => Hub.UICommander();
 
     public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsAvatarStepCompleted;
 
@@ -79,7 +74,6 @@
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
         _model.Name = account.Name;
-        _model.LastName = account.LastName;
 
         if (!account.Avatar.Id.IsEmpty) {
             _model.Picture = account.Avatar.Picture!;
@@ -111,7 +105,6 @@
             Session,
             account with {
                 Name = _model.Name,
-                LastName = _model.LastName,
             },
             account.Version);
         await UICommander.Run(updateAccountCommand);
@@ -123,7 +116,7 @@
             avatar.Version,
             new Change<AvatarFull> {
                 Update = avatar.WithPicture(_model.Picture) with {
-                    Name = $"{_model.Name} {_model.LastName}".Trim(),
+                    Name = _model.Name.Trim(),
                 },
             });
         var (_, error) = await UICommander.Run(updateAvatarCommand);
@@ -140,7 +133,6 @@
 
     public class Model {
         [Required] public string Name { get; set; } = "";
-        public string LastName { get; set; } = "";
         public Symbol AvatarId { get; set; } = "";
         public Picture Picture { get; set; } = null!;
     }

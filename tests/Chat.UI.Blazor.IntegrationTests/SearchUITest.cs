@@ -36,8 +36,8 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
 
         // act
         await Tester.SignIn(bob);
-        var expectedFriends = people.Friends().Where(x => x.FullName.OrdinalIgnoreCaseContains("one")).ToArray();
-        var expectedStrangers = people.Strangers().Where(x => x.FullName.OrdinalIgnoreCaseContains("one")).ToArray();
+        var expectedFriends = people.Friends().Where(x => x.Name.OrdinalIgnoreCaseContains("one")).ToArray();
+        var expectedStrangers = people.Strangers().Where(x => x.Name.OrdinalIgnoreCaseContains("one")).ToArray();
         var expectedJoinedGroups = groups.Joined().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
         var expectedOtherGroups = groups.OtherPublic().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
         var expectedJoinedPlaces = places.Joined().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
