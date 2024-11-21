@@ -6,7 +6,6 @@
 
   <ItemGroup>
     <PackageReference Include="OpenSearch.Net" />
-    <PackageReference Include="OpenSearch.Net.VirtualizedCluster" />
     <PackageReference Include="OpenSearch.Client" />
   </ItemGroup>
 </Project>

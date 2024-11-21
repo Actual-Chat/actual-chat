@@ -213,9 +213,8 @@
     <PackageVersion Include="System.Reactive" Version="6.0.0" />
     <PackageVersion Include="System.Linq.Async" Version="6.0.1" />
     <!-- OpenSearch client -->
-    <PackageVersion Include="OpenSearch.Net" Version="1.7.0" />
-    <PackageVersion Include="OpenSearch.Net.VirtualizedCluster" Version="1.7.0" />
-    <PackageVersion Include="OpenSearch.Client" Version="1.7.0" />
+    <PackageVersion Include="OpenSearch.Net" Version="1.8.0" />
+    <PackageVersion Include="OpenSearch.Client" Version="1.8.0" />
     <!-- Semantic kernel -->
     <PackageVersion Include="Microsoft.SemanticKernel" Version="1.24.0" />
     <PackageVersion Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.24.0" />
