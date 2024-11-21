@@ -43,6 +43,6 @@
         if (!UserLinkId.TryParse(pageRoute.Substring(1), out var userLinkId))
             return UserId.None;
 
-        return await UserLinks.ResolveAccountUserLink(userLinkId, cancellationToken).ConfigureAwait(false);
+        return await UserLinks.GetUserIdByUserLink(userLinkId, cancellationToken).ConfigureAwait(false);
     }
 }

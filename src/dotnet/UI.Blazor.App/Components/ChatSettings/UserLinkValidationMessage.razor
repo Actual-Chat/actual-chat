@@ -89,12 +89,16 @@
         if (!UserLinkId.TryParse(sUserLinkId, out var userLinkId) || userLinkId.IsNone)
             return;
 
-        if (ReferenceEquals(Kind, UserLinkKind.AccountLink))
-            _userLinkIsAvailable = await Hub.UserLinks.IsUserLinkAvailableForAccount(userLinkId).ConfigureAwait(true);
-        else if (Kind.PlaceId.IsNone)
-            _userLinkIsAvailable = await Hub.UserLinks.IsUserLinkAvailable(userLinkId).ConfigureAwait(true);
-        else
-            _userLinkIsAvailable = await Hub.UserLinks.IsPlaceChatUserLinkAvailable(Kind.PlaceId, userLinkId).ConfigureAwait(true);
+        if (ReferenceEquals(Kind, UserLinkKind.AccountLink)) {
+            var userId = await Hub.UserLinks.GetUserIdByUserLink(userLinkId).ConfigureAwait(true);
+            _userLinkIsAvailable = userId.IsNone;
+        } else if (Kind.PlaceId.IsNone) {
+            var userLinkRef = await Hub.UserLinks.GetUserLinkRef(userLinkId).ConfigureAwait(true);
+            _userLinkIsAvailable = userLinkRef.IsNone;
+        } else {
+            var placeChatId = await Hub.UserLinks.GetPlaceChatIdByUserLink(Kind.PlaceId, userLinkId).ConfigureAwait(true);
+            _userLinkIsAvailable = placeChatId.IsNone;
+        }
 
         StateHasChanged();
     }
