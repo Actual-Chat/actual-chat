@@ -211,6 +211,7 @@ public partial class EditChatTypeModalPage
         }
     }
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed record ComputedModel
     {
         public static readonly ComputedModel Loading = new ();
