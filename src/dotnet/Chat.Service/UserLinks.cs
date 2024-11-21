@@ -36,7 +36,7 @@ public class UserLinks(IServiceProvider services) : IUserLinks
         if (userLinkId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(userLinkId));
 
-        return ChatsBackend.GetPlaceChatIdByUserLink(placeId, userLinkId, cancellationToken);
+        return ChatsBackend.GetPlaceChatIdByUserLink(placeId, userLinkId.ToLower(), cancellationToken);
     }
 
     public virtual async Task<bool> IsPlaceChatUserLinkAvailable(PlaceId placeId, UserLinkId userLinkId, CancellationToken cancellationToken)

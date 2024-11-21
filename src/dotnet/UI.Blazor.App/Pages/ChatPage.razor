@@ -307,7 +307,7 @@
             if (!UserLinkId.TryParse(sChatUserLink, out var chatUserLinkId))
                 return PageRoute.UnknownUserLink;
 
-            var chatSid = await Hub.UserLinks.ResolveUserLink(UserLinkKind.Chat, chatUserLinkId, cancellationToken);
+            var chatSid = await Hub.UserLinks.ResolveUserLink(UserLinkKind.Chat, chatUserLinkId.ToLower(), cancellationToken);
             if (chatSid.IsNullOrEmpty())
                 return PageRoute.UnknownUserLink;
 
@@ -321,7 +321,7 @@
             if (!UserLinkId.TryParse(sPlaceUserLink, out var placeUserLinkId))
                 return PageRoute.UnknownUserLink;
 
-            var placeSid = await Hub.UserLinks.ResolveUserLink(UserLinkKind.Place, placeUserLinkId, cancellationToken);
+            var placeSid = await Hub.UserLinks.ResolveUserLink(UserLinkKind.Place, placeUserLinkId.ToLower(), cancellationToken);
             if (placeSid.IsNullOrEmpty() || !PlaceId.TryParse(placeSid, out var placeId))
                 return PageRoute.UnknownUserLink;
 
@@ -329,12 +329,12 @@
             if (chatIdPart.IsNullOrEmpty())
                 return PageRoute.InvalidRoute;
 
-            var placeChatId = ChatId.None;
+            ChatId placeChatId;
             if (!chatIdPart.StartsWith("@")) {
-                if (!ChatId.TryParse(chatIdPart, out var groupChatId) || groupChatId.Kind != ChatKind.Group)
+                if (!ChatId.TryParse(chatIdPart, out var localChatId) || localChatId.Kind != ChatKind.Group)
                     return PageRoute.InvalidRoute;
 
-                if (!PlaceChatId.TryParse(PlaceChatId.Format(placeId, groupChatId.Value), out var placeChatId1))
+                if (!PlaceChatId.TryParse(PlaceChatId.Format(placeId, localChatId.Value), out var placeChatId1))
                     return PageRoute.InvalidRoute;
                 placeChatId = placeChatId1;
             } else {
@@ -342,16 +342,7 @@
                 if (!UserLinkId.TryParse(sChatUserLink, out var chatUserLinkId))
                     return PageRoute.UnknownUserLink;
 
-                var placeContacts = await Hub.Contacts.ListIds(Session, placeId, cancellationToken).ConfigureAwait(false);
-                foreach (var placeContact in placeContacts) {
-                    if (placeContact.ChatId.Kind == ChatKind.Place) {
-                        var placeChat = await Chats.Get(Session, placeContact.ChatId, cancellationToken).ConfigureAwait(false);
-                        if (placeChat is not null && Equals(placeChat.UserLinkId, chatUserLinkId)) {
-                            placeChatId = placeContact.ChatId;
-                            break;
-                        }
-                    }
-                }
+                placeChatId = await Hub.UserLinks.GetPlaceChatIdByUserLink(placeId, chatUserLinkId.ToLower(), cancellationToken).ConfigureAwait(false);
                 if (placeChatId.IsNone)
                     return PageRoute.UnknownUserLink;
             }

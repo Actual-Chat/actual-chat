@@ -81,4 +81,16 @@ public readonly partial struct UserLinkId : ISymbolIdentifier<UserLinkId>
         result = new UserLinkId(s, AssumeValid.Option);
         return true;
     }
+
+    public UserLinkId ToLower()
+    {
+        if (IsNone)
+            return None;
+
+        var lValue = Value.ToLowerInvariant();
+        if (OrdinalEquals(lValue, Value))
+            return this;
+
+        return new UserLinkId(lValue, AssumeValid.Option);
+    }
 }

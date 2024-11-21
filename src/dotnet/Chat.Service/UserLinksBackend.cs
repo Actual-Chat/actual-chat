@@ -13,6 +13,7 @@ public class UserLinksBackend(IServiceProvider services) : DbServiceBase<ChatDbC
         if (userLinkId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(userLinkId));
 
+        userLinkId = userLinkId.ToLower();
         var dbUserLink = await DbUserLinkResolver.Get(userLinkId.Value, cancellationToken).ConfigureAwait(false);
         return dbUserLink?.ToModel();
     }
@@ -20,6 +21,7 @@ public class UserLinksBackend(IServiceProvider services) : DbServiceBase<ChatDbC
     public virtual async Task<UserLink?> OnChange(UserLinksBackend_Change command, CancellationToken cancellationToken)
     {
         var (id, expectedVersion, change) = command;
+        id = id.ToLower();
 
         if (Invalidation.IsActive) {
             _ = Get(id, default);
