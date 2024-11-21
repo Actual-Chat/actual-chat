@@ -80,8 +80,7 @@ namespace ActualChat.Users.Migrations
                     b.Property<string>("UserLinkId")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("user_link_id")
-                        .UseCollation("C");
+                        .HasColumnName("user_link_id");
 
                     b.Property<string>("Username")
                         .IsRequired()
