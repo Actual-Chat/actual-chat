@@ -30,22 +30,6 @@ public static class AccountOperations
         return accounts;
     }
 
-    public static async Task<AccountFull[]> CreateAccounts(
-        this IWebTester tester,
-        params AccountFull[] accounts)
-    {
-        await using var __ = await tester.BackupAuth();
-        var createdAccounts = new AccountFull[accounts.Length];
-        for (var i = 0; i < accounts.Length; i++)
-            createdAccounts[i] = await tester.SignIn(ToUser(accounts[i]));
-        return createdAccounts;
-        // return await accounts.Select(x => tester.SignIn(ToUser(x))).Collect(1);
-
-        User ToUser(AccountFull account)
-            => account.User.WithClaim(ClaimTypes.GivenName, account.Name)
-                .WithClaim(ClaimTypes.Surname, account.LastName);
-    }
-
     public static async Task<AccountFull> CreateAccount(
         this IWebTester tester,
         string name,

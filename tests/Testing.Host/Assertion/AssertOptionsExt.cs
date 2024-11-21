@@ -8,10 +8,6 @@ namespace ActualChat.Testing.Host.Assertion;
 
 public static class AssertOptionsExt
 {
-    public static EquivalencyAssertionOptions<AccountFull> IdName(
-        this EquivalencyAssertionOptions<AccountFull> options)
-        => options.Including(x => x.Id).Including(x => x.FullName).Including(x => x.User.Name);
-
     public static EquivalencyAssertionOptions<Chat.Chat> IdTitle(
         this EquivalencyAssertionOptions<Chat.Chat> options)
         => options.Including(x => x.Id).Including(x => x.Title);

@@ -34,6 +34,7 @@ public sealed partial record AccountFull(
     [DataMember, MemoryPackOrder(12)] public Phone Phone { get; init; }
     [DataMember, MemoryPackOrder(8)] public string Email { get; init; } = "";
     [DataMember, MemoryPackOrder(9)] public string Name { get; init; } = "";
+    [Obsolete("2024.11: Allows legacy clients to get/set LastName.")]
     [DataMember, MemoryPackOrder(10)] public string LastName { get; init; } = "";
     [DataMember, MemoryPackOrder(11)] public string Username { get; init; } = "";
     [DataMember, MemoryPackOrder(13)] public bool IsGreetingCompleted { get; init; }
@@ -44,7 +45,8 @@ public sealed partial record AccountFull(
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string FullName => $"{Name} {LastName}".Trim();
+    [Obsolete("2024.11: Allows legacy clients to get FullName.")]
+    public string FullName => (LastName.IsNullOrEmpty() ? Name : $"{Name} {LastName}").Trim();
 
     // This record relies on referential equality
     public bool Equals(AccountFull? other) => ReferenceEquals(this, other);

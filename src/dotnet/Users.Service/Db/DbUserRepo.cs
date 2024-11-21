@@ -19,12 +19,15 @@ public class DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceP
 
         var context = CommandContext.GetCurrent();
         var isAdmin = AccountsBackend.IsAdmin(user);
+        var name = user.Claims.GetValueOrDefault(ClaimTypes.GivenName, "");
+        var lastName = user.Claims.GetValueOrDefault(ClaimTypes.Surname, "");
+        if (!lastName.IsNullOrEmpty())
+            name = $"{name} {lastName}";
         var dbAccount = new DbAccount {
             Id = user.Id,
             Status = isAdmin ? AccountStatus.Active : UsersSettings.NewAccountStatus,
             Version = VersionGenerator.NextVersion(),
-            Name = user.Claims.GetValueOrDefault(ClaimTypes.GivenName, ""),
-            LastName = user.Claims.GetValueOrDefault(ClaimTypes.Surname, ""),
+            Name = name,
             Email = user.Claims.GetValueOrDefault(ClaimTypes.Email, ""),
             Phone = user.Claims.GetValueOrDefault(ClaimTypes.MobilePhone, ""),
             CreatedAt = dbUser.CreatedAt,
