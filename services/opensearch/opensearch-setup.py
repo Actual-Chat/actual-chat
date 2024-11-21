@@ -37,7 +37,7 @@ class API:
         # For some reason current opensearch_py_ml client
         # does not have methods to register a model group
         try:
-            # Return an existing model group id if it already exists.
+            # Return an existing model group id if exists.
             return self.call_opensearch(
                 "/_plugins/_ml/model_groups/_search",
                 method = requests.post,
@@ -63,7 +63,7 @@ class API:
 
     def get_model_group_model_id(self, model_group_id):
         try:
-            # Return an existing model group id if any.
+            # Return an existing open search hosted model id for the given model group if exists.
             response = self.call_opensearch(
                 "/_plugins/_ml/models/_search",
                 method = requests.post,
@@ -71,11 +71,9 @@ class API:
                     "query": {
                         "bool": {
                             "must": [{
-                                "exists": {
-                                    "field": "model_state"
-                                }
-                            }],
-                            "should": [{
+                                "exists": { "field": "model_config" },
+                                "exists": { "field": "model_content_hash_value" },
+                                "exists": { "field": "model_state" },
                                 "match": {
                                     "model_group_id": model_group_id
                                 }
