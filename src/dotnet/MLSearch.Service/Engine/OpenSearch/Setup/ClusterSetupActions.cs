@@ -7,6 +7,7 @@ using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.MLSearch.Module;
 using OpenSearch.Client;
+using OpenSearch.Net;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
@@ -36,7 +37,48 @@ internal abstract class ClusterSetupActions(
     {
         var modelProps = await RetrieveEmbeddingModelPropsAsync(value, cancellationToken).ConfigureAwait(false);
 
+        await EnsureModelDeployedAsync(modelProps.Id, cancellationToken).ConfigureAwait(false);
+
         return modelProps;
+    }
+
+    private async Task EnsureModelDeployedAsync(string modelId, CancellationToken cancellationToken)
+    {
+        var modelResponse = await openSearch.RunAsync($"GET /_plugins/_ml/models/{modelId}", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!OrdinalEquals(modelResponse.AssertSuccess().Get<string>("model_state"), "DEPLOYED")) {
+            // Deploy the ML model
+            var deployModelResponse = await openSearch.Http
+                .PostAsync<DynamicResponse>($"/_plugins/_ml/models/{modelId}/_deploy", ct: cancellationToken)
+                .ConfigureAwait(false);
+
+            deployModelResponse.AssertSuccess();
+
+            var modelDeployTaskStatus = (string)deployModelResponse.Body.status;
+            if (!OrdinalEquals(modelDeployTaskStatus, "CREATED"))
+                throw StandardError.External("Model deploy task is not CREATED.");
+
+            var modelDeployTaskId = (string) deployModelResponse.Body.task_id;
+
+            // Wait for ML model deployment to complete
+            while (true) {
+                var getTaskResponse = await openSearch.Http
+                    .GetAsync<DynamicResponse>($"/_plugins/_ml/tasks/{modelDeployTaskId}", ct: cancellationToken)
+                    .ConfigureAwait(false);
+
+                getTaskResponse.AssertSuccess();
+
+                var modelDeployTaskState = (string)getTaskResponse.Body.state;
+                if (OrdinalEquals(modelDeployTaskState, "FAILED"))
+                    throw StandardError.External("Model deploy task has FAILED.");
+
+                if (modelDeployTaskState.OrdinalStartsWith("COMPLETED"))
+                    break;
+
+                await Task.Delay(2000, cancellationToken);
+            }
+        }
     }
 
     protected abstract Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(
