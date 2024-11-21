@@ -32,7 +32,14 @@ internal abstract class ClusterSetupActions(
     private const string TimestampFieldName = "timestamp";
     protected readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
 
-    public abstract Task<EmbeddingModelProps> EnsureEmbeddingModelDeployedAsync(
+    public async Task<EmbeddingModelProps> EnsureEmbeddingModelDeployedAsync(OpenSearchSettings value, CancellationToken cancellationToken)
+    {
+        var modelProps = await RetrieveEmbeddingModelPropsAsync(value, cancellationToken).ConfigureAwait(false);
+
+        return modelProps;
+    }
+
+    protected abstract Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(
         OpenSearchSettings openSearchSettings, CancellationToken cancellationToken);
 
     public async Task EnsureTemplateAsync(string templateName, string pattern, int? numberOfReplicas, CancellationToken cancellationToken)
@@ -310,7 +317,7 @@ internal sealed class BuiltInModelClusterSetupActions : ClusterSetupActions
         Tracer baseTracer
     ) : base(openSearch, namingPolicy, baseTracer) => _openSearch = openSearch;
 
-    public override async Task<EmbeddingModelProps> EnsureEmbeddingModelDeployedAsync(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
+    protected override async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
     {
         var modelGroup = openSearchSettings.ModelGroup;
         return await RetrieveEmbeddingModelPropsAsync(modelGroup, cancellationToken)
@@ -448,7 +455,7 @@ internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
         Tracer baseTracer
     ) : base(openSearch, namingPolicy, baseTracer) => _openSearch = openSearch;
 
-    public override Task<EmbeddingModelProps> EnsureEmbeddingModelDeployedAsync(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
+    protected override Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
     {
         throw new NotImplementedException();
     }
