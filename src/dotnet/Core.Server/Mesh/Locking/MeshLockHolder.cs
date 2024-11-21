@@ -84,29 +84,17 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var now = Clock.Now;
-        var expirationPeriod = Options.ExpirationPeriod;
-        var renewPeriod = Options.RenewalPeriod;
-        ExpiresAt = now + expirationPeriod;
+        ExpiresAt = now + Options.ExpirationPeriod;
         DebugLog?.LogDebug(
             "[+] {Key}: acquired in {AcquireTime}, value = {StoredValue}",
             FullKey, (now - CreatedAt).ToShortString(), StoredValue);
-        while (true) {
+        var isRenewed = true;
+        while (isRenewed) {
+            await Clock.Delay(Options.RenewalPeriod, cancellationToken).ConfigureAwait(false);
+            isRenewed = await TryRenew(cancellationToken).ConfigureAwait(false);
             now = Clock.Now;
-            var renewsAt = now + renewPeriod;
-            var delay = renewsAt - now;
-            if (delay > TimeSpan.Zero)
-                await Clock.Delay(delay, cancellationToken).ConfigureAwait(false);
-            else if (now > ExpiresAt) {
-                Log?.LogError("[+-] {Key}: must be expired based on its last renewal time", FullKey);
-                break;
-            }
-
-            var isRenewed = await TryRenew(cancellationToken).ConfigureAwait(false);
-            if (!isRenewed) {
-                Log?.LogError("[+-] {Key}: reported as expired on renewal", FullKey);
-                break;
-            }
         }
+        Log?.LogError("[+-] {Key}: reported as expired on renewal", FullKey);
         _ = DisposeAsync();
     }
 
@@ -133,7 +121,8 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
     protected async Task<bool> TryRenew(CancellationToken cancellationToken)
     {
         while (true) {
-            var expiresIn = ExpiresAt - Clock.Now;
+            var now = Clock.Now;
+            var expiresIn = ExpiresAt - now;
             if (expiresIn < MinExpiresIn) {
                 Log?.LogError("[+*] {Key}: renewal failed - too late to renew", FullKey);
                 return false;
@@ -142,7 +131,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             var cts = cancellationToken.CreateLinkedTokenSource();
             cts.CancelAfter(expiresIn);
             try {
-                var expiresAt = Clock.Now + Options.ExpirationPeriod;
+                var expiresAt = now + Options.ExpirationPeriod;
                 var isRenewed = await Backend
                     .TryRenew(Key, StoredValue, Options.ExpirationPeriod, cts.Token)
                     .ConfigureAwait(false);
