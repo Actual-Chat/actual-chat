@@ -147,18 +147,21 @@ public sealed class MeshWatcher : WorkerBase
         Log.LogInformation("-> Announce: {MeshNode}", key);
 
         try {
+            var holderStopToken = CancellationToken.None;
             while (!cancellationToken.IsCancellationRequested) {
                 try {
                     var holder = await NodeLocks.Lock(key, "", cancellationToken).ConfigureAwait(false);
                     await using var _ = holder.ConfigureAwait(false);
+                    holderStopToken = holder.StopToken;
                     whenLockedTcs.TrySetResult();
                     Log.LogInformation("[+] {MeshNode}", key);
 
-                    using var linkedTokenSource = cancellationToken.LinkWith(holder.StopToken);
+                    using var linkedTokenSource = cancellationToken.LinkWith(holderStopToken);
                     using var dTask = linkedTokenSource.Token.ToTask();
                     await dTask.Resource.ConfigureAwait(false);
                 }
                 catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                    Log.LogWarning(e, "[!] {MeshNode} - failed to acquire the lock, holder.StopToken.IsCancellationRequested = {StopTokenIsCancelled}", key, holderStopToken.IsCancellationRequested);
                     // Intended
                 }
                 Log.LogInformation("[-] {MeshNode} - lost the lock", key);

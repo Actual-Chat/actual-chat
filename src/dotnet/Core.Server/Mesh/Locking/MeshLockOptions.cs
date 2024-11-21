@@ -31,6 +31,6 @@ public sealed record MeshLockOptions(
         if (Debugger.IsAttached)
             return new(TimeSpan.FromSeconds(60)) { WarningDelay = TimeSpan.FromSeconds(65) };
 #endif
-        return new(TimeSpan.FromSeconds(15)) { WarningDelay = TimeSpan.FromSeconds(20) };
+        return new(TimeSpan.FromSeconds(10)) { WarningDelay = TimeSpan.FromSeconds(15) };
     }
 }

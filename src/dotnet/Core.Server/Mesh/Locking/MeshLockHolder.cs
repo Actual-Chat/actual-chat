@@ -132,6 +132,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             cts.CancelAfter(expiresIn);
             try {
                 var expiresAt = now + Options.ExpirationPeriod;
+                // DebugLog?.LogDebug("[+*] {Key}: renew {StoredValue}", FullKey, StoredValue);
                 var isRenewed = await Backend
                     .TryRenew(Key, StoredValue, Options.ExpirationPeriod, cts.Token)
                     .ConfigureAwait(false);

@@ -25,9 +25,9 @@ public class RedisMeshLocks : MeshLocksBase
     private static readonly string TryLockScript =
         """
         local key, anyLockKey, value, expiresIn = KEYS[1], KEYS[2], ARGV[1], ARGV[2]
-        local r = redis.call('SET', key, value, 'NX', 'PX', expiresIn)
-        local rt = type(r)
-        if (rt == 'boolean' and r) or (rt == 'table' and r['ok'] == 'OK') then
+        local rSet = redis.call('SET', key, value, 'NX', 'PX', expiresIn)
+        local rt = type(rSet)
+        if (rt == 'boolean' and r) or (rt == 'table' and rSet['ok'] == 'OK') then
             redis.call('PUBLISH', key, '')
             redis.call('PUBLISH', anyLockKey, key)
             return 0
@@ -35,14 +35,29 @@ public class RedisMeshLocks : MeshLocksBase
         return -1
         """;
     private static readonly string TryRenewScript =
+        // SET key again if missing - there is no other lock holder
+        // Useful for debugging:
+        // redis.call('ECHO', 'TryRenewScript: ' .. string.format(cjson.encode(result)))
         """
-        local key, value, expiresIn = KEYS[1], ARGV[1], ARGV[2]
-        if redis.call('GET', key) ~= value then
+        local key, anyLockKey, value, expiresIn = KEYS[1], KEYS[2], ARGV[1], ARGV[2]
+        local rGet = redis.call('GET', key)
+
+        if rGet == false then
+            local rSet = redis.call('SET', key, value, 'NX', 'PX', expiresIn)
+            local rt = type(rSet)
+            if (rt == 'boolean' and r) or (rt == 'table' and rSet['ok'] == 'OK') then
+                redis.call('PUBLISH', key, '')
+                redis.call('PUBLISH', anyLockKey, key)
+                return 0
+            end
+            return -2
+        end
+        if rGet ~= value then
             return -1
         end
-        redis.call('PEXPIRE', key, expiresIn, 'GT')
-        if redis.call('GET', key) ~= value then
-            return -1
+        local rExpire = redis.call('PEXPIRE', key, expiresIn, 'GT')
+        if rExpire == 0 then
+            return -3
         end
         return 0
         """;
@@ -77,15 +92,15 @@ public class RedisMeshLocks : MeshLocksBase
         local count = 0;
         local cursor = "0";
         repeat
-            local scanResult = redis.call("SCAN", cursor, "MATCH", pattern, "COUNT", 100);
-        	local keys = scanResult[2];
+            local rScan = redis.call("SCAN", cursor, "MATCH", pattern, "COUNT", 100);
+        	local keys = rScan[2];
         	for i = 1, #keys do
         		local key = keys[i];
         		redis.replicate_commands()
         		redis.call("DEL", key);
         		count = count + 1;
         	end;
-        	cursor = scanResult[1];
+        	cursor = rScan[1];
         until cursor == "0";
         return count;
         """;
@@ -214,6 +229,8 @@ public class RedisMeshLocks : MeshLocksBase
                 var r = (long)await database
                     .ScriptEvaluateAsync(TryLockScript, [key, ""], [value, (long)expiresIn.TotalMilliseconds], CommandFlags.DemandMaster)
                     .ConfigureAwait(false);
+                if (r != 0)
+                    Log?.LogDebug("TryLock: {Key} = {Value} -> {Result}", $"{_fullKeyPrefix}{key}", value, r);
                 return r >= 0;
             }
             catch (RedisConnectionException) {
@@ -227,9 +244,12 @@ public class RedisMeshLocks : MeshLocksBase
     {
         // Must not auto-retry!
         var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var expiresInMs = (long)expiresIn.TotalMilliseconds;
         var r = (long)await database
-            .ScriptEvaluateAsync(TryRenewScript, [key], [value, (long)expiresIn.TotalMilliseconds], CommandFlags.DemandMaster)
+            .ScriptEvaluateAsync(TryRenewScript, [key, ""], [value, expiresInMs], CommandFlags.DemandMaster)
             .ConfigureAwait(false);
+        if (r != 0)
+            Log?.LogDebug("TryRenew: {Key} = {Value} -> {Result} @ {ExpiresIn}", $"{_fullKeyPrefix}{key}", value, r, expiresInMs);
         return r >= 0;
     }
 
@@ -240,6 +260,8 @@ public class RedisMeshLocks : MeshLocksBase
         var r = (long)await database
             .ScriptEvaluateAsync(TryReleaseScript, [key, ""], [value], CommandFlags.DemandMaster)
             .ConfigureAwait(false);
+        if (r != 0)
+            Log?.LogDebug("TryRelease: {Key} = {Value} -> {Result}", $"{_fullKeyPrefix}{key}", value, r);
         return r switch {
             -2 => MeshLockReleaseResult.AcquiredBySomeoneElse,
             -1 => MeshLockReleaseResult.NotAcquired,
@@ -255,6 +277,8 @@ public class RedisMeshLocks : MeshLocksBase
         var r = (long)await database
             .ScriptEvaluateAsync(ForceReleaseScript, [key, ""], [mustNotify ? 1 : 0], CommandFlags.DemandMaster)
             .ConfigureAwait(false);
+        if (r != 0)
+            Log?.LogDebug("ForceRelease: {Key} -> {Result}", $"{_fullKeyPrefix}{key}", r);
         return r >= 0;
     }
 }
