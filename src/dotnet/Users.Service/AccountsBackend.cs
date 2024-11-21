@@ -93,6 +93,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         if (userLinkId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(userLinkId));
 
+        userLinkId = userLinkId.ToLower();
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
@@ -165,6 +166,11 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                     _ = GetIdByUserLink(invUserLinkId, default);
             return;
         }
+
+        if (!account.UserLinkId.IsNone)
+            account = account with {
+                UserLinkId = account.UserLinkId.ToLower()
+            };
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);

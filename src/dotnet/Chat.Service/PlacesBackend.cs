@@ -159,6 +159,10 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
 
         Place ApplyDiff(Place originalPlace, PlaceDiff? diff) {
             // Update
+            if (diff?.UserLinkId != null)
+                diff = diff with {
+                    UserLinkId = diff.UserLinkId.Value.ToLower()
+                };
             var newPlace = DiffEngine.Patch(originalPlace, diff) with {
                 Version = VersionGenerator.NextVersion(originalPlace.Version),
             };
@@ -183,13 +187,13 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         async Task UpdateUserLink(Place? oldPlace1, Place place1)
         {
             var oldUserLinkId = oldPlace1?.UserLinkId ?? UserLinkId.None;
-            var userLinkId = place1.IsPublic ? place1.UserLinkId : UserLinkId.None;
+            var userLinkId = place1.IsPublic ? place1.UserLinkId.ToLower() : UserLinkId.None;
             await UserLinksBackendExt.UpdateUserLink(Commander, oldUserLinkId, userLinkId, UserLinkKind.Place, place1.Id, cancellationToken).ConfigureAwait(false);
         }
 
         async Task RemoveUserLink(Place oldPlace1)
         {
-            var oldUserLinkId = oldPlace1.UserLinkId;
+            var oldUserLinkId = oldPlace1.UserLinkId.ToLower();
             if (oldUserLinkId.IsNone)
                 return;
 

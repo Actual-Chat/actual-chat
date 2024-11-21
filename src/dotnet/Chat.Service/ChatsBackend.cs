@@ -399,6 +399,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (userLinkId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(userLinkId));
 
+        userLinkId = userLinkId.ToLower();
         var placeChatIds = await ListPlaceChatIds(placeId, cancellationToken).ConfigureAwait(false);
         foreach (var placeChatId in placeChatIds) {
             var placeChat = await Get(placeChatId, cancellationToken).ConfigureAwait(false);
@@ -851,6 +852,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         Chat ApplyDiff(Chat originalChat, ChatDiff? diff) {
             // Update
+            if (diff?.UserLinkId != null)
+                diff = diff with {
+                    UserLinkId = diff.UserLinkId.Value.ToLower()
+                };
             var newChat = DiffEngine.Patch(originalChat, diff) with {
                 Version = VersionGenerator.NextVersion(originalChat.Version),
             };
@@ -886,7 +891,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             }
 
             var oldUserLinkId = oldChat1?.UserLinkId ?? UserLinkId.None;
-            var userLinkId = chat1.IsPublic ? chat1.UserLinkId : UserLinkId.None;
+            var userLinkId = chat1.IsPublic ? chat1.UserLinkId.ToLower() : UserLinkId.None;
 
             if (chat1.Id.Kind == ChatKind.Group)
                 await UserLinksBackendExt.UpdateUserLink(Commander, oldUserLinkId, userLinkId, UserLinkKind.Chat, chat1.Id, cancellationToken).ConfigureAwait(false);
