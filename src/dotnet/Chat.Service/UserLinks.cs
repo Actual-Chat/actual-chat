@@ -8,16 +8,16 @@ public class UserLinks(IServiceProvider services) : IUserLinks
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
 
-    public virtual async Task<string> ResolveUserLink(UserLinkKind userLinkKind, UserLinkId userLinkId, CancellationToken cancellationToken)
+    public virtual async Task<ResolvedUserLinkResult> ResolveUserLink(UserLinkId userLinkId, CancellationToken cancellationToken = default)
     {
         if (userLinkId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(userLinkId));
 
         var userLink = await Backend.Get(userLinkId, cancellationToken).ConfigureAwait(false);
-        if (userLink == null || userLink.Kind != userLinkKind)
-            return "";
+        if (userLink is null)
+            return ResolvedUserLinkResult.None;
 
-        return userLink.TargetId;
+        return new ResolvedUserLinkResult(userLink.Kind, userLink.TargetId);
     }
 
     public virtual async Task<bool> IsUserLinkAvailable(UserLinkId userLinkId, CancellationToken cancellationToken)
