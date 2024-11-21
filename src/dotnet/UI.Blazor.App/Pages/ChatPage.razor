@@ -307,11 +307,11 @@
             if (!UserLinkId.TryParse(sChatUserLink, out var chatUserLinkId))
                 return PageRoute.UnknownUserLink;
 
-            var resolveResult = await Hub.UserLinks.ResolveUserLink(chatUserLinkId.ToLower(), cancellationToken);
-            if (resolveResult.IsNone || resolveResult.Kind != UserLinkKind.Chat)
+            var userLinkRef = await Hub.UserLinks.GetUserLinkRef(chatUserLinkId.ToLower(), cancellationToken);
+            if (userLinkRef.IsNone || userLinkRef.Kind != UserLinkKind.Chat)
                 return PageRoute.UnknownUserLink;
 
-            if (!ChatId.TryParse(resolveResult.TargetId, out var chatId))
+            if (!ChatId.TryParse(userLinkRef.TargetId, out var chatId))
                 return PageRoute.InvalidRoute;
 
             targetChatId = chatId;
@@ -321,11 +321,11 @@
             if (!UserLinkId.TryParse(sPlaceUserLink, out var placeUserLinkId))
                 return PageRoute.UnknownUserLink;
 
-            var resolveResult = await Hub.UserLinks.ResolveUserLink(placeUserLinkId.ToLower(), cancellationToken);
-            if (resolveResult.IsNone || resolveResult.Kind != UserLinkKind.Place)
+            var userLinkRef = await Hub.UserLinks.GetUserLinkRef(placeUserLinkId.ToLower(), cancellationToken);
+            if (userLinkRef.IsNone || userLinkRef.Kind != UserLinkKind.Place)
                 return PageRoute.UnknownUserLink;
 
-            if (!PlaceId.TryParse(resolveResult.TargetId, out var placeId))
+            if (!PlaceId.TryParse(userLinkRef.TargetId, out var placeId))
                 return PageRoute.InvalidRoute;
 
             var chatIdPart = parts[1];
