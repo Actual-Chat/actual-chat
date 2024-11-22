@@ -11,6 +11,11 @@
     Text="New Place"
     Click="OnCreatePlaceClick">
 </MenuEntry>
+<MenuEntry
+    Icon="icon-hand"
+    Text="New Chat Roulette"
+    Click="OnStartChatRouletteClick">
+</MenuEntry>
 
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -20,4 +25,7 @@
 
     private void OnCreatePlaceClick()
         => Hub.ModalUI.Show(new NewPlaceModal.Model());
+
+    private void OnStartChatRouletteClick()
+        => _ = NavigateTo("/chat-roulette");
 }
