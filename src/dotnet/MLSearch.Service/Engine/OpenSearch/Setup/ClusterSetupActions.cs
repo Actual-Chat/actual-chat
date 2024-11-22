@@ -493,6 +493,30 @@ internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
 
     private async Task<string> GetOrCreateConnectorId(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
     {
+        // POST /_plugins/_ml/connectors/_create
+        // {
+        // "name": "Self-hosted embeddings model connector",
+        // "description": "",
+        // "version": "1.0",
+        // "protocol": "http",
+        // "parameters": {
+        //     "model": "Alibaba-NLP_gte-multilingual-base"
+        // },
+        // "actions": [
+        //     {
+        //     "action_type": "predict",
+        //     "method": "POST",
+        //     "url": "http://embeddings-service:8080/predictions/${parameters.model}",
+        //     "headers": {
+        //         "content-type": "application/json"
+        //     },
+        //     "request_body": "{ \"input\": ${parameters.input} }",
+        //     "pre_process_function": "connector.pre_process.default.embedding",
+        //     "post_process_function": "connector.post_process.default.embedding"
+        //     }
+        // ]
+        // }
+
         // var connectorId = modelSource.Get<string>("connector_id")
         //     ?? throw new InvalidOperationException(
         //         "connector_id is null"
@@ -502,6 +526,14 @@ internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
 
     private async Task<string> GetOrCreateModelId(string? modelGroupId, string connectorId, CancellationToken cancellationToken)
     {
+        // POST /_plugins/_ml/models/_register
+        // {
+        // "name": "Self-hosted embedding model",
+        // "function_name": "remote",
+        // "model_group_id": "Xah4KJMBXRT92TnoRXAl",
+        // "description": "test self-hosted model",
+        // "connector_id": "XKh3KJMBXRT92Tno93Aq"
+        // }
         throw new NotImplementedException();
     }
 
