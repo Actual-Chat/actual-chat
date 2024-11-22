@@ -58,7 +58,7 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
         // act
         for (int i = 10; i < 20; i++) {
             var account = await _tester.SignIn(accounts[i].User);
-            var cmd = new Accounts_Update(_tester.Session, account with { LastName = "A" + i }, account.Version);
+            var cmd = new Accounts_Update(_tester.Session, account with { Name = "User A" + i }, account.Version);
             await _commander.Call(cmd);
         }
 
@@ -66,7 +66,7 @@ public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContact
         await _tester.SignIn(owner.User);
         searchResults = await Find("User A", 10);
         var expected = accounts[10..20]
-            .Select(x => ownerId.BuildSearchResult(x.Id, "User A" + x.LastName, [(0, 4), (5, 8)]));
+            .Select(x => ownerId.BuildSearchResult(x.Id, x.Name.Replace("User ", "User A"), [(0, 4), (5, 8)]));
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingRank());
     }
 

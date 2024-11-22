@@ -11,9 +11,7 @@ public static class AccountExt
     public static IndexedUserContact ToIndexedUserContact(this AccountFull account, ApiArray<PlaceId> placeIds)
         => new() {
             Id = account.Id,
-            FirstName = account.Name,
-            SecondName = account.LastName,
-            FullName = account.FullName,
+            FullName = account.Name,
             PlaceIds = placeIds,
         };
 }
