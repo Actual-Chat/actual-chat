@@ -361,13 +361,8 @@ internal sealed class BuiltInModelClusterSetupActions : ClusterSetupActions
 
     protected override async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
     {
-        var modelGroup = openSearchSettings.ModelGroup;
-        return await RetrieveEmbeddingModelPropsAsync(modelGroup, cancellationToken)
-            .ConfigureAwait(false);
-    }
+        var modelGroupName = openSearchSettings.ModelGroup;
 
-    private async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(string modelGroupName, CancellationToken cancellationToken)
-    {
         using var _1 = _tracer.Region();
         // Read model group latest state
         var modelGroupResponse = await _openSearch.RunAsync(
@@ -405,11 +400,9 @@ internal sealed class BuiltInModelClusterSetupActions : ClusterSetupActions
                     "query": {
                         "bool": {
                             "must": [{
-                                "exists": {
-                                    "field": "model_state"
-                                }
-                            }],
-                            "should": [{
+                                "exists": { "field": "model_config" },
+                                "exists": { "field": "model_content_hash_value" },
+                                "exists": { "field": "model_state" },
                                 "match": {
                                     "model_group_id": "{{modelGroupId}}"
                                 }
@@ -439,25 +432,6 @@ internal sealed class BuiltInModelClusterSetupActions : ClusterSetupActions
                 "_source is null"
             );
 
-        // Ensure model is deployed.
-        if (!modelSource.TryGetValue("model_state", out var modelStateObj)) {
-            throw new InvalidOperationException("model_state field is not found");
-        }
-        var modelState = (string) modelStateObj;
-        if (!OrdinalEquals(modelState, "DEPLOYED")) {
-            modelState = modelState.IsNullOrEmpty() ? "<Empty>" : modelState;
-            // Throw standard external error as it is transient
-            throw StandardError.External(
-                $"Invalid model state. Expecting deployed model, but was {modelState}."
-            );
-        }
-
-        return await CreateEmbeddingModelPropertiesAsync(modelId, modelSource, cancellationToken).ConfigureAwait(false);
-    }
-
-    private static ValueTask<EmbeddingModelProps> CreateEmbeddingModelPropertiesAsync(
-        string modelId, IDictionary<string, object> modelSource, CancellationToken _)
-    {
         var modelConfig = modelSource.Get<IDictionary<string, object>>("model_config")
             ?? throw new InvalidOperationException(
                 "model_config is null"
@@ -483,7 +457,7 @@ internal sealed class BuiltInModelClusterSetupActions : ClusterSetupActions
             .ToLower(CultureInfo.InvariantCulture);
 #pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
 
-        return ValueTask.FromResult(new EmbeddingModelProps(modelId, modelEmbeddingDimension, uniqueModelKey));
+        return new EmbeddingModelProps(modelId, modelEmbeddingDimension, uniqueModelKey);
     }
 }
 
