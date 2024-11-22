@@ -484,17 +484,30 @@ internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
     {
         var modelGroupId = await GetModelGroupId(openSearchSettings, cancellationToken).ConfigureAwait(false);
 
+        var connectorId = await GetOrCreateConnectorId(openSearchSettings, cancellationToken).ConfigureAwait(false);
+
+        var modelId = await GetOrCreateModelId(modelGroupId, connectorId, cancellationToken).ConfigureAwait(false);
+
+        return await CreateEmbeddingModelPropertiesAsync(modelId, connectorId, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<string> GetOrCreateConnectorId(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
+    {
+        // var connectorId = modelSource.Get<string>("connector_id")
+        //     ?? throw new InvalidOperationException(
+        //         "connector_id is null"
+        //     );
+        throw new NotImplementedException();
+    }
+
+    private async Task<string> GetOrCreateModelId(string? modelGroupId, string connectorId, CancellationToken cancellationToken)
+    {
         throw new NotImplementedException();
     }
 
     private async ValueTask<EmbeddingModelProps> CreateEmbeddingModelPropertiesAsync(
-        string modelId, IDictionary<string, object> modelSource, CancellationToken cancellationToken)
+        string modelId, string connectorId, CancellationToken cancellationToken)
     {
-        var connectorId = modelSource.Get<string>("connector_id")
-            ?? throw new InvalidOperationException(
-                "connector_id is null"
-            );
-
         var connectorResponse = (await _openSearch
                 .RunAsync($"GET /_plugins/_ml/connectors/{connectorId}", cancellationToken)
                 .ConfigureAwait(false)
