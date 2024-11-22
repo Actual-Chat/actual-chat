@@ -11,7 +11,7 @@
         <ChatRouletteItem Avatar="@avatar"/>
     }
 
-    <Button Class="cr-btn">
+    <Button Class="cr-btn" Click="@OnStopRouletteClick">
         Stop Roulette
     </Button>
 </div>
@@ -41,4 +41,13 @@
 
     private void OnSettingsClick()
         => _ = UIEventHub.Publish(new ShowSettingsEvent());
+
+    private void OnStopRouletteClick() {
+        // if (Hub.BrowserInfo.ScreenSize.Value.IsNarrow()) {
+        //     Hub.PanelsUI.Left.SetIsVisible(true);
+        //     return;
+        // }
+
+        _ = Hub.History.NavigateTo(Links.Chats);
+    }
 }

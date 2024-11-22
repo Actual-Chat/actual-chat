@@ -55,7 +55,7 @@ public static class ClientStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OptionDiffHandler<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SetDiffHandler<,>))]
     // Test Pages
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatRouletteTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatRoulettePage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DiscoverTestPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MarkupEditorTestPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PlaceInfoTestPage))]
