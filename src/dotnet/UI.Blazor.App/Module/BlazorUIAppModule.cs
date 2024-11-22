@@ -24,6 +24,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 {
     public static string ImportName => "blazorApp";
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fine for Fusion.")]
     protected override void InjectServices(IServiceCollection services)
     {
         var fusion = services.AddFusion();

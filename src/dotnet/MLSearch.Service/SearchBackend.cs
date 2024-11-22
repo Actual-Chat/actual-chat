@@ -192,7 +192,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
             // NOTE: we don't have any other chance to process removed items
             if (changeKind == ChangeKind.Remove)
-                await IndexedDocuments.UpdateGroupContacts([], [chat.Id], cancellationToken);
+                await IndexedDocuments.UpdateGroupContacts([], [chat.Id], cancellationToken).ConfigureAwait(false);
             else
                 await Flows.GetAndResume<GroupContactIndexingFlow>("",
                         Settings.IndexingRecheckInterval,

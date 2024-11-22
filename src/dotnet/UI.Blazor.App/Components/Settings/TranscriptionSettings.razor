@@ -3,6 +3,8 @@
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2091:GenericArgumentDoNotHaveAnnotation", Justification = "Primitive types will be preserved.")]
 
 @{
+#pragma warning disable IL2091
+
     var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
         return;

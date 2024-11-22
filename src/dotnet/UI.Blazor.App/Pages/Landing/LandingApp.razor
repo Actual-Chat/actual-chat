@@ -2,6 +2,7 @@
 @using ActualChat.Hosting
 @using ActualChat.UI.Blazor.App.Pages.Landing
 @inherits ComputedStateComponent<AccountFull>
+@attribute [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 @{
     var account = State.Value;
     var isGuest = account is not { IsGuest: false };

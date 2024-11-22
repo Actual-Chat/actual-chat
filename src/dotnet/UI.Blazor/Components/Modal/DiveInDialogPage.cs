@@ -8,6 +8,7 @@ public class DiveInDialogPage([DynamicallyAccessedMembers(DynamicallyAccessedMem
         where TComponent : IComponent
         => new (typeof(TComponent), model);
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public Type ComponentType { get; } = componentType;
 
     public object? Model { get; } = model;

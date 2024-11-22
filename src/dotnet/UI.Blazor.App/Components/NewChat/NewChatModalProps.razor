@@ -2,6 +2,8 @@
 @inherits FusionComponentBase
 @namespace ActualChat.UI.Blazor.App.Components
 @{
+#pragma warning disable IL2091
+    
     var isPlaceChat = !PlaceId.IsNone;
     var canChangeChatType = PlaceId.IsNone || _place != null && _place.Rules.CanApplyPublicChatType();
     var publicChatLabel = !isPlaceChat ? "Public chat" : "Place chat";

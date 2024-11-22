@@ -3,6 +3,9 @@
 @using ActualChat.Users
 @namespace ActualChat.UI.Blazor.Pages.Emails
 @attribute [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2091", Justification = "String type should be preserved.")]
+@{
+#pragma warning disable IL2091
+}
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Email templates</MainHeader>
@@ -88,6 +91,7 @@
 
     public record EmailTemplateModel {
         public required string Name { get; init; }
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         public required Type ComponentType { get; init; }
     }
 

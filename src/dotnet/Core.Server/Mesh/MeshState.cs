@@ -8,7 +8,7 @@ public sealed partial class MeshState
 {
     public static readonly MeshState Empty = new();
 
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private volatile Dictionary<ShardScheme, ShardMap>? _shardMapCache;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]

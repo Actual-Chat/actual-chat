@@ -2,6 +2,7 @@ namespace ActualChat;
 
 public static class BackgroundTask
 {
+    [UnconditionalSuppressMessage("Tasks", "MA0100:AwaitBeforeDisposing", Justification = "TrySuppressFlow' dispose doesn't need to be awaited.")]
     public static Task Run(
         Func<Task> taskFactory,
         CancellationToken cancellationToken = default)
@@ -18,6 +19,7 @@ public static class BackgroundTask
         }
     }
 
+    [UnconditionalSuppressMessage("Tasks", "MA0100:AwaitBeforeDisposing", Justification = "TrySuppressFlow' dispose doesn't need to be awaited.")]
     public static Task<T> Run<T>(
         Func<Task<T>> taskFactory,
         CancellationToken cancellationToken = default)
@@ -34,6 +36,7 @@ public static class BackgroundTask
         }
     }
 
+    [UnconditionalSuppressMessage("Tasks", "MA0100:AwaitBeforeDisposing", Justification = "TrySuppressFlow' dispose doesn't need to be awaited.")]
     public static Task Run(
         Func<Task> taskFactory,
         Action<Exception> errorHandler,
@@ -53,6 +56,7 @@ public static class BackgroundTask
         }
     }
 
+    [UnconditionalSuppressMessage("Tasks", "MA0100:AwaitBeforeDisposing", Justification = "TrySuppressFlow' dispose doesn't need to be awaited.")]
     public static Task<T> Run<T>(
         Func<Task<T>> taskFactory,
         Action<Exception> errorHandler,

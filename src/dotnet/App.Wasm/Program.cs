@@ -18,8 +18,8 @@ namespace ActualChat.App.Wasm;
 
 public static class Program
 {
-    [RequiresUnreferencedCode(UnreferencedCode.Reflection)]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WasmApp))]
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Main is an entry point.")]
     public static async Task Main(string[] args)
     {
         Tracer.Default.Point();

@@ -9,7 +9,7 @@ public static class QueuesExt
 {
     // Enqueue
 
-    public static Task Enqueue<TCommand>(this IQueues queues,
+    public static async Task Enqueue<TCommand>(this IQueues queues,
         TCommand command,
         CancellationToken cancellationToken = default)
         where TCommand : ICommand
@@ -23,7 +23,7 @@ public static class QueuesExt
             Propagators.DefaultTextMapPropagator.Inject(
                 propagationContext, contextHeaders, static (headers, key, value) => headers[key] = value);
         }
-        return queues.Enqueue(QueuedCommand.New(command, headers: contextHeaders), cancellationToken);
+        await queues.Enqueue(QueuedCommand.New(command, headers: contextHeaders), cancellationToken).ConfigureAwait(false);
     }
 
     public static Task Enqueue(this IQueues queues,

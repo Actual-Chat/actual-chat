@@ -1,6 +1,9 @@
 namespace ActualChat.Diff.Handlers;
 
-public class SetDiffHandler<TSet, TItem> : DiffHandlerBase<TSet, SetDiff<TSet, TItem>>
+public class SetDiffHandler<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TSet,
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TItem> : DiffHandlerBase<TSet,
+    SetDiff<TSet, TItem>>
     where TSet : IReadOnlyCollection<TItem>
 {
     private readonly Type _setType;
@@ -22,6 +25,7 @@ public class SetDiffHandler<TSet, TItem> : DiffHandlerBase<TSet, SetDiff<TSet, T
     }
 
 #pragma warning disable IL2077
+    [UnconditionalSuppressMessage("Trimming", "IL2077:GenericArgumentDontSatisfy", Justification = "All generic arguments are dynamically accessed.")]
     public override TSet Patch(TSet source, SetDiff<TSet, TItem> diff)
     {
         var removedItems = diff.RemovedItems.ToHashSet();

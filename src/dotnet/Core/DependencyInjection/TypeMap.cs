@@ -1,8 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat.DependencyInjection;
 
-public sealed class TypeMap<TScope>
+public sealed class TypeMap<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]TScope>
 {
     public Dictionary<Type, Type> Map { get; }
 

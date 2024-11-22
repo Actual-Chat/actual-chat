@@ -39,7 +39,7 @@ internal class UserIntentDetector(Kernel kernel): IUserIntentDetector
     - In the output please return a space separated string of user intents. For example "PUBLIC_SEARCH RESET".
     """;
 
-    private static readonly FrozenDictionary<string, UserIntent> ResponseMap = new Dictionary<string, UserIntent>() {
+    private static readonly FrozenDictionary<string, UserIntent> ResponseMap = new Dictionary<string, UserIntent> {
         { "PUBLIC_SEARCH", UserIntent.PublicSearch },
         { "PRIVATE_SEARCH", UserIntent.PrivateSearch },
         { "GENERAL_SEARCH", UserIntent.GeneralSearch },

@@ -12,6 +12,7 @@ public static class KvasExt
 
     // Get, Set, Remove w/ <T>
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
     public static async ValueTask<Option<T>> TryGet<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
         (this IKvas kvas, string key, CancellationToken cancellationToken = default)
@@ -33,6 +34,8 @@ public static class KvasExt
         return hasValue ? value ?? @default : @default;
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
+    [UnconditionalSuppressMessage("Tasks", "MA0100", Justification = "Don't need to wait for Set completion to dispose buffer writer.")]
     public static Task Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
         (this IKvas kvas, string key, T value, CancellationToken cancellationToken = default)

@@ -14,7 +14,7 @@ public sealed class Playback : ProcessorBase
     private readonly ISleepDurationProvider _sleepDurationProvider;
     private readonly MessageProcessor<IPlaybackCommand> _messageProcessor;
     private readonly ConcurrentDictionary<PlayTrackCommand, (TrackPlayer Player, Task PlayTask)> _trackPlayers = new();
-    private readonly object _stateUpdateLock = new();
+    private readonly Lock _stateUpdateLock = new();
     private (CpuTimestamp CpuTimestamp, TimeSpan TotalSleepDuration) _pausedAt = default;
 
     public MutableState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> PlayingTracks { get; }

@@ -13,6 +13,7 @@ public class ServerFeaturesClient(IServiceProvider services) : IServerFeatures
     public IServerFeaturesClient Client { get; } = services.GetRequiredService<IServerFeaturesClient>();
 
     // [ComputeMethod]
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "FeatureType already marked with DynamicallyAccessedMembers.")]
     public virtual async Task<object?> Get(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type featureType,
         CancellationToken cancellationToken)

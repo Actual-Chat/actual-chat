@@ -92,7 +92,6 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
         while (isRenewed) {
             await Clock.Delay(Options.RenewalPeriod, cancellationToken).ConfigureAwait(false);
             isRenewed = await TryRenew(cancellationToken).ConfigureAwait(false);
-            now = Clock.Now;
         }
         Log?.LogError("[+-] {Key}: reported as expired on renewal", FullKey);
         _ = DisposeAsync();

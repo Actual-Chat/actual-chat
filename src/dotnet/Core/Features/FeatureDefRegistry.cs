@@ -7,7 +7,7 @@ public interface IFeatureDefRegistry
     IFeatureDef Get([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type featureType);
 }
 
-public abstract class FeatureDefRegistry<TFeatureDef> : IFeatureDefRegistry
+public abstract class FeatureDefRegistry<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]TFeatureDef> : IFeatureDefRegistry
     where TFeatureDef : class, IFeatureDef
 {
     private readonly ConcurrentDictionary<Type, TFeatureDef> _items = new();
@@ -15,6 +15,7 @@ public abstract class FeatureDefRegistry<TFeatureDef> : IFeatureDefRegistry
     IFeatureDef IFeatureDefRegistry.Get(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type featureType)
         => Get(featureType);
+
     public TFeatureDef Get(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type featureType)
         => _items.GetOrAdd(featureType, static featureType1 => {

@@ -55,7 +55,7 @@ public class CancellableDebouncer<T> : WorkerBase
 
     private sealed class Context(T item, Moment queuedAt) : IAsyncDisposable
     {
-        private readonly object _lock = new ();
+        private readonly Lock _lock = new ();
         private CancellationTokenSource? _cts;
         private volatile Task? _task;
         private bool _isDisposed;

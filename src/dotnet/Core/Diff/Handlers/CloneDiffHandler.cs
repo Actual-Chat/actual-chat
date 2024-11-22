@@ -1,5 +1,6 @@
 namespace ActualChat.Diff.Handlers;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class CloneDiffHandler<T>(DiffEngine engine) : DiffHandlerBase<T, T>(engine)
 {
     private readonly bool _isClass = typeof(T).IsClass;

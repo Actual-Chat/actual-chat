@@ -2,8 +2,21 @@ using System.Diagnostics.CodeAnalysis;
 using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualChat.Module;
+using ActualChat.UI.Blazor.App.Components.ChatRoulette;
+using ActualChat.UI.Blazor.App.Components.Discover;
+using ActualChat.UI.Blazor.App.Components.PlaceInfo;
 using ActualChat.UI.Blazor.App.Module;
+using ActualChat.UI.Blazor.App.Pages;
+using ActualChat.UI.Blazor.App.Pages.Landing.Docs;
+using ActualChat.UI.Blazor.App.Pages.Test;
+using ActualChat.UI.Blazor.Components.Internal;
+using ActualChat.UI.Blazor.Components.Requirements;
 using ActualChat.UI.Blazor.Module;
+using ActualChat.UI.Blazor.Pages;
+using ActualChat.UI.Blazor.Pages.DiveInModalTestPage;
+using ActualChat.UI.Blazor.Pages.Emails;
+using ActualChat.UI.Blazor.Pages.ErrorBarrierTestPage;
+using ActualChat.UI.Blazor.Pages.RenderSlotTestPage;
 using ActualLab.Fusion.Client;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.Fusion.Client.Interception;
@@ -41,6 +54,50 @@ public static class ClientStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RecordDiffHandler<,>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OptionDiffHandler<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SetDiffHandler<,>))]
+    // Test Pages
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatRouletteTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DiscoverTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MarkupEditorTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PlaceInfoTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioPlayerTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BlazorTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EmbeddedTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JSTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ShareInModalTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ExternalContactsTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RequirementsTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DiveInModalTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EmailTemplatesTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ErrorBarrierTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RenderSlotTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(FeaturesTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(InfoToastTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(LoadingOverlayTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ReconnectOverlayTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SkeletonsTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SvgCatsTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SystemTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TotpTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UIColorsTestPage))]
+    // Pages
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PlaceInfoPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DocsCookiesPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DocsFaqPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DocsPrivacyPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DocsTermsPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DocsTermsPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AdminContentIndexerSettingsPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AdminCopyChatToPlacePage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AdminUserInvitesPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AuthTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EmbeddedChatPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UserInvitePage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UserPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UnavailablePage))]
+    // Components
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListRenderState))]
     public static void Initialize()
     {
         // AppContext feature switches
@@ -49,10 +106,22 @@ public static class ClientStartup
         AppContext.SetSwitch("Microsoft.Extensions.DependencyInjection.DisableDynamicEngine", true);
 
         // CodeKeeper actions
-        CodeKeeper.AddAction(() => {
+        CodeKeeper.AddFakeAction(() => {
             // Extra "keep code" calls should be added here
 
             // Hardcode the known comparer types to avoid trimming
+            // var typeKeeper = CodeKeeper.Get<TypeCodeKeeper>();
+            // typeKeeper.KeepType<ByValueParameterComparer>();
+            // typeKeeper.KeepType<ByItemParameterComparer>();
+            // typeKeeper.KeepType<ByItemSetParameterComparer>();
+            // typeKeeper.KeepType<ByNoneParameterComparer>();
+            // typeKeeper.KeepType<ByRefParameterComparer>();
+            // typeKeeper.KeepType<ByUuidParameterComparer>();
+            // typeKeeper.KeepType<DefaultParameterComparer>();
+            // typeKeeper.KeepType<ByVersionParameterComparer<long>>();
+            // typeKeeper.KeepType<ByIdAndVersionParameterComparer<ChatId, long>>();
+            // typeKeeper.KeepType<ByIdAndVersionParameterComparer<PlaceId, long>>();
+            // typeKeeper.KeepType<ByUuidAndVersionParameterComparer<long>>();
             CodeKeeper.CallSilently(() => _ = new ByValueParameterComparer().AreEqual(null, null));
             CodeKeeper.CallSilently(() => _ = new ByItemParameterComparer().AreEqual(null, null));
             CodeKeeper.CallSilently(() => _ = new ByItemSetParameterComparer().AreEqual(null, null));
@@ -65,14 +134,15 @@ public static class ClientStartup
             CodeKeeper.CallSilently(() => _ = new ByIdAndVersionParameterComparer<PlaceId, long>().AreEqual(null, null));
             CodeKeeper.CallSilently(() => _ = new ByUuidAndVersionParameterComparer<long>().AreEqual(null, null));
 
-            CodeKeeper.FakeCallSilently(() => _ = new DefaultLayout());
+
+            CodeKeeper.CallSilently(() => _ = new DefaultLayout());
             CodeKeeper.CallSilently(() => _ = new InterfaceImmutableDictionaryFormatter<PlaceId, ChatId>());
             // TODO: Add support for parameter comparers
         });
         CodeKeeper.Set<ProxyCodeKeeper, FusionProxyCodeKeeper>();
-        if (OSInfo.IsWindows) {
-            // NativeAOT is used only on Windows app in our case
+        if (OSInfo.IsWindows || OSInfo.IsWebAssembly) {
             var now = CpuTimestamp.Now;
+            // Required to keep the code of the specified types
             CodeKeeper.RunActions();
             Tracer.Default[nameof(CodeKeeper)].Point($"RunActions took {now.Elapsed.ToShortString()}");
         }

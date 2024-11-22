@@ -64,6 +64,8 @@ public sealed class CoreModule(IServiceProvider moduleServices)
         };
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fine for Fusion.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2111:DynamicallyAccessedMembersAttribute", Justification = "Features are already marked with DynamicallyAccessedMembersAttribute.")]
     protected internal override void InjectServices(IServiceCollection services)
     {
         var hostKind = HostInfo.HostKind;

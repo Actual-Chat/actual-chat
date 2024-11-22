@@ -2,7 +2,7 @@ namespace ActualChat;
 
 public sealed class TaskSerializer
 {
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private CancellationTokenSource _abortCts = new();
     private volatile Task _whenCompleted = Task.CompletedTask;
 

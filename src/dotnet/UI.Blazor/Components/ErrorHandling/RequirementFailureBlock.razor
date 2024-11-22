@@ -5,6 +5,8 @@
 @using ActualLab.Reflection
 @inherits FusionComponentBase
 @{
+#pragma warning disable IL2111, IL2110
+
     var needsSignIn = Failures.Items.Any(x => x.Value is INotFoundException) && Account != AccountFull.Loading;
     if (needsSignIn) {
         _ = History.NavigateTo(Links.Home);

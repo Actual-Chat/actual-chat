@@ -9,6 +9,7 @@ public readonly struct MenuRef(
 {
     private const char Delimiter = '|';
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public Type MenuType { get; } = menuType;
     public string[] Arguments { get; } = arguments;
 

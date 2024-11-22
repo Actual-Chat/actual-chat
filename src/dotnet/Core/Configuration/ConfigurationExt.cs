@@ -4,7 +4,10 @@ namespace ActualChat.Configuration;
 
 public static class ConfigurationExt
 {
-    public static void AddOptions<TOptions>(this IServiceCollection services, IConfiguration configuration, string path)
+    public static void AddOptions<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TOptions>(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string path)
         where TOptions : class
 #pragma warning disable IL2026, IL2091
         => services.AddOptions<TOptions>()

@@ -23,6 +23,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
 {
     public static string ImportName => "ui";
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fine for Fusion.")]
     protected override void InjectServices(IServiceCollection services)
     {
         var hostKind = HostInfo.HostKind;

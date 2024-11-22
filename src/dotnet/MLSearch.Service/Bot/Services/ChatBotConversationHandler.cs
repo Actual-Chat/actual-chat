@@ -157,7 +157,7 @@ internal class ChatBotConversationHandler(
         };
 
         // Invoke and display assistant response
-        await foreach (var response in _agent.InvokeAsync(chat, arguments: arguments, cancellationToken: cancellationToken)) {
+        await foreach (var response in _agent.InvokeAsync(chat, arguments: arguments, cancellationToken: cancellationToken).ConfigureAwait(false)) {
             chat.Add(response);
             await PostResponse(response).ConfigureAwait(false);
         }

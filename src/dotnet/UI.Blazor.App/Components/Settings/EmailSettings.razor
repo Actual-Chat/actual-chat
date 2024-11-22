@@ -3,6 +3,8 @@
 @using TimeZone = ActualChat.Users.TimeZone
 @implements IDisposable
 @{
+#pragma warning disable IL2091
+    
     if (ReferenceEquals(_timeZoneFormModel, null))
         return;
     var timeZoneChanged = !OrdinalEquals(_timeZoneFormModel.BrowserTimeZoneName, _timeZoneFormModel.SelectedTimeZoneName);

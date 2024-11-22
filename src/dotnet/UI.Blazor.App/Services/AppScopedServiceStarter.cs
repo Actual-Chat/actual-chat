@@ -149,7 +149,7 @@ public class AppScopedServiceStarter
         var tracePrefix = nameof(StartHostedServices) + ": starting ";
         foreach (var hostedService in Hub.HostedServices()) {
             Tracer.Point(tracePrefix + hostedService.GetType().Name);
-            await hostedService.StartAsync(default);
+            await hostedService.StartAsync(default).ConfigureAwait(true);
             await Task.Yield();
         }
     }

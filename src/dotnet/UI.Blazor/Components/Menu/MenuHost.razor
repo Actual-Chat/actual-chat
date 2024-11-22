@@ -5,6 +5,8 @@
 @implements IAsyncDisposable
 @implements IHasServices
 @{
+#pragma warning disable IL2111
+
     RenderFragment RenderMenu(MenuModel menu) =>
         @<div
              id="@menu.Id"

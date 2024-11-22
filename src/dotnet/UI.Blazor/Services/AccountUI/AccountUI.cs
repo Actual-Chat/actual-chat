@@ -11,13 +11,14 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     private readonly MutableState<Moment> _lastChangedAt;
     private readonly MutableState<SignInRequest?> _activeSignInRequest;
     private readonly TimeSpan _maxInvalidationDelay;
-    private readonly object _postponeOnSignedInWorkflowTasksLock = new();
-    private IClientAuth? _clientAuth;
+    private readonly Lock _postponeOnSignedInWorkflowTasksLock = new();
     private List<Task>? _postponeOnSignedInWorkflowTasks;
 
     private IAccounts Accounts => Hub.Accounts;
     private AppBlazorCircuitContext CircuitContext => Hub.CircuitContext;
-    private IClientAuth ClientAuth => _clientAuth ??= Services.GetRequiredService<IClientAuth>();
+
+    [field: AllowNull, MaybeNull]
+    private IClientAuth ClientAuth => field ??= Services.GetRequiredService<IClientAuth>();
     private IOnboardingUI OnboardingUI => Hub.OnboardingUI;
     private INotificationUI NotificationUI => Hub.NotificationUI;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;

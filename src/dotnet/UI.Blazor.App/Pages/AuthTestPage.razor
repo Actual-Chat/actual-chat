@@ -1,6 +1,9 @@
+@attribute [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 @page "/test/auth"
 @inherits ComputedStateComponent<AuthTestPage.Model>
 @{
+#pragma warning disable IL2026
+
     var m = State.Value;
     var error = State.Error;
     var usedAuthSchemas = m.User.Identities.Select(kv => kv.Key.Schema).ToHashSet();

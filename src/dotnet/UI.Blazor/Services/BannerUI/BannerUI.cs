@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class BannerUI : ScopedServiceBase<UIHub>
 {
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private readonly MutableState<ImmutableList<BannerDef>> _banners;
 
     private TypeMapper<IBannerView> ViewResolver { get; }
@@ -20,6 +20,7 @@ public class BannerUI : ScopedServiceBase<UIHub>
         ViewResolver = hub.GetRequiredService<TypeMapper<IBannerView>>();
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2072:DoesNotSatisfyDynamicallyAccessedMemberTypes.Method", Justification = "TBannerModel is marked with DynamicallyAccessedMembers.")]
     public BannerDef Show<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]TBannerModel>(TBannerModel bannerModel)
         where TBannerModel : notnull
     {

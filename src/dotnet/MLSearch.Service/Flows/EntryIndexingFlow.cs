@@ -15,8 +15,8 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
     private Task WhenReady => Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
 
     protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
-        => await base.OnBeforeFirstIndexAfterReset(cancellationToken)
-            && await EnsureChatInfo(new ChatId(Id.Arguments), cancellationToken);
+        => await base.OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false)
+            && await EnsureChatInfo(new ChatId(Id.Arguments), cancellationToken).ConfigureAwait(false);
 
     protected override async Task<IReadOnlyList<ChatEntry>> GetBatch(
         IndexingFlowCursor<ChatEntryId>? cursor,

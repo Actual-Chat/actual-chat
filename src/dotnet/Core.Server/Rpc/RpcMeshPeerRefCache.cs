@@ -7,7 +7,7 @@ public sealed class RpcMeshPeerRefCache
     private readonly ConcurrentDictionary<MeshRef, RpcMeshPeerRef> _peerRefs = new();
     private readonly ConcurrentDictionary<NodeRef, CpuTimestamp> _offlineNodeRefs = new();
     private readonly ConcurrentDictionary<NodeRef, Unit> _deadNodeRefs = new();
-    private readonly object _lock = new ();
+    private readonly Lock _lock = new ();
     private ILogger Log { get; }
 
     public MeshWatcher MeshWatcher { get; }

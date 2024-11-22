@@ -1,7 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat.Diff.Handlers;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class RecordDiffHandler<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TRecord,
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDiff> : DiffHandlerBase<TRecord, TDiff>
@@ -11,6 +10,8 @@ public class RecordDiffHandler<
     public RecordDiffPropertyInfo[] Properties { get; init; }
     public Func<TRecord, TRecord> Cloner { get; init; }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2055:CanBeAnalyzed", Justification = "All generic arguments are dynamically accessed.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2076:GenericArgumentDontSatisfy", Justification = "All generic arguments are dynamically accessed.")]
     public RecordDiffHandler(DiffEngine engine) : base(engine)
     {
         var tRecord = typeof(TRecord);
@@ -63,7 +64,10 @@ public class RecordDiffHandler<
         public abstract void Apply(TRecord source, TRecord target, TDiff diff);
     }
 
-    public class RecordDiffPropertyInfo<TDiffProperty, TRecordProperty> : RecordDiffPropertyInfo
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+    public class RecordDiffPropertyInfo<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDiffProperty,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TRecordProperty> : RecordDiffPropertyInfo
     {
         public IDiffHandler<TRecordProperty, TDiffProperty> Handler { get; }
         public override IDiffHandler UntypedHandler => Handler;

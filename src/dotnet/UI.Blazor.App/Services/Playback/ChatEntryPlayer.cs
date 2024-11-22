@@ -82,7 +82,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
             await Playback.Abort().WhenCompleted.ConfigureAwait(false);
         }
         catch (Exception e) {
-            if (e is not OperationCanceledException or ObjectDisposedException)
+            if (e is not (OperationCanceledException or ObjectDisposedException))
                 Log.LogError(e, "Failed to abort playback in chat #{ChatId}", ChatId);
         }
     }

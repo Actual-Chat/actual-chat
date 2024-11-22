@@ -6,21 +6,26 @@ public static class ObjectExt
 {
     private static readonly ConcurrentDictionary<Type, Info> CachedInfo = new();
 
-    public static bool IsRecord<T>() => GetInfo<T>().IsRecord;
-    public static bool IsRecord(Type type) => GetInfo(type).IsRecord;
+    public static bool IsRecord<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]T>() => GetInfo<T>().IsRecord;
+    public static bool IsRecord([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type type) => GetInfo(type).IsRecord;
 
-    public static Func<T, T> GetCloner<T>() => GetInfo<T>().Cloner;
+    public static Func<T, T> GetCloner<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]T>() => GetInfo<T>().Cloner;
     public static Func<object, object> GetCloner(Type type) => GetInfo(type).UntypedCloner;
 
-    public static T Clone<T>(T source) => GetCloner<T>().Invoke(source);
+    public static T Clone<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]T>(T source) => GetCloner<T>().Invoke(source);
     public static object? Clone(object? source) => source == null ? null : GetCloner(source.GetType()).Invoke(source);
 
     // Private methods
 
-    private static Info<T> GetInfo<T>()
+    private static Info<T> GetInfo<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]T>()
         => (Info<T>) GetInfo(typeof(T));
-    private static Info GetInfo(Type type)
-        => CachedInfo.GetOrAdd(type, static type1 => (Info) typeof(Info<>).MakeGenericType(type1).CreateInstance());
+
+    [UnconditionalSuppressMessage("Trimming", "IL2111:DynamicallyAccessedMembersAttribute", Justification = "Type is marked with DynamicallyAccessedMembers.")]
+    private static Info GetInfo([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type type)
+        => CachedInfo.GetOrAdd(
+            type,
+            static ([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]type1)
+                => (Info) typeof(Info<>).MakeGenericType(type1).CreateInstance());
 
     // Nested types
 
@@ -31,7 +36,7 @@ public static class ObjectExt
         public Func<object, object> UntypedCloner = null!;
     }
 
-    private class Info<T> : Info
+    private class Info<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]T> : Info
     {
         public readonly Func<T, T> Cloner;
 

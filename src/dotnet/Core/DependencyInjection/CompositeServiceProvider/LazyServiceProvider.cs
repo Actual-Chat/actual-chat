@@ -6,7 +6,7 @@ public sealed class LazyServiceProvider(
     Action<IServiceProvider>? onLazyServicesReady
     ) : IServiceScope, IServiceProvider, IServiceScopeFactory, IAsyncDisposable
 {
-    private readonly object _lock = new ();
+    private readonly Lock _lock = new ();
     private volatile IServiceProvider? _lazyServices;
     private bool _isDisposed;
 

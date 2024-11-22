@@ -2,7 +2,7 @@ namespace ActualChat.DependencyInjection;
 
 public static class ServiceCollectionExt
 {
-    public static IServiceCollection AddTypeMapper<TScope>(
+    public static IServiceCollection AddTypeMapper<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TScope>(
         this IServiceCollection services,
         Action<TypeMap<TScope>>? typeMapBuilder = null)
     {
@@ -17,7 +17,7 @@ public static class ServiceCollectionExt
         return services;
     }
 
-    public static IServiceCollection AddTypeMap<TScope>(
+    public static IServiceCollection AddTypeMap<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TScope>(
         this IServiceCollection services,
         Action<TypeMap<TScope>> typeMapBuilder)
         => services.AddSingleton(_ => {

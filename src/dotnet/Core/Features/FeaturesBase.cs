@@ -46,6 +46,8 @@ public abstract class FeaturesBase(
     }
 
     // [ComputeMethod]
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Features are marked with DynamicallyAccessedMembers.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2072:NotSatisfyDynamicallyAccessedMemberTypesAll", Justification = "Features are marked with DynamicallyAccessedMembers.")]
     public virtual async Task<byte[]> GetData(TypeRef featureTypeRef, CancellationToken cancellationToken)
     {
 #pragma warning disable IL2026, IL2072

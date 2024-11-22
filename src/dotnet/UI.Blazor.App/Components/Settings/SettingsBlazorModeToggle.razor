@@ -1,5 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @{
+#pragma warning disable IL2091
+    
     var ssbIsSelected = BlazorModeHelper.IsBlazorServer;
     var wasmIsSelected = !ssbIsSelected;
     var ssbClass = ssbIsSelected ? "selected transparent" : "transparent";

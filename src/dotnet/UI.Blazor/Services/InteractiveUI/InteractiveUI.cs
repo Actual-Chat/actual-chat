@@ -7,7 +7,7 @@ public class InteractiveUI : ScopedServiceBase<UIHub>, IInteractiveUIBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.InteractiveUI.init";
 
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private readonly MutableState<bool> _isInteractive;
     private readonly MutableState<ActiveDemandModel?> _activeDemand;
 

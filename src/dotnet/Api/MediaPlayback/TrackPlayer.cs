@@ -10,7 +10,7 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
     private readonly TaskCompletionSource _whenCompletedSource = TaskCompletionSourceExt.New();
     private volatile Task? _whenPlaying;
     private volatile PlayerState _state = new();
-    private readonly object _stateUpdateLock = new();
+    private readonly Lock _stateUpdateLock = new();
     private readonly Channel<IPlayerCommand> _commandsQueue = Channel.CreateBounded<IPlayerCommand>(
         new BoundedChannelOptions(Constants.Queues.TrackPlayerCommandQueueSize) {
             FullMode = BoundedChannelFullMode.DropOldest,

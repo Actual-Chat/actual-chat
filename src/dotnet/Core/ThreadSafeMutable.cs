@@ -2,7 +2,7 @@ namespace ActualChat;
 
 public sealed class ThreadSafeMutable<T>
 {
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private T _value = default!;
 
     public T Value {

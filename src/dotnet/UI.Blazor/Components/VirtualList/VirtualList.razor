@@ -3,6 +3,8 @@
 @using ActualChat.UI.Blazor.Components.Internal
 @inherits ComputedStateComponent<VirtualListData<TItem>>
 @{
+#pragma warning disable IL2026
+
     // Console.Out.WriteLine("VirtualList.Render() = "  + Data.KeyRange + " !" + Data.GetHashCode());
     var renderIndex = RenderIndex++;
     // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract

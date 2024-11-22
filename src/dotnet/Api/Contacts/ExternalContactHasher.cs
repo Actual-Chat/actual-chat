@@ -7,6 +7,7 @@ public sealed class ExternalContactHasher
 {
     private IByteSerializer ByteSerializer { get; } = MemoryPackByteSerializer.Default;
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fields are accessed via reflection and marked with DynamicallyAccessedMembers")]
     public HashString Compute(ExternalContactFull externalContactFull)
     {
  #pragma warning disable IL2026
@@ -22,6 +23,7 @@ public sealed class ExternalContactHasher
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)]
 internal sealed partial record HashedExternalContact
 {
     [DataMember, MemoryPackOrder(0)] public ExternalContactId Id { get; init; }

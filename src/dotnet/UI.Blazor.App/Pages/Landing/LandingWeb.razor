@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.UI.Blazor.App.Pages.Landing
 @inherits ComputedStateComponent<LandingWeb.Model>
+@attribute [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 @{
     var m = State.Value;
     var account = m.Account;

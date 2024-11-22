@@ -2,9 +2,10 @@ using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Module;
 
+// ReSharper disable once NotAccessedPositionalProperty.Global
 public sealed record AppLoadBalancerSettings(string RouteId)
 {
-    private static readonly object Lock = new();
+    private static readonly Lock Lock = new();
     private static volatile AppLoadBalancerSettings _instance = new();
 
     public static AppLoadBalancerSettings Instance {

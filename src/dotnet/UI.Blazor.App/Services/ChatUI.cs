@@ -21,7 +21,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private readonly MutableState<ChatEntryId> _highlightedEntryId;
     private readonly ISyncedState<UserNavbarSettings> _navbarSettings;
     private ChatId _searchEnabledChatId;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private readonly TaskCompletionSource _whenActivePlaceRestored = TaskCompletionSourceExt.New();
     private List<ChatId>? _pendingSelectedChatIdChanges = new ();
 

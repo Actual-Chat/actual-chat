@@ -15,7 +15,7 @@ public partial class EntryIndexingMasterFlow
 
     protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
     {
-        var mustContinue = await base.OnBeforeFirstIndexAfterReset(cancellationToken);
+        var mustContinue = await base.OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false);
         if (mustContinue)
             // only created before now + 10sec. New chats are handled from events
             MaxVersion = (Clocks.CoarseCpuClock.Now + TimeSpan.FromSeconds(10)).EpochOffset.Ticks;

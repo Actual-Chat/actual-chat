@@ -12,6 +12,7 @@ namespace ActualChat.Module;
 public sealed class ApiModule(IServiceProvider moduleServices)
     : HostModule(moduleServices)
 {
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fine for Fusion")]
     protected override void InjectServices(IServiceCollection services)
     {
         var fusion = services.AddFusion();

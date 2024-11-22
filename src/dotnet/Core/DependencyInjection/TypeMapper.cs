@@ -1,6 +1,6 @@
 namespace ActualChat.DependencyInjection;
 
-public sealed class TypeMapper<TScope>
+public sealed class TypeMapper<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]TScope>
 {
     private readonly Dictionary<Type, Type> _map;
     private readonly ConcurrentDictionary<Type, LazySlim<Type, TypeMapper<TScope>, Type?>> _cache = new();
@@ -21,12 +21,12 @@ public sealed class TypeMapper<TScope>
             .ToDictionary(kv => kv.Key, kv => kv.Value)))
     { }
 
-    public Type Get(Type source)
+    public Type Get([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type source)
         => TryGet(source)
             ?? throw StandardError.NotFound<Type>(
                 $"No matching {typeof(TScope).GetName()} is found for type '{source.GetName()}'.");
 
-    public Type? TryGet(Type source)
+    public Type? TryGet([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type source)
     {
         if (source == null)
             throw new ArgumentNullException(nameof(source));

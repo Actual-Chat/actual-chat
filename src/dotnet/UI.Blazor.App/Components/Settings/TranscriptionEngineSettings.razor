@@ -3,6 +3,8 @@
 @using ActualChat.Transcription
 @inherits ComputedStateComponent<TranscriptionEngineSettings.Model>
 @{
+#pragma warning disable IL2091
+    
     var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
         return;

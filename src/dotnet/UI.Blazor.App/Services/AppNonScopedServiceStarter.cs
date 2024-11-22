@@ -94,7 +94,7 @@ public class AppNonScopedServiceStarter
         var tracePrefix = nameof(StartHostedServices) + ": starting ";
         foreach (var hostedService in Services.HostedServices()) {
             Tracer.Point(tracePrefix + hostedService.GetType().Name);
-            await hostedService.StartAsync(default);
+            await hostedService.StartAsync(default).ConfigureAwait(true);
             await Task.Yield();
         }
     }

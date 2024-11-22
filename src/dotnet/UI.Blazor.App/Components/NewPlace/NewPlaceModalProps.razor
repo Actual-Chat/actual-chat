@@ -2,6 +2,10 @@
 @inherits FusionComponentBase
 @namespace ActualChat.UI.Blazor.App.Components
 
+@{
+#pragma warning disable IL2091
+}
+
 <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
     <FormBlock>
         <DataAnnotationsValidator/>
