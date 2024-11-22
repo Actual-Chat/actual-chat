@@ -33,6 +33,42 @@ internal abstract class ClusterSetupActions(
     private const string TimestampFieldName = "timestamp";
     protected readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
 
+    protected async Task<string?> GetModelGroupId(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
+    {
+        var modelGroupName = openSearchSettings.ModelGroup;
+
+        // Read model group latest state
+        var modelGroupResponse = await openSearch.RunAsync(
+                $$"""
+                POST /_plugins/_ml/model_groups/_search
+                {
+                    "query": {
+                        "match": {
+                            "name": "{{modelGroupName}}"
+                        }
+                    },
+                    "sort": [{
+                        "_seq_no": { "order": "desc" }
+                    }],
+                    "size": 1
+                }
+                """,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+        var modelGroup = modelGroupResponse
+            .AssertSuccess()
+            .FirstHit();
+        var modelGroupId = modelGroup.Get<string>("_id");
+        if (modelGroupId.IsNullOrEmpty()) {
+            throw new InvalidOperationException(
+                "Failed to retrieve model group id."
+            );
+        }
+
+        return modelGroupId;
+    }
+
     public async Task<EmbeddingModelProps> EnsureEmbeddingModelDeployedAsync(OpenSearchSettings value, CancellationToken cancellationToken)
     {
         var modelProps = await RetrieveEmbeddingModelPropsAsync(value, cancellationToken).ConfigureAwait(false);
@@ -361,37 +397,10 @@ internal sealed class BuiltInModelClusterSetupActions : ClusterSetupActions
 
     protected override async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
     {
-        var modelGroupName = openSearchSettings.ModelGroup;
-
         using var _1 = _tracer.Region();
-        // Read model group latest state
-        var modelGroupResponse = await _openSearch.RunAsync(
-                $$"""
-                POST /_plugins/_ml/model_groups/_search
-                {
-                    "query": {
-                        "match": {
-                            "name": "{{modelGroupName}}"
-                        }
-                    },
-                    "sort": [{
-                        "_seq_no": { "order": "desc" }
-                    }],
-                    "size": 1
-                }
-                """,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-        var modelGroup = modelGroupResponse
-            .AssertSuccess()
-            .FirstHit();
-        var modelGroupId = modelGroup.Get<string>("_id");
-        if (modelGroupId.IsNullOrEmpty()) {
-            throw new InvalidOperationException(
-                "Failed to retrieve model group id."
-            );
-        }
+
+        var modelGroupId = await GetModelGroupId(openSearchSettings, cancellationToken).ConfigureAwait(false);
+
         // Read model group latest model id
         var modelResponse = await _openSearch.RunAsync(
                 $$"""
@@ -471,8 +480,10 @@ internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
         Tracer baseTracer
     ) : base(openSearch, namingPolicy, baseTracer) => _openSearch = openSearch;
 
-    protected override Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
+    protected override async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
     {
+        var modelGroupId = await GetModelGroupId(openSearchSettings, cancellationToken).ConfigureAwait(false);
+
         throw new NotImplementedException();
     }
 
