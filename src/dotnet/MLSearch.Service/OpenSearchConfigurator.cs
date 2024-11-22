@@ -139,8 +139,6 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
             => m.Properties(pp
                 => pp.Keyword(p => p.Name(x => x.Id))
                     .Text(p => p.Name(x => x.FullName))
-                    .Text(p => p.Name(x => x.FirstName))
-                    .Text(p => p.Name(x => x.SecondName))
                     .Keyword(x => x.Name(o => o.PlaceIds))))
             .Settings(s => s.RefreshInterval(Settings.RefreshInterval));
 

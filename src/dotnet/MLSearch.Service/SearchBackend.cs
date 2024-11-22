@@ -288,7 +288,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             => descriptor.Must(q
                         => q.MultiMatch(
                             m
-                                => m.Fields(x => x.FullName, x => x.FirstName, x => x.SecondName)
+                                => m.Fields(x => x.FullName)
                                     .Query(query.Criteria)
                                     .Type(TextQueryType.PhrasePrefix)
                                     .Operator(Operator.Or)
