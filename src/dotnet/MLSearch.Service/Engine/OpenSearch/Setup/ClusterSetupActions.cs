@@ -6,8 +6,11 @@ using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.MLSearch.Module;
+using Google.Apis.Http;
 using OpenSearch.Client;
 using OpenSearch.Net;
+using HttpMethod = System.Net.Http.HttpMethod;
+using IHttpClientFactory = System.Net.Http.IHttpClientFactory;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
@@ -472,13 +475,19 @@ internal sealed class BuiltInModelClusterSetupActions : ClusterSetupActions
 
 internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
 {
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IOpenSearchClient _openSearch;
 
     public CustomRemoteModelClusterSetupActions(
+        IHttpClientFactory httpClientFactory,
         IOpenSearchClient openSearch,
         OpenSearchNamingPolicy namingPolicy,
         Tracer baseTracer
-    ) : base(openSearch, namingPolicy, baseTracer) => _openSearch = openSearch;
+    ) : base(openSearch, namingPolicy, baseTracer)
+    {
+        _httpClientFactory = httpClientFactory;
+        _openSearch = openSearch;
+    }
 
     protected override async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
     {
@@ -491,37 +500,135 @@ internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
         return await CreateEmbeddingModelPropertiesAsync(modelId, connectorId, cancellationToken).ConfigureAwait(false);
     }
 
+    private record EmbeddingModel(string ModelName, string ModelUrl);
+
+    private static readonly JsonSerializerOptions jsonSerializerOptions = new() {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     private async Task<string> GetOrCreateConnectorId(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
     {
-        // POST /_plugins/_ml/connectors/_create
-        // {
-        // "name": "Self-hosted embeddings model connector",
-        // "description": "",
-        // "version": "1.0",
-        // "protocol": "http",
-        // "parameters": {
-        //     "model": "Alibaba-NLP_gte-multilingual-base"
-        // },
-        // "actions": [
-        //     {
-        //     "action_type": "predict",
-        //     "method": "POST",
-        //     "url": "http://embeddings-service:8080/predictions/${parameters.model}",
-        //     "headers": {
-        //         "content-type": "application/json"
-        //     },
-        //     "request_body": "{ \"input\": ${parameters.input} }",
-        //     "pre_process_function": "connector.pre_process.default.embedding",
-        //     "post_process_function": "connector.post_process.default.embedding"
-        //     }
-        // ]
-        // }
+        var customConnectorConfig = openSearchSettings.EmbeddingService.Custom
+            ?? throw new InvalidOperationException("Custom embedding service is not configured.");
 
-        // var connectorId = modelSource.Get<string>("connector_id")
-        //     ?? throw new InvalidOperationException(
-        //         "connector_id is null"
-        //     );
-        throw new NotImplementedException();
+        if (!Uri.TryCreate(customConnectorConfig.ManagementUri, UriKind.Absolute, out var modelManagementUri))
+            throw new InvalidOperationException($"{nameof(CustomEmbeddingServiceSettings.ManagementUri)} must be a valid absolute URL.");
+
+        if (!Uri.TryCreate(customConnectorConfig.Uri, UriKind.Absolute, out var modelUri))
+            throw new InvalidOperationException($"{nameof(CustomEmbeddingServiceSettings.Uri)} must be a valid absolute URL.");
+
+
+        var modelRequest = new HttpRequestMessage(HttpMethod.Get, new Uri(modelManagementUri, "models")) {
+            Headers = {
+                { "Accept", "application/json" }
+            }
+        };
+
+        using var httpClient = _httpClientFactory.CreateClient();
+
+        var modelResponse = await httpClient.SendAsync(modelRequest, cancellationToken).ConfigureAwait(false);
+        if (!modelResponse.IsSuccessStatusCode)
+            throw StandardError.External($"{modelResponse.StatusCode} response while accessing {modelRequest.RequestUri}.");
+
+        using var contentStream = await modelResponse.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+
+        var embeddingModels = await JsonSerializer
+            .DeserializeAsync<EmbeddingModel[]>(contentStream, jsonSerializerOptions, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (embeddingModels is null || embeddingModels.Length == 0)
+            throw new InvalidOperationException("Embedding model service doesn't host any model.");
+
+        var modelName = customConnectorConfig.ModelName;
+        EmbeddingModel? model;
+        if (string.IsNullOrWhiteSpace(modelName)) {
+            if (embeddingModels.Length > 1)
+                throw new InvalidOperationException("Embedding model service hosts multiple models. Please specify model name.");
+            model = embeddingModels[0];
+        }
+        else {
+            model = embeddingModels.FirstOrDefault(em => OrdinalEquals(em.ModelName, modelName));
+            if (model is null)
+                throw new InvalidOperationException($"The specified model name '{modelName}' is not found.");
+        }
+
+        var modelProps = model.ModelUrl.Split('.')[1];
+        // .Split('_');
+        // var dimension = int.Parse(modelProps[0], NumberStyles.Integer, CultureInfo.InvariantCulture);
+        // var modelHash = modelProps[1];
+
+        var searchConnectorResponse = await _openSearch.RunAsync(
+                $$"""
+                POST /_plugins/_ml/connectors/_search
+                {
+                    "query": {
+                        "bool": {
+                            "must": [
+                                { "term": { "parameters.model": "{{model.ModelName}}" } },
+                                { "term": { "description": "{{modelProps}}" } },
+                                { "prefix": { "actions.url": "{{modelUri}}" } }
+                            ]
+                        }
+                    },
+                    "sort": [{
+                        "_seq_no": { "order": "desc" }
+                    }],
+                    "size": 1
+                }
+                """,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+
+        var connectorInfo = searchConnectorResponse
+            .AssertSuccess()
+            .FirstHitOrDefault();
+
+        if (connectorInfo is not null) {
+            var connectorId = connectorInfo.Get<string>("_id");
+            if (connectorId.IsNullOrEmpty())
+                throw new InvalidOperationException("Failed to retrieve model connector id.");
+            return connectorId;
+        }
+
+        var createConnectorResponse = await _openSearch.RunAsync(
+                $$"""
+                POST /_plugins/_ml/connectors/_create
+                {
+                    "name": "Self-hosted embeddings model connector",
+                    "description": "{{modelProps}}",
+                    "version": "1.0",
+                    "protocol": "{{modelUri.Scheme}}",
+                    "parameters": {
+                        "model": "{{model.ModelName}}"
+                    },
+                    "actions": [
+                        {
+                            "action_type": "predict",
+                            "method": "POST",
+                            "url": "{{modelUri}}/predictions/${parameters.model}",
+                            "headers": {
+                                "content-type": "application/json"
+                            },
+                            "request_body": "{ \"input\": ${parameters.input} }",
+                            "pre_process_function": "connector.pre_process.default.embedding",
+                            "post_process_function": "connector.post_process.default.embedding"
+                        }
+                    ]
+                }
+                """,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+
+        var newConnectorInfo = createConnectorResponse
+            .AssertSuccess()
+            .FirstHit();
+
+        return newConnectorInfo.Get<string>("connector_id")
+            ?? throw new InvalidOperationException(
+                "connector_id is null"
+            );
     }
 
     private async Task<string> GetOrCreateModelId(string? modelGroupId, string connectorId, CancellationToken cancellationToken)
