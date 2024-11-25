@@ -1,3 +1,4 @@
+using ActualChat.Chat;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,10 @@ public class ChatUsagesBackend(IServiceProvider services)
     : DbServiceBase<UsersDbContext>(services), IChatUsagesBackend
 {
     private const int RecencyListLimit = 100;
+
+    private IChatsBackend? _chatsBackend;
+
+    protected IChatsBackend ChatsBackend => _chatsBackend ??= services.GetRequiredService<IChatsBackend>();
 
     public virtual async Task<ApiArray<ChatId>> GetRecencyList(UserId userId, ChatUsageListKind kind, CancellationToken cancellationToken)
     {
@@ -109,13 +114,23 @@ public class ChatUsagesBackend(IServiceProvider services)
         if (changeKind != ChangeKind.Create)
             return;
 
+        ChatUsageListKind? listKind = null;
         var chatId = entry.ChatId;
-        if (!chatId.IsPeerChat(out _))
+        if (chatId.IsPeerChat(out _))
+            listKind = ChatUsageListKind.PeerChatsWroteTo;
+        else {
+            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (chat is not null && chat.SystemTag == Constants.Chat.SystemTags.Bot && author.LocalId > 0)
+                // A user posted a request to AI search chat.
+                listKind = ChatUsageListKind.SearchChats;
+        }
+
+        if (!listKind.HasValue)
             return;
 
         var userId = author.UserId;
         var command = new ChatUsagesBackend_RegisterUsage(userId,
-            ChatUsageListKind.PeerChatsWroteTo,
+            listKind.Value,
             chatId,
             entry.BeginsAt.ToDateTime());
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
