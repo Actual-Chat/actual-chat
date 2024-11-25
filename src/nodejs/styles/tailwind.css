@@ -50,6 +50,13 @@
         @apply bg-input;
         @apply rounded-t-md;
     }
+    input,
+    div,
+    span,
+    p,
+    li {
+        font-variant-ligatures: common-ligatures discretionary-ligatures historical-ligatures no-contextual;
+    }
 
     input:-webkit-autofill,
     input:-webkit-autofill:hover,
