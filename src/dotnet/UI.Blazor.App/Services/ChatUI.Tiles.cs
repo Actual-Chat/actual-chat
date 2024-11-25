@@ -43,12 +43,14 @@ public partial class ChatUI
         var isPrevUnread = false;
         var isPrevAudio = false;
         var hasVeryFirstItem = false;
+        var hasVeryFirstSearchItem = false;
         if (prevMessage != null) {
             prevEntry = prevMessage.Entry;
             prevDate = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(prevEntry.BeginsAt));
             isPrevUnread = prevMessage.Flags.HasFlag(ChatMessageFlags.Unread);
             isPrevAudio = prevEntry.HasAudioEntry || prevEntry.IsStreaming;
             hasVeryFirstItem = prevMessage.ReplacementKind == ChatMessageReplacementKind.WelcomeBlock;
+            hasVeryFirstSearchItem = prevMessage.ReplacementKind == ChatMessageReplacementKind.SearchWelcomeBlock;
         }
 
         var messages = new List<ChatMessage>(entries.Count);
@@ -78,15 +80,26 @@ public partial class ChatUI
             if (isEntryUnread)
                 flags |= ChatMessageFlags.Unread;
             if (shouldAddToResult) {
-                if (hasVeryFirstItem && !isWelcomeBlockAdded) {
-                    var welcomeMessage = new ChatMessage(entry) {
-                        ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
-                        PreviousMessage = prevMessage,
-                    };
-                    messages.Add(welcomeMessage);
-                    prevMessage = welcomeMessage;
+                if (!isWelcomeBlockAdded) {
+                    if (hasVeryFirstItem) {
+                        var welcomeMessage = new ChatMessage(entry) {
+                            ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
+                            PreviousMessage = prevMessage,
+                        };
+                        messages.Add(welcomeMessage);
+                        prevMessage = welcomeMessage;
+                    }
+                    if (hasVeryFirstSearchItem) {
+                        var welcomeMessage = new ChatMessage(entry) {
+                            ReplacementKind = ChatMessageReplacementKind.SearchWelcomeBlock,
+                            PreviousMessage = prevMessage,
+                        };
+                        messages.Add(welcomeMessage);
+                        prevMessage = welcomeMessage;
+                    }
                     isWelcomeBlockAdded = true;
                 }
+
                 if (isEntryUnread && !isPrevUnread) {
                     var newLineMessage = new ChatMessage(entry) {
                         ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,

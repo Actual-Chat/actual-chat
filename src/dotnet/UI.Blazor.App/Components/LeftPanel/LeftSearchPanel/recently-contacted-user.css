@@ -1,15 +1,22 @@
+.recently-contacted-user {
+    @apply p-1;
+    @apply rounded-md;
+}
 .recently-contacted-user .c-contact {
     @apply flex-y items-center justify-center;
-    @apply min-w-20;
+    @apply w-14 h-14;
     @apply truncate;
     @apply cursor-pointer;
+}
+body.hoverable .recently-contacted-user:hover {
+    @apply bg-hover;
 }
 .recently-contacted-user .c-contact > .c-author {
     @apply w-10 h-10;
     @apply rounded-full;
 }
 .recently-contacted-user .c-contact > .c-name {
-    @apply max-w-20;
+    @apply max-w-14;
     @apply text-center;
     @apply text-caption-6;
     @apply truncate;

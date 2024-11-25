@@ -446,6 +446,12 @@
     --place-cat-tank: var(--gray-60);
     --place-cat-border: var(--gray-70);
     --place-cat-face: var(--white);
+
+    --search-cat-background: var(--gray-95);
+    --search-cat-chest: var(--gray-99);
+    --search-cat-paws: var(--white);
+    --search-cat-border: var(--gray-60);
+    --search-cat-shadow: var(--gray-80);
 }
 .theme-dark {
     /* Background */
@@ -667,6 +673,12 @@
     --place-cat-tank: var(--ash-30);
     --place-cat-border: var(--ash-40);
     --place-cat-face: var(--ash-80);
+
+    --search-cat-background: var(--ash-50);
+    --search-cat-chest: var(--ash-70);
+    --search-cat-paws: var(--ash-80);
+    --search-cat-border: var(--ash-30);
+    --search-cat-shadow: var(--ash-40);
 }
 .theme-ash {
     /* Background */
@@ -887,4 +899,10 @@
     --place-cat-tank: var(--ash-60);
     --place-cat-border: var(--ash-80);
     --place-cat-face: var(--white);
+
+    --search-cat-background: var(--ash-99);
+    --search-cat-chest: var(--white);
+    --search-cat-paws: var(--white);
+    --search-cat-border: var(--ash-60);
+    --search-cat-shadow: var(--ash-95);
 }

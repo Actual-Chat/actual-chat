@@ -1,0 +1,45 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<EmptySearchChatContent ChatContext="@ChatContext"/>
+<div class="message-wrapper">
+    <div class="chat-welcome-block search-welcome">
+        <div class="c-header">
+            <div class="c-chat-icon">
+                <ChatIcon Chat="@Chat"/>
+            </div>
+            <div class="c-chat-title">@Chat.Title</div>
+        </div>
+        <div class="c-content">
+            <span>Welcome! To search your chat history with me, simply ask a question like:</span>
+            <div class="c-messages">
+                <div class="search-example">
+                    <i class="icon-ai-search text-xl"></i>
+                    <span class="code-block-markup text-03">
+                        find out previous conversation about...
+                    </span>
+                </div>
+
+                <div class="search-example">
+                    <i class="icon-ai-search text-xl"></i>
+                    <span class="code-block-markup text-03">
+                        what did we discuss earlier related to...
+                    </span>
+                </div>
+
+                <div class="search-example">
+                    <i class="icon-ai-search text-xl"></i>
+                    <span class="code-block-markup text-03">
+                        show the chat where we talked about...
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Session Session => ChatContext.Hub.Session();
+    private Chat Chat => ChatContext.Chat;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+}

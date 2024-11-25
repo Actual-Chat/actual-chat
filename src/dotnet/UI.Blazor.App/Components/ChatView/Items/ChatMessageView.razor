@@ -43,6 +43,9 @@
     case ChatMessageReplacementKind.WelcomeBlock:
         <ChatWelcomeBlock ChatContext="@ChatContext" />
         return;
+    case ChatMessageReplacementKind.SearchWelcomeBlock:
+        <SearchChatWelcomeBlock ChatContext="@ChatContext" />
+        return;
     default:
         throw new ArgumentOutOfRangeException();
     }

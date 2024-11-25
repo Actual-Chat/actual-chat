@@ -295,12 +295,28 @@ body.hoverable .chat-header-title:hover {
     @apply flex-x gap-x-1;
     @apply text-02 text-text-1;
 }
+.chat-welcome-block.search-welcome .c-content {
+    @apply flex-y gap-x-1;
+    @apply text-02 text-text-1;
+}
 .chat-welcome-block .c-content > .c-incut {
     @apply flex-none;
 }
 .chat-welcome-block .c-content > .c-contact {
     @apply max-w-100;
     @apply truncate;
+}
+.chat-welcome-block.search-welcome .c-content .c-messages {
+    @apply flex-y gap-y-1;
+    @apply py-2;
+}
+.search-welcome .search-example {
+    @apply flex-x items-center gap-x-2;
+    @apply w-fit;
+    @apply px-2 py-1;
+    @apply rounded-full;
+    @apply text-03;
+    @apply bg-03;
 }
 .chat-link {
     @apply flex-x items-center gap-x-16;
