@@ -196,7 +196,7 @@
             @if (entry.HasReactions) {
                 <MessageReactions Entry="@entry"/>
             }
-            @if (m.MentionedAuthorIds is not null && m.MentionedAuthorIds.Value.Length > 0) {
+            @if (!isForward && m.MentionedAuthorIds is not null && m.MentionedAuthorIds.Value.Length > 0) {
                 <div class="notify-mentioned-members-line"> @* Takes full line *@
                     <NotifyMentionedMembers
                         ChatContext="@ChatContext"
@@ -291,8 +291,9 @@
         var repliedEntry = await GetRepliedEntry(cancellationToken).ConfigureAwait(false);
         var hasAnyMentions = HasAnyMentions(markup);
         var isOwnAuthorMentioned = IsMentioned(markup, repliedEntry, ownAuthorId, hasAnyMentions);
+        var isForward = !entry.ForwardedChatEntryId.IsNone;
         ImmutableArray<AuthorId>? mentionedAuthorIds = null;
-        if (isOwnMessage && hasAnyMentions) {
+        if (isOwnMessage && hasAnyMentions && !isForward) {
             var mentionIds = MentionExtractor.Instance.GetMentionIds(markup);
             mentionedAuthorIds = mentionIds
                 .Where(c => c.Kind == PrincipalKind.Author && c.AuthorId != ownAuthorId)
@@ -304,7 +305,7 @@
         var isHighlighted = entry.Id == await ChatUI.HighlightedEntryId.Use(cancellationToken).ConfigureAwait(false);
         Chat? forwardedChat = null;
         var forwardedChatEntryId = ChatEntryId.None;
-        if (!entry.ForwardedChatEntryId.IsNone) {
+        if (isForward) {
             forwardedChat = await Chats.Get(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken).ConfigureAwait(false);
             if (forwardedChat != null)
                 forwardedChatEntryId = entry.ForwardedChatEntryId;
