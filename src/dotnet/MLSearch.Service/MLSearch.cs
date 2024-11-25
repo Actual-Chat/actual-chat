@@ -56,17 +56,6 @@ public class MLSearchImpl (ICommander commander, IMLSearchBackend backend, IChat
             isOutermost: true,
             cancellationToken: cancellationToken
         ).ConfigureAwait(false);
-        // ---
-        var upsertCommand = new AuthorsBackend_Upsert(
-            chat.Id,
-            default,
-            Constants.User.Sherlock.UserId,
-            null,
-            new AuthorDiff()
-        );
-        var botAuthor = await Commander.Call(upsertCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
-        var promoteCommand = new Authors_PromoteToOwner(session, botAuthor.Id);
-        _ = await Commander.Call(promoteCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
         return new MLSearchChat(chat.Id);
     }
 }

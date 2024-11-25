@@ -225,13 +225,16 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             if (userId.IsNone)
                 throw new ArgumentOutOfRangeException(nameof(command), "UserId is required to create a new author.");
 
-            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-            if (chat == null || chat.HasSingleAuthor) {
-                var alreadyHasAuthor = await dbContext.Authors
-                    .AnyAsync(a => a.ChatId == chatId && a.UserId != userId, cancellationToken)
-                    .ConfigureAwait(false);
-                if (alreadyHasAuthor)
-                    throw StandardError.Constraint("There can be only one author in this chat.");
+            var skipSingleAuthorCheck = userId == Constants.User.Sherlock.UserId;
+            if (!skipSingleAuthorCheck) {
+                var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+                if (chat == null || chat.HasSingleAuthor) {
+                    var alreadyHasAuthor = await dbContext.Authors
+                        .AnyAsync(a => a.ChatId == chatId && a.UserId != userId, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (alreadyHasAuthor)
+                        throw StandardError.Constraint("There can be only one author in this chat.");
+                }
             }
             var account = await AccountsBackend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
 
