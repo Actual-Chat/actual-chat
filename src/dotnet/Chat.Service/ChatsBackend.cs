@@ -123,6 +123,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return sChatIds.Select(x => new ChatId(x)).Where(x => !x.IsPlaceRootChat).ToApiArray();
     }
 
+    // [ComputeMethod]
     public virtual async Task<ApiArray<ChatId>> ListPlaceChatIds(PlaceId placeId, CancellationToken cancellationToken)
     {
         if (placeId.IsNone)
