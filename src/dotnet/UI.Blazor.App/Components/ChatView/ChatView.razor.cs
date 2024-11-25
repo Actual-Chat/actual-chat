@@ -321,7 +321,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         rebuildTiles: // Building actual virtual list tiles
 
-        var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
+        var isBot = chat.SystemTag == Constants.Chat.SystemTags.Bot;
+        var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
         var shownReadyEntryLid = _shownReadEntryLid.Value;
         var renderedTiles = renderedData.Tiles.ToDictionary(t => t.Key, StringComparer.Ordinal);
         var tiles = new List<VirtualListTile<ChatMessage>>();
@@ -360,7 +361,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
                 return new VirtualListData<ChatMessage>(new [] {
-                    new VirtualListTile<ChatMessage>(default(Range<long>), new [] { ChatMessage.Welcome(Chat.Id) }),
+                    new VirtualListTile<ChatMessage>(default(Range<long>), new [] { ChatMessage.Welcome(Chat.Id, isBot) }),
                 }) {
                     HasVeryFirstItem = true,
                     HasVeryLastItem = true,

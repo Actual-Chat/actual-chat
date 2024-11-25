@@ -1,6 +1,6 @@
 .recently-contacted-people {
     @apply flex-none flex-x gap-x-1;
-    @apply m-2;
+    @apply mx-2;
     @apply overflow-y-hidden;
     @apply custom-scrollbar-hide;
 }

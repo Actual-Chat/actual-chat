@@ -64,10 +64,12 @@ public sealed class ChatMessage(ChatEntry entry) : IVirtualListItem, IEquatable<
 
     // Static helpers
 
-    public static ChatMessage Welcome(ChatId chatId)
+    public static ChatMessage Welcome(ChatId chatId, bool isBot)
     {
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 0L, AssumeValid.Option);
         var chatEntry = new ChatEntry(chatEntryId);
-        return new ChatMessage(chatEntry) { ReplacementKind = ChatMessageReplacementKind.WelcomeBlock };
+        return isBot
+            ? new ChatMessage(chatEntry) { ReplacementKind = ChatMessageReplacementKind.SearchWelcomeBlock }
+            : new ChatMessage(chatEntry) { ReplacementKind = ChatMessageReplacementKind.WelcomeBlock };
     }
 }

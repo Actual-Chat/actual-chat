@@ -6,6 +6,7 @@ public enum ChatMessageReplacementKind
     DateLine,
     NewMessagesLine,
     WelcomeBlock,
+    SearchWelcomeBlock,
 }
 
 public static class ChatMessageReplacementKindExt
@@ -16,6 +17,7 @@ public static class ChatMessageReplacementKindExt
             ChatMessageReplacementKind.DateLine => "-date-line",
             ChatMessageReplacementKind.NewMessagesLine => "-new-messages",
             ChatMessageReplacementKind.WelcomeBlock => "-welcome-block",
+            ChatMessageReplacementKind.SearchWelcomeBlock => "-search-welcome-block",
             _ => throw new ArgumentOutOfRangeException(nameof(replacementKind), replacementKind, null),
         };
 }

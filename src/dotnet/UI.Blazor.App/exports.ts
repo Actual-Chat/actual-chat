@@ -18,6 +18,7 @@ export * from './Components/ChatMessageEditor/attachment-list';
 export * from './Components/ChatMessageEditor/chat-message-editor';
 export * from './Components/ChatNotFound/chat-not-found-svg.lit';
 export * from './Components/ChatView/EmptyChatContent/empty-chat-svg.lit';
+export * from './Components/ChatView/EmptyChatContent/empty-search-chat-svg.lit';
 export * from './Components/DateVisor/date-visor';
 export * from './Components/InaccessiblePlace/not-member-yet-svg.lit';
 export * from './Components/LeftPanel/logo-button-svg.lit';
