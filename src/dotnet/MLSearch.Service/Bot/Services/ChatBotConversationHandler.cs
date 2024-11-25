@@ -109,7 +109,7 @@ internal class ChatBotConversationHandler(
 
         var chat = await chatHistoryCache.GetOrSetDefault(chatId, [], cancellationToken).ConfigureAwait(false);
 
-        var botId = new AuthorId(chatId, Constants.User.Sherlock.AuthorLocalId, AssumeValid.Option);
+        var botId = Constants.User.Sherlock.GetSherlockAuthorId(chatId);
         var userMessages = new Stack<ChatMessageContent>();
         for (var idx = updatedEntries.Count-1; idx >= 0; idx--) {
             var entry = updatedEntries[idx];
